@@ -208,6 +208,14 @@ describe("the return policy comes from the store's return settings (D153)", () =
     expect(returnPolicyOf({ windowDays: 30.5 })).toEqual(DEFAULT_RETURN_POLICY);
     expect(returnPolicyOf({ windowDays: null })).toEqual(DEFAULT_RETURN_POLICY);
   });
+
+  it("carries whether exchanges are offered (D239) for the chat agent, and never puts it in the JSON-LD", () => {
+    expect(returnPolicyOf({ windowDays: 30, exchanges: false })).toMatchObject({ exchanges: false });
+    expect(returnPolicyOf({ windowDays: 30, exchanges: true })).toMatchObject({ exchanges: true });
+    expect(returnPolicyOf({ windowDays: 30, exchanges: "no" })).not.toHaveProperty("exchanges");
+    const plain = returnPolicy(["NO"], { days: 30, whoPaysReturn: "store", acceptExcluded: true });
+    expect(returnPolicy(["NO"], { days: 30, whoPaysReturn: "store", acceptExcluded: true, exchanges: false })).toEqual(plain);
+  });
 });
 
 describe("productJsonLd: the price per measure (D160)", () => {

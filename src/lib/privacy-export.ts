@@ -156,6 +156,22 @@ export type ReturnRow = {
   createdAt: Ts;
   closedAt: Ts;
   lines: { sku: string | null; title: string | null; quantity: number; decision: string; condition: string | null; reason: string | null }[];
+  /** The customer's exchange wish (D239): their own words and when. */
+  exchangeWish?: { at: Ts; note: string | null } | null;
+  /** The return's exchanges (D239): state, dates, the credit, the replacements' total, the difference and the exchange order's number, in the order's currency. */
+  exchanges?: {
+    status: string;
+    createdAt: Ts;
+    confirmedAt: Ts;
+    settledAt: Ts;
+    creditMinor: number;
+    totalMinor: number;
+    differenceMinor: number;
+    orderNumber: string | null;
+    /** The delivery address the proposal held (the original order's by default, or as staff changed it), even when no exchange order was made. */
+    deliveryAddress?: unknown;
+    replacementLines?: { sku: string | null; title: string | null; quantity: number }[];
+  }[];
 };
 export type WithdrawalRow = {
   id: string;
@@ -539,6 +555,23 @@ const shapeReturn = (r: ReturnRow): Json => ({
   createdAt: iso(r.createdAt),
   closedAt: iso(r.closedAt),
   lines: r.lines.map((l) => ({ sku: text(l.sku), title: text(l.title), quantity: int(l.quantity), decision: l.decision, condition: text(l.condition), reason: text(l.reason) })),
+  ...(r.exchangeWish ? { exchangeWish: { at: iso(r.exchangeWish.at), note: text(r.exchangeWish.note) } } : {}),
+  ...(r.exchanges && r.exchanges.length > 0
+    ? {
+        exchanges: r.exchanges.map((x) => ({
+          status: x.status,
+          createdAt: iso(x.createdAt),
+          confirmedAt: iso(x.confirmedAt),
+          settledAt: iso(x.settledAt),
+          credit: money(x.creditMinor, r.currency),
+          replacements: money(x.totalMinor, r.currency),
+          difference: money(x.differenceMinor, r.currency),
+          exchangeOrderNumber: text(x.orderNumber),
+          deliveryAddress: addressOf(x.deliveryAddress),
+          replacementLines: (x.replacementLines ?? []).map((l) => ({ sku: text(l.sku), title: text(l.title), quantity: int(l.quantity) })),
+        })),
+      }
+    : {}),
 });
 
 const shapeWithdrawal = (w: WithdrawalRow): Json => ({

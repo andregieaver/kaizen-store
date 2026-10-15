@@ -92,9 +92,19 @@ describe("returnFacts", () => {
       returnShippingPaidBy: "the store",
       takesBackGoodsTheLawExcludes: true,
       withdrawFromContractPage: "/s/kopp/no/withdraw",
+      exchanges: expect.stringContaining("the customer decides"),
       note: expect.stringContaining("faulty goods"),
     });
     expect(returnFacts({ days: 14, whoPaysReturn: "shopper", acceptExcluded: false }, "/no/withdraw")).toMatchObject({ returnShippingPaidBy: "the customer", takesBackGoodsTheLawExcludes: false });
+  });
+
+  it("says whether the store offers exchanges (D239), from its settings, and never a price or a difference", () => {
+    const off = returnFacts({ days: 14, whoPaysReturn: "shopper", acceptExcluded: false, exchanges: false }, "/no/withdraw");
+    expect(off.exchanges).toBe("The store does not offer exchanges: a return is refunded.");
+    const on = returnFacts({ days: 14, whoPaysReturn: "shopper", acceptExcluded: false, exchanges: true }, "/no/withdraw");
+    expect(on.exchanges).toContain("confirms it themselves");
+    expect(on.exchanges).toContain("Never promise an exchange, its price or a difference");
+    expect(on.exchanges).not.toMatch(/\d/);
   });
 
   it("is told to the model with the store's other facts", () => {

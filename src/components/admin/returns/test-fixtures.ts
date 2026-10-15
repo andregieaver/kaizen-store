@@ -78,6 +78,9 @@ export function detail(over: Partial<ReturnDetail> = {}): ReturnDetail {
     actions: [],
     due: noDue,
     working: null,
+    exchangeWish: null,
+    exchange: null,
+    label: { source: null, carrierId: null, service: null, consignmentNumber: null, trackingNumber: null, trackingUrl: null, costMinor: null, costCarrier: null, test: false, bookedAt: null, tries: 0 },
     order: { status: "paid", canRefund: true, paidMinor: 35_000, refundedMinor: 0, refundableMinor: 35_000, subscription: false, business: false },
     nothingSent: false,
     whoPaysReturn: "shopper",
@@ -116,6 +119,8 @@ export const row = (over: Partial<QueueRow> = {}): QueueRow => ({
   due: noDue,
   overdue: false,
   acknowledgementPending: false,
+  exchange: null,
+  labelFailed: false,
   ...over,
 });
 

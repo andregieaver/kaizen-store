@@ -33,7 +33,14 @@ const ACK_BATCH = 25;
 /** Acknowledgement attempts in all (the shopper's copy and the order address's copy count as two). */
 const ACK_ATTEMPTS = 6;
 
-export type ReturnJobs = { overdueReminders: number; acknowledgementsRetried: number };
+export type ReturnJobs = {
+  overdueReminders: number;
+  acknowledgementsRetried: number;
+  /** Exchanges whose proposal or pay step ended (D239). */
+  exchangesExpired?: number;
+  /** Withdrawal returns' labels booked by the automatic setting (D239). */
+  labelsBooked?: number;
+};
 
 /** Reminders for refunds past their deadline (once per return) and unsent acknowledgements tried again. */
 export async function runReturnJobs(): Promise<ReturnJobs> {
@@ -78,6 +85,20 @@ export async function runReturnJobs(): Promise<ReturnJobs> {
         out.acknowledgementsRetried++;
       }
     }
+  } catch {
+    // Tried again in five minutes.
+  }
+  // Exchanges (D239): proposals and pay steps past their end are expired (a processed one only after its Stripe sessions are closed).
+  try {
+    const { expireExchanges } = await import("./exchanges");
+    out.exchangesExpired = (await expireExchanges()).expired;
+  } catch {
+    // Tried again in five minutes.
+  }
+  // Return labels (D239): withdrawal returns of stores with automatic labels on are booked here, never in the shopper's confirmation request.
+  try {
+    const { bookPendingLabels } = await import("./return-labels");
+    out.labelsBooked = (await bookPendingLabels()).booked;
   } catch {
     // Tried again in five minutes.
   }

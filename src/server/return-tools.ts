@@ -7,7 +7,7 @@ import { findClaims } from "@/lib/claims";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import { ACTION_LABELS, KIND_HINTS, KIND_LABELS, REASON_LABELS, STATUS_HINTS, STATUS_LABELS, WORKING_LABELS, CAPPED_WORDS, countsSentence, dayText, dueMark, eventSentence } from "@/lib/return-admin";
-import { REFUND_ON_SCREEN, approveProblem, declineProblem } from "@/lib/return-tools";
+import { EXCHANGE_MARK_WORDS, EXCHANGE_ON_SCREEN, REFUND_ON_SCREEN, approveProblem, declineProblem, exchangeFacts, labelFacts } from "@/lib/return-tools";
 import { isReturnKind, isReturnStatus, type ReturnKind, type ReturnStatus } from "@/lib/return-status";
 import { isReturnReason } from "@/lib/withdrawal";
 
@@ -104,6 +104,8 @@ export async function listReturnsTool(ctx: Ctx, { which, kind, search, limit }: 
       refund: r.refundMinor !== null ? `Refunded ${money(store, r.refundMinor, r.currency)}` : (dueMark(r.due, store.timeZone)?.text ?? null),
       past_refund_deadline: r.overdue,
       acknowledgement_not_sent: r.acknowledgementPending || undefined,
+      exchange: r.exchange ? EXCHANGE_MARK_WORDS[r.exchange] : undefined,
+      label_not_booked: r.labelFailed ? "The automatic return label could not be booked: book it or paste one on the return's page" : undefined,
       admin: adminLink(store, `/returns/${r.id}`),
     })),
     page: adminLink(store, "/returns"),
@@ -164,9 +166,12 @@ export async function explainReturnTool(ctx: Ctx, { return: ref }: OwnerToolInpu
     refund_deadline: day(store, d.refundDeadline),
     acknowledgement: d.request ? (d.request.acknowledgement === "sent" ? `Sent ${day(store, d.request.acknowledgedAt)}` : "Not sent: send it again on the return's page") : undefined,
     history: d.events.slice(-12).map((e) => `${day(store, e.at)}: ${eventSentence(e.type, e.data, d.currency, mainLocale(store))}`),
+    exchange_wish: d.exchangeWish ? { asked: day(store, d.exchangeWish.at), words: d.exchangeWish.note ?? undefined } : undefined,
+    exchange: d.exchange ? exchangeFacts(d.exchange, m, (at) => day(store, at)) : undefined,
+    return_label: labelFacts(d.label, d.whoPaysReturn, m, (at) => day(store, at)),
     next_steps_on_the_page: next,
     you_can_do_here: assistantCan,
-    note: REFUND_ON_SCREEN,
+    note: `${REFUND_ON_SCREEN} ${EXCHANGE_ON_SCREEN}`,
     admin: adminLink(store, `/returns/${d.id}`),
   };
 }

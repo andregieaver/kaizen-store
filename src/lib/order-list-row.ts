@@ -26,7 +26,7 @@ export type OrderListItem = {
   /** On a fulfilment hold (D238, `orders.held_at`): still listed in *To send*, with its chip. */
   held?: boolean;
   /** `draft` for a staff-made order (D173), with its draft's number (`D-12`) while the draft still exists. */
-  source: "checkout" | "draft";
+  source: "checkout" | "draft" | "exchange";
   draftNumber: string | null;
   gift: boolean;
   /** The person's data was erased or restricted (D162): `email` and `name` are then null. */

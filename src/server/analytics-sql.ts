@@ -39,6 +39,12 @@ export const FROM_CHECKOUT = sql`(o.source = 'checkout')`;
 export const STAFF_MADE = sql`(o.source = 'draft')`;
 
 /**
+ * An exchange order (D239, docs/analytics.md "Exchange order"): the replacement goods of a return, paid by the return's credit. A paid order like any for
+ * revenue and the rest, but no visit's sale: `FROM_CHECKOUT` already leaves it out of conversion and the visit tables, and the channel table gives it its own row.
+ */
+export const EXCHANGE_ORDER = sql`(o.source = 'exchange')`;
+
+/**
  * Backordered units a paid order still waits for (D172; per line since D174): the line of `ol` on an order `o` that is paid and not yet sent in full
  * (status `paid`), not copied from another store, with units on backorder. The one definition of "owed" (docs/analytics.md): the Inventory page of the
  * admin, this page's analysis and the control center all sum `OWED_UNITS` where this holds, and a test holds them equal.

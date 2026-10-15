@@ -1,11 +1,15 @@
 /** Danish interface text, written by hand (`src/lib/i18n.ts`, D212). */
 import { daBrowser } from "./da-browser";
 import { daReturns } from "./da-returns";
+import { daExchange, daReturnLabel } from "./da-exchange";
 import type { Messages } from "./en";
 
 export const da: Messages = {
   ...daBrowser,
   returns: daReturns,
+  // Exchanges and return labels (D239): hand-written, needs legal review (`da-exchange.ts`).
+  exchange: daExchange,
+  returnLabel: daReturnLabel,
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det, du vil have i boksen. Vi leverer den på din leveringsdag: ændr den indtil fristen, så trækker vi dit kort, når leveringen er på vej.",

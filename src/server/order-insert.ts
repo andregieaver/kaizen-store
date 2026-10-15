@@ -11,8 +11,8 @@ type Row = Record<string, unknown>;
 /**
  * The one place an order is written and numbered (D141, wave 3 run 2, D173, `docs/wave-3-orders.md` 4.5). `insertOrder()` takes the next number from the
  * store's gap-free series (`commerce.next_document_number(store, 'order')`) in the SAME transaction that inserts the order, so a number is used only by an order
- * that exists; a transaction that rolls back gives the number back. Three callers use it: `placeOrder()` (a cart), the subscription renewal and `placeDraftOrder()`
- * (a draft order sent or paid outside Kaizen). A unit test (`src/lib/order-numbers.test.ts`) fails for any other file that inserts into `commerce.orders` or numbers an
+ * that exists; a transaction that rolls back gives the number back. Four callers use it: `placeOrder()` (a cart), the subscription renewal, `placeDraftOrder()`
+ * (a draft order sent or paid outside Kaizen) and `processExchange()` (an exchange's order, D239). A unit test (`src/lib/order-numbers.test.ts`) fails for any other file that inserts into `commerce.orders` or numbers an
  * order. Orders are never deleted or renumbered (a cancelled one keeps its number): the sequence has no gap.
  *
  * `insertOrderLine()` writes a line with every column an order line has, so the checkout and a draft write them one way; `reserveStock()` holds what was
@@ -68,6 +68,11 @@ export type OrderInsert = {
   gift?: GiftFields | null;
   /** A draft order's order (D173): all three or none (the database checks `orders_source_draft`). */
   draft?: { id: string; madeBy: string } | null;
+  /**
+   * An exchange's order (D239, `docs/wave-3-exchanges.md` 4.4): source `exchange`, the exchange it was made for and the staff member who processed it. Written
+   * only by `processExchange()` under the exchange's context (`kaizen.exchange`; the database refuses it otherwise). Never together with `draft`.
+   */
+  exchange?: { id: string; madeBy: string } | null;
   staffDiscountMinor?: number;
   staffDiscountLabel?: string | null;
 };
@@ -97,7 +102,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
-      delivery_method, pickup_location_id, delivery_note
+      delivery_method, pickup_location_id, delivery_note, exchange_id
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -113,10 +118,10 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.vatTreatment === null || input.vatTreatment === undefined ? null : JSON.stringify(input.vatTreatment)}::jsonb,
       ${input.vatCheckId ?? null}::uuid, ${input.subscriptionId ?? null}::uuid,
       ${gift !== null}, ${gift?.to ?? null}, ${gift?.from ?? null}, ${gift?.message ?? null},
-      ${input.draft ? "draft" : "checkout"}, ${input.draft?.id ?? null}::uuid, ${input.draft?.madeBy ?? null}::uuid,
+      ${input.draft ? "draft" : input.exchange ? "exchange" : "checkout"}, ${input.draft?.id ?? null}::uuid, ${input.draft?.madeBy ?? input.exchange?.madeBy ?? null}::uuid,
       ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null},
       ${input.deliveryMethod ?? "ship"}, ${input.deliveryMethod === "pickup" ? (input.pickupLocationId ?? null) : null}::uuid,
-      ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}
+      ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}, ${input.exchange?.id ?? null}::uuid
     )
     returning id
   `);

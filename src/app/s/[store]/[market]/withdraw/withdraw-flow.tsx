@@ -17,6 +17,8 @@ import {
   noticeText,
   windowNote,
 } from "@/components/withdraw/withdraw-parts";
+import { browserText } from "@/lib/browser-text";
+import { EXCHANGE_WISH_NOTE_MAX } from "@/lib/exchange-input-browser";
 import { RETURN_REASONS } from "@/lib/withdrawal";
 import { returnsText } from "@/lib/returns-text";
 import { FIELD, lineField, returnableLines, withdrawableLines, type FormState, type WithdrawState } from "@/lib/withdraw-form";
@@ -39,6 +41,7 @@ export function WithdrawFlow({
   storeName,
   contactEmail,
   initial,
+  offerWish = false,
 }: {
   storeSlug: string;
   marketSlug: string;
@@ -48,8 +51,12 @@ export function WithdrawFlow({
   storeName: string;
   contactEmail: string | null;
   initial: WithdrawState;
+  /** The store offers exchanges (D239): a voluntary return request has the optional wish field beside its reason. */
+  offerWish?: boolean;
 }) {
   const m = returnsText(lang);
+  const { label, hint } = browserText(lang).exchangeWish;
+  const wishWords = { label, hint };
   const [state, formAction, pending] = useActionState(withdrawAction.bind(null, storeSlug, marketSlug), initial);
   const root = useRef<HTMLDivElement>(null);
   const seen = useRef(state.serial);
@@ -88,7 +95,7 @@ export function WithdrawFlow({
           {state.phase === "confirm" ? (
             <Confirm state={state} m={m} pending={pending} />
           ) : (
-            <Statement state={state} m={m} locale={locale} base={base} pending={pending} contact={contact} />
+            <Statement state={state} m={m} locale={locale} base={base} pending={pending} contact={contact} wish={offerWish ? wishWords : null} />
           )}
         </form>
       )}
@@ -133,6 +140,7 @@ function Statement({
   base,
   pending,
   contact,
+  wish,
 }: {
   state: FormState;
   m: R;
@@ -140,9 +148,11 @@ function Statement({
   base: string;
   pending: boolean;
   contact: { storeName: string; email: string | null };
+  /** The exchange wish's words when the store offers exchanges (D239), else null. */
+  wish: { label: string; hint: string } | null;
 }) {
   const { order, errors, values } = state;
-  const errored = errorList(m, errors);
+  const errored = errorList(m, errors, { exchangeWish: wish?.label });
   const notice = state.notice ? noticeText(m, state.notice, contact) : null;
   const canWithdraw = order ? withdrawableLines(order).length > 0 : true;
   const returnable = order ? returnableLines(order) : [];
@@ -275,6 +285,11 @@ function Statement({
               <Field name="note" label={m.returnRequest.noteLabel} error={fieldMessage(m, errors.note)}>
                 {(props) => <textarea {...props} name={FIELD.note} rows={3} maxLength={500} className={`${INPUT} py-2`} />}
               </Field>
+              {wish && (
+                <Field name="exchangeWish" label={wish.label} hint={wish.hint} error={fieldMessage(m, errors.exchangeWish)}>
+                  {(props) => <textarea {...props} name={FIELD.exchangeWish} rows={2} maxLength={EXCHANGE_WISH_NOTE_MAX} className={`${INPUT} py-2`} />}
+                </Field>
+              )}
               <p className="text-sm text-muted">{m.returnRequest.defectNote}</p>
               <div>
                 <button type="submit" name={FIELD.intent} value="return" disabled={pending} className={SECONDARY}>

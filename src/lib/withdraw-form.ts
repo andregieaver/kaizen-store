@@ -25,6 +25,8 @@ export const FIELD = {
   requestId: "requestId",
   reason: "reason",
   note: "note",
+  /** The optional exchange wish beside a voluntary return request's reason (D239 2.1); never on the withdrawal's own steps. */
+  exchangeWish: "exchangeWish",
 } as const;
 
 /** `take:{lineId}` ticks a line, `qty:{lineId}` is how many; `rtake`/`rqty` are the return request's; `pick:{lineId}` carries step 2's lines back. */
@@ -141,7 +143,7 @@ export function orderInfoOf(view: {
 }
 
 /** The codes the shopper inputs fail with (`return-input.ts`), by the field they belong to. */
-export type FieldKey = "name" | "email" | "orderNumber" | "lines" | "reason" | "note";
+export type FieldKey = "name" | "email" | "orderNumber" | "lines" | "reason" | "note" | "exchangeWish";
 export type FieldErrors = Partial<Record<FieldKey, string>>;
 
 const FIELD_OF: Record<string, FieldKey> = {
@@ -151,6 +153,7 @@ const FIELD_OF: Record<string, FieldKey> = {
   lines: "lines",
   reason: "reason",
   note: "note",
+  exchangeWish: "exchangeWish",
 };
 
 /** The first code of each field out of a validation's problems (`lines.0.quantity` belongs to `lines`). */

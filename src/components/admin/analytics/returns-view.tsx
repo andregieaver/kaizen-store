@@ -33,9 +33,10 @@ const HELP = {
   refunded: "Money refunded through returns in this period, without VAT, dated by the day of the refund.",
   timing: "The middle value of the days from the shopper's request (a withdrawal's confirmation) to the refund, for returns refunded in this period.",
   overdue: "Withdrawals past the legal day for the refund, not refunded yet. It is as of now, whatever the period.",
+  exchanged: "Returns made in this period whose credit paid for replacement goods (an exchange order) instead of going back to the shopper's card. The credit is still a refund of the original order.",
 };
 
-/** The six cards. A rate that cannot be given is a missing card with its reason; the counts are always numbers. */
+/** The seven cards. A rate that cannot be given is a missing card with its reason; the counts are always numbers. */
 export function returnCards({ currency, locale, report: r, queueHref }: ReturnsViewProps): KpiCardProps[] {
   const money = safeMoney(currency, locale);
   const cards: KpiCardProps[] = [];
@@ -107,6 +108,22 @@ export function returnCards({ currency, locale, report: r, queueHref }: ReturnsV
     href: queueHref,
     hint: r.overdue === 0 ? "No withdrawal is past its refund deadline." : `${plural(r.overdue, "Withdrawal is", "Withdrawals are")} past the legal day for the refund.`,
   });
+
+  const x = r.exchanges;
+  const kept = x.transfers > 0 ? ` ${money(x.keptMinor)} of the credit went to replacement goods.` : "";
+  cards.push(
+    !x.tracked
+      ? { label: "Exchanged", value: null, state: "missing", missing: { text: x.share.missing ?? "No return has been exchanged yet." }, help: HELP.exchanged }
+      : {
+          label: "Exchanged",
+          value: formatCount(x.returns),
+          help: HELP.exchanged,
+          hint:
+            x.share.value === null
+              ? `${x.share.missing ?? ""}${kept}`.trim()
+              : `${formatPercent(x.share.value)} of ${formatCount(r.made.returns)} returns made.${kept}`,
+        },
+  );
   return cards;
 }
 
@@ -137,6 +154,7 @@ export function ReturnsView(props: ReturnsViewProps) {
     { key: "cancelled", label: "Cancelled", align: "right", cell: (k) => formatCount(k.cancelled) },
     { key: "refunded", label: "Refunded", align: "right", cell: (k) => formatCount(k.refunded) },
     { key: "value", label: "Refunded amount", align: "right", cell: (k) => money(k.refundedMinor) },
+    { key: "exchanged", label: "Exchanged", align: "right", cell: (k) => formatCount(k.exchanged) },
   ];
 
   const timingRows = [

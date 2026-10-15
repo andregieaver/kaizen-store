@@ -184,7 +184,7 @@ async function loadStore(slug: string): Promise<Store | null> {
       ) as currencies,
       (select coalesce(jsonb_object_agg(r.role, r.page_id), '{}'::jsonb) from commerce.page_roles r where r.store_id = s.id) as page_roles,
       (
-        select json_build_object('windowDays', rs.window_days, 'whoPaysReturn', rs.who_pays_return, 'acceptExcluded', rs.accept_excluded)
+        select json_build_object('windowDays', rs.window_days, 'whoPaysReturn', rs.who_pays_return, 'acceptExcluded', rs.accept_excluded, 'exchanges', rs.exchanges)
         from commerce.return_settings rs where rs.store_id = s.id
       ) as return_policy,
       exists (

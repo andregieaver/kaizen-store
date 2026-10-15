@@ -86,25 +86,7 @@ export async function recordTermsForOrder(store: Pick<Store, "id" | "slug" | "le
     return await db().transaction(async (tx): Promise<TermsRecordResult> => {
       const [existing] = await tx.execute<Row>(sql`select 1 from commerce.order_terms where order_id = ${orderId}::uuid and store_id = ${store.id}::uuid`);
       if (existing) return { ok: true, recorded: false, reason: "already" };
-      const shown: RecordedSnapshot[] = [];
-      for (const page of display.pages) {
-        const source = pageFor(page.role);
-        if (!source) continue;
-        const localized = localizePage(source.content, market.locale);
-        const { translations, ...stored } = localized;
-        void translations;
-        const hash = snapshotHash({ title: localized.title, rows: localized.rows });
-        // One row for an unchanged text; the unique key (store, role, locale, hash) makes a racing insert a no-op that still finds it.
-        await tx.execute(sql`
-          insert into commerce.legal_snapshots (store_id, role, locale, page_id, title, content, content_hash)
-          values (${store.id}::uuid, ${page.role}, ${market.locale}, ${source.id}::uuid, ${localized.title}, ${JSON.stringify(stored)}::jsonb, ${hash})
-          on conflict (store_id, role, locale, content_hash) do nothing
-        `);
-        const [snapshot] = await tx.execute<Row>(sql`
-          select id from commerce.legal_snapshots where store_id = ${store.id}::uuid and role = ${page.role} and locale = ${market.locale} and content_hash = ${hash}
-        `);
-        shown.push({ role: page.role, snapshotId: String(snapshot.id), hash, title: localized.title });
-      }
+      const shown = await writeSnapshots(tx, store, market, display, pageFor);
       if (shown.length === 0) return { ok: true, recorded: false, reason: "off" };
       const rows = await tx.execute<Row>(sql`
         insert into commerce.order_terms (order_id, store_id, mode, locale, snapshots)
@@ -118,6 +100,71 @@ export async function recordTermsForOrder(store: Pick<Store, "id" | "slug" | "le
     console.error("[terms] the acceptance could not be recorded", orderId, error);
     return { ok: false, problem: "failed" };
   }
+}
+
+type SnapshotRunner = Pick<ReturnType<typeof db>, "execute">;
+
+/** Keeps the pages the sentence names as immutable snapshots (one row per unchanged text) and says which were shown. */
+async function writeSnapshots(
+  tx: SnapshotRunner,
+  store: Pick<Store, "id">,
+  market: Market,
+  display: TermsDisplay,
+  pageFor: (role: TermsRole) => PublishedPage | null,
+): Promise<RecordedSnapshot[]> {
+  const shown: RecordedSnapshot[] = [];
+  for (const page of display.pages) {
+    const source = pageFor(page.role);
+    if (!source) continue;
+    const localized = localizePage(source.content, market.locale);
+    const { translations, ...stored } = localized;
+    void translations;
+    const hash = snapshotHash({ title: localized.title, rows: localized.rows });
+    // One row for an unchanged text; the unique key (store, role, locale, hash) makes a racing insert a no-op that still finds it.
+    await tx.execute(sql`
+      insert into commerce.legal_snapshots (store_id, role, locale, page_id, title, content, content_hash)
+      values (${store.id}::uuid, ${page.role}, ${market.locale}, ${source.id}::uuid, ${localized.title}, ${JSON.stringify(stored)}::jsonb, ${hash})
+      on conflict (store_id, role, locale, content_hash) do nothing
+    `);
+    const [snapshot] = await tx.execute<Row>(sql`
+      select id from commerce.legal_snapshots where store_id = ${store.id}::uuid and role = ${page.role} and locale = ${market.locale} and content_hash = ${hash}
+    `);
+    shown.push({ role: page.role, snapshotId: String(snapshot.id), hash, title: localized.title });
+  }
+  return shown;
+}
+
+/**
+ * The terms a customer is shown when they confirm something that becomes an order later (an exchange, D239): the pages as published now, kept as
+ * snapshots, and the mode they were shown in; null when the store shows none. `recordTermsSnapshotsForOrder()` ties them to the order once it exists.
+ */
+export async function snapshotTermsShown(
+  store: Pick<Store, "id" | "slug" | "legalPages" | "termsAtCheckout">,
+  market: Market,
+): Promise<{ mode: TermsMode; locale: string; snapshots: RecordedSnapshot[] } | null> {
+  const display = await termsDisplayFor(store, market);
+  if (!display) return null;
+  const { display: pageFor } = await termsPagesFor(store, market);
+  const snapshots = await db().transaction((tx) => writeSnapshots(tx, store, market, display, pageFor));
+  return snapshots.length > 0 ? { mode: display.mode, locale: market.locale, snapshots } : null;
+}
+
+/** Ties terms kept earlier (`snapshotTermsShown()`) to an order of the store, once; an order with a record already keeps it. */
+export async function recordTermsSnapshotsForOrder(
+  runner: SnapshotRunner,
+  storeId: string,
+  orderId: string,
+  shown: { mode: TermsMode; locale: string; snapshots: RecordedSnapshot[] },
+): Promise<boolean> {
+  if (shown.snapshots.length === 0) return false;
+  const rows = await runner.execute<Row>(sql`
+    insert into commerce.order_terms (order_id, store_id, mode, locale, snapshots)
+    select ${orderId}::uuid, ${storeId}::uuid, ${shown.mode}, ${shown.locale}, ${JSON.stringify(shown.snapshots)}::jsonb
+    where exists (select 1 from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.copied_from is null)
+    on conflict (order_id) do nothing
+    returning order_id
+  `);
+  return rows.length > 0;
 }
 
 /**

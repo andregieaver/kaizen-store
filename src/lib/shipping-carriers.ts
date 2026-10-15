@@ -18,7 +18,7 @@ export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "he
 export const isCarrierId = (value: string): value is CarrierId => (CARRIER_IDS as string[]).includes(value);
 
 /** What a connection will do for the store, from the shopper's checkout to the parcel on its way. */
-export type CarrierFeature = "rates" | "pickup_points" | "labels" | "tracking" | "time_windows" | "same_day";
+export type CarrierFeature = "rates" | "pickup_points" | "labels" | "tracking" | "time_windows" | "same_day" | "return_labels";
 
 export const CARRIER_FEATURE_LABELS: Record<CarrierFeature, string> = {
   rates: "Delivery options and prices at checkout",
@@ -27,6 +27,7 @@ export const CARRIER_FEATURE_LABELS: Record<CarrierFeature, string> = {
   tracking: "Tracking numbers on the order and in emails",
   time_windows: "Home delivery in a time window",
   same_day: "Same-day delivery",
+  return_labels: "Return labels for customers",
 };
 
 /** A detail the store gives the carrier's API: secret ones are encrypted and shown only as saved. */
@@ -50,6 +51,8 @@ export type CarrierInfo = {
   features: CarrierFeature[];
   /** What works now: a carrier without any is still being prepared. */
   available: CarrierFeature[];
+  /** The countries the carrier books return labels in, from the shopper's address to the store's (D239); none without `return_labels`. */
+  returnCountries?: string[];
   fields: CarrierField[];
   /** Where the store gets an agreement and API access. */
   docs: string;
@@ -63,8 +66,10 @@ export const CARRIERS: CarrierInfo[] = [
     name: "Posten / Bring",
     summary: "Norway's postal service and Bring's parcels across the Nordics: home delivery, pickup points and the mailbox.",
     countries: ["NO", "SE", "DK", "FI"],
-    features: ["rates", "pickup_points", "labels", "tracking"],
-    available: ["rates", "pickup_points", "labels", "tracking"],
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
+    available: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
+    // Bring's return service (9300, "Return Parcels Service") is documented for Norway; other countries' return products need confirmation (D239 1.2).
+    returnCountries: ["NO"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with Posten / Bring." },
       { key: "apiUid", label: "Mybring API user", secret: false, required: true, help: "The user (email) of your Mybring API access." },
@@ -298,6 +303,24 @@ export type BookingResult = {
   test: boolean;
 };
 
+/**
+ * A return label (D239 4.7): a shipment from the shopper's address back to the store's return address, booked on the store's own agreement with the
+ * carrier's return service. `from` is the order's shipping address with the order's email (and phone when known: optional for Bring's return services);
+ * `to` is the return address with the store's contact email and phone.
+ */
+export type ReturnBookingRequest = {
+  /** The return's number (`{order number}-R{n}`). */
+  returnReference: string;
+  serviceId: string;
+  from: ShippingAddress;
+  to: ShippingAddress;
+  parcels: ParcelSpec[];
+};
+export type ReturnBookingResult = BookingResult & {
+  /** What the carrier priced the label at, when it said: minor units of `currency`, with or without VAT as it said. */
+  price?: { amountMinor: number; currency: string; vatIncluded: boolean } | null;
+};
+
 export type TrackingEvent = { at: string; status: string; description: string; location?: string };
 
 /** What a connection is given: the store's own agreement, secrets decrypted for the call only. */
@@ -316,6 +339,8 @@ export interface ShippingCarrierAdapter {
   rates?(context: CarrierContext, request: RateRequest): Promise<ShippingOption[]>;
   pickupPoints?(context: CarrierContext, near: ShippingAddress): Promise<PickupPoint[]>;
   book?(context: CarrierContext, request: BookingRequest): Promise<BookingResult>;
+  /** Books a return label (D239): only carriers with `return_labels` in `available` implement it. */
+  bookReturn?(context: CarrierContext, request: ReturnBookingRequest): Promise<ReturnBookingResult>;
   /** `lang`: the order's language, for carriers that describe events in it (Bring, D238 4.5); others ignore it. */
   track?(context: CarrierContext, trackingNumber: string, options?: { lang?: string }): Promise<TrackingEvent[]>;
 }

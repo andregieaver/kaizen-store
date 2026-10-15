@@ -2318,6 +2318,34 @@
       "when": 1792023212831,
       "tag": "20261015001332_notifications_plan_features",
       "breakpoints": true
+    },
+    {
+      "idx": 331,
+      "version": "7",
+      "when": 1792040412069,
+      "tag": "20261015050012_exchanges",
+      "breakpoints": true
+    },
+    {
+      "idx": 332,
+      "version": "7",
+      "when": 1792040546350,
+      "tag": "20261015050226_exchanges_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 333,
+      "version": "7",
+      "when": 1792047282329,
+      "tag": "20261015065442_exchanges_plan_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1792053550085,
+      "tag": "20261015083910_exchanges_bonus_base",
+      "breakpoints": true
     }
   ]
 }

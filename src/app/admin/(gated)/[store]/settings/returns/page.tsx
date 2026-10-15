@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { ExchangeSettingsForm } from "@/components/admin/returns/exchange-settings-form";
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
+import { carrierInfo } from "@/lib/shipping-carriers";
 import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
-import { getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
+import { getExchangeLabelSettings, getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
+import { listCarriers } from "@/server/shipping-carriers";
 import { PageHeader } from "@/components/admin/ui";
 
-import { saveReturnSettingsAction } from "./actions";
+import { saveExchangeLabelSettingsAction, saveReturnSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Returns settings" };
 
@@ -22,7 +25,17 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
   const shopOff = requireFeature(current, "shop");
   if (shopOff) return shopOff;
   const { store } = current;
-  const [settings, translations] = await Promise.all([getReturnSettings(store.id), getInstructionTranslations(store.id)]);
+  const [settings, translations, exchangeSettings, carriers] = await Promise.all([
+    getReturnSettings(store.id),
+    getInstructionTranslations(store.id),
+    getExchangeLabelSettings(store.id),
+    listCarriers(store.id),
+  ]);
+  // The store's connected carriers that book return labels (D239): `return_labels` among a carrier's built features.
+  const labelCarriers = carriers.flatMap((c) => {
+    const info = carrierInfo(c.carrier);
+    return info?.available.includes("return_labels") ? [{ id: c.carrier, name: info.name, ready: c.complete && c.check?.ok === true }] : [];
+  });
   const [main, ...others] = store.localization.locales;
   return (
     <div className="flex flex-col gap-6">
@@ -39,6 +52,13 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
         action={saveReturnSettingsAction.bind(null, store.slug)}
         translateHref={`/admin/${store.slug}/translate`}
         sellsToBusinesses={featureOn(store, "business")}
+      />
+      <ExchangeSettingsForm
+        values={exchangeSettings}
+        carriers={labelCarriers}
+        canEdit={memberCan(current, "owner")}
+        action={saveExchangeLabelSettingsAction.bind(null, store.slug)}
+        integrationsHref={`/admin/${store.slug}/integrations`}
       />
     </div>
   );

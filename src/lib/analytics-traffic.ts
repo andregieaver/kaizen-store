@@ -259,10 +259,25 @@ export const UNKNOWN_CHANNEL = "unknown";
  * conversion and no spend. They are a row of their own in the channel table so its revenue adds up to the period's, and the blended conversion leaves them out.
  */
 export const STAFF_CHANNEL = "staff";
+/**
+ * Exchange orders (D239, `orders.source = 'exchange'`): the replacement goods of a return, paid by its credit. Not a visit either, so like the staff-made
+ * row they have no sessions, no conversion and no spend, and the blended conversion leaves them out.
+ */
+export const EXCHANGE_CHANNEL = "exchange";
 /** Rows that are not a place visitors come from: their sessions are not known and they are never a channel to compare or spend on. */
-export const isNotAChannel = (key: string): boolean => key === UNKNOWN_CHANNEL || key === STAFF_CHANNEL;
+export const isNotAChannel = (key: string): boolean => key === UNKNOWN_CHANNEL || key === STAFF_CHANNEL || key === EXCHANGE_CHANNEL;
+/** Rows of orders that were never a visit (made by staff, or an exchange): the blended conversion counts the others only. */
+export const isNoVisit = (key: string): boolean => key === STAFF_CHANNEL || key === EXCHANGE_CHANNEL;
 export const channelLabel = (key: string): string =>
-  key === UNKNOWN_CHANNEL ? "Unknown" : key === STAFF_CHANNEL ? "Staff-made" : key === "blended" ? "Blended" : (CHANNELS.find((c) => c.key === key)?.label ?? key);
+  key === UNKNOWN_CHANNEL
+    ? "Unknown"
+    : key === STAFF_CHANNEL
+      ? "Staff-made"
+      : key === EXCHANGE_CHANNEL
+        ? "Exchanges"
+        : key === "blended"
+          ? "Blended"
+          : (CHANNELS.find((c) => c.key === key)?.label ?? key);
 
 // ---------------------------------------------------------------------------
 // Landing pages
@@ -563,8 +578,8 @@ export function channelTable(rows: readonly ChannelInput[]): ChannelTable {
     spendMinor: paid.reduce((sum, r) => sum + r.spendMinor, 0),
     contributionBeforeMarketingMinor: paid.length === 0 || paid.some((r) => r.contributionBeforeMarketingMinor === null) ? null : paid.reduce((sum, r) => sum + num(r.contributionBeforeMarketingMinor), 0),
   };
-  // A staff-made order was not a visit: the blended conversion counts the others only.
-  const staffOrders = list.find((r) => r.channel === STAFF_CHANNEL)?.orders ?? 0;
+  // A staff-made or exchange order was not a visit: the blended conversion counts the others only.
+  const staffOrders = list.filter((r) => isNoVisit(r.channel)).reduce((sum, r) => sum + r.orders, 0);
   const blendedBase = derive(total, "Blended", total.revenueMinor);
   const blended: ChannelRow = {
     ...blendedBase,

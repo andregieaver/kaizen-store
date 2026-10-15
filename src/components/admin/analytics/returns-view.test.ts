@@ -2,7 +2,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { gatedRate, reasonBreakdown, timingOf } from "@/lib/analytics-returns";
+import { exchangeShare, gatedRate, reasonBreakdown, timingOf } from "@/lib/analytics-returns";
 import type { ReturnsReport } from "@/server/analytics-returns-data";
 
 import { moneyWriter } from "./overview-view";
@@ -33,8 +33,8 @@ function emptyReport(over: Partial<ReturnsReport> = {}): ReturnsReport {
     windowDays: 14,
     made: { returns: 0, withdrawals: 0, voluntary: 0, units: 0, declined: 0, cancelled: 0 },
     kinds: [
-      { kind: "withdrawal", label: "Withdrawals", returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0 },
-      { kind: "return", label: "Voluntary returns", returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0 },
+      { kind: "withdrawal", label: "Withdrawals", returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0, exchanged: 0 },
+      { kind: "return", label: "Voluntary returns", returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0, exchanged: 0 },
     ],
     cohort: { orders: 0, unitsSold: 0, returnedOrders: 0, returnedUnits: 0 },
     orderRate: gatedRate({ part: 0, whole: 0, min: 30, unit: "orders", tracked: false }),
@@ -44,6 +44,7 @@ function emptyReport(over: Partial<ReturnsReport> = {}): ReturnsReport {
     reasons: reasonBreakdown([]),
     timing: { requestToRefund: noTiming, receivedToRefund: timingOf([], "the goods received first"), afterDeadline: { late: 0, of: 0 }, truncated: false },
     overdue: 0,
+    exchanges: { returns: 0, share: exchangeShare({ exchanged: 0, returns: 0, tracked: false }), keptMinor: 0, transfers: 0, tracked: false },
     products: [],
     productCount: 0,
     notSeenNote: NOT_SEEN_RETURNS_NOTE,
@@ -60,8 +61,8 @@ function normalReport(over: Partial<ReturnsReport> = {}): ReturnsReport {
     tracked: true,
     made: { returns: 14, withdrawals: 9, voluntary: 5, units: 18, declined: 2, cancelled: 1 },
     kinds: [
-      { kind: "withdrawal", label: "Withdrawals", returns: 9, units: 11, declined: 0, cancelled: 1, refunded: 7, refundedMinor: 420_000 },
-      { kind: "return", label: "Voluntary returns", returns: 5, units: 7, declined: 2, cancelled: 0, refunded: 3, refundedMinor: 150_000 },
+      { kind: "withdrawal", label: "Withdrawals", returns: 9, units: 11, declined: 0, cancelled: 1, refunded: 7, refundedMinor: 420_000, exchanged: 0 },
+      { kind: "return", label: "Voluntary returns", returns: 5, units: 7, declined: 2, cancelled: 0, refunded: 3, refundedMinor: 150_000, exchanged: 0 },
     ],
     cohort: { orders: 120, unitsSold: 200, returnedOrders: 12, returnedUnits: 18 },
     orderRate: gatedRate({ part: 12, whole: 120, min: 30, unit: "orders", tracked: true }),
@@ -94,7 +95,7 @@ const props = (report: ReturnsReport, over: Partial<ReturnsViewProps> = {}): Ret
 describe("returnCards", () => {
   it("shows the counts, the two rates, the refunded amount, the typical time and the overdue count", () => {
     const cards = returnCards(props(normalReport()));
-    expect(cards.map((c) => c.label)).toEqual(["Returns made", "Return rate, orders", "Return rate, units", "Refunded for returns", "Typical time to refund", "Overdue now"]);
+    expect(cards.map((c) => c.label)).toEqual(["Returns made", "Return rate, orders", "Return rate, units", "Refunded for returns", "Typical time to refund", "Overdue now", "Exchanged"]);
     expect(cards[0].value).toBe("14");
     expect(cards[0].hint).toBe("9 withdrawals and 5 voluntary returns.");
     expect(cards[1].value).toBe("10.0 %");
@@ -133,6 +134,31 @@ describe("returnCards", () => {
     expect(cards[0].value).toBe("0");
     expect(cards[0].hint).toBe("No return was made in this period.");
     expect(cards[5].hint).toBe("No withdrawal is past its refund deadline.");
+  });
+
+  it("shows exchanges (D239): words for a store that never exchanged, the count and kept credit below the minimum, the share above it", () => {
+    const never = returnCards(props(normalReport())).find((c) => c.label === "Exchanged")!;
+    expect(never.state).toBe("missing");
+    expect(never.value).toBeNull();
+    expect(never.missing!.text).toContain("No return has been exchanged in Kaizen yet");
+
+    const few = returnCards(
+      props(normalReport({ exchanges: { returns: 3, share: exchangeShare({ exchanged: 3, returns: 14, tracked: true }), keptMinor: 120_000, transfers: 3, tracked: true } })),
+    ).find((c) => c.label === "Exchanged")!;
+    expect(few.value).toBe("3");
+    expect(few.hint).toContain("Only 14 returns made in this period: a share needs at least 30.");
+    expect(few.hint).toContain(`${money(120_000)} of the credit went to replacement goods.`);
+
+    const many = returnCards(
+      props(
+        normalReport({
+          made: { returns: 40, withdrawals: 20, voluntary: 20, units: 50, declined: 0, cancelled: 0 },
+          exchanges: { returns: 10, share: exchangeShare({ exchanged: 10, returns: 40, tracked: true }), keptMinor: 0, transfers: 0, tracked: true },
+        }),
+      ),
+    ).find((c) => c.label === "Exchanged")!;
+    expect(many.value).toBe("10");
+    expect(many.hint).toBe("25.0 % of 40 returns made.");
   });
 
   it("explains each figure in a title", () => {

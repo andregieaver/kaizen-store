@@ -231,11 +231,19 @@ describe("the agent", () => {
       returnShippingPaidBy: "the customer",
       takesBackGoodsTheLawExcludes: false,
       withdrawFromContractPage: `/s/${slug}/withdraw`,
+      // D239: exchanges are offered unless the store switches them off; never a price or a difference.
+      exchanges: expect.stringContaining("the customer decides and confirms it themselves"),
       note: expect.stringContaining("faulty goods are a separate matter"),
     });
-    await db().execute(sql`insert into commerce.return_settings (store_id, window_days, who_pays_return, accept_excluded) values (${storeId}::uuid, 45, 'store', true)`);
+    await db().execute(sql`insert into commerce.return_settings (store_id, window_days, who_pays_return, accept_excluded, exchanges) values (${storeId}::uuid, 45, 'store', true, false)`);
     const own = (await getStore(slug))!;
-    expect((await info(own)).returns).toMatchObject({ storeReturnWindowDays: 45, returnShippingPaidBy: "the store", takesBackGoodsTheLawExcludes: true, legalRightToWithdrawDays: 14 });
+    expect((await info(own)).returns).toMatchObject({
+      storeReturnWindowDays: 45,
+      returnShippingPaidBy: "the store",
+      takesBackGoodsTheLawExcludes: true,
+      legalRightToWithdrawDays: 14,
+      exchanges: "The store does not offer exchanges: a return is refunded.",
+    });
     await db().execute(sql`delete from commerce.return_settings where store_id = ${storeId}::uuid`);
   });
 

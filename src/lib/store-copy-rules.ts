@@ -243,6 +243,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   vat_checks: never("An audit log of the original's VAT number checks (D157): the buyers' numbers and VIES's answers are never copied."),
   return_lines: never("Returns are processes of the original."),
   returns: never("Returns are processes of the original."),
+  return_exchanges: never("Exchanges of the original's returns (D239): copied orders have no returns."),
+  return_exchange_lines: never("The replacement goods of the original's exchanges (D239): copied orders have no returns."),
   search_clicks: never("A log of the original's searches."),
   search_queries: never("A log of the original's searches."),
   shipments: never("Copied orders have no shipments."),

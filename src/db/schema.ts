@@ -44,6 +44,14 @@ import {
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
+import {
+  EXCHANGE_LINES_MAX,
+  EXCHANGE_QUANTITY_MAX,
+  EXCHANGE_WISH_NOTE_MAX,
+  EXCHANGES_PER_RETURN_MAX,
+} from "../lib/exchange-limits";
+import { EXCHANGE_CHANNELS, EXCHANGE_SHIPPING_KINDS, EXCHANGE_STATUSES, LABEL_SOURCES, REFUND_KINDS } from "../lib/exchange-status";
+import { CARRIER_IDS } from "../lib/shipping-carriers";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
 import { ORDER_EDIT_DOCUMENTS, ORDER_EDIT_LINE_KINDS, ORDER_EDIT_REASONS, ORDER_EDIT_STATUSES } from "../lib/order-edit-status";
@@ -2957,9 +2965,28 @@ export const orders = commerce.table(
     heldReason: text("held_reason"),
     heldByRule: uuid("held_by_rule"),
     heldBy: uuid("held_by").references(() => accounts.id),
+    /**
+     * The exchange this order was made for (wave 3, D239, `docs/wave-3-exchanges.md` 3.1): set exactly when `source = 'exchange'`, written by `insertOrder()`
+     * under the exchange context (`kaizen.exchange`) and frozen after (`orders_exchange_rules()`). A copy of the order (D129) never carries it.
+     */
+    exchangeId: uuid("exchange_id"),
     createdAt: createdAt(),
   },
-  (t) => [
+  // Annotated: an order names its exchange and an exchange names its orders, so the types would otherwise infer in a circle.
+  (t): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: "orders_exchange_fk",
+      columns: [t.storeId, t.exchangeId],
+      foreignColumns: [returnExchanges.storeId, returnExchanges.id],
+    }).onDelete("restrict"),
+    index("orders_exchange_idx")
+      .on(t.storeId, t.exchangeId)
+      .where(sql`${t.exchangeId} is not null`),
+    /** One exchange order that is not cancelled per exchange (3.3 point 3). */
+    uniqueIndex("orders_exchange_live_key")
+      .on(t.storeId, t.exchangeId)
+      .where(sql`${t.exchangeId} is not null and ${t.status} <> 'cancelled'`),
+    check("orders_source_exchange", sql`(${t.source} = 'exchange') = (${t.exchangeId} is not null)`),
     check("orders_delivered_source", sql`${t.deliveredSource} is null or (${t.deliveredAt} is not null and ${t.deliveredSource} in ('staff', 'handover', 'carrier'))`),
     check(
       "orders_held",
@@ -2981,10 +3008,11 @@ export const orders = commerce.table(
       .on(t.storeId, t.pickupLocationId)
       .where(sql`${t.pickupLocationId} is not null`),
     check("orders_archived_not_pending", sql`${t.archivedAt} is null or ${t.status} <> 'pending_payment'`),
-    check("orders_source", sql`${t.source} in ('checkout', 'draft')`),
+    check("orders_source", sql`${t.source} in ('checkout', 'draft', 'exchange')`),
+    /** A draft's order names its draft; a staff-made order (a draft's, or an exchange's, D239) names the staff member who made it. */
     check(
       "orders_source_draft",
-      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} = 'draft') = (${t.madeBy} is not null)`,
+      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} in ('draft', 'exchange')) = (${t.madeBy} is not null)`,
     ),
     check("orders_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
     check(
@@ -3554,11 +3582,38 @@ export const payments = commerce.table(
     receivedOn: date("received_on", { mode: "string" }),
     /** A payment of an order change's difference (wave 3 run 3, D174): `applySession()` routes by it and never calls `complete_order_payment()` for it. */
     orderEditId: uuid("order_edit_id"),
+    /**
+     * A payment of an exchange order (wave 3, D239): the credit moved from the return (`provider = 'exchange'`, no provider call), the pay link's Stripe
+     * payment of the difference, or one recorded as paid outside Kaizen. `applySession()` routes by it and never calls `complete_order_payment()` for it.
+     */
+    exchangeId: uuid("exchange_id"),
+    /** For `provider = 'exchange'`: the original order's `transfer` refund it is paid from (equal in amount and currency, checked at commit). */
+    transferRefundId: uuid("transfer_refund_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [
+  (t): PgTableExtraConfigValue[] => [
     unique("payments_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "payments_exchange_fk",
+      columns: [t.storeId, t.exchangeId],
+      foreignColumns: [returnExchanges.storeId, returnExchanges.id],
+    }),
+    index("payments_exchange_idx")
+      .on(t.storeId, t.exchangeId)
+      .where(sql`${t.exchangeId} is not null`),
+    foreignKey({
+      name: "payments_transfer_refund_fk",
+      columns: [t.storeId, t.transferRefundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+    uniqueIndex("payments_transfer_refund_key")
+      .on(t.storeId, t.transferRefundId)
+      .where(sql`${t.transferRefundId} is not null`),
+    check(
+      "payments_exchange_transfer",
+      sql`(${t.provider} = 'exchange') = (${t.transferRefundId} is not null) and (${t.provider} <> 'exchange' or ${t.exchangeId} is not null)`,
+    ),
     foreignKey({
       name: "payments_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -3599,10 +3654,31 @@ export const refunds = commerce.table(
      * first gets no credit note of its own (the change's covers it) and is not a refund in analytics.
      */
     orderEditId: uuid("order_edit_id"),
+    /**
+     * The exchange a refund belongs to (wave 3, D239): the `transfer` of a return's credit to an exchange order, the remainder refunded through Stripe, or
+     * the refund of an exchange payment that came when the exchange could no longer settle. The first two get no credit note of their own (the return's
+     * `return_exchange` credit note covers them).
+     */
+    exchangeId: uuid("exchange_id"),
+    /** `money` (a refund through the provider or recorded outside) or `transfer` (the credit moved to an exchange order: no provider call, created `succeeded`). */
+    kind: text("kind").notNull().default("money"),
     createdAt: createdAt(),
   },
-  (t) => [
+  (t): PgTableExtraConfigValue[] => [
     unique("refunds_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "refunds_exchange_fk",
+      columns: [t.storeId, t.exchangeId],
+      foreignColumns: [returnExchanges.storeId, returnExchanges.id],
+    }),
+    index("refunds_exchange_idx")
+      .on(t.storeId, t.exchangeId)
+      .where(sql`${t.exchangeId} is not null`),
+    check("refunds_kind", sql`${t.kind} in (${sqlList(REFUND_KINDS)})`),
+    check(
+      "refunds_transfer",
+      sql`${t.kind} <> 'transfer' or (${t.exchangeId} is not null and ${t.providerReference} is null and ${t.status} = 'succeeded')`,
+    ),
     foreignKey({
       name: "refunds_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -3841,9 +3917,50 @@ export const returns = commerce.table(
     publicToken: text("public_token")
       .notNull()
       .default(sql`replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')`),
+    /** The customer asked for an exchange on the status page or the request form (D239 2.1): when, and their words (plain text, blanked by the anonymising). */
+    exchangeWishAt: timestamp("exchange_wish_at", { withTimezone: true }),
+    exchangeWishNote: text("exchange_wish_note"),
+    /**
+     * The return's label (D239 3.1): `pasted` (D153's `label_url`, typed by staff; set by a trigger whenever `label_url` is) or `carrier` (booked with the
+     * store's carrier: the columns below). The pairing of `pasted` with `label_url` is held by `returns_label_pasted`, added by the rules migration after its
+     * back-fill (the code running during the deploy writes `label_url` alone, which the trigger completes).
+     */
+    labelSource: text("label_source"),
+    labelCarrierId: text("label_carrier_id"),
+    labelService: text("label_service"),
+    labelConsignmentNumber: text("label_consignment_number"),
+    labelTrackingNumber: text("label_tracking_number"),
+    labelTrackingUrl: text("label_tracking_url"),
+    /** The label's address at the carrier: private (it needs the store's keys); the shopper opens it only through `/returns/{token}/label`. */
+    labelCarrierUrl: text("label_carrier_url"),
+    /** What the label cost the store, VAT included, in the order's currency (converted once at the store's rates); null when not known. */
+    labelCostMinor: bigint("label_cost_minor", { mode: "number" }),
+    /** The price as the carrier gave it: `{ amountMinor, currency, vatIncluded }`. */
+    labelCostCarrier: jsonb("label_cost_carrier"),
+    /** Booked in the carrier's test environment: shown as a test and never offered as usable. */
+    labelTest: boolean("label_test").notNull().default(false),
+    labelBookedAt: timestamp("label_booked_at", { withTimezone: true }),
+    /** How many times the five-minute job tried to book a withdrawal return's label (`LABEL_TRIES`). */
+    labelTries: integer("label_tries").notNull().default(0),
   },
   (t) => [
     unique("returns_store_id_key").on(t.storeId, t.id),
+    check("returns_exchange_wish", sql`${t.exchangeWishNote} is null or (${t.exchangeWishAt} is not null and char_length(${t.exchangeWishNote}) <= ${lit(EXCHANGE_WISH_NOTE_MAX)})`),
+    check("returns_label_source", sql`${t.labelSource} is null or ${t.labelSource} in (${sqlList(LABEL_SOURCES)})`),
+    check(
+      "returns_label_carrier",
+      sql`(${t.labelSource} is not distinct from 'carrier') = (${t.labelCarrierId} is not null and ${t.labelBookedAt} is not null)
+        and (${t.labelCarrierId} is null or ${t.labelCarrierId} in (${sqlList(CARRIER_IDS)}))
+        and (${t.labelSource} is not distinct from 'carrier' or (${t.labelService} is null and ${t.labelConsignmentNumber} is null and ${t.labelTrackingNumber} is null
+             and ${t.labelTrackingUrl} is null and ${t.labelCarrierUrl} is null and ${t.labelCostMinor} is null and ${t.labelCostCarrier} is null and not ${t.labelTest}))`,
+    ),
+    check("returns_label_urls", sql`(${t.labelTrackingUrl} is null or ${t.labelTrackingUrl} ~ '^https://') and (${t.labelCarrierUrl} is null or ${t.labelCarrierUrl} ~ '^https://')`),
+    check("returns_label_cost", sql`(${t.labelCostMinor} is null or ${t.labelCostMinor} >= 0) and (${t.labelCostCarrier} is null or jsonb_typeof(${t.labelCostCarrier}) = 'object')`),
+    check("returns_label_tries", sql`${t.labelTries} >= 0`),
+    /** The job's scan: withdrawal returns with no label yet (D239 3.5). */
+    index("returns_label_pending_idx")
+      .on(t.storeId, t.createdAt)
+      .where(sql`${t.kind} = 'withdrawal' and ${t.labelSource} is null`),
     unique("returns_store_number_key").on(t.storeId, t.number),
     unique("returns_public_token_key").on(t.publicToken),
     uniqueIndex("returns_withdrawal_request_key")
@@ -3873,7 +3990,7 @@ export const returns = commerce.table(
     check("returns_decision_note", sql`${t.decisionNote} is null or length(${t.decisionNote}) <= 1000`),
     check("returns_staff_note", sql`${t.staffNote} is null or length(${t.staffNote}) <= 2000`),
     check("returns_label_url", sql`${t.labelUrl} is null or ${t.labelUrl} ~ '^https://'`),
-    check("returns_outcome", sql`${t.outcome} is null or ${t.outcome} in ('refunded', 'declined', 'no_refund', 'cancelled')`),
+    check("returns_outcome", sql`${t.outcome} is null or ${t.outcome} in ('refunded', 'declined', 'no_refund', 'cancelled', 'exchanged')`),
     check(
       "returns_amounts",
       sql`${t.returnShippingMinor} >= 0 and ${t.refundMinor} >= 0 and ${t.refundComputedMinor} >= 0 and ${t.shippingRefundMinor} >= 0`,
@@ -4048,16 +4165,196 @@ export const returnSettings = commerce.table(
     returnAddress: jsonb("return_address"),
     /** Voluntary returns for company orders. */
     b2bReturns: boolean("b2b_returns").notNull().default(false),
+    /** Offer exchanges on returns (D239 2.2); on by default. */
+    exchanges: boolean("exchanges").notNull().default(true),
+    /** The carrier return labels are booked with, and its return service when the owner set another than the carrier's default (D239 2.3). */
+    labelCarrier: text("label_carrier"),
+    labelService: text("label_service"),
+    /** Book a withdrawal return's label by the five-minute job (off by default; needs `label_carrier`). */
+    labelAuto: boolean("label_auto").notNull().default(false),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
     index("return_settings_updated_by_idx").on(t.updatedBy),
+    check("return_settings_label_carrier", sql`${t.labelCarrier} is null or ${t.labelCarrier} in (${sqlList(CARRIER_IDS)})`),
+    check("return_settings_label_service", sql`${t.labelService} is null or (${t.labelCarrier} is not null and char_length(${t.labelService}) between 1 and 20)`),
+    check("return_settings_label_auto", sql`not ${t.labelAuto} or ${t.labelCarrier} is not null`),
     check("return_settings_window", sql`${t.windowDays} between 14 and 100`),
     check("return_settings_transit", sql`${t.transitDays} between 0 and 14`),
     check("return_settings_who_pays", sql`${t.whoPaysReturn} in ('shopper', 'store')`),
     check("return_settings_refund_when", sql`${t.refundWhen} in ('received', 'request')`),
     check("return_settings_instructions", sql`length(${t.instructions}) <= 2000`),
+  ],
+);
+
+/**
+ * An exchange of a return (wave 3, D239, `docs/wave-3-exchanges.md` 3.2): one proposal of replacement goods for one return, numbered per return (`seq`, under
+ * the return's lock, at most `EXCHANGES_PER_RETURN_MAX`), priced by `priceExchange()` in the original order's currency and market view. Its life is
+ * `return_exchanges_rules()` (the table of `src/lib/exchange-status.ts`); only one per return is open at a time. Confirmed by the customer's press on the
+ * exchange page (the token is kept only as a SHA-256 hash, base64url), or for a voluntary return by staff recording the customer's agreement; processed into
+ * an exchange order (`orders.exchange_id`) and settled when the order is paid and the return's refund recorded. Never deleted; holds no personal field but
+ * the delivery address (replaced by the marker when the order is anonymised); staff's note is only in the history event's `data.note`.
+ */
+export const returnExchanges = commerce.table(
+  "return_exchanges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    returnId: uuid("return_id").notNull(),
+    /** The original order (the return's). */
+    orderId: uuid("order_id").notNull(),
+    /** 1, 2, … per return, given by the trigger under the return's lock. */
+    seq: integer("seq").notNull(),
+    status: text("status").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** The original order's market view (`{country}[-{lang}][-{currency}]`), which prices the replacements and serves the exchange page. */
+    marketSlug: text("market_slug").notNull(),
+    shippingKind: text("shipping_kind").notNull().default("free"),
+    shippingMinor: money("shipping_minor").default(0),
+    /** Name, street, postal code, city, country (the market's), phone optional. */
+    deliveryAddress: jsonb("delivery_address").notNull(),
+    /** As proposed (and confirmed): the credit C (`refundFor()`'s), the replacement total T, and `T − C`. */
+    creditMinor: money("credit_minor"),
+    totalMinor: money("total_minor"),
+    differenceMinor: bigint("difference_minor", { mode: "number" }).notNull(),
+    /** C and T − C worked out again when the exchange was processed. */
+    creditAtProcessing: bigint("credit_at_processing", { mode: "number" }),
+    differenceAtProcessing: bigint("difference_at_processing", { mode: "number" }),
+    /** SHA-256 (base64url) of the 32-byte page token; cleared 90 days after the exchange ended (`pruneExchangeTokens()`). */
+    tokenHash: text("token_hash"),
+    /** The end of the proposal's link, then of the pay step's (capped at a withdrawal's refund deadline). */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** The terms the page showed: `[{ role, snapshotId, hash }]` (`legal_snapshots`), written to the exchange order's `order_terms`. */
+    terms: jsonb("terms"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** `customer` (the press on the page, channel `web`) or `staff` (an agreement recorded for a voluntary return only). */
+    confirmedBy: text("confirmed_by"),
+    confirmedChannel: text("confirmed_channel"),
+    exchangeOrderId: uuid("exchange_order_id"),
+    /** The remainder's refund through Stripe (C > T). */
+    refundId: uuid("refund_id"),
+    /** The (first) transfer refund on the original order; every one is `refunds.exchange_id` = this with `kind = 'transfer'`. */
+    transferRefundId: uuid("transfer_refund_id"),
+    madeBy: uuid("made_by")
+      .notNull()
+      .references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique("return_exchanges_store_id_key").on(t.storeId, t.id),
+    unique("return_exchanges_return_seq_key").on(t.storeId, t.returnId, t.seq),
+    foreignKey({
+      name: "return_exchanges_return_fk",
+      columns: [t.storeId, t.returnId],
+      foreignColumns: [returns.storeId, returns.id],
+    }).onDelete("restrict"),
+    orderRef("return_exchanges_order_fk", t).onDelete("restrict"),
+    foreignKey({
+      name: "return_exchanges_exchange_order_fk",
+      columns: [t.storeId, t.exchangeOrderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "return_exchanges_refund_fk",
+      columns: [t.storeId, t.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+    foreignKey({
+      name: "return_exchanges_transfer_refund_fk",
+      columns: [t.storeId, t.transferRefundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+    /** One exchange per return that has not ended. */
+    uniqueIndex("return_exchanges_open_key")
+      .on(t.storeId, t.returnId)
+      .where(sql`${t.status} in ('draft', 'proposed', 'confirmed', 'processed')`),
+    index("return_exchanges_expiry_idx")
+      .on(t.storeId, t.status, t.expiresAt)
+      .where(sql`${t.status} in ('proposed', 'confirmed', 'processed')`),
+    index("return_exchanges_return_idx").on(t.storeId, t.returnId),
+    index("return_exchanges_order_idx").on(t.storeId, t.orderId),
+    index("return_exchanges_exchange_order_idx").on(t.storeId, t.exchangeOrderId),
+    index("return_exchanges_refund_idx").on(t.storeId, t.refundId),
+    index("return_exchanges_transfer_refund_idx").on(t.storeId, t.transferRefundId),
+    index("return_exchanges_made_by_idx").on(t.madeBy),
+    uniqueIndex("return_exchanges_token_key")
+      .on(t.tokenHash)
+      .where(sql`${t.tokenHash} is not null`),
+    check("return_exchanges_seq", sql`${t.seq} between 1 and ${lit(EXCHANGES_PER_RETURN_MAX)}`),
+    check("return_exchanges_status", sql`${t.status} in (${sqlList(EXCHANGE_STATUSES)})`),
+    check("return_exchanges_shipping", sql`${t.shippingKind} in (${sqlList(EXCHANGE_SHIPPING_KINDS)}) and ${t.shippingMinor} >= 0 and (${t.shippingKind} <> 'free' or ${t.shippingMinor} = 0)`),
+    check(
+      "return_exchanges_amounts",
+      sql`${t.creditMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.differenceMinor} = ${t.totalMinor} - ${t.creditMinor}
+        and (${t.creditAtProcessing} is null or ${t.creditAtProcessing} >= 0) and (${t.creditAtProcessing} is null) = (${t.differenceAtProcessing} is null)`,
+    ),
+    check("return_exchanges_address", sql`jsonb_typeof(${t.deliveryAddress}) = 'object'`),
+    check("return_exchanges_terms", sql`${t.terms} is null or jsonb_typeof(${t.terms}) = 'array'`),
+    check("return_exchanges_token", sql`${t.tokenHash} is null or ${t.tokenHash} ~ '^[A-Za-z0-9_-]{43}$'`),
+    check("return_exchanges_market_slug", sql`${t.marketSlug} ~ '^[a-z]{2}(-[a-z0-9]{2,8}){0,3}$'`),
+    check(
+      "return_exchanges_confirmation",
+      sql`(${t.confirmedAt} is null) = (${t.confirmedBy} is null) and (${t.confirmedAt} is null) = (${t.confirmedChannel} is null)
+        and (${t.confirmedBy} is null or ${t.confirmedBy} in ('customer', 'staff'))
+        and (${t.confirmedChannel} is null or ${t.confirmedChannel} in (${sqlList(EXCHANGE_CHANNELS)}))
+        and ((${t.confirmedBy} = 'customer') = (${t.confirmedChannel} = 'web') or ${t.confirmedBy} is null)`,
+    ),
+    /**
+     * Where each status leaves the moments, the link and the order (3.3 point 1). An ended exchange may have lost its token hash (cleared 90 days after it
+     * ended). The money a settled exchange moved is checked at commit (`return_exchanges_settled()`), because its refunds and payments name the exchange.
+     */
+    check(
+      "return_exchanges_lifecycle",
+      sql`(${t.status} = 'draft' and ${t.confirmedAt} is null and ${t.exchangeOrderId} is null and ${t.processedAt} is null and ${t.settledAt} is null and ${t.endedAt} is null)
+        or (${t.status} = 'proposed' and ${t.tokenHash} is not null and ${t.expiresAt} is not null and ${t.confirmedAt} is null and ${t.exchangeOrderId} is null
+            and ${t.processedAt} is null and ${t.settledAt} is null and ${t.endedAt} is null)
+        or (${t.status} = 'confirmed' and ${t.tokenHash} is not null and ${t.expiresAt} is not null and ${t.confirmedAt} is not null and ${t.exchangeOrderId} is null
+            and ${t.processedAt} is null and ${t.settledAt} is null and ${t.endedAt} is null)
+        or (${t.status} = 'processed' and ${t.confirmedAt} is not null and ${t.exchangeOrderId} is not null and ${t.processedAt} is not null
+            and ${t.creditAtProcessing} is not null and ${t.settledAt} is null and ${t.endedAt} is null)
+        or (${t.status} = 'settled' and ${t.confirmedAt} is not null and ${t.exchangeOrderId} is not null and ${t.processedAt} is not null
+            and ${t.creditAtProcessing} is not null and ${t.settledAt} is not null and ${t.endedAt} is null)
+        or (${t.status} in ('declined_by_customer', 'cancelled', 'expired', 'superseded') and ${t.endedAt} is not null and ${t.settledAt} is null)`,
+    ),
+  ],
+);
+
+/**
+ * A replacement of an exchange (D239 3.2): a catalogue goods variant, its quantity, the list price as shown when proposed and the price charged (never above
+ * the list price). Written with its exchange while it is a draft (and changed or removed only then) or in the transaction that proposes it; never after.
+ */
+export const returnExchangeLines = commerce.table(
+  "return_exchange_lines",
+  {
+    storeId: storeId(),
+    exchangeId: uuid("exchange_id").notNull(),
+    n: integer("n").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    sku: text("sku").notNull(),
+    title: text("title").notNull(),
+    quantity: integer("quantity").notNull(),
+    listPriceMinor: money("list_price_minor"),
+    unitPriceMinor: money("unit_price_minor"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.exchangeId, t.n] }),
+    foreignKey({
+      name: "return_exchange_lines_exchange_fk",
+      columns: [t.storeId, t.exchangeId],
+      foreignColumns: [returnExchanges.storeId, returnExchanges.id],
+    }).onDelete("restrict"),
+    variantRef("return_exchange_lines_variant_fk", t).onDelete("restrict"),
+    index("return_exchange_lines_exchange_idx").on(t.storeId, t.exchangeId),
+    index("return_exchange_lines_variant_idx").on(t.storeId, t.variantId),
+    check("return_exchange_lines_n", sql`${t.n} between 1 and ${lit(EXCHANGE_LINES_MAX)}`),
+    check("return_exchange_lines_quantity", sql`${t.quantity} between 1 and ${lit(EXCHANGE_QUANTITY_MAX)}`),
+    check("return_exchange_lines_prices", sql`${t.unitPriceMinor} >= 0 and ${t.listPriceMinor} >= 0 and ${t.unitPriceMinor} <= ${t.listPriceMinor}`),
   ],
 );
 
@@ -4356,11 +4653,15 @@ export const creditNotes = commerce.table(
       .where(sql`${t.source} = 'return_outside'`),
     index("credit_notes_issued_idx").on(t.storeId, t.issuedOn),
     check("credit_notes_series", sql`${t.series} = 'credit_note'`),
-    check("credit_notes_source", sql`${t.source} in ('refund', 'return_outside', 'order_edit')`),
+    check("credit_notes_source", sql`${t.source} in ('refund', 'return_outside', 'order_edit', 'return_exchange')`),
+    /** One credit note for an exchanged return (D239 3.3 point 6(b)): the return's full credit, its refunds getting none of their own. */
+    uniqueIndex("credit_notes_return_exchange_key")
+      .on(t.storeId, t.returnId)
+      .where(sql`${t.source} = 'return_exchange'`),
     check(
       "credit_notes_source_ref",
       sql`(${t.source} = 'refund' and ${t.refundId} is not null and ${t.returnId} is null and ${t.orderEditId} is null)
-        or (${t.source} = 'return_outside' and ${t.returnId} is not null and ${t.refundId} is null and ${t.orderEditId} is null)
+        or (${t.source} in ('return_outside', 'return_exchange') and ${t.returnId} is not null and ${t.refundId} is null and ${t.orderEditId} is null)
         or (${t.source} = 'order_edit' and ${t.orderEditId} is not null and ${t.refundId} is null and ${t.returnId} is null)`,
     ),
     check("credit_notes_total", sql`${t.totalMinor} > 0 and ${t.totalMinor} = ${t.netMinor} + ${t.taxMinor}`),

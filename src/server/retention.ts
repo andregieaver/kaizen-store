@@ -124,6 +124,7 @@ export const RETENTION_STEPS = [
   "store_events",
   "order_rule_runs",
   "tracking_events",
+  "exchanges",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -396,6 +397,12 @@ const STEPS: Record<RetentionStep, StepFn> = {
   },
   async tracking_events(ctx) {
     return { count: await pruneTrackingEvents(ctx.now) };
+  },
+
+  // Exchanges (D239, docs/wave-3-exchanges.md 3.6): an ended exchange's token hash 90 days after it ended, and the customer's wish 24 months after the return ended.
+  async exchanges(ctx) {
+    const { pruneExchangeTokens, pruneExchangeWishes } = await import("./exchanges");
+    return { count: (await pruneExchangeTokens(ctx.now)) + (await pruneExchangeWishes(ctx.now)) };
   },
 };
 

@@ -35,6 +35,11 @@ describe("the notification catalogue (docs/wave-3-notifications.md 4.1)", () => 
       "return.declined",
       "return.received",
       "return.refunded",
+      "return.exchange_proposed",
+      "return.exchange_to_pay",
+      "return.exchanged",
+      "return.exchange_lapsed",
+      "return.label_ready",
     ]);
   });
 
@@ -46,6 +51,8 @@ describe("the notification catalogue (docs/wave-3-notifications.md 4.1)", () => 
       "return.acknowledgement",
       "return.approved",
       "return.declined",
+      "return.exchange_to_pay",
+      "return.exchanged",
     ]);
     expect(LOCKED_NOTIFICATIONS).toEqual(["return.acknowledgement"]);
     expect(NOTIFICATIONS.filter((n) => !n.defaultOn).map((n) => n.id)).toEqual(["order.parcel_out_for_delivery", "order.parcel_delivered"]);

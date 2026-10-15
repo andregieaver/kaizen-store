@@ -30,10 +30,16 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/draft-sessions.ts": { count: 1, reason: "closes the pending Stripe sessions of a draft's order" },
   "src/server/draft-orders.ts": { count: 2, reason: "counts a draft order's pending Stripe sessions in the transaction that records money paid outside (and a comment naming the manual provider)" },
   "src/server/order-admin.ts": {
-    count: 7,
+    count: 9,
     reason:
-      "the refund code: refundable is Stripe's and manual's captured money; a refund is split over the order's captured Stripe payments on a connected account and manual ones (recorded, no Stripe call), each within what it has left (D174 review); the venue's pending balance is marked paid there",
+      "the refund code: refundable is Stripe's, manual's and an exchange order's credit (D239); a refund is split over the order's captured Stripe payments on a connected account and manual ones (recorded, no Stripe call), each within what it has left (D174 review), and an exchange payment is refunded at the original order's payment it came from, Stripe's or manual (D239 4.6); the venue's pending balance is marked paid there",
   },
+  "src/server/exchanges.ts": {
+    count: 6,
+    reason:
+      "exchanges (D239): which of the original order's captured payments the transfer comes from (Stripe's first, then manual) and whether Kaizen can refund it (Stripe on a connected account, or manual); the Stripe session of a difference; the manual payment of a difference recorded outside Kaizen; a returned order's Stripe mode for the test-mode block",
+  },
+  "src/server/exchange-pay.ts": { count: 1, reason: "the exchange's pay link counts its Stripe sessions for a new idempotency key per press (D239)" },
   "src/server/order-edits.ts": {
     count: 7,
     reason:
@@ -45,7 +51,10 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/booking-changes.ts": { count: 1, reason: "the order page's key: stripe, venue and manual" },
   "src/server/withdrawals.ts": { count: 3, reason: "the order page's key as the withdrawal function's proof: stripe, venue and manual" },
   "src/server/withdraw-link.ts": { count: 1, reason: "the order page's key in the confirmation email's withdrawal link: stripe, venue and manual" },
-  "src/server/shopper-emails.ts": { count: 1, reason: "the order page's key in the confirmation email's order link: stripe, venue and manual" },
+  "src/server/shopper-emails.ts": {
+    count: 2,
+    reason: "the order page's key in the confirmation email's order link: stripe, venue, manual and an exchange order's exchange payment (D239); what an exchange order's customer paid on top of the credit (stripe and manual)",
+  },
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
 };

@@ -1,4 +1,4 @@
-import type { BookingRequest, PickupPoint, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
+import type { BookingRequest, PickupPoint, ReturnBookingRequest, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
 
 /**
  * Posten / Bring (D134): what Bring's APIs are sent and how their answers are read, as pure functions so they are tested
@@ -313,4 +313,85 @@ export function bringProblem(status: number): string {
   if (status === 429) return "Bring asked us to slow down. Try again in a moment.";
   if (status >= 500) return "Bring is not answering right now. Try again in a moment.";
   return `Bring did not accept the request (${status}).`;
+}
+
+// ---------------------------------------------------------------------------
+// Return labels (wave 3, D239, docs/wave-3-exchanges.md 4.7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bring's return services. `9300` ("Return Parcels Service") is the return product of Booking v2's documented example (developer.bring.com/api/booking,
+ * read 2026-10-15). The free-return page names `9000`, `9600` and `9350` as return products for Norwegian domestic parcels, but their names and whether a
+ * standalone booking of them is billed on use were not read: `needs confirmation with credentials` (docs/wave-3-exchanges.md 9.6).
+ */
+export const BRING_RETURN_SERVICES: { id: string; name: string; confirmed: boolean }[] = [
+  { id: "9300", name: "Return Parcels Service", confirmed: true },
+  { id: "9000", name: "Return product 9000", confirmed: false },
+  { id: "9600", name: "Return product 9600", confirmed: false },
+  { id: "9350", name: "Return product 9350", confirmed: false },
+];
+export const BRING_RETURN_DEFAULT = "9300";
+export const isBringReturnService = (id: string): boolean => BRING_RETURN_SERVICES.some((s) => s.id === id);
+
+/**
+ * The Booking v2 request for a return label: one consignment of the return service from the shopper back to the store, booked on the store's customer
+ * number. The test indicator is the `X-Bring-Test-Indicator` header (the payload option is deprecated), so nothing here says test or live.
+ *
+ * Needs confirmation with credentials (9.6): the documentation's return example does not label its two parties, so this maps `sender` = the shopper (where
+ * the parcel starts) and `recipient` = the store (where it goes), as an outbound parcel's are. Sender phone is optional for return services (the page says
+ * "Sender phone is mandatory … Exceptions to this rule are … all return services"), so a missing phone is left out, never invented.
+ */
+export function returnBookingBody(request: ReturnBookingRequest, customerNumber: string, now = new Date()) {
+  const shipping = new Date(now.getTime() + 60 * 60 * 1000);
+  return {
+    schemaVersion: 1,
+    consignments: [
+      {
+        shippingDateTime: shipping.toISOString(),
+        parties: {
+          sender: party(request.from),
+          recipient: party(request.to),
+        },
+        packages: request.parcels.map((parcel) => ({
+          weightInKg: Math.max(0.001, Math.round(parcel.weightGrams) / 1000),
+          ...(parcel.lengthMm && parcel.widthMm && parcel.heightMm
+            ? { dimensions: { lengthInCm: parcel.lengthMm / 10, widthInCm: parcel.widthMm / 10, heightInCm: parcel.heightMm / 10 } }
+            : {}),
+        })),
+        // Where Booking v2 takes a customer reference for the return's number was not read: it is not sent until confirmed (9.6).
+        product: { id: request.serviceId, customerNumber },
+      },
+    ],
+  };
+}
+
+/** Bring's error codes for a return booking that the owner can act on (developer.bring.com/api/booking, read 2026-10-15), in plain sentences. */
+export const BRING_RETURN_ERRORS: Record<string, string> = {
+  "BOOK-INPUT-043": "Bring says the store has no return agreement for this country or service. Ask Bring to add returns to your agreement, or paste a label address.",
+  "BOOK-INPUT-083": "Bring does not know that return service.",
+};
+
+/** A label's address is Bring's own (https on `api.bring.com`), so it is fetched with the store's keys and nothing else ever is. */
+export function isBringUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "api.bring.com" && url.username === "" && url.password === "" && (url.port === "" || url.port === "443");
+  } catch {
+    return false;
+  }
+}
+
+/** What a return booking answered: its numbers and where the label is (only a Bring address), or a plain sentence (a known code's own). */
+export function parseReturnBooking(json: unknown): ParsedBooking {
+  const consignment = obj(list(obj(json).consignments)[0]);
+  const errors = list(consignment.errors);
+  if (errors.length > 0) {
+    const first = obj(errors[0]);
+    const code = text(first.code);
+    const known = BRING_RETURN_ERRORS[code];
+    if (known) return { ok: false, problem: known };
+  }
+  const parsed = parseBooking(json);
+  if (!parsed.ok) return parsed;
+  return { ...parsed, labelUrl: parsed.labelUrl && isBringUrl(parsed.labelUrl) ? parsed.labelUrl : null };
 }

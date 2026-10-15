@@ -155,3 +155,18 @@ export function maturityNote(period: { to: string }, today: string, windowDays: 
   if (sinceEnd >= open) return null;
   return `Orders from the last ${formatCount(open)} days can still be returned, so the rates for this period are still rising and are not final.`;
 }
+
+/**
+ * The share of the period's counting returns that were exchanged (D239, docs/analytics.md "Exchanged return"): only from `MIN_RATE_ORDERS` returns made,
+ * and words when the store has never exchanged a return (`tracked` false) or made none in the period. Never a zero that stands for "not known".
+ */
+export function exchangeShare(input: { exchanged: number; returns: number; tracked: boolean; min?: number }): Figure {
+  const { exchanged, returns, tracked } = input;
+  const min = input.min ?? MIN_RATE_ORDERS;
+  if (!tracked) return { value: null, missing: "No return has been exchanged in Kaizen yet. An exchange is made on a return's page, and appears here once it is settled." };
+  if (returns <= 0) return { value: null, missing: "No return was made in this period." };
+  if (returns < min) {
+    return { value: null, missing: `Only ${formatCount(returns)} ${plural(returns, "return", "returns")} made in this period: a share needs at least ${formatCount(min)}.` };
+  }
+  return { value: safeRatio(Math.min(exchanged, returns), returns), missing: null };
+}

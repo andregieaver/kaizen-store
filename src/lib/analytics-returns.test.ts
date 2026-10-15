@@ -6,6 +6,7 @@ import {
   MIN_REASON_SAMPLE,
   MIN_TIMING_SAMPLE,
   daysSince,
+  exchangeShare,
   formatDays,
   gatedRate,
   maturityNote,
@@ -146,5 +147,21 @@ describe("maturityNote", () => {
 
   it("warns for a period that has not ended", () => {
     expect(maturityNote({ to: "2026-10-04" }, "2026-10-02", 14)).not.toBeNull();
+  });
+});
+
+describe("exchangeShare (D239)", () => {
+  it("is words for a store that never exchanged, and for a period with no return, never 0 %", () => {
+    expect(exchangeShare({ exchanged: 0, returns: 50, tracked: false })).toEqual({ value: null, missing: expect.stringContaining("No return has been exchanged in Kaizen yet") });
+    expect(exchangeShare({ exchanged: 0, returns: 0, tracked: true })).toEqual({ value: null, missing: "No return was made in this period." });
+  });
+
+  it("needs MIN_RATE_ORDERS returns made, then is the exchanged share of them", () => {
+    expect(exchangeShare({ exchanged: 2, returns: MIN_RATE_ORDERS - 1, tracked: true }).value).toBeNull();
+    expect(exchangeShare({ exchanged: 2, returns: MIN_RATE_ORDERS - 1, tracked: true }).missing).toContain(`at least ${MIN_RATE_ORDERS}`);
+    expect(exchangeShare({ exchanged: 6, returns: 40, tracked: true })).toEqual({ value: 0.15, missing: null });
+    expect(exchangeShare({ exchanged: 0, returns: 40, tracked: true })).toEqual({ value: 0, missing: null });
+    // Never above the whole.
+    expect(exchangeShare({ exchanged: 50, returns: 40, tracked: true }).value).toBe(1);
   });
 });

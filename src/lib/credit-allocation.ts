@@ -240,7 +240,8 @@ export type CreditNoteSnapshot = {
   refersTo: { invoiceId: string; invoiceNumber: string; invoiceIssuedOn: string };
   /** A fixed phrase in the document's language is drawn from this (never the staff member's free text). `order_edit`: what a change took off (D174), with its number. */
   reason: { kind: "refund" | "return" | "order_edit"; returnNumber: string | null; editSeq?: number };
-  source: "refund" | "return_outside" | "order_edit";
+  /** `return_exchange`: an exchanged return's whole credit (wave 3, D239); its refunds get no note of their own. */
+  source: "refund" | "return_outside" | "order_edit" | "return_exchange";
   lines: CreditRow[];
   buckets: SnapshotBucket[];
   totals: SnapshotTotals;
@@ -275,7 +276,7 @@ export type CreditNoteInput = {
   others?: readonly { snapshot: Pick<OrderInvoiceSnapshot, "buckets" | "lines" | "totals"> }[];
   /** The buckets of the earlier credit notes of the order's invoices. */
   earlier: readonly (readonly SnapshotBucket[])[];
-  source: "refund" | "return_outside";
+  source: "refund" | "return_outside" | "return_exchange";
   returnNumber: string | null;
   refundMinor: number;
   working: ReturnWorking | null;

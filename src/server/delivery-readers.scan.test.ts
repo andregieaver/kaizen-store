@@ -19,6 +19,7 @@ const READERS: Record<string, string> = {
   "src/server/subscriptions.ts": "renewals pay the flat rate (D25)",
   "src/server/standing-orders.ts": "weekly boxes pay the flat rate (D102)",
   "src/server/draft-orders.ts": "drafts are priced on the flat rate or the staff's own (D173)",
+  "src/server/exchanges.ts": "an exchange's replacements ship free, at the flat rate or at the staff's own price, as a draft's (D239 4.2)",
   "src/server/returns.ts": "the standard delivery of an order from before it was kept on the order (D153)",
   "src/server/seo.ts": "structured data and the chat agent name one price only when it is unambiguous (2.6)",
   "src/server/legal-facts.ts": "the legal starters' shipping facts",

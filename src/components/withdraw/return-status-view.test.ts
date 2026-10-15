@@ -7,7 +7,7 @@ import { timeline } from "@/lib/return-status";
 import type { ShopperReturn } from "@/server/returns";
 
 import { OrderReturns, offersWithdrawal, withdrawHref } from "./order-returns";
-import { ReturnStatusView } from "./return-status-view";
+import { ReturnStatusView, type StatusExtras } from "./return-status-view";
 
 /** What a person reads: comment markers gone, entities and no-break spaces made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -37,6 +37,10 @@ const ret = (over: Partial<ShopperReturn> = {}): ShopperReturn => ({
   acknowledgementReference: "1042-R1",
   createdAt: "2026-10-02T20:30:00.000Z",
   timeZone: "Europe/Oslo",
+  exchangeWishAt: null,
+  exchange: null,
+  label: { source: null, carrierId: null, service: null, consignmentNumber: null, trackingNumber: null, trackingUrl: null, costMinor: null, test: false, bookedAt: null },
+  returnShippingMinor: 0,
   ...over,
 });
 
@@ -127,6 +131,95 @@ describe("a return's status page (D153)", () => {
     expect(view(ret(), "da", "da-DK")).toContain("Send varerne tilbage senest 16. oktober 2026.");
     // A language with no text of its own reads English, key by key.
     expect(view(ret(), "xx", "en")).toContain("Send the goods back");
+  });
+});
+
+describe("a return's status page: the label and the exchange (D239)", () => {
+  const all = t("en");
+  const extras = (over: Partial<StatusExtras> = {}): StatusExtras => ({
+    words: { exchange: all.exchange, returnLabel: all.returnLabel, exchangeWish: all.exchangeWish },
+    labelRoute: "/s/demo/no/returns/abc/label",
+    carrierName: "Posten / Bring",
+    wishForm: null,
+    ...over,
+  });
+  const drawn = (r: ShopperReturn, e: StatusExtras = extras(), lang = "en", locale = "en-GB") =>
+    html(h(ReturnStatusView, { m: t(lang).returns, ret: r, locale, extras: e }));
+  const booked = { source: "carrier" as const, carrierId: "bring", service: "9300", consignmentNumber: "70438101", trackingNumber: "370438101", trackingUrl: "https://tracking.bring.com/tracking/370438101", costMinor: 9900, test: false, bookedAt: "2026-10-03T10:00:00.000Z" };
+
+  it("prints a booked label through Kaizen's label route, never the carrier's address, with the carrier, tracking and who pays", () => {
+    const out = drawn(ret({ label: booked }));
+    expect(out).toContain("Your return label");
+    expect(out).toContain('href="/s/demo/no/returns/abc/label"');
+    expect(out).toContain("Print your return label");
+    expect(out).toContain("Carrier: Posten / Bring");
+    expect(out).toContain("370438101");
+    expect(out).toContain('href="https://tracking.bring.com/tracking/370438101"');
+    // Before the refund: the cost is taken off only if the parcel goes with this label (nothing is taken off at booking).
+    expect(out).toMatch(/If you send the parcel with this label, its cost, NOK\s?99\.00, is taken off your refund\./);
+    expect(out).not.toContain("The cost of the label");
+    // Refunded with the label taken off: what was taken off.
+    expect(drawn(ret({ label: booked, refundMinor: 10_000, returnShippingMinor: 9900 }))).toMatch(/The cost of the label, NOK\s?99\.00, is taken off your refund\./);
+    // Refunded with nothing taken off (the parcel came another way): no sentence.
+    expect(drawn(ret({ label: booked, refundMinor: 19_900, returnShippingMinor: 0 }))).not.toContain("is taken off your refund");
+    expect(out).not.toContain("This is a test label");
+    // The store pays: nothing is taken off, and it says so.
+    const free = drawn(ret({ label: booked, whoPaysReturn: "store", returnShippingMinor: 0 }));
+    expect(free).toContain("Return shipping is free for you.");
+    expect(free).not.toContain("is taken off your refund");
+    // Not priced by the carrier: no sentence about a cost.
+    expect(drawn(ret({ label: { ...booked, costMinor: null } }))).not.toContain("is taken off your refund");
+  });
+
+  it("says a test label cannot be used, and shows no label once the return has ended", () => {
+    const test = drawn(ret({ label: { ...booked, test: true } }));
+    expect(test).toContain("This is a test label and cannot be used.");
+    // A test label cost the store nothing and cannot be used: nothing about its cost is said, before or after the refund (finding: test label deduction).
+    expect(test).not.toContain("is taken off your refund");
+    expect(drawn(ret({ label: { ...booked, test: true }, refundMinor: 19_900, returnShippingMinor: 9900 }))).not.toContain("is taken off your refund");
+    const ended = drawn(ret({ label: booked, status: "closed", steps: timeline("withdrawal", "closed") }));
+    expect(ended).not.toContain("Print your return label");
+  });
+
+  it("keeps a pasted label as D153 drew it", () => {
+    const out = drawn(ret({ labelUrl: "https://carrier.example/label/1", label: { ...booked, source: "pasted", carrierId: null } }));
+    expect(out).toContain('href="https://carrier.example/label/1"');
+    expect(out).not.toContain("/returns/abc/label");
+  });
+
+  it("offers the wish form when the page gives it, and says a wish was sent", () => {
+    expect(drawn(ret(), extras({ wishForm: h("form", { "data-wish": "1" }) }))).toContain('data-wish="1"');
+    const sent = drawn(ret({ exchangeWishAt: "2026-10-03T10:00:00.000Z" }));
+    expect(sent).toContain(all.exchangeWish.sent);
+    expect(drawn(ret())).not.toContain(all.exchangeWish.sent);
+  });
+
+  it("says where the exchange stands, in plain words, and never links its page (its token is kept as a hash)", () => {
+    const x = (status: string, differenceMinor = 14900) =>
+      ret({ exchange: { id: "x1", status, creditMinor: 50000, totalMinor: 50000 + differenceMinor, differenceMinor, expiresAt: "2026-10-14T10:30:00.000Z", exchangeOrderId: status === "settled" ? "o2" : null, exchangeOrderNumber: status === "settled" ? "1050" : null } });
+    const proposed = drawn(x("proposed"));
+    expect(proposed).toContain("Exchange proposed");
+    expect(proposed).toMatch(/You pay NOK\s?149\.00/);
+    expect(proposed).toContain(all.exchange.status.inEmail);
+    expect(proposed).not.toContain("/account/exchange/");
+    expect(drawn(x("confirmed", -5000))).toMatch(/Exchange confirmed[\s\S]*We refund you NOK\s?50\.00/);
+    const waiting = drawn(x("processed"));
+    expect(waiting).toContain("Waiting for your payment");
+    expect(waiting).toContain(all.exchange.status.payInEmail);
+    expect(drawn(x("settled"))).toContain("Exchanged: order 1050");
+    for (const status of ["expired", "cancelled"]) expect(drawn(x(status))).toContain(all.exchange.status.lapsed);
+    expect(drawn(x("superseded"))).toContain(all.exchange.states.refunded);
+    expect(drawn(x("declined_by_customer"))).toContain(all.exchange.declined);
+    // With an exchange under way, the wish form is not drawn even if given.
+    expect(drawn(x("proposed"), extras({ wishForm: h("form", { "data-wish": "1" }) }))).not.toContain('data-wish="1"');
+  });
+
+  it("is said in Norwegian, Swedish and Danish", () => {
+    for (const lang of ["nb", "sv", "da"]) {
+      const all = t(lang);
+      const e = extras({ words: { exchange: all.exchange, returnLabel: all.returnLabel, exchangeWish: all.exchangeWish } });
+      expect(drawn(ret({ label: booked }), e, lang, "nb-NO"), lang).toContain(all.returnLabel.print);
+    }
   });
 });
 

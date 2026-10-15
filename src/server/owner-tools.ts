@@ -293,6 +293,16 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
     ...(view.archivedAt ? { archived: true } : {}),
     ...(view.source === "draft" ? { staff_made: true, ...(view.draft?.number ? { draft: view.draft.number } : {}) } : {}),
     ...(view.paidOutside ? { paid_outside_kaizen: view.paidOutside.method.replace("_", " ") } : {}),
+    // D239: an exchange order holds the replacement goods of a return, paid by that return's credit (and any difference the customer paid).
+    ...(view.source === "exchange" && view.exchange
+      ? {
+          exchange_for: {
+            return: view.exchange.returnNumber,
+            original_order: view.exchange.originalOrderNumber,
+            means: "This order is an exchange: replacement goods for that return, paid by the return's credit and any difference the customer paid. The credit is a refund of the original order.",
+          },
+        }
+      : {}),
     ...(view.gift?.isGift ? { gift: true } : {}),
     lines: view.lines.map((l) => ({
       title: l.title,

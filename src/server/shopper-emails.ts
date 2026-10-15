@@ -124,8 +124,9 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue', 'manual')
-    order by created_at limit 1
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue', 'manual', 'exchange')
+    -- An exchange order (D239) paid wholly by its return's credit has only its exchange payment to open its page by.
+    order by (provider = 'exchange'), created_at limit 1
   `);
   if (!payment) return null;
   return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
@@ -285,10 +286,22 @@ export async function sendOrderConfirmation(
   const booked = bookedLines(order);
   // The invoice (D159): its number and a link, issued in the payment's own transaction; nothing when there is none (waiting, test, copied).
   const documents = await documentsFor(storeId, order, store, market, { invoice: true }, { switchable: true });
+  // An exchange's order (D239): it is the exchange for a return, paid with the return's credit, and what the customer paid on top (hand-written, legal review).
+  const [exchange] = await db().execute<Row>(sql`
+    select r.number as return_number,
+      coalesce((select sum(p.amount_minor) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured' and p.provider in ('stripe', 'manual')), 0) as paid
+    from commerce.orders o join commerce.return_exchanges x on x.store_id = o.store_id and x.id = o.exchange_id
+    join commerce.returns r on r.store_id = x.store_id and r.id = x.return_id
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+  `);
+  const exchangeLine = exchange
+    ? [text.exchange.confirmationLine(String(exchange.return_number)), ...(Number(exchange.paid) > 0 ? [text.exchange.confirmationPaid(money(Number(exchange.paid)))] : [])].join(" ")
+    : null;
 
   const blocks: EmailBlock[] = [
     { type: "heading", text: slots.heading },
     { type: "paragraph", text: slots.intro },
+    ...(exchangeLine ? [{ type: "paragraph" as const, text: exchangeLine }] : []),
     orderLines(order, text, m, money, storeSiteUrl(store.slug)),
     // What is on backorder (D172): each line's units and the days the store states, in words, never a date and never "in stock".
     ...(order.lines.some((line) => line.backorder) ? [{ type: "paragraph" as const, text: backorderText(order, m) }] : []),

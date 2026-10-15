@@ -111,7 +111,9 @@ export type OrderAdmin = Omit<OrderView, "lines"> & {
   /** Archived (D173): a visibility state only. */
   archivedAt: string | null;
   /** `draft` for a staff-made order (D173), with the draft it came from and who sent or paid it. */
-  source: "checkout" | "draft";
+  source: "checkout" | "draft" | "exchange";
+  /** An exchange's order (D239): the exchange, its return and the original order it replaces goods of. */
+  exchange: { id: string; returnId: string; returnNumber: string; originalOrderId: string; originalOrderNumber: string } | null;
   draft: { id: string; number: string | null } | null;
   madeBy: { id: string; email: string } | null;
   /** What is sent, withdrawn and left to send of each line, the order's state, and the basis a parcel form sends back (D174). */
@@ -168,8 +170,9 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     db().execute<Row>(sql`
       select coalesce(sum(amount_minor) filter (where status = 'captured'), 0)::bigint as paid,
              -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizen (D173, refunded by being recorded), can be refunded here.
-             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'manual')), 0)::bigint as online,
-             bool_or(status = 'captured' and provider_account is not null) as connect,
+             -- An exchange order's credit (D239, provider exchange) is refunded at the original order's payment, so it is refundable here too.
+             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'manual', 'exchange')), 0)::bigint as online,
+             bool_or(status = 'captured' and (provider_account is not null or provider = 'exchange')) as connect,
              bool_or(status = 'captured' and provider = 'manual') as manual,
              (array_agg(method order by created_at) filter (where provider = 'manual' and status = 'captured'))[1] as manual_method,
              min(created_at) filter (where provider = 'manual' and status = 'captured') as manual_at
@@ -177,10 +180,14 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     `),
     getOrderTags(storeId, orderId),
     db().execute<Row>(sql`
-      select o.archived_at, o.source, o.draft_id, d.number as draft_number, o.made_by, a.email as made_by_email
+      select o.archived_at, o.source, o.draft_id, d.number as draft_number, o.made_by, a.email as made_by_email,
+        x.id as exchange_id, x.return_id as exchange_return_id, xr.number as exchange_return_number, x.order_id as exchange_original_id, xo.number as exchange_original_number
       from commerce.orders o
       left join commerce.draft_orders d on d.store_id = o.store_id and d.id = o.draft_id
       left join commerce.accounts a on a.id = o.made_by
+      left join commerce.return_exchanges x on x.store_id = o.store_id and x.id = o.exchange_id
+      left join commerce.returns xr on xr.store_id = x.store_id and xr.id = x.return_id
+      left join commerce.orders xo on xo.store_id = x.store_id and xo.id = x.order_id
       where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
@@ -249,7 +256,16 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       : null,
     tags,
     archivedAt: origin?.archived_at ? new Date(String(origin.archived_at)).toISOString() : null,
-    source: origin?.source === "draft" ? "draft" : "checkout",
+    source: origin?.source === "draft" ? "draft" : origin?.source === "exchange" ? "exchange" : "checkout",
+    exchange: origin?.exchange_id
+      ? {
+          id: String(origin.exchange_id),
+          returnId: String(origin.exchange_return_id),
+          returnNumber: String(origin.exchange_return_number),
+          originalOrderId: String(origin.exchange_original_id),
+          originalOrderNumber: String(origin.exchange_original_number),
+        }
+      : null,
     draft: origin?.draft_id ? { id: String(origin.draft_id), number: origin.draft_number ? String(origin.draft_number) : null } : null,
     madeBy: origin?.made_by ? { id: String(origin.made_by), email: String(origin.made_by_email ?? "") } : null,
     fulfilment: fulfilment ?? { orderId, lines: [], hasShipment: false, legacy: false, state: "none", unitsToSend: 0, editPending: false, basis: "0:0" },
@@ -633,6 +649,17 @@ export type RefundOptions = {
    * change or a stock shortage can never refuse after money moved). The caller commits; a host's commission is not touched (a host's order is never changed).
    */
   within?: Tx;
+  /**
+   * The refund is part of settling an exchange (D239, `docs/wave-3-exchanges.md` 4.4): every refund row written names it (`refunds.exchange_id`, frozen once
+   * written), and the transaction runs under the exchange's context (`kaizen.exchange`), so the caller's `inTransaction` may write the transfer pair and settle.
+   */
+  exchangeId?: string;
+  /**
+   * Asked first inside the refund's transaction, with the refund's status: the units go back in stock only when it answers true (D239 review finding). An
+   * exchange's settlement answers false for a refund Stripe reported failed (the exchange is not settled, so a retry would put the same units back again) and
+   * for an exchange another call settled meanwhile (it locks the exchange row and asks that it is still `processed`).
+   */
+  restockIf?: (tx: Tx, status: "succeeded" | "pending" | "failed") => Promise<boolean>;
 };
 
 /** The Stripe payment behind an order's payment row: its PaymentIntent, on the store's account. */
@@ -723,16 +750,24 @@ export async function refundOrder(
   // back themselves); the credit note follows from each refund by the database's own trigger (D159).
   const payments = options.outside
     ? []
-    : await db().execute<Row>(sql`
-        select p.id, p.provider, p.provider_reference, p.provider_account, a.mode,
+    : // An exchange order's credit (D239, provider `exchange`) is refunded where the money still is: at the original order's payment its transfer came from
+      // (Stripe's, or one recorded outside Kaizen), and after what was paid for the exchange order itself (4.6: the difference first, then the transfer).
+      await db().execute<Row>(sql`
+        select p.id, coalesce(src.provider, p.provider) as provider,
+          coalesce(src.provider_reference, p.provider_reference) as provider_reference,
+          coalesce(src.provider_account, p.provider_account) as provider_account, coalesce(sa.mode, a.mode) as mode,
           p.amount_minor - coalesce((select sum(r.amount_minor) from commerce.refunds r
                                       where r.store_id = p.store_id and r.payment_id = p.id and r.status::text <> 'failed'), 0) as left_minor
         from commerce.payments p
         left join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
+        left join commerce.refunds tr on tr.store_id = p.store_id and tr.id = p.transfer_refund_id
+        left join commerce.payments src on src.store_id = tr.store_id and src.id = tr.payment_id
+        left join commerce.connected_accounts sa on sa.store_id = src.store_id and sa.account_id = src.provider_account
         where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured'
-          and (p.provider = 'manual' or (p.provider = 'stripe' and a.mode is not null))
+          and (p.provider = 'manual' or (p.provider = 'stripe' and a.mode is not null)
+               or (p.provider = 'exchange' and (src.provider = 'manual' or (src.provider = 'stripe' and sa.mode is not null))))
           and (${options.paymentId ?? null}::uuid is null or p.id = ${options.paymentId ?? null}::uuid)
-        order by p.created_at, p.id
+        order by (p.provider = 'exchange'), p.created_at, p.id
       `);
   const byId = new Map(payments.map((p) => [String(p.id), p]));
   const parts = options.outside
@@ -801,7 +836,7 @@ export async function refundOrder(
 
   let written: { ids: string[]; closed: number };
   try {
-    written = await writeRefunds(storeId, orderId, input.reason, accountId, made, restock, options.eventData, options.returnId, options.inTransaction, options.within, notSent);
+    written = await writeRefunds(storeId, orderId, input.reason, accountId, made, restock, options.eventData, options.returnId, options.inTransaction, options.within, notSent, options.exchangeId, options.restockIf);
   } catch (error) {
     if (error instanceof RefundOverCap) return { ok: false, problem: "The amount is more than is left to refund." };
     throw error;
@@ -872,17 +907,24 @@ async function writeRefunds(
   reason: string,
   accountId: string | null,
   made: readonly MadeRefund[],
-  restock: readonly { sku: string; quantity: number; variantId: string; chosen: string | null }[],
+  restockAll: readonly { sku: string; quantity: number; variantId: string; chosen: string | null }[],
   eventData: Record<string, unknown> | undefined,
   returnId: string | undefined,
   inTransaction: RefundOptions["inTransaction"],
   within?: Tx,
   notSent: readonly NotSentCandidate[] = [],
+  exchangeId?: string,
+  restockIf?: RefundOptions["restockIf"],
 ): Promise<{ ids: string[]; closed: number }> {
-  const restockJson = JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })));
   const run = <T,>(body: (tx: Tx) => Promise<T>): Promise<T> => (within ? within.transaction(body) : db().transaction(body));
+  const statusOf = (): "succeeded" | "pending" | "failed" =>
+    made.length === 0 ? "succeeded" : made.some((m) => m.status === "failed") ? "failed" : made.every((m) => m.status === "succeeded") ? "succeeded" : "pending";
   return run(async (tx) => {
     const ids: string[] = [];
+    if (exchangeId) await tx.execute(sql`select set_config('kaizen.exchange', ${exchangeId}, true)`);
+    // The caller may hold the stock back (an exchange whose refund failed, or that is settled already): then nothing goes back and no refund row says it did.
+    const restock = restockAll.length > 0 && restockIf && !(await restockIf(tx, statusOf())) ? [] : restockAll;
+    const restockJson = JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })));
     // Money taken outside Kaizen has no Stripe to stop a refund above what was paid, so the cap is held HERE, under the order's row lock: two refunds at the same moment (two staff, a double click) are
     // serialised, and the second sees the first (the amount read before the transaction, in `getOrderAdmin()`, is only for the form). The database refuses the same sum too (`commerce.refunds_manual_cap()`).
     const manual = made.filter((m) => m.recorded);
@@ -901,9 +943,9 @@ async function writeRefunds(
     let fresh = 0;
     for (const m of made) {
       const [row] = await tx.execute<Row>(sql`
-        insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
+        insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by, exchange_id)
         values (${storeId}::uuid, ${m.part.paymentId}::uuid, ${m.part.amountMinor}, ${reason},
-                ${m.providerReference}, ${m.status}::commerce.refund_status, ${ids.length === 0 ? restockJson : "[]"}::jsonb, ${accountId}::uuid)
+                ${m.providerReference}, ${m.status}::commerce.refund_status, ${ids.length === 0 ? restockJson : "[]"}::jsonb, ${accountId}::uuid, ${exchangeId ?? null}::uuid)
         on conflict (store_id, provider_reference) do nothing
         returning id
       `);
@@ -941,7 +983,7 @@ async function writeRefunds(
     // Stripe reported as failed is not: staff refund the money again, and the units stay closed, since they are back in stock).
     const closed = restock.length > 0 ? await closeUnsent(tx, storeId, orderId, failed ? null : (ids[0] ?? null), accountId, notSent) : 0;
     // An adopted refund has its `order.refunded` event already (written by the webhook); only the stock going back is new.
-    if (!adopted || restock.length > 0) {
+    if ((!adopted && (made.length > 0 || restockAll.length === 0)) || restock.length > 0) {
       await tx.execute(sql`
         insert into commerce.order_events (store_id, order_id, type, data, actor)
         values (${storeId}::uuid, ${orderId}::uuid, ${amount > 0 && !adopted ? "order.refunded" : "order.restocked"},

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { CHANNELS } from "@/lib/analytics-channels";
 import { change, formatChange, formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
 import { formatTimes, formatUpTo } from "@/lib/analytics-format";
-import { ltvToCac, STAFF_CHANNEL, UNKNOWN_CHANNEL, type ChannelRow } from "@/lib/analytics-traffic";
+import { EXCHANGE_CHANNEL, ltvToCac, STAFF_CHANNEL, UNKNOWN_CHANNEL, type ChannelRow } from "@/lib/analytics-traffic";
 import { minorUnitDigits } from "@/lib/money";
 import type { CustomersReport } from "@/server/analytics-customers-data";
 import type { MarketingReport } from "@/server/analytics-traffic-data";
@@ -287,6 +287,9 @@ const UNKNOWN_WHY =
 const STAFF_WHY =
   "Orders staff made from a draft order. They are real sales and are in the revenue, but they were not a visit, so no channel earns them and they are left out of conversion.";
 
+const EXCHANGE_WHY =
+  "Orders of replacement goods for a return, paid by the return's credit (and any difference the shopper paid). They are real sales and are in the revenue, but they were not a visit, so no channel earns them and they are left out of conversion. The credit is a refund of the original order.";
+
 /** The columns of the channel table, written for a row; the blended row's foot uses the same cells. */
 export function channelColumns(money: (minor: number) => string): Column<ChannelRow>[] {
   const spend = (r: ChannelRow) => (r.spendMinor > 0 ? money(r.spendMinor) : dash("No ad spend entered for this channel"));
@@ -295,7 +298,13 @@ export function channelColumns(money: (minor: number) => string): Column<Channel
       key: "channel",
       label: "Channel",
       cell: (r) =>
-        r.channel === UNKNOWN_CHANNEL ? <span title={UNKNOWN_WHY}>Unknown</span> : r.channel === STAFF_CHANNEL ? <span title={STAFF_WHY}>{r.label}</span> : r.label,
+        r.channel === UNKNOWN_CHANNEL ? <span title={UNKNOWN_WHY}>Unknown</span> : r.channel === STAFF_CHANNEL ? (
+          <span title={STAFF_WHY}>{r.label}</span>
+        ) : r.channel === EXCHANGE_CHANNEL ? (
+          <span title={EXCHANGE_WHY}>{r.label}</span>
+        ) : (
+          r.label
+        ),
     },
     { key: "sessions", label: "Sessions", align: "right", cell: (r) => (r.sessions === null ? dash("Visits are only counted for channels, not for unmatched orders") : formatCount(r.sessions)) },
     { key: "orders", label: "Orders", align: "right", cell: (r) => formatCount(r.orders) },
@@ -368,6 +377,7 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
   const unknownRow = table?.rows.find((r) => r.channel === UNKNOWN_CHANNEL);
   const unknown = report.unknownOrders;
   const staffRow = table?.rows.find((r) => r.channel === STAFF_CHANNEL);
+  const exchangeRow = table?.rows.find((r) => r.channel === EXCHANGE_CHANNEL);
 
   return (
     <AnalyticsSection
@@ -417,6 +427,11 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
           {staffRow ? (
             <Note title="What “Staff-made” is">
               {`${STAFF_WHY} In this period: ${formatCount(staffRow.orders)} ${staffRow.orders === 1 ? "order" : "orders"}, ${money(staffRow.revenueMinor)}.`}
+            </Note>
+          ) : null}
+          {exchangeRow ? (
+            <Note title="What “Exchanges” is">
+              {`${EXCHANGE_WHY} In this period: ${formatCount(exchangeRow.orders)} ${exchangeRow.orders === 1 ? "order" : "orders"}, ${money(exchangeRow.revenueMinor)}.`}
             </Note>
           ) : null}
           {withRevenue.length > 0 || withSpend.length > 0 ? (

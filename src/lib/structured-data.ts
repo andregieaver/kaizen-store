@@ -35,7 +35,13 @@ export type StoreFacts = {
  * What the store's return settings (`commerce.return_settings`, D153) say to search engines: how many days goods can come back, who
  * pays for sending them, and whether goods the law leaves out of the right of withdrawal are taken back too.
  */
-export type ReturnPolicyFacts = { days: number; whoPaysReturn: "shopper" | "store"; acceptExcluded: boolean };
+export type ReturnPolicyFacts = {
+  days: number;
+  whoPaysReturn: "shopper" | "store";
+  acceptExcluded: boolean;
+  /** The store offers exchanges on returns (D239, `return_settings.exchanges`; on unless switched off). For the chat agent's facts only: never structured data. */
+  exchanges?: boolean;
+};
 
 /** The legal 14 days, returned at the shopper's cost: a store that has not set its rules. */
 export const DEFAULT_RETURN_POLICY: ReturnPolicyFacts = { days: 14, whoPaysReturn: "shopper", acceptExcluded: false };
@@ -53,6 +59,7 @@ export function returnPolicyOf(raw: unknown): ReturnPolicyFacts {
     days: Number.isInteger(days) && days >= MIN_RETURN_DAYS && days <= MAX_RETURN_DAYS ? days : DEFAULT_RETURN_POLICY.days,
     whoPaysReturn: r.whoPaysReturn === "store" ? "store" : "shopper",
     acceptExcluded: r.acceptExcluded === true,
+    ...(typeof r.exchanges === "boolean" ? { exchanges: r.exchanges } : {}),
   };
 }
 

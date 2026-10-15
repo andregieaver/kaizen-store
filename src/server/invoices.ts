@@ -411,7 +411,7 @@ export async function waitingCreditNotes(storeId: string): Promise<WaitingCredit
        where rf.store_id = ${storeId}::uuid and rf.status = 'succeeded'
          and not exists (select 1 from commerce.credit_notes c where c.store_id = rf.store_id and c.refund_id = rf.id)
          -- The refund of an order change's lower total is credited by the change's own credit note (D174): covered, never missing.
-         and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced', 'credit_note.covered_by_edit') and e.data ->> 'key' = rf.id::text)
+         and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced', 'credit_note.covered_by_edit', 'credit_note.covered_by_exchange') and e.data ->> 'key' = rf.id::text)
       union all
       select null::uuid, rt.id, rt.order_id, rt.refund_minor, 'missing', coalesce(rt.refunded_at, rt.created_at)
         from commerce.returns rt join commerce.invoices i on i.store_id = rt.store_id and i.order_id = rt.order_id and i.kind = 'order'

@@ -4,7 +4,7 @@ import { ASSISTANT_SKILLS } from "./assistant-skills";
 import { ADMIN_PAGES } from "./admin-map";
 import { MANAGER_TOOLS, PLATFORM_TOOLS, TOOL_WORDS } from "./manager-tools";
 import { approvalSummary, OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition } from "./owner-tools";
-import { approveProblem, approveSummary, declineProblem, declineSummary, REFUND_ON_SCREEN } from "./return-tools";
+import { approveProblem, approveSummary, declineProblem, declineSummary, EXCHANGE_MARK_WORDS, EXCHANGE_ON_SCREEN, exchangeFacts, labelFacts, REFUND_ON_SCREEN } from "./return-tools";
 import { RETURN_KINDS, RETURN_STATUSES } from "./return-status";
 
 const NAMES = ["list_returns", "explain_return", "approve_return", "decline_return"] as const;
@@ -119,5 +119,40 @@ describe("what the assistant may approve and decline", () => {
     expect(approveProblem(ret("return", "closed"))).toBe("Return 1042-R1 is closed, so it cannot be approved: only a return request that waits for an answer can.");
     expect(REFUND_ON_SCREEN).toMatch(/does not refund/);
     expect(RETURN_KINDS).toContain("withdrawal");
+  });
+});
+
+describe("exchanges and labels for the AI manager (D239)", () => {
+  const money = (minor: number) => `NOK ${minor / 100}`;
+  const day = (at: string | null) => (at ? at.slice(0, 10) : null);
+  const x = { status: "proposed", creditMinor: 50_000, totalMinor: 60_000, differenceMinor: 10_000, expiresAt: "2026-10-20T10:00:00Z", exchangeOrderNumber: null };
+
+  it("says the exchange's state and amounts as the store worked them out, the difference by its sign", () => {
+    expect(exchangeFacts(x, money, day)).toEqual({ status: "Proposed", credit: "NOK 500", replacements: "NOK 600", difference: "The customer pays NOK 100", exchange_order: undefined, ends: "2026-10-20" });
+    expect(exchangeFacts({ ...x, totalMinor: 30_000, differenceMinor: -20_000 }, money, day).difference).toBe("The customer gets NOK 200 back");
+    expect(exchangeFacts({ ...x, totalMinor: 50_000, differenceMinor: 0 }, money, day).difference).toBe("Even: nothing to pay and nothing to refund");
+    const settled = exchangeFacts({ ...x, status: "settled", exchangeOrderNumber: "1043" }, money, day);
+    expect(settled).toMatchObject({ status: "Exchanged", exchange_order: "1043", ends: undefined });
+  });
+
+  it("says the label without the carrier's own address, and who pays return shipping", () => {
+    const none = labelFacts({ source: null, carrierId: null, trackingNumber: null, trackingUrl: null, costMinor: null, test: false, bookedAt: null }, "store", money, day);
+    expect(none).toEqual({ label: "No return label yet", who_pays: "The store pays return shipping" });
+    const booked = labelFacts(
+      { source: "carrier", carrierId: "bring", trackingNumber: "70700", trackingUrl: "https://tracking.bring.com/70700", costMinor: 9_900, test: true, bookedAt: "2026-10-14T08:00:00Z" },
+      "shopper",
+      money,
+      day,
+    );
+    expect(booked.label).toBe("Booked with Posten / Bring (a test label: it cannot be sent)");
+    expect(booked).toMatchObject({ booked: "2026-10-14", tracking: "70700", cost: "NOK 99" });
+    expect(booked.who_pays).toContain("only when staff confirm the parcel came back with it (never a test label), never more than it cost");
+    expect(labelFacts({ source: "carrier", carrierId: "bring", trackingNumber: null, trackingUrl: null, costMinor: null, test: false, bookedAt: null }, "store", money, day)).toMatchObject({ cost: "Not known" });
+    expect(labelFacts({ source: "pasted", carrierId: null, trackingNumber: null, trackingUrl: null, costMinor: null, test: false, bookedAt: null }, "store", money, day).label).toContain("pasted");
+  });
+
+  it("has words for every queue mark and says the assistant does none of it", () => {
+    expect(Object.keys(EXCHANGE_MARK_WORDS).sort()).toEqual(["confirmed", "proposed", "waiting_payment", "wished"]);
+    expect(EXCHANGE_ON_SCREEN).toMatch(/never proposes, confirms or processes an exchange, books a label or records a payment/);
   });
 });

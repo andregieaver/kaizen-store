@@ -1,11 +1,15 @@
 /** Swedish interface text, written by hand (`src/lib/i18n.ts`, D212). */
 import { svBrowser } from "./sv-browser";
 import { svReturns } from "./sv-returns";
+import { svExchange, svReturnLabel } from "./sv-exchange";
 import type { Messages } from "./en";
 
 export const sv: Messages = {
   ...svBrowser,
   returns: svReturns,
+  // Exchanges and return labels (D239): hand-written, needs legal review (`sv-exchange.ts`).
+  exchange: svExchange,
+  returnLabel: svReturnLabel,
   deliveries: {
     title: "Prenumerationsbox",
     intro: "Håll en lista över det du vill ha i boxen. Vi levererar den på din leveransdag: ändra den fram till stopptiden, så drar vi ditt kort när leveransen är på väg.",

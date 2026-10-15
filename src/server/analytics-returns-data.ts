@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
 import {
+  exchangeShare,
   MIN_PRODUCT_UNITS,
   MIN_RATE_ORDERS,
   MIN_RATE_UNITS,
@@ -64,6 +65,8 @@ export type ReturnKindRow = {
   /** Returns of this kind refunded in the period, and what they were refunded (without VAT). */
   refunded: number;
   refundedMinor: number;
+  /** Counting returns of this kind made in the period whose credit paid for an exchange order (D239, outcome `exchanged`). */
+  exchanged: number;
 };
 
 export type ReturnedProduct = {
@@ -99,6 +102,11 @@ export type ReturnsReport = {
   timing: { requestToRefund: Timing; receivedToRefund: Timing; afterDeadline: { late: number; of: number }; truncated: boolean };
   /** Withdrawal returns past their refund deadline right now (the queue's count). */
   overdue: number;
+  /**
+   * Exchanges (D239, docs/analytics.md "Exchanged return"): counting returns made in the period that were exchanged, their share of the returns made
+   * (gated), and the credit kept as replacement goods in the period (transfers, without VAT). `tracked`: the store has exchanged a return at some time.
+   */
+  exchanges: { returns: number; share: Figure; keptMinor: number; transfers: number; tracked: boolean };
   products: ReturnedProduct[];
   productCount: number;
   /** Always said: returns outside Kaizen are not seen. */
@@ -129,7 +137,7 @@ const GOODS = (alias: string) => sql.raw(`(${alias}.variant_id is not null and $
 async function readMade(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
   return setBased<Row>(sql`
     with rs as (
-      select r.id, r.kind, r.status::text as status, r.reason, trim(o.currency) as currency
+      select r.id, r.kind, r.status::text as status, r.reason, trim(o.currency) as currency, (r.outcome is not distinct from 'exchanged') as exchanged
       from commerce.returns r
       join commerce.orders o on o.store_id = r.store_id and o.id = r.order_id
       where r.store_id = ${store.id}::uuid and ${OWN_ORDER} and ${inPeriod(store, sql`r.created_at`, period)}
@@ -140,7 +148,8 @@ async function readMade(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
       where rl.store_id = ${store.id}::uuid and rl.decision = 'accept'
       group by rl.return_id
     )
-    select rs.kind, rs.status, rs.reason, rs.currency, count(*)::int as n, coalesce(sum(u.units), 0)::int as units
+    select rs.kind, rs.status, rs.reason, rs.currency, count(*)::int as n, coalesce(sum(u.units), 0)::int as units,
+      count(*) filter (where rs.exchanged)::int as exchanged
     from rs left join u on u.return_id = rs.id
     group by 1, 2, 3, 4
   `);
@@ -205,15 +214,33 @@ async function readRefunded(store: Store, period: AnalyticsPeriod): Promise<Row[
   `);
 }
 
-/** The store's returns in all, and the ones past their refund deadline right now (the queue's condition). */
-async function readStanding(store: Store): Promise<{ total: number; overdue: number }> {
+/** The store's returns in all, the ones past their refund deadline right now (the queue's condition), and the ones ever exchanged. */
+async function readStanding(store: Store): Promise<{ total: number; overdue: number; exchanged: number }> {
   const [row] = await setBased<Row>(sql`
-    select count(*)::int as total, count(*) filter (where ${OVERDUE_SQL})::int as overdue
+    select count(*)::int as total, count(*) filter (where ${OVERDUE_SQL})::int as overdue,
+      count(*) filter (where r.outcome is not distinct from 'exchanged')::int as exchanged
     from commerce.returns r
     join commerce.orders o on o.store_id = r.store_id and o.id = r.order_id
     where r.store_id = ${store.id}::uuid and ${OWN_ORDER}
   `);
-  return { total: num(row, "total"), overdue: num(row, "overdue") };
+  return { total: num(row, "total"), overdue: num(row, "overdue"), exchanged: num(row, "exchanged") };
+}
+
+/**
+ * The period's transfers (D239, docs/analytics.md "Transfer"): the part of a return's credit that paid for an exchange order, a succeeded refund of
+ * `kind = 'transfer'` on the original order, dated by its own day and scaled to without VAT by that order's `(total − tax) / total`, by currency.
+ */
+async function readTransfers(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
+  return setBased<Row>(sql`
+    select trim(o.currency) as currency, count(*)::int as n,
+      sum(round(rf.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0))) as value
+    from commerce.refunds rf
+    join commerce.payments p on p.store_id = rf.store_id and p.id = rf.payment_id
+    join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+    where rf.store_id = ${store.id}::uuid and rf.kind = 'transfer' and rf.status = 'succeeded' and ${OWN_ORDER}
+      and ${inPeriod(store, sql`rf.created_at`, period)}
+    group by 1
+  `);
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +251,7 @@ const ms = (value: unknown): number | null => (value === null || value === undef
 
 /** The Returns section for a period. See the module's description for what every figure is. */
 export async function returnsReport(store: Store, period: AnalyticsPeriod, now: Date = new Date()): Promise<ReturnsReport> {
-  const [made, cohortOrders, sold, returned, refundedRows, standing, settings] = await Promise.all([
+  const [made, cohortOrders, sold, returned, refundedRows, standing, settings, transfers] = await Promise.all([
     readMade(store, period),
     readCohortOrders(store, period),
     readSold(store, period),
@@ -232,6 +259,7 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
     readRefunded(store, period),
     readStanding(store),
     getReturnSettings(store.id).catch(() => null),
+    readTransfers(store, period),
   ]);
   const windowDays = settings?.windowDays ?? DEFAULT_RETURN_SETTINGS.windowDays;
   const tracked = standing.total > 0;
@@ -247,7 +275,7 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
 
   // Returns made: by kind and status, and the reasons of those that count.
   const kinds = new Map<ReturnKind, ReturnKindRow>(
-    (["withdrawal", "return"] as const).map((k) => [k, { kind: k, label: KIND_LABELS[k], returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0 }]),
+    (["withdrawal", "return"] as const).map((k) => [k, { kind: k, label: KIND_LABELS[k], returns: 0, units: 0, declined: 0, cancelled: 0, refunded: 0, refundedMinor: 0, exchanged: 0 }]),
   );
   const reasonInputs = new Map<string, { reason: string | null; returns: number; units: number }>();
   for (const r of made) {
@@ -260,6 +288,7 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
     else {
       row.returns += num(r, "n");
       row.units += num(r, "units");
+      row.exchanged += num(r, "exchanged");
       const reason = r.reason === null || r.reason === undefined ? null : String(r.reason);
       const key = reason ?? "";
       const have = reasonInputs.get(key) ?? { reason, returns: 0, units: 0 };
@@ -340,6 +369,16 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
     }
   }
 
+  // Credit kept as replacement goods: the period's transfers, each currency converted by itself.
+  let keptMinor = 0;
+  let transferCount = 0;
+  for (const r of transfers) {
+    const currency = String(r.currency);
+    if (skip(currency, num(r, "n"))) continue;
+    keptMinor += toMainOne(store, currency, num(r, "value")) ?? 0;
+    transferCount += num(r, "n");
+  }
+
   // Products: the most returned first, with their own rate against what was sold of them.
   const productList = [...perProduct.entries()]
     .filter(([, acc]) => acc.returned > 0)
@@ -391,6 +430,13 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
       truncated: timingTruncated,
     },
     overdue: standing.overdue,
+    exchanges: {
+      returns: withdrawals.exchanged + voluntary.exchanged,
+      share: exchangeShare({ exchanged: withdrawals.exchanged + voluntary.exchanged, returns: withdrawals.returns + voluntary.returns, tracked: standing.exchanged > 0 }),
+      keptMinor,
+      transfers: transferCount,
+      tracked: standing.exchanged > 0,
+    },
     products,
     productCount: productList.length,
     notSeenNote: NOT_SEEN_RETURNS_NOTE,

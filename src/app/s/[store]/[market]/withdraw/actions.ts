@@ -1,5 +1,6 @@
 "use server";
 
+import { cleanExchangeWish } from "@/lib/exchange-input-browser";
 import { withdrawalStart } from "@/lib/return-input";
 import {
   declaredLines,
@@ -20,6 +21,7 @@ import {
   type WithdrawState,
 } from "@/lib/withdraw-form";
 import { getCustomer } from "@/server/customers";
+import { recordExchangeWish } from "@/server/exchanges";
 import { resolveAfterSaleShop } from "@/server/shop";
 import {
   DELAY_FLOOR_MS,
@@ -110,6 +112,10 @@ export async function withdrawAction(storeSlug: string, marketSlug: string, prev
 
   if (intent === "return") {
     const reason = String(form.get(FIELD.reason) ?? "").trim();
+    // The optional exchange wish beside the reason (D239 2.1): checked first, so a wish that is too long is said before anything is sent; empty is no wish.
+    const wishText = String(form.get(FIELD.exchangeWish) ?? "");
+    const wish = wishText.trim() ? cleanExchangeWish(wishText) : null;
+    if (wish && !wish.ok) return again({ order: shown, errors: { exchangeWish: "too_long" } });
     const outcome = await startReturnRequest(
       store.id,
       {
@@ -130,6 +136,8 @@ export async function withdrawAction(storeSlug: string, marketSlug: string, prev
     }
     if (!outcome.matched) return settle(startedAt, again({ notice: "unmatched" }));
     const order = orderInfoOf(outcome.order);
+    // A wish is not an agreement and never holds the request up: one the store cannot take (the order cannot be exchanged) is left out quietly.
+    if (outcome.created && wish?.ok) await recordExchangeWish(store.id, outcome.created.token, { note: wish.note }, { atRequest: true }).catch(() => null);
     return settle(
       startedAt,
       outcome.created

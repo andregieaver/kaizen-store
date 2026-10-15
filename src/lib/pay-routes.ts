@@ -116,5 +116,15 @@ export function isSupportLinkPath(pathname: string): boolean {
  * Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes, the hosted documents, a draft's pay
  * link, a change's pay link and a support conversation's link (where Kaizen's layout draws none of its own either).
  */
+/**
+ * The exchange page of a return, `/s/{store}/{market}/account/exchange/{token}` (wave 3, D239, `docs/wave-3-exchanges.md` 2.1), on either shape of address. Its address holds a bearer
+ * token that opens a customer's return, the proposal and the way to pay a difference, so no tracking, owner code, chat or referral capture is drawn on it, and it is entered by a full
+ * page load. No card is typed on it (the pay button hands the customer to Stripe's own page), so it is not a pay route in the policy's sense.
+ */
+export function isExchangeLinkPath(pathname: string): boolean {
+  const parts = afterMarketParts(pathname);
+  return parts[0] === "account" && parts[1] === "exchange" && parts.length > 2;
+}
+
 export const isNoExtrasPath = (pathname: string): boolean =>
-  isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname) || isChangeLinkPath(pathname) || isSupportLinkPath(pathname);
+  isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname) || isChangeLinkPath(pathname) || isSupportLinkPath(pathname) || isExchangeLinkPath(pathname);

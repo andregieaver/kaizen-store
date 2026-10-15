@@ -10,6 +10,9 @@ vi.mock("@/server/orders", () => ({
 }));
 vi.mock("@/server/customers", () => ({ getCheckoutAccount: async () => null }));
 vi.mock("@/server/returns", () => ({ listOrderReturns: async () => [] }));
+// The exchange an order was made for (D239): none unless a test sets one.
+const exchangeNow = vi.hoisted(() => ({ value: null as null | Record<string, unknown> }));
+vi.mock("@/server/exchanges", () => ({ exchangeOfOrder: async () => exchangeNow.value }));
 // What the order kept of the store's terms (wave 1, 1e).
 const termsNow = vi.hoisted(() => ({ record: null as null | Record<string, unknown> }));
 vi.mock("@/server/checkout-terms", () => ({ termsForOrder: async () => termsNow.record }));
@@ -104,6 +107,7 @@ const totals = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   termsNow.record = null;
+  exchangeNow.value = null;
   fulfilmentNow.value = null;
   fulfilmentNow.calls = 0;
   trackingNow.value = [];
@@ -640,5 +644,20 @@ describe("the order's parcels (wave 3, run 3, D174)", () => {
     const page = text(await html(OrderParcels(nb)));
     expect(page).toContain("Delvis sendt");
     expect(page).toContain("Kommer senere");
+  });
+});
+
+describe("an exchange order's page (D239)", () => {
+  it("names the return and the original order it was made for, and says nothing for any other order", async () => {
+    getShopperOrder.mockResolvedValue(order());
+    const plain = text(renderToString(await OrderDetails(shop)));
+    expect(plain).not.toContain("Exchange for return");
+    exchangeNow.value = { returnNumber: "1040-R1", orderNumber: "1040" };
+    const page = text(renderToString(await OrderDetails(shop)));
+    expect(page).toContain("Exchange for return 1040-R1 of order 1040");
+    // The original order's page is never linked from here: its key is another.
+    expect(renderToString(await OrderDetails(shop))).not.toContain("/order/");
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    expect(text(renderToString(await OrderDetails(nb)))).toContain(t("nb").exchange.orderLine("1040-R1", "1040"));
   });
 });

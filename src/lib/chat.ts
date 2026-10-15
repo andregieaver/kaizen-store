@@ -79,6 +79,11 @@ export function returnFacts(policy: ReturnPolicyFacts, withdrawPath: string) {
     returnShippingPaidBy: policy.whoPaysReturn === "store" ? "the store" : "the customer",
     takesBackGoodsTheLawExcludes: policy.acceptExcluded,
     withdrawFromContractPage: withdrawPath,
+    // D239: whether the store offers exchanges at all, from its settings. Never a price, a difference or a promise that a given return can be exchanged.
+    exchanges:
+      policy.exchanges === false
+        ? "The store does not offer exchanges: a return is refunded."
+        : "The store can offer an exchange for other goods on a return. Staff propose it on the return, and the customer decides and confirms it themselves; otherwise the return is refunded. Never promise an exchange, its price or a difference.",
     note: "A customer withdraws from a purchase on the withdrawal page; faulty goods are a separate matter under the legal guarantee.",
   };
 }

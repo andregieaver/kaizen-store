@@ -181,14 +181,17 @@ export type SnapshotTreatment = {
 /**
  * How the sale was paid: `paid_online` (Stripe), `paid_outside` (money the seller took outside Kaizen and recorded, wave 3, D173: `provider` is `manual` and `method` says
  * how) or `pay_at_venue` (the balance left for the venue). `method` is set only on `paid_outside`. On a change's additional invoice (D174), `settled_by_order`
- * is the part settled against what the customer had already paid for the order's own invoice (`invoiceNumber`, `provider` `order`).
+ * is the part settled against what the customer had already paid for the order's own invoice (`invoiceNumber`, `provider` `order`). On an exchange order's invoice
+ * (wave 3, D239), `settled_by_return` is the part paid with the credit of a return (`provider` `exchange`, the return's and its order's numbers), listed first.
  */
 export type SnapshotPayment = {
-  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "settled_by_order";
+  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "settled_by_order" | "settled_by_return";
   amountMinor: number;
   provider: string;
   method?: "cash" | "bank_transfer" | "other" | null;
   invoiceNumber?: string;
+  returnNumber?: string | null;
+  orderNumber?: string | null;
 };
 
 export type SnapshotNote = "buyer_incomplete" | "unit_price_rounded" | "trial_deferred";
@@ -272,6 +275,8 @@ export type InvoiceOrderFacts = {
   onlineProvider: string;
   /** How a `manual` payment was received (`cash`, `bank_transfer`, `other`); null for every other provider. */
   onlineMethod?: string | null;
+  /** An exchange order's part paid with a return's credit (its `exchange` payments, D239), with the return's and the original order's numbers; null otherwise. */
+  settledByReturn?: { amountMinor: number; returnNumber: string | null; orderNumber: string | null } | null;
 };
 
 export type InvoiceLineFacts = {
@@ -606,8 +611,12 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
     if (rate !== null) vatMain = { currency: fx.mainCurrency, vatMinor: vatConverted(buckets, rate), fxRate: rate };
   }
 
-  const online = order.totalMinor - order.balanceMinor;
+  const settled = order.settledByReturn && order.settledByReturn.amountMinor > 0 ? order.settledByReturn : null;
+  const online = order.totalMinor - order.balanceMinor - (settled?.amountMinor ?? 0);
   const payments: SnapshotPayment[] = [
+    ...(settled
+      ? [{ kind: "settled_by_return" as const, amountMinor: settled.amountMinor, provider: "exchange", returnNumber: settled.returnNumber, orderNumber: settled.orderNumber }]
+      : []),
     ...(online > 0
       ? [
           order.onlineProvider === "manual"

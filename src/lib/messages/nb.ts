@@ -1,11 +1,15 @@
 /** Norwegian interface text, written by hand (`src/lib/i18n.ts`, D212). */
 import { nbBrowser } from "./nb-browser";
 import { nbReturns } from "./nb-returns";
+import { nbExchange, nbReturnLabel } from "./nb-exchange";
 import type { Messages } from "./en";
 
 export const nb: Messages = {
   ...nbBrowser,
   returns: nbReturns,
+  // Exchanges and return labels (D239): hand-written, needs legal review (`nb-exchange.ts`).
+  exchange: nbExchange,
+  returnLabel: nbReturnLabel,
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det du vil ha i boksen. Vi leverer den på leveringsdagen din: endre den frem til fristen, så trekker vi kortet ditt når leveringen er på vei.",

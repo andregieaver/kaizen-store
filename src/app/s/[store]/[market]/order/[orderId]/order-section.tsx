@@ -33,6 +33,7 @@ import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { termsForOrder } from "@/server/checkout-terms";
 import { shopperFulfilment } from "@/server/fulfilment";
 import { parcelTrackingFor } from "@/server/shipment-tracking";
+import { exchangeOfOrder } from "@/server/exchanges";
 import { getOrderDocuments } from "@/server/invoices";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
@@ -57,7 +58,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account, returns, terms, documents, fulfilment, tracking] = await Promise.all([
+  const [downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
@@ -71,8 +72,10 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
     order.ships && paid ? shopperFulfilment(store.id, order.id) : null,
     // Where each parcel is (D238 2.7): the events the poll stored, never a carrier call here (this is a pay route).
     order.ships && paid ? parcelTrackingFor(store.id, order.id) : [],
+    // The exchange this order was made for (D239 2.1), so its page names the return; the original order's page is never linked (its key is another).
+    exchangeOfOrder(store.id, order.id),
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment, tracking };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -187,7 +190,7 @@ export async function OrderContinue(shop: Shop) {
   return continueLink(await orderView(shop));
 }
 
-function statusBlock({ order, m }: OrderView) {
+function statusBlock({ order, m, exchange }: OrderView) {
   return (
     <>
       <RefreshWhile waiting={order.status === "pending_payment"} />
@@ -203,6 +206,9 @@ function statusBlock({ order, m }: OrderView) {
         <p>
           {m.orderNumber}: <strong>{order.number}</strong>. {order.status !== "cancelled" && m.keepNumber}
         </p>
+        {exchange && (
+          <p data-exchange-order>{m.exchange.orderLine(exchange.returnNumber, exchange.orderNumber)}</p>
+        )}
       </div>
     </>
   );

@@ -89,4 +89,18 @@ form: {
   yes: "Ja",
   no: "Nej",
 },
+  // legal: needs review (D239 2.1)
+  exchangeWish: {
+    heading: "Vil du hellere have noget andet end pengene tilbage?",
+    label: "Hvad vil du have i stedet?",
+    hint: "For eksempel en anden størrelse eller farve. Det er kun et ønske: indtil du bekræfter et forslag fra butikken, får du pengene tilbage som sædvanligt.",
+    button: "Bed om bytte",
+    working: "Et øjeblik …",
+    sent: "Dit ønske er sendt. Butikken sender dig et forslag; indtil du bekræfter et, får du pengene tilbage som sædvanligt.",
+    empty: "Skriv, hvad du vil have i stedet.",
+    tooLong: (over: number) => `${over} tegn for meget.`,
+    tooManyLines: (max: number) => `Skriv højst ${max} linjer.`,
+    counter: (left: number) => `${left} tegn tilbage`,
+    failed: "Ønsket kunne ikke sendes. Prøv igen om lidt.",
+  },
 };

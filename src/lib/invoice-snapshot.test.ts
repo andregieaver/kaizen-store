@@ -448,3 +448,26 @@ describe("buildInvoiceSnapshot: the invoice equals its order to the minor unit",
     expect(divRound(1, 3)).toBe(0);
   });
 });
+
+describe("an exchange order's invoice (D239 3.3 point 6(d))", () => {
+  it("names the part paid with a return's credit first, then what was paid online or outside", () => {
+    const lines = [paidLine("x", 12000, 1, 0.25)];
+    const paid = buildInvoiceSnapshot(facts(lines, { totalMinor: 12000, settledByReturn: { amountMinor: 10000, returnNumber: "1042-R1", orderNumber: "1042" } }), ctx);
+    expect(paid.payments).toEqual([
+      { kind: "settled_by_return", amountMinor: 10000, provider: "exchange", returnNumber: "1042-R1", orderNumber: "1042" },
+      { kind: "paid_online", amountMinor: 2000, provider: "stripe" },
+    ]);
+    const outside = buildInvoiceSnapshot(
+      facts(lines, { totalMinor: 12000, onlineProvider: "manual", onlineMethod: "cash", settledByReturn: { amountMinor: 10000, returnNumber: "1042-R1", orderNumber: "1042" } }),
+      ctx,
+    );
+    expect(outside.payments.map((p) => [p.kind, p.amountMinor])).toEqual([
+      ["settled_by_return", 10000],
+      ["paid_outside", 2000],
+    ]);
+    const whole = buildInvoiceSnapshot(facts(lines, { totalMinor: 12000, settledByReturn: { amountMinor: 12000, returnNumber: "1042-R1", orderNumber: "1042" } }), ctx);
+    expect(whole.payments).toEqual([{ kind: "settled_by_return", amountMinor: 12000, provider: "exchange", returnNumber: "1042-R1", orderNumber: "1042" }]);
+    // Any other order is as before.
+    expect(buildInvoiceSnapshot(facts(lines, { totalMinor: 12000 }), ctx).payments).toEqual([{ kind: "paid_online", amountMinor: 12000, provider: "stripe" }]);
+  });
+});

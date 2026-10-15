@@ -77,6 +77,8 @@ export const ACTION_LABELS: Record<ReturnAction, string> = {
   close: "Close",
   cancel: "Cancel the return",
   send_acknowledgement: "Send the acknowledgement again",
+  process_exchange: "Process the exchange",
+  cancel_exchange: "Cancel the exchange and refund instead",
 };
 
 /** The reason a line the law excludes gives, as words (`order_lines.withdrawal_exclusion`). */
@@ -130,12 +132,13 @@ export const KIND_FILTERS: { value: ReturnQueueFilter["kind"]; label: string }[]
 ];
 
 /** The queue's address for a filter: only what differs from the defaults is in it. */
-export function queueHref(base: string, filter: Partial<ReturnQueueFilter> & { page?: number } = {}): string {
+export function queueHref(base: string, filter: Partial<ReturnQueueFilter> & { page?: number; /** The exchange mark filter (D239). */ exchange?: string | null } = {}): string {
   const query = new URLSearchParams();
   if (filter.status && filter.status !== "open") query.set("status", filter.status);
   if (filter.kind && filter.kind !== "all") query.set("kind", filter.kind);
   if (filter.q && filter.q.trim()) query.set("q", filter.q.trim());
   if (filter.overdue) query.set("overdue", "1");
+  if (filter.exchange) query.set("exchange", filter.exchange);
   if (filter.page && filter.page > 1) query.set("page", String(filter.page));
   const text = query.toString();
   return text ? `${base}?${text}` : base;
@@ -226,6 +229,10 @@ export function eventSentence(type: string, data: Record<string, unknown>, curre
     case "return.inspected":
       return "Goods inspected";
     case "return.refunded":
+      if (typeof data.exchange === "string") {
+        const back = whole(data.refundMinor) ?? 0;
+        return `Exchanged: ${money(whole(data.transferMinor))} of the credit paid the new order${back > 0 ? `, ${money(back)} refunded` : ""}`;
+      }
       return `Refunded ${money(whole(data.amountMinor))}${data.outside === true ? ", outside Kaizen's Stripe" : ""}`;
     case "return.refund_overridden":
       return `The refund was changed from ${money(whole(data.computedMinor))} to ${money(whole(data.requestedMinor))}${text(data.reason) ? `: ${text(data.reason)}` : ""}`;
@@ -233,13 +240,40 @@ export function eventSentence(type: string, data: Record<string, unknown>, curre
       return data.outcome === "no_refund" ? "Closed with no refund" : "Closed";
     case "return.cancelled":
       return "Cancelled";
+    // Exchanges and return labels (D239).
+    case "return.exchange_wished":
+      return "The customer asked for an exchange";
+    case "return.exchange_proposed":
+      return `Exchange proposed: credit ${money(whole(data.creditMinor))}, replacements ${money(whole(data.totalMinor))}`;
+    case "return.exchange_confirmed":
+      return data.confirmedBy === "staff"
+        ? `The customer's agreement to the exchange was recorded (${CHANNEL_LABELS[text(data.channel)] ?? "another way"}${text(data.day) ? `, ${text(data.day)}` : ""})${text(data.note) ? `: ${text(data.note)}` : ""}`
+        : "The customer confirmed the exchange";
+    case "return.exchange_declined":
+      return "The customer declined the exchange: refund as usual";
+    case "return.exchange_cancelled":
+      return data.replaced === true ? "The proposal was replaced by a new one" : "The exchange was cancelled";
+    case "return.exchange_expired":
+      return "The exchange ended without being confirmed or paid: refund as usual";
+    case "return.exchange_processed":
+      return `Exchange processed: order ${text(data.order) || "made"}`;
+    case "return.label_booked":
+      return `Return label booked${data.test === true ? " (a test label)" : ""}`;
+    case "return.label_failed":
+      return "The return label could not be booked";
+    case "return.label_given_up":
+      return "The return label was not booked after several tries: book it by hand or paste a label";
+    case "exchange.refund_failed":
+      return "The exchange's refund did not go through";
+    case "exchange.payment_refunded":
+      return `A late payment for the exchange was refunded: ${money(whole(data.amount))}`;
     default:
       return type;
   }
 }
 
 /** Whether an order event belongs to the returns timeline. */
-export const isReturnEvent = (type: string): boolean => type.startsWith("return.");
+export const isReturnEvent = (type: string): boolean => type.startsWith("return.") || type.startsWith("exchange.");
 
 // ---------------------------------------------------------------------------
 // The refund's working
@@ -295,4 +329,107 @@ export function previewData(preview: { refund: Refund; refundableMinor: number; 
     canRefund: preview.canRefund,
     returnShippingMinor: refund.returnShippingMinor,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Exchanges and return labels (D239, docs/wave-3-exchanges.md 2.2, 2.3)
+// ---------------------------------------------------------------------------
+
+/** A return's outcome in words, `exchanged` (D239) included. */
+export const outcomeLabel = (outcome: string): string =>
+  outcome === "exchanged" ? "Exchanged" : (OUTCOME_LABELS[outcome as ReturnOutcome] ?? outcome.replaceAll("_", " "));
+
+/** How a customer's agreement reached staff (`STAFF_EXCHANGE_CHANNELS`, and `web` for the customer's own press). */
+export const CHANNEL_LABELS: Record<string, string> = {
+  web: "on the exchange page",
+  email: "by email",
+  letter: "by letter",
+  phone: "by phone",
+  in_person: "in person",
+  other: "another way",
+};
+
+/** The queue's exchange marks (`EXCHANGE_QUEUE_MARKS`). */
+export const EXCHANGE_MARK_LABELS = {
+  wished: "Exchange wished",
+  proposed: "Exchange proposed",
+  confirmed: "Exchange confirmed",
+  waiting_payment: "Exchange: payment to collect",
+} as const;
+export type ExchangeMark = keyof typeof EXCHANGE_MARK_LABELS;
+
+export const EXCHANGE_FILTERS: { value: ExchangeMark | ""; label: string }[] = [
+  { value: "", label: "Any" },
+  { value: "wished", label: "Exchange wished" },
+  { value: "proposed", label: "Proposed" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "waiting_payment", label: "Payment to collect" },
+];
+
+/** The queue's `exchange=` value, or null for anything else. */
+export function exchangeFilterOf(value: string | string[] | undefined): ExchangeMark | null {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v && Object.hasOwn(EXCHANGE_MARK_LABELS, v) ? (v as ExchangeMark) : null;
+}
+
+/** The outcome of an exchange (`exchangeOutcome()`), in the order's currency, as staff read it. */
+export function outcomeSentence(outcome: { kind: "refund_due" | "even" | "to_pay"; refundMinor: number; toPayMinor: number }, currency: string, locale = "en-GB"): string {
+  if (outcome.kind === "refund_due") return `Refund due to the customer: ${formatMoney(outcome.refundMinor, currency, locale)}`;
+  if (outcome.kind === "to_pay") return `Payment to collect: ${formatMoney(outcome.toPayMinor, currency, locale)}`;
+  return "Even exchange: nothing to refund or collect";
+}
+
+/** Where an exchange stands, in one sentence for the return's page (D239 2.2). */
+export function exchangeSentence(
+  x: { status: string; outcome: { kind: "refund_due" | "even" | "to_pay"; refundMinor: number; toPayMinor: number }; expiresAt: string | null; exchangeOrderNumber: string | null; confirmedBy?: "customer" | "staff" | null },
+  currency: string,
+  timeZone: string,
+  locale = "en-GB",
+): string {
+  const until = x.expiresAt ? ` until ${timeText(x.expiresAt, timeZone)}` : "";
+  switch (x.status) {
+    case "draft":
+      return "A draft: the customer has not been sent it.";
+    case "proposed":
+      return `Sent to the customer. It waits for their confirmation${until}; until then the return is refunded as usual if they do not confirm.`;
+    case "confirmed":
+      return `${x.confirmedBy === "staff" ? "The customer's agreement is recorded" : "The customer confirmed it"}. Process it where you would refund the return.`;
+    case "processed":
+      return x.outcome.kind === "to_pay"
+        ? `Order ${x.exchangeOrderNumber ?? ""} is made and waits for the customer to pay ${formatMoney(x.outcome.toPayMinor, currency, locale)}${until}.`
+        : `Order ${x.exchangeOrderNumber ?? ""} is made, but the exchange is not settled yet: try again, or cancel it and refund instead.`;
+    case "settled":
+      return `Exchanged: order ${x.exchangeOrderNumber ?? ""}.`;
+    case "declined_by_customer":
+      return "The customer said no thanks: refund the return as usual.";
+    case "cancelled":
+      return "The exchange was cancelled: refund the return as usual.";
+    case "expired":
+      return "The exchange ended without being confirmed or paid: refund the return as usual.";
+    case "superseded":
+      return "The return was refunded instead.";
+    default:
+      return x.status;
+  }
+}
+
+/** A return label in one sentence (D239 2.3): booked, pasted, or none; and who pays for it. */
+export function labelSentence(
+  label: { source: "pasted" | "carrier" | null; test: boolean; costMinor: number | null; tries: number },
+  payer: "shopper" | "store" | null,
+  currency: string,
+  carrierName: string | null,
+  locale = "en-GB",
+): string {
+  if (label.source === "pasted") return "A label address was pasted: the customer prints it from their status page and the email.";
+  if (label.source === "carrier") {
+    const who =
+      payer === "shopper"
+        ? label.costMinor === null
+          ? "The carrier did not price it: nothing is taken off the refund unless you type the return shipping."
+          : `${formatMoney(label.costMinor, currency, locale)} will be taken off the refund as return shipping.`
+        : "The store pays for it: nothing is taken off the refund.";
+    return `${label.test ? "A test label was booked: it cannot be used. " : ""}Booked with ${carrierName ?? "the carrier"}. ${who}`;
+  }
+  return label.tries > 0 ? "No label: booking it did not go through." : "No label yet.";
 }

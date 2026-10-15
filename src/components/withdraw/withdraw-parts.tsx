@@ -267,8 +267,10 @@ export function Carried({ values, orderKey }: { values: { name: string; email: s
 }
 
 /** Which of the form's fields have a message, for the summary a screen reader hears first. */
-export function errorList(m: R, errors: FieldErrors): { key: FieldKey; text: string }[] {
+export function errorList(m: R, errors: FieldErrors, more: { exchangeWish?: string } = {}): { key: FieldKey; text: string }[] {
   const labels: Record<FieldKey, string> = {
+    // The exchange wish's label is the browser words' (D239): passed by the form that draws the field.
+    exchangeWish: more.exchangeWish ?? m.returnRequest.noteLabel,
     name: m.name,
     email: m.email,
     orderNumber: m.orderNumber,

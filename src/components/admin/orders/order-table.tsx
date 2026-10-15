@@ -323,6 +323,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
         {row.held && <span className={badge}>On hold</span>}
         {row.gift && <span className={badge}>Gift</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? `Staff-made ${row.draftNumber}` : "Staff-made"}</span>}
+        {row.source === "exchange" && <span className={badge}>Exchange</span>}
         {row.owed > 0 && <span className={badge}>Waiting for stock</span>}
         {row.editPending && <span className={badge}>Change awaiting payment</span>}
         {row.edited && <span className={badge}>Edited</span>}
@@ -384,7 +385,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
           )}
         </td>
       )}
-      {col("source") && <td className={td}>{row.copied ? SOURCE_LABELS.copied : row.source === "draft" ? SOURCE_LABELS.draft : SOURCE_LABELS.checkout}</td>}
+      {col("source") && <td className={td}>{row.copied ? SOURCE_LABELS.copied : row.source === "draft" ? SOURCE_LABELS.draft : row.source === "exchange" ? SOURCE_LABELS.exchange : SOURCE_LABELS.checkout}</td>}
       {col("total") && <td className={`${td} text-right tabular-nums`}>{row.totalText}</td>}
     </tr>
   );

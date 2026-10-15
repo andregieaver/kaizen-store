@@ -136,6 +136,7 @@ function traffic(on = true, over: Partial<TrafficReport> = {}): TrafficReport {
     landingTruncated: false,
     unknownOrders: { orders: 0, revenueMinor: 0 },
     staffOrders: { orders: 0, revenueMinor: 0 },
+    exchangeOrders: { orders: 0, revenueMinor: 0 },
     uncoveredOrders: { orders: 0, revenueMinor: 0 },
     unconverted: 0,
     missingCurrencies: [],

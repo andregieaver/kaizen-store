@@ -127,6 +127,12 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "email:parcelOut",
   "email:parcelDelivered",
   "ui:tracking.",
+  // Wave 3 exchanges and return labels (D239, spec section 8): the exchange page, the wish, the label card and their emails, until the legal review clears them.
+  "ui:exchange.",
+  "ui:exchangeWish.",
+  "ui:returnLabel.",
+  "email:exchange.",
+  "email:returnLabel.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

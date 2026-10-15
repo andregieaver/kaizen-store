@@ -81,7 +81,7 @@ export async function applySession(
   eventType?: string,
 ): Promise<void> {
   const [payment] = await db().execute<Row>(sql`
-    select order_id, order_edit_id from commerce.payments
+    select order_id, order_edit_id, exchange_id from commerce.payments
     where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${session.id}
   `);
   if (!payment) return; // Not a session this store created.
@@ -92,6 +92,15 @@ export async function applySession(
     const editFailed = eventType === "checkout.session.async_payment_failed";
     if (session.status === "complete" && session.payment_status !== "unpaid" && !editFailed) await completeEditPayment(storeId, session.id);
     else if (editFailed || session.status === "expired" || eventType === "checkout.session.expired") await markEditSessionEnded(storeId, session.id, editFailed ? "failed" : "cancelled");
+    return;
+  }
+  // An exchange's difference (D239): the exchange is settled (or the money given back when it can no longer settle); the order is never completed another way
+  // and never cancelled here, and its addresses are never taken from this session (the exchange's own). A session that lapses or fails marks only its row.
+  if (payment.exchange_id) {
+    const failedPay = eventType === "checkout.session.async_payment_failed";
+    const { completeExchangePayment, markExchangeSessionEnded } = await import("./exchanges");
+    if (session.status === "complete" && session.payment_status !== "unpaid" && !failedPay) await completeExchangePayment(storeId, session.id);
+    else if (failedPay || session.status === "expired" || eventType === "checkout.session.expired") await markExchangeSessionEnded(storeId, session.id, failedPay ? "failed" : "cancelled");
     return;
   }
   // A weekly delivery paid by link (D102): its address and contact are the list's, and it stays when the link lapses.

@@ -140,6 +140,11 @@ export type PaymentSessionOptions = {
    * completes the order a second time; no Stripe invoice is made for it (the change's own documents are Kaizen's).
    */
   orderEditId?: string;
+  /**
+   * The session pays an exchange's difference (D239): the metadata and the payment row name the exchange, so `applySession()` settles the exchange and never
+   * completes the order another way; no Stripe invoice (the exchange order's invoice is Kaizen's, D159).
+   */
+  exchangeId?: string;
 };
 
 /** The session's own failures: the caller decides what becomes of the order. */
@@ -201,7 +206,7 @@ export async function openPaymentSession(
   // Back to the store's own host once it has one (P7), whichever host the request came from.
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
-  const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId, ...(options.orderEditId ? { order_edit_id: options.orderEditId } : {}) };
+  const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId, ...(options.orderEditId ? { order_edit_id: options.orderEditId } : {}), ...(options.exchangeId ? { exchange_id: options.exchangeId } : {}) };
   const sellerLine = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
     .filter(Boolean)
     .join(" · ");
@@ -317,6 +322,7 @@ export async function openPaymentSession(
         ...(connection.orderInvoices &&
           !kaizenInvoices &&
           !options.orderEditId &&
+          !options.exchangeId &&
           !order.subscription &&
           !partial &&
           !order.hostId && {
@@ -375,11 +381,11 @@ export async function openPaymentSession(
   await db().execute(sql`
     insert into commerce.payments (
       store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status,
-      kaizen_fee_minor, order_edit_id
+      kaizen_fee_minor, order_edit_id, exchange_id
     ) values (
       ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${seller},
       ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending',
-      ${order.subscription ? 0 : (kaizenFee ?? 0)}, ${options.orderEditId ?? null}::uuid
+      ${order.subscription ? 0 : (kaizenFee ?? 0)}, ${options.orderEditId ?? null}::uuid, ${options.exchangeId ?? null}::uuid
     )
     on conflict (store_id, provider, provider_reference) do nothing
   `);

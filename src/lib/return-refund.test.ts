@@ -296,3 +296,23 @@ describe("adjusting the final amount", () => {
     expect(reviewOverride({ ...ok, requestedMinor: 1500, reason: "x".repeat(501) })).toEqual({ ok: false, problem: "reason_too_long" });
   });
 });
+
+describe("a booked return label's cost (D239 4.8)", () => {
+  it("is taken off a withdrawal's refund as return shipping when the shopper pays, never below 0, never above the cost", async () => {
+    const { labelDeduction } = await import("./return-label");
+    const input: RefundInput = {
+      kind: "withdrawal",
+      lines: [line({ lineId: "a", quantity: 1, totalMinor: 10000, priorQuantity: 0, returnQuantity: 1, deductionMinor: 0 })],
+      shippingPaidMinor: 0,
+      whoPaysReturn: "shopper",
+      refundableMinor: 10000,
+    };
+    const cost = labelDeduction({ payer: "shopper", source: "carrier", costMinor: 7900 });
+    expect(cost.ok && refundFor({ ...input, returnShippingMinor: cost.deductionMinor }).amountMinor).toBe(2100);
+    expect(labelDeduction({ payer: "shopper", source: "carrier", costMinor: 7900, typedMinor: 7901 })).toEqual({ ok: false, code: "above_cost" });
+    const dear = labelDeduction({ payer: "shopper", source: "carrier", costMinor: 12000 });
+    expect(dear.ok && refundFor({ ...input, returnShippingMinor: dear.deductionMinor })).toMatchObject({ amountMinor: 0, cappedBy: "zero" });
+    const store = labelDeduction({ payer: "store", source: "carrier", costMinor: 7900 });
+    expect(store.ok && refundFor({ ...input, whoPaysReturn: "store", returnShippingMinor: store.deductionMinor }).amountMinor).toBe(10000);
+  });
+});

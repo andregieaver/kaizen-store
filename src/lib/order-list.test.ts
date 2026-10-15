@@ -238,6 +238,9 @@ describe("what the parameters mean", () => {
     expect(excludesCopied(parse("status=cancelled"))).toBe(true);
     expect(excludesCopied(parse("source=checkout"))).toBe(true);
     expect(excludesCopied(parse("source=draft"))).toBe(true);
+    // An exchange's new order (D239) is a real sale too.
+    expect(excludesCopied(parse("source=exchange"))).toBe(true);
+    expect(parse("source=exchange").source).toBe("exchange");
     expect(excludesCopied(parse("show=to-send"))).toBe(true);
     expect(excludesCopied(parse("show=unpaid"))).toBe(true);
   });

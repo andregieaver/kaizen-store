@@ -7,6 +7,8 @@ import {
   bringProblem,
   parseBooking,
   parsePickupPoints,
+  parseReturnBooking,
+  returnBookingBody,
   parseShippingGuide,
   parseTracking,
   pickupPointsUrl,
@@ -38,7 +40,7 @@ async function call(
   fetcher: Fetch,
   url: string,
   init: RequestInit,
-): Promise<{ ok: true; json: unknown; response: Response } | { ok: false; problem: string }> {
+): Promise<{ ok: true; json: unknown; response: Response } | { ok: false; problem: string; json?: unknown }> {
   let response: Response;
   try {
     response = await fetcher(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
@@ -46,7 +48,7 @@ async function call(
     return { ok: false, problem: "Bring did not answer. Try again in a moment." };
   }
   const json: unknown = await response.json().catch(() => null);
-  return response.ok ? { ok: true, json, response } : { ok: false, problem: bringProblem(response.status) };
+  return response.ok ? { ok: true, json, response } : { ok: false, problem: bringProblem(response.status), json };
 }
 
 export function createBringAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter {
@@ -121,6 +123,32 @@ export function createBringAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapt
       });
       if (!answer.ok) throw new Error(answer.problem);
       const parsed = parseBooking(answer.json);
+      if (!parsed.ok) throw new Error(parsed.problem);
+      return {
+        trackingNumber: parsed.trackingNumber,
+        trackingUrl: parsed.trackingUrl,
+        consignmentNumber: parsed.consignmentNumber || null,
+        labelUrl: parsed.labelUrl,
+        test,
+      };
+    },
+
+    // A return label (D239): the return service booked from the shopper back to the store on the store's own agreement. The price is not asked here: the
+    // caller asks `rates()` first (an unanswered price is "price not known", which never stops a booking).
+    async bookReturn(context, request) {
+      const creds = credentials(context);
+      const test = context.environment === "test";
+      const answer = await call(fetcher, `${BRING_API}/booking/api/create`, {
+        method: "POST",
+        headers: bringHeaders(creds, { "Content-Type": "application/json", "X-Bring-Test-Indicator": test ? "true" : "false" }),
+        body: JSON.stringify(returnBookingBody(request, context.details.customerNumber ?? "")),
+      });
+      // Bring's own answer for a refused return (no return agreement, an unknown return service) says more than the status code.
+      if (!answer.ok) {
+        const known = parseReturnBooking(answer.json ?? null);
+        throw new Error(!known.ok && known.problem ? known.problem : answer.problem);
+      }
+      const parsed = parseReturnBooking(answer.json);
       if (!parsed.ok) throw new Error(parsed.problem);
       return {
         trackingNumber: parsed.trackingNumber,

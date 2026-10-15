@@ -40,7 +40,10 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
     `select o.*, o.total_minor::text as total_t, to_char(commerce.store_day(o.store_id, o.placed_at), 'YYYY-MM-DD') as placed_on,
             to_char(commerce.store_day(o.store_id, (select min(e.created_at) from commerce.order_events e where e.order_id = o.id and e.type = 'order.paid')), 'YYYY-MM-DD') as paid_on,
             commerce.vat_rate(o.market_code, 'standard', o.placed_at)::text as market_rate,
-            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider <> 'venue' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
+            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider not in ('venue', 'exchange') and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
+            (select sum(p.amount_minor)::text from commerce.payments p where p.order_id = o.id and p.provider = 'exchange' and p.status not in ('failed', 'cancelled')) as settled_minor,
+            (select jsonb_build_object('returnNumber', rt.number, 'orderNumber', oo.number) from commerce.return_exchanges x
+               join commerce.returns rt on rt.id = x.return_id join commerce.orders oo on oo.id = x.order_id where x.id = o.exchange_id) as settled_from,
             (select p.method from commerce.payments p where p.order_id = o.id and p.provider = 'manual' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_method
        from commerce.orders o where o.id = $1`,
     [orderId],
@@ -75,6 +78,7 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
       vatReliefMinor: num(o.vat_relief_minor)!, shippingTaxRate: num(o.shipping_tax_rate), marketStandardRate: num(o.market_rate), companyName: o.company_name,
       organisationNumber: o.organisation_number, balanceMinor: num(o.balance_minor)!, billingAddress: o.billing_address, shippingAddress: o.shipping_address,
       deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe", onlineMethod: o.online_method ?? null,
+      settledByReturn: o.settled_minor ? { amountMinor: Number(o.settled_minor), returnNumber: o.settled_from?.returnNumber ?? null, orderNumber: o.settled_from?.orderNumber ?? null } : null,
     },
     lines: lines.map((l) => ({
       id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPriceMinor: num(l.unit_price_minor)!, totalMinor: num(l.total_minor)!, taxMinor: num(l.tax_minor)!,

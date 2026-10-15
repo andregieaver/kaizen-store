@@ -82,6 +82,7 @@ export const FULFILMENT_EVENTS = {
   editPaymentRefunded: "order.edit_payment_refunded",
   /** The refund of a change's lower total: the change's own credit note covers it (written by `commerce.make_credit_note()`). */
   coveredByEdit: "credit_note.covered_by_edit",
+  coveredByExchange: "credit_note.covered_by_exchange",
   /**
    * Stripe reported a change's refund as failed after the change was applied on its `pending` answer (review fix): the order reads lower and the customer is
    * owed the money (`data.refundId`, `data.edit`, `data.amount`). The order page, the store checkup and the control center say so until it is refunded again.
@@ -109,6 +110,7 @@ export const FULFILMENT_EVENT_LABELS: Record<FulfilmentEvent, string> = {
   "order.edit_paid_outside": "Change paid outside Kaizen",
   "order.edit_payment_refunded": "Late payment for a change refunded",
   "credit_note.covered_by_edit": "Refund covered by the change's credit note",
+  "credit_note.covered_by_exchange": "Refund covered by the exchanged return's credit note",
   "order.edit_refund_failed": "Refund of a change failed",
   "order.unsent_closed": "Taken off what is still to send",
   "order.shipment_undone": "Parcel undone: not sent after all",

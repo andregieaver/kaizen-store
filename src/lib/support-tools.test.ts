@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ACTION_KINDS, actionExpiry, CUSTOMER_ACTION_KINDS, readActionArgs, STAFF_REQUEST_KINDS } from "./support-actions";
 import { MESSAGE_MAX, TRANSCRIPT_DAYS, TRANSCRIPT_DAYS_DEFAULT } from "./support-rules";
-import { KAIZEN_SUPPORT_TOOLS, SUPPORT_TOOLS } from "./support-tools";
+import { EXCHANGE_STATE_WORDS, exchangeStateWords, KAIZEN_SUPPORT_TOOLS, SUPPORT_TOOLS } from "./support-tools";
 
 describe("the support AI's tools and actions (D216, 4.3, 4.4)", () => {
   it("names every tool once, with a description and an input", () => {
@@ -47,5 +47,18 @@ describe("the support AI's tools and actions (D216, 4.3, 4.4)", () => {
     expect(MESSAGE_MAX).toEqual({ customer: 1000, ai: 2000, agent: 4000, note: 2000, partner: 3000, system: 0 });
     expect(TRANSCRIPT_DAYS).toEqual([30, 60, 90]);
     expect(TRANSCRIPT_DAYS_DEFAULT).toBe(90);
+  });
+});
+
+describe("exchangeStateWords (D239)", () => {
+  it("has words for every exchange status the customer can be in, none for a draft or an unknown one, and never an amount", async () => {
+    const { EXCHANGE_STATUSES } = await import("./exchange-status");
+    for (const status of EXCHANGE_STATUSES) {
+      if (status === "draft") expect(exchangeStateWords(status)).toBeNull();
+      else expect(exchangeStateWords(status), status).toBeTruthy();
+    }
+    expect(exchangeStateWords("nonsense")).toBeNull();
+    expect(exchangeStateWords(null)).toBeNull();
+    for (const words of Object.values(EXCHANGE_STATE_WORDS)) expect(words).not.toMatch(/\d/);
   });
 });

@@ -14,6 +14,8 @@ import {
   isNotAChannel,
   normalizeHost,
   STAFF_CHANNEL,
+  EXCHANGE_CHANNEL,
+  isNoVisit,
   UNKNOWN_CHANNEL,
   type ChannelInput,
   type ClassifyInput,
@@ -695,6 +697,24 @@ describe("the Staff-made row of the channel table (D173)", () => {
     // 10 checkout orders over 200 sessions, not 13.
     expect(t.blended.orders).toBe(13);
     expect(t.blended.conversion).toBe(10 / 200);
+  });
+
+  it("gives exchange orders (D239) their own row, no visit's: labelled Exchanges, no conversion, left out of the blended one with the staff row", () => {
+    expect(channelLabel(EXCHANGE_CHANNEL)).toBe("Exchanges");
+    expect(isNotAChannel(EXCHANGE_CHANNEL)).toBe(true);
+    expect(isNoVisit(EXCHANGE_CHANNEL) && isNoVisit(STAFF_CHANNEL)).toBe(true);
+    expect(isNoVisit(UNKNOWN_CHANNEL)).toBe(false);
+    expect(CHANNELS.some((c) => (c.key as string) === EXCHANGE_CHANNEL)).toBe(false);
+    const t = channelTable([
+      input("direct", { sessions: 100, orders: 5 }),
+      input(STAFF_CHANNEL, { sessions: null, orders: 3, revenueMinor: 30_000 }),
+      input(EXCHANGE_CHANNEL, { sessions: null, orders: 2, revenueMinor: 20_000 }),
+    ]);
+    const ex = t.rows.find((r) => r.channel === EXCHANGE_CHANNEL)!;
+    expect(ex.label).toBe("Exchanges");
+    expect(ex.conversion).toBeNull();
+    expect(t.blended.revenueMinor).toBe(100_000);
+    expect(t.blended.conversion).toBe(5 / 100);
   });
 
   it("is the same table as before when no order was staff-made", () => {

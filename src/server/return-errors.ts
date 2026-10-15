@@ -41,6 +41,10 @@ export const RETURN_ERROR_MESSAGES: Record<string, string> = {
   return_decline_withdrawal: "A line with the right of withdrawal is not declined.",
   return_deduction: "A deduction is never more than the value of the goods.",
   copied_order: "This order is history copied from another store, so it is read-only.",
+  // Exchanges and return labels (D239).
+  return_exchange_pending: "An exchange of this return is being processed. Settle or cancel it first.",
+  return_label_state: "A return label is booked while the return is approved or on its way.",
+  return_exchange_wish: "The customer's exchange wish is kept as it was made.",
 };
 
 type Failure = { message?: unknown };

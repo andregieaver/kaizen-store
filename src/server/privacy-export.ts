@@ -383,10 +383,10 @@ async function loadCreditNotes(s: PrivacySubject): Promise<DocumentRow[]> {
 async function loadReturns(s: PrivacySubject): Promise<ReturnRow[]> {
   if (s.orderIds.length === 0) return [];
   const ids = uuidList(s.orderIds);
-  const [returns, lines] = await Promise.all([
+  const [returns, lines, exchanges] = await Promise.all([
     db().execute<Row>(sql`
       select r.id, r.number, o.number as order_number, r.kind, r.status, r.reason, r.reason_note, r.decision_note, r.refund_note, r.staff_note,
-        r.refund_minor, trim(o.currency) as currency, r.refunded_at, r.created_at, r.closed_at
+        r.refund_minor, trim(o.currency) as currency, r.refunded_at, r.created_at, r.closed_at, r.exchange_wish_at, r.exchange_wish_note
       from commerce.returns r join commerce.orders o on o.store_id = r.store_id and o.id = r.order_id
       where r.store_id = ${s.storeId}::uuid and r.order_id = any(${ids}) order by r.created_at, r.id
     `),
@@ -395,6 +395,16 @@ async function loadReturns(s: PrivacySubject): Promise<ReturnRow[]> {
       from commerce.return_lines rl join commerce.returns r on r.store_id = rl.store_id and r.id = rl.return_id
       join commerce.order_lines ol on ol.store_id = rl.store_id and ol.id = rl.order_line_id
       where rl.store_id = ${s.storeId}::uuid and r.order_id = any(${ids}) order by rl.return_id, ol.id
+    `),
+    // The returns' exchanges (D239): state, dates, amounts, the delivery address staff proposed (held on the exchange even when no order was made: a proposal
+    // declined or expired) and the replacements' titles and quantities (review finding: GDPR Art. 15 carries every PERSONAL_DATA field).
+    db().execute<Row>(sql`
+      select x.return_id, x.status, x.created_at, x.confirmed_at, x.settled_at, coalesce(x.credit_at_processing, x.credit_minor) as credit, x.total_minor,
+        coalesce(x.difference_at_processing, x.difference_minor) as difference, xo.number as order_number, x.delivery_address,
+        coalesce((select jsonb_agg(jsonb_build_object('sku', l.sku, 'title', l.title, 'quantity', l.quantity) order by l.n)
+                  from commerce.return_exchange_lines l where l.store_id = x.store_id and l.exchange_id = x.id), '[]'::jsonb) as replacement_lines
+      from commerce.return_exchanges x left join commerce.orders xo on xo.store_id = x.store_id and xo.id = x.exchange_order_id
+      where x.store_id = ${s.storeId}::uuid and x.order_id = any(${ids}) and x.status <> 'draft' order by x.return_id, x.seq
     `),
   ]);
   return returns.map((r) => ({
@@ -416,6 +426,21 @@ async function loadReturns(s: PrivacySubject): Promise<ReturnRow[]> {
     lines: lines
       .filter((l) => strs(l.return_id) === strs(r.id))
       .map((l) => ({ sku: str(l.sku), title: str(l.title), quantity: num(l.quantity), decision: strs(l.decision), condition: str(l.condition), reason: str(l.reason) })),
+    exchangeWish: r.exchange_wish_at ? { at: iso(r.exchange_wish_at), note: str(r.exchange_wish_note) } : null,
+    exchanges: exchanges
+      .filter((x) => strs(x.return_id) === strs(r.id))
+      .map((x) => ({
+        status: strs(x.status),
+        createdAt: iso(x.created_at),
+        confirmedAt: iso(x.confirmed_at),
+        settledAt: iso(x.settled_at),
+        creditMinor: num(x.credit),
+        totalMinor: num(x.total_minor),
+        differenceMinor: num(x.difference),
+        orderNumber: str(x.order_number),
+        deliveryAddress: x.delivery_address ?? null,
+        replacementLines: ((x.replacement_lines ?? []) as Row[]).map((l) => ({ sku: str(l.sku), title: str(l.title), quantity: num(l.quantity) })),
+      })),
   }));
 }
 

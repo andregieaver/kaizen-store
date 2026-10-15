@@ -35,7 +35,7 @@ describe("where orders are numbered", () => {
     const numbering = sources("src").filter((file) => /next_document_number\([^)]*'order'\)/.test(readFileSync(file, "utf8")));
     expect(numbering.sort()).toEqual(["src/server/order-insert.ts"]);
     // The three callers go through it.
-    for (const caller of ["src/server/checkout.ts", "src/server/subscriptions.ts", "src/server/draft-orders.ts"]) {
+    for (const caller of ["src/server/checkout.ts", "src/server/subscriptions.ts", "src/server/draft-orders.ts", "src/server/exchanges.ts"]) {
       expect(readFileSync(caller, "utf8"), caller).toMatch(/\binsertOrder\(/);
     }
   });
@@ -63,7 +63,7 @@ describe("where the order operations write (wave 3, D173)", () => {
     expect(draftWriters).toEqual(["src/server/draft-orders.ts", "src/server/privacy-erasure.ts"]);
   });
 
-  it("a payment taken outside Kaizen is inserted only by the draft's paid-outside function and an order change's (D174)", () => {
-    expect(writers(/insert\s+into\s+commerce\.payments[^;]*?'manual'/i)).toEqual(["src/server/draft-orders.ts", "src/server/order-edits.ts"]);
+  it("a payment taken outside Kaizen is inserted only by the draft's paid-outside function, an order change's (D174) and an exchange's difference (D239)", () => {
+    expect(writers(/insert\s+into\s+commerce\.payments[^;]*?'manual'/i)).toEqual(["src/server/draft-orders.ts", "src/server/exchanges.ts", "src/server/order-edits.ts"]);
   });
 });

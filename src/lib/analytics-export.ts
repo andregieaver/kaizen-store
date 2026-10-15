@@ -138,7 +138,7 @@ const REGISTRY: AnalyticsTable[] = [
   table("traffic.refund_segments", "traffic", "refunds-view.tsx", "Refunds by new and returning customers", [text("segment", "customer"), amount("value", "refunded"), pct("share", "share_of_refunds"), int("refunds"), int("orders")], true),
   table("traffic.refund_markets", "traffic", "refunds-view.tsx", "Refunds and refund rate by market", [text("market"), amount("value", "refunded"), int("refunds"), int("orders", "orders_refunded"), amount("revenue"), pct("rate", "refund_rate")], true),
   bars("traffic.refund_reasons", "traffic", "refunds-view.tsx", "Refunded amount by reason"),
-  table("traffic.return_kinds", "traffic", "returns-view.tsx", "Returns made in the period by kind", [text("kind"), int("returns", "made"), int("units"), int("declined"), int("cancelled"), int("refunded"), amount("value", "refunded_amount")], true),
+  table("traffic.return_kinds", "traffic", "returns-view.tsx", "Returns made in the period by kind", [text("kind"), int("returns", "made"), int("units"), int("declined"), int("cancelled"), int("refunded"), amount("value", "refunded_amount"), int("exchanged")], true),
   table("traffic.return_timing", "traffic", "returns-view.tsx", "Time from the request and from the goods arriving to the refund", [text("what", "time"), int("n", "returns"), dec("median", "typical_days"), dec("slowest", "slowest_days")]),
   table("traffic.return_products", "traffic", "returns-view.tsx", "The most returned products", [text("product"), int("returned", "units_returned"), int("sold", "units_sold"), pct("rate", "return_rate"), amount("value", "returned_value")], true),
   bars("traffic.return_reasons", "traffic", "returns-view.tsx", "Returns made by reason", "int"),

@@ -69,6 +69,7 @@ import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
 import { CARRIERS, getOrderAdmin, liveShipments } from "@/server/order-admin";
 import { orderReturnsOverview } from "@/server/order-returns";
+import { exchangeOrdersOfReturns } from "@/server/exchange-admin";
 import { orderPrivacy } from "@/server/privacy-pages";
 import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
@@ -155,6 +156,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // Whether its items can be changed now, and if not why, in words (D174 2.2: copied, unpaid, sent and the rest included).
   const editability = order ? await orderEditability(store.id, orderId) : null;
   if (!order) notFound();
+  // The orders this order's returns were exchanged for (D239): "Exchanged: order {M}" on the Returns card.
+  const exchangedFor = returns ? await exchangeOrdersOfReturns(store.id, returns.returns.map((r) => r.id)) : {};
   const canWrite = memberCan(member, "orders:write");
   // The hold, the parcels' stored tracking, the switches of the customer emails and who recorded the receipt (wave 3, D238): stored rows, no carrier call.
   const [hold, parcelTracking, notifyStates, receipt] = await Promise.all([
@@ -238,7 +241,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         <PageHeader
           back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
           title={<>Order #{order.number}</>}
-          description={<>{cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}{fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}{awaitingEdit && " · change awaiting payment"}{order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}{when(order.placedAt)} ·{" "}{order.marketCode}{order.archivedAt && " · archived"}{order.copied && " · copied history"}{order.source === "draft" && (<>{" · "}staff-made{order.draft?.number && (<>{" from draft "}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && ` by ${order.madeBy.email}`}</>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">part of a subscription</Link></>)}</>}
+          description={<>{cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}{fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}{awaitingEdit && " · change awaiting payment"}{order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}{when(order.placedAt)} ·{" "}{order.marketCode}{order.archivedAt && " · archived"}{order.copied && " · copied history"}{order.source === "draft" && (<>{" · "}staff-made{order.draft?.number && (<>{" from draft "}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && ` by ${order.madeBy.email}`}</>)}{order.exchange && (<>{" · "}exchange for return{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{" of order "}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">part of a subscription</Link></>)}</>}
         />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
@@ -705,6 +708,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               timeZone={store.timeZone}
               today={todayIn(store.timeZone)}
               partlySent={fulfilment.state === "partly_sent"}
+              exchanges={exchangedFor}
               actions={{
                 markDelivered: markDeliveredAction.bind(null, store.slug, orderId),
                 registerWithdrawal: registerWithdrawalAction.bind(null, store.slug, orderId),

@@ -393,7 +393,7 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
   },
   "traffic.return_kinds": async (x) => {
     const r = await returns(x);
-    return { rows: r.kinds.map((k) => ({ kind: k.label, returns: k.returns, units: k.units, declined: k.kind === "withdrawal" ? null : k.declined, cancelled: k.cancelled, refunded: k.refunded, value: k.refundedMinor })), leftOut: left(r) };
+    return { rows: r.kinds.map((k) => ({ kind: k.label, returns: k.returns, units: k.units, declined: k.kind === "withdrawal" ? null : k.declined, cancelled: k.cancelled, refunded: k.refunded, value: k.refundedMinor, exchanged: k.exchanged })), leftOut: left(r) };
   },
   "traffic.return_timing": async (x) => {
     const r = await returns(x);

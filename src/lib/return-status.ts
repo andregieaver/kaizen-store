@@ -62,6 +62,9 @@ export const RETURN_ACTIONS = [
   "close",
   "cancel",
   "send_acknowledgement",
+  // Exchanges (D239): offered where the refund would be, while a confirmed exchange waits (`process_exchange`) or a processed one is open (`cancel_exchange`).
+  "process_exchange",
+  "cancel_exchange",
 ] as const;
 export type ReturnAction = (typeof RETURN_ACTIONS)[number];
 
@@ -77,6 +80,8 @@ export const ACTION_TARGET: Record<ReturnAction, ReturnStatus | null> = {
   close: "closed",
   cancel: "cancelled",
   send_acknowledgement: null,
+  process_exchange: null,
+  cancel_exchange: null,
 };
 
 export type ActionContext = {
@@ -92,6 +97,12 @@ export type ActionContext = {
   refundOutside?: boolean;
   /** The withdrawal was made before the goods were sent: nothing to send back, so no refund is held back for the goods. */
   nothingToSendBack?: boolean;
+  /**
+   * The return's open exchange (D239): `confirmed` (the customer agreed: *Process the exchange* is offered where *Refund* would be, and *Refund* is not),
+   * `processed` (its order is made: nothing but settling or *Cancel the exchange and refund instead*), or `proposed` (out with the customer: the refund stays,
+   * and refunding ends the proposal).
+   */
+  exchange?: "proposed" | "confirmed" | "processed" | null;
 };
 
 /**
@@ -115,7 +126,9 @@ export function actionsFor(ctx: ActionContext): ReturnAction[] {
   const holds = ctx.refundWhen === "received" && !ctx.nothingToSendBack;
   const refundable =
     !ctx.refunded && status !== "requested" && (!holds || status === "in_transit" || status === "received" || status === "inspected");
-  if (refundable) out.push("refund");
+  if (ctx.exchange === "processed") out.push("cancel_exchange");
+  else if (refundable && ctx.exchange === "confirmed") out.push("process_exchange", "cancel_exchange");
+  else if (refundable) out.push("refund");
   if (allowed.includes("closed")) out.push("close");
   if (allowed.includes("cancelled")) out.push("cancel");
   if (ctx.acknowledgementPending && kind === "withdrawal") out.push("send_acknowledgement");

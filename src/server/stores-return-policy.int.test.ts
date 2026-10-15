@@ -46,10 +46,10 @@ describe("Store.returnPolicy", () => {
     await db().execute(sql`
       insert into commerce.return_settings (store_id, window_days, who_pays_return, accept_excluded) values (${id}::uuid, 30, 'store', true)
     `);
-    expect((await getStore(slug))!.returnPolicy).toEqual({ days: 30, whoPaysReturn: "store", acceptExcluded: true });
-    await db().execute(sql`update commerce.return_settings set window_days = 60, who_pays_return = 'shopper', accept_excluded = false where store_id = ${id}::uuid`);
+    expect((await getStore(slug))!.returnPolicy).toEqual({ days: 30, whoPaysReturn: "store", acceptExcluded: true, exchanges: true });
+    await db().execute(sql`update commerce.return_settings set window_days = 60, who_pays_return = 'shopper', accept_excluded = false, exchanges = false where store_id = ${id}::uuid`);
     const store = (await getStore(slug))!;
-    expect(store.returnPolicy).toEqual({ days: 60, whoPaysReturn: "shopper", acceptExcluded: false });
+    expect(store.returnPolicy).toEqual({ days: 60, whoPaysReturn: "shopper", acceptExcluded: false, exchanges: false });
     expect(storeFacts(store).returns).toEqual(store.returnPolicy);
   });
 

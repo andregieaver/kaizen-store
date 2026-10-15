@@ -63,6 +63,17 @@ describe("the refund panel", () => {
     expect(text).toContain("Return shipping the customer pays");
   });
 
+  it("starts a booked label's return shipping at 0 and offers its cost only for a parcel that came with it; never for a test label (review findings)", () => {
+    const real = panel({ bookedLabel: { source: "carrier", costMinor: 9_900, test: false } });
+    expect(real.html).not.toMatch(/name="shipping"[^>]*value="99,00"/);
+    expect(real.text).toContain("Nothing was taken off when it was booked");
+    expect(real.text).toContain("The parcel came with the label: take off NOK 99.00");
+    const test = panel({ bookedLabel: { source: "carrier", costMinor: 9_900, test: true } });
+    expect(test.text).toContain("nothing is taken off for it");
+    expect(test.text).not.toContain("take off NOK 99.00");
+    expect(panel({ bookedLabel: { source: "carrier", costMinor: 9_900, test: false }, whoPays: "store" }).text).not.toContain("take off NOK 99.00");
+  });
+
   it("does not ask for return shipping when the store pays it", () => {
     const { html, text } = panel({ whoPays: "store" });
     expect(text).toContain("You pay for return shipping");

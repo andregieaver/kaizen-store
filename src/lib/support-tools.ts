@@ -102,3 +102,23 @@ export const KAIZEN_SUPPORT_TOOLS = [
 ] as const;
 
 export type SupportToolName = (typeof SUPPORT_TOOLS)[number]["name"];
+
+/**
+ * A return's exchange as the support tools tell the AI (D239, `docs/wave-3-exchanges.md` 2.6): the state only, in words for the model to put in the
+ * customer's language. Never a price or a difference (the customer's own exchange page and emails say those), and no action: the AI never proposes,
+ * confirms or pays an exchange (no kind in `CUSTOMER_ACTIONS`).
+ */
+export const EXCHANGE_STATE_WORDS: Record<string, string> = {
+  proposed: "The store has proposed an exchange: the customer confirms or declines it from the link in the email the store sent.",
+  confirmed: "The customer confirmed the exchange: the store will process it.",
+  processed: "The exchange order is made and waits for the customer to pay the difference, from the link in the email the store sent.",
+  settled: "Exchanged: the replacement goods are a new order.",
+  declined_by_customer: "The customer declined the exchange: the return is refunded instead.",
+  cancelled: "The exchange was cancelled: the return is refunded instead.",
+  expired: "The exchange was not confirmed in time: the return is refunded instead.",
+  superseded: "The return was refunded instead of exchanged.",
+};
+
+/** The words for an exchange's status; a draft (staff's own, not sent) or an unknown status says nothing. */
+export const exchangeStateWords = (status: string | null | undefined): string | null =>
+  status && status !== "draft" && Object.hasOwn(EXCHANGE_STATE_WORDS, status) ? EXCHANGE_STATE_WORDS[status] : null;

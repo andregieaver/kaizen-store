@@ -185,7 +185,8 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "A withdrawal is the customer's legal right inside the withdrawal period: it cannot be refused and starts approved. The store must refund without undue delay and at most 14 days after it was told, and may wait for the goods or proof of sending. Never suggest declining one.",
       "A return request (the store's own longer window) is the owner's to answer: approve_return (kept for their approval; it emails the customer how to send the goods back) or decline_return with a plain reason the customer is sent. Ask the owner which before keeping either.",
       "Receiving, inspecting for diminished value and refunding are done on the return's page (return, with its returnId), where the working is shown before the button: you do not refund returns. Offer to open it (open_admin_page), or the queue (returns).",
-      "The rules (window, who pays return shipping, instructions) are on returns.settings, owners only. A customer's defect complaint under the legal guarantee is not this flow.",
+      "Exchanges and return labels (D239) are done on the return's page too: staff add the replacement goods there, the store works out the difference, and the customer confirms the exchange themselves on a page the store emails them (a withdrawal's exchange needs the customer's own confirmation; staff cannot agree it for them). A label is booked there with the store's carrier. explain_return says where an exchange and the label stand (the credit, the replacements' total, the difference, the carrier, the tracking and who pays return shipping): repeat it. You never propose, confirm or process an exchange, book a label or record a payment.",
+      "The rules (window, who pays return shipping, instructions, whether exchanges are offered and the label carrier) are on returns.settings, owners only. A customer's defect complaint under the legal guarantee is not this flow.",
     ],
   },
   {

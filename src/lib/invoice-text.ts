@@ -517,6 +517,11 @@ export type EditDocumentText = {
   reasonOrderEdit: (label: string) => string;
   /** The payment line of an additional invoice paid by what the customer had already paid (`settled_by_order`). */
   settledByOrder: (invoiceNumber: string) => string;
+  /**
+   * The payment line of an exchange order's invoice for the part paid with the credit of a return (`settled_by_return`, wave 3, D239): the return's and the
+   * original order's numbers, and the amount beside it. legal: needs review (docs/wave-3-exchanges.md section 8 item 6, with an accountant).
+   */
+  settledByReturn: (returnNumber: string, orderNumber: string) => string;
   /** The reference line with the original's date: `amends()` followed by the day it was issued (Art. 219: specifically and unambiguously). */
   amendsOf: (invoiceNumber: string, date: string) => string;
   /** A credit note's row for units a change took off the order (never "returned": nothing was sent). */
@@ -537,6 +542,7 @@ const EDIT_TEXT: Record<DocumentLanguage, EditDocumentText> = {
     creditNoteForChange: "Kreditnota for endring av bestillingen",
     reasonOrderEdit: (label) => `Endring ${label} av bestillingen`,
     settledByOrder: (invoiceNumber) => `Avregnet mot betalingen for faktura ${invoiceNumber}`,
+    settledByReturn: (returnNumber, orderNumber) => `Betalt med kreditten fra retur ${returnNumber} av bestilling ${orderNumber}`,
     amendsOf: (invoiceNumber, date) => `Endrer faktura ${invoiceNumber} av ${date}.`,
     removedRow: "Tatt ut av bestillingen",
     shippingLoweredRow: "Lavere frakt",
@@ -549,6 +555,7 @@ const EDIT_TEXT: Record<DocumentLanguage, EditDocumentText> = {
     creditNoteForChange: "Kreditnota för ändring av beställningen",
     reasonOrderEdit: (label) => `Ändring ${label} av beställningen`,
     settledByOrder: (invoiceNumber) => `Avräknat mot betalningen för faktura ${invoiceNumber}`,
+    settledByReturn: (returnNumber, orderNumber) => `Betalt med krediten från retur ${returnNumber} av beställning ${orderNumber}`,
     amendsOf: (invoiceNumber, date) => `Ändrar faktura ${invoiceNumber} av ${date}.`,
     removedRow: "Borttaget ur beställningen",
     shippingLoweredRow: "Lägre frakt",
@@ -561,6 +568,7 @@ const EDIT_TEXT: Record<DocumentLanguage, EditDocumentText> = {
     creditNoteForChange: "Kreditnota for ændring af bestillingen",
     reasonOrderEdit: (label) => `Ændring ${label} af bestillingen`,
     settledByOrder: (invoiceNumber) => `Modregnet i betalingen for faktura ${invoiceNumber}`,
+    settledByReturn: (returnNumber, orderNumber) => `Betalt med kreditten fra returnering ${returnNumber} af bestilling ${orderNumber}`,
     amendsOf: (invoiceNumber, date) => `Ændrer faktura ${invoiceNumber} af ${date}.`,
     removedRow: "Fjernet fra bestillingen",
     shippingLoweredRow: "Lavere fragt",
@@ -573,6 +581,7 @@ const EDIT_TEXT: Record<DocumentLanguage, EditDocumentText> = {
     creditNoteForChange: "Credit note for changes to the order",
     reasonOrderEdit: (label) => `Change ${label} to the order`,
     settledByOrder: (invoiceNumber) => `Settled against the payment for invoice ${invoiceNumber}`,
+    settledByReturn: (returnNumber, orderNumber) => `Paid with the credit of return ${returnNumber} of order ${orderNumber}`,
     amendsOf: (invoiceNumber, date) => `Amends invoice ${invoiceNumber} of ${date}.`,
     removedRow: "Removed from the order",
     shippingLoweredRow: "Lower shipping charge",

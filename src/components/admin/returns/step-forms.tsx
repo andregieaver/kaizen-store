@@ -280,6 +280,7 @@ export function RefundPanel({
   lines,
   whoPays,
   kind = "return",
+  bookedLabel = null,
 }: {
   action: StepAction;
   preview: RefundPreviewData;
@@ -291,6 +292,11 @@ export function RefundPanel({
   whoPays: "shopper" | "store";
   /** A withdrawal is refunded in full: its amount can be raised, not lowered. */
   kind?: "withdrawal" | "return";
+  /**
+   * A label booked with the carrier (D239 4.8, As built): nothing was taken off when it was booked, so the field starts at 0 and staff take the cost off only
+   * when the parcel came back with this label; a test label is never taken off.
+   */
+  bookedLabel?: { source: "pasted" | "carrier" | null; costMinor: number | null; test: boolean } | null;
 }) {
   const [preview, setPreview] = useState(initial);
   const [shipping, setShipping] = useState(initial.returnShippingMinor > 0 ? typed(initial.returnShippingMinor, currency) : "");
@@ -300,10 +306,10 @@ export function RefundPanel({
   const computed = typed(preview.amountMinor, currency);
   const changed = amount.trim() !== computed;
 
-  const again = () =>
+  const again = (value: string = shipping) =>
     startTransition(async () => {
       setProblem(null);
-      const result = await recalculate(shipping);
+      const result = await recalculate(value);
       if (!result.ok) return setProblem(result.problem);
       setPreview(result.preview);
       setAmount(typed(result.preview.amountMinor, currency));
@@ -329,11 +335,41 @@ export function RefundPanel({
             <p className="text-sm text-muted">You pay for return shipping, so nothing is taken off for it.</p>
           )}
           {whoPays === "shopper" && (
-            <button type="button" onClick={again} disabled={working} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40">
+            <button type="button" onClick={() => again()} disabled={working} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40">
               {working ? "Working …" : "Work it out again"}
             </button>
           )}
         </div>
+        {whoPays === "shopper" && bookedLabel?.source === "carrier" && (
+          <div className="flex flex-col gap-2 text-sm" data-label-deduction>
+            {bookedLabel.test ? (
+              <p className="text-muted">The return label was a test label: it could not be used and cost nothing, so nothing is taken off for it.</p>
+            ) : bookedLabel.costMinor !== null && bookedLabel.costMinor > 0 ? (
+              <>
+                <p className="text-muted">
+                  The booked label cost {formatMoney(bookedLabel.costMinor, currency, locale)}. Nothing was taken off when it was booked: take it off only if the parcel
+                  came back with this label (its tracking number), never if the customer sent it another way.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={() => {
+                      const value = typed(bookedLabel.costMinor!, currency);
+                      setShipping(value);
+                      again(value);
+                    }}
+                    className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40"
+                  >
+                    The parcel came with the label: take off {formatMoney(bookedLabel.costMinor, currency, locale)}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted">The carrier did not price the booked label. Take an amount off only if the parcel came back with it, and say in the note where it comes from.</p>
+            )}
+          </div>
+        )}
         {problem && (
           <p role="alert" className="text-sm text-danger-text">
             {problem}

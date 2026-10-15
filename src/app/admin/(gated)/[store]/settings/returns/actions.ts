@@ -7,7 +7,7 @@ import type { ReturnAddress } from "@/lib/withdrawal";
 import { audit } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { getInstructionTranslations, saveInstructionTranslations, saveReturnSettings } from "@/server/return-settings";
+import { getInstructionTranslations, saveExchangeLabelSettings, saveInstructionTranslations, saveReturnSettings } from "@/server/return-settings";
 import { storeTag } from "@/server/stores";
 
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
@@ -61,6 +61,31 @@ export async function saveReturnSettingsAction(storeSlug: string, _previous: For
   // What the storefront says about returns (the withdrawal page, product structured data) follows the settings.
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
+  refresh();
+  return { status: "ok", messages: ["Saved."] };
+}
+
+/**
+ * Saves the exchange and return label choices (wave 3, D239, `docs/wave-3-exchanges.md` 2.2, 2.3, 4.9): owners only, checked here and again by the server
+ * (`saveExchangeLabelSettings()`: a carrier that books return labels, one of its services, automatic labels only with a carrier), written to the audit log.
+ * Whether exchanges are offered is part of what the store's chat agent says about returns, so the store's tag is refreshed.
+ */
+export async function saveExchangeLabelSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return { status: "error", messages: ["Only an owner can change the exchange and label settings."] };
+  const saved = await saveExchangeLabelSettings(
+    member.store.id,
+    {
+      exchanges: form.get("exchanges") === "on",
+      labelCarrier: text(form, "labelCarrier"),
+      labelService: text(form, "labelService"),
+      labelAuto: form.get("labelAuto") === "on",
+    },
+    member.account.id,
+  );
+  if (!saved.ok) return { status: "error", messages: saved.problems };
+  await audit(member.account.id, member.store.id, "returns.settings_saved", { part: "exchanges_labels", ...saved.settings });
+  updateTag(storeTag(member.store.slug));
   refresh();
   return { status: "ok", messages: ["Saved."] };
 }

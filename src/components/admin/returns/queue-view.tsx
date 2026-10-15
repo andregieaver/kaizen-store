@@ -2,10 +2,10 @@ import Link from "next/link";
 
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { formatMoney } from "@/lib/money";
-import { countsSentence, dayText, KIND_FILTERS, queueHref, STATUS_FILTERS } from "@/lib/return-admin";
+import { countsSentence, dayText, EXCHANGE_FILTERS, EXCHANGE_MARK_LABELS, KIND_FILTERS, queueHref, STATUS_FILTERS, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
@@ -22,16 +22,19 @@ export function ReturnsQueueView({
   counts,
   timeZone,
   locale = "en-GB",
+  exchange = null,
 }: {
   /** `/admin/{store}/returns` */
   base: string;
   filter: ReturnQueueFilter;
+  /** The exchange mark filter (D239, `exchange=`): wished, proposed, confirmed, payment to collect. */
+  exchange?: ExchangeMark | null;
   queue: Queue;
   counts: ReturnCounts;
   timeZone: string;
   locale?: string;
 }) {
-  const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue;
+  const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;
   const pages = Math.max(1, Math.ceil(queue.total / queue.pageSize));
   const orders = base.replace(/\/returns$/, "/orders");
   return (
@@ -72,6 +75,16 @@ export function ReturnsQueueView({
           Kind
           <select name="kind" defaultValue={filter.kind} className={control}>
             {KIND_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Exchange
+          <select name="exchange" defaultValue={exchange ?? ""} className={control}>
+            {EXCHANGE_FILTERS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -119,9 +132,11 @@ export function ReturnsQueueView({
                       {" · "}
                       {row.units === 1 ? "1 unit" : `${row.units} units`} · made <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
                       {row.acknowledgementPending && <span className="block text-danger-text">Acknowledgement not sent</span>}
+                      {row.labelFailed && <span className="block text-warning-text">Label not booked</span>}
                     </>
                   }
                 />
+                {row.exchange && <Chip signal={row.exchange === "waiting_payment" ? "warning" : row.exchange === "confirmed" ? "positive" : "insight"}>{EXCHANGE_MARK_LABELS[row.exchange]}</Chip>}
                 <KindBadge kind={row.kind} />
                 <StatusBadge status={row.status} />
                 <RowAmount>
@@ -143,7 +158,7 @@ export function ReturnsQueueView({
       {pages > 1 && (
         <nav aria-label="Pages of returns" className="flex items-center gap-3 text-sm">
           {queue.page > 1 ? (
-            <Link href={queueHref(base, { ...filter, page: queue.page - 1 })} className="underline">
+            <Link href={queueHref(base, { ...filter, exchange, page: queue.page - 1 })} className="underline">
               Previous
             </Link>
           ) : (
@@ -153,7 +168,7 @@ export function ReturnsQueueView({
             Page {queue.page} of {pages} · {queue.total} returns
           </span>
           {queue.page < pages ? (
-            <Link href={queueHref(base, { ...filter, page: queue.page + 1 })} className="underline">
+            <Link href={queueHref(base, { ...filter, exchange, page: queue.page + 1 })} className="underline">
               Next
             </Link>
           ) : (

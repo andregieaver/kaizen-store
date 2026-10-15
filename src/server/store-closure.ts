@@ -157,6 +157,10 @@ export async function closeStore(actor: Account, storeId: string, options: Close
   const warnings: string[] = [];
   // Order changes waiting for the customer's payment (D174) end with the store: their sessions closed, their held units released.
   await cancelEditsForClosure(storeId).catch(() => 0);
+  // Open exchanges (D239) end with the store too: their orders cancelled and stock released; the customers are refunded as usual by staff.
+  const exchanges = await import("./exchanges").then((m) => m.cancelExchangesForClosure(storeId, actor.id)).catch(() => ({ cancelled: 0, left: 0 }));
+  if (exchanges.cancelled > 0) warnings.push(`${exchanges.cancelled} open exchange${exchanges.cancelled === 1 ? " was" : "s were"} cancelled: refund ${exchanges.cancelled === 1 ? "its return" : "their returns"} as usual.`);
+  if (exchanges.left > 0) warnings.push(`${exchanges.left} exchange${exchanges.left === 1 ? "" : "s"} could not be cancelled (a payment is being processed): cancel ${exchanges.left === 1 ? "it" : "them"} on the return's page.`);
   const checkouts = await cancelOpenCheckouts(storeId);
   if (checkouts.failed > 0) warnings.push(`${checkouts.failed} order${checkouts.failed === 1 ? "" : "s"} waiting for payment could not be cancelled and will be cancelled by the daily clean-up.`);
 

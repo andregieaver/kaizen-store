@@ -116,7 +116,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   // Withdrawal and returns -----------------------------------------------------------------------------------------------------------
   entry("withdrawal_requests", "shopper", via("withdrawal", "order_id"), ["name", "email"], "returns", "restrict", "A confirmed withdrawal is a legal record of the contract: " + LAW, { also: ["consents"], until: "bookkeeping" }),
   entry("withdrawal_request_lines", "shopper", via("withdrawal", "withdrawal_request_id"), ["withdrawal_request_id"], "returns", "keep", "Quantities of an order's lines; " + KEEP_ORDER),
-  entry("returns", "shopper", via("order", "order_id", "withdrawal_request_id"), ["reason_note", "decision_note", "staff_note", "refund_note", "label_url"], "returns", "restrict", "A return is history that is never deleted: " + LAW, { until: "bookkeeping" }),
+  entry("returns", "shopper", via("order", "order_id", "withdrawal_request_id"), ["reason_note", "decision_note", "staff_note", "refund_note", "label_url", "exchange_wish_note"], "returns", "restrict", "A return is history that is never deleted: " + LAW + " The customer's exchange wish (D239) is their own words: exported with the return and blanked when the order is anonymised. The booked label's columns hold the carrier's numbers and a carrier address that names no person.", { until: "bookkeeping" }),
+  entry("return_exchanges", "shopper", via("order", "order_id", "return_id"), ["delivery_address"], "returns", "keep", "An exchange of a return (D239): ids, amounts, dates and the delivery address of the new order. Part of the orders' bookkeeping record, kept with the order; the address is replaced by the marker when the order is anonymised (commerce.anonymise_order()), and the pay link is kept only as a hash. Staff's note of a recorded agreement is only in the history event's data.note, which anonymising removes. " + KEEP_ORDER),
+  entry("return_exchange_lines", "shopper", via("return", "exchange_id"), ["exchange_id"], "returns", "keep", "The replacement goods of an exchange (D239): titles, SKUs, quantities and prices, no personal field. " + KEEP_ORDER),
   entry("return_lines", "shopper", via("return", "return_id"), ["decline_reason", "deduction_note"], "returns", "keep", "Quantities, the condition of the goods and a staff note about the goods, not the person; " + KEEP_ORDER),
   entry("withdrawal_attempts", "pseudonymous", via("none"), ["key_hash"], null, "none", "Hashed keys of guesses at the withdrawal function, kept one day to limit abuse; they cannot be tied to a person."),
 
@@ -335,6 +337,12 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "return.declined": "shopper",
   "return.received": "shopper",
   "return.refunded": "shopper",
+  // Exchanges and return labels (wave 3, D239, docs/wave-3-exchanges.md 2.5): to the order's own address only.
+  "return.exchange_proposed": "shopper",
+  "return.exchange_to_pay": "shopper",
+  "return.exchanged": "shopper",
+  "return.exchange_lapsed": "shopper",
+  "return.label_ready": "shopper",
   // Security: short-lived
   "account.code": "security",
   "account.reset": "security",
@@ -346,6 +354,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "form.message": "staff",
   "form.subscription": "staff",
   "return.overdue": "staff",
+  /** The customer asked for an exchange on a return (D239): the order and return numbers and a link, never the wish's words. */
+  "return.exchange_wished": "staff",
   "stock.low": "staff",
   "experiment.guardrail": "staff",
   "store.status": "staff",

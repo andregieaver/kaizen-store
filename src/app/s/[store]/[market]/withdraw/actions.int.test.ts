@@ -330,6 +330,30 @@ describe("step 2: the confirmation", () => {
 });
 
 describe("the store's own window: a return request", () => {
+  it("takes an optional exchange wish beside the reason: one too long is said before anything is sent, and one the order cannot take never holds the request up (D239)", async () => {
+    await db().execute(sql`
+      insert into commerce.return_settings (store_id, window_days) values (${store.id}::uuid, 60)
+      on conflict (store_id) do update set window_days = 60
+    `);
+    try {
+      const order = await paidOrder([{ title: "Lampe", quantity: 1 }], { deliveredDaysAgo: 30 });
+      const [lamp] = order.lines;
+      const shown = as(await send(initial(), { [FIELD.intent]: "start", ...identity(order) }), "form");
+      const request = (wish: string) => ({ [FIELD.intent]: "return", ...identity(order), [lineField("rtake", lamp.id)]: "on", [lineField("rqty", lamp.id)]: "1", [FIELD.exchangeWish]: wish });
+      const tooLong = as(await send(shown, request("x".repeat(501))), "form");
+      expect(tooLong.errors).toEqual({ exchangeWish: "too_long" });
+      expect(tooLong.returned ?? null).toBeNull();
+      expect(Number((await db().execute<Row>(sql`select count(*)::int as n from commerce.returns where order_id = ${order.orderId}::uuid`))[0].n)).toBe(0);
+      // This order's lines name no product (they cannot be exchanged): the request is made, and the wish is left out.
+      const sent = as(await send(shown, request("Blue instead")), "form");
+      expect(sent.returned).toMatchObject({ number: `${order.number}-R1` });
+      const [ret] = await db().execute<Row>(sql`select status, exchange_wish_at from commerce.returns where order_id = ${order.orderId}::uuid`);
+      expect(ret).toMatchObject({ status: "requested", exchange_wish_at: null });
+    } finally {
+      await db().execute(sql`delete from commerce.return_settings where store_id = ${store.id}::uuid`);
+    }
+  });
+
   it("is offered for goods past the 14 days, and sent to the store with a reason", async () => {
     await db().execute(sql`
       insert into commerce.return_settings (store_id, window_days) values (${store.id}::uuid, 60)

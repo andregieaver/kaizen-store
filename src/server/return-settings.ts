@@ -6,6 +6,8 @@ import { db } from "@/db/client";
 import { DEFAULT_RETURN_SETTINGS, type ReturnAddress, type ReturnSettings } from "@/lib/withdrawal";
 import { returnSettingsInput } from "@/lib/return-input";
 import { cleanTranslations, translationProblems, type InstructionTranslations } from "@/lib/return-instructions";
+import { isBringReturnService } from "@/lib/bring";
+import { carrierInfo, isCarrierId, type CarrierId } from "@/lib/shipping-carriers";
 
 type Row = Record<string, unknown>;
 
@@ -102,4 +104,59 @@ export async function saveInstructionTranslations(
       updated_by = excluded.updated_by
   `);
   return { ok: true, translations };
+}
+
+// ---------------------------------------------------------------------------
+// Exchanges and return labels (wave 3, D239, docs/wave-3-exchanges.md 2.2, 2.3)
+// ---------------------------------------------------------------------------
+
+/** The store's choices for exchanges and return labels (`return_settings.exchanges`, `label_carrier`, `label_service`, `label_auto`). */
+export type ExchangeLabelSettings = {
+  /** *Offer exchanges* (default on). */
+  exchanges: boolean;
+  /** The carrier return labels are booked with; null: none chosen (the first connected carrier that books returns is offered). */
+  labelCarrier: CarrierId | null;
+  /** The carrier's return service; null: its default (Bring `9300`). */
+  labelService: string | null;
+  /** Book a withdrawal return's label by itself (the five-minute job); needs a carrier. */
+  labelAuto: boolean;
+};
+
+export async function getExchangeLabelSettings(storeId: string): Promise<ExchangeLabelSettings> {
+  const [row] = await db().execute<Row>(sql`select exchanges, label_carrier, label_service, label_auto from commerce.return_settings where store_id = ${storeId}::uuid`);
+  return {
+    exchanges: row ? Boolean(row.exchanges) : true,
+    labelCarrier: row?.label_carrier && isCarrierId(String(row.label_carrier)) ? (String(row.label_carrier) as CarrierId) : null,
+    labelService: row?.label_service ? String(row.label_service) : null,
+    labelAuto: Boolean(row?.label_auto),
+  };
+}
+
+export type SaveExchangeLabelOutcome = { ok: true; settings: ExchangeLabelSettings } | { ok: false; problems: string[] };
+
+/**
+ * Saves the exchange and label choices (owners; the action layer asks `requireOwnerRole`). A carrier must be one whose return labels are built
+ * (`available` has `return_labels`), a service one that carrier knows, and automatic labels need a carrier. A store with no settings row gets one with
+ * the legal defaults.
+ */
+export async function saveExchangeLabelSettings(storeId: string, input: unknown, accountId: string | null): Promise<SaveExchangeLabelOutcome> {
+  const v = (input ?? {}) as Partial<Record<keyof ExchangeLabelSettings, unknown>>;
+  const problems: string[] = [];
+  const exchanges = v.exchanges === undefined ? true : v.exchanges === true;
+  const carrier = typeof v.labelCarrier === "string" && v.labelCarrier !== "" ? v.labelCarrier : null;
+  if (carrier !== null && (!isCarrierId(carrier) || !carrierInfo(carrier as CarrierId)?.available.includes("return_labels"))) {
+    problems.push("Choose a carrier that books return labels (Posten / Bring).");
+  }
+  const service = typeof v.labelService === "string" && v.labelService.trim() !== "" ? v.labelService.trim() : null;
+  if (service !== null && (carrier !== "bring" || !isBringReturnService(service))) problems.push("Choose one of the carrier's return services.");
+  const auto = v.labelAuto === true;
+  if (auto && carrier === null) problems.push("Choose the carrier before booking labels automatically.");
+  if (problems.length > 0) return { ok: false, problems };
+  await db().execute(sql`
+    insert into commerce.return_settings (store_id, exchanges, label_carrier, label_service, label_auto, updated_at, updated_by)
+    values (${storeId}::uuid, ${exchanges}, ${carrier}, ${service}, ${auto}, now(), ${accountId}::uuid)
+    on conflict (store_id) do update set exchanges = excluded.exchanges, label_carrier = excluded.label_carrier, label_service = excluded.label_service,
+      label_auto = excluded.label_auto, updated_at = now(), updated_by = excluded.updated_by
+  `);
+  return { ok: true, settings: await getExchangeLabelSettings(storeId) };
 }

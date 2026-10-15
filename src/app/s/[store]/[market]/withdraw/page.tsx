@@ -6,6 +6,8 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { emptyForm, orderInfoOf } from "@/lib/withdraw-form";
 import { getCustomer } from "@/server/customers";
+import { featureOn } from "@/lib/store-features";
+import { getExchangeLabelSettings } from "@/server/return-settings";
 import { resolveAfterSaleShop } from "@/server/shop";
 import { lookupWithdrawableOrder } from "@/server/withdrawals";
 
@@ -43,7 +45,7 @@ async function Withdraw({ params, searchParams }: Pick<Props, "params" | "search
   const query = await searchParams;
   const orderNumber = one(query.order);
   const key = one(query.key) || null;
-  const customer = await getCustomer(store.id);
+  const [customer, exchangeSettings] = await Promise.all([getCustomer(store.id), getExchangeLabelSettings(store.id)]);
   // The order's lines are shown only to a visitor who has shown the order is theirs: its key, or being signed in as its customer.
   const view =
     orderNumber && (key || customer)
@@ -70,6 +72,7 @@ async function Withdraw({ params, searchParams }: Pick<Props, "params" | "search
         storeName={store.details.legalName ?? store.name}
         contactEmail={store.details.contactEmail ?? null}
         initial={initial}
+        offerWish={exchangeSettings.exchanges && featureOn(store, "shop")}
       />
     </>
   );

@@ -139,7 +139,7 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     copied,
     archived: Boolean(row.archived),
     held: Boolean(row.held),
-    source: row.source === "draft" ? "draft" : "checkout",
+    source: row.source === "draft" ? "draft" : row.source === "exchange" ? "exchange" : "checkout",
     draftNumber: row.draft_number ? String(row.draft_number) : null,
     gift: Boolean(row.is_gift),
     erased,

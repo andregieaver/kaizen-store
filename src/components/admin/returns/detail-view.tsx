@@ -9,7 +9,7 @@ import {
   eventSentence,
   exclusionLabel,
   KIND_HINTS,
-  OUTCOME_LABELS,
+  outcomeLabel,
   REASON_LABELS,
   STATUS_HINTS,
   STATUS_LABELS,
@@ -74,6 +74,8 @@ export function ReturnDetailView({
   timeZone,
   today,
   locale = "en-GB",
+  exchangeCard = null,
+  labelCard = null,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -85,6 +87,10 @@ export function ReturnDetailView({
   /** Today in the store's time zone, `YYYY-MM-DD`: the latest day a step can be dated. */
   today: string;
   locale?: string;
+  /** The **Exchange** card (D239, `ExchangeCard`), drawn by the page where it applies; placed before the refund. */
+  exchangeCard?: ReactNode;
+  /** The **Return shipping** card (D239, `LabelCard`); placed after the instructions. */
+  labelCard?: ReactNode;
 }) {
   const money = (minor: number) => formatMoney(minor, detail.currency, locale);
   const can = (action: ReturnDetail["actions"][number]) => detail.actions.includes(action);
@@ -218,7 +224,7 @@ export function ReturnDetailView({
                   <span className="whitespace-pre-wrap">{detail.decisionNote}</span>
                 </Fact>
               )}
-              {detail.outcome && <Fact label="Outcome">{OUTCOME_LABELS[detail.outcome as keyof typeof OUTCOME_LABELS] ?? detail.outcome}</Fact>}
+              {detail.outcome && <Fact label="Outcome">{outcomeLabel(detail.outcome)}</Fact>}
             </dl>
           </Card>
 
@@ -344,11 +350,15 @@ export function ReturnDetailView({
             </Card>
           )}
 
+          {labelCard}
+
           {inspecting && inspectLines.length > 0 && (
             <Card id="inspect" title={detail.status === "inspected" ? "Change the inspection" : "Inspect the goods"} hint="Say what condition each line came back in. This sets the deduction, if any, and what goes back in stock.">
               <InspectForm action={actions.inspect} lines={inspectLines} currency={detail.currency} changing={detail.status === "inspected"} />
             </Card>
           )}
+
+          {exchangeCard}
 
           {can("refund") && preview && (
             <Card
@@ -369,18 +379,19 @@ export function ReturnDetailView({
                 lines={refundLines}
                 whoPays={detail.whoPaysReturn}
                 kind={detail.kind}
+                bookedLabel={detail.label}
               />
             </Card>
           )}
 
           {refunded && (
-            <Card id="refunded" title="Refund">
+            <Card id="refunded" title={detail.outcome === "exchanged" ? "Credit" : "Refund"}>
               <dl className="flex flex-col gap-2 text-sm">
-                <Fact label="Refunded">
+                <Fact label={detail.outcome === "exchanged" ? "Credit, used for the exchange" : "Refunded"}>
                   {money(detail.refund.amountMinor ?? 0)}
                   {detail.refund.at && <span className="text-muted"> on {timeText(detail.refund.at, timeZone)}</span>}
                 </Fact>
-                <Fact label="How">{detail.refund.outside ? "Outside Kaizen's Stripe: recorded only" : "Through Stripe, on the store's account"}</Fact>
+                <Fact label="How">{detail.outcome === "exchanged" ? "It paid the new order; any rest was refunded to the customer's payment" : detail.refund.outside ? "Outside Kaizen's Stripe: recorded only" : "Through Stripe, on the store's account"}</Fact>
                 {detail.refund.computedMinor !== null && detail.refund.computedMinor !== detail.refund.amountMinor && (
                   <Fact label="Changed from">
                     {money(detail.refund.computedMinor)}

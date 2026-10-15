@@ -8,7 +8,13 @@ import {
   declineReasonText,
   dueMark,
   eventSentence,
+  EXCHANGE_MARK_LABELS,
+  exchangeFilterOf,
+  exchangeSentence,
   exclusionLabel,
+  labelSentence,
+  outcomeLabel,
+  outcomeSentence,
   isReturnEvent,
   KIND_LABELS,
   OUTCOME_LABELS,
@@ -197,5 +203,57 @@ describe("the refund as the screen holds it", () => {
     });
     // It crosses to the browser and back unchanged.
     expect(JSON.parse(JSON.stringify(data))).toEqual(data);
+  });
+});
+
+describe("exchanges and return labels in words (D239)", () => {
+  const outcome = (kind: "refund_due" | "even" | "to_pay", refundMinor = 0, toPayMinor = 0) => ({ kind, refundMinor, toPayMinor });
+
+  it("words an exchange's outcome in the order's currency", () => {
+    expect(outcomeSentence(outcome("refund_due", 12_000), "NOK")).toMatch(/^Refund due to the customer: .*120.00/);
+    expect(outcomeSentence(outcome("to_pay", 0, 14_900), "EUR")).toMatch(/^Payment to collect: .*149\.00/);
+    expect(outcomeSentence(outcome("even"), "NOK")).toBe("Even exchange: nothing to refund or collect");
+  });
+
+  it("says where an exchange stands, for every state", () => {
+    const x = (status: string, over: Partial<{ exchangeOrderNumber: string | null; expiresAt: string | null }> = {}) =>
+      exchangeSentence({ status, outcome: outcome("to_pay", 0, 5_000), expiresAt: "2026-10-12T21:59:00.000Z", exchangeOrderNumber: "1042", ...over }, "NOK", "Europe/Oslo");
+    expect(x("proposed")).toMatch(/waits for their confirmation until 12 Oct/);
+    expect(x("processed")).toMatch(/Order 1042 is made and waits for the customer to pay/);
+    expect(x("settled")).toBe("Exchanged: order 1042.");
+    for (const status of ["draft", "confirmed", "declined_by_customer", "cancelled", "expired", "superseded"]) expect(x(status)).not.toBe(status);
+  });
+
+  it("says who pays a label, and never takes off a cost the carrier did not give", () => {
+    const booked = { source: "carrier" as const, test: false, costMinor: 9_900, tries: 1 };
+    expect(labelSentence(booked, "shopper", "NOK", "Posten / Bring")).toMatch(/99.00 will be taken off the refund/);
+    expect(labelSentence({ ...booked, costMinor: null }, "shopper", "NOK", "Posten / Bring")).toMatch(/did not price it/);
+    expect(labelSentence(booked, "store", "NOK", "Posten / Bring")).toMatch(/nothing is taken off/);
+    expect(labelSentence({ ...booked, test: true }, "store", "NOK", null)).toMatch(/^A test label/);
+    expect(labelSentence({ source: "pasted", test: false, costMinor: null, tries: 0 }, "shopper", "NOK", null)).toMatch(/pasted/);
+    expect(labelSentence({ source: null, test: false, costMinor: null, tries: 2 }, "shopper", "NOK", null)).toMatch(/did not go through/);
+  });
+
+  it("reads the queue's exchange filter, keeps it in the queue's addresses, and words the marks", () => {
+    expect(exchangeFilterOf("proposed")).toBe("proposed");
+    expect(exchangeFilterOf(["waiting_payment"])).toBe("waiting_payment");
+    expect(exchangeFilterOf("nonsense")).toBeNull();
+    expect(exchangeFilterOf("toString")).toBeNull();
+    expect(queueHref("/r", { exchange: "wished", page: 2 })).toBe("/r?exchange=wished&page=2");
+    expect(EXCHANGE_MARK_LABELS.waiting_payment).toBe("Exchange: payment to collect");
+  });
+
+  it("words the exchange and label events of the timeline, and an exchanged outcome", () => {
+    expect(eventSentence("return.exchange_proposed", { creditMinor: 35_000, totalMinor: 49_900 }, "NOK")).toMatch(/credit .*350.00, replacements .*499.00/);
+    expect(eventSentence("return.exchange_confirmed", { confirmedBy: "staff", channel: "phone", day: "2026-10-05", note: "Called" }, "NOK")).toBe(
+      "The customer's agreement to the exchange was recorded (by phone, 2026-10-05): Called",
+    );
+    expect(eventSentence("return.exchange_confirmed", { confirmedBy: "customer" }, "NOK")).toBe("The customer confirmed the exchange");
+    expect(eventSentence("return.refunded", { exchange: "x", transferMinor: 24_000, refundMinor: 11_000 }, "NOK")).toMatch(/^Exchanged: .*240.00 of the credit paid the new order, .*110.00 refunded/);
+    expect(eventSentence("return.refunded", { amountMinor: 1_000 }, "NOK")).toMatch(/^Refunded/);
+    expect(eventSentence("return.label_booked", { test: true }, "NOK")).toBe("Return label booked (a test label)");
+    expect(isReturnEvent("exchange.refund_failed")).toBe(true);
+    expect(outcomeLabel("exchanged")).toBe("Exchanged");
+    expect(outcomeLabel("no_refund")).toBe("Closed with no refund");
   });
 });

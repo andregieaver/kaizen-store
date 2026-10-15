@@ -1491,34 +1491,52 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Staff paste a label address for a return (D153) and the shopper gets it; no return label is bought from a connected carrier, and none is created for the shopper to print on a self-serve request.",
+    "gap": "Built in wave 3 against a faked carrier (`docs/wave-3-exchanges.md` 2.3, 2.4, 4.7, 4.8): Bring's `bookReturn()` (return service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by the five-minute job (`bookPendingLabels()`), one booking at a time under a lock; the booking is kept in `returns.label_*`; the shopper gets an email button and a status-page link to `/returns/{token}/label`, which fetches from Bring's own host with the store's keys, answers no-store and keeps nothing; the label's cost is recorded at booking and taken off only at refund when staff confirm the parcel came with that label, never above the cost and never for a test label (`labelDeduction()` into `refundFor()`); a refused or timed-out booking leaves the return approved and the pasted address working. Tests re-run on 2026-10-15 pass (return-labels.int.test.ts, return-label.test.ts, bring-returns.test.ts, the label route's test). Stays partial (bucket B): no label has been booked and printed with a real Mybring test user and a store's return agreement (Bring's `BOOK-INPUT-043`; the party roles of a standalone return, the label link's host and billing on use are unconfirmed, spec 9.6); only Bring books returns (PostNord, Porterbuddy and Helthjem do not); booking is a separate press on the approved return's page, not part of the approve form (spec 2.3's preselection on approval is not built), and no browser test drives that admin press; whether the label was used is staff's word, not carrier tracking; the label texts need legal review (spec 8 item 7).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
-      "Approving a return with a connected carrier books a return shipment from the shopper's address to the return address and keeps its label address on the return (integration test with a faked carrier).",
-      "The label reaches the shopper by email and on the status page, fetched from the carrier's own host and never stored (test).",
-      "Who pays is the order's return cost payer: a label the shopper pays for is taken off the refund as return shipping (unit test with `refundFor()`).",
+      "Approving a return with a connected carrier that offers return labels, or the store's automatic label setting for a withdrawal return, books a return shipment from the shopper's address to the return address and keeps its label address on the return (integration test with a faked carrier).",
+      "The label reaches the shopper by an email button and on the status page, both opening a Kaizen route that fetches it from the carrier's own host with the store's keys; it is never stored or attached (test).",
+      "Who pays is the order's return cost payer: a label the shopper pays for is taken off the refund as return shipping, never above what the label cost (CRD Art. 14(1)) (unit test with `refundFor()`).",
       "A carrier that cannot book leaves the pasted-address path working."
     ],
     "evidence": {
       "files": [
+        "src/lib/return-label.ts",
+        "src/server/return-labels.ts",
+        "src/lib/bring.ts",
+        "src/server/carriers/bring.ts",
+        "src/server/carriers/index.ts",
+        "src/lib/shipping-carriers.ts",
+        "src/server/returns.ts",
         "src/server/return-emails.ts",
         "src/lib/return-input.ts",
-        "src/server/returns.ts",
-        "src/components/withdraw/return-status-view.tsx",
-        "src/server/carriers/index.ts"
+        "src/components/admin/returns/label-card.tsx",
+        "src/components/admin/returns/step-forms.tsx",
+        "src/app/admin/(gated)/[store]/returns/[returnId]/label-actions.ts",
+        "src/app/admin/(gated)/[store]/returns/[returnId]/label/route.ts",
+        "src/app/s/[store]/[market]/returns/[token]/label/route.ts",
+        "src/components/withdraw/return-status-view.tsx"
       ],
       "tests": [
+        "src/server/return-labels.int.test.ts",
+        "src/lib/return-label.test.ts",
+        "src/lib/bring-returns.test.ts",
+        "src/lib/return-refund.test.ts",
+        "src/app/s/[store]/[market]/returns/[token]/label/route.test.ts",
+        "src/components/admin/returns/exchange-views.test.ts",
+        "src/components/withdraw/return-status-view.test.ts",
+        "e2e/return-label.spec.ts",
         "src/server/returns.int.test.ts",
         "src/server/returns-actions.int.test.ts",
-        "src/lib/return-input.test.ts",
-        "src/components/withdraw/return-status-view.test.ts"
+        "src/lib/return-input.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D153",
-      "D134"
+      "D134",
+      "D239"
     ],
     "history": [
       {
@@ -1541,12 +1559,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Not built (D153 deliberately leaves exchanges out of `docs/returns.md`): a return refunds, nothing creates a replacement order or nets the difference.",
+    "gap": "Built in wave 3 (`docs/wave-3-exchanges.md`) and each criterion is held by tests re-run on 2026-10-15 against a fresh database: staff add catalogue replacements to a return on its page (`ExchangeBuilder`, `exchange-actions.ts`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and in a euro view, netted against the credit `refundFor()` gives (`exchanges.int.test.ts`, `exchange.test.ts`, the signed-in `admin-exchange.spec.ts`); processing makes an order with `source = 'exchange'` through `insertOrder()`, the next number of the D141 sequence, stock held only then (`exchanges.int.test.ts`, `src/db/exchanges.test.ts`); a difference owed goes out as a pay link to Stripe's hosted page (settled by `applySession()`), or is recorded as paid outside Kaizen, and a difference due is refunded through `refundOrder()` (fake Stripe); a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (staff records refused by the database, and since the review no share link is handed to staff for a withdrawal). Partial because: (1) the consumer texts (the exchange page, the proposal and pay emails, the agreement and withdrawal-right sentences, the `settled_by_return` invoice wording and the `return_exchange` credit note) are hand-written and not yet read by a person (spec section 8); (2) no pay link has been paid in Stripe test mode on a real store, only against the repo's fake Stripe, and e2e cannot reach Stripe's page (spec 9.6); (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as spec 6.1 and 6.3 say. A once-shown share link that a refresh could lose (found while re-rating) is fixed: `ExchangeLinkHolder` keeps it on screen.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -1556,14 +1574,56 @@
       "A withdrawal's legal refund is never reduced by choosing an exchange without the shopper's own statement."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/exchange.ts",
+        "src/lib/exchange-limits.ts",
+        "src/lib/exchange-status.ts",
+        "src/server/exchanges.ts",
+        "src/server/exchange-pay.ts",
+        "src/server/exchange-admin.ts",
+        "src/server/exchange-emails.ts",
+        "src/server/order-insert.ts",
+        "src/server/order-admin.ts",
+        "src/lib/exchange-email-text.ts",
+        "src/lib/messages/en-exchange.ts",
+        "src/app/admin/(gated)/[store]/returns/[returnId]/exchange-actions.ts",
+        "src/components/admin/returns/exchange-builder.tsx",
+        "src/components/admin/returns/exchange-card.tsx",
+        "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx",
+        "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.tsx",
+        "supabase/migrations/20261015050012_exchanges.sql",
+        "supabase/migrations/20261015050226_exchanges_rules.sql",
+        "supabase/migrations/20261015083910_exchanges_bonus_base.sql"
+      ],
+      "tests": [
+        "src/lib/exchange.test.ts",
+        "src/db/exchanges.test.ts",
+        "src/server/exchanges.int.test.ts",
+        "src/server/exchange-admin.int.test.ts",
+        "src/server/exchange-shopper.int.test.ts",
+        "src/server/exchanges-restock-race-review.int.test.ts",
+        "src/server/exchanges-bonus-review.int.test.ts",
+        "src/lib/order-numbers.test.ts",
+        "src/db/invoice-parity.test.ts",
+        "src/components/admin/returns/exchange-views.test.ts",
+        "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.test.ts",
+        "e2e/exchange.spec.ts",
+        "e2e/signed-in/admin-exchange.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D153"
+      "D153",
+      "D239"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-15",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 3 exchanges (docs/wave-3-exchanges.md). Read exchanges.ts, exchange-pay.ts, order-insert.ts and the return's admin page, and re-ran exchange.test.ts, src/db/exchanges.test.ts, exchanges.int.test.ts, exchange-admin.int.test.ts, exchange-shopper.int.test.ts and the two review regression tests on a fresh database (all pass): replacements priced as cartSummary() in NOK and a euro view, a numbered exchange order holding stock only at processing, pay link or refundOrder() for the difference, the withdrawal's credit never applied without the customer's press. Held at partial by D173/D174's precedent: the consumer texts need a person's legal review and no pay link has been paid in Stripe test mode on a real store."
+      }
+    ]
   },
   {
     "id": "orders.3pl-and-fulfilment-network",

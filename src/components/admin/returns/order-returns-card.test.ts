@@ -143,6 +143,25 @@ describe("the order page's returns", () => {
     expect(text).not.toContain("can still be withdrawn");
   });
 
+  it("links a return to the order it was exchanged for (D239)", () => {
+    const o = overview({ returns: [{ id: "r1", number: "1001-R1", kind: "return", status: "closed", token: "t", createdAt: "2026-10-05T10:00:00.000Z" }], unitsLeft: 0 });
+    const html = renderToString(
+      h(OrderReturnsCard, {
+        base: "/admin/s",
+        overview: o,
+        withdrawalPage: "https://example.com/s/s/no/withdraw",
+        timeZone: "Europe/Oslo",
+        exchanges: { r1: { orderId: "o-2", orderNumber: "1042", settled: true } },
+      }),
+    );
+    expect(plain(html).replace(/<[^>]+>/g, "")).toContain("Exchanged: order #1042");
+    expect(html).toContain('href="/admin/s/orders/o-2"');
+    const waiting = renderToString(
+      h(OrderReturnsCard, { base: "/admin/s", overview: o, withdrawalPage: "https://example.com/x", timeZone: "Europe/Oslo", exchanges: { r1: { orderId: "o-2", orderNumber: "1042", settled: false } } }),
+    );
+    expect(plain(waiting).replace(/<[^>]+>/g, "")).toContain("Exchange being processed: order #1042");
+  });
+
   it("uses the singular for one unit", () => {
     expect(draw(overview({ unitsLeft: 1, unitsBought: 1 })).text).toContain("1 of 1 unit can still");
   });

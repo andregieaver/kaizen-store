@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { selfServiceOpen } from "@/lib/pay-later";
 import { marketPath } from "@/lib/paths";
 import { featureOn, type FeatureId } from "@/lib/store-features";
-import { SUPPORT_TOOLS, type SupportTool, type ToolNeeds } from "@/lib/support-tools";
+import { exchangeStateWords, SUPPORT_TOOLS, type SupportTool, type ToolNeeds } from "@/lib/support-tools";
 import type { SupportChip } from "@/lib/support-visitor";
 
 import type { ToolDefinition } from "./ai";
@@ -211,12 +211,42 @@ async function myOrders(ctx: SupportToolContext, customerId: string): Promise<Su
   };
 }
 
+/**
+ * The exchanges an order's returns have (their newest one past a draft, with its exchange order's number), and the return an order is the exchange of
+ * (D239). The store's rows only; the order is already the signed-in customer's own, and so are an exchange order's returns and original.
+ */
+async function exchangeFacts(storeId: string, orderId: string, returnIds: string[]) {
+  const [byReturn, of] = await Promise.all([
+    returnIds.length === 0
+      ? Promise.resolve([] as Row[])
+      : db().execute<Row>(sql`
+          select distinct on (x.return_id) x.return_id::text as return_id, x.status, eo.number as order_number
+          from commerce.return_exchanges x
+          left join commerce.orders eo on eo.store_id = x.store_id and eo.id = x.exchange_order_id
+          where x.store_id = ${storeId}::uuid and x.order_id = ${orderId}::uuid and x.status <> 'draft'
+          order by x.return_id, x.seq desc
+        `),
+    db().execute<Row>(sql`
+      select r.number as return_number, oo.number as original_number
+      from commerce.orders o
+      join commerce.return_exchanges x on x.store_id = o.store_id and x.id = o.exchange_id
+      join commerce.returns r on r.store_id = x.store_id and r.id = x.return_id
+      join commerce.orders oo on oo.store_id = x.store_id and oo.id = x.order_id
+      where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+    `),
+  ]);
+  const returns = new Map(byReturn.map((r) => [String(r.return_id), { status: String(r.status), orderNumber: r.order_number ? String(r.order_number) : null }]));
+  const exchangeOf = of[0] ? { return: String(of[0].return_number), originalOrder: String(of[0].original_number) } : null;
+  return { returns, exchangeOf };
+}
+
 async function orderDetails(ctx: SupportToolContext, customerId: string, number: string): Promise<SupportToolOutcome> {
   const id = await ownOrderId(ctx, customerId, number);
   if (!id) return NOT_FOUND;
   const storeId = ctx.site.store.id;
   const [order, fulfilment, documents, returns] = await Promise.all([getOrder(storeId, id), shopperFulfilment(storeId, id), getOrderDocuments(storeId, id), listOrderReturns(storeId, id)]);
   if (!order) return NOT_FOUND;
+  const exchanges = await exchangeFacts(storeId, id, returns.map((r) => r.id));
   const m = t(ctx.site.market.lang);
   const amount = (minor: number) => money(ctx, minor, order.currency);
   const chips: SupportChip[] = [...chip("order", order.number, path(ctx, `/account/orders/${order.id}`))];
@@ -247,7 +277,14 @@ async function orderDetails(ctx: SupportToolContext, customerId: string, number:
       sending: fulfilment ? fulfilment.state : null,
       parcels: (fulfilment?.parcels ?? []).map((parcel) => ({ sent: day(ctx, parcel.createdAt), carrier: parcel.carrier, trackingNumber: parcel.trackingNumber, items: parcel.lines.map((line) => `${line.quantity} × ${line.title}`) })),
       stillToCome: (fulfilment?.stillToCome ?? []).map((line) => ({ title: line.title, quantity: line.quantity, ...(line.backordered > 0 ? { backordered: line.backordered, backorderShipsWithinDays: line.backorderDays } : {}) })),
-      returns: returns.map((ret) => ({ number: ret.number, kind: ret.kind, status: ret.status })),
+      returns: returns.map((ret) => {
+        const x = exchanges.returns.get(ret.id);
+        const words = exchangeStateWords(x?.status);
+        return { number: ret.number, kind: ret.kind, status: ret.status, ...(words ? { exchange: words, ...(x?.orderNumber ? { exchangeOrder: x.orderNumber } : {}) } : {}) };
+      }),
+      ...(exchanges.exchangeOf
+        ? { exchangeFor: { return: exchanges.exchangeOf.return, originalOrder: exchanges.exchangeOf.originalOrder, means: "This order is an exchange: replacement goods for that return, paid by its credit." } }
+        : {}),
       invoice: documents.invoice?.documentNumber ?? null,
       creditNotes: documents.creditNotes.map((note) => note.documentNumber),
       note: "Links to the order, tracking, the invoice and returns are shown under your answer.",

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { ReturnsQueueView } from "@/components/admin/returns/queue-view";
 import { QueueSkeleton } from "@/components/admin/returns/skeletons";
-import { pageNumber } from "@/lib/return-admin";
+import { exchangeFilterOf, pageNumber } from "@/lib/return-admin";
 import { returnQueueFilter } from "@/lib/return-input";
 import { requirePermission } from "@/server/permissions";
 import { listReturns, returnCounts } from "@/server/returns";
@@ -37,6 +37,7 @@ async function Queue({ storeSlug, searchParams }: { storeSlug: string; searchPar
   const { store } = await requirePermission(storeSlug, "orders:read");
   const query = await searchParams;
   const filter = returnQueueFilter.parse({ status: first(query.status), kind: first(query.kind), q: first(query.q), overdue: first(query.overdue) });
-  const [queue, counts] = await Promise.all([listReturns(store.id, filter, { page: pageNumber(query.page) }), returnCounts(store.id)]);
-  return <ReturnsQueueView base={`/admin/${store.slug}/returns`} filter={filter} queue={queue} counts={counts} timeZone={store.timeZone} />;
+  const exchange = exchangeFilterOf(query.exchange);
+  const [queue, counts] = await Promise.all([listReturns(store.id, filter, { page: pageNumber(query.page), exchange }), returnCounts(store.id)]);
+  return <ReturnsQueueView base={`/admin/${store.slug}/returns`} filter={filter} exchange={exchange} queue={queue} counts={counts} timeZone={store.timeZone} />;
 }

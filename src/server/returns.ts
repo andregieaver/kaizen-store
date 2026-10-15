@@ -18,6 +18,7 @@ import {
   type ReturnQueueFilter,
 } from "@/lib/return-input";
 import { adjustmentOf } from "@/lib/credit-allocation";
+import { labelDeduction, LABEL_PROBLEMS } from "@/lib/return-label";
 import { refundFor, refundableAfter, reviewOverride, shippingPaidMinor, type Refund, type RefundLine, type WorkingRow } from "@/lib/return-refund";
 import {
   actionsFor,
@@ -96,7 +97,82 @@ type Ret = {
   shippingRefundMinor: number;
   /** Made before the goods were sent: nothing to send back, so nothing to hold a refund against. */
   nothingSent: boolean;
+  /** The customer's exchange wish (D239): when, and their words (shopper text). */
+  exchangeWishAt: Date | null;
+  exchangeWishNote: string | null;
+  /** The return label (D239): pasted (`label_url`), booked with a carrier, or none. */
+  label: ReturnLabelFacts;
 };
+
+/** A return's label as the screens and the label route read it (D239, `docs/wave-3-exchanges.md` 2.3, 2.4). The carrier's own label address is never in it. */
+export type ReturnLabelFacts = {
+  source: "pasted" | "carrier" | null;
+  carrierId: string | null;
+  service: string | null;
+  consignmentNumber: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  /** What the carrier priced it at, converted once to the order's currency (VAT included); null when not known. */
+  costMinor: number | null;
+  costCarrier: { amountMinor: number; currency: string; vatIncluded: boolean } | null;
+  test: boolean;
+  bookedAt: string | null;
+  tries: number;
+};
+
+function labelOf(r: Row): ReturnLabelFacts {
+  const cost = r.label_cost_carrier as { amountMinor?: number; currency?: string; vatIncluded?: boolean } | null;
+  return {
+    source: r.label_source === "pasted" || r.label_source === "carrier" ? r.label_source : null,
+    carrierId: r.label_carrier_id ? String(r.label_carrier_id) : null,
+    service: r.label_service ? String(r.label_service) : null,
+    consignmentNumber: r.label_consignment_number ? String(r.label_consignment_number) : null,
+    trackingNumber: r.label_tracking_number ? String(r.label_tracking_number) : null,
+    trackingUrl: r.label_tracking_url ? String(r.label_tracking_url) : null,
+    costMinor: r.label_cost_minor === null || r.label_cost_minor === undefined ? null : Number(r.label_cost_minor),
+    costCarrier: cost && typeof cost.amountMinor === "number" ? { amountMinor: Number(cost.amountMinor), currency: String(cost.currency ?? ""), vatIncluded: Boolean(cost.vatIncluded) } : null,
+    test: Boolean(r.label_test),
+    bookedAt: r.label_booked_at ? new Date(String(r.label_booked_at)).toISOString() : null,
+    tries: Number(r.label_tries ?? 0),
+  };
+}
+
+/** The state of a return's exchange the screens and pages show (D239), from its newest exchange; null when it never had one. */
+export type ReturnExchangeState = {
+  id: string;
+  status: string;
+  creditMinor: number;
+  totalMinor: number;
+  differenceMinor: number;
+  expiresAt: string | null;
+  exchangeOrderId: string | null;
+  exchangeOrderNumber: string | null;
+};
+
+async function exchangeStateOf(storeId: string, returnId: string): Promise<ReturnExchangeState | null> {
+  const [x] = await db().execute<Row>(sql`
+    select x.id, x.status, coalesce(x.credit_at_processing, x.credit_minor) as credit, x.total_minor,
+      coalesce(x.difference_at_processing, x.difference_minor) as difference, x.expires_at, x.exchange_order_id, o.number as order_number
+    from commerce.return_exchanges x left join commerce.orders o on o.store_id = x.store_id and o.id = x.exchange_order_id
+    where x.store_id = ${storeId}::uuid and x.return_id = ${returnId}::uuid and x.status <> 'draft'
+    order by x.seq desc limit 1
+  `);
+  if (!x) return null;
+  return {
+    id: String(x.id),
+    status: String(x.status),
+    creditMinor: Number(x.credit),
+    totalMinor: Number(x.total_minor),
+    differenceMinor: Number(x.difference),
+    expiresAt: x.expires_at ? new Date(String(x.expires_at)).toISOString() : null,
+    exchangeOrderId: x.exchange_order_id ? String(x.exchange_order_id) : null,
+    exchangeOrderNumber: x.order_number ? String(x.order_number) : null,
+  };
+}
+
+/** The open exchange's status for `actionsFor()`; a draft is staff's own and changes nothing. */
+const openExchangeStatus = (x: ReturnExchangeState | null): "proposed" | "confirmed" | "processed" | null =>
+  x && (x.status === "proposed" || x.status === "confirmed" || x.status === "processed") ? x.status : null;
 
 const date = (value: unknown) => (value ? new Date(String(value)) : null);
 const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
@@ -135,6 +211,9 @@ function toRet(r: Row): Ret {
     returnShippingMinor: Number(r.return_shipping_minor ?? 0),
     shippingRefundMinor: Number(r.shipping_refund_minor ?? 0),
     nothingSent: Boolean(r.nothing_sent),
+    exchangeWishAt: date(r.exchange_wish_at),
+    exchangeWishNote: r.exchange_wish_note ? String(r.exchange_wish_note) : null,
+    label: labelOf(r),
   };
 }
 
@@ -391,6 +470,10 @@ export type ReturnDetail = {
     business: boolean;
   };
   settings: ReturnSettings;
+  /** The customer's exchange wish (D239), and the return's newest exchange. */
+  exchangeWish: { at: string; note: string | null } | null;
+  exchange: ReturnExchangeState | null;
+  label: ReturnLabelFacts;
 };
 
 /** One return of the store with everything its screen shows; null when it is not this store's. */
@@ -421,6 +504,7 @@ export async function getReturn(storeId: string, returnId: string, now = new Dat
   const refunded = ret.refundMinor !== null;
   const acknowledgementPending = Boolean(request && confirmedAt && !request.acknowledged_at);
   const admin = working?.admin ?? (await getOrderAdmin(storeId, ret.orderId));
+  const exchange = await exchangeStateOf(storeId, ret.id);
   return {
     id: ret.id,
     number: ret.number,
@@ -484,6 +568,7 @@ export async function getReturn(storeId: string, returnId: string, now = new Dat
       acknowledgementPending,
       refundOutside: admin ? !admin.canRefund : false,
       nothingToSendBack: ret.nothingSent,
+      exchange: openExchangeStatus(exchange),
     }),
     due: refundDue(
       {
@@ -513,6 +598,9 @@ export async function getReturn(storeId: string, returnId: string, now = new Dat
       business: facts.order.business,
     },
     settings,
+    exchangeWish: ret.exchangeWishAt ? { at: ret.exchangeWishAt.toISOString(), note: ret.exchangeWishNote } : null,
+    exchange,
+    label: ret.label,
   };
 }
 
@@ -538,7 +626,24 @@ export type QueueRow = {
   overdue: boolean;
   /** The acknowledgement of a confirmed withdrawal was not sent. */
   acknowledgementPending: boolean;
+  /**
+   * The queue's exchange mark (D239): `wished` (the customer asked, no proposal yet), `proposed`, `confirmed`, `waiting_payment` (processed, the difference to
+   * pay); null for none. `labelFailed`: a withdrawal's automatic label could not be booked (*Label not booked*).
+   */
+  exchange: ExchangeQueueMark | null;
+  labelFailed: boolean;
 };
+
+/** The exchange marks of the queue and its `exchange=` filter (D239). */
+export const EXCHANGE_QUEUE_MARKS = ["wished", "proposed", "confirmed", "waiting_payment"] as const;
+export type ExchangeQueueMark = (typeof EXCHANGE_QUEUE_MARKS)[number];
+
+/** The mark as SQL over a return `r`: its open exchange's state, or the customer's wish when it has none. */
+const EXCHANGE_MARK_SQL = sql`(
+  select case x.status when 'proposed' then 'proposed' when 'confirmed' then 'confirmed' when 'processed' then 'waiting_payment' end
+  from commerce.return_exchanges x where x.store_id = r.store_id and x.return_id = r.id and x.status in ('proposed', 'confirmed', 'processed')
+  limit 1
+)`;
 
 export type Queue = { rows: QueueRow[]; total: number; page: number; pageSize: number };
 
@@ -551,7 +656,7 @@ const OPEN = ["requested", "approved", "in_transit", "received", "inspected"];
 export async function listReturns(
   storeId: string,
   filter: Partial<ReturnQueueFilter> = {},
-  { page = 1, pageSize = 25, now = new Date() }: { page?: number; pageSize?: number; now?: Date } = {},
+  { page = 1, pageSize = 25, now = new Date(), exchange = null }: { page?: number; pageSize?: number; now?: Date; /** The queue's `exchange=` filter (D239). */ exchange?: ExchangeQueueMark | null } = {},
 ): Promise<Queue> {
   const status = filter.status ?? "open";
   const kind = filter.kind ?? "all";
@@ -561,6 +666,13 @@ export async function listReturns(
   else if (status !== "all") conditions.push(sql`r.status::text = ${status}`);
   if (kind !== "all") conditions.push(sql`r.kind = ${kind}`);
   if (filter.overdue) conditions.push(OVERDUE_SQL);
+  if (exchange && (EXCHANGE_QUEUE_MARKS as readonly string[]).includes(exchange)) {
+    conditions.push(
+      exchange === "wished"
+        ? sql`(r.exchange_wish_at is not null and r.refund_minor is null and ${EXCHANGE_MARK_SQL} is null)`
+        : sql`${EXCHANGE_MARK_SQL} = ${exchange}`,
+    );
+  }
   if (q) {
     const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     conditions.push(sql`(r.number ilike ${like} or o.number ilike ${like} or o.email ilike ${like} or w.email ilike ${like} or w.name ilike ${like})`);
@@ -570,7 +682,8 @@ export async function listReturns(
   const [rows, settings, zone] = await Promise.all([
     db().execute<Row>(sql`
       select r.id, r.number, r.kind, r.status, r.order_id, r.created_at, r.refund_deadline, r.refund_minor, r.shipped_at, r.received_at,
-        ${NOTHING_SENT_SQL} as nothing_sent,
+        ${NOTHING_SENT_SQL} as nothing_sent, ${EXCHANGE_MARK_SQL} as exchange_mark, r.exchange_wish_at,
+        (r.kind = 'withdrawal' and r.label_source is null and r.label_tries > 0) as label_failed,
         o.number as order_number, o.email as order_email, o.currency, w.name, w.email as request_email, w.confirmed_at, w.acknowledged_at,
         (select coalesce(sum(rl.quantity) filter (where rl.decision = 'accept'), 0)::int
            from commerce.return_lines rl where rl.store_id = r.store_id and rl.return_id = r.id) as units,
@@ -620,6 +733,8 @@ export async function listReturns(
         due,
         overdue: due.state === "overdue" || due.state === "waiting_late",
         acknowledgementPending: Boolean(r.confirmed_at && !r.acknowledged_at),
+        exchange: r.exchange_mark ? (String(r.exchange_mark) as ExchangeQueueMark) : r.exchange_wish_at && !refunded ? "wished" : null,
+        labelFailed: Boolean(r.label_failed),
       } satisfies QueueRow;
     }),
     total: Number(rows[0]?.total ?? 0),
@@ -855,6 +970,10 @@ export async function inspectReturn(storeId: string, input: unknown, accountId: 
         : refusal("lifecycle", "Mark the goods as received before inspecting them.");
     }
     if (ret.refundMinor !== null) return refusal("refunded", "The refund is already made, so the inspection is not changed.");
+    // An exchange being processed (D239) rests on the credit worked out when it was processed: the inspection waits until it is settled or cancelled.
+    if (openExchangeStatus(await exchangeStateOf(storeId, ret.id)) === "processed") {
+      return refusal("exchange_pending", "An exchange of this return is being processed. Settle or cancel it before changing the inspection.");
+    }
     const lines = await loadLines(storeId, ret.id);
     const accepted = new Map(lines.filter((l) => l.decision === "accept").map((l) => [l.lineId, l]));
     const seen = new Set<string>();
@@ -946,6 +1065,10 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   if (ret.refundMinor !== null) return refusal("refunded", "This return is already refunded.");
   if (isEnded(ret.status)) return refusal("ended", "This return has ended, so it cannot be refunded.");
   if (ret.status === "requested") return refusal("lifecycle", "Approve the return before refunding it.");
+  // An exchange being processed (D239: its order made, its stock held) is settled or cancelled first; the database refuses the refund too, but only after Stripe.
+  if (openExchangeStatus(await exchangeStateOf(storeId, ret.id)) === "processed") {
+    return refusal("exchange_pending", "An exchange of this return is being processed. Cancel the exchange to refund instead.");
+  }
   const settings = await getReturnSettings(storeId);
   const holds = settings.refundWhen === "received" && !ret.nothingSent;
   if (holds && !["in_transit", "received", "inspected"].includes(ret.status)) {
@@ -953,6 +1076,12 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   }
   const lines = await loadLines(storeId, ret.id);
   if (!lines.some((l) => l.decision === "accept")) return refusal("no_lines", "No line of this return is accepted, so there is nothing to refund.");
+  // A booked label (D239, 4.8): staff take its cost off only when the parcel came back with it (the form starts at 0); never above what the label cost
+  // (CRD Art. 14(1)), never for a test label (it cannot be used and cost the store nothing), and an amount for an unpriced label needs a note.
+  if (ret.label.source === "carrier") {
+    const deduction = labelDeduction({ payer: "shopper", source: "carrier", costMinor: ret.label.costMinor, typedMinor: data.returnShippingMinor, note: data.reason, test: ret.label.test });
+    if (!deduction.ok) return refusal(deduction.code, LABEL_PROBLEMS[deduction.code]);
+  }
   const working = await workOut(storeId, ret, lines, data.returnShippingMinor);
   if (!working) return gone();
   const { refund, admin } = working;
@@ -1033,6 +1162,11 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
       await writeEvent(tx, storeId, ret.orderId, "return.refund_overridden", eventData(ret, accountId, { computedMinor: refund.amountMinor, requestedMinor: amount, reason }), "staff");
     }
     await writeEvent(tx, storeId, ret.orderId, "return.refunded", eventData(ret, accountId, more), "staff");
+    // Refunded instead (D239): an exchange proposed or confirmed for this return ends `superseded` (a draft is cancelled), so its page says the money was refunded.
+    await tx.execute(sql`
+      update commerce.return_exchanges set status = case when status = 'draft' then 'cancelled' else 'superseded' end
+      where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid and status in ('draft', 'proposed', 'confirmed')
+    `);
     linked = true;
     recordedRefundId = refundId || null;
   };
@@ -1212,6 +1346,14 @@ export type ShopperReturn = {
   acknowledgementReference: string | null;
   createdAt: string;
   timeZone: string;
+  /** The customer's exchange wish (D239): when it was sent (the words are theirs and are not shown back). */
+  exchangeWishAt: string | null;
+  /** The return's newest exchange (D239), as its status page shows it; the token of its page is never here. */
+  exchange: ReturnExchangeState | null;
+  /** The label: a booked one is printed through the label route (`/returns/{token}/label`), never by the carrier's address; a pasted one by `labelUrl`. */
+  label: Omit<ReturnLabelFacts, "tries" | "costCarrier">;
+  /** The return shipping the refund takes off (the label the shopper pays for, D239 4.8), in the order's currency; 0 when nothing is. */
+  returnShippingMinor: number;
 };
 
 /**
@@ -1262,6 +1404,10 @@ export async function getShopperReturn(storeId: string, token: string): Promise<
     acknowledgementReference: request[0]?.acknowledgement_reference ? ret.number : null,
     createdAt: ret.createdAt.toISOString(),
     timeZone: facts.timeZone,
+    exchangeWishAt: ret.exchangeWishAt?.toISOString() ?? null,
+    exchange: await exchangeStateOf(storeId, ret.id),
+    label: (({ tries, costCarrier, ...rest }) => (void tries, void costCarrier, rest))(ret.label),
+    returnShippingMinor: facts.whoPaysReturn === "shopper" ? ret.returnShippingMinor : 0,
   };
 }
 

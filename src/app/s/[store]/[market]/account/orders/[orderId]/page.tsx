@@ -73,6 +73,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
     parcelTrackingFor(store.id, orderId),
   ]);
   if (!order) notFound();
+  // An exchange order (D239) names its return and the original order; the original is linked only when it is this customer's own too.
+  const exchangeOriginal = order.exchange && (await ownsOrder(store.id, customer.id, order.exchange.originalOrderId)) ? order.exchange.originalOrderId : null;
   const m = t(market.lang);
   const a = m.account;
   const vatWords = vatText(market.lang);
@@ -97,6 +99,17 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         <p className="text-muted">
           {date(order.placedAt)} · {a.status[order.status] ?? order.status}
         </p>
+        {order.exchange && (
+          <p data-exchange-order>
+            {exchangeOriginal ? (
+              <Link href={`${base}/account/orders/${exchangeOriginal}`} className="underline">
+                {m.exchange.orderLine(order.exchange.returnNumber, order.exchange.originalOrderNumber)}
+              </Link>
+            ) : (
+              m.exchange.orderLine(order.exchange.returnNumber, order.exchange.originalOrderNumber)
+            )}
+          </p>
+        )}
       </div>
 
       {/* The store's own delivery (D237): where to collect it, or the local delivery and the note. */}

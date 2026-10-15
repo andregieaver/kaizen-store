@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 64.4%** (first report 59.5%), **must-have 76.3%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +3.4 points from the 56 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 64.5%** (first report 59.5%), **must-have 76.3%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +3.5 points from the 57 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (33):
+Rated higher (34):
 
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
 - Export reports to CSV (Analytics): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
@@ -44,6 +44,7 @@ Rated higher (33):
 - Self-serve withdrawal and return requests (Orders): missing to full. D153 shipped (commit 4ae6222, migrations applied to production and recorded in docs/decisions.md): the withdrawal function at /s/{store}/{market}/withdraw, return requests inside the store's own window, the status page, the acknowledgement…
 - Returns management (RMA, inspect, restock, fees) (Orders): partial to full. D153 shipped the return object: `returns`/`return_lines`, numbers `{order}-R{n}`, lifecycle requested to closed enforced in SQL, reasons, inspection per line (condition, restock, deduction with note), return shipping, a refund worked out o…
 - Return labels (Orders): missing to partial. D153 lets staff attach a return label address (https only, pasted) when approving or later; it is shown on the shopper's status page and emailed as a button, and tests hold it (returns.int.test.ts, returns-actions.int.test.ts, return-input…
+- Exchanges (Orders): missing to partial. Wave 3 exchanges (docs/wave-3-exchanges.md).
 - Order export to CSV (Orders): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Credit notes for refunds (Orders, not core): missing to partial. Unit 1b (D159 proposed) read in the working tree and run in a fresh database on 2026-10-04: invoices.test.ts and invoices-money-review.test.ts (every refund path P1 to P10, one note per refund, own series, over-invoice refused, no credit f…
 - Gift receipts and messages (Orders, not core): missing to full. Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migration not applied to production).
@@ -86,7 +87,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizen Store has **64.4%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 60.4% overall and 75.8% for must-haves. Counting app-only features gives 63.8%; counting Plus-only as well gives 63.4%. Kaizen is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 84 are full, 99 partial and 38 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizen Store has **64.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 60.6% overall and 75.8% for must-haves. Counting app-only features gives 63.9%; counting Plus-only as well gives 63.6%. Kaizen is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 84 are full, 100 partial and 37 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -96,10 +97,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **64.4%** | 60.4% | 84 / 99 / 38 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **64.5%** | 60.6% | 84 / 100 / 37 |
 | Must-have (core, weight 4 or 5) | 89 | **76.3%** | 75.8% | 48 / 39 / 2 |
-| Core plus app-only features | 246 | 63.8% | 60.4% | 94 / 109 / 43 |
-| Everything, including Plus-only | 252 | 63.4% | 59.7% | 95 / 111 / 46 |
+| Core plus app-only features | 246 | 63.9% | 60.6% | 94 / 110 / 42 |
+| Everything, including Plus-only | 252 | 63.6% | 59.9% | 95 / 112 / 45 |
 
 <!-- parity:generated:end headline -->
 
@@ -114,13 +115,13 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Catalogue and products | 28 | 12 | 10 | 6 | 64.5% | 8 | 79.4% |
 | Storefront, themes and content | 33 | 21 | 10 | 2 | 83.2% | 15 | 93.9% |
 | Checkout and payments | 21 | 3 | 12 | 6 | 47.4% | 12 | 58.7% |
-| Orders, shipping, fulfilment and returns | 28 | 16 | 10 | 2 | 78.5% | 14 | 86.9% |
+| Orders, shipping, fulfilment and returns | 28 | 16 | 11 | 1 | 79.5% | 14 | 86.9% |
 | Customers, marketing and loyalty | 20 | 2 | 14 | 4 | 48.5% | 8 | 63.2% |
 | Analytics, reporting and finance | 26 | 11 | 9 | 6 | 64.0% | 11 | 71.7% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 3 | 14 | 5 | 50.0% | 7 | 65.5% |
 | AI and automation | 23 | 9 | 7 | 7 | 56.8% | 2 | 100.0% |
-| **Total** | **221** | **84** | **99** | **38** | **64.4%** | **89** | **76.3%** |
+| **Total** | **221** | **84** | **100** | **37** | **64.5%** | **89** | **76.3%** |
 
 <!-- parity:generated:end domains -->
 
@@ -141,7 +142,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 111 | 99 | 25.1 |
+| A | Build in-house | 111 | 99 | 25.0 |
 | B | Build, live only with a third party | 18 | 15 | 4.3 |
 | C | Strategy decision first | 14 | 11 | 3.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -154,13 +155,13 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **64.4%** core, 76.3% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **64.5%** core, 76.3% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 66.5% | 79.6% | +2.1 | 65.7% | 78.5% |
-| 2 | Data in and out | 4 (2) | 66.9% | 79.6% | +0.4 | 66.2% | 78.5% |
-| 3 | Inventory and orders | 15 (14) | 70.3% | 82.3% | +3.4 | 68.0% | 80.2% |
+| 1 | Compliance and money | 11 (8) | 66.6% | 79.6% | +2.1 | 65.9% | 78.5% |
+| 2 | Data in and out | 4 (2) | 67.1% | 79.6% | +0.4 | 66.3% | 78.5% |
+| 3 | Inventory and orders | 15 (14) | 70.3% | 82.3% | +3.3 | 68.0% | 80.2% |
 | 4 | Payments | 15 (13) | 74.8% | 86.0% | +4.4 | 70.5% | 81.8% |
 | 5 | Customers and marketing | 31 (27) | 82.6% | 92.7% | +7.8 | 77.2% | 88.5% |
 | 6 | Catalogue | 13 (12) | 85.5% | 93.8% | +2.9 | 80.1% | 89.7% |
@@ -398,8 +399,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Staff alerts for new orders, order automation | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/notifications/staff-notifications) | Full (was partial) | 3 |  | Evidence: `src/lib/staff-alerts.ts`, `src/server/staff-alerts.ts`, `src/lib/order-rules.ts` and 21 more; 16 test files; D41, D101, D153, D238. |
 | Self-serve withdrawal and return requests | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/self-serve-returns/management) | Full (was missing) | 5 |  | Evidence: `src/server/withdrawals.ts`, `src/lib/withdrawal.ts`, `src/app/s/[store]/[market]/withdraw/page.tsx` and 7 more; 8 test files; D153. |
 | Returns management (RMA, inspect, restock, fees) | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules) | Full (was partial) | 4 |  | Evidence: `src/server/returns.ts`, `src/server/return-settings.ts`, `src/server/return-jobs.ts` and 9 more; 10 test files; D153, D152. |
-| Return labels | Native. [page](https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/return-labels) | Partial (was missing) | 3 | B, wave 3 | Staff paste a label address for a return (D153) and the shopper gets it; no return label is bought from a connected carrier, and none is created for the shopper to print on a self-serve request. Code: `src/server/return-emails.ts`, `src/lib/return-input.ts`. |
-| Exchanges | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/creating-returns) | Missing | 2 | A, wave 3 | Not built (D153 deliberately leaves exchanges out of `docs/returns.md`): a return refunds, nothing creates a replacement order or nets the difference. |
+| Return labels | Native. [page](https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/return-labels) | Partial (was missing) | 3 | B, wave 3 | Built in wave 3 against a faked carrier (`docs/wave-3-exchanges.md` 2.3, 2.4, 4.7, 4.8): Bring's `bookReturn()` (return service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by the five-minute job (`bookPendingLabels()`), one booking at a time under a lock; the booking is kept in `returns.label_*`; the shopper gets an email button and a status-page link to `/returns/{token}/label`, which fetches from Bring's own host with the store's keys, answers no-store and keeps nothing; the label's cost is recorded at booking and taken off only at refund when staff confirm the parcel came with that label, never above the cost and never for a test label (`labelDeduction()` into `refundFor()`); a refused or timed-out booking leaves the return approved and the pasted address working. Tests re-run on 2026-10-15 pass (return-labels.int.test.ts, return-label.test.ts, bring-returns.test.ts, the label route's test). Stays partial (bucket B): no label has been booked and printed with a real Mybring test user and a store's return agreement (Bring's `BOOK-INPUT-043`; the party roles of a standalone return, the label link's host and billing on use are unconfirmed, spec 9.6); only Bring books returns (PostNord, Porterbuddy and Helthjem do not); booking is a separate press on the approved return's page, not part of the approve form (spec 2.3's preselection on approval is not built), and no browser test drives that admin press; whether the label was used is staff's word, not carrier tracking; the label texts need legal review (spec 8 item 7). Code: `src/lib/return-label.ts`, `src/server/return-labels.ts`. |
+| Exchanges | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/creating-returns) | Partial (was missing) | 2 | A, wave 3 | Built in wave 3 (`docs/wave-3-exchanges.md`) and each criterion is held by tests re-run on 2026-10-15 against a fresh database: staff add catalogue replacements to a return on its page (`ExchangeBuilder`, `exchange-actions.ts`), priced by `priceExchange()` over `priceDraft()` and equal to `cartSummary()` in kroner and in a euro view, netted against the credit `refundFor()` gives (`exchanges.int.test.ts`, `exchange.test.ts`, the signed-in `admin-exchange.spec.ts`); processing makes an order with `source = 'exchange'` through `insertOrder()`, the next number of the D141 sequence, stock held only then (`exchanges.int.test.ts`, `src/db/exchanges.test.ts`); a difference owed goes out as a pay link to Stripe's hosted page (settled by `applySession()`), or is recorded as paid outside Kaizen, and a difference due is refunded through `refundOrder()` (fake Stripe); a withdrawal's exchange needs the customer's own press on `/account/exchange/{token}` (staff records refused by the database, and since the review no share link is handed to staff for a withdrawal). Partial because: (1) the consumer texts (the exchange page, the proposal and pay emails, the agreement and withdrawal-right sentences, the `settled_by_return` invoice wording and the `return_exchange` credit note) are hand-written and not yet read by a person (spec section 8); (2) no pay link has been paid in Stripe test mode on a real store, only against the repo's fake Stripe, and e2e cannot reach Stripe's page (spec 9.6); (3) the euro scenario is in `exchanges.int.test.ts`, not in `checkout-kinds.int.test.ts` as spec 6.1 and 6.3 say. A once-shown share link that a refresh could lose (found while re-rating) is fixed: `ExchangeLinkHolder` keeps it on screen. Code: `src/lib/exchange.ts`, `src/lib/exchange-limits.ts`. |
 | 3PL and fulfilment network | App. [page](https://help.shopify.com/en/manual/fulfillment/setting-up-fulfillment/fulfillment-network) | Partial (was missing) | 2 | C, wave 9 | Only outbound order events through Zapier, Make and Slack (D41, D101); a warehouse cannot send tracking or stock levels back, because there is no public API. Weak partial. Code: `src/server/integrations.ts`, `src/lib/integrations.ts`. |
 | Customs and duties | Native. [page](https://help.shopify.com/en/manual/international/duties-and-import-taxes/charging-duties) | Missing (was partial) | 3 | A, wave 7 | No duty collection: HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`, edited in the product editor) but nothing uses them: no duty or import-VAT estimate at checkout, no customs data in carrier bookings, no IOSS. The fields are the prerequisite, not partial credit. Code: `src/db/schema.ts`, `src/components/admin/product-editor.tsx`. |
 | Multi-location inventory and routing | Native. [page](https://help.shopify.com/en/manual/locations/enabling-locations) | Partial | 2 | A, wave 3 | Built and tested (wave 3, D172, in production since 6 October 2026): stock locations (add, rename, change country, rank by `priority`, owner-only deactivate and reactivate, never deleted, at least one active, at most 20); `allocate()` (`src/lib/stock-routing.ts`) names the rule once (keep an order together, else by rank, the backordered remainder at the first location that stocks the variant) and `placeOrder()` applies it with level rows locked in (variant, location) order, so two checkouts cannot deadlock (a race for the last unit is tested); `variant_availability` sells the sum of the active locations, each floored at zero; refund, cancel and return restock to the location the units came from or one staff choose (`restockPlan()`, `restockRoom()`), falling back to the first active location; `locationImpact()` reports units, variants and live holds before a deactivation, which is refused while checkouts hold stock there. Held by `stock-routing.test.ts`, `stock-routing.int.test.ts`, `inventory-locations.int.test.ts`, `stock-restock.test.ts`, `returns.int.test.ts`, the PGlite location guards and the view tests; every one passed in my runs. Why it stays Partial: (1) the locations page, the deactivate dialog and the refund dialog's 'Put back at' select have never been clicked (no signed-in admin fixture, D158): they are held by `renderToString` tests and by integration tests of the server functions; (2) criterion 4's guard is not reliable: `src/server/inventory-perf.int.test.ts` (the C4 guard) is not reliable: its 20-line `placeOrder()` timed out at 60 s in most of my runs against a database that already held an earlier perf store or ran other test files at the same time (probably stale planner statistics; the statement caught running for minutes was `orderLineRows()`'s cart-line read in `src/server/checkout.ts`, unchanged by this wave apart from two columns) and passed in 7 s alone on a fresh database, as in the Gates run; the cause is not found. (3) a hold's physical part is not re-checked against the shelf at payment, so staff who lower a level below live holds make those orders go negative with no backorder note (the Inventory page shows negative available; docs/wave-3-inventory.md 3.13); (4) with several active locations the product editor shows the total read-only and the bulk grid refuses a stock column, so stock per location is edited only on the Inventory page or by file; (5) one routing rule only: no closest-location or custom rules, no locations that do not fulfil online orders, no per-product or per-market locations, no transfers; a location's country is a label. Code: `src/db/schema.ts`, `src/server/order-admin.ts`. |

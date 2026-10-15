@@ -404,6 +404,8 @@ function paymentWords(p: SnapshotPayment, doc: OrderInvoiceSnapshot, t: Document
   if (p.kind === "paid_online") return t.paidOnline;
   if (p.kind === "paid_outside") return `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`;
   if (p.kind === "settled_by_order") return e.settledByOrder(p.invoiceNumber ?? (isEditInvoice(doc) ? doc.refersTo.invoiceNumber : ""));
+  // An exchange order's part paid with a return's credit (D239): never "to pay at the venue".
+  if (p.kind === "settled_by_return") return e.settledByReturn(p.returnNumber ?? "", p.orderNumber ?? "");
   return t.payAtVenue;
 }
 

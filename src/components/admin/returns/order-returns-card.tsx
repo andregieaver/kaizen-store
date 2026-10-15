@@ -60,6 +60,7 @@ export function OrderReturnsCard({
   actions,
   today,
   partlySent = false,
+  exchanges = {},
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -77,6 +78,8 @@ export function OrderReturnsCard({
    * so there is no receipt to record yet and the form is replaced by a sentence.
    */
   partlySent?: boolean;
+  /** The orders this order's returns were exchanged for (D239), by return id: "Exchanged: order {M}". */
+  exchanges?: Record<string, { orderId: string; orderNumber: string; settled: boolean }>;
 }) {
   const open = !overview.copied && overview.window !== null;
   return (
@@ -101,6 +104,14 @@ export function OrderReturnsCard({
               <span className="text-muted">
                 {KIND_LABELS[row.kind]} · <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
               </span>
+              {exchanges[row.id] && (
+                <span>
+                  {exchanges[row.id].settled ? "Exchanged: order " : "Exchange being processed: order "}
+                  <Link href={`${base}/orders/${exchanges[row.id].orderId}`} className="underline">
+                    #{exchanges[row.id].orderNumber}
+                  </Link>
+                </span>
+              )}
             </li>
           ))}
         </ul>

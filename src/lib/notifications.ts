@@ -129,6 +129,24 @@ export const NOTIFICATIONS: readonly NotificationDef[] = [
   }),
   def("return.received", "returns", "Return received", "When staff record that a return arrived.", { own: ["return_number"] }),
   def("return.refunded", "returns", "Return refunded", "When a return is refunded.", { own: ["return_number"] }),
+  // Exchanges and return labels (wave 3, D239, docs/wave-3-exchanges.md 2.5).
+  def("return.exchange_proposed", "returns", "Exchange proposed", "When staff send the customer an exchange to confirm.", { own: ["return_number"] }),
+  def("return.exchange_to_pay", "returns", "Exchange: payment asked", "When an exchange is processed and the customer has a difference to pay.", {
+    required: true,
+    own: ["return_number"],
+    why: "It asks for a payment the customer agreed to (Consumer Rights Directive Art. 22): the customer needs it to pay, and to know that the return is otherwise refunded as usual.",
+  }),
+  def("return.exchanged", "returns", "Exchange done", "When an exchange is settled: the new order is made and paid.", {
+    required: true,
+    own: ["return_number", "refund_amount"],
+    why: "It records how the return's money was used instead of a refund to the original payment (Consumer Rights Directive Art. 13(1)), on a durable medium.",
+  }),
+  def("return.exchange_lapsed", "returns", "Exchange did not go through", "When a confirmed exchange expires unpaid or is cancelled, and the return is refunded as usual.", {
+    own: ["return_number"],
+  }),
+  def("return.label_ready", "returns", "Return label ready", "When a return label is booked with the store's carrier.", {
+    own: ["return_number", "carrier", "tracking_number"],
+  }),
 ];
 
 export type NotificationId = (typeof NOTIFICATIONS)[number]["id"];

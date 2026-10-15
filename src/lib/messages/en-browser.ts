@@ -91,6 +91,20 @@ form: {
   yes: "Yes",
   no: "No",
 },
+  // legal: needs review. The exchange wish on a return's status page (D239 2.1): asked only after the withdrawal, never part of it.
+  exchangeWish: {
+    heading: "Would you like something else instead of your money back?",
+    label: "What would you like instead?",
+    hint: "For example another size or colour. This is only a wish: until you confirm a proposal from the store, you get your money back as usual.",
+    button: "Ask for an exchange",
+    working: "One moment …",
+    sent: "Your wish is sent. The store will send you a proposal; until you confirm one, you will get your money back as usual.",
+    empty: "Write what you would like instead.",
+    tooLong: (over: number) => `${over} characters too many.`,
+    tooManyLines: (max: number) => `Write at most ${max} lines.`,
+    counter: (left: number) => `${left} characters left`,
+    failed: "Your wish could not be sent. Try again in a moment.",
+  },
 };
 
 export type BrowserMessages = typeof enBrowser;
