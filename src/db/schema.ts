@@ -878,6 +878,40 @@ export const designPresetVersions = commerce.table(
 );
 
 /**
+ * Kaizena Flow's own installed themes (phase 4 of `docs/theme-store.md`, `docs/theme-phase-4.md`): as a store's (`store_theme_installs`), one
+ * live, whose look is `platform_settings`' columns (`theme`, `fonts`, `custom_css`, `header_id`, `footer_id`), so `look` is null for it; an
+ * install that is not live keeps its look in `look` (`PlatformLook`: the theme as stored, the fonts, the CSS and the chosen layouts' page ids).
+ * Seeded with a live *Custom* for the look the site has. Written only by `src/server/platform-theme-installs.ts` and
+ * `installPresetOnPlatform()` (a scan test).
+ */
+export const platformThemeInstalls = commerce.table(
+  "platform_theme_installs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The theme it came from; null: *Custom*, Kaizena Flow's own look. */
+    presetId: uuid("preset_id").references(() => designPresets.id),
+    versionId: uuid("version_id").references(() => designPresetVersions.id),
+    title: text("title").notNull(),
+    look: jsonb("look"),
+    live: boolean("live").notNull().default(false),
+    installedBy: uuid("installed_by").references(() => accounts.id, { onDelete: "set null" }),
+    installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+    switchedAt: timestamp("switched_at", { withTimezone: true }),
+    /** What was placed when it was added (as `store_theme_installs.placed`, D245), for updates in a later step. */
+    placed: jsonb("placed"),
+  },
+  (t) => [
+    uniqueIndex("platform_theme_installs_live_idx").on(t.live).where(sql`${t.live}`),
+    index("platform_theme_installs_preset_idx").on(t.presetId),
+    index("platform_theme_installs_version_idx").on(t.versionId),
+    index("platform_theme_installs_installed_by_idx").on(t.installedBy),
+    check("platform_theme_installs_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("platform_theme_installs_look", sql`(${t.live} and ${t.look} is null) or (not ${t.live} and coalesce(jsonb_typeof(${t.look}) = 'object', false))`),
+    check("platform_theme_installs_placed", sql`${t.placed} is null or jsonb_typeof(${t.placed}) = 'object'`),
+  ],
+);
+
+/**
  * The themes installed in a store (D241, `docs/theme-store.md` 4.5 and 5): several, one live. The live install's look is the store's own columns
  * (`stores.theme`, `custom_css`, `header_id`, `footer_id`, `product_layout_id`), read as ever, so `look` is null for it; an install that is not live
  * keeps its look in `look` (`InstalledLook`: the theme as stored, the chosen layouts' page ids and the CSS) until it is switched to. Every store

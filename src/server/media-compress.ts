@@ -227,9 +227,16 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
     // The look a store's installed theme keeps while it is not live (D241): its theme and CSS name the same files.
     ...(storeId ? [json(sql`commerce.store_theme_installs`, sql`look`, sql`look is not null`)] : []),
   ];
+  // Kaizena Flow's own installed themes keep their looks the same way (`docs/theme-phase-4.md`); the table has no store column.
+  if (!storeId) {
+    statements.push(
+      sql`update commerce.platform_theme_installs set look = ${replaced(sql`look`, pairs, "jsonb")} where look is not null and (${mentions(sql`look`, pairs, "jsonb")})`,
+    );
+  }
   const settings = storeId ? sql`commerce.stores` : sql`commerce.platform_settings`;
   const which = storeId ? sql`id = ${storeId}::uuid` : sql`true`;
-  for (const column of [sql`navigation`, sql`seo`, ...(storeId ? [sql`theme`] : [])]) {
+  // Kaizena Flow's theme too (D235): its pictures are its library's as a store's are the store's.
+  for (const column of [sql`navigation`, sql`seo`, sql`theme`]) {
     statements.push(sql`update ${settings} set ${column} = ${replaced(column, pairs, "jsonb")} where ${which} and (${mentions(column, pairs, "jsonb")})`);
   }
   statements.push(

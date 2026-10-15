@@ -6001,3 +6001,26 @@ describe("the theme store's addresses (docs/theme-phase-3.md)", () => {
     await db.query("update commerce.design_presets set slug = null, listing = '{\"kinds\":[\"food\"]}'::jsonb where id = $1", [id]);
   });
 });
+
+describe("Kaizena Flow's installed themes (docs/theme-phase-4.md)", () => {
+  const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
+
+  it("start with a live Custom, keep one live, never remove the live one and keep what an install came from", async () => {
+    const live = await db.query<{ id: string; title: string; look: unknown }>("select id, title, look from commerce.platform_theme_installs where live");
+    expect(live.rows).toHaveLength(1);
+    expect(live.rows[0]).toMatchObject({ title: "Custom", look: null });
+    const { id: presetId } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot) values ('On Kaizena', $1::jsonb) returning id", [SNAP]);
+    const { id: other } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot) values ('Another', $1::jsonb) returning id", [SNAP]);
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.platform_theme_installs (preset_id, title, look) values ($1, 'On Kaizena', '{\"css\":\"\"}'::jsonb) returning id",
+      [presetId],
+    );
+    await expect(db.query("insert into commerce.platform_theme_installs (title, live) values ('Second live', true)")).rejects.toThrow(/platform_theme_installs_live_idx/);
+    await expect(db.query("insert into commerce.platform_theme_installs (title) values ('No look')")).rejects.toThrow(/platform_theme_installs_look/);
+    await expect(db.query("delete from commerce.platform_theme_installs where id = $1", [live.rows[0].id])).rejects.toThrow(/platform_theme_installs\.live/);
+    await expect(db.query("update commerce.platform_theme_installs set preset_id = $2 where id = $1", [id, other])).rejects.toThrow(/platform_theme_installs\.fixed/);
+    // A theme Kaizena Flow's site has installed is not deleted.
+    await expect(db.query("delete from commerce.design_presets where id = $1", [presetId])).rejects.toThrow();
+    await db.query("delete from commerce.platform_theme_installs where id = $1", [id]);
+  });
+});

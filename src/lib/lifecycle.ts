@@ -48,9 +48,10 @@ export type ListFilter = "current" | "archived";
 export const listFilterOf = (value: unknown): ListFilter => (value === "archived" ? "archived" : "current");
 
 /** Why something cannot be deleted, in plain words, or null when it can. */
-export function deleteBlocker(kind: "store template" | "design profile", uses: { stores: number; requests: number }): string | null {
+export function deleteBlocker(kind: "store template" | "design profile", uses: { stores: number; requests: number; platform?: boolean }): string | null {
   const parts: string[] = [];
   if (uses.stores > 0) parts.push(`${uses.stores} ${uses.stores === 1 ? "store" : "stores"} ${kind === "store template" ? "were made from it" : "applied it"}`);
+  if (uses.platform) parts.push("Kaizena Flow's own site has it installed");
   if (uses.requests > 0) parts.push(`${uses.requests} ${uses.requests === 1 ? "access request names" : "access requests name"} it`);
   if (parts.length === 0) return null;
   return `This ${kind} cannot be deleted: ${parts.join(" and ")}. Archive it instead.`;

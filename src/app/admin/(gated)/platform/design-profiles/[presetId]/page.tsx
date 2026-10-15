@@ -31,7 +31,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
   const { admin, design, facts } = await designPage((await params).presetId);
   const [query, starters, sources, checks] = await Promise.all([searchParams, listStarters(), snapshotSources(admin), designChecks(design)]);
   const shown = shownDesignDetails(design);
-  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests });
+  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
 
   return (
     <DesignShell design={design} facts={facts} tab="details">

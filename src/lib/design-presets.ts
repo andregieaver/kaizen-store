@@ -346,6 +346,8 @@ export type DesignRow = OfferedDesign & {
   sourceStoreSlug: string | null;
   /** Stores it was applied to so far (`design_preset_uses`). */
   storesUsing: number;
+  /** Whether Kaizena Flow's own site has it installed (`docs/theme-phase-4.md`). */
+  onPlatform: boolean;
   /** Access requests that chose it (D177): with stores using it, what keeps it from being deleted. */
   requests: number;
   /** Store templates that recommend it. */

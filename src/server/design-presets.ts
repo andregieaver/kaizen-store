@@ -57,6 +57,7 @@ import { pagesTag } from "./pages";
 import { STARTERS_TAG } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
+import { PLATFORM_INSTALLS_MAX, platformInstallCount, type PlatformLook } from "./platform-theme-installs";
 
 /**
  * Design profiles (D176, `docs/design-profiles.md`): a frozen snapshot of a store's look (theme, header, footer, standard product layout
@@ -147,6 +148,7 @@ const ROW_SELECT = sql`
             select u.store_id from commerce.design_preset_uses u where u.preset_id = d.id
             union select i.store_id from commerce.store_theme_installs i where i.preset_id = d.id
           ) x) as stores_using,
+         exists (select 1 from commerce.platform_theme_installs p where p.preset_id = d.id) as on_platform,
          (select count(*)::int from commerce.access_requests r where r.design_preset_id = d.id) as requests,
          coalesce((select array_agg(st.title order by st.position) from commerce.store_starters st where st.recommended_design = d.id), '{}') as recommended_by
   from commerce.design_presets d
@@ -164,6 +166,7 @@ function toRow(row: Row): DesignRow {
     sourceStoreName: row.source_name ? String(row.source_name) : null,
     sourceStoreSlug: row.source_slug ? String(row.source_slug) : null,
     storesUsing: Number(row.stores_using ?? 0),
+    onPlatform: Boolean(row.on_platform),
     requests: Number(row.requests ?? 0),
     recommendedBy: ((row.recommended_by ?? []) as unknown[]).map(String),
     snapshotAt: new Date(String(row.snapshot_at)).toISOString(),
@@ -217,7 +220,7 @@ export async function designLifecycle(design: DesignRow) {
     archivedAt: design.archivedAt,
     publishedAt: design.publishedAt,
     changed: await designChanged(design),
-    used: design.storesUsing > 0 || design.requests > 0,
+    used: design.storesUsing > 0 || design.requests > 0 || design.onPlatform,
   };
 }
 
@@ -790,7 +793,7 @@ export async function deleteDesign(admin: Account, id: string): Promise<DesignRe
   if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
-  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests });
+  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
   if (blocker) return refuse(blocker);
   try {
     await db().transaction(async (tx) => {
@@ -871,7 +874,7 @@ type Placed = { pages: Partial<Record<DesignLayoutKind, PageContent>>; siteCss: 
  * `pageRulesProblem()`, no other store's file left), and the CSS checked. Writes nothing but the fonts and the pictures' copies.
  */
 async function placeSnapshot(
-  storeId: string,
+  storeId: string | null,
   snapshot: DesignSnapshot,
   options: { sourceId: string | null; accountId: string; title: string; menus: Row; deps?: ApplyDeps },
 ): Promise<DesignResult<Placed>> {
@@ -887,7 +890,7 @@ async function placeSnapshot(
   const sourceId = options.sourceId;
   const files = sourceId && sourceId !== storeId ? await libraryFilesByUrl(sourceId, wanted) : new Map<string, LibraryFile>();
   const replaced = new Map<string, string>();
-  if (sourceId === storeId) for (const url of wanted) replaced.set(url, url);
+  if (sourceId !== null && sourceId === storeId) for (const url of wanted) replaced.set(url, url);
   const chosen = new Map<string, LibraryFile>();
   let bytes = 0;
   for (const url of wanted) {
@@ -919,6 +922,11 @@ async function placeSnapshot(
   for (const kind of DESIGN_LAYOUT_KINDS) {
     const layout = mapped[kind];
     if (!layout) continue;
+    // A theme's product page is a store's: Kaizena Flow's own site has none (`docs/theme-phase-4.md`).
+    if (storeId === null && kind === "productLayout") {
+      notes.push("Its product page is for stores, so Kaizena Flow's site leaves it out.");
+      continue;
+    }
     const content = layoutForStore(layout, menus, { title: designPageTitle(kind, options.title), slug: "design" });
     const parsed = pageInput.safeParse(content);
     const problem = parsed.success ? pageRulesProblem(storeId, LAYOUT_PAGE_TYPE[kind], parsed.data) : parsed.error.issues[0]?.message;
@@ -1099,6 +1107,87 @@ async function placeDesign(
     { area: "website", target: { type: "design_preset", id: presetId } },
   );
   return { ok: true, useId: applied.useId, installId: applied.installId, previous: applied.previous?.title ?? null, title, notes };
+}
+
+/**
+ * Adds a published theme to Kaizena Flow's own site's library without making it live (phase 4 step 1, `docs/theme-phase-4.md`): the same
+ * `placeSnapshot()` as a store's (fonts installed, pictures copied into Kaizena Flow's media library, header and footer placed with Kaizena
+ * Flow's own menus and checked as a save is; a product page is a store's and is left out), then in one transaction its header and footer
+ * become new published pages of Kaizena Flow's and the install keeps its look (`PlatformLook`), so the site is unchanged until a platform
+ * admin switches (`switchPlatformInstall()`). The caller refreshes `PAGES_TAG`.
+ */
+export async function installPresetOnPlatform(admin: Account, presetId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
+  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (!isUuid(presetId)) return refuse(UNKNOWN);
+  const [preset] = await db().execute<Row>(sql`
+    select id, title, snapshot, published, archived_at, source_store_id from commerce.design_presets where id = ${presetId}::uuid
+  `);
+  if (!preset) return refuse(UNKNOWN);
+  if (preset.archived_at || !preset.published) return refuse(NOT_OFFERED);
+  const snapshot = parseDesignSnapshot(preset.snapshot);
+  if (!snapshot) return refuse("This design profile can no longer be read.");
+  const title = String(preset.title);
+  if ((await platformInstallCount()) >= PLATFORM_INSTALLS_MAX) return refuse(`Kaizena Flow's site has ${PLATFORM_INSTALLS_MAX} themes installed. Remove one first.`);
+  const [menus] = await db().execute<Row>(sql`select header_menu_id, footer_menu_id from commerce.platform_settings`);
+
+  const ready = await placeSnapshot(null, snapshot, { sourceId: preset.source_store_id ? String(preset.source_store_id) : null, accountId: admin.id, title, menus: menus ?? {}, deps });
+  if (!ready.ok) return ready;
+  const { pages, siteCss, notes } = ready;
+
+  let made: { installId: string; pageIds: Record<string, string | null> };
+  try {
+    made = await db().transaction(async (tx) => {
+      if ((await platformInstallCount(tx)) >= PLATFORM_INSTALLS_MAX) throw new Refused(`Kaizena Flow's site has ${PLATFORM_INSTALLS_MAX} themes installed. Remove one first.`);
+      const pageIds: Record<string, string | null> = { header: null, footer: null };
+      for (const kind of ["header", "footer"] as const) {
+        const page = pages[kind];
+        if (!page) continue;
+        const type = LAYOUT_PAGE_TYPE[kind];
+        const taken = await tx.execute<Row>(sql`select slug from commerce.pages where store_id is null and type = ${type}`);
+        const slug = designPageSlug(kind, title, taken.map((r) => String(r.slug)));
+        const json = JSON.stringify({ ...page, slug });
+        const [row] = await tx.execute<Row>(sql`
+          insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+          values (null, ${type}, ${slug}, ${json}::jsonb, ${json}::jsonb, now(), now(), ${admin.id}::uuid, ${admin.id}::uuid)
+          returning id
+        `);
+        pageIds[kind] = String(row.id);
+      }
+      const placed: PlacedLook = {
+        settings: snapshot.theme.settings,
+        css: siteCss,
+        layouts: {
+          header: pageIds.header && pages.header ? { id: pageIds.header, hash: fingerprint(pages.header) } : null,
+          footer: pageIds.footer && pages.footer ? { id: pageIds.footer, hash: fingerprint(pages.footer) } : null,
+          productLayout: null,
+        },
+      };
+      const look: PlatformLook = {
+        theme: { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings },
+        // Kaizena Flow's fonts are a column of their own (D235), laid over its theme when read.
+        fonts: snapshot.theme.settings.fonts ?? {},
+        css: siteCss,
+        headerId: pageIds.header,
+        footerId: pageIds.footer,
+      };
+      const [kept] = await tx.execute<Row>(sql`
+        insert into commerce.platform_theme_installs (preset_id, version_id, title, look, live, installed_by, placed)
+        values (${presetId}::uuid,
+          (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
+          ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${admin.id}::uuid, ${JSON.stringify(placed)}::jsonb)
+        returning id
+      `);
+      return { installId: String(kept.id), pageIds };
+    });
+  } catch (error) {
+    if (error instanceof Refused) return refuse(error.message);
+    console.error("[design-presets] adding to Kaizena Flow failed", error);
+    return refuse("The theme could not be added. Nothing was changed; try again.");
+  }
+  await audit(admin.id, null, "platform.theme_installed", { preset: presetId, title, install: made.installId, pages: made.pageIds, media: ready.copies }, {
+    target: { type: "design_preset", id: presetId },
+  });
+  return { ok: true, installId: made.installId, title, notes };
 }
 
 class Refused extends Error {}

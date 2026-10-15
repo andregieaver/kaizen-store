@@ -26,6 +26,15 @@ function sources(dir: string): string[] {
 
 const FILES = sources("src");
 
+/** The writers of Kaizena Flow's look columns: the Theme tab and saved colours, its CSS, its fonts, its header and footer, and switching. */
+const PLATFORM_LOOK_WRITERS = [
+  "src/server/fonts.ts",
+  "src/server/platform-theme-installs.ts",
+  "src/server/site-css.ts",
+  "src/server/site-layouts.ts",
+  "src/server/themes.ts",
+];
+
 /** What each writer of the store's look columns writes: everything else must not. */
 const LOOK_WRITERS: Record<string, string> = {
   "src/server/design-presets.ts": "applying a theme, updating an installed theme to a new version (D245), putting the look back, and a theme's own workspace",
@@ -56,6 +65,22 @@ describe("who writes a store's look (D241)", () => {
     const writes = /(insert\s+into|update|delete\s+from)\s+commerce\.store_theme_installs\b/i;
     const found = FILES.filter((file) => writes.test(read(file))).sort();
     expect(found).toEqual(["src/server/design-presets.ts", "src/server/theme-installs.ts"]);
+  });
+
+  it("writes Kaizena Flow's installed themes only from its install code and adding a theme to it (docs/theme-phase-4.md)", () => {
+    const writes = /(insert\s+into|update|delete\s+from)\s+commerce\.platform_theme_installs\b/i;
+    const found = FILES.filter((file) => writes.test(read(file))).sort();
+    // Compressing a library file moves its address in the kept looks too (`rewriteAddresses()`), changing nothing else of them.
+    expect(found).toEqual(["src/server/design-presets.ts", "src/server/media-compress.ts", "src/server/platform-theme-installs.ts"]);
+  });
+
+  it("writes Kaizena Flow's look columns only from the modules listed, so a new writer is a decision (docs/theme-phase-4.md)", () => {
+    // The live install's look is `platform_settings`' theme, fonts, CSS, header and footer: switching keeps them, each writer writes the live look.
+    const look = /update\s+commerce\.platform_settings\s+set\s+([^`]*)/gi;
+    // A column chosen at run time (`set ${column} = …`, the header or footer choice) counts as a look column.
+    const columns = /\b(theme|fonts|custom_css|header_id|footer_id)\s*=|^\s*\$\{/;
+    const found = FILES.filter((file) => [...read(file).matchAll(look)].some((m) => columns.test(m[1]))).sort();
+    expect(found).toEqual(PLATFORM_LOOK_WRITERS);
   });
 
   it("adds a theme's versions only when it is published", () => {

@@ -21,6 +21,7 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows."),
   item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows."),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use."),
+  item("/themes", "Themes", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back."),
 ];
 
 /** The Stores section (D175): every store, the store templates new stores start from, and the design profiles any store can apply (D176). */

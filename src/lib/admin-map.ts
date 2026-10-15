@@ -882,6 +882,9 @@ const PAGES: readonly AdminPage[] = [
   platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
   platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
+  platform("site_themes", "/themes", "Themes", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
+    keywords: ["theme", "look", "switch theme", "design", "kaizena site look"],
+  }),
   platform("seo", "/seo", "Search", "Kaizena Flow site", "How search engines and AI crawlers see Kaizena Flow's site."),
   platform("cookies", "/cookies", "Cookies", "Kaizena Flow site", "Kaizena Flow's cookies, tracking and consents."),
   platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),

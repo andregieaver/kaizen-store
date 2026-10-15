@@ -202,21 +202,23 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
  * Copies a file of another owner's library (a template's picture or video, D125) into this store's, in Storage and
  * in the library, under its own name; its alt texts are not copied (the picture's own in a page comes with the
  * page, and the alt-text run describes it for this store). The new item's addresses, or null if the file could not be
- * copied. `copyFile` is Storage's copy, replaceable in tests.
+ * copied. `copyFile` is Storage's copy, replaceable in tests. A null `storeId` is Kaizena Flow's own library (its files under `platform/`,
+ * as its uploads are).
  */
 export async function copyToLibrary(
-  target: { storeId: string; accountId: string },
+  target: { storeId: string | null; accountId: string },
   file: LibraryFile,
   copyFile: typeof copyStoredFile = copyStoredFile,
 ): Promise<{ url: string; thumbnailUrl: string | null } | null> {
   const name = randomUUID();
   const extension = (path: string) => path.match(/\.[A-Za-z0-9]{1,5}$/)?.[0] ?? "";
-  const path = `${target.storeId}/${name}${extension(file.path)}`;
+  const folder = target.storeId ?? "platform";
+  const path = `${folder}/${name}${extension(file.path)}`;
   const url = await copyFile(file.bucket, file.path, path);
   if (!url) return null;
   let thumbnail: { url: string; path: string } | null = null;
   if (file.thumbnailPath) {
-    const thumbnailPath = `${target.storeId}/${name}-480${extension(file.thumbnailPath)}`;
+    const thumbnailPath = `${folder}/${name}-480${extension(file.thumbnailPath)}`;
     const thumbnailUrl = await copyFile(file.bucket, file.thumbnailPath, thumbnailPath);
     if (thumbnailUrl) thumbnail = { url: thumbnailUrl, path: thumbnailPath };
   }
@@ -314,6 +316,10 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     select m.id, 'navigation', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}
     union all
     select m.id, 'seo', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.seo::text`)}
+    union all
+    select m.id, 'theme', null, null, null, null, null from m join commerce.platform_settings k on true where ${found(sql`coalesce(k.theme::text, '')`)}
+    union all
+    select m.id, 'theme', null, null, null, null, null from m join commerce.platform_theme_installs i on i.look is not null where ${found(sql`i.look::text`)}
     `
     }
   `);

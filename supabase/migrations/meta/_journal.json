@@ -2416,6 +2416,20 @@
       "when": 1792093685920,
       "tag": "20261015194805_reserve_themes_slug",
       "breakpoints": true
+    },
+    {
+      "idx": 345,
+      "version": "7",
+      "when": 1792097307466,
+      "tag": "20261015204827_platform_theme_installs",
+      "breakpoints": true
+    },
+    {
+      "idx": 346,
+      "version": "7",
+      "when": 1792097323185,
+      "tag": "20261015204843_platform_theme_installs_rules",
+      "breakpoints": true
     }
   ]
 }
