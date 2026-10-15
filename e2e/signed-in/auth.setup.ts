@@ -1,7 +1,8 @@
 import { expect, test as setup, type Page } from "@playwright/test";
 
 import { testDb } from "../db";
-import { E2E_PASSWORD, E2E_STORE, OWNER, QUIET, READER } from "./accounts";
+import { totp } from "../fixtures/totp.mjs";
+import { ADMIN, E2E_PASSWORD, E2E_STORE, OWNER, QUIET, READER } from "./accounts";
 
 /**
  * Signs the test people in through the admin's own sign-in form, against the Auth stand-in (e2e/fixtures/auth-stub.mjs), and
@@ -16,6 +17,32 @@ async function signIn(page: Page, email: string, next: string) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL((url) => url.pathname === next);
 }
+
+setup("the platform admin signs in with the second step", async ({ browser }) => {
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.accounts (email, name, platform_admin) values (${ADMIN.email}, ${ADMIN.name}, true)
+      on conflict do nothing`;
+    await sql`update commerce.accounts set platform_admin = true, disabled_at = null where lower(email) = ${ADMIN.email}`;
+  } finally {
+    await sql.end();
+  }
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`/admin/sign-in?next=${encodeURIComponent("/admin/platform")}`);
+  await page.getByLabel("Email").fill(ADMIN.email);
+  await page.getByLabel("Password", { exact: true }).fill(E2E_PASSWORD);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // The password alone is the first step: the gate holds a platform admin at the second.
+  await page.waitForURL((url) => url.pathname === "/admin/sign-in/two-step");
+  await page.getByLabel("Code").fill(totp());
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL((url) => url.pathname === "/admin/platform");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await context.storageState({ path: ADMIN.state });
+  await context.close();
+});
 
 setup("the owner and the reader sign in", async ({ browser }) => {
   const sql = testDb();
