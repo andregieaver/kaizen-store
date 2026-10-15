@@ -123,6 +123,17 @@ describe("a credit note when the refund email is switched off", () => {
     const stuck = [await note("ncn-stuck-1@example.com"), await note("ncn-stuck-2@example.com")];
     for (const { order } of stuck) await db().execute(sql`update commerce.orders set email = '' where id = ${order.orderId}::uuid`);
     const fresh = await note("ncn-fresh@example.com");
+    // Dated before anything else the suite makes (still inside the job's three days), so these three are the first in the job's order whatever
+    // other tests leave waiting: two stuck notes, then the fresh one.
+    const back = async (id: string, hours: number) =>
+      db().transaction(async (tx) => {
+        await tx.execute(sql`alter table commerce.credit_notes disable trigger user`);
+        await tx.execute(sql`update commerce.credit_notes set issued_at = now() - make_interval(hours => ${hours}) where id = ${id}::uuid`);
+        await tx.execute(sql`alter table commerce.credit_notes enable trigger user`);
+      });
+    await back(stuck[0].note.id, 70);
+    await back(stuck[1].note.id, 69);
+    await back(fresh.note.id, 68);
     // A page of one: the first page holds only a stuck note, and the run still reaches the fresh one.
     await sendPendingDocumentNotices(1);
     expect((await emails(fresh.order.orderId, "credit_note.issued")).map((m) => m.idempotency_key)).toEqual([`credit-note:${fresh.note.id}`]);
