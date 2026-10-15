@@ -11,6 +11,7 @@ import { starterCards } from "@/server/store-starters";
 import { requestAccess } from "./actions";
 import { KaizenLifePrefill } from "./kaizen-life-prefill";
 import { ReferralKeeper } from "./referral-keeper";
+import { ThemeFromAddress } from "./theme-from-address";
 
 export const metadata: Metadata = {
   title: "Start your store",
@@ -60,12 +61,13 @@ export default async function SignUpPage() {
             hint="Each template is a store set up for one kind of business. Preview opens it in a new window."
           />
         )}
+        {designs.cards.length > 1 && <ThemeFromAddress />}
         {designs.cards.length > 1 && (
           <DesignCards
             cards={designs.cards}
             recommended={designs.recommended}
-            legend="Design profile (optional)"
-            hint="The look only: colours, fonts, header, footer and product page. Preview opens it in a new window."
+            legend="Theme (optional)"
+            hint="The look only: colours, fonts, header, footer and product page. Preview opens it in a new window; see them all on the Themes page."
           />
         )}
         <label className={field}>

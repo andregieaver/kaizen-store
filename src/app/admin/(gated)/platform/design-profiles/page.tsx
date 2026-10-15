@@ -90,9 +90,14 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
           title="Kaizena Flow's themes"
           description={<>The launch themes are written in Kaizena Flow&apos;s code, each passing the theme checks. Adding makes and publishes the ones not here yet; when the code has a newer version of one, it is published as a new version, which stores that follow updates take with their own changes kept. An archived one is left alone.</>}
           aside={
-            <ActionForm action={syncLaunchThemesAction}>
-              <SubmitButton>Add and update Kaizena Flow&apos;s themes</SubmitButton>
-            </ActionForm>
+            <div className="flex flex-wrap items-center gap-3">
+              <a href="/themes" target="_blank" rel="noopener" className="inline-flex min-h-10 items-center rounded-pill px-3 text-sm underline underline-offset-2">
+                Open the theme store<span className="sr-only"> (opens in a new window)</span>
+              </a>
+              <ActionForm action={syncLaunchThemesAction}>
+                <SubmitButton>Add and update Kaizena Flow&apos;s themes</SubmitButton>
+              </ActionForm>
+            </div>
           }
           compact
         >

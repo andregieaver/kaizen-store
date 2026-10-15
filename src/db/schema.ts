@@ -768,6 +768,12 @@ export const designPresets = commerce.table(
      */
     launchKey: text("launch_key"),
     launchVersion: integer("launch_version"),
+    /**
+     * Its place in the theme store (`docs/theme-phase-3.md`): the address `/themes/{slug}` (null: not listed yet) and the listing,
+     * `{ kinds, styles }` (`parseListing()` in `src/lib/theme-store.ts`). Not a draft: shown while the theme is published.
+     */
+    slug: text("slug"),
+    listing: jsonb("listing").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -776,6 +782,9 @@ export const designPresets = commerce.table(
   (t) => [
     index("design_presets_offered_idx").on(t.published, t.position),
     uniqueIndex("design_presets_launch_key_idx").on(t.launchKey),
+    uniqueIndex("design_presets_slug_idx").on(t.slug),
+    check("design_presets_slug", sql`${t.slug} is null or ${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$'`),
+    check("design_presets_listing", sql`jsonb_typeof(${t.listing}) = 'object'`),
     check("design_presets_launch", sql`${t.launchVersion} is null or (${t.launchKey} is not null and ${t.launchVersion} > 0)`),
     uniqueIndex("design_presets_workspace_idx").on(t.workspaceStoreId),
     index("design_presets_archived_by_idx").on(t.archivedBy),

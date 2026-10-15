@@ -20,8 +20,10 @@ import {
   restoreDesign,
   restoreDesignLook,
   saveDesignDraft,
+  saveThemeListing,
   unpublishDesign,
 } from "@/server/design-presets";
+import { parseListing } from "@/lib/theme-store";
 import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
@@ -188,4 +190,16 @@ export async function syncLaunchThemesAction(): Promise<FormState> {
   ].filter((line): line is string => typeof line === "string");
   if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
   return { status: "ok", messages: said };
+}
+
+/** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store and styles. Shown at once while published. */
+export async function saveThemeListingAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const parsed = parseListing({ slug: formData.get("slug"), kinds: formData.getAll("kinds"), styles: formData.getAll("styles") });
+  if (!parsed.ok) return { status: "error", messages: parsed.problems };
+  const result = await saveThemeListing(admin, presetId, parsed.slug, parsed.listing);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(DESIGNS_TAG);
+  refresh();
+  return { status: "ok", messages: ["Saved. The theme store shows it at once while the theme is published."] };
 }

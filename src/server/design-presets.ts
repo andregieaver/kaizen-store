@@ -43,6 +43,7 @@ import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
 import { withCoreStyles } from "@/lib/launch-themes";
+import { THEME_SLUG, readListing, type ThemeListing } from "@/lib/theme-store";
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
 
@@ -141,7 +142,7 @@ export async function designChoices(): Promise<{ cards: DesignCard[]; recommende
 const ROW_SELECT = sql`
   select d.id, d.title, d.summary, d.description, d.picture_url, d.published, d.position, d.snapshot_at, d.snapshot,
          d.source_store_id, s.name as source_name, s.slug as source_slug, d.draft, d.workspace_store_id, w.slug as workspace_slug,
-         d.workspace_key, d.published_at, d.archived_at,
+         d.workspace_key, d.published_at, d.archived_at, d.slug, d.listing,
          (select count(distinct u.store_id)::int from commerce.design_preset_uses u where u.preset_id = d.id) as stores_using,
          (select count(*)::int from commerce.access_requests r where r.design_preset_id = d.id) as requests,
          coalesce((select array_agg(st.title order by st.position) from commerce.store_starters st where st.recommended_design = d.id), '{}') as recommended_by
@@ -170,6 +171,8 @@ function toRow(row: Row): DesignRow {
     workspaceKey: row.workspace_key ? String(row.workspace_key) : null,
     publishedAt: iso(row.published_at),
     archivedAt: iso(row.archived_at),
+    slug: row.slug ? String(row.slug) : null,
+    listing: readListing(row.listing),
   };
 }
 
@@ -1619,8 +1622,33 @@ export async function designChecks(design: DesignRow): Promise<ThemeCheckResult 
  * Marks a theme as one of Kaizena Flow's launch themes (D246, `syncLaunchThemes()`): its key, claimed when it is made, and the version of
  * the code's definition once that is published.
  */
-export async function markLaunchTheme(presetId: string, key: string, version: number | null): Promise<void> {
+export async function markLaunchTheme(presetId: string, key: string, version: number | null, listing?: ThemeListing): Promise<void> {
+  // A launch theme's address in the theme store is its key, and its listing the code's (`docs/theme-phase-3.md`).
   await db().execute(sql`
-    update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version) where id = ${presetId}::uuid
+    update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version),
+      slug = coalesce(slug, ${key}), listing = coalesce(${listing ? JSON.stringify(listing) : null}::jsonb, listing)
+    where id = ${presetId}::uuid
   `);
+}
+
+/**
+ * Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address and the kinds of store and styles it is listed under.
+ * Not a draft: the list and the theme's page show it at once while the theme is published. An address another theme has is refused.
+ */
+export async function saveThemeListing(admin: Account, id: string, slug: string, listing: ThemeListing): Promise<DesignResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!THEME_SLUG.test(slug)) return refuse("The address is lowercase letters, digits and hyphens.");
+  const [taken] = await db().execute<Row>(sql`select 1 from commerce.design_presets where slug = ${slug} and id <> ${id}::uuid`);
+  if (taken) return refuse("Another theme has that address. Choose another.");
+  try {
+    const rows = await db().execute<Row>(sql`
+      update commerce.design_presets set slug = ${slug}, listing = ${JSON.stringify(readListing(listing))}::jsonb, updated_by = ${admin.id}::uuid
+      where id = ${id}::uuid returning workspace_store_id
+    `);
+    if (rows.length === 0) return refuse(UNKNOWN);
+    await audit(admin.id, rows[0].workspace_store_id ? String(rows[0].workspace_store_id) : null, "platform.design_preset_listed", { preset: id, slug }, { target: { type: "design_preset", id } });
+  } catch (error) {
+    return refuse(designProblem(error));
+  }
+  return { ok: true };
 }

@@ -86,6 +86,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "stores",
   "support",
   "tag",
+  "themes",
   "unsubscribe",
   "www",
 ];

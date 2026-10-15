@@ -5,11 +5,12 @@ import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
 import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
+import { STORE_KINDS, THEME_STYLES, suggestedSlug } from "@/lib/theme-store";
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listStarters } from "@/server/store-starters";
 
 import { uploadPlatformImageAction } from "../../actions";
-import { copyStoreLookAction, saveDesignDraftAction } from "../actions";
+import { copyStoreLookAction, saveDesignDraftAction, saveThemeListingAction } from "../actions";
 import { designPage } from "./data";
 import { DesignShell } from "./shell";
 
@@ -78,6 +79,57 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
           <SubmitButton>Save draft</SubmitButton>
         </div>
       </ActionForm>
+
+      <section aria-labelledby="listing" className={card}>
+        <div>
+          <h2 id="listing" className="text-title text-ink">
+            Theme store listing
+          </h2>
+          <p className="text-sm text-muted">
+            Where the theme is found in the theme store and what it is listed under. Saved at once, not as a draft: the store shows it while
+            the theme is published. What the theme includes is worked out from its published version.
+            {design.slug && design.published && (
+              <>
+                {" "}
+                <a href={`/themes/${design.slug}`} target="_blank" rel="noopener" className="underline underline-offset-2">
+                  Open its page<span className="sr-only"> (opens in a new window)</span>
+                </a>
+              </>
+            )}
+          </p>
+        </div>
+        <ActionForm action={saveThemeListingAction.bind(null, design.id)} className="flex max-w-3xl flex-col gap-4">
+          <label className={field}>
+            Address <span className="font-normal text-muted">(/themes/…, lowercase letters, digits and hyphens)</span>
+            <input name="slug" required maxLength={60} pattern="[a-z0-9]([a-z0-9-]{0,58}[a-z0-9])?" defaultValue={design.slug ?? suggestedSlug(shown.title)} className={control} />
+          </label>
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="mb-1 font-medium">Suits these kinds of store <span className="font-normal text-muted">(none: any)</span></legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {(Object.keys(STORE_KINDS) as (keyof typeof STORE_KINDS)[]).map((kind) => (
+                <label key={kind} className="flex items-center gap-2">
+                  <input type="checkbox" name="kinds" value={kind} defaultChecked={design.listing.kinds.includes(kind)} className="size-4" />
+                  {STORE_KINDS[kind]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="mb-1 font-medium">Styles</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {(Object.keys(THEME_STYLES) as (keyof typeof THEME_STYLES)[]).map((style) => (
+                <label key={style} className="flex items-center gap-2">
+                  <input type="checkbox" name="styles" value={style} defaultChecked={design.listing.styles.includes(style)} className="size-4" />
+                  {THEME_STYLES[style]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div>
+            <SubmitButton variant="secondary">Save the listing</SubmitButton>
+          </div>
+        </ActionForm>
+      </section>
 
       <section aria-labelledby="previews" className="flex flex-col gap-2 text-sm">
         <h2 id="previews" className="text-title text-ink">

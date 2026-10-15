@@ -23,6 +23,7 @@ import {
   type ForeignStore,
   type MediaResolver,
 } from "./template-content";
+import type { ThemeListing } from "./theme-store";
 import { THEME_TEMPLATE_KEYS, themeSettingsSchema, type ThemeSettings, type ThemeTemplate } from "./theme";
 
 /**
@@ -360,6 +361,9 @@ export type DesignRow = OfferedDesign & {
   workspaceKey: string | null;
   publishedAt: string | null;
   archivedAt: string | null;
+  /** Its address and listing in the theme store (`docs/theme-phase-3.md`); null: not listed yet. */
+  slug: string | null;
+  listing: ThemeListing;
 };
 
 /** A saved draft of a profile's details (`design_presets.draft`), or null when it cannot be read. */

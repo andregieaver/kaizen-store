@@ -2,6 +2,7 @@ import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot } from "./design-presets";
 import type { SectionStyles } from "./section-styles";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
 import type { ThemeElements } from "./theme-elements";
+import type { ThemeListing } from "./theme-store";
 
 /**
  * Kaizena Flow's own launch themes (D246, `docs/theme-phase-2.md` step 5, `docs/theme-store.md` 0.5: three to five, made from today's
@@ -23,6 +24,8 @@ export type LaunchTheme = {
   description: string;
   /** *What's new* for the version (D245), null for the first. */
   notes: string | null;
+  /** Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. */
+  listing: ThemeListing;
   snapshot: DesignSnapshot;
 };
 
@@ -84,6 +87,7 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Black and white with soft greys, system fonts and pill buttons. Generous space between sections lets products and pictures speak. Follows the visitor's light or dark mode.",
     notes: null,
+    listing: { kinds: [], styles: ["minimal"] },
     snapshot: theme(
       "minimal",
       { corners: { cards: "medium", fields: "small" } },
@@ -99,6 +103,7 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Cream paper and terracotta, Playfair Display headings over Lora, softly rounded bordered cards and a centred logo. Quotes are set large in the heading font.",
     notes: null,
+    listing: { kinds: ["food", "home", "crafts"], styles: ["warm", "classic"] },
     snapshot: theme(
       "warm",
       {},
@@ -114,6 +119,7 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures. Sections sit close together.",
     notes: null,
+    listing: { kinds: ["fashion", "digital"], styles: ["bold"] },
     snapshot: theme(
       "bold",
       {},
@@ -129,6 +135,7 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A blue-grey palette with a deep sea-blue accent, Inter throughout, rounded buttons and raised product cards. Light by day and dark by night, as the visitor's device says.",
     notes: null,
+    listing: { kinds: ["home", "beauty", "services"], styles: ["minimal", "natural"] },
     snapshot: theme(
       "minimal",
       {

@@ -46,7 +46,7 @@ async function publishLaunch(admin: Account, presetId: string, theme: LaunchThem
   if (!saved.ok) return saved.problems.join(" ");
   const published = await publishDesign(admin, presetId, first ? null : theme.notes);
   if (!published.ok) return published.problems.join(" ");
-  await markLaunchTheme(presetId, theme.key, theme.version);
+  await markLaunchTheme(presetId, theme.key, theme.version, theme.listing);
   return null;
 }
 
@@ -60,6 +60,8 @@ export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Pr
       continue;
     }
     if (row && row.launch_version != null && Number(row.launch_version) >= theme.version) {
+      // Up to date; its listing in the theme store still follows the code's (`docs/theme-phase-3.md`).
+      await markLaunchTheme(String(row.id), theme.key, null, theme.listing);
       result.current.push(theme.title);
       continue;
     }

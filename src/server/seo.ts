@@ -36,6 +36,7 @@ import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
 import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
 
+import { themeStoreCards } from "./theme-store";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { listPublishedPages } from "./pages";
@@ -484,7 +485,7 @@ export async function sitemapIndex(): Promise<string> {
 /** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
-  const [all, articles, roles] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article"), getPlatformPageRoles()]);
+  const [all, articles, roles, themes] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article"), getPlatformPageRoles(), themeStoreCards()]);
   // A page chosen for a place of its own (D143) is at the place's address, which the list below has already.
   const placed = new Set(roles.map(([, id]) => id));
   const pages = all.filter((page) => !placed.has(page.id));
@@ -494,6 +495,8 @@ export async function platformSitemap(): Promise<string> {
   ];
   const urls = [
     ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
+    // The theme store (`docs/theme-phase-3.md`): its list and each theme's page.
+    ...(themes.length > 0 ? ["/themes", ...themes.map((theme) => `/themes/${theme.slug}`)] : []).map((path) => `<url><loc>${xml(`${origin}${path}`)}</loc></url>`),
     ...listed.map(
       ({ page, path }) =>
         `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)

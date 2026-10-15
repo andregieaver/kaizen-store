@@ -5988,3 +5988,16 @@ describe("updates of installed themes (D245)", () => {
     expect((await db.query("select 1 from commerce.theme_install_updates where id = $1", [update])).rows).toHaveLength(0);
   });
 });
+
+describe("the theme store's addresses (docs/theme-phase-3.md)", () => {
+  const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
+
+  it("keeps each theme's address unique and of the store's shape, and its listing an object", async () => {
+    const { id } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot, slug) values ('Listed', $1::jsonb, 'listed-one') returning id", [SNAP]);
+    await expect(db.query("insert into commerce.design_presets (title, snapshot, slug) values ('Twin', $1::jsonb, 'listed-one')", [SNAP])).rejects.toThrow(/design_presets_slug_idx/);
+    await expect(db.query("update commerce.design_presets set slug = 'Has Space' where id = $1", [id])).rejects.toThrow(/design_presets_slug/);
+    await expect(db.query("update commerce.design_presets set slug = '-dash' where id = $1", [id])).rejects.toThrow(/design_presets_slug/);
+    await expect(db.query("update commerce.design_presets set listing = '[]'::jsonb where id = $1", [id])).rejects.toThrow(/design_presets_listing/);
+    await db.query("update commerce.design_presets set slug = null, listing = '{\"kinds\":[\"food\"]}'::jsonb where id = $1", [id]);
+  });
+});
