@@ -8,6 +8,7 @@ import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
+import { detachDryRun, runDetach, undoDetach } from "@/server/theme-detach";
 import { removeInstall, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
@@ -126,4 +127,40 @@ export async function restoreDesignAction(storeSlug: string): Promise<FormState>
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
   return { status: "ok", messages: [`The look from before ${result.presetTitle} is back.`] };
+}
+
+const settingsWord = (n: number) => `${n} ${n === 1 ? "setting" : "settings"}`;
+const pagesWord = (n: number) => `${n} ${n === 1 ? "page" : "pages"}`;
+
+/** Counts the settings on the store's pages that only repeat the live theme (D243); nothing is changed. */
+export async function countThemeFollowAction(storeSlug: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const report = await detachDryRun(member.store.id);
+  if (!report) return { status: "error", messages: ["That store no longer exists."] };
+  if (report.followed === 0) return { status: "ok", messages: ["Your pages repeat nothing of the theme: there is nothing to take out."] };
+  const on = report.pages.filter((p) => p.followed > 0).length;
+  return { status: "ok", messages: [`${settingsWord(report.followed)} on ${pagesWord(on)} only repeat the theme and would follow it. ${settingsWord(report.own)} are your own and stay.`] };
+}
+
+/** Takes out of the store's pages the settings that only repeat the live theme (D243): they look the same and follow it from then on. */
+export async function runThemeFollowAction(storeSlug: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await runDetach(member.store.id, member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  if (result.pages === 0) return { status: "ok", messages: ["Your pages repeat nothing of the theme: nothing was changed."] };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  return { status: "ok", messages: [`${settingsWord(result.followed)} on ${pagesWord(result.pages)} now follow the theme. Your pages look as before.`] };
+}
+
+/** Undoes a run of the page migration (D243), page by page while a page is as the run left it. */
+export async function undoThemeFollowAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await undoDetach(member.store.id, String(formData.get("run") ?? ""), member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  const since = result.changedSince > 0 ? ` ${pagesWord(result.changedSince)} changed since kept the change.` : "";
+  return { status: "ok", messages: [`${pagesWord(result.restored)} put back as they were.${since}`] };
 }

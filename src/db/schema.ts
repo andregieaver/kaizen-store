@@ -895,6 +895,43 @@ export const storeThemeInstalls = commerce.table(
 );
 
 /**
+ * The page migration of `docs/theme-store.md` 4.4 as it was run on a store (D243, `docs/theme-phase-2.md` step 2): one row per page it changed,
+ * with the page's draft and published content before and after, so the run can be undone while the page is still as the run left it. Written
+ * only by `src/server/theme-detach.ts`; pruned after `THEME_DETACH_KEEP_DAYS`.
+ */
+export const pageThemeDetaches = commerce.table(
+  "page_theme_detaches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    /** The run it belongs to: every page one press changed shares it. */
+    runId: uuid("run_id").notNull(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    draftBefore: jsonb("draft_before"),
+    draftAfter: jsonb("draft_after"),
+    publishedBefore: jsonb("published_before"),
+    publishedAfter: jsonb("published_after"),
+    /** How many settings it took out (draft and published together), and how many it kept as the store's own. */
+    followed: integer("followed").notNull(),
+    kept: integer("kept").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("page_theme_detaches_store_idx").on(t.storeId, t.createdAt),
+    index("page_theme_detaches_run_idx").on(t.runId),
+    index("page_theme_detaches_page_idx").on(t.pageId),
+    index("page_theme_detaches_created_by_idx").on(t.createdBy),
+    check("page_theme_detaches_counts", sql`${t.followed} >= 0 and ${t.kept} >= 0`),
+  ],
+);
+
+/**
  * A store's own roles (wave 1, 1f, `docs/wave-1-trust.md`): a name and `{area}:{read|write}` keys, chosen from the
  * grantable ones (`GRANTABLE_PERMISSIONS` in `src/lib/permission-keys.ts`; never `staff:write`, `billing:write` or `owner`,
  * which stay with the owner role). The system roles `owner` and `admin` have no row. The templates are made by

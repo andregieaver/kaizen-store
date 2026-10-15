@@ -5933,3 +5933,22 @@ describe("the chat agent's picture frame (D233)", () => {
     expect(copied.avatar_style).toEqual(style);
   });
 });
+
+describe("the theme migration's runs (D243)", () => {
+  it("keep what they recorded: only undone_at changes, once", async () => {
+    const store = await createStore("detach-runs", ["DE"]);
+    const { id: page } = await one<{ id: string }>("insert into commerce.pages (store_id, type, slug, draft) values ($1, 'page', 'detach-runs', '{\"rows\":[]}'::jsonb) returning id", [store]);
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.page_theme_detaches (store_id, run_id, page_id, draft_before, draft_after, followed, kept) values ($1, gen_random_uuid(), $2, '{\"a\":1}'::jsonb, '{\"a\":2}'::jsonb, 1, 0) returning id",
+      [store, page],
+    );
+    await expect(db.query("update commerce.page_theme_detaches set draft_before = '{}'::jsonb where id = $1", [id])).rejects.toThrow(/page_theme_detaches.fixed/);
+    await expect(db.query("update commerce.page_theme_detaches set followed = 5 where id = $1", [id])).rejects.toThrow(/page_theme_detaches.fixed/);
+    await db.query("update commerce.page_theme_detaches set undone_at = now() where id = $1", [id]);
+    await expect(db.query("update commerce.page_theme_detaches set undone_at = now() + interval '1 day' where id = $1", [id])).rejects.toThrow(/page_theme_detaches.undone/);
+    await expect(db.query("update commerce.page_theme_detaches set undone_at = null where id = $1", [id])).rejects.toThrow(/page_theme_detaches.undone/);
+    // Deleted with its page.
+    await db.query("delete from commerce.pages where id = $1", [page]);
+    expect((await db.query("select 1 from commerce.page_theme_detaches where id = $1", [id])).rows).toHaveLength(0);
+  });
+});

@@ -2,17 +2,20 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
+import { ThemeFollow } from "@/components/admin/theme-follow";
 import { ThemeLibrary } from "@/components/admin/theme-library";
 import { ThemeEditor } from "@/components/admin/theme-editor";
 import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listOfferedDesigns } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { THEME_DETACH_KEEP_DAYS, listDetachRuns } from "@/server/theme-detach";
 import { listInstalls } from "@/server/theme-installs";
 import { listSavedThemes } from "@/server/themes";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   applyDesignAction,
+  countThemeFollowAction,
   deleteSavedThemeAction,
   installStoreFontAction,
   saveCartBehaviourAction,
@@ -20,7 +23,9 @@ import {
   saveThemeAction,
   removeThemeAction,
   restoreDesignAction,
+  runThemeFollowAction,
   switchThemeAction,
+  undoThemeFollowAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Design" };
@@ -29,7 +34,7 @@ export const metadata: Metadata = { title: "Design" };
 export default async function StoreDesignPage({ params, searchParams }: PageProps<"/admin/[store]/settings/design">) {
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
-  const [saved, designs, latest, installs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id)]);
+  const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
   // Design profiles (D176): applied by those who may change the website.
   const canChange = memberCan(member, "website:write");
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
@@ -50,6 +55,13 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         installs={installs}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
+      />
+      <ThemeFollow
+        runs={runs}
+        keepDays={THEME_DETACH_KEEP_DAYS}
+        count={canChange ? countThemeFollowAction.bind(null, store.slug) : null}
+        run={canChange ? runThemeFollowAction.bind(null, store.slug) : null}
+        undo={canChange ? undoThemeFollowAction.bind(null, store.slug) : null}
       />
       <DesignProfilePanel
         designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))}

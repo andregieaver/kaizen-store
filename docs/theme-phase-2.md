@@ -37,3 +37,27 @@ of the tab.
 
 **Not in step 1.** Section styles on components other than rows (a button already has its variants), and Kaizena's launch themes defining
 them (step 5).
+
+## Step 2: the page migration for real
+
+**What it is.** *Let pages follow the theme* (Design settings, `website:write`) takes out of a store's pages every style setting of a row,
+heading, button or dual button's text that only repeats the live theme (its elements and, for a row naming one, its section style), with
+`detachThemeValues()` (D241): a setting goes only when the row laid under the theme comes out identical, so every page is drawn exactly as
+before and, from then on, follows the theme it is switched to. Settings that differ from the theme are the owner's and stay. *Count the
+settings* is the dry run; nothing runs by itself.
+
+**Which pages.** Every page of the store (drafts and published versions), except: versions of an A/B test and pages in a running or
+scheduled test (D148: its versions are compared setting by setting); headers, footers and product layouts that an installed theme that is
+not live chose (they are drawn under that theme once switched to); and global parts (D98), left as they are on every page so no page
+differs from its source.
+
+**Undo.** A run is one transaction under the store's row lock; each page it changed keeps its draft and published versions before and after
+in `commerce.page_theme_detaches` (the rows keep what they recorded; only `undone_at` changes, once). *Undo* puts back each version only
+while it is still what the run left: a page changed since keeps the change, and the answer says how many. Runs are kept 90 days
+(`pruneThemeDetaches()` in the daily job), then can no longer be undone.
+
+**Built (D243).** `runDetach()`, `undoDetach()`, `listDetachRuns()`, `pruneThemeDetaches()` and the page choice in `src/server/theme-detach.ts`,
+`ThemeFollow` (`src/components/admin/theme-follow.tsx`) on Design settings; held by `src/server/theme-detach.int.test.ts` (drawn the same before
+and after, undo, a page changed since, a page a put-away theme keeps), `src/lib/theme-detach.test.ts` and the rules' test in
+`src/db/commerce.test.ts`.
+

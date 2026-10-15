@@ -133,11 +133,14 @@ export function detachThemeValues(rows: PageRow[], elements: ThemeElements | und
   let followed = 0;
   let own = 0;
   const out = rows.map((original) => {
+    // A global part (D98) is the same on every page that uses it: it is left as it is here, so no page differs from its source.
+    if ((original as { global?: string }).global) return original;
     const drawn = canonicalJson(themedRows([original], elements, sections));
     let row = original;
     for (const { where, part, isRow } of partsOf(original)) {
       const kind = THEMED[String(part.type)];
       if (!isRow && !kind) continue;
+      if (!isRow && (part as { global?: string }).global) continue;
       const settings = themableSettings(part, isRow).filter((path) => kind !== "text" || path.includes("typography"));
       for (const path of settings) {
         const next = put(row, where, without(current(row, where), path));

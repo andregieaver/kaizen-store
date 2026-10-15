@@ -70,4 +70,21 @@ describe("detachThemeValues()", () => {
     expect(detachThemeValues(rows, undefined)).toEqual({ rows, followed: 0, own: 0 });
     expect(detachThemeValues(rows, { h1: { radius: 2 } })).toMatchObject({ followed: 0, own: 1 });
   });
+
+  it("leaves a global row as it is, so no page differs from its source (D243)", () => {
+    const rows = [rowOf([heading({ level: 3, typography: { text: { size: { value: 2, unit: "rem" } } } })], { radius: 8, global: "g1" } as Partial<PageRow>)];
+    const result = detachThemeValues(rows, elements);
+    expect(result).toMatchObject({ followed: 0, own: 0 });
+    expect(result.rows[0]).toBe(rows[0]);
+  });
+
+  it("measures a row naming a section style against that style (D242, D243)", () => {
+    const sections = { hero: { h3: { typography: { text: { size: { value: 4, unit: "rem" } } } } } };
+    // 4rem is what the hero style gives a row naming it, not what the site gives.
+    const big = heading({ level: 3, typography: { text: { size: { value: 4, unit: "rem" } } } });
+    const named = detachThemeValues([rowOf([big], { sectionStyle: "hero" })], elements, sections);
+    expect(named.followed).toBe(1);
+    const plain = detachThemeValues([rowOf([big])], elements, sections);
+    expect(plain).toMatchObject({ followed: 0, own: 1 });
+  });
 });
