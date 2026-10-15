@@ -9,10 +9,11 @@
  * - `pages`: copied with the pages and posts chosen.
  * - `people`: copied when customers are (shoppers only).
  * - `orders`: copied when order history is (read-only).
+ * - `emails`: copied when the owner ticks *Email texts* (`StoreCopyOptions.emailTexts`, D238).
  * - `derived`: rebuilt by code or triggers, never copied as it is.
  * - `never`: stays with the original, with the reason.
  */
-export type CopyGroup = "settings" | "catalogue" | "pages" | "people" | "orders" | "never" | "derived";
+export type CopyGroup = "settings" | "catalogue" | "pages" | "people" | "orders" | "emails" | "never" | "derived";
 export type CopyRule = { group: CopyGroup; note: string };
 
 export const COPY_GROUPS: Record<CopyGroup, { label: string; summary: string }> = {
@@ -21,6 +22,7 @@ export const COPY_GROUPS: Record<CopyGroup, { label: string; summary: string }> 
   pages: { label: "Pages and posts", summary: "Copied with the pages and posts chosen." },
   people: { label: "Customers", summary: "Copied when customers are, as shoppers only." },
   orders: { label: "Order history", summary: "Copied when orders are, as read-only history." },
+  emails: { label: "Email texts", summary: "Your own wording of the customer emails, copied when you tick Email texts." },
   derived: { label: "Rebuilt", summary: "Made again by the new store's own code and jobs." },
   never: { label: "Left behind", summary: "Never copied." },
 };
@@ -34,6 +36,15 @@ const never = (note: string): CopyRule => ({ group: "never", note });
 
 export const COPY_RULES: Record<string, CopyRule> = {
   // Settings ---------------------------------------------------------------------------------------------------
+  // Customer notifications, staff alerts and automation (wave 3, D238, docs/wave-3-notifications.md 3.6)
+  notification_settings: settings("Which customer emails are switched on (D238); the required ones are always on."),
+  email_templates: { group: "emails", note: "The owner's own wording of the customer emails (D238), copied only when Email texts is ticked in the copy wizard (commerce.copy_email_templates()); clone_store() copies none." },
+  staff_alert_settings: settings("The staff summary's choice and the contact address's alerts (D238); copied without its recipients, so the copy's own owners get the default alerts."),
+  staff_alert_recipients: never("The staff chosen for alerts are the original's people (D238): a copy starts with the defaults, its own owners."),
+  store_events: never("The original's queue of order and return events for staff alerts and rules (D238)."),
+  order_rules: settings("Automation rules (D238), with new ids; a rule naming a product that was not copied loses it and is switched off."),
+  order_rule_runs: never("The log of the original's automation runs (D238)."),
+  shipment_tracking: never("The carrier events of the original's parcels (D238): copied orders have no parcels and are not followed."),
   appointment_settings: catalogue("How a product is booked; goes with its product."),
   booking_resources: settings(
     "Staff, rooms and rental items (a host's stay with the original; a calendar's secret address is made again).",

@@ -1,3 +1,4 @@
+import { phaseOf } from "./tracking-phases";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,6 +6,7 @@ import {
   bookingBody,
   bringHeaders,
   bringProblem,
+  bringTrackingLang,
   parseBooking,
   parsePickupPoints,
   parseShippingGuide,
@@ -184,6 +186,34 @@ describe("Tracking", () => {
     expect(events.map((e) => e.status)).toEqual(["DELIVERED", "IN_TRANSIT"]);
     expect(events[0]).toEqual({ at: "2022-11-18T14:05", status: "DELIVERED", description: "Delivered", location: "SANDVIKA" });
     expect(parseTracking({ consignmentSet: [{ error: { code: 404 } }] })).toEqual([]);
+  });
+
+  it("counts a parcel of several packages as delivered only when every package is, from the last one (D238)", () => {
+    const pack = (...events: [string, string][]) => ({
+      eventSet: events.map(([status, time]) => ({ status, description: status, displayDate: "18.11.2022", displayTime: time })),
+    });
+    const partly = parseTracking({ consignmentSet: [{ packageSet: [pack(["IN_TRANSIT", "08:00"], ["DELIVERED", "10:00"]), pack(["IN_TRANSIT", "09:00"])] }] });
+    expect(partly.map((e) => e.status)).toEqual(["PACKAGE_DELIVERED", "IN_TRANSIT", "IN_TRANSIT"]);
+    expect(phaseOf("bring", "PACKAGE_DELIVERED")).toEqual({ phase: "in_transit", verified: true });
+    const whole = parseTracking({ consignmentSet: [{ packageSet: [pack(["DELIVERED", "10:00"]), pack(["IN_TRANSIT", "09:00"], ["DELIVERED", "15:00"])] }] });
+    expect(whole.filter((e) => e.status === "DELIVERED").map((e) => e.at)).toEqual(["2022-11-18T15:00"]);
+    expect(whole.map((e) => e.status)).toContain("PACKAGE_DELIVERED");
+  });
+
+  it("prefers the zoned dateIso and asks in the order's language (D238)", () => {
+    const [event] = parseTracking({
+      consignmentSet: [{ packageSet: [{ eventSet: [{ status: "DELIVERED", description: "Levert", displayDate: "18.11.2022", displayTime: "14:05", dateIso: "2022-11-18T14:05:00+01:00" }] }] }],
+    });
+    expect(event.at).toBe("2022-11-18T13:05:00.000Z");
+    // A dateIso without a zone is not an instant: the display date and time stay, read in the delivery country's zone later.
+    const [local] = parseTracking({
+      consignmentSet: [{ packageSet: [{ eventSet: [{ status: "DELIVERED", description: "", displayDate: "18.11.2022", displayTime: "14:05", dateIso: "2022-11-18T14:05:00" }] }] }],
+    });
+    expect(local.at).toBe("2022-11-18T14:05");
+    expect([bringTrackingLang("nb"), bringTrackingLang("nn-NO"), bringTrackingLang("sv"), bringTrackingLang("da"), bringTrackingLang("fi"), bringTrackingLang(null)]).toEqual([
+      "no", "no", "sv", "da", "en", "en",
+    ]);
+    expect(trackingApiUrl("370", "sv")).toBe("https://api.bring.com/tracking/api/v2/tracking.json?q=370&lang=sv");
   });
 });
 

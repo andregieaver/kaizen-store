@@ -2,6 +2,7 @@
  * Saved replies (D216, `docs/support.md` 2.4, step 13): a desk's texts that a person puts in the composer with `/`, filled in for the
  * conversation. Pure, shared with the browser (no zod: the schema is `support-replies-schema.ts`).
  */
+import { fillNamed } from "./placeholder-fill";
 
 export const REPLY_TITLE_MAX = 80;
 export const REPLY_BODY_MAX = 2000;
@@ -40,16 +41,8 @@ export function firstName(name: string | null | undefined): string | null {
  */
 export function fillPlaceholders(body: string, facts: PlaceholderFacts): string {
   const values: Record<Placeholder, string | null> = { customer_first_name: facts.customerFirstName, agent_first_name: facts.agentFirstName, store: facts.store };
-  const GONE = "\u0000";
-  return body
-    .replaceAll(GONE, "")
-    .replace(/([ \t]*)\{(customer_first_name|agent_first_name|store)\}/g, (_, space: string, name: Placeholder) => {
-      const value = values[name]?.trim();
-      return value ? `${space}${value}` : GONE;
-    })
-    .split("\n")
-    .map((line) => (line.includes(GONE) ? line.replace(/^[ \t]*\u0000[ \t]*[,.;:]?[ \t]*/, "").replaceAll(GONE, "").replace(/[ \t]+$/, "") : line))
-    .join("\n");
+  // The rule shared with the email templates (D238, `src/lib/placeholder-fill.ts`); a reply keeps a line left empty.
+  return fillNamed(body, values);
 }
 
 /** The placeholders a text names that are not ours (a typo the page warns about). */

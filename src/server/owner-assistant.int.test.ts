@@ -109,6 +109,8 @@ describe("the owner assistant (D94)", () => {
       get_product: { product: productHandle },
       get_fields: { entity: "product", item: productHandle },
       get_order: { order: "1" },
+      // An order's parcels and their carrier events (D238) are asked for by the order's number too.
+      parcel_tracking: { order: "1" },
       // The history of one variant's stock (D172) is asked for by SKU, like a product's by its handle.
       stock_history: { sku: "DEMO-MUG-BLACK" },
       get_customer: { customer: "nobody@example.com" },
@@ -121,7 +123,7 @@ describe("the owner assistant (D94)", () => {
     const WRITES_WITHOUT_A_YES = new Set(["add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
-      if (tool.name === "get_order") await expect(result).rejects.toThrow("No order 1 in this store.");
+      if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");
       else if (tool.name === "get_customer" || tool.name === "explain_results" || tool.name === "explain_return" || tool.name === "explain_privacy_request") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
       else await expect(result, tool.name).resolves.toBeTruthy();
     }

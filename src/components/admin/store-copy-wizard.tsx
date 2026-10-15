@@ -536,6 +536,28 @@ export function StoreCopyWizard({
         )}
       </fieldset>
 
+      {/* The owner's own wording of the customer emails (D238): a copy group of its own, off unless ticked. */}
+      <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
+        <legend className="px-1 text-base font-medium">Email texts</legend>
+        <div className="flex flex-col gap-1">
+          <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="emailTexts"
+              checked={options.emailTexts === true}
+              onChange={(event) => update((s) => ({ ...s, options: { ...s.options, emailTexts: event.target.checked } }))}
+              aria-describedby="copy-email-texts-note"
+              className="size-4"
+            />
+            Email texts: your own wording of the customer emails
+          </label>
+          <p id="copy-email-texts-note" className="pl-6 text-sm text-muted">
+            The subjects, headings and texts you wrote for the order and return emails, in each language. Without it the new store
+            sends Kaizen&apos;s standard texts. Which emails are switched on is a setting and always comes along.
+          </p>
+        </div>
+      </fieldset>
+
       <Details summary="Always copied">
         <p>The store&apos;s settings come with every copy, except secrets:</p>
         {choices.settings.length > 0 ? (

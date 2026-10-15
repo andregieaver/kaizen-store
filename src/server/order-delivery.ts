@@ -50,6 +50,8 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
       }
       // The store's own driver delivered a local order at once (D237 2.3): the handover is written first, in this transaction, so one press does.
       let status = String(order.status);
+      // Who recorded the receipt (D238 3.1): the store's own driver delivering a local order is a handover; otherwise staff gave the date.
+      const source: "staff" | "handover" = order.delivery_method === "local" ? "handover" : "staff";
       if (!order.first_sent && order.delivery_method === "local" && status === "paid") {
         const handed = await sendWithin(tx, storeId, orderId, { carrier: "other", trackingNumber: "", trackingUrl: null }, accountId, null, {}, "local");
         if (!handed.ok) return refusal("not_sent", "The delivery could not be recorded: nothing of this order is left to hand over, or a change to it waits for payment.");
@@ -70,7 +72,7 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
       }
       if (day < dayIn(new Date(String(order.placed_at)), zone)) return refusal("before_order", "The goods cannot have been received before the order was placed.");
       await tx.execute(sql`
-        update commerce.orders set delivered_at = ${at.toISOString()}::timestamptz
+        update commerce.orders set delivered_at = ${at.toISOString()}::timestamptz, delivered_source = ${source}
         where store_id = ${storeId}::uuid and id = ${orderId}::uuid
       `);
       await tx.execute(sql`

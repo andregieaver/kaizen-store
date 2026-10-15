@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import type { EmailBlock } from "@/lib/email-layout";
+import { editLabel } from "@/lib/order-edit-status";
 
 import type { SendOutcome } from "./email";
 import { editPayLink, getOrderEdit, marketOfOrder, type OrderEditView } from "./order-edits";
@@ -72,7 +73,10 @@ export async function sendOrderChanged(storeId: string, editId: string): Promise
       return {
         subject: words.subject(store.name, order.number),
         heading: words.heading,
-        intro: [words.intro(order.number), reason].filter(Boolean).join(" "),
+        intro: words.intro(order.number),
+        // The reason in fixed words stays under the store's own text (D238 4.2).
+        introTail: reason,
+        values: { change_number: editLabel(edit.seq) },
         // A business buyer has no statutory right of withdrawal (CRD Art. 2(1)): the sentence about added goods, like D153's block, is for consumers only.
         extra: [...changeBlocks(edit, words, money), { type: "paragraph", text: settle }, ...(addsGoodsForConsumer(edit, order) ? [{ type: "paragraph" as const, text: words.withdrawal }] : [])],
         withdraw: edit.lines.some((l) => l.kind === "add"),
@@ -109,5 +113,6 @@ export async function sendOrderChangePayLink(storeId: string, editId: string, to
         ...(addsGoodsForConsumer(edit, order) ? [{ type: "paragraph" as const, text: words.withdrawal }] : []),
       ],
     };
-  });
+  // The pay link is an action email (D238 1.3): sent whatever a switch says, and never in the store's words for an applied change.
+  }, undefined, { action: true, templated: false });
 }

@@ -8,12 +8,15 @@ import { parsePageContent, type PageType } from "@/lib/page-content";
 import { applyTranslated, translationItems, type TranslateMode } from "@/lib/page-translate-ai";
 import { withTranslation } from "@/lib/page-translation";
 import {
+  emailUnit,
+  EMAIL_SLOTS,
   fitsItem,
   isLegalPage,
   menuUnit,
   PRODUCT_FIELDS,
   productUnits,
   returnInstructionsUnit,
+  samePlaceholders,
   shippingUnit,
   termUnit,
   type Accepted,
@@ -28,6 +31,7 @@ import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term
 
 import { audit, type Membership } from "./auth";
 import { fieldWork, writeFieldUnit } from "./field-translate";
+import { getTemplate, listNotifications, saveTemplate, templateLocale } from "./notifications";
 import { savePage } from "./pages";
 import { refreshTag } from "./refresh";
 import { getReturnSettings, getInstructionTranslations, saveInstructionTranslations } from "./return-settings";
@@ -199,6 +203,48 @@ async function writeShippingUnit(storeId: string, unitId: string, to: string, ok
   return rows.length > 0;
 }
 
+/**
+ * The store's own words of its customer emails (D238): for each editable notification with a template in the main language, the parts it has, into `to`
+ * (listed where `to` has no text of its own for a part, or all again). Nothing when the two languages keep their templates under the same language code.
+ */
+async function emailWork(storeId: string, from: string, to: string, mode: TranslateMode): Promise<Unit[]> {
+  const source = templateLocale(from);
+  const target = templateLocale(to);
+  if (!source || !target || source === target) return [];
+  const list = await listNotifications(storeId);
+  const withWords = list.filter((n) => n.def.editable && n.languages.some((l) => l.lang === source && l.own));
+  const units = await Promise.all(
+    withWords.map(async (n) => {
+      const [main, other] = await Promise.all([getTemplate(storeId, n.def.id, source), getTemplate(storeId, n.def.id, target)]);
+      return emailUnit(n.def.id, n.def.label, main, other, mode);
+    }),
+  );
+  return units.filter((u): u is Unit => u !== null);
+}
+
+/**
+ * Writes an accepted email translation in `to` through the Notifications page's own save (`saveTemplate()`, which runs `templateProblems()` again: placeholders,
+ * braces, web addresses and the claims filter), the language's other parts kept as they are. A part whose placeholders differ from the main language's is left out.
+ */
+async function writeEmailUnit(member: Membership, unitId: string, from: string, to: string, ok: Record<string, string | string[]>): Promise<true | string> {
+  const id = unitId.slice("email:".length);
+  const [source, current] = await Promise.all([getTemplate(member.store.id, id, from), getTemplate(member.store.id, id, to)]);
+  if (!source) return "the main language's own words are gone.";
+  const next = { subject: current?.subject ?? null, heading: current?.heading ?? null, body: current?.body ?? null };
+  let changed = 0;
+  for (const slot of EMAIL_SLOTS) {
+    const value = ok[slot.key];
+    const original = source[slot.key];
+    if (typeof value !== "string" || !original) continue;
+    if (!samePlaceholders(original, value)) return `the ${slot.label.toLowerCase()} does not keep the placeholders as written, so it was left out.`;
+    next[slot.key] = value.trim();
+    changed += 1;
+  }
+  if (changed === 0) return "nothing usable to save.";
+  const result = await saveTemplate(member.store.id, id, to, next, member.account.id);
+  return result.ok ? true : result.message;
+}
+
 /** What there is to translate into `to`, from the store's main language, in the scopes asked for. */
 export async function translationWorklist(
   { store }: Pick<Membership, "store">,
@@ -216,6 +262,7 @@ export async function translationWorklist(
     scopes.includes("returns") ? returnsWork(store.id, to, mode) : [],
     scopes.includes("terms") ? termWork(store.id, from, to, mode) : [],
     scopes.includes("shipping") ? shippingWork(store.id, to, mode) : [],
+    scopes.includes("emails") ? emailWork(store.id, from, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -226,8 +273,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms", "shipping"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0, shipping: 0 };
+      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms", "shipping", "emails"], "missing", null);
+      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0, shipping: 0, emails: 0 };
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -238,7 +285,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms", shipmethod: "shipping", pickupopt: "shipping", localarea: "shipping" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms", shipmethod: "shipping", pickupopt: "shipping", localarea: "shipping", email: "emails" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -302,6 +349,10 @@ export async function applyTranslations(member: Membership, to: string, accepted
     } else if (unit.scope === "shipping") {
       if (await writeShippingUnit(store.id, unitId, to, ok)) saved += 1;
       else skipped.push(`${unit.title}: nothing usable to save.`);
+    } else if (unit.scope === "emails") {
+      const result = await writeEmailUnit(member, unitId, from, to, ok);
+      if (result === true) saved += 1;
+      else skipped.push(`${unit.title}: ${result}`);
     } else if (unit.scope === "fields") {
       const result = await writeFieldUnit(member, unitId, to, ok);
       if (result === true) saved += 1;

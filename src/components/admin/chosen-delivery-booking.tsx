@@ -6,6 +6,7 @@ import { ParcelChoice } from "@/components/admin/orders/parcel-choice";
 import type { ParcelRow } from "@/components/admin/orders/send-parcel";
 import type { ParcelLine } from "@/lib/fulfilment";
 import { parcelLinesFromChoice } from "@/lib/parcel-form";
+import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
 
 export type BookState = { ok: boolean; message: string };
 
@@ -24,7 +25,10 @@ export function ChosenDeliveryBooking({
   hasEmail,
   book,
   rows = [],
+  notifyOff = null,
 }: {
+  /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
+  notifyOff?: string | null;
   carrierName: string;
   /** What the customer chose, written out. */
   chosenText: string;
@@ -46,7 +50,7 @@ export function ChosenDeliveryBooking({
     start(async () => {
       if (lines === "invalid") return;
       const grams = Math.round(Number(weight.replace(",", ".")) * 1000);
-      setResult(await book({ notify: hasEmail && !test && notify, parcel: { weightGrams: grams }, lines }));
+      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines }));
     });
 
   return (
@@ -65,12 +69,13 @@ export function ChosenDeliveryBooking({
         <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={input} />
       </label>
       {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
-      {hasEmail && !test && (
+      {hasEmail && !test && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-4" />
           Email the customer that it is on its way
         </label>
       )}
+      {hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>Email the customer that it is on its way</NotifySwitchedOff>}
       <div>
         <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50">
           {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}

@@ -154,7 +154,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
   if (s.orderIds.length === 0) return [];
   const ids = uuidList(s.orderIds);
   const store = s.storeId;
-  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags, parcelLines, changes] = await Promise.all([
+  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags, parcelLines, changes, tracking] = await Promise.all([
     db().execute<Row>(sql`
       select o.id, o.number, o.placed_at, o.status, trim(o.currency) as currency, o.subtotal_minor, o.shipping_minor, o.discount_minor,
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
@@ -207,6 +207,10 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       select order_id, seq, status, created_at, applied_at, difference_minor, trim(currency) as currency from commerce.order_edits
       where store_id = ${store}::uuid and order_id = any(${ids}) order by order_id, seq
     `),
+    // D238: the carrier events kept for each parcel (cleared when the order is anonymised, and 90 days after following stopped).
+    db().execute<Row>(sql`
+      select shipment_id, phase, events from commerce.shipment_tracking where store_id = ${store}::uuid and order_id = any(${ids})
+    `),
   ]);
   const group = <T extends Row>(rows: T[], key: string) => {
     const map = new Map<string, T[]>();
@@ -230,6 +234,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
     changes: group(changes, "order_id"),
   };
   const termsOf = new Map(terms.map((x) => [strs(x.order_id), x]));
+  const trackingOf = new Map(tracking.map((t) => [strs(t.shipment_id), t]));
   const bookingOf = new Map(bookings.map((b) => [strs(b.order_line_id), b]));
   return orders.map((o) => {
     const id = strs(o.id);
@@ -301,6 +306,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
         lines: (byOrder.parcelLines.get(strs(x.id)) ?? []).map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity) })),
         // Undone (D174 follow-up): kept in the record, marked, with staff's reason (it is about this order).
         ...(x.undone_at ? { undoneAt: iso(x.undone_at), undoReason: str(x.undo_reason) } : {}),
+        ...(trackingOf.has(strs(x.id)) ? { tracking: trackingOfShipment(trackingOf.get(strs(x.id))!) } : {}),
       })),
       changes: (byOrder.changes.get(id) ?? []).map((c) => ({ label: `E${num(c.seq)}`, status: strs(c.status), createdAt: iso(c.created_at), appliedAt: iso(c.applied_at), differenceMinor: num(c.difference_minor), currency: strs(c.currency) })),
       downloads: (byOrder.downloads.get(id) ?? []).map((d) => ({ fileName: str(d.file_name), downloads: num(d.downloads) })),
@@ -308,6 +314,15 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       events: (byOrder.events.get(id) ?? []).map((e) => ({ type: strs(e.type), createdAt: iso(e.created_at), reason: str(e.reason), note: str(e.note) })),
     };
   });
+}
+
+/** A parcel's kept carrier events as the export carries them: when, the carrier's words and the place. */
+function trackingOfShipment(row: Row): { phase: string; events: { at: string; description: string; location: string | null }[] } {
+  const events = Array.isArray(row.events) ? (row.events as Record<string, unknown>[]) : [];
+  return {
+    phase: strs(row.phase),
+    events: events.map((e) => ({ at: strs(e.at), description: strs(e.description), location: e.location ? strs(e.location) : null })),
+  };
 }
 
 async function loadInvoices(s: PrivacySubject): Promise<DocumentRow[]> {

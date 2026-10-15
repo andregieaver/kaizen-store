@@ -241,7 +241,19 @@ export function parseBooking(json: unknown): ParsedBooking {
 // Tracking
 // ---------------------------------------------------------------------------
 
-export const trackingApiUrl = (number: string) => `${BRING_API}/tracking/api/v2/tracking.json?q=${encodeURIComponent(number)}&lang=en`;
+/** The languages Bring's Tracking API answers in (`lang`, developer.bring.com/api/tracking, read 2026-10-14). */
+export const BRING_TRACKING_LANGS = ["en", "no", "sv", "da"] as const;
+
+/** Bring's `lang` for an order's language: Norwegian (nb, nn, no) as `no`, Swedish and Danish as they are, anything else English. */
+export function bringTrackingLang(lang: string | null | undefined): (typeof BRING_TRACKING_LANGS)[number] {
+  const code = (lang ?? "").toLowerCase().split("-")[0];
+  if (code === "nb" || code === "nn" || code === "no") return "no";
+  if (code === "sv" || code === "da") return code;
+  return "en";
+}
+
+export const trackingApiUrl = (number: string, lang: string = "en") =>
+  `${BRING_API}/tracking/api/v2/tracking.json?q=${encodeURIComponent(number)}&lang=${bringTrackingLang(lang)}`;
 
 /** "18.11.2022" and "14:05" as a local date-time text that sorts (`2022-11-18T14:05`); the raw text when it is not that. */
 function eventTime(date: string, time: string): string {
@@ -249,23 +261,49 @@ function eventTime(date: string, time: string): string {
   return match ? `${match[3]}-${match[2]}-${match[1]}T${/^\d{2}:\d{2}$/.test(time) ? time : "00:00"}` : [date, time].filter(Boolean).join(" ");
 }
 
-/** A parcel's events, newest first; empty when Bring does not know the number (yet). */
+/** Bring's `dateIso` ("2022-11-18T14:05:00+01:00") as an ISO instant, or null when it is missing or has no zone. */
+function isoWithZone(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)) return null;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+}
+
+/** The status a package's `DELIVERED` takes while another package of the same parcel is still on its way: shown, never the parcel's delivery. */
+export const PACKAGE_DELIVERED = "PACKAGE_DELIVERED";
+
+/**
+ * A parcel's events, newest first; empty when Bring does not know the number (yet). A consignment of several packages (a number staff typed, or a
+ * booking of more than one) is delivered only when every package is: until then each package's `DELIVERED` is `PACKAGE_DELIVERED`, and after it only
+ * the last package's counts, so one package left at the door never records the parcel's receipt or starts the withdrawal period (D238).
+ */
 export function parseTracking(json: unknown): TrackingEvent[] {
-  const events: TrackingEvent[] = [];
+  const packages: TrackingEvent[][] = [];
   for (const consignment of list(obj(json).consignmentSet)) {
     for (const pack of list(obj(consignment).packageSet)) {
+      const events: TrackingEvent[] = [];
       for (const raw of list(obj(pack).eventSet)) {
         const e = obj(raw);
         events.push({
-          at: eventTime(text(e.displayDate), text(e.displayTime)),
+          // An instant with its zone when Bring gives one (`dateIso`, D238); else the local display date and time, read in the delivery country's zone later.
+          at: isoWithZone(text(e.dateIso)) ?? eventTime(text(e.displayDate), text(e.displayTime)),
           status: text(e.status),
           description: text(e.description),
           ...(text(e.city) ? { location: text(e.city) } : {}),
         });
       }
+      packages.push(events);
     }
   }
-  return events.sort((a, b) => b.at.localeCompare(a.at));
+  if (packages.length > 1) {
+    const firstDelivered = packages.map((events) =>
+      events.filter((e) => e.status === "DELIVERED").reduce<string | null>((min, e) => (min === null || e.at < min ? e.at : min), null),
+    );
+    const all = firstDelivered.every((at) => at !== null);
+    const last = all ? (firstDelivered as string[]).reduce((max, at) => (at > max ? at : max)) : null;
+    for (const events of packages)
+      for (const e of events) if (e.status === "DELIVERED" && (last === null || e.at < last)) e.status = PACKAGE_DELIVERED;
+  }
+  return packages.flat().sort((a, b) => b.at.localeCompare(a.at));
 }
 
 /** What to tell the owner when Bring answers with a status that is not a success. */

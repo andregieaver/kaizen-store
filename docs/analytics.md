@@ -392,6 +392,24 @@ shown. A period has no comparison yet. The platform's per-store totals are the s
 platform never reads): never a conversation, a customer, a message or a summary's words (`src/server/support-platform.ts`,
 held by `support-platform.scan.test.ts`).
 
+## Staff summary (D238, wave 3, `docs/wave-3-notifications.md` 2.8)
+
+The daily or weekly email to the recipients of *Summary* (`staffSummaryFigures()` in `src/server/staff-summary.ts`, sent by `sendDueSummaries()`).
+The period is yesterday, or the seven store days ending yesterday, in the store's time zone. Nothing per customer; English.
+
+| Figure | Definition |
+|---|---|
+| **Paid orders** | `orders` of `periodTotals()` over the period (the `PAID` definition above). |
+| **Net sales, excl. VAT** | `revenueMinor − refundsMinor` of `periodTotals()`, in the store's main currency. A currency without a rate is left out and said (*{n} orders or refunds in {currency} are not included: no exchange rate*), never summed. |
+| **Refunds, excl. VAT** | `refundsMinor` of `periodTotals()`. |
+| **Returns requested** | Returns created in the period (`returns.created_at` in store days), of any kind. |
+| **Open returns** | Returns not `closed`, `declined` or `cancelled`, now. |
+| **Orders to send** | Now: the Orders page's *To send* (paid, a physical line, shipped by parcel), copied and archived orders left out. |
+| **Variants at or below their level** | Now: `stock_alerts` in state `low`. |
+| **Conversations waiting in support** | Now, only while the desk is not off: open conversations in the queue (`handler = 'queue'`), as the control center counts them. |
+
+A period with no paid order still sends (*No orders yesterday*), so the owner knows the summary works.
+
 ## Not tracked (said on the pages)
 
 Refunds made only in Stripe's dashboard; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

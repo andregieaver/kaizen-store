@@ -303,6 +303,10 @@ export async function startStoreCopy(
         ) as id
       `);
       const storeId = String(made.id);
+      // The owner's own wording of the customer emails (D238, copy group `emails`): only when ticked, in the same transaction.
+      if (options.emailTexts === true) {
+        await tx.execute(sql`select commerce.copy_email_templates(${source.id}::uuid, ${storeId}::uuid)`);
+      }
       const [made_counts] = await tx.execute<Row>(sql`
         select
           (select count(*)::int from commerce.pages where store_id = ${storeId}::uuid and type = 'page') as pages,
@@ -338,6 +342,7 @@ export async function startStoreCopy(
     posts: counts.posts.total,
     customers: options.customers,
     orders: options.orders,
+    emailTexts: options.emailTexts === true,
   };
   await audit(account.id, source.id, "store.copied", { ...summary, direction: "from", other: slug });
   await audit(account.id, newId, "store.copied", { ...summary, direction: "to", other: source.slug });

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import { field, hint, primary } from "@/components/admin/data/ui";
+import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
 
 /** A physical line as the *Send* card shows it (D174 2.1): what was ordered, sent, withdrawn before sending and what is left. */
 export type ParcelRow = {
@@ -46,7 +47,10 @@ export function SendParcelForm({
   whole = false,
   submitLabel = "Send this parcel",
   send,
+  notifyOff = null,
 }: {
+  /** The *Order sent* email is switched off in Notifications (D238): the box is drawn off, linking there. */
+  notifyOff?: string | null;
   rows: ParcelRow[];
   basis: string;
   carriers: { id: string; name: string }[];
@@ -153,7 +157,8 @@ export function SendParcelForm({
           <input name="trackingUrl" type="url" placeholder="https://…" className={field} />
         </label>
       )}
-      {hasEmail && (
+      {hasEmail && notifyOff && <NotifySwitchedOff href={notifyOff}>Tell the customer: email them what is in this parcel and how to follow it</NotifySwitchedOff>}
+      {hasEmail && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="notify" defaultChecked className="size-4" />
           Tell the customer: email them what is in this parcel and how to follow it

@@ -10,6 +10,7 @@ import { documentEmailText } from "@/lib/invoice-text";
 import type { SendOutcome } from "./email";
 import { sendEmail } from "./email";
 import { documentBlocks, recordDocumentDeliveries } from "./invoice-emails";
+import { refundEmailOffSql } from "./notifications";
 import { getOrder } from "./orders";
 import { emailContext, emailFooter } from "./shopper-emails";
 
@@ -120,41 +121,74 @@ const RECENT_DAYS = 3;
  * The job: the stand-alone email for each document no earlier email carried and that was issued later than the payment or the refund
  * (an invoice that waited for the seller's details; a credit note of a refund Stripe completed or made later, or that waited for its
  * invoice and so was not in the refund email the shopper got). A refund staff made and chose not to tell the shopper about is not
- * announced, because its credit note was issued with it and no email about the refund exists. A credit note is announced no sooner
+ * announced, because its credit note was issued with it and no email about the refund exists, unless the store switched the refund email
+ * (or, for a return's refund, the return refunded email) off (D238, `refundEmailOffSql()`): then no refund email can carry it, and it goes on its
+ * own. A credit note is announced no sooner
  * than two minutes after it was issued, so the refund's own email (which carries it) has been sent and noted first.
  * Returns how many emails were handed over.
  */
 export async function sendPendingDocumentNotices(limit = 50): Promise<number> {
-  let sent = 0;
-  try {
-    const invoices = await db().execute<Row>(sql`
-      select i.store_id, i.id from commerce.invoices i
+  const invoices = await inPages(limit, (after) => db().execute<Row>(sql`
+      select i.store_id, i.id, i.issued_at::text as cursor_at from commerce.invoices i
       where i.issued_at > now() - make_interval(days => ${RECENT_DAYS}) and i.anonymised_at is null
         and i.issued_at > (select min(e.created_at) from commerce.order_events e where e.store_id = i.store_id and e.order_id = i.order_id and e.type = 'order.paid')
                           + make_interval(mins => ${LATE_MINUTES})
         and not exists (select 1 from commerce.document_deliveries d where d.store_id = i.store_id and d.document_type = 'invoice' and d.document_id = i.id)
         and not exists (select 1 from commerce.email_messages m where m.store_id = i.store_id and m.idempotency_key = 'invoice:' || i.id::text)
-      order by i.issued_at limit ${limit}
-    `);
-    for (const row of invoices) {
-      const outcome = await sendInvoiceNotice(String(row.store_id), String(row.id));
-      if (outcome === "sent" || outcome === "logged") sent += 1;
-    }
-    const notes = await db().execute<Row>(sql`
-      select c.store_id, c.id from commerce.credit_notes c
+        and (${after?.at ?? null}::timestamptz is null or (i.issued_at, i.id) > (${after?.at ?? null}::timestamptz, ${after?.id ?? null}::uuid))
+      order by i.issued_at, i.id limit ${limit}
+    `), (row) => sendInvoiceNotice(String(row.store_id), String(row.id)));
+  const notes = await inPages(limit, (after) => db().execute<Row>(sql`
+      select c.store_id, c.id, c.issued_at::text as cursor_at from commerce.credit_notes c
       left join commerce.refunds r on r.store_id = c.store_id and r.id = c.refund_id
-      where c.issued_at > now() - make_interval(days => ${RECENT_DAYS}) and c.anonymised_at is null and c.source = 'refund'
+      where c.issued_at > now() - make_interval(days => ${RECENT_DAYS}) and c.anonymised_at is null
         and c.issued_at < now() - make_interval(mins => ${LATE_MINUTES})
-        and (r.created_by is null or c.issued_at > r.created_at + make_interval(mins => ${LATE_MINUTES})
-             or exists (select 1 from commerce.email_messages e where e.store_id = c.store_id and e.idempotency_key = 'order-refunded:' || c.refund_id::text))
-        and not exists (select 1 from commerce.returns rt where rt.store_id = c.store_id and rt.refund_id = c.refund_id)
+        and (
+          (c.source = 'refund'
+           and not exists (select 1 from commerce.returns rt where rt.store_id = c.store_id and rt.refund_id = c.refund_id)
+           and (r.created_by is null or c.issued_at > r.created_at + make_interval(mins => ${LATE_MINUTES})
+                or exists (select 1 from commerce.email_messages e where e.store_id = c.store_id and e.idempotency_key = 'order-refunded:' || c.refund_id::text)
+                or ${refundEmailOffSql(sql`c.store_id`, "order")}))
+          -- A refund email the store switched off (D238) never carries the credit note, so the document goes on its own: a notification switch
+          -- never silences a credit note (D159; the invoice settings' switch governs documents). A return's note (through Stripe or outside) too.
+          or ((c.source = 'return_outside'
+               or (c.source = 'refund' and exists (select 1 from commerce.returns rt where rt.store_id = c.store_id and rt.refund_id = c.refund_id)))
+              and ${refundEmailOffSql(sql`c.store_id`, "return")})
+        )
         and not exists (select 1 from commerce.document_deliveries d where d.store_id = c.store_id and d.document_type = 'credit_note' and d.document_id = c.id)
         and not exists (select 1 from commerce.email_messages m where m.store_id = c.store_id and m.idempotency_key = 'credit-note:' || c.id::text)
-      order by c.issued_at limit ${limit}
-    `);
-    for (const row of notes) {
-      const outcome = await sendCreditNoteNotice(String(row.store_id), String(row.id));
-      if (outcome === "sent" || outcome === "logged") sent += 1;
+        and (${after?.at ?? null}::timestamptz is null or (c.issued_at, c.id) > (${after?.at ?? null}::timestamptz, ${after?.id ?? null}::uuid))
+      order by c.issued_at, c.id limit ${limit}
+    `), (row) => sendCreditNoteNotice(String(row.store_id), String(row.id)));
+  return invoices + notes;
+}
+
+/** The most pages of waiting documents one run looks through, each of `limit`. */
+const NOTICE_PAGES = 10;
+
+/**
+ * Sends the waiting documents a page at a time in order of issue, up to `NOTICE_PAGES` pages. A document that can never be sent (a copied order, no
+ * address, a refused address) is not marked and comes first again on every run, so a run that read only the first page would let fifty of them hold
+ * back every later document for the days they stay waiting. Returns how many emails were handed over; a failure ends the run (tried again next time).
+ */
+async function inPages(
+  limit: number,
+  page: (after: { at: string; id: string } | null) => Promise<Row[]>,
+  sendOne: (row: Row) => Promise<SendOutcome | null>,
+): Promise<number> {
+  let sent = 0;
+  let after: { at: string; id: string } | null = null;
+  try {
+    for (let n = 0; n < NOTICE_PAGES; n += 1) {
+      const rows = await page(after);
+      for (const row of rows) {
+        const outcome = await sendOne(row);
+        if (outcome === "sent" || outcome === "logged") sent += 1;
+      }
+      if (rows.length < limit) break;
+      const last = rows[rows.length - 1];
+      // The database's own text of the time, so no microsecond is lost between pages.
+      after = { at: String(last.cursor_at), id: String(last.id) };
     }
   } catch {
     // Tried again on the next run.

@@ -403,6 +403,26 @@ export const da: Messages = {
     // legal: needs review
     receipt: "Fortrydelsesfristen på 14 dage regnes fra den dag, du modtager den sidste pakke.",
   },
+  /** Transportørens nyheder om en pakke på ordresiderne (D238). Lover intet (ingen tilbagebetaling, ingen ny pakke). Skal gennemgås af et menneske før brug. */
+  tracking: {
+    // legal: needs review
+    phases: {
+      info_received: "Transportøren har fået besked om pakken",
+      in_transit: "På vej",
+      out_for_delivery: "Ude til levering",
+      ready_for_collection: "Klar til afhentning",
+      attempted: "Forsøgt leveret",
+      delivered: "Leveret",
+      returned_to_sender: "På vej tilbage til os",
+      problem: "Der er sket noget med denne pakke: kontakt os",
+      unknown: "På vej",
+    },
+    readyAt: (place: string) => `Klar til afhentning hos ${place}`,
+    deliveredOn: (date: string) => `Leveret ${date}`,
+    noNews: (carrier: string) => `${carrier} har ingen nyheder om denne pakke endnu.`,
+    followAt: (carrier: string) => `Følg pakken hos ${carrier}`,
+    events: "Nyt fra transportøren",
+  },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
   slip: {
     // legal: needs review

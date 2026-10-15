@@ -20,6 +20,9 @@ import { audit } from "./auth";
 import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
 import { pruneDraftOrders } from "./draft-orders";
+import { pruneRuleRuns } from "./order-rules";
+import { pruneTrackingEvents } from "./shipment-tracking";
+import { pruneStoreEvents } from "./staff-alerts";
 import { pruneAnonymisedOrderTags } from "./order-tags";
 import { pruneInventoryMovements } from "./stock-alerts";
 import { anonymiseConversations, deleteOldRecords, transcriptsDue } from "./support";
@@ -118,6 +121,9 @@ export const RETENTION_STEPS = [
   "order_tags",
   "support_transcripts",
   "support_records",
+  "store_events",
+  "order_rule_runs",
+  "tracking_events",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -378,6 +384,18 @@ const STEPS: Record<RetentionStep, StepFn> = {
 
   async support_records(ctx) {
     return { count: await deleteOldRecords(cutoffInstant(await period(ctx, "support_records"), ctx.now), ctx.batch) };
+  },
+
+  // Notifications (wave 3, D238, docs/wave-3-notifications.md 3.5; Kaizen's choices, no law is claimed): the store events 30 days after they were handled or
+  // failed, automation rules' runs after 12 months (the log shows a year), and parcels' carrier events (which can name who signed) 90 days after following stopped.
+  async store_events(ctx) {
+    return { count: await pruneStoreEvents(ctx.now) };
+  },
+  async order_rule_runs(ctx) {
+    return { count: await pruneRuleRuns(ctx.now) };
+  },
+  async tracking_events(ctx) {
+    return { count: await pruneTrackingEvents(ctx.now) };
   },
 };
 

@@ -403,6 +403,26 @@ export const sv: Messages = {
     // legal: needs review
     receipt: "Ångerfristen på 14 dagar räknas från den dag du tar emot det sista paketet.",
   },
+  /** Transportörens nyheter om ett paket på ordersidorna (D238). Lovar ingenting (ingen återbetalning, inget nytt paket). Måste granskas av en människa före användning. */
+  tracking: {
+    // legal: needs review
+    phases: {
+      info_received: "Transportören har fått besked om paketet",
+      in_transit: "På väg",
+      out_for_delivery: "Ute för leverans",
+      ready_for_collection: "Redo att hämtas",
+      attempted: "Leveransförsök gjort",
+      delivered: "Levererat",
+      returned_to_sender: "På väg tillbaka till oss",
+      problem: "Något har hänt med det här paketet: kontakta oss",
+      unknown: "På väg",
+    },
+    readyAt: (place: string) => `Redo att hämtas hos ${place}`,
+    deliveredOn: (date: string) => `Levererat ${date}`,
+    noNews: (carrier: string) => `${carrier} har inga nyheter om det här paketet ännu.`,
+    followAt: (carrier: string) => `Följ paketet hos ${carrier}`,
+    events: "Nytt från transportören",
+  },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
   slip: {
     // legal: needs review

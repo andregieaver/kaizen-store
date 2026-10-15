@@ -148,8 +148,10 @@ export async function pickupBlockers(runner: Runner, storeId: string, locationId
 // ---------------------------------------------------------------------------
 
 /** The sentence staff read for each refusal (`pickupBlock()`'s codes and the server's own). */
-export const PICKUP_REFUSALS: Record<PickupBlock | "not_found" | "changed" | "invalid" | "future" | "before_order" | "send", string> = {
+export const PICKUP_REFUSALS: Record<PickupBlock | "held" | "not_found" | "changed" | "invalid" | "future" | "before_order" | "send", string> = {
   not_found: "This order no longer exists.",
+  // A fulfilment hold (D238 2.6): nothing is handed over or marked ready until staff release it.
+  held: "This order is on hold: release it first.",
   not_pickup: "This order is not collected at your place.",
   unpaid: "The order is not paid yet.",
   copied: "A copied order is history and is never handed over.",
@@ -172,7 +174,7 @@ const refused = (reason: PickupRefusal, message?: string): PickupRefused => ({ o
 /** The facts `pickupBlock()` needs, read under the order's row lock. */
 async function pickupFacts(tx: Runner, storeId: string, orderId: string, action: PickupAction, haveStock: boolean) {
   const [order] = await tx.execute<Row>(sql`
-    select o.status, o.copied_from is not null as copied, o.delivery_method, o.ready_for_pickup_at, o.placed_at, s.time_zone,
+    select o.status, o.copied_from is not null as copied, o.delivery_method, o.ready_for_pickup_at, o.placed_at, s.time_zone, o.held_at is not null as held,
       exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.method = 'pickup' and sh.undone_at is null) as collected,
       exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment') as edit_pending,
       exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0) as waiting
@@ -195,7 +197,7 @@ async function pickupFacts(tx: Runner, storeId: string, orderId: string, action:
     },
     action,
   );
-  return { order, block };
+  return { order, block: block ?? (order.held && order.status === "paid" ? ("held" as const) : null) };
 }
 
 const markInput = z.object({
@@ -300,7 +302,7 @@ export async function markCollected(storeId: string, input: unknown, accountId: 
       throw new HandoverRefused(sent);
     }
     await tx.execute(sql`
-      update commerce.orders set delivered_at = ${at.toISOString()}::timestamptz
+      update commerce.orders set delivered_at = ${at.toISOString()}::timestamptz, delivered_source = 'handover'
       where store_id = ${storeId}::uuid and id = ${orderId}::uuid
     `);
     await tx.execute(sql`

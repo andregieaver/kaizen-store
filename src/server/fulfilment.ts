@@ -219,6 +219,9 @@ export async function parcelPrecheck(storeId: string, orderId: string, lines?: r
   const found = await orderFulfilment(db(), storeId, orderId);
   if (!found) return shipmentProblemText("not_found");
   if (found.editPending) return shipmentProblemText("edit_pending");
+  // A held order is never booked with a carrier (D238 2.6): the booking would cost money and the parcel would be refused.
+  const [held] = await db().execute<Record<string, unknown>>(sql`select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and held_at is not null`);
+  if (held) return shipmentProblemText("held");
   const check = shipmentProblems(found.lines, lines ?? null, found.hasShipment);
   return check.ok ? null : shipmentProblemText(check.problems[0].code);
 }

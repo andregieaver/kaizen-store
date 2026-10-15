@@ -102,6 +102,27 @@ export const OWNER_TOOLS = [
     }),
   ),
   tool(
+    "notification_settings",
+    "The emails customers get about orders and returns (D238), as the Notifications page lists them: each one's name, when it is sent, whether it is on, off or always sent (the order confirmation, the renewal and change confirmations, the withdrawal acknowledgement and the return decisions are required; the acknowledgement's wording is fixed), and per language whether the store wrote its own subject, heading or text or uses the standard text. It never gives the words themselves. Read-only: switching an email and editing its words, with the preview and a test email, are done on the Notifications page (open_admin_page, notifications); who on the team gets staff alerts is the owner's page (notifications.staff).",
+    z.object({
+      notification: z.string().trim().regex(/^[a-z_]+\.[a-z_]+$/).optional().describe("One email by its id, such as order.sent; leave it out for all of them."),
+    }),
+  ),
+  tool(
+    "order_rules",
+    "The store's automation rules (D238), as the Automation page lists them: each rule's sentence (when an order is paid and its conditions hold, then tag it, notify staff or hold it), whether it is on, its place in the order rules run, and its last run; then the log's latest runs (newest first) with the order's number, whether the rule matched and what each condition and action came to. Amounts in a rule are in the store's main currency. Read-only: rules are made, changed, switched and deleted on the Automation page (open_admin_page, automation), and an order on hold is released on its own page.",
+    z.object({
+      rule: z.string().trim().min(1).max(80).optional().describe("One rule by its name or id; leave it out for every rule."),
+      runs: z.number().int().min(0).max(50).default(10).describe("How many of the latest runs to give (0–50)."),
+      matched: z.boolean().optional().describe("Only runs that matched (true) or did not (false)."),
+    }),
+  ),
+  tool(
+    "parcel_tracking",
+    "Where an order's parcels are (D238), from the carrier events Kaizen stored when it last checked (every few minutes; nothing is asked of the carrier here): each parcel's carrier and tracking number, its phase (on its way, out for delivery, ready to collect, delivered, …), its newest events with times and places, when it was last checked and whether that failed, and why it is no longer followed. PostNord's, Helthjem's and Porterbuddy's codes are not verified yet: their events are listed, but Kaizen records no delivery and sends no email from them, and the answer says so. It also says whether the order's delivery is recorded and by whom (staff, the handover, or the carrier). Read-only: Check now is on the order's page.",
+    z.object({ order: orderRef }),
+  ),
+  tool(
     "list_draft_orders",
     "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizen and deleting a draft are done on the draft's page.",
     listDraftOrdersInput,

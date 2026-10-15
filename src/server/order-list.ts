@@ -110,7 +110,7 @@ export type OrderListPage = {
 
 const selectRow = (context: Pick<OrderListContext, "totalFactors">) => sql`
   o.id, o.number, o.status, o.placed_at, o.placed_at::text as placed_key, o.total_minor, ${totalKey(context)} as total_key, o.currency, o.market_code,
-  o.copied_from is not null as copied, o.archived_at is not null as archived, o.source, d.number as draft_number, o.is_gift,
+  o.copied_from is not null as copied, o.archived_at is not null as archived, o.held_at is not null as held, o.source, d.number as draft_number, o.is_gift,
   (o.restricted_at is not null or o.anonymised_at is not null) as erased, o.email,
   coalesce(nullif(o.shipping_address ->> 'name', ''), nullif(o.billing_address ->> 'name', '')) as name,
   (select coalesce(sum(l.quantity), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id) as items,
@@ -138,6 +138,7 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     marketCode: String(row.market_code).trim(),
     copied,
     archived: Boolean(row.archived),
+    held: Boolean(row.held),
     source: row.source === "draft" ? "draft" : "checkout",
     draftNumber: row.draft_number ? String(row.draft_number) : null,
     gift: Boolean(row.is_gift),

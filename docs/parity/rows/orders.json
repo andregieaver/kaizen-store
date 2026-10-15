@@ -1096,28 +1096,47 @@
     "kaizen": {
       "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "full"
     },
     "weight": 3,
-    "gap": "The shopper's order pages show each parcel with its carrier, tracking link and lines, and what is still to come (D174, `shopperFulfilment()`); each parcel gets its own shipped email listing its lines; the support chat gives a signed-in customer the tracking links as chips (D216 step 9). The carrier's latest event is shown to staff only (`carrierTracking()` for Bring, PostNord, Porterbuddy and Helthjem). Missing: an out-for-delivery or delivered email; the carrier's events on the shopper's page; and recording a delivery from the carrier (a delivery is recorded only when staff press Mark delivered, D153 `delivered_at`, which needs the order sent in full, D174).",
-    "bucket": "A",
+    "gap": "Built and tested against a faked carrier only (D238): `pollTracking()` keeps Bring's events in `shipment_tracking`, both order pages show them, a verified delivered code records `delivered_at` through `record_carrier_delivery()`, and the out-for-delivery and delivered emails go once per parcel when switched on. The code has never read an answer from Bring's live Tracking API: the parser's fixtures and the integration test's adapter were written by hand from developer.bring.com, and no real parcel has been followed to delivery (spec 9.6), although a carrier's delivered event starts the 14 days of D153. PostNord's, Helthjem's and Porterbuddy's codes are unverified, so their parcels are shown but never record a delivery or send an email.",
+    "bucket": "B",
     "wave": 3,
     "criteria": [
       "The shopper's order page shows a parcel's events from the carrier (unit test of the mapping, integration test with a faked carrier) and says plainly when the carrier gives none.",
-      "A carrier's delivered event records `delivered_at` once, never earlier than the order and never over a staff date, and it starts the 14-day count of D153 (integration test).",
+      "A carrier's delivered event, with a code verified against the carrier's documentation, records `delivered_at` once, never earlier than the order and never over a staff date, and it starts the 14-day count of D153 (integration test).",
       "Out-for-delivery and delivered emails go once per shipment, only when the store switched them on, in the order's language.",
       "A carrier that does not answer leaves the tracking link and no error."
     ],
     "evidence": {
       "files": [
+        "src/lib/tracking-phases.ts",
+        "src/server/shipment-tracking.ts",
+        "src/server/delivery-source.ts",
+        "src/components/parcel-tracking.tsx",
+        "src/components/order-shipments.tsx",
+        "src/components/admin/orders/parcel-status.tsx",
+        "src/app/api/cron/cart-reminders/route.ts",
+        "supabase/migrations/20261015001113_notifications_rules.sql",
         "src/server/carrier-tracking.ts",
         "src/server/order-delivery.ts",
         "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
         "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
         "src/server/fulfilment.ts",
-        "src/server/support-tools.ts"
+        "src/server/support-tools.ts",
+        "src/lib/bring.ts",
+        "src/server/carriers/bring.ts"
       ],
       "tests": [
+        "src/lib/tracking-phases.test.ts",
+        "src/lib/bring.test.ts",
+        "src/server/shipment-tracking.int.test.ts",
+        "src/server/tracking-retention-review.int.test.ts",
+        "src/components/parcel-tracking.test.ts",
+        "src/components/admin/orders/hold-tracking-views.test.ts",
+        "src/lib/email-text.parcel.test.ts",
+        "src/db/notifications.test.ts",
+        "e2e/parcel-tracking.spec.ts",
         "src/server/bring-shipping.int.test.ts",
         "src/server/porterbuddy-shipping.int.test.ts",
         "src/server/helthjem-shipping.int.test.ts",
@@ -1130,9 +1149,23 @@
     },
     "decisions": [
       "D134",
-      "D153"
+      "D153",
+      "D238"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-15",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read tracking-phases.ts and shipment-tracking.ts and ran the tests on a fresh database. pollTracking() (five-minute cron) stores carrier events in shipment_tracking; both shopper order pages draw them from the stored rows (ParcelTracking) and say plainly when there are none or the parcel is not followed (parcel-tracking.test, order-section.test, e2e/parcel-tracking.spec); a verified delivered code records delivered_at only through record_carrier_delivery(): once, not before placed_at, never over a staff date, not while partly sent, starting withdrawalWindow()'s 14 days (shipment-tracking.int with a faked adapter); out-for-delivery and delivered emails once per parcel, off by default, in the order's language; a failing carrier keeps the stored events and the link and backs off. Criterion 2 reworded as spec 6.4 proposed. Honest limit: only Bring's codes are verified (read on developer.bring.com); PostNord's, Helthjem's and Porterbuddy's events are shown but never record a delivery or send an email, and no real Bring parcel has been followed in production yet (spec 9.6)."
+      },
+      {
+        "on": "2026-10-15",
+        "from": "full",
+        "to": "partial",
+        "why": "Skeptic of the wave 3 re-rate: reran the cited unit tests (196 passed) and the integration tests (shipment-tracking.int, tracking-retention-review.int and six others, 53 passed) on my own database, and read src/lib/bring.ts parseTracking(), src/lib/bring.test.ts and src/server/carrier-tracking.ts. Every criterion is held only against inputs written by the builders: bring.test's tracking fixtures are hand-made objects, and shipment-tracking.int injects a fake fetchEvents. No answer from Bring's live Tracking API has ever been read by this code, and no real parcel has been followed (spec 9.6), while criterion 2 lets a carrier's code start a statutory 14-day clock. The other carrier rows that rest on the same Bring connection with faked carriers are kept at Partial B for the same reason ('Nothing has been checked against a real carrier's production service'), so this row is Partial B until one real Bring parcel, on a store's own Mybring credential, has been followed to delivery in production and its stored events and delivered_at checked."
+      }
+    ]
   },
   {
     "id": "orders.editable-notification-email-templates",
@@ -1146,37 +1179,64 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Wording and layout are fixed in code (`email-text.ts`, `email-layout.ts`; nb, sv, da and en by hand, other languages through the catalogue, D111). Switches are per action, not per event. The store's logo and colours reach the layout, but the owner cannot edit a subject or body. Rechecked 2026-10-14: no template table or editor; D153 (returns), D173 (drafts, gifts) and D174 (changes, a shipped email per parcel) added their emails to the same fixed set.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner edits the subject and a text block of an order email per language, with named placeholders only (no code), and a preview shows it with a sample order (unit and render tests).",
-      "Every order email can be switched off or on per event, and legally required ones (the withdrawal acknowledgement, the order confirmation) cannot be switched off.",
+      "Every notification an order or return event sends automatically can be switched off or on per event (action emails staff send with a button are not notifications), and legally required ones (at least the withdrawal acknowledgement and the order confirmation; the spec adds the renewal and change confirmations and the return decision emails) cannot be switched off, also in the database.",
       "An edited text passes the claims filter and the placeholder check before it is saved; a missing translation falls back to the fixed text.",
       "Emails keep the order's language and currency, and edits are copied with a store only if the owner chooses."
     ],
     "evidence": {
       "files": [
+        "src/lib/notifications.ts",
+        "src/lib/email-template.ts",
+        "src/lib/notification-sample.ts",
+        "src/lib/placeholder-fill.ts",
+        "src/server/notifications.ts",
+        "src/server/shopper-emails.ts",
+        "src/server/return-emails.ts",
+        "src/server/order-edit-emails.ts",
+        "src/server/invoice-notices.ts",
+        "src/server/store-copy.ts",
+        "src/app/admin/(gated)/[store]/settings/notifications/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/notifications/[notification]/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/notifications/actions.ts",
+        "src/components/admin/notifications/notification-list.tsx",
+        "src/components/admin/notifications/notification-editor.tsx",
         "src/lib/email-text.ts",
         "src/lib/email-layout.ts",
         "src/server/email.ts",
-        "src/server/shopper-emails.ts",
-        "src/server/return-emails.ts"
+        "supabase/migrations/20261015001011_notifications.sql",
+        "supabase/migrations/20261015001113_notifications_rules.sql",
+        "supabase/migrations/20261015001242_notifications_copy.sql"
       ],
       "tests": [
+        "src/lib/email-template.test.ts",
+        "src/lib/email-template-review.test.ts",
+        "src/lib/notifications.test.ts",
+        "src/db/notifications.test.ts",
+        "src/lib/notification-readers.scan.test.ts",
+        "src/server/notifications.int.test.ts",
+        "src/server/notifications-credit-note.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/store-copy.int.test.ts",
+        "src/components/admin/notifications/notifications-views.test.ts",
+        "e2e/signed-in/notifications.spec.ts",
         "src/lib/email-layout.test.ts",
-        "src/server/email.test.ts",
-        "src/lib/email-text.returns.test.ts"
+        "src/server/email.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D111"
+      "D111",
+      "D238"
     ],
     "history": [
       {
@@ -1184,6 +1244,12 @@
         "from": "partial",
         "to": "missing",
         "why": "First report's skeptic recheck: wording and layout are fixed in code and an owner cannot edit a subject or body; switches are per action, not per event. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-15",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read notifications.ts, email-template.ts and server/notifications.ts and ran the tests on a fresh database. Owners edit subject, heading and intro per language with named placeholders only, checked by templateProblems() (placeholders, braces, any dotted host after the review fix, findClaims()) before saveTemplate(); preview with a sample order and a test send (notifications.int, signed-in notifications.spec); a switch per event read by notificationOn() in every sender, required ones refused by the database (src/db/notifications.test.ts); per-slot fallback to the fixed text in the order's language; the order's own currency in the euro view (notifications.int, checkout-kinds.int); copied only with Email texts ticked (store-copy.int). A refund switched off still gets its credit note out (notifications-credit-note.int). Criterion 2 reworded as spec 6.4 proposed; the old gap's claim that the logo and colours reach the email layout was wrong (renderEmail() has neither, and no criterion asks for them)."
       }
     ]
   },
@@ -1199,22 +1265,38 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Order and customer events go to Slack, Zapier and Make (D41, D101). Staff are emailed in a few cases: once per return whose refund is overdue (D153), a low-stock digest once per crossing (D172, `stock.low`), booking notices (`booking.staff`), and support conversations left waiting (D216, `support.waiting`); the store's Home and the control center list what needs attention. Still missing: a new-order email or push to staff, a choice of recipients and events, a daily or weekly summary, and a rule builder.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
-      "Each paid order emails the staff the owner chose (default the owners) once, with the order number, total and a link; a retried webhook sends no second email (integration test).",
+      "Each paid order (not a copied order, a store template's, or a weekly box's delivery, which staff charge themselves) emails the staff the owner chose who may read orders (default the owners) once, with the order number, total and a link; a retried webhook sends no second email (integration test).",
       "Owners choose recipients and events (new order, return requested, refund overdue, low stock) and a daily or weekly summary (integration test).",
-      "A rule `when {event} and {condition} then {action}` (tag, notify, hold) is stored per store, runs once per event and is logged (unit test of matching, integration test).",
+      "A rule `when {event} and {condition} then {action}` (tag, notify, hold fulfilment) is stored per store, runs once per event and is logged (unit test of matching, integration test).",
       "Nothing in a staff email names a shopper's phone or full address."
     ],
     "evidence": {
       "files": [
+        "src/lib/staff-alerts.ts",
+        "src/server/staff-alerts.ts",
+        "src/lib/order-rules.ts",
+        "src/lib/order-rules-schema.ts",
+        "src/server/order-rules.ts",
+        "src/server/order-hold.ts",
+        "src/app/admin/(gated)/[store]/settings/notifications/staff/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/notifications/staff/actions.ts",
+        "src/components/admin/notifications/staff-alerts-form.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/automation/actions.ts",
+        "src/components/admin/automation/rule-editor.tsx",
+        "src/components/admin/automation/rule-log.tsx",
+        "src/components/admin/orders/hold-panel.tsx",
+        "src/app/api/cron/integrations/route.ts",
+        "supabase/migrations/20261015001113_notifications_rules.sql",
         "src/server/integrations.ts",
         "src/lib/integrations.ts",
         "src/server/slack.ts",
@@ -1225,6 +1307,17 @@
         "src/server/support-email.ts"
       ],
       "tests": [
+        "src/lib/staff-alerts.test.ts",
+        "src/server/staff-alerts.int.test.ts",
+        "src/server/staff-alerts-paid-after-cancel.int.test.ts",
+        "src/server/staff-summary.int.test.ts",
+        "src/lib/order-rules.test.ts",
+        "src/server/order-rules.int.test.ts",
+        "src/db/notifications.test.ts",
+        "src/components/admin/automation/automation-views.test.ts",
+        "src/components/admin/notifications/notifications-views.test.ts",
+        "e2e/signed-in/automation.spec.ts",
+        "e2e/signed-in/notifications.spec.ts",
         "src/server/integrations.int.test.ts",
         "src/lib/integrations.test.ts",
         "src/lib/slack.test.ts",
@@ -1236,9 +1329,17 @@
     "decisions": [
       "D41",
       "D101",
-      "D153"
+      "D153",
+      "D238"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-15",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read staff-alerts.ts, order-rules.ts and the migration's store_events triggers and ran the tests on a fresh database. Each paid order queues one store_events row in the paying transaction (also an order paid after it was cancelled, the review's fix) and processStoreEvents() emails the chosen recipients who may read orders, owners by default, with number, total (what was charged, and the venue balance) and link; a retried payment sends nothing more; copied and weekly-box orders none (staff-alerts.int, staff-alerts-paid-after-cancel.int). Owners choose recipients for new order, return requested, refund overdue and low stock and a daily or weekly summary from periodTotals() (staff-alerts.int, staff-summary.int, returns.int and stock-alerts.int unchanged). Rules when paid and {conditions} then tag, notify or hold run once per event and are logged in order_rule_runs; a held order cannot get a shipment (order-rules.int, src/db/notifications.test.ts, signed-in automation.spec). A canary test finds no shopper name, email, phone or address in any staff email. Criteria 1 and 3 reworded as spec 6.4 proposed. Push to a phone and a general workflow builder are not criteria (decision 6, wave 9)."
+      }
+    ]
   },
   {
     "id": "orders.self-serve-withdrawal-and-return-requests",

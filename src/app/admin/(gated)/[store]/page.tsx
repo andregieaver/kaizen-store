@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
+import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
@@ -77,6 +78,12 @@ export default async function AdminOverview({ params }: Props) {
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />
       {store.setupCompletedAt && <Attention items={attention} empty={selling ? "Nothing needs you right now. Every order is sent and stock is fine." : "Nothing needs you right now."} />}
+      {/* Staff alerts that gave up after their tries (D238): the owner's to look at, read after the page is shown. */}
+      {store.setupCompletedAt && selling && memberCan(current, "owner") && (
+        <Suspense fallback={null}>
+          <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} />
+        </Suspense>
+      )}
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
       {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>

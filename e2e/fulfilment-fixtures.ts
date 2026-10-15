@@ -165,10 +165,13 @@ export async function paidGoodsOrder(market: keyof typeof MARKETS = "NO"): Promi
 }
 
 /** One parcel of the order with these lines and quantities, as `markSent()` records it (the shipment, its lines, then the order's state), a day apart from the one before. */
-export async function sendParcel(f: ParcelFixture, parcel: { carrier: string; tracking: string; url?: string | null; lines: { lineId: string; quantity: number }[]; daysAgo: number }) {
+export async function sendParcel(
+  f: ParcelFixture,
+  parcel: { carrier: string; tracking: string; url?: string | null; lines: { lineId: string; quantity: number }[]; daysAgo: number },
+): Promise<string> {
   const db = testDb();
   try {
-    await db.begin(async (tx) => {
+    return await db.begin(async (tx) => {
       const [shipment] = await tx`
         insert into commerce.shipments (store_id, order_id, carrier, tracking_number, tracking_url, created_at)
         values (${f.storeId}, ${f.orderId}, ${parcel.carrier}, ${parcel.tracking}, ${parcel.url ?? null}, now() - make_interval(days => ${parcel.daysAgo}))
@@ -177,6 +180,7 @@ export async function sendParcel(f: ParcelFixture, parcel: { carrier: string; tr
         await tx`insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity) values (${f.storeId}, ${shipment.id}, ${line.lineId}, ${line.quantity})`;
       }
       await tx`select commerce.refresh_fulfilment(${f.storeId}::uuid, ${f.orderId}::uuid)`;
+      return String(shipment.id);
     });
   } finally {
     await db.end();

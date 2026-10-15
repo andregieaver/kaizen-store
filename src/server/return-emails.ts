@@ -11,9 +11,13 @@ import { formatDeclaration, formatStoreDay } from "@/lib/return-time";
 import type { WorkingRow } from "@/lib/return-refund";
 import { siteUrl } from "@/lib/site";
 import { dayIn } from "@/lib/work-dates";
+import type { PlaceholderValues } from "@/lib/email-template";
+import { ALERT_KEYS } from "@/lib/staff-alerts";
 import { refundDeadline, sendBackDay, type ReturnAddress } from "@/lib/withdrawal";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { firstNameOf, notificationOn, templatedSlots } from "./notifications";
+import { alertRecipients } from "./staff-alerts";
 import { documentBlocks, recordDocumentDeliveries } from "./invoice-emails";
 import { loadFacts, recipientsOf, type OrderFacts } from "./return-facts";
 import { NOTHING_SENT_SQL } from "./return-sql";
@@ -296,23 +300,42 @@ async function returnMail(
   returnId: string,
   event: string,
   kind: string,
-  build: (mail: Mail, text: EmailText, money: (minor: number) => string) => { subject: string; heading: string; intro: string; blocks: EmailBlock[] },
+  build: (
+    mail: Mail,
+    text: EmailText,
+    money: (minor: number) => string,
+  ) => { subject: string; heading: string; intro: string; blocks: EmailBlock[]; values?: PlaceholderValues },
   /** The refund's email carries the return's credit note (D159): a link, and the PDF when it exists. */
   withCreditNote = false,
 ): Promise<SendOutcome | null> {
+  // A notification the store switched off (D238 2.2) is not sent; the required ones (approved, declined) are always on.
+  if (!(await notificationOn(storeId, kind))) return null;
   const mail = await loadMail(storeId, returnId);
   if (!mail) return null;
   const [to] = recipientsOf(mail.facts);
   if (!to) return null;
   const { store, market, text } = mail.ctx;
   const money = (minor: number) => formatMoney(minor, mail.facts.currency, market.locale);
-  const built = build(mail, text, money);
+  const fixed = build(mail, text, money);
+  // The store's own subject, heading and intro in the order's language (D238 4.2); the blocks stay the code's.
+  const [names] = await db().execute<Row>(sql`
+    select shipping_address ->> 'name' as shipping_name, billing_address ->> 'name' as billing_name from commerce.orders
+    where store_id = ${storeId}::uuid and id = ${mail.facts.orderId}::uuid
+  `);
+  const slots = await templatedSlots(storeId, kind, mail.ctx.lang, fixed, {
+    store_name: store.name,
+    order_number: mail.facts.number,
+    customer_first_name: firstNameOf(names?.shipping_name as string | null, names?.billing_name as string | null),
+    return_number: mail.ret.number,
+    ...fixed.values,
+  });
+  const built = { ...fixed, subject: slots.subject, heading: slots.heading, intro: slots.intro };
   const documents = withCreditNote
     ? await documentBlocks({ storeId, orderId: mail.facts.orderId, storeSlug: store.slug, marketSlug: market.slug, lang: mail.ctx.lang, want: { creditNoteOfReturn: returnId }, attach: true }).catch(() => null)
     : null;
   const email = renderEmail({
     subject: built.subject,
-    preview: built.intro,
+    preview: slots.preview,
     lang: mail.ctx.lang,
     footer: emailFooter(store, text),
     blocks: [
@@ -399,6 +422,7 @@ export const sendReturnRefunded = (storeId: string, returnId: string, working: W
       subject: text.returns.refundedSubject(mail.ctx.store.name, mail.ret.number),
       heading: text.returns.refundedHeading,
       intro: text.returns.refundedIntro(money(amount), mail.ret.number),
+      values: { refund_amount: money(amount) },
       blocks: [
         { type: "lines", rows: [...rows, { label: text.returns.rowTotal, value: money(amount), strong: true }] },
         ...(reasons.length > 0 ? [{ type: "paragraph" as const, text: reasons.join("\n") }] : []),
@@ -408,13 +432,15 @@ export const sendReturnRefunded = (storeId: string, returnId: string, working: W
   }, true);
 
 /**
- * The reminder to the store that a withdrawal's refund is past its legal deadline: to the store's contact email, in
- * English (the admin is English only), once per return.
+ * The reminder to the store that a withdrawal's refund is past its legal deadline, in English (the admin is English only), once per return and recipient:
+ * to the recipients of *Refund overdue* (D238 4.7, `alertRecipients()`): with the defaults the store's contact email (its key is today's, so a reminder
+ * already sent is not sent again), or the owners when it has none.
  */
 export async function sendRefundOverdueReminder(storeId: string, returnId: string): Promise<SendOutcome | null> {
   const mail = await loadMail(storeId, returnId);
-  const to = mail?.facts.contactEmail;
-  if (!mail || !to || !mail.ret.refundDeadline) return null;
+  if (!mail || !mail.ret.refundDeadline) return null;
+  const targets = await alertRecipients(storeId, "refund_overdue");
+  if (targets.length === 0) return null;
   const text = emailText("en");
   const store = mail.ctx.store;
   const date = formatStoreDay(dayIn(mail.ret.refundDeadline, mail.facts.timeZone), "en-GB");
@@ -429,13 +455,20 @@ export async function sendRefundOverdueReminder(storeId: string, returnId: strin
       { type: "button", text: text.returns.overdueOpen, url: `${siteUrl()}/admin/${store.slug}/returns/${returnId}` },
     ],
   });
-  return sendEmail({
-    storeId,
-    kind: "return.overdue",
-    to,
-    email,
-    fromName: store.name,
-    idempotencyKey: `return.${returnId}.overdue`,
-    orderId: mail.facts.orderId,
-  });
+  const outcomes: SendOutcome[] = [];
+  for (const t of targets) {
+    outcomes.push(
+      await sendEmail({
+        storeId,
+        kind: "return.overdue",
+        to: t.to,
+        email,
+        fromName: store.name,
+        idempotencyKey: ALERT_KEYS.refundOverdue(returnId, t.recipient),
+        orderId: mail.facts.orderId,
+      }),
+    );
+  }
+  // One outcome for the caller: sent when any went, else the first (a duplicate when every one was sent before).
+  return outcomes.find((o) => o === "sent" || o === "logged") ?? outcomes[0];
 }

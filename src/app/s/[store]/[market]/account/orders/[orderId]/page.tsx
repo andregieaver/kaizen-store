@@ -27,6 +27,7 @@ import { marketPath } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
 import { shopperFulfilment } from "@/server/fulfilment";
+import { parcelTrackingFor } from "@/server/shipment-tracking";
 import { getOrderDocuments } from "@/server/invoices";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
@@ -58,7 +59,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const customer = await getCustomer(store.id);
   if (!customer) redirect(`${base}/account`);
   if (!z.uuid().safeParse(orderId).success || !(await ownsOrder(store.id, customer.id, orderId))) notFound();
-  const [order, downloads, subscription, returns, documents, fulfilment] = await Promise.all([
+  const [order, downloads, subscription, returns, documents, fulfilment, tracking] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     getSubscriptionForOrder(store.id, orderId),
@@ -68,6 +69,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
     getOrderDocuments(store.id, orderId),
     // Its parcels, each with its lines, and what is still to come (D174): the customer's ownership was checked above.
     shopperFulfilment(store.id, orderId),
+    // Where each parcel is (D238 2.7): the events the poll stored, never a carrier call while the page renders.
+    parcelTrackingFor(store.id, orderId),
   ]);
   if (!order) notFound();
   const m = t(market.lang);
@@ -100,7 +103,14 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
       <DeliveryBlock order={order} m={m} locale={market.locale} timeZone={store.timeZone} />
       {/* The parcels and what is still to come (D174); nothing before the first parcel. A pickup order is collected, not sent. */}
       {order.deliveryMethod !== "pickup" && (
-        <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
+        <OrderShipments
+          fulfilment={fulfilment}
+          tracking={tracking}
+          m={m}
+          locale={market.locale}
+          timeZone={store.timeZone}
+          business={order.company !== null}
+        />
       )}
 
       <OwnBookings order={order} store={store.slug} market={market} m={m} sessionId={null} />

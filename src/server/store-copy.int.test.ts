@@ -539,6 +539,33 @@ describe("starting a copy", () => {
     expect(await finish(some.id)).toBe("done");
   });
 
+  it("copies the email switches always and the owner's email texts only when Email texts is ticked (D238 3.6)", async () => {
+    await tidy(owner);
+    await db().execute(sql`
+      insert into commerce.notification_settings (store_id, notification, enabled) values (${S}::uuid, 'order.sent', false)
+      on conflict (store_id, notification) do update set enabled = false
+    `);
+    await db().execute(sql`
+      insert into commerce.email_templates (store_id, notification, locale, subject) values (${S}::uuid, 'order.sent', 'nb', 'Pakken med {order_number} er sendt')
+      on conflict (store_id, notification, locale) do update set subject = excluded.subject
+    `);
+    const without = await start(owner, NOTHING);
+    if (!without.ok) throw new Error("no copy");
+    const plain = await newStoreOf(without.id);
+    expect(await rows(sql`select notification, enabled from commerce.notification_settings where store_id = ${plain}::uuid`)).toEqual([{ notification: "order.sent", enabled: false }]);
+    expect(await count("email_templates", plain)).toBe(0);
+    expect(await finish(without.id)).toBe("done");
+
+    await tidy(owner);
+    const withTexts = await start(owner, { ...NOTHING, emailTexts: true });
+    if (!withTexts.ok) throw new Error("no copy");
+    const texts = await newStoreOf(withTexts.id);
+    expect(await rows(sql`select notification, locale, subject from commerce.email_templates where store_id = ${texts}::uuid`)).toEqual([
+      { notification: "order.sent", locale: "nb", subject: "Pakken med {order_number} er sendt" },
+    ]);
+    expect(await finish(withTexts.id)).toBe("done");
+  });
+
   it("refuses what it should, with plain reasons and nothing made", async () => {
     const stores = () => scalar<number>(sql`select count(*)::int from commerce.stores`);
     const before = await stores();

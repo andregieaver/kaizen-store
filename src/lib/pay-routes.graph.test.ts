@@ -287,4 +287,15 @@ describe("the change pay link and the order's parcels", () => {
     // And the order page draws it.
     expect(readFileSync(join(MARKET, "order/[orderId]/order-section.tsx"), "utf8")).toMatch(/<OrderShipments /);
   });
+
+  it("the parcel's tracking (D238 2.7) imports no zod and no server code as values, holds no script, and reaches none of the forbidden extras", () => {
+    const entry = join(SRC, "components/parcel-tracking.tsx");
+    const source = readFileSync(entry, "utf8");
+    const values = importsOf(source);
+    expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
+    expect(source).not.toMatch(/^["']use client["']/m);
+    expect(source).not.toMatch(/<script|<img|<iframe/);
+    expect(forbiddenFrom(entry, stop)).toEqual([]);
+    expect(readFileSync(join(SRC, "components/order-shipments.tsx"), "utf8")).toMatch(/<ParcelTracking /);
+  });
 });

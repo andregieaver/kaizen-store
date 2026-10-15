@@ -316,5 +316,6 @@ export interface ShippingCarrierAdapter {
   rates?(context: CarrierContext, request: RateRequest): Promise<ShippingOption[]>;
   pickupPoints?(context: CarrierContext, near: ShippingAddress): Promise<PickupPoint[]>;
   book?(context: CarrierContext, request: BookingRequest): Promise<BookingResult>;
-  track?(context: CarrierContext, trackingNumber: string): Promise<TrackingEvent[]>;
+  /** `lang`: the order's language, for carriers that describe events in it (Bring, D238 4.5); others ignore it. */
+  track?(context: CarrierContext, trackingNumber: string, options?: { lang?: string }): Promise<TrackingEvent[]>;
 }

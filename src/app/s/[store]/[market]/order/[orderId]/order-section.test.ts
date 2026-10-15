@@ -27,6 +27,14 @@ vi.mock("@/server/fulfilment", () => ({
     return fulfilmentNow.value;
   },
 }));
+// Where each parcel is (D238): the events the poll stored, never a carrier call.
+const trackingNow = vi.hoisted(() => ({ value: [] as Record<string, unknown>[], calls: 0 }));
+vi.mock("@/server/shipment-tracking", () => ({
+  parcelTrackingFor: async () => {
+    trackingNow.calls += 1;
+    return trackingNow.value;
+  },
+}));
 vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));
 vi.mock("@/components/account-sign-in", () => ({ PasswordReset: () => null }));
@@ -98,6 +106,8 @@ beforeEach(() => {
   termsNow.record = null;
   fulfilmentNow.value = null;
   fulfilmentNow.calls = 0;
+  trackingNow.value = [];
+  trackingNow.calls = 0;
   documentsNow.value = { eligibility: "disabled", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null };
   getShopperOrder.mockResolvedValue(order());
 });
@@ -596,6 +606,32 @@ describe("the order's parcels (wave 3, run 3, D174)", () => {
     getShopperOrder.mockResolvedValue(order({ id: "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b11", ships: false }));
     await html(OrderDetails({ ...shop, orderId: "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b11" }));
     expect(fulfilmentNow.calls).toBe(0);
+    expect(trackingNow.calls).toBe(0);
+  });
+
+  it("show each followed parcel's stored events and phase, and say so when the carrier has none (D238 2.7)", async () => {
+    fulfilmentNow.value = partly;
+    trackingNow.value = [
+      {
+        shipmentId: "p1",
+        followed: "bring",
+        phase: "out_for_delivery",
+        phaseVerified: true,
+        events: [{ at: "2026-10-06T06:30:00.000Z", code: "TRANSPORT_TO_RECIPIENT", phase: "out_for_delivery", verified: true, description: "On the van", location: "Oslo" }],
+        checkedAt: "2026-10-06T07:00:00.000Z",
+        lastCheckFailed: false,
+        failures: 0,
+        stopped: null,
+        outAt: "2026-10-06T06:30:00.000Z",
+        deliveredAt: null,
+      },
+    ];
+    const page = text(await html(OrderDetails(shop)));
+    expect(page).toContain("Out for delivery");
+    expect(page).toContain("On the van");
+    expect(page).toContain("· Oslo");
+    trackingNow.value = [{ ...trackingNow.value[0], events: [], phase: null, checkedAt: null }];
+    expect(text(await html(OrderParcels(shop)))).toContain("Posten / Bring has no news about this parcel yet.");
   });
 
   it("read in the store's language", async () => {

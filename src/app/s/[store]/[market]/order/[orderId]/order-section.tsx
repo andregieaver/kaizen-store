@@ -32,6 +32,7 @@ import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { termsForOrder } from "@/server/checkout-terms";
 import { shopperFulfilment } from "@/server/fulfilment";
+import { parcelTrackingFor } from "@/server/shipment-tracking";
 import { getOrderDocuments } from "@/server/invoices";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
@@ -56,7 +57,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account, returns, terms, documents, fulfilment] = await Promise.all([
+  const [downloads, subscription, account, returns, terms, documents, fulfilment, tracking] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
@@ -68,8 +69,10 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
     getOrderDocuments(store.id, order.id),
     // Its parcels and what is still to come (D174): the order's own key has been checked; nothing is read before it is paid or for an order with nothing to send.
     order.ships && paid ? shopperFulfilment(store.id, order.id) : null,
+    // Where each parcel is (D238 2.7): the events the poll stored, never a carrier call here (this is a pay route).
+    order.ships && paid ? parcelTrackingFor(store.id, order.id) : [],
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment, tracking };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -232,14 +235,14 @@ function accountBlock({ store, market, order, sessionId, m, account }: OrderView
   );
 }
 
-function parcelsBlock({ store, market, order, m, fulfilment }: OrderView) {
+function parcelsBlock({ store, market, order, m, fulfilment, tracking }: OrderView) {
   // The store's own delivery (D237): where to collect it and where it stands, or the local delivery and the buyer's note. A collected pickup order is
   // one handover, not a parcel, so its parcels are not listed (the block says when it was collected).
   return (
     <>
       <DeliveryBlock order={order} m={m} locale={market.locale} timeZone={store.timeZone} />
       {order.deliveryMethod !== "pickup" && (
-        <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
+        <OrderShipments fulfilment={fulfilment} tracking={tracking} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
       )}
     </>
   );

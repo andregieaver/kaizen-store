@@ -16,7 +16,7 @@ import { MAX_INSTRUCTIONS } from "./withdrawal";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms", "shipping"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms", "shipping", "emails"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
@@ -27,11 +27,12 @@ export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> 
   returns: { name: "Return instructions", one: "Return instructions" },
   terms: { name: "Categories and tags", one: "Category or tag" },
   shipping: { name: "Shipping, pickup and local delivery", one: "Shipping text" },
+  emails: { name: "Customer emails", one: "Customer email" },
 };
 
 /** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
 export type Unit = {
-  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118), `returns:instructions` (D153) or `term:{id}` (D168). */
+  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118), `returns:instructions` (D153), `term:{id}` (D168), the shipping units (D237) or `email:{notification}` (D238). */
   id: string;
   scope: TranslateScope;
   /** What it is called in the main language, and what kind of page it is. */
@@ -190,6 +191,50 @@ export function shippingUnit(kind: "method" | "pickup" | "area", id: string, tit
   const prefix = kind === "method" ? "shipmethod" : kind === "pickup" ? "pickupopt" : "localarea";
   const words = kind === "method" ? "Shipping method" : kind === "pickup" ? "Pickup instructions" : "Local delivery area";
   return { id: `${prefix}:${id}`, scope: "shipping", title, kind: words, legal: false, items };
+}
+
+// ---------------------------------------------------------------------------
+// Customer emails' own words (D238)
+// ---------------------------------------------------------------------------
+
+/** The three parts of an email's own words, with the longest each may be (`SLOT_LIMITS` in `email-template.ts`, repeated here so the browser needs no server module). */
+export const EMAIL_SLOTS = [
+  { key: "subject", label: "Subject", max: 150 },
+  { key: "heading", label: "Heading", max: 120 },
+  { key: "body", label: "Text", max: 2000 },
+] as const;
+export type EmailSlotKey = (typeof EMAIL_SLOTS)[number]["key"];
+export type EmailWords = Partial<Record<EmailSlotKey, string | null>>;
+
+/** What the model is told of every part: placeholders are kept as written, or the suggestion is left out (`samePlaceholders()`). */
+const KEEP_PLACEHOLDERS = "keep every {placeholder} exactly as written";
+
+/**
+ * A customer email's own words in the main language (D238), to translate into a language: the parts the store wrote, and with `missing` only where the
+ * language has no text of its own for that part (the standard text of a language is Kaizen's and is never translated). Unit id `email:{notification}`. Not a
+ * legal unit (the legal blocks of every email are Kaizen's, in code), and like every suggestion here written only after a person ticks it, through
+ * `saveTemplate()`, which checks it again.
+ */
+export function emailUnit(notification: string, name: string, source: EmailWords | null, target: EmailWords | null, mode: "missing" | "all"): Unit | null {
+  if (!source) return null;
+  const has = (words: EmailWords | null, key: EmailSlotKey) => typeof words?.[key] === "string" && String(words[key]).trim() !== "";
+  const items = EMAIL_SLOTS.filter((s) => has(source, s.key) && (mode === "all" || !has(target, s.key))).map((s) => ({
+    key: s.key,
+    label: `${s.label} (${KEEP_PLACEHOLDERS})`,
+    max: s.max,
+    rich: false,
+    runs: [String(source[s.key])],
+  }));
+  if (items.length === 0) return null;
+  return { id: `email:${notification}`, scope: "emails", title: name, kind: "Customer email", legal: false, items };
+}
+
+const PLACEHOLDER_IN = /\{([a-z_]+)\}/g;
+
+/** Whether a translation holds the same placeholders as its source, each as often: a model that translated or dropped one is left out. */
+export function samePlaceholders(source: string, translated: string): boolean {
+  const names = (text: string) => [...text.matchAll(PLACEHOLDER_IN)].map((m) => m[1]).sort().join(",");
+  return names(source) === names(translated);
 }
 
 // ---------------------------------------------------------------------------

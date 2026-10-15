@@ -6,6 +6,7 @@ import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { convertCredits, earnAmount, restoreShare } from "@/lib/bonus";
 import { localizationOf, conversionFor } from "@/lib/localization";
 import { showMarket, toMarket } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
 import { unitPrice, unitPriceShown } from "@/lib/unit-price";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
 import { allowSmallBase } from "@/lib/unit-price-test-support";
@@ -855,13 +856,26 @@ describe("checkout for every kind of product", () => {
     // The emails about it link back to the currency it was bought in (D109).
     if (scenario.euro) {
       await db().execute(sql`update commerce.orders set email = ${`shopper-${run}@example.com`} where id = ${open!.orderId}::uuid`);
+      // The store's own subject (D238 4.2): `{order_total}` is the order's own amount in the currency it was charged, never converted.
+      const notifications = await import("./notifications");
+      expect(await notifications.saveTemplate(storeId, "order.confirmation", "nb", { subject: "Ordre {order_number}: {order_total}" }, member.account.id)).toMatchObject({ ok: true });
       await (await import("./shopper-emails")).sendOrderConfirmation(storeId, open!.orderId);
       const mails = await db().execute<Row>(sql`
-        select html from commerce.email_messages where store_id = ${storeId}::uuid and order_id = ${open!.orderId}::uuid
+        select html, kind, subject from commerce.email_messages where store_id = ${storeId}::uuid and order_id = ${open!.orderId}::uuid
       `);
       expect(mails.length).toBeGreaterThan(0);
       for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
       expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
+      // (A gift's confirmation was sent above, before the store had its own subject: the confirmation goes once.)
+      if (!scenario.gift) {
+        const confirmation = mails.find((m) => m.kind === "order.confirmation");
+        expect(confirmation?.subject).toBe(`Ordre ${order!.number}: ${formatMoney(summary.total, "EUR", "nb-NO")}`);
+      }
+      await notifications.resetTemplate(storeId, "order.confirmation", "nb", member.account.id);
+      // An automation rule's amount is the store's main currency (D238 4.9): the euro total converted at the store's rate.
+      const facts = await (await import("./order-rules")).ruleFacts(storeId, open!.orderId);
+      expect(facts).toMatchObject({ currency: "EUR", totalMinor: summary.total });
+      expect(facts?.mainMinor).toBe(Math.round(summary.total * 11.5));
 
       // The order file (D165): the order is in it in the currency it was charged, the main-currency columns are the store's own conversion at its
       // rate, and its lines and VAT add up to what the cart showed.

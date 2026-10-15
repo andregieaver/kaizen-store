@@ -177,6 +177,14 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er kansellert, og ${amount} er refundert.`,
     cancelledUnpaidIntro: (number: string) => `Ordre ${number} er kansellert. Ingenting ble trukket.`,
+    /** A carrier's events (D238): only what the carrier reported, nothing about the right of withdrawal. Needs human legal review before real use. */
+    // legal: needs review
+    parcelOutSubject: (store: string, number: string) => `En pakke fra ordre ${number} hos ${store} er ute for levering`,
+    parcelOutHeading: "Pakken din er ute for levering",
+    parcelOutIntro: (carrier: string, number: string) => `${carrier} melder at pakken med ordre ${number} er lastet for levering til deg.`,
+    parcelDeliveredSubject: (store: string, number: string) => `En pakke fra ordre ${number} hos ${store} er levert`,
+    parcelDeliveredHeading: "Pakken din er levert",
+    parcelDeliveredIntro: (carrier: string, number: string) => `${carrier} melder at pakken med ordre ${number} er levert.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Timen er flyttet",
@@ -463,6 +471,14 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} har avbrutits och ${amount} har återbetalats.`,
     cancelledUnpaidIntro: (number: string) => `Order ${number} är avbruten. Inget har dragits.`,
+    /** A carrier's events (D238): only what the carrier reported, nothing about the right of withdrawal. Needs human legal review before real use. */
+    // legal: needs review
+    parcelOutSubject: (store: string, number: string) => `Ett paket från order ${number} hos ${store} är ute för leverans`,
+    parcelOutHeading: "Ditt paket är ute för leverans",
+    parcelOutIntro: (carrier: string, number: string) => `${carrier} meddelar att paketet med order ${number} har lastats för leverans till dig.`,
+    parcelDeliveredSubject: (store: string, number: string) => `Ett paket från order ${number} hos ${store} har levererats`,
+    parcelDeliveredHeading: "Ditt paket har levererats",
+    parcelDeliveredIntro: (carrier: string, number: string) => `${carrier} meddelar att paketet med order ${number} har levererats.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Tiden är flyttad",
@@ -749,6 +765,14 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er annulleret, og ${amount} er refunderet.`,
     cancelledUnpaidIntro: (number: string) => `Ordre ${number} er annulleret. Intet blev trukket.`,
+    /** A carrier's events (D238): only what the carrier reported, nothing about the right of withdrawal. Needs human legal review before real use. */
+    // legal: needs review
+    parcelOutSubject: (store: string, number: string) => `En pakke fra ordre ${number} hos ${store} er ude til levering`,
+    parcelOutHeading: "Din pakke er ude til levering",
+    parcelOutIntro: (carrier: string, number: string) => `${carrier} oplyser, at pakken med ordre ${number} er læsset til levering til dig.`,
+    parcelDeliveredSubject: (store: string, number: string) => `En pakke fra ordre ${number} hos ${store} er leveret`,
+    parcelDeliveredHeading: "Din pakke er leveret",
+    parcelDeliveredIntro: (carrier: string, number: string) => `${carrier} oplyser, at pakken med ordre ${number} er leveret.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Tiden er flyttet",
@@ -1035,6 +1059,14 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} is cancelled and ${amount} has been refunded.`,
     cancelledUnpaidIntro: (number: string) => `Order ${number} is cancelled. Nothing was charged.`,
+    /** A carrier's events (D238): only what the carrier reported, nothing about the right of withdrawal. Needs human legal review before real use. */
+    // legal: needs review
+    parcelOutSubject: (store: string, number: string) => `A parcel from order ${number} at ${store} is out for delivery`,
+    parcelOutHeading: "Your parcel is out for delivery",
+    parcelOutIntro: (carrier: string, number: string) => `${carrier} reports that the parcel with order ${number} has been loaded for delivery to you.`,
+    parcelDeliveredSubject: (store: string, number: string) => `A parcel from order ${number} at ${store} has been delivered`,
+    parcelDeliveredHeading: "Your parcel has been delivered",
+    parcelDeliveredIntro: (carrier: string, number: string) => `${carrier} reports that the parcel with order ${number} was delivered.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `New time at ${store}: ${when}`,
     bookingMovedHeading: "Your appointment has moved",

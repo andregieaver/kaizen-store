@@ -25,6 +25,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Shipping (D237): the settings pages are read with `settings:read`, the views of orders to hand over with `orders:read`.
   shipping_overview: "settings:read",
   pickup_orders: "orders:read",
+  // Notifications and automation (D238) are Settings pages, read with `settings:read`; a parcel's tracking is the order page's, `orders:read`.
+  notification_settings: "settings:read",
+  order_rules: "settings:read",
+  parcel_tracking: "orders:read",
   // Draft orders (D173) are the Orders section's: read like the Orders page, written with the right to change orders.
   list_draft_orders: "orders:read",
   list_returns: "orders:read",

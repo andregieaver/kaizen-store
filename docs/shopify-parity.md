@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 63.7%** (first report 59.5%), **must-have 76.3%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +2.8 points from the 52 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 64.4%** (first report 59.5%), **must-have 76.3%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +3.4 points from the 56 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (30):
+Rated higher (33):
 
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
 - Export reports to CSV (Analytics): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
@@ -38,6 +38,9 @@ Rated higher (30):
 - Local pickup at own location (Orders): missing to full. Wave 3 shipping methods run (docs/wave-3-shipping-methods.md; decision D237).
 - Local delivery (Orders): partial to full. Wave 3 shipping methods run (docs/wave-3-shipping-methods.md; decision D237).
 - Packing slips and pick lists (Orders): partial to full. Wave 3 run 3 (docs/wave-3-fulfilment.md, D174 proposed) on top of D173's bulk slips: the bulk slips (`packingSlipData()`, at most 100 orders, one page each in the order's language, no prices) now print the units still to send and skip what…
+- Delivery-status notifications, tracking page (Orders): partial to full. Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read tracking-phases.ts and shipment-tracking.ts and ran the tests on a fresh database.
+- Editable notification email templates (Orders): missing to full. Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read notifications.ts, email-template.ts and server/notifications.ts and ran the tests on a fresh database.
+- Staff alerts for new orders, order automation (Orders): partial to full. Wave 3 notifications (docs/wave-3-notifications.md, D238 proposed): read staff-alerts.ts, order-rules.ts and the migration's store_events triggers and ran the tests on a fresh database.
 - Self-serve withdrawal and return requests (Orders): missing to full. D153 shipped (commit 4ae6222, migrations applied to production and recorded in docs/decisions.md): the withdrawal function at /s/{store}/{market}/withdraw, return requests inside the store's own window, the status page, the acknowledgement…
 - Returns management (RMA, inspect, restock, fees) (Orders): partial to full. D153 shipped the return object: `returns`/`return_lines`, numbers `{order}-R{n}`, lifecycle requested to closed enforced in SQL, reasons, inspection per line (condition, restock, deduction with note), return shipping, a refund worked out o…
 - Return labels (Orders): missing to partial. D153 lets staff attach a return label address (https only, pasted) when approving or later; it is shown on the shopper's status page and emailed as a button, and tests hold it (returns.int.test.ts, returns-actions.int.test.ts, return-input…
@@ -47,7 +50,7 @@ Rated higher (30):
 - Product, customer and order CSV (Platform): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - URL redirect manager (Storefront): partial to full. D168 (wave 2, second run, docs/wave-2-redirects.md).
 
-Rated lower (26):
+Rated lower (27):
 
 - AI or rule-based customer segmentation (AI): partial to missing. No criterion holds; RFM counts are credited in analytics.rfm-segments-and-customer-lists, and there is no segment builder for the assistant to fill
 - Workflow builder with AI generation (AI): partial to missing. No builder exists; the webhook queue is credited in platform.outgoing-webhooks
@@ -70,6 +73,7 @@ Rated lower (26):
 - Audit log of admin changes (International): full to partial. Skeptic re-rate: re-ran activity.int, audit-coverage.int, activity-export.int, security-jobs.int, audit.test, trust.test (all pass), then read src/server/activity.ts and the activity page.
 - Fulfilment workflow, partial fulfilment (Orders): full to partial. Skeptic of the wave 3 run 3 re-rate.
 - Packing slips and pick lists (Orders): full to partial. Re-read at HEAD: one printable packing slip per order, in the customer's language and without prices, and nothing else.
+- Delivery-status notifications, tracking page (Orders): full to partial. Skeptic of the wave 3 re-rate: reran the cited unit tests (196 passed) and the integration tests (shipment-tracking.int, tracking-retention-review.int and six others, 53 passed) on my own database, and read src/lib/bring.ts parseTracking()…
 - Customs and duties (Orders): partial to missing. Skeptic recheck: HS code and origin are captured fields only; nothing computes, collects or transmits duties.
 - Public Admin API and custom apps (Platform): partial to missing. Read at HEAD: store-mcp.ts line 53 refuses every token whose client_id is not Kaizen Life's; no token an owner or a developer can create exists.
 - Custom logic (Functions) (Platform, not core): partial to missing. Read at HEAD: no hook, sandbox or custom-code runtime exists (grep for vm, wasm and eval finds nothing outside the cookie scan).
@@ -82,7 +86,7 @@ Rated lower (26):
 
 <!-- parity:generated:start summary -->
 
-Kaizen Store has **63.7%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 59.7% overall and 75.8% for must-haves. Counting app-only features gives 63.2%; counting Plus-only as well gives 62.9%. Kaizen is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 82 are full, 100 partial and 39 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizen Store has **64.4%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 60.4% overall and 75.8% for must-haves. Counting app-only features gives 63.8%; counting Plus-only as well gives 63.4%. Kaizen is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 84 are full, 99 partial and 38 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -92,10 +96,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **63.7%** | 59.7% | 82 / 100 / 39 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **64.4%** | 60.4% | 84 / 99 / 38 |
 | Must-have (core, weight 4 or 5) | 89 | **76.3%** | 75.8% | 48 / 39 / 2 |
-| Core plus app-only features | 246 | 63.2% | 59.8% | 92 / 110 / 44 |
-| Everything, including Plus-only | 252 | 62.9% | 59.1% | 93 / 112 / 47 |
+| Core plus app-only features | 246 | 63.8% | 60.4% | 94 / 109 / 43 |
+| Everything, including Plus-only | 252 | 63.4% | 59.7% | 95 / 111 / 46 |
 
 <!-- parity:generated:end headline -->
 
@@ -110,13 +114,13 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Catalogue and products | 28 | 12 | 10 | 6 | 64.5% | 8 | 79.4% |
 | Storefront, themes and content | 33 | 21 | 10 | 2 | 83.2% | 15 | 93.9% |
 | Checkout and payments | 21 | 3 | 12 | 6 | 47.4% | 12 | 58.7% |
-| Orders, shipping, fulfilment and returns | 28 | 14 | 11 | 3 | 74.0% | 14 | 86.9% |
+| Orders, shipping, fulfilment and returns | 28 | 16 | 10 | 2 | 78.5% | 14 | 86.9% |
 | Customers, marketing and loyalty | 20 | 2 | 14 | 4 | 48.5% | 8 | 63.2% |
 | Analytics, reporting and finance | 26 | 11 | 9 | 6 | 64.0% | 11 | 71.7% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 3 | 14 | 5 | 50.0% | 7 | 65.5% |
 | AI and automation | 23 | 9 | 7 | 7 | 56.8% | 2 | 100.0% |
-| **Total** | **221** | **82** | **100** | **39** | **63.7%** | **89** | **76.3%** |
+| **Total** | **221** | **84** | **99** | **38** | **64.4%** | **89** | **76.3%** |
 
 <!-- parity:generated:end domains -->
 
@@ -128,7 +132,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 87 |
+| Full, with tests | 89 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 252 |
@@ -137,8 +141,8 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 114 | 102 | 25.9 |
-| B | Build, live only with a third party | 17 | 14 | 4.1 |
+| A | Build in-house | 111 | 99 | 25.1 |
+| B | Build, live only with a third party | 18 | 15 | 4.3 |
 | C | Strategy decision first | 14 | 11 | 3.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
 
@@ -150,21 +154,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **63.7%** core, 76.3% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **64.4%** core, 76.3% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 65.9% | 79.6% | +2.1 | 65.1% | 78.5% |
-| 2 | Data in and out | 4 (2) | 66.3% | 79.6% | +0.4 | 65.5% | 78.5% |
-| 3 | Inventory and orders | 17 (16) | 70.3% | 82.3% | +4.0 | 68.2% | 80.2% |
-| 4 | Payments | 15 (13) | 74.8% | 86.0% | +4.4 | 70.7% | 81.8% |
-| 5 | Customers and marketing | 31 (27) | 82.6% | 92.7% | +7.8 | 77.4% | 88.5% |
-| 6 | Catalogue | 13 (12) | 85.5% | 93.8% | +2.9 | 80.3% | 89.7% |
-| 7 | Storefront and international | 18 (17) | 89.3% | 95.4% | +3.8 | 83.9% | 91.2% |
-| 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.5 | 87.8% | 91.9% |
-| 9 | Platform and extensibility | 15 (12) | 96.9% | 97.1% | +3.1 | 89.7% | 92.4% |
+| 1 | Compliance and money | 11 (8) | 66.5% | 79.6% | +2.1 | 65.7% | 78.5% |
+| 2 | Data in and out | 4 (2) | 66.9% | 79.6% | +0.4 | 66.2% | 78.5% |
+| 3 | Inventory and orders | 15 (14) | 70.3% | 82.3% | +3.4 | 68.0% | 80.2% |
+| 4 | Payments | 15 (13) | 74.8% | 86.0% | +4.4 | 70.5% | 81.8% |
+| 5 | Customers and marketing | 31 (27) | 82.6% | 92.7% | +7.8 | 77.2% | 88.5% |
+| 6 | Catalogue | 13 (12) | 85.5% | 93.8% | +2.9 | 80.1% | 89.7% |
+| 7 | Storefront and international | 18 (17) | 89.3% | 95.4% | +3.8 | 83.7% | 91.2% |
+| 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.5 | 87.6% | 91.9% |
+| 9 | Platform and extensibility | 15 (12) | 96.9% | 97.1% | +3.1 | 89.5% | 92.4% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **89.7%** core, 92.4% must-have. With bucket B built and approved as well: 93.8% core, 95.0% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **89.5%** core, 92.4% must-have. With bucket B built and approved as well: 93.8% core, 95.0% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -389,9 +393,9 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Local delivery | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/local-delivery) | Full (was partial) | 2 |  | Evidence: `supabase/migrations/20261014230143_shipping_methods.sql`, `supabase/migrations/20261014230201_shipping_methods_rules.sql`, `src/db/schema.ts` and 23 more; 11 test files; D102, D137, D237. |
 | Packing slips and pick lists | Native. [page](https://apps.shopify.com/shopify-order-printer) | Full (was partial) | 3 |  | Evidence: `src/server/packing-slips.ts`, `src/lib/pick-list.ts`, `src/server/pick-list.ts` and 8 more; 6 test files; D27, D174. |
 | Shipping confirmation email with tracking | Native. [page](https://help.shopify.com/en/manual/orders/notifications/edit-template) | Full | 5 |  | Evidence: `src/server/shopper-emails.ts`, `src/lib/email-text.ts`, `src/server/order-admin.ts` and 1 more; 3 test files; D27, D153. |
-| Delivery-status notifications, tracking page | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/order-status-page/understanding-order-status-pages) | Partial | 3 | A, wave 3 | The shopper's order pages show each parcel with its carrier, tracking link and lines, and what is still to come (D174, `shopperFulfilment()`); each parcel gets its own shipped email listing its lines; the support chat gives a signed-in customer the tracking links as chips (D216 step 9). The carrier's latest event is shown to staff only (`carrierTracking()` for Bring, PostNord, Porterbuddy and Helthjem). Missing: an out-for-delivery or delivered email; the carrier's events on the shopper's page; and recording a delivery from the carrier (a delivery is recorded only when staff press Mark delivered, D153 `delivered_at`, which needs the order sent in full, D174). Code: `src/server/carrier-tracking.ts`, `src/server/order-delivery.ts`. |
-| Editable notification email templates | Native. [page](https://help.shopify.com/en/manual/orders/notifications/edit-template) | Missing (was partial) | 3 | A, wave 3 | Wording and layout are fixed in code (`email-text.ts`, `email-layout.ts`; nb, sv, da and en by hand, other languages through the catalogue, D111). Switches are per action, not per event. The store's logo and colours reach the layout, but the owner cannot edit a subject or body. Rechecked 2026-10-14: no template table or editor; D153 (returns), D173 (drafts, gifts) and D174 (changes, a shipped email per parcel) added their emails to the same fixed set. Code: `src/lib/email-text.ts`, `src/lib/email-layout.ts`. |
-| Staff alerts for new orders, order automation | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/notifications/staff-notifications) | Partial | 3 | A, wave 3 | Order and customer events go to Slack, Zapier and Make (D41, D101). Staff are emailed in a few cases: once per return whose refund is overdue (D153), a low-stock digest once per crossing (D172, `stock.low`), booking notices (`booking.staff`), and support conversations left waiting (D216, `support.waiting`); the store's Home and the control center list what needs attention. Still missing: a new-order email or push to staff, a choice of recipients and events, a daily or weekly summary, and a rule builder. Code: `src/server/integrations.ts`, `src/lib/integrations.ts`. |
+| Delivery-status notifications, tracking page | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/order-status-page/understanding-order-status-pages) | Partial (was full) | 3 | B, wave 3 | Built and tested against a faked carrier only (D238): `pollTracking()` keeps Bring's events in `shipment_tracking`, both order pages show them, a verified delivered code records `delivered_at` through `record_carrier_delivery()`, and the out-for-delivery and delivered emails go once per parcel when switched on. The code has never read an answer from Bring's live Tracking API: the parser's fixtures and the integration test's adapter were written by hand from developer.bring.com, and no real parcel has been followed to delivery (spec 9.6), although a carrier's delivered event starts the 14 days of D153. PostNord's, Helthjem's and Porterbuddy's codes are unverified, so their parcels are shown but never record a delivery or send an email. Code: `src/lib/tracking-phases.ts`, `src/server/shipment-tracking.ts`. |
+| Editable notification email templates | Native. [page](https://help.shopify.com/en/manual/orders/notifications/edit-template) | Full (was missing) | 3 |  | Evidence: `src/lib/notifications.ts`, `src/lib/email-template.ts`, `src/lib/notification-sample.ts` and 18 more; 13 test files; D111, D238. |
+| Staff alerts for new orders, order automation | Native. [page](https://help.shopify.com/en/manual/fulfillment/setup/notifications/staff-notifications) | Full (was partial) | 3 |  | Evidence: `src/lib/staff-alerts.ts`, `src/server/staff-alerts.ts`, `src/lib/order-rules.ts` and 21 more; 16 test files; D41, D101, D153, D238. |
 | Self-serve withdrawal and return requests | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/self-serve-returns/management) | Full (was missing) | 5 |  | Evidence: `src/server/withdrawals.ts`, `src/lib/withdrawal.ts`, `src/app/s/[store]/[market]/withdraw/page.tsx` and 7 more; 8 test files; D153. |
 | Returns management (RMA, inspect, restock, fees) | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules) | Full (was partial) | 4 |  | Evidence: `src/server/returns.ts`, `src/server/return-settings.ts`, `src/server/return-jobs.ts` and 9 more; 10 test files; D153, D152. |
 | Return labels | Native. [page](https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/return-labels) | Partial (was missing) | 3 | B, wave 3 | Staff paste a label address for a return (D153) and the shopper gets it; no return label is bought from a connected carrier, and none is created for the shopper to print on a self-serve request. Code: `src/server/return-emails.ts`, `src/lib/return-input.ts`. |

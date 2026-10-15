@@ -118,6 +118,7 @@ import { orderNumberAudit } from "./order-numbers";
 import { inventoryCounts, ledgerProblems } from "./inventory";
 import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
+import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
 import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
@@ -1900,6 +1901,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   pick_list: pickListTool,
   shipping_overview: shippingOverviewTool,
   pickup_orders: pickupOrdersTool,
+  notification_settings: notificationSettingsTool,
+  order_rules: orderRulesTool,
+  parcel_tracking: parcelTrackingTool,
   list_draft_orders: listDraftOrdersTool,
   tag_orders: tagOrdersTool,
   archive_orders: archiveOrdersTool,

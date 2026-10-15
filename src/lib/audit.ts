@@ -148,6 +148,9 @@ const PREFIXES: Record<string, AuditArea> = {
   "cookies.": "settings",
   "google.": "settings",
   "work.": "settings",
+  // Customer notifications, staff alerts and automation rules (wave 3, D238): the store's settings. A hold (`order.held`) is `order.`'s.
+  "notification.": "settings",
+  "automation.": "settings",
 };
 
 /** The two tables as the database's `audit_area_of()` is made from them. */

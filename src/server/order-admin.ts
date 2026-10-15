@@ -377,11 +377,13 @@ async function sendWithin(
   method: ShipmentMethod,
 ): Promise<SendOutcome> {
   const [order] = await tx.execute<Row>(sql`
-    select status, copied_from is not null as copied, delivery_method from commerce.orders
+    select status, copied_from is not null as copied, delivery_method, held_at is not null as held from commerce.orders
     where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
   `);
   if (!order) return { ok: false, reason: "not_found" };
   if (order.copied) return { ok: false, reason: "copied" };
+  // A fulfilment hold (D238 2.6): nothing of the order is sent or handed over until staff release it (the database refuses it too, shipments_not_held()).
+  if (order.held) return { ok: false, reason: "held" };
   const deliveryMethod = String(order.delivery_method ?? "ship");
   if (method === "parcel" && deliveryMethod === "pickup") return { ok: false, reason: "pickup_order" };
   if (method === "pickup" && deliveryMethod !== "pickup") return { ok: false, reason: "not_pickup" };
@@ -425,7 +427,7 @@ async function sendWithin(
   // Goods sent in parts are received when the last part is (CRD Art. 9(2)(b)): a part sent after the receipt was recorded
   // means the receipt is not complete, so the date is taken back and the consumer's 14 days start again when it is recorded.
   const [reset] = await tx.execute<Row>(sql`
-    update commerce.orders o set delivered_at = null
+    update commerce.orders o set delivered_at = null, delivered_source = null
     from (select delivered_at from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid) before
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     returning before.delivered_at as was_delivered_at

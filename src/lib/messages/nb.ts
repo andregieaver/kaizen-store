@@ -405,6 +405,26 @@ export const nb: Messages = {
     // legal: needs review
     receipt: "Angrefristen på 14 dager regnes fra den dagen du mottar den siste pakken.",
   },
+  /** Transportørens nyheter om en pakke på ordresidene (D238). Lover ingenting (ingen refusjon, ingen ny pakke). Må kontrolleres av et menneske før bruk. */
+  tracking: {
+    // legal: needs review
+    phases: {
+      info_received: "Transportøren har fått beskjed om pakken",
+      in_transit: "På vei",
+      out_for_delivery: "Ute for levering",
+      ready_for_collection: "Klar til henting",
+      attempted: "Forsøkt levert",
+      delivered: "Levert",
+      returned_to_sender: "På vei tilbake til oss",
+      problem: "Noe har skjedd med denne pakken: ta kontakt med oss",
+      unknown: "På vei",
+    },
+    readyAt: (place: string) => `Klar til henting hos ${place}`,
+    deliveredOn: (date: string) => `Levert ${date}`,
+    noNews: (carrier: string) => `${carrier} har ingen nyheter om denne pakken ennå.`,
+    followAt: (carrier: string) => `Følg pakken hos ${carrier}`,
+    events: "Nytt fra transportøren",
+  },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
   slip: {
     // legal: needs review

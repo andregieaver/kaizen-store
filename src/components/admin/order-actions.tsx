@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState, type ReactNode } from "react";
 
+import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
 import {
   addNoteAction,
   cancelOrderAction,
@@ -53,7 +54,10 @@ export function RefundForm({
   canRefund,
   outside = null,
   unitsToSend = 0,
+  notifyOff = null,
 }: Ids & {
+  /** The refund email is switched off in Notifications (D238): the box is drawn off, linking there. */
+  notifyOff?: string | null;
   /**
    * The money was taken outside Kaizen (wave 3, D173): the refund is only RECORDED here, with no call to Stripe, and staff pay the customer back themselves. `allowed` is false when only the
    * owner may record it and this person is not the owner.
@@ -162,7 +166,7 @@ export function RefundForm({
           )}
         </fieldset>
       )}
-      {hasEmail && canRefund && !(outside && !outside.allowed) && <Notify>Email the customer about the refund</Notify>}
+      {hasEmail && canRefund && !(outside && !outside.allowed) && (notifyOff ? <NotifySwitchedOff href={notifyOff}>Email the customer about the refund</NotifySwitchedOff> : <Notify>Email the customer about the refund</Notify>)}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className={primary}>
           {pending ? (outside ? "Recording …" : "Refunding …") : outside ? "Record the refund" : "Refund"}
@@ -181,7 +185,10 @@ export function CancelForm({
   hasEmail,
   unpaid = false,
   outside = false,
+  notifyOff = null,
 }: Ids & {
+  /** The cancellation email is switched off in Notifications (D238). */
+  notifyOff?: string | null;
   amountLabel: string;
   hasEmail: boolean;
   /** Not charged yet (a weekly delivery, D102): nothing to refund. */
@@ -218,7 +225,7 @@ export function CancelForm({
         </span>
         <input name="reason" maxLength={500} className={input} />
       </label>
-      {hasEmail && <Notify>Email the customer that the order is cancelled</Notify>}
+      {hasEmail && (notifyOff ? <NotifySwitchedOff href={notifyOff}>Email the customer that the order is cancelled</NotifySwitchedOff> : <Notify>Email the customer that the order is cancelled</Notify>)}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className={secondary}>
           {pending ? "Cancelling …" : "Cancel order"}

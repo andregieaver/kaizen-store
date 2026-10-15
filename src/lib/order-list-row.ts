@@ -23,6 +23,8 @@ export type OrderListItem = {
   marketCode: string;
   copied: boolean;
   archived: boolean;
+  /** On a fulfilment hold (D238, `orders.held_at`): still listed in *To send*, with its chip. */
+  held?: boolean;
   /** `draft` for a staff-made order (D173), with its draft's number (`D-12`) while the draft still exists. */
   source: "checkout" | "draft";
   draftNumber: string | null;

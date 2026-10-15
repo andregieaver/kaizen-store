@@ -8,10 +8,12 @@ import { emailText } from "@/lib/email-text";
 import { INVENTORY_RETENTION_MONTHS, LOW_STOCK_EMAIL_LINES } from "@/lib/inventory";
 import { variantLabel } from "@/lib/product-input";
 import { siteUrl } from "@/lib/site";
+import { ALERT_KEYS } from "@/lib/staff-alerts";
 import { lowStockKey, lowStockLines, type PendingCrossing } from "@/lib/stock-alerts";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { emailFooter, storeById } from "./shopper-emails";
+import { alertRecipients } from "./staff-alerts";
 
 type Row = Record<string, unknown>;
 
@@ -20,8 +22,8 @@ type Row = Record<string, unknown>;
  *
  * `commerce.stock_alerts` holds the state of each variant with a warning level (`ok`, `low`, `off`); the database moves it on every change of a level,
  * a location or a threshold, and marks a NEW crossing (`state = 'low'`, `notified_at` null). This module only tells the owners: ONE email per store
- * per run listing the variants that crossed since the last run (at most `LOW_STOCK_EMAIL_LINES` lines and "and {n} more"), sent to the store's
- * owners, English like the other staff emails, saying the stock, the level and the SKU and linking to the Inventory page: nothing about sales,
+ * per run listing the variants that crossed since the last run (at most `LOW_STOCK_EMAIL_LINES` lines and "and {n} more"), sent to the recipients
+ * of *Low stock* (D238, the store's owners by default), English like the other staff emails, saying the stock, the level and the SKU and linking to the Inventory page: nothing about sales,
  * customers or prices. `notified_at` is set only after the send succeeded, so a failure is retried by the next run, and the idempotency key (the
  * store plus the newest crossing's time, per owner) makes a retry after a lost answer the same email. A store that is not open gets none.
  */
@@ -58,18 +60,6 @@ async function pendingCrossings(): Promise<Pending[]> {
   }));
 }
 
-/** The owners of a store who can be written to: active members with the owner role and an address. */
-async function ownersOf(storeId: string): Promise<{ id: string; email: string }[]> {
-  const rows = await db().execute<Row>(sql`
-    select distinct on (a.id) a.id, a.email
-    from commerce.store_members m
-    join commerce.accounts a on a.id = m.account_id and a.disabled_at is null
-    where m.store_id = ${storeId}::uuid and m.role = 'owner' and m.disabled_at is null and a.email <> ''
-      and (m.expires_at is null or m.expires_at > now())
-  `);
-  return rows.map((r) => ({ id: String(r.id), email: String(r.email) }));
-}
-
 export type LowStockRun = { stores: number; emails: number; crossings: number; failed: number };
 
 const TOLD: readonly SendOutcome[] = ["sent", "logged", "duplicate"];
@@ -93,8 +83,9 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
   for (const [storeId, crossings] of byStore) {
     try {
       const store = await storeById(storeId);
-      const owners = await ownersOf(storeId);
-      if (!store || owners.length === 0) continue;
+      // The recipients of *Low stock* (D238 4.7): the owners while the store has not chosen others.
+      const targets = await alertRecipients(storeId, "low_stock");
+      if (!store || targets.length === 0) continue;
       const { shown, more } = lowStockLines(crossings, LOW_STOCK_EMAIL_LINES);
       const text = emailText("en");
       const key = lowStockKey(storeId, crossings);
@@ -113,8 +104,8 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
         ],
       });
       const outcomes: SendOutcome[] = [];
-      for (const owner of owners) {
-        outcomes.push(await send({ storeId, kind: "stock.low", to: owner.email, email, fromName: store.name, idempotencyKey: `${key}:${owner.id}` }));
+      for (const target of targets) {
+        outcomes.push(await send({ storeId, kind: "stock.low", to: target.to, email, fromName: store.name, idempotencyKey: ALERT_KEYS.lowStock(key, target.recipient) }));
       }
       if (!outcomes.some((o) => TOLD.includes(o))) {
         out.failed += 1;

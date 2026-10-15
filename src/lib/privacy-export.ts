@@ -108,6 +108,8 @@ export type OrderRow = {
     lines?: { sku: string | null; title: string; quantity: number }[];
     undoneAt?: Ts;
     undoReason?: string | null;
+    /** The carrier's events Kaizen kept while following the parcel (D238): the carrier's own words, which can name who received it. */
+    tracking?: { phase: string; events: { at: string; description: string; location: string | null }[] } | null;
   }[];
   /** The order's changes after purchase (D174): number, date, difference and state; never staff's note. */
   changes?: { label: string; status: string; createdAt: Ts; appliedAt: Ts; differenceMinor: number; currency: string }[];
@@ -493,6 +495,7 @@ const shapeOrder = (o: OrderRow): Json => {
       createdAt: iso(s.createdAt),
       lines: (s.lines ?? []).map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity) })),
       ...(s.undoneAt ? { undone: { at: iso(s.undoneAt), reason: text(s.undoReason ?? null) } } : {}),
+      ...(s.tracking ? { tracking: { phase: s.tracking.phase, events: s.tracking.events.map((e) => ({ at: e.at, description: e.description, location: e.location })) } } : {}),
     })),
     changes: (o.changes ?? []).map((c) => ({ change: c.label, status: c.status, createdAt: iso(c.createdAt), appliedAt: iso(c.appliedAt), difference: money(c.differenceMinor, c.currency) })),
     downloads: o.downloads.map((d) => ({ fileName: text(d.fileName), count: int(d.downloads) })),

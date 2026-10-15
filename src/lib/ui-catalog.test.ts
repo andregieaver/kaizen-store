@@ -287,3 +287,12 @@ describe("the words of wave 3's fulfilment and order changes (D174)", () => {
     expect(isHandWrittenOnly("ui:fulfilment.states.sent")).toBe(false);
   });
 });
+
+describe("the parcel emails and tracking words (D238)", () => {
+  it("are never machine-translated while they wait for legal review", () => {
+    for (const prefix of ["email:parcelOut", "email:parcelDelivered", "ui:tracking."]) expect(HAND_WRITTEN_ONLY).toContain(prefix);
+    expect(all.filter((e) => /^(email:parcelOut|email:parcelDelivered|ui:tracking\.)/.test(e.key)).map((e) => e.key)).toEqual([]);
+    expect(isHandWrittenOnly("email:parcelDeliveredSubject")).toBe(true);
+    expect(isHandWrittenOnly("ui:tracking.trouble")).toBe(true);
+  });
+});

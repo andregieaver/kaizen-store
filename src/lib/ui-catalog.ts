@@ -123,6 +123,10 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:slip.moreFollows",
   // Wave 3 shipping methods (D237, 8.1): the price sentences of CRD Art. 6(1)(e) and 8(2) at the cart and checkout.
   "ui:deliveryOptions.priceInfo.",
+  // Wave 3 notifications (D238, spec 8 items 1 and 2): the parcel emails and the shopper's tracking words, until the legal review clears them.
+  "email:parcelOut",
+  "email:parcelDelivered",
+  "ui:tracking.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

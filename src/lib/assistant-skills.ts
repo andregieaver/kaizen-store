@@ -119,6 +119,20 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "order-emails-and-alerts",
+    area: "store",
+    title: "Set up order emails and alerts",
+    when: "The owner asks about the emails customers get, changing their wording, switching one off, delivery emails or tracking, who on the team is told about new orders, a daily or weekly summary, or automation rules.",
+    steps: [
+      "Call notification_settings and say which customer emails are on, off or always sent, and which languages have the store's own wording. The order confirmation, the renewal and change confirmations, the withdrawal acknowledgement and the return decisions are required and always sent; the acknowledgement's wording is fixed. Out for delivery and Delivered from the carrier start off.",
+      "Wording is changed per email and language on its page (open_admin_page, notifications.edit, or notifications to choose): a subject, a heading and a text, with placeholders such as {order_number} and {order_total} from the list beside the fields, a preview with a sample order and a test email to themself. Prices, lines, VAT, documents and the withdrawal information stay Kaizen's, so an edit can never remove them. Tell them an order email must not advertise (an email that promotes needs the customer's consent), and that the words are theirs to stand behind. Never write the wording for them as if it were checked: if they ask for a draft, say it is a suggestion they must read, and that the page checks it again before saving.",
+      "Switching an email off is done on the Notifications page; it also unticks Notify the customer where staff send, refund or cancel. You cannot switch, edit or send them.",
+      "For where a parcel is, call parcel_tracking with the order: repeat the phase and events it gives. For PostNord, Helthjem and Porterbuddy say that their events are shown but no delivery is recorded from them and no delivery email is sent. Check now is on the order's page.",
+      "Who on the team gets new-order, return-requested, refund-overdue, low-stock and automation emails, and the daily or weekly summary, is chosen by an owner on Staff alerts (open_admin_page, notifications.staff). By default the owners get new orders, return requests and low stock. Staff emails never name the customer or their address.",
+      "For rules, call order_rules and repeat each rule's sentence and its latest runs. A rule runs once when an order is paid: it can tag the order, notify staff or hold it (a held order cannot be sent until released on its page). Rules are made and changed on the Automation page (open_admin_page, automation or automation.new); you cannot change them.",
+    ],
+  },
+  {
     id: "tidy-orders",
     area: "store",
     title: "Find, tag and archive orders",

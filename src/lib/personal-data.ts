@@ -84,11 +84,13 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("storage:avatars", "shopper", via("customer", "avatar_path"), ["avatar_path"], "profile", "delete", "The picture is removed from storage after the account is deleted.", {}),
 
   // Orders and what hangs on them ------------------------------------------------------------------------------------------------------
-  entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "gift_to", "gift_from", "gift_message", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode", "delivery_note"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once. The note for the driver of a local delivery (D237) is the buyer's own words: exported, and cleared when the order is anonymised.", { also: ["addresses", "consents"], until: "bookkeeping" }),
+  entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "gift_to", "gift_from", "gift_message", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode", "delivery_note", "held_reason"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once. The note for the driver of a local delivery (D237) is the buyer's own words: exported, and cleared when the order is anonymised. A hold's reason (D238) typed by a person is staff's own text (it can hold a name): exported with the order and replaced by a marker when it is anonymised; a rule's reason is the owner's words about the rule.", { also: ["addresses", "consents"], until: "bookkeeping" }),
   entry("order_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", KEEP_ORDER),
   entry("payments", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A payment's amount and status; no personal field (the card is held by Stripe, not by the store). " + KEEP_ORDER),
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url", "undo_reason"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it. The reason staff gave for undoing a parcel (D174 follow-up) is their own text (it can hold a name): exported with the parcel and replaced by a marker when the order is anonymised."),
+  entry("shipment_tracking", "shopper", via("order", "order_id"), ["events"], "orders", "anonymise", "A parcel's carrier events (D238): times, codes and the carrier's own descriptions and places, which can name who signed for it. Exported with the parcel, cleared when the order is anonymised (commerce.anonymise_order(), an update) and 90 days after the parcel stopped being followed."),
+  entry("order_rule_runs", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "An automation rule's run for an order (D238): the rule's name, ids and which conditions and actions held, never a person's data; deleted 12 months after it ran. " + KEEP_ORDER),
   entry("bookings", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A time slot of an appointment, stay or rental; " + KEEP_ORDER),
   entry("shipment_lines", "shopper", via("order", "shipment_id"), ["shipment_id"], "orders", "keep", "Which units of an order went in which parcel (D174); ids and quantities, no personal field. " + KEEP_ORDER),
   entry("order_edits", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A change staff made to an order after purchase (D174): amounts, ids and dates, no personal field (staff's note is only in the history event's data.note, which anonymising removes; the pay link is kept only as a hash). " + KEEP_ORDER),
@@ -218,6 +220,12 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  notification_settings: "A store's switches for its customer emails (D238).",
+  email_templates: "The owner's own wording of the store's customer emails (D238): a subject, a heading and a text with placeholders, filled per email; no person's data.",
+  staff_alert_settings: "A store's staff summary choice and which alerts its contact address gets (D238).",
+  staff_alert_recipients: "Which staff accounts get which store alerts (D238): staff, not shoppers.",
+  store_events: "A queue of order and return events for staff alerts and rules (D238): ids, times and an error code text, never a person's data.",
+  order_rules: "A store's automation rules (D238): conditions, the owner's tag, note and hold reason, never a person.",
   ai_model_prices: "A model's price and the platform admin's note about it.",
   booking_seasons: "A season's name for a booking's price.",
   calendar_feeds: "The name of another site's calendar the store reads.",
@@ -317,6 +325,16 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // Pickup and local delivery (D237)
   "order.ready_for_pickup": "shopper",
   "order.out_for_delivery": "shopper",
+  // Order and return notifications (D238): kinds passed to orderNotice() and returnMail() as an argument, and the carrier-event emails.
+  "order.sent": "shopper",
+  "order.refunded": "shopper",
+  "order.cancelled": "shopper",
+  "order.parcel_out_for_delivery": "shopper",
+  "order.parcel_delivered": "shopper",
+  "return.approved": "shopper",
+  "return.declined": "shopper",
+  "return.received": "shopper",
+  "return.refunded": "shopper",
   // Security: short-lived
   "account.code": "security",
   "account.reset": "security",
@@ -340,6 +358,13 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.overdue": "staff",
   "data_job.ready": "staff",
   "support.waiting": "staff",
+  // Staff alerts and tests (D238): never a shopper's name, email, phone or address (docs/wave-3-notifications.md 4.8).
+  "notification.test": "staff",
+  "staff.new_order": "staff",
+  "staff.return_requested": "staff",
+  "staff.summary": "staff",
+  "staff.test": "staff",
+  "automation.notify": "staff",
   // To a Work client (the owner's own bookkeeping)
   "work.invoice": "staff",
   "work.credit_note": "staff",

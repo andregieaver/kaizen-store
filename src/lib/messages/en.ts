@@ -409,6 +409,29 @@ export const en = {
     // legal: needs review
     receipt: "Your 14 days to change your mind count from the day you receive the last parcel.",
   },
+  /**
+   * The carrier's news of a parcel on the order pages (D238, docs/wave-3-notifications.md 2.7): the phase as a line, the carrier's own events below it.
+   * `phases.problem` and `phases.returned_to_sender` promise nothing (no refund, no new parcel). Needs human legal review before real use.
+   */
+  tracking: {
+    // legal: needs review
+    phases: {
+      info_received: "The carrier has been told about the parcel",
+      in_transit: "On its way",
+      out_for_delivery: "Out for delivery",
+      ready_for_collection: "Ready to collect",
+      attempted: "Delivery attempted",
+      delivered: "Delivered",
+      returned_to_sender: "On its way back to us",
+      problem: "Something has happened to this parcel: contact us",
+      unknown: "On its way",
+    },
+    readyAt: (place: string) => `Ready to collect at ${place}`,
+    deliveredOn: (date: string) => `Delivered ${date}`,
+    noNews: (carrier: string) => `${carrier} has no news about this parcel yet.`,
+    followAt: (carrier: string) => `Follow the parcel at ${carrier}`,
+    events: "News from the carrier",
+  },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
   slip: {
     // legal: needs review

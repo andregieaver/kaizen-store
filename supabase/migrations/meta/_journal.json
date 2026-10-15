@@ -2290,6 +2290,34 @@
       "when": 1792018957728,
       "tag": "20261014230237_shipping_plan_features",
       "breakpoints": true
+    },
+    {
+      "idx": 327,
+      "version": "7",
+      "when": 1792023011521,
+      "tag": "20261015001011_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 328,
+      "version": "7",
+      "when": 1792023073983,
+      "tag": "20261015001113_notifications_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1792023162951,
+      "tag": "20261015001242_notifications_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1792023212831,
+      "tag": "20261015001332_notifications_plan_features",
+      "breakpoints": true
     }
   ]
 }

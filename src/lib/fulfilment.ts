@@ -125,6 +125,7 @@ export const SHIPMENT_PROBLEMS = {
   not_pickup: "Only an order to be collected is handed over at a pickup place.",
   not_local: "Only an order for local delivery is taken out by your own driver.",
   handover_whole: "A handover takes everything still to send, with no carrier or tracking.",
+  held: "This order is on hold: release it first.",
   changed: "The order changed while you were choosing (another parcel, an undone parcel, a withdrawal or units that will not be sent were recorded). Look again and send what is left.",
 } as const;
 export type ShipmentProblemCode = keyof typeof SHIPMENT_PROBLEMS;

@@ -44,6 +44,7 @@ const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
   pickup: "To hand over (pickup)",
   local: "Local delivery",
   delivery_mismatch: "Postal code differs from the address",
+  held: "On hold",
 };
 const STATUS_LABELS: Record<(typeof STATUS_FILTERS)[number], string> = {
   paid: "Paid, not sent",

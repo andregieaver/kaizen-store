@@ -33,6 +33,8 @@ export type StoreCopyOptions = {
   orders: boolean;
   /** The owner says they may use this customer data in the new store; needed with customers or orders. */
   confirmDataUse: boolean;
+  /** The owner's own wording of the customer emails (D238, `email_templates`); off unless ticked. Optional so an older wizard's options still parse. */
+  emailTexts?: boolean;
 };
 
 export const COPY_IDS_MAX = 5000;
@@ -52,6 +54,7 @@ export const storeCopyOptions = z
     customers: z.boolean(),
     orders: z.boolean(),
     confirmDataUse: z.boolean(),
+    emailTexts: z.boolean().optional(),
   })
   .superRefine((options, ctx) => {
     if ((options.customers || options.orders) && !options.confirmDataUse) {
@@ -82,6 +85,7 @@ export const DEFAULT_COPY_OPTIONS: StoreCopyOptions = {
   customers: false,
   orders: false,
   confirmDataUse: false,
+  emailTexts: false,
 };
 
 /** Whether anything of a kind is copied, and how many of a total. */

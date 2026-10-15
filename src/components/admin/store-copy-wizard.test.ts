@@ -80,8 +80,8 @@ describe("the duplicate wizard", () => {
       image: null,
     }));
     const out = html({ choices: choicesOf({ products }), initial: setMode(base(), "products", "selected") });
-    // A hundred rows, and the two boxes for customers and orders.
-    expect(out.match(/type="checkbox"/g)).toHaveLength(102);
+    // A hundred rows, the two boxes for customers and orders, and the email texts' (D238).
+    expect(out.match(/type="checkbox"/g)).toHaveLength(103);
     expect(out).toContain("Show 100 more (2,400 left)");
     expect(out).toContain("0 of 2,500 selected");
   });
@@ -127,5 +127,14 @@ describe("the duplicate wizard", () => {
     const out = html({ choices: choicesOf({ posts: [], customers: 0, orders: 0 }) });
     expect(out).toContain("This store has no posts to copy.");
     expect(out.match(/type="checkbox"[^>]*disabled=""/g)).toHaveLength(2);
+  });
+
+  it("offers the store's own email texts as a choice of their own, unticked until the owner ticks it (D238)", () => {
+    const out = html();
+    expect(out).toContain(">Email texts</legend>");
+    expect(out).toContain("Email texts: your own wording of the customer emails");
+    const box = /<input[^>]*name="emailTexts"[^>]*>/.exec(out)?.[0] ?? "";
+    expect(box).not.toBe("");
+    expect(box).not.toContain('checked=""');
   });
 });

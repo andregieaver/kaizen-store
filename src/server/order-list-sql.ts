@@ -118,6 +118,9 @@ function shipCondition(filter: OrderListParams["ship"][number]): SQL {
       return sql`(o.status = 'paid' and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null))`;
     case "edit_pending":
       return sql`exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment')`;
+    // D238: on a fulfilment hold, put by a rule or a person.
+    case "held":
+      return sql`(o.held_at is not null)`;
   }
 }
 

@@ -69,6 +69,9 @@ import {
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
+import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from "../lib/notifications";
+import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
+import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
   ESTIMATE_DAYS_MAX,
   INFO_MAX,
@@ -2939,9 +2942,31 @@ export const orders = commerce.table(
     deliveryNote: text("delivery_note"),
     /** When the address Stripe collected turned out to have another postal code than the one the delivery was priced for (flag for staff only). */
     deliveryMismatchAt: timestamp("delivery_mismatch_at", { withTimezone: true }),
+    /**
+     * Who set `delivered_at` (wave 3, D238, `docs/wave-3-notifications.md` 3.1): `staff` (*Mark delivered*), `handover` (*Collected*, the local driver's
+     * *Delivered*) or `carrier` (a verified delivered event, written only by `commerce.record_carrier_delivery()`). Cleared with the date. Rows from before
+     * the column keep a null source with a date, read as `staff`.
+     */
+    deliveredSource: text("delivered_source"),
+    /**
+     * A fulfilment hold (D238 3.1, 4.9): while set, nothing of the order can be sent or handed over (`commerce.shipments_not_held()`). Put by a rule
+     * (`held_by_rule`, no foreign key: a deleted rule leaves its id) or a person (`held_by`); the reason is at most 200 characters (a person's is replaced by
+     * the marker when the order is anonymised). Written only by `src/server/order-hold.ts`.
+     */
+    heldAt: timestamp("held_at", { withTimezone: true }),
+    heldReason: text("held_reason"),
+    heldByRule: uuid("held_by_rule"),
+    heldBy: uuid("held_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
   (t) => [
+    check("orders_delivered_source", sql`${t.deliveredSource} is null or (${t.deliveredAt} is not null and ${t.deliveredSource} in ('staff', 'handover', 'carrier'))`),
+    check(
+      "orders_held",
+      sql`(${t.heldAt} is not null or (${t.heldReason} is null and ${t.heldByRule} is null and ${t.heldBy} is null)) and not (${t.heldByRule} is not null and ${t.heldBy} is not null) and (${t.heldReason} is null or char_length(${t.heldReason}) between 1 and 200)`,
+    ),
+    index("orders_held_by_idx").on(t.heldBy),
+    index("orders_held_idx").on(t.storeId, t.heldAt).where(sql`${t.heldAt} is not null`),
     check("orders_delivery_method", sql`${t.deliveryMethod} in ('ship', 'pickup', 'local')`),
     check("orders_pickup_location", sql`(${t.deliveryMethod} = 'pickup') = (${t.pickupLocationId} is not null)`),
     check("orders_ready_for_pickup", sql`${t.readyForPickupAt} is null or ${t.deliveryMethod} = 'pickup'`),
@@ -9875,5 +9900,275 @@ export const supportReplies = commerce.table(
     unique("support_replies_shortcut_key").on(t.storeId, t.shortcut).nullsNotDistinct(),
     index("support_replies_created_by_idx").on(t.createdBy),
     check("support_replies_lengths", sql`length(${t.title}) between 1 and 80 and length(${t.body}) between 1 and 2000 and coalesce(length(${t.shortcut}) between 1 and 20, true)`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Customer notifications, delivery tracking and staff alerts (wave 3, D238, docs/wave-3-notifications.md 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * A store's switch for one notification (`NOTIFICATIONS`, `src/lib/notifications.ts`); no row is the notification's default. A required one cannot be
+ * stored off (`notification_settings_required`). Read only by `src/server/notifications.ts`.
+ */
+export const notificationSettings = commerce.table(
+  "notification_settings",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    notification: text("notification").notNull(),
+    enabled: boolean("enabled").notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.notification] }),
+    index("notification_settings_updated_by_idx").on(t.updatedBy),
+    check("notification_settings_notification", sql`${t.notification} in (${sqlList(NOTIFICATION_IDS)})`),
+    check("notification_settings_required", sql`${t.enabled} or ${t.notification} not in (${sqlList(REQUIRED_NOTIFICATIONS)})`),
+  ],
+);
+
+/**
+ * A store's own words for one notification in one language (D238 4.2): the subject, the heading and the text block, each optional (a missing slot is the
+ * standard text), never an empty string, never for a locked notification. The owner's words; read only by `src/server/notifications.ts`, written only by
+ * `saveTemplate()` after `templateProblems()`.
+ */
+export const emailTemplates = commerce.table(
+  "email_templates",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    notification: text("notification").notNull(),
+    locale: text("locale").notNull(),
+    subject: text("subject"),
+    heading: text("heading"),
+    body: text("body"),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.notification, t.locale] }),
+    index("email_templates_updated_by_idx").on(t.updatedBy),
+    check("email_templates_notification", sql`${t.notification} in (${sqlList(EDITABLE_NOTIFICATIONS)})`),
+    check("email_templates_locale", sql`${t.locale} ~ '^[a-z]{2,3}$'`),
+    check(
+      "email_templates_slots",
+      sql`(${t.subject} is not null or ${t.heading} is not null or ${t.body} is not null)
+        and (${t.subject} is null or char_length(${t.subject}) between 1 and 150)
+        and (${t.heading} is null or char_length(${t.heading}) between 1 and 120)
+        and (${t.body} is null or char_length(${t.body}) between 1 and 2000)`,
+    ),
+  ],
+);
+
+/**
+ * A store's staff alert settings (D238 2.4): `configured_at` null while the defaults hold (owners get new orders, returns requested and low stock; refunds
+ * overdue go to the contact address), the summary's choice and the events of the store's contact address. Read only by `src/server/staff-alerts.ts`.
+ */
+export const staffAlertSettings = commerce.table(
+  "staff_alert_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    configuredAt: timestamp("configured_at", { withTimezone: true }),
+    summary: text("summary").notNull().default("off"),
+    summaryWeekday: smallint("summary_weekday").notNull().default(1),
+    summaryHour: smallint("summary_hour").notNull().default(8),
+    /** The last period a summary was sent for (`summaryDue()`'s key); the five-minute job's guard. */
+    summaryLastPeriod: text("summary_last_period"),
+    contactEvents: text("contact_events").array().notNull().default(sql`'{}'::text[]`),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("staff_alert_settings_updated_by_idx").on(t.updatedBy),
+    check("staff_alert_settings_summary", sql`${t.summary} in ('off', 'daily', 'weekly')`),
+    check("staff_alert_settings_weekday", sql`${t.summaryWeekday} between 1 and 7`),
+    check("staff_alert_settings_hour", sql`${t.summaryHour} between 0 and 23`),
+    check("staff_alert_settings_contact_events", sql`${t.contactEvents} <@ array[${sqlList(STAFF_ALERT_EVENTS)}]::text[]`),
+    check("staff_alert_settings_last_period", sql`${t.summaryLastPeriod} is null or char_length(${t.summaryLastPeriod}) <= 40`),
+  ],
+);
+
+/** A member chosen for staff alerts and the events they get (D238 2.4); a member with none has no row. Read only by `src/server/staff-alerts.ts`. */
+export const staffAlertRecipients = commerce.table(
+  "staff_alert_recipients",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    events: text("events").array().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.accountId] }),
+    index("staff_alert_recipients_account_idx").on(t.accountId),
+    check("staff_alert_recipients_events", sql`cardinality(${t.events}) > 0 and ${t.events} <@ array[${sqlList(STAFF_ALERT_EVENTS)}]::text[]`),
+  ],
+);
+
+/**
+ * Something that happened to an order or a return that staff alerts and rules react to, once (D238 3.2, 3.3): written only by the queue triggers
+ * (`commerce.queue_store_event()`, in the paying or returning transaction, `on conflict do nothing`), consumed every minute by `processStoreEvents()`
+ * (rules first, then alerts, each part marked done). Ids and times only; deleted by the retention job 30 days after both parts are done or it failed.
+ */
+export const storeEvents = commerce.table(
+  "store_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    /** The order (`order.paid`) or the return (`return.requested`). */
+    subjectId: uuid("subject_id").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    alertsDoneAt: timestamp("alerts_done_at", { withTimezone: true }),
+    rulesDoneAt: timestamp("rules_done_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("store_events_once_key").on(t.storeId, t.event, t.subjectId),
+    index("store_events_due_idx")
+      .on(t.nextAttemptAt)
+      .where(sql`(${t.alertsDoneAt} is null or ${t.rulesDoneAt} is null) and ${t.failedAt} is null`),
+    check("store_events_event", sql`${t.event} in ('order.paid', 'return.requested')`),
+    check("store_events_attempts", sql`${t.attempts} between 0 and 10`),
+    check("store_events_last_error", sql`${t.lastError} is null or char_length(${t.lastError}) <= 500`),
+  ],
+);
+
+/**
+ * A store's automation rule (D238 2.5, 4.9): *when an order is paid and {conditions} then {actions}*, a closed list (`src/lib/order-rules.ts`), at most
+ * 50 a store (`order_rules_limit`). `version` rises with every save, so a run says which rule it ran. Deleted for good; its runs keep its name.
+ */
+export const orderRules = commerce.table(
+  "order_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    event: text("event").notNull().default("order.paid"),
+    match: text("match").notNull().default("all"),
+    conditions: jsonb("conditions").notNull().default([]),
+    actions: jsonb("actions").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("order_rules_store_id_key").on(t.storeId, t.id),
+    index("order_rules_position_idx").on(t.storeId, t.position),
+    index("order_rules_created_by_idx").on(t.createdBy),
+    index("order_rules_updated_by_idx").on(t.updatedBy),
+    check("order_rules_name", sql`char_length(${t.name}) between 1 and 80 and ${t.name} = btrim(${t.name})`),
+    check("order_rules_event", sql`${t.event} = 'order.paid'`),
+    check("order_rules_match", sql`${t.match} in ('all', 'any')`),
+    check(
+      "order_rules_lists",
+      sql`jsonb_typeof(${t.conditions}) = 'array' and jsonb_array_length(${t.conditions}) between 0 and 10
+        and jsonb_typeof(${t.actions}) = 'array' and jsonb_array_length(${t.actions}) between 1 and 5`,
+    ),
+    check("order_rules_position", sql`${t.position} >= 0`),
+    check("order_rules_version", sql`${t.version} >= 1`),
+  ],
+);
+
+/**
+ * One rule's run for one store event (D238 4.9): inserted first (`on conflict do nothing` on `(rule_id, event_id)`, so only the transaction that inserted it
+ * acts), then its outcome. No foreign key to the rule: runs outlive a deleted rule and keep its name and version. Linked to a shopper only through the
+ * order, with no personal field; deleted by the retention job 12 months after it ran.
+ */
+export const orderRuleRuns = commerce.table(
+  "order_rule_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    ruleId: uuid("rule_id").notNull(),
+    ruleName: text("rule_name").notNull(),
+    ruleVersion: integer("rule_version").notNull(),
+    eventId: uuid("event_id").references(() => storeEvents.id, { onDelete: "set null" }),
+    orderId: uuid("order_id").notNull(),
+    matched: boolean("matched").notNull(),
+    /** `{ conditions: [{ kind, met, why? }], actions: [{ kind, ok, problem? }] }` (`RunOutcome`); never a person's data. */
+    outcome: jsonb("outcome").notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("order_rule_runs_once_key").on(t.ruleId, t.eventId),
+    orderRef("order_rule_runs_order_fk", t).onDelete("restrict"),
+    index("order_rule_runs_store_idx").on(t.storeId, t.createdAt.desc()),
+    index("order_rule_runs_order_idx").on(t.storeId, t.orderId),
+    index("order_rule_runs_event_idx").on(t.eventId),
+    check("order_rule_runs_rule_name", sql`char_length(${t.ruleName}) between 1 and 80`),
+    check("order_rule_runs_outcome", sql`jsonb_typeof(${t.outcome}) = 'object' and octet_length(${t.outcome}::text) < 8192`),
+  ],
+);
+
+/**
+ * A tracked parcel's carrier events as polled (D238 4.5): newest first, at most 30 (`{ at, code, phase, verified, description, location }`), the phase of
+ * the newest that has one, when a verified code first said out for delivery or delivered, why polling stopped, and which emails went. Made on the parcel's
+ * first check by `pollTracking()`, its only writer besides `undo_shipment()` (stops it) and `anonymise_order()` (clears the events, which can name a
+ * person); the events are cleared 90 days after polling stopped. Never for a copied order.
+ */
+export const shipmentTracking = commerce.table(
+  "shipment_tracking",
+  {
+    storeId: storeId(),
+    shipmentId: uuid("shipment_id").notNull(),
+    orderId: uuid("order_id").notNull(),
+    carrier: text("carrier").notNull(),
+    phase: text("phase").notNull().default("unknown"),
+    phaseVerified: boolean("phase_verified").notNull().default(false),
+    events: jsonb("events").notNull().default([]),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull().defaultNow(),
+    failures: integer("failures").notNull().default(0),
+    outAt: timestamp("out_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    stopped: text("stopped"),
+    stoppedAt: timestamp("stopped_at", { withTimezone: true }),
+    emailedOut: boolean("emailed_out").notNull().default(false),
+    emailedDelivered: boolean("emailed_delivered").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.shipmentId] }),
+    foreignKey({
+      name: "shipment_tracking_shipment_fk",
+      columns: [t.storeId, t.shipmentId],
+      foreignColumns: [shipments.storeId, shipments.id],
+    }).onDelete("restrict"),
+    orderRef("shipment_tracking_order_fk", t).onDelete("restrict"),
+    index("shipment_tracking_order_idx").on(t.storeId, t.orderId),
+    index("shipment_tracking_due_idx").on(t.nextCheckAt).where(sql`${t.stopped} is null`),
+    check("shipment_tracking_phase", sql`${t.phase} in (${sqlList(TRACKING_PHASES)})`),
+    check("shipment_tracking_stopped", sql`(${t.stopped} is null) = (${t.stoppedAt} is null) and (${t.stopped} is null or ${t.stopped} in (${sqlList(TRACKING_STOPS)}))`),
+    check("shipment_tracking_events", sql`jsonb_typeof(${t.events}) = 'array' and jsonb_array_length(${t.events}) <= 30`),
+    check("shipment_tracking_failures", sql`${t.failures} >= 0`),
+    check("shipment_tracking_carrier", sql`char_length(${t.carrier}) between 1 and 40`),
   ],
 );

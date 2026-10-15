@@ -23,9 +23,12 @@ import { absoluteUrl } from "@/lib/seo";
 import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { siteUrl } from "@/lib/site";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
+import type { PlaceholderValues } from "@/lib/email-template";
+import { notificationOf } from "@/lib/notifications";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
+import { firstNameOf, notificationOn, templatedSlots } from "./notifications";
 import { ensureUi } from "./ui-text";
 import { withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
@@ -261,6 +264,21 @@ export async function sendOrderConfirmation(
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const subscription = order.subscriptionId ? await getSubscriptionForOrder(storeId, orderId) : null;
   const renewal = subscription !== null && subscription.number !== order.number;
+  const kind = renewal ? "subscription.renewed" : "order.confirmation";
+  // Required (D238 4.1): always on, so this never stops it; asked like every catalogue sender.
+  if (!(await notificationOn(storeId, kind))) return null;
+  // The store's own subject, heading and intro in the order's language (D238 4.2), over the fixed ones; every other block stays the code's.
+  const slots = await templatedSlots(
+    storeId,
+    kind,
+    ctx.lang,
+    {
+      subject: renewal ? text.renewalSubject(store.name, order.number) : text.orderSubject(store.name, order.number),
+      heading: text.orderHeading,
+      intro: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number),
+    },
+    { ...commonValues(order, store), order_total: money(order.totalMinor) },
+  );
   const url = await orderUrl(storeId, store, market, orderId);
   const address = addressText(order, m);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
@@ -269,8 +287,8 @@ export async function sendOrderConfirmation(
   const documents = await documentsFor(storeId, order, store, market, { invoice: true }, { switchable: true });
 
   const blocks: EmailBlock[] = [
-    { type: "heading", text: text.orderHeading },
-    { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
+    { type: "heading", text: slots.heading },
+    { type: "paragraph", text: slots.intro },
     orderLines(order, text, m, money, storeSiteUrl(store.slug)),
     // What is on backorder (D172): each line's units and the days the store states, in words, never a date and never "in stock".
     ...(order.lines.some((line) => line.backorder) ? [{ type: "paragraph" as const, text: backorderText(order, m) }] : []),
@@ -316,13 +334,12 @@ export async function sendOrderConfirmation(
       : []),
   ];
   const email = renderEmail({
-    subject: renewal ? text.renewalSubject(store.name, order.number) : text.orderSubject(store.name, order.number),
-    preview: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number),
+    subject: slots.subject,
+    preview: slots.preview,
     blocks,
     footer: footer(store, text),
     lang: ctx.lang,
   });
-  const kind = renewal ? "subscription.renewed" : "order.confirmation";
   const idempotencyKey = resend ? undefined : `order-confirmation:${orderId}`;
   const outcome = await sendEmail({
     storeId,
@@ -372,22 +389,47 @@ function giftParagraph(gift: NonNullable<OrderView["gift"]>, words: EmailText["g
     .join("\n");
 }
 
-/** A short email about an order: sent, refunded or cancelled (D27). */
+/** The placeholders every notification has (D238 4.2): the store's name, the order's number and the buyer's first name (never their email). */
+function commonValues(order: Pick<OrderView, "number" | "shippingAddress" | "billingAddress">, store: Pick<EmailStore, "name">): PlaceholderValues {
+  return {
+    store_name: store.name,
+    order_number: order.number,
+    customer_first_name: firstNameOf(order.shippingAddress?.name, order.billingAddress?.name),
+  };
+}
+
+/** What a notice's builder returns: the fixed subject, heading and intro, and what follows them. */
+type Built = {
+  subject: string;
+  heading: string;
+  intro: string;
+  /** Fixed words said after the intro (a reason, a VAT note): joined to the fixed intro, or their own paragraph after the store's own text. */
+  introTail?: string | null;
+  extra?: EmailBlock[];
+  attachments?: OutgoingEmail["attachments"];
+  withdraw?: boolean;
+  /** The notification's own placeholders (D238 4.2), e.g. `{carrier}`; money already in the order's currency. */
+  values?: PlaceholderValues;
+};
+
+/**
+ * A short email about an order: sent, refunded or cancelled (D27), and the other notifications of D238's catalogue. A catalogue kind is sent only while
+ * the store has it switched on (`notificationOn()`), unless it is an `action` (staff pressed *Send again*, or a pay link), and its subject, heading and intro
+ * take the store's own words in the order's language (`templated`, on unless the email is not that notification's text, like a change's pay link).
+ */
 async function orderNotice(
   storeId: string,
   orderId: string,
   kind: string,
   key: string,
-  build: (args: {
-    order: OrderView;
-    text: EmailText;
-    money: (minor: number) => string;
-    store: EmailStore;
-    m: Messages;
-  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"]; withdraw?: boolean },
+  build: (args: { order: OrderView; text: EmailText; money: (minor: number) => string; store: EmailStore; m: Messages }) => Built,
   /** The documents the email carries (D159): the invoice (when the owner lets the emails carry it) or a refund's credit note. */
   documents?: { want: DocumentWant; switchable?: boolean },
+  options: { action?: boolean; templated?: boolean } = {},
 ): Promise<SendOutcome | null> {
+  const notification = notificationOf(kind);
+  // Switched off by the store (D238 2.2): an automatic or *Notify* send is not made, whatever the caller asked.
+  if (notification && !options.action && !(await notificationOn(storeId, kind))) return null;
   const order = await getOrder(storeId, orderId);
   if (!order?.email || order.copied) return null;
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
@@ -395,16 +437,23 @@ async function orderNotice(
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const built = build({ order, text, money, store, m });
+  const fixedIntro = [built.intro, built.introTail].filter(Boolean).join(" ");
+  const slots =
+    notification?.editable && options.templated !== false
+      ? await templatedSlots(storeId, kind, ctx.lang, { subject: built.subject, heading: built.heading, intro: fixedIntro }, { ...commonValues(order, store), ...built.values })
+      : { subject: built.subject, heading: built.heading, intro: fixedIntro, preview: fixedIntro, fromTemplate: { subject: false, heading: false, body: false } };
   const url = await orderUrl(storeId, store, market, orderId);
   const carried = documents ? await documentsFor(storeId, order, store, market, documents.want, { switchable: documents.switchable }) : null;
   const email = renderEmail({
-    subject: built.subject,
-    preview: built.intro,
+    subject: slots.subject,
+    preview: slots.preview,
     lang: ctx.lang,
     footer: footer(store, text),
     blocks: [
-      { type: "heading", text: built.heading },
-      { type: "paragraph", text: built.intro },
+      { type: "heading", text: slots.heading },
+      { type: "paragraph", text: slots.intro },
+      // The fixed words the store's text replaced the intro of are still said (a VAT note, a reason): they are the code's.
+      ...(slots.fromTemplate.body && built.introTail ? [{ type: "paragraph" as const, text: built.introTail }] : []),
       ...(built.extra ?? []),
       ...(carried?.blocks ?? []),
       ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
@@ -472,7 +521,7 @@ export async function sendShipped(
   shipment: { id: string; carrier: string; trackingNumber: string; trackingUrl: string | null },
   { resend = false }: { resend?: boolean } = {},
 ) {
-  // Sent again on request: a key of its own, so the first sending does not stop it.
+  // Sent again on request: a key of its own, so the first sending does not stop it, and an action email (D238 1.3), sent whatever the switch says.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
   const contents = await parcelContents(storeId, orderId, shipment.id);
   // A handover at a pickup place or by the store's own driver (D237) is no parcel: never the shipped email.
@@ -489,6 +538,7 @@ export async function sendShipped(
         subject: text.shippedSubject(store.name, order.number),
         heading: text.shippedHeading,
         intro: text.shippedIntro(order.number),
+        values: { carrier: shipment.carrier || null, tracking_number: shipment.trackingNumber || null },
         withdraw: true,
         extra: [
           ...(contents.lines.length > 0
@@ -507,8 +557,50 @@ export async function sendShipped(
     },
     // The invoice again, for the shopper who has lost it (D159).
     { want: { invoice: true }, switchable: true },
+    { action: resend },
   );
 }
+
+/**
+ * The carrier-event emails (wave 3, D238 2.7): *Out for delivery* (`order.parcel_out_for_delivery`, key `parcel-out:{shipment}`) and *Delivered*
+ * (`order.parcel_delivered`, key `parcel-delivered:{shipment}`), sent by the tracking poll when a parcel first reaches the phase by a verified code, only
+ * while the store has them switched on (both start off). Each lists the parcel's lines, the carrier, its number and link, and *See your order*; neither says
+ * anything about the right of withdrawal or its dates (section 8 of the spec). Never for an undone parcel, a handover or a copied order.
+ */
+export async function sendParcelEvent(storeId: string, orderId: string, shipmentId: string, event: "out" | "delivered"): Promise<SendOutcome | null> {
+  const kind = event === "out" ? "order.parcel_out_for_delivery" : "order.parcel_delivered";
+  if (!(await notificationOn(storeId, kind))) return null;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return null;
+  const [shipment] = await db().execute<Row>(sql`
+    select carrier, tracking_number, tracking_url from commerce.shipments
+    where store_id = ${storeId}::uuid and id = ${shipmentId}::uuid and order_id = ${orderId}::uuid and method = 'parcel' and undone_at is null
+  `);
+  if (!shipment) return null;
+  const contents = await parcelContents(storeId, orderId, shipmentId);
+  const carrier = String(shipment.carrier ?? "");
+  const number = String(shipment.tracking_number ?? "");
+  const link = shipment.tracking_url ? String(shipment.tracking_url) : null;
+  return orderNotice(storeId, orderId, kind, event === "out" ? `parcel-out:${shipmentId}` : `parcel-delivered:${shipmentId}`, ({ order, text, store }) => ({
+    subject: event === "out" ? text.parcelOutSubject(store.name, order.number) : text.parcelDeliveredSubject(store.name, order.number),
+    heading: event === "out" ? text.parcelOutHeading : text.parcelDeliveredHeading,
+    intro: event === "out" ? text.parcelOutIntro(carrier, order.number) : text.parcelDeliveredIntro(carrier, order.number),
+    values: { carrier: carrier || null, tracking_number: number || null },
+    extra: [
+      ...(contents.lines.length > 0
+        ? [
+            { type: "paragraph" as const, text: text.shippedPart.inParcel },
+            { type: "lines" as const, rows: contents.lines.map((l) => ({ label: `${l.quantity} × ${l.title}`, value: "" })) },
+          ]
+        : []),
+      ...(number ? [{ type: "paragraph" as const, text: text.tracking(carrier, number) }] : []),
+      ...(link ? [{ type: "button" as const, text: text.trackParcel, url: link }] : []),
+    ],
+  }));
+}
+
+export const sendParcelOutForDelivery = (storeId: string, orderId: string, shipmentId: string) => sendParcelEvent(storeId, orderId, shipmentId, "out");
+export const sendParcelDelivered = (storeId: string, orderId: string, shipmentId: string) => sendParcelEvent(storeId, orderId, shipmentId, "delivered");
 
 /**
  * *Ready for pickup* (D237 2.5, kind `order.ready_for_pickup`): once per order (key `order-ready:{order}`; `markReadyForPickup()` gives another key only to
@@ -535,6 +627,7 @@ export async function sendReadyForPickup(storeId: string, orderId: string, key =
       subject: words.readySubject(store.name, order.number),
       heading: words.readyHeading,
       intro: words.readyIntro(order.number),
+      values: { pickup_place: kept?.name ?? null },
       extra: kept
         ? pickupReadyBlocks(words, kept, {
             number: order.number,
@@ -582,8 +675,10 @@ export function sendRefunded(storeId: string, orderId: string, refundId: string,
     ({ order, text, money, store }) => ({
       subject: text.refundSubject(store.name, order.number),
       heading: text.refundHeading,
-      // An order whose VAT was not charged (reverse charge, D157) is refunded without VAT, and the email says so.
-      intro: [text.refundIntro(money(amountMinor), order.number), refundVatNote(order.locale.split("-")[0], order)].filter(Boolean).join(" "),
+      intro: text.refundIntro(money(amountMinor), order.number),
+      // An order whose VAT was not charged (reverse charge, D157) is refunded without VAT, and the email says so (kept under the store's own text too).
+      introTail: refundVatNote(order.locale.split("-")[0], order),
+      values: { refund_amount: money(amountMinor) },
     }),
     // The refund's credit note (D159), made when the refund succeeded: a link, and the PDF when it exists.
     refundId ? { want: { creditNoteOfRefund: refundId } } : undefined,

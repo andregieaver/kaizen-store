@@ -8,6 +8,7 @@ import type { ParcelRow } from "@/components/admin/orders/send-parcel";
 import type { OrderDelivery } from "@/lib/delivery-options";
 import { parcelLinesFromChoice } from "@/lib/parcel-form";
 import type { BringOptions } from "@/server/bring-shipping";
+import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
 
 const label = "flex flex-col gap-1 text-sm font-medium";
 const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
@@ -28,7 +29,10 @@ export function BringBooking({
   hasEmail,
   chosen: shopperChoice = null,
   rows = [],
+  notifyOff = null,
 }: {
+  /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
+  notifyOff?: string | null;
   storeSlug: string;
   orderId: string;
   estimatedGrams: number;
@@ -79,7 +83,7 @@ export function BringBooking({
     start(async () => {
       setProblem(null);
       if (lines === "invalid") return;
-      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && notify, parcel: parcel(), lines }));
+      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && !notifyOff && notify, parcel: parcel(), lines }));
     });
 
   return (
@@ -152,12 +156,13 @@ export function BringBooking({
           )}
         </label>
       )}
-      {options && hasEmail && !test && (
+      {options && hasEmail && !test && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-4" />
           Email the customer that it is on its way
         </label>
       )}
+      {options && hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>Email the customer that it is on its way</NotifySwitchedOff>}
       {options && (
         <div>
           <button

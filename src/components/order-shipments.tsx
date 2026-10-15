@@ -1,5 +1,8 @@
 import type { Messages } from "@/lib/i18n";
 import type { ShopperFulfilment } from "@/server/fulfilment";
+import type { ParcelTracking as ParcelTrackingRow } from "@/server/shipment-tracking";
+
+import { ParcelTracking } from "./parcel-tracking";
 
 /** A tracking address staff typed (or a carrier gave) is linked only when it is a web address; anything else is shown as text. */
 const webAddress = (url: string | null): string | null => (url && /^https?:\/\/[^\s]+$/i.test(url.trim()) ? url.trim() : null);
@@ -18,13 +21,16 @@ export function OrderShipments({
   locale,
   timeZone,
   business = false,
+  tracking = [],
 }: {
   fulfilment: ShopperFulfilment | null;
-  m: Pick<Messages, "fulfilment" | "backorder">;
+  m: Pick<Messages, "fulfilment" | "backorder" | "tracking">;
   locale: string;
   timeZone?: string;
   /** Bought for a business: no statutory right of withdrawal, so no sentence about when it counts from. */
   business?: boolean;
+  /** Each parcel's stored carrier events (D238 2.7, `parcelTrackingFor()`), drawn under the parcel by `ParcelTracking`; none: the parcels as before. */
+  tracking?: readonly ParcelTrackingRow[];
 }) {
   if (!fulfilment || fulfilment.parcels.length === 0) return null;
   const f = m.fulfilment;
@@ -50,6 +56,7 @@ export function OrderShipments({
                   {parcel.trackingNumber && <span className="font-mono">{parcel.trackingNumber}</span>}
                 </p>
               )}
+              <ParcelTracking tracking={tracking.find((row) => row.shipmentId === parcel.id)} m={m} locale={locale} timeZone={timeZone} />
               {href && (
                 <p className="text-sm">
                   <a href={href} target="_blank" rel="noreferrer" className="underline">

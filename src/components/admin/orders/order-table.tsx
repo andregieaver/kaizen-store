@@ -320,6 +320,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
           #{row.number}
         </Link>
         {row.archived && <span className={badge}>Archived</span>}
+        {row.held && <span className={badge}>On hold</span>}
         {row.gift && <span className={badge}>Gift</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? `Staff-made ${row.draftNumber}` : "Staff-made"}</span>}
         {row.owed > 0 && <span className={badge}>Waiting for stock</span>}

@@ -28,7 +28,6 @@ import { helthjemBookAction } from "../helthjem-actions";
 import { porterbuddyBookAction } from "../porterbuddy-actions";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
-import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { DocumentsCard } from "@/components/admin/invoices/documents-card";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
@@ -57,7 +56,14 @@ import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { orderStockHistory } from "@/server/stock-restock";
 import { estimateWeightGrams } from "@/server/bring-shipping";
-import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
+import { notificationPath } from "@/lib/notifications";
+import { trackedCarrier } from "@/server/carrier-tracking";
+import { deliverySourceOf } from "@/server/delivery-source";
+import { notificationStates } from "@/server/notifications";
+import { orderHold } from "@/server/order-hold";
+import { parcelTrackingFor } from "@/server/shipment-tracking";
+import { HoldPanel } from "@/components/admin/orders/hold-panel";
+import { ParcelStatus } from "@/components/admin/orders/parcel-status";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
@@ -77,6 +83,7 @@ import { orderEditability } from "@/server/order-edits";
 import { resendShippedAction, saveOrderFieldsAction, sendOrderAction, undoShipmentAction } from "../actions";
 import { cancelOrderEditAction, recordWaitingEditPaidOutsideAction, resendOrderEditAction } from "./edit/actions";
 import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
+import { checkParcelNowAction, holdOrderAction, releaseHoldAction } from "../hold-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
 import { collectedAction, outForDeliveryAction, readyForPickupAction } from "../handover-actions";
 import { todayIn } from "@/lib/work-dates";
@@ -149,6 +156,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const editability = order ? await orderEditability(store.id, orderId) : null;
   if (!order) notFound();
   const canWrite = memberCan(member, "orders:write");
+  // The hold, the parcels' stored tracking, the switches of the customer emails and who recorded the receipt (wave 3, D238): stored rows, no carrier call.
+  const [hold, parcelTracking, notifyStates, receipt] = await Promise.all([
+    orderHold(store.id, orderId),
+    parcelTrackingFor(store.id, orderId),
+    notificationStates(store.id).catch(() => ({}) as Record<string, boolean>),
+    deliverySourceOf(store.id, orderId),
+  ]);
+  const notificationsHref = `/admin/${store.slug}/settings/notifications`;
+  // The *Notify the customer* box follows the email's switch (2.2): off, it is drawn off with a link there, and the sender ignores a `notify` anyway.
+  const notifyOff = (id: string) => (notifyStates[id] === false ? `${notificationsHref}/${notificationPath(id)}` : null);
+  const trackingOf = new Map(parcelTracking.map((t) => [t.shipmentId, t]));
   const archiveFacts1 = archiveFacts.get(orderId);
   const archiveBlocked = order.archivedAt || !archiveFacts1 ? null : archiveBlock(archiveFacts1);
   // Money taken outside Kaizen is refunded by being recorded: the owner, or staff when the owner allows it.
@@ -255,6 +273,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         )}
       </div>
       <OrderPrivacyBanner privacy={privacy} />
+      {/* A fulfilment hold (D238): set by a rule or a person; nothing is sent or handed over until it is released. */}
+      {!order.copied && (
+        <HoldPanel
+          hold={hold}
+          base={`/admin/${store.slug}`}
+          when={when}
+          release={canWrite && hold ? releaseHoldAction.bind(null, store.slug, order.id) : null}
+          holdAction={canWrite && !hold && order.status === "paid" && order.ships ? holdOrderAction.bind(null, store.slug, order.id) : null}
+        />
+      )}
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
       {owedUnits > 0 && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
@@ -512,13 +540,25 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 undo={canWrite && !order.copied && (order.status === "paid" || order.status === "fulfilled") ? (shipmentId) => undoShipmentAction.bind(null, store.slug, order.id, shipmentId) : null}
                 receiptRecorded={Boolean(returns?.deliveredOn)}
                 status={(s) =>
-                  trackedCarrier(s) && s.trackingNumber ? (
-                    <Suspense fallback={null}>
-                      <CarrierStatus storeId={store.id} carrier={trackedCarrier(s)!} trackingNumber={s.trackingNumber} />
-                    </Suspense>
+                  s.trackingNumber && !s.undone && (trackedCarrier(s) || trackingOf.has(s.id)) ? (
+                    <ParcelStatus
+                      tracking={trackingOf.get(s.id)}
+                      carrierName={s.carrier || "the carrier"}
+                      when={when}
+                      checkNow={trackingOf.get(s.id)?.followed ? checkParcelNowAction.bind(null, store.slug, order.id, s.id) : null}
+                    />
                   ) : null
                 }
               />
+              {receipt && (
+                <p className="mb-4 text-sm text-muted">
+                  {receipt.source === "carrier"
+                    ? `Receipt recorded from the carrier's delivered event: ${when(receipt.at)}. Mark delivered on the returns card corrects it.`
+                    : receipt.source === "handover"
+                      ? `Handed over: ${when(receipt.at)}.`
+                      : `Delivered (marked by staff): ${when(receipt.at)}.`}
+                </p>
+              )}
               {bring?.complete && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
@@ -531,6 +571,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       hasEmail={Boolean(order.email)}
                       chosen={order.delivery?.carrier === "bring" ? order.delivery : null}
                       rows={parcelRows}
+                      notifyOff={notifyOff("order.sent")}
                     />
                   </div>
                 </details>
@@ -547,6 +588,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       hasEmail={Boolean(order.email)}
                       book={porterbuddyBookAction.bind(null, store.slug, order.id)}
                       rows={parcelRows}
+                      notifyOff={notifyOff("order.sent")}
                     />
                   </div>
                 </details>
@@ -563,6 +605,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       hasEmail={Boolean(order.email)}
                       book={helthjemBookAction.bind(null, store.slug, order.id)}
                       rows={parcelRows}
+                      notifyOff={notifyOff("order.sent")}
                     />
                   </div>
                 </details>
@@ -586,6 +629,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   whole={weekly !== null}
                   submitLabel={toCharge ? "Charge and send" : sentParcels > 0 ? "Send another parcel" : "Send this parcel"}
                   send={sendOrderAction.bind(null, store.slug, order.id)}
+                  notifyOff={notifyOff("order.sent")}
                 />
               )}
             </section>
@@ -617,6 +661,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 canRefund={order.canRefund && order.refundableMinor > 0}
                 outside={order.paidOutside ? { allowed: outsideAllowed } : null}
                 unitsToSend={order.status === "paid" ? fulfilment.unitsToSend : 0}
+                notifyOff={notifyOff("order.refunded")}
               />
               {order.refunds.length > 0 && (
                 <ul className="mt-4 flex flex-col gap-1 border-t border-line pt-3 text-sm">
@@ -640,7 +685,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   This cancels this order only. The subscription goes on unless you also cancel it on its page.
                 </p>
               )}
-              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} outside={Boolean(order.paidOutside)} />
+              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} outside={Boolean(order.paidOutside)} notifyOff={notifyOff("order.cancelled")} />
             </section>
           )}
 
@@ -876,15 +921,4 @@ function AddressBlock({ address }: { address: Address }) {
       ))}
     </address>
   );
-}
-
-/** Where a parcel is now, from its carrier's tracking (Posten / Bring, PostNord); nothing when the carrier is not connected or does not answer. */
-async function CarrierStatus({ storeId, carrier, trackingNumber }: { storeId: string; carrier: CarrierId; trackingNumber: string }) {
-  const [latest] = await carrierTracking(storeId, carrier, trackingNumber);
-  return latest ? (
-    <span className="block text-muted">
-      {latest.description || latest.status}
-      {latest.location ? `, ${latest.location}` : ""}
-    </span>
-  ) : null;
 }

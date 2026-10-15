@@ -12,6 +12,7 @@ import {
   pickupPointsUrl,
   shippingGuideBody,
   trackingApiUrl,
+  bringTrackingLang,
   type BringCredentials,
 } from "@/lib/bring";
 import { siteUrl } from "@/lib/site";
@@ -130,8 +131,8 @@ export function createBringAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapt
       };
     },
 
-    async track(context, trackingNumber) {
-      const answer = await call(fetcher, trackingApiUrl(trackingNumber), { headers: bringHeaders(credentials(context)) });
+    async track(context, trackingNumber, options) {
+      const answer = await call(fetcher, trackingApiUrl(trackingNumber, bringTrackingLang(options?.lang ?? "en")), { headers: bringHeaders(credentials(context)) });
       if (!answer.ok) throw new Error(answer.problem);
       return parseTracking(answer.json);
     },

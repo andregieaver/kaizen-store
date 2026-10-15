@@ -501,6 +501,38 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizen"],
     feature: "shop",
   }),
+  store("notifications", "/settings/notifications", "Notifications", "Settings", "The emails customers get about orders and returns (D238): each one's switch (the order confirmation, the change and renewal confirmations, the withdrawal acknowledgement and the return decisions are always sent), which languages have the store's own wording, and links to edit each email and to choose who on the team gets staff alerts.", {
+    keywords: ["notification", "notifications", "customer emails", "order email", "shipping confirmation", "email template", "switch off email", "out for delivery email", "delivered email", "e-post", "varsler"],
+    tasks: ["Switch off an order email", "Switch on the delivered email", "See which emails have your own wording"],
+    feature: "shop",
+  }),
+  store("notifications.edit", "/settings/notifications/[notification]", "Edit a customer email", "Settings", "One customer email's subject, heading and text per language, with named placeholders such as {order_number}, checked for claims and web addresses before saving, a preview with a sample order, a test email to yourself and Use standard text to go back.", {
+    keywords: ["email template", "edit email", "email subject", "email wording", "placeholder", "preview email", "test email", "standard text"],
+    tasks: ["Change the subject of the shipping email", "Write your own text in the order confirmation", "Send a test email to yourself"],
+    feature: "shop",
+  }),
+  store("notifications.staff", "/settings/notifications/staff", "Staff alerts", "Settings", "Who on the team is emailed about new orders, return requests, overdue refunds, low stock and automation, and a daily or weekly summary of the store's figures. Owners only.", {
+    needs: "owner",
+    keywords: ["staff notification", "new order email", "order alert", "staff alert", "daily summary", "weekly summary", "who gets emails", "recipients"],
+    tasks: ["Get an email for every new order", "Choose who is told of return requests", "Get a daily summary"],
+    feature: "shop",
+  }),
+  store("automation", "/settings/automation", "Automation", "Settings", "Rules that run when an order is paid: when the order matches conditions you choose (total, country, buyer, products, delivery, source, tags and more), tag it, tell staff or hold it so it is not sent. Each rule runs once per order and is logged.", {
+    keywords: ["automation", "rules", "order rules", "workflow", "flow", "auto tag", "hold order", "fraud check", "notify staff"],
+    tasks: ["Tag big orders automatically", "Hold orders to a country for checking", "Tell staff about orders with a product"],
+    feature: "shop",
+  }),
+  store("automation.new", "/settings/automation/new", "New automation rule", "Settings", "Make a rule: its name, whether all or any of its conditions must hold, the conditions and what it does (tag, notify staff, hold).", {
+    keywords: ["new rule", "add rule", "create automation"],
+    feature: "shop",
+  }),
+  store("automation.rule", "/settings/automation/[ruleId]", "Automation rule", "Settings", "One rule: change its conditions and actions, switch it off or delete it.", {
+    feature: "shop",
+  }),
+  store("automation.log", "/settings/automation/log", "Automation log", "Settings", "What the rules did in the last 12 months: each run's order, rule, whether it matched and what each action did or why it could not.", {
+    keywords: ["automation log", "rule runs", "what rules did"],
+    feature: "shop",
+  }),
   store("tax", "/settings/tax", "Tax settings", "Sales", "How the store charges VAT: its VAT registration and number (checked in VIES, or the Norwegian register), where goods are sent from, its OSS and IOSS registrations, and what is on or missing for reverse charge and IOSS.", {
     needs: "owner",
     keywords: ["vat", "mva", "moms", "vat number", "reverse charge", "oss", "ioss", "one stop shop", "vies", "tax", "registration"],
