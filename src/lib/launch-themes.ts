@@ -24,8 +24,8 @@ export type LaunchTheme = {
   description: string;
   /** *What's new* for the version (D245), null for the first. */
   notes: string | null;
-  /** Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. */
-  listing: ThemeListing;
+  /** Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. Its pictures are the platform admin's. */
+  listing: Omit<ThemeListing, "pictures">;
   snapshot: DesignSnapshot;
 };
 

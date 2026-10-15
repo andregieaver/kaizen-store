@@ -38,7 +38,7 @@ describe("the theme store's data", () => {
     const cards = await store.themeStoreCards();
     const calm = cards.find((card) => card.slug === "calm");
     expect(calm?.title).toBe("Calm");
-    expect(cards.find((card) => card.slug === "hearth")?.listing).toEqual({ kinds: ["food", "home", "crafts"], styles: ["warm", "classic"] });
+    expect(cards.find((card) => card.slug === "hearth")?.listing).toEqual({ kinds: ["food", "home", "crafts"], styles: ["warm", "classic"], pictures: [] });
     expect(calm?.features).toContain("dark");
   });
 
@@ -50,16 +50,25 @@ describe("the theme store's data", () => {
     expect(await store.themeStorePage(`nothing-${run}`)).toBeNull();
   });
 
+  it("keeps a launch theme's pictures, which are the admin's, when the code's listing is written again", async () => {
+    const hearth = await store.themeStorePage("hearth");
+    if (!hearth) throw new Error("Hearth is not in the store");
+    expect(await designs.saveThemeListing(admin, hearth.id, "hearth", { kinds: [], styles: [], pictures: ["/media/hearth-1.webp"] })).toEqual({ ok: true });
+    await syncLaunchThemes(admin, deps);
+    const after = await store.themeStorePage("hearth");
+    expect(after?.listing).toEqual({ kinds: ["food", "home", "crafts"], styles: ["warm", "classic"], pictures: ["/media/hearth-1.webp"] });
+  });
+
   it("saves an admin's listing, refuses another theme's address, and shows a theme only while it is published", async () => {
     const made = await designs.createDesign(admin, { details: { title: `Listed ${run}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
     if (!made.ok) throw new Error(made.problems.join(" "));
-    expect(await designs.saveThemeListing(admin, made.id, "calm", { kinds: [], styles: [] })).toEqual({ ok: false, problems: ["Another theme has that address. Choose another."] });
+    expect(await designs.saveThemeListing(admin, made.id, "calm", { kinds: [], styles: [], pictures: [] })).toEqual({ ok: false, problems: ["Another theme has that address. Choose another."] });
     const slug = `listed-${run}`;
-    expect(await designs.saveThemeListing(admin, made.id, slug, { kinds: ["food"], styles: ["warm"] })).toEqual({ ok: true });
+    expect(await designs.saveThemeListing(admin, made.id, slug, { kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"] })).toEqual({ ok: true });
     // Not published yet: not in the store.
     expect((await store.themeStoreCards()).some((card) => card.slug === slug)).toBe(false);
     expect((await designs.publishDesign(admin, made.id)).ok).toBe(true);
-    expect((await store.themeStoreCards()).find((card) => card.slug === slug)?.listing).toEqual({ kinds: ["food"], styles: ["warm"] });
+    expect((await store.themeStoreCards()).find((card) => card.slug === slug)?.listing).toEqual({ kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"] });
     // Unpublished: gone again.
     expect((await designs.unpublishDesign(admin, made.id)).ok).toBe(true);
     expect(await store.themeStorePage(slug)).toBeNull();

@@ -1672,11 +1672,15 @@ export async function designChecks(design: DesignRow): Promise<ThemeCheckResult 
  * Marks a theme as one of Kaizena Flow's launch themes (D246, `syncLaunchThemes()`): its key, claimed when it is made, and the version of
  * the code's definition once that is published.
  */
-export async function markLaunchTheme(presetId: string, key: string, version: number | null, listing?: ThemeListing): Promise<void> {
-  // A launch theme's address in the theme store is its key, and its listing the code's (`docs/theme-phase-3.md`).
+export async function markLaunchTheme(presetId: string, key: string, version: number | null, listing?: Omit<ThemeListing, "pictures">): Promise<void> {
+  // A launch theme's address in the theme store is its key, and its kinds and styles the code's (`docs/theme-phase-3.md`); the pictures
+  // beside its main one are the platform admin's and are kept.
+  const given = listing ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles }) : null;
   await db().execute(sql`
     update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version),
-      slug = coalesce(slug, ${key}), listing = coalesce(${listing ? JSON.stringify(listing) : null}::jsonb, listing)
+      slug = coalesce(slug, ${key}),
+      listing = case when ${given}::jsonb is null then listing
+        else ${given}::jsonb || jsonb_build_object('pictures', coalesce(listing -> 'pictures', '[]'::jsonb)) end
     where id = ${presetId}::uuid
   `);
 }

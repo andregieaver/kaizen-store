@@ -23,7 +23,8 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]">):
     title: `${theme.title} theme`,
     description,
     alternates: { canonical: themeStoreUrl(theme.slug) },
-    openGraph: { title: `${theme.title} theme`, description, ...(theme.pictureUrl && { images: [{ url: theme.pictureUrl, alt: "" }] }) },
+    // Its own picture, else one drawn from its colours (`/themes/{slug}/og.png`, on Kaizena Flow's host, by full address).
+    openGraph: { title: `${theme.title} theme`, description, images: [{ url: theme.pictureUrl ?? `${siteUrl()}/themes/${theme.slug}/og.png`, alt: "" }] },
   };
 }
 
@@ -74,6 +75,22 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           </a>
         </div>
       </div>
+
+      {(theme.pictureUrl || theme.listing.pictures.length > 0) && (
+        <section aria-labelledby="pictures" className="flex flex-col gap-3">
+          <h2 id="pictures" className="sr-only">
+            Pictures
+          </h2>
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[theme.pictureUrl, ...theme.listing.pictures].filter((url): url is string => Boolean(url)).map((url, index) => (
+              <li key={url}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- the theme's own pictures, from Kaizena Flow's media library */}
+                <img src={url} alt={`${theme.title}, picture ${index + 1}`} loading={index < 3 ? "eager" : "lazy"} className="aspect-video w-full rounded-lg border border-border object-cover" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="preview" className="flex flex-col gap-3">
         <h2 id="preview" className="text-xl font-semibold">

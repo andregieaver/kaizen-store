@@ -13,7 +13,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   title: id.toUpperCase(),
   summary: `About ${id}.`,
   pictureUrl: null,
-  listing: { kinds: [], styles: [] },
+  listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#ffffff", surface: "#eeeeee", text: "#111111", accent: "#222222", accentText: "#ffffff", heading: "Lora" },
   ...extra,
@@ -23,7 +23,7 @@ const draw = (cards: ThemeStoreCard[], filter: ThemeFilter = none) => renderToSt
 
 describe("the theme store's list", () => {
   it("links each theme to its page, says it is free, and counts them", () => {
-    const html = draw([card("calm", { listing: { kinds: [], styles: ["minimal"] } }), card("fjord")]);
+    const html = draw([card("calm", { listing: { kinds: [], styles: ["minimal"], pictures: [] } }), card("fjord")]);
     expect(html).toContain('href="/themes/calm"');
     expect(html).toContain("2 themes, all free.");
     expect(html).toContain("Free");
@@ -31,7 +31,7 @@ describe("the theme store's list", () => {
   });
 
   it("filters by the address, with each filter a link and the chosen one marked", () => {
-    const html = draw([card("calm", { listing: { kinds: ["food"], styles: [] } }), card("signal", { listing: { kinds: ["fashion"], styles: [] } })], { ...none, kind: "food" });
+    const html = draw([card("calm", { listing: { kinds: ["food"], styles: [], pictures: [] } }), card("signal", { listing: { kinds: ["fashion"], styles: [], pictures: [] } })], { ...none, kind: "food" });
     expect(html).toContain('href="/themes/calm"');
     expect(html).not.toContain('href="/themes/signal"');
     const chosen = html.match(/<a [^>]*href="\/themes\?kind=food"[^>]*>/)?.[0] ?? "";

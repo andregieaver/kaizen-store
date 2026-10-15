@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
+import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
 import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
-import { STORE_KINDS, THEME_STYLES, suggestedSlug } from "@/lib/theme-store";
+import { themeStoreUrl } from "@/lib/theme-host";
+import { STORE_KINDS, THEME_PICTURES_MAX, THEME_STYLES, suggestedSlug } from "@/lib/theme-store";
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listStarters } from "@/server/store-starters";
 
@@ -86,12 +88,12 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
             Theme store listing
           </h2>
           <p className="text-sm text-muted">
-            Where the theme is found in the theme store and what it is listed under. Saved at once, not as a draft: the store shows it while
+            Where the theme is found in the theme store, what it is listed under and the pictures its page shows beside the main one. Saved at once, not as a draft: the store shows it while
             the theme is published. What the theme includes is worked out from its published version.
             {design.slug && design.published && (
               <>
                 {" "}
-                <a href={`/themes/${design.slug}`} target="_blank" rel="noopener" className="underline underline-offset-2">
+                <a href={themeStoreUrl(design.slug)} target="_blank" rel="noopener" className="underline underline-offset-2">
                   Open its page<span className="sr-only"> (opens in a new window)</span>
                 </a>
               </>
@@ -125,6 +127,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
               ))}
             </div>
           </fieldset>
+          <ThemePicturesField initial={design.listing.pictures} upload={uploadPlatformImageAction} max={THEME_PICTURES_MAX} />
           <div>
             <SubmitButton variant="secondary">Save the listing</SubmitButton>
           </div>

@@ -18,7 +18,7 @@ test.beforeAll(async () => {
     const snapshot = LAUNCH_THEMES[3].snapshot;
     const [row] = await sql`
       insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing)
-      values ('E2E Fjord', 'Cool and clear.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ kinds: ["home"], styles: ["natural"] })})
+      values ('E2E Fjord', 'Cool and clear.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ kinds: ["home"], styles: ["natural"], pictures: ["/demo/mug.svg"] })})
       returning id`;
     id = String(row.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${id}, 1, ${sql.json(snapshot as never)})`;
@@ -43,6 +43,13 @@ test("a theme's page shows what it includes, its previews and its changelog, and
   await expect(page.getByRole("heading", { level: 1, name: "E2E Fjord" })).toBeVisible();
   await expect(page.getByText("Cool and clear.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "What it includes" })).toBeVisible();
+  // Its own pictures, and a share picture drawn from its colours (it has no main picture).
+  await expect(page.getByRole("img", { name: "E2E Fjord, picture 1" })).toHaveAttribute("src", "/demo/mug.svg");
+  const share = await page.locator('meta[property="og:image"]').first().getAttribute("content");
+  expect(share).toMatch(new RegExp(`/themes/${SLUG}/og\\.png$`));
+  const card = await page.request.get(`/themes/${SLUG}/og.png`);
+  expect(card.status()).toBe(200);
+  expect(card.headers()["content-type"]).toBe("image/png");
   await expect(page.getByRole("link", { name: "Try it in your store" })).toHaveAttribute("href", `/themes/${SLUG}/try`);
   await expect(page.getByText("Light and dark", { exact: true })).toBeVisible();
   await expect(page.getByText("The first version.")).toBeVisible();

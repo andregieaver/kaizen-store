@@ -24,7 +24,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   title: id,
   summary: "",
   pictureUrl: null,
-  listing: { kinds: [], styles: [] },
+  listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#fff", surface: "#eee", text: "#000", accent: "#111", accentText: "#fff", heading: null },
   ...extra,
@@ -32,16 +32,28 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
 
 describe("a listing", () => {
   it("keeps only known kinds and styles, once, in their own order", () => {
-    expect(readListing({ kinds: ["home", "nonsense", "food", "home"], styles: "bold" })).toEqual({ kinds: ["food", "home"], styles: ["bold"] });
-    expect(readListing(null)).toEqual({ kinds: [], styles: [] });
+    expect(readListing({ kinds: ["home", "nonsense", "food", "home"], styles: "bold" })).toEqual({ kinds: ["food", "home"], styles: ["bold"], pictures: [] });
+    expect(readListing(null)).toEqual({ kinds: [], styles: [], pictures: [] });
   });
 
   it("needs an address of the store's shape", () => {
-    expect(parseListing({ slug: " Calm ", kinds: ["fashion"] })).toEqual({ ok: true, slug: "calm", listing: { kinds: ["fashion"], styles: [] } });
+    expect(parseListing({ slug: " Calm ", kinds: ["fashion"] })).toEqual({ ok: true, slug: "calm", listing: { kinds: ["fashion"], styles: [], pictures: [] } });
     expect(parseListing({ slug: "" }).ok).toBe(false);
     expect(parseListing({ slug: "-calm" }).ok).toBe(false);
     expect(parseListing({ slug: "calm theme" }).ok).toBe(false);
     expect(suggestedSlug("Høst & Vinter")).toBe("host-vinter");
+  });
+
+  it("keeps pictures on this site or https, once each, in order, at most six; and the form says what is wrong", () => {
+    const seven = Array.from({ length: 7 }, (_, i) => `/media/p${i}.webp`);
+    expect(readListing({ pictures: ["/media/a.webp", "javascript:alert(1)", "http://x.test/a.png", "https://cdn.test/b.png", "/media/a.webp", "//evil.test/c.png"] }).pictures).toEqual([
+      "/media/a.webp",
+      "https://cdn.test/b.png",
+    ]);
+    expect(readListing({ pictures: seven }).pictures).toHaveLength(6);
+    expect(parseListing({ slug: "calm", pictures: ["/media/a.webp", ""] })).toMatchObject({ ok: true, listing: { pictures: ["/media/a.webp"] } });
+    expect(parseListing({ slug: "calm", pictures: ["http://x.test/a.png"] })).toMatchObject({ ok: false });
+    expect(parseListing({ slug: "calm", pictures: seven })).toMatchObject({ ok: false, problems: ["A theme has at most 6 pictures beside its main one."] });
   });
 });
 
@@ -62,9 +74,9 @@ describe("what a theme includes", () => {
 
 describe("the list's filters", () => {
   const cards = [
-    card("a", { listing: { kinds: ["food"], styles: ["warm"] }, features: ["dark"] }),
-    card("b", { listing: { kinds: [], styles: ["bold"] }, features: [] }),
-    card("c", { listing: { kinds: ["fashion"], styles: ["warm"] }, features: ["dark"] }),
+    card("a", { listing: { kinds: ["food"], styles: ["warm"], pictures: [] }, features: ["dark"] }),
+    card("b", { listing: { kinds: [], styles: ["bold"], pictures: [] }, features: [] }),
+    card("c", { listing: { kinds: ["fashion"], styles: ["warm"], pictures: [] }, features: ["dark"] }),
   ];
 
   it("reads the address and ignores what it does not know", () => {

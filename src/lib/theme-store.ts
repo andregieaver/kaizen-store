@@ -2,6 +2,7 @@ import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
 import { whatsNew } from "./theme-update";
+import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
 
 /**
@@ -43,7 +44,14 @@ export const THEME_FEATURES = {
 } as const;
 export type ThemeFeature = keyof typeof THEME_FEATURES;
 
-export type ThemeListing = { kinds: StoreKind[]; styles: ThemeStyle[] };
+/** A listing: the kinds of store and styles a theme is listed under, and its own pictures beside its main one (`docs/theme-phase-3.md`). */
+export type ThemeListing = { kinds: StoreKind[]; styles: ThemeStyle[]; pictures: string[] };
+
+/** At most this many pictures beside a theme's main one. */
+export const THEME_PICTURES_MAX = 6;
+
+/** A picture's address: one on this site or an https address, as a store template's picture (`isStarterPicture()`). */
+export const isThemePicture = (value: unknown): value is string => typeof value === "string" && value.trim() === value && value !== "" && isStarterPicture(value);
 
 /** The address a theme is found at in the store: lowercase letters, digits and hyphens, 1 to 60. */
 export const THEME_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
@@ -56,20 +64,25 @@ export function readListing(value: unknown): ThemeListing {
   const raw = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   const kinds = new Set(listOf(raw.kinds).filter((k) => isKey(STORE_KINDS, k)));
   const styles = new Set(listOf(raw.styles).filter((s) => isKey(THEME_STYLES, s)));
+  const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
+    pictures,
   };
 }
 
 /** A listing from the platform admin's form, or what is wrong with it in plain words. */
-export function parseListing(form: { slug?: unknown; kinds?: unknown; styles?: unknown }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
+export function parseListing(form: { slug?: unknown; kinds?: unknown; styles?: unknown; pictures?: unknown }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
   const slug = typeof form.slug === "string" ? form.slug.trim().toLowerCase() : "";
   const problems: string[] = [];
   if (!slug) problems.push("Give the theme an address in the theme store.");
   else if (!THEME_SLUG.test(slug)) problems.push("The address is lowercase letters, digits and hyphens, at most 60, not starting or ending with a hyphen.");
+  const pictures = listOf(form.pictures).filter((value) => !(typeof value === "string" && value.trim() === ""));
+  if (pictures.some((value) => !isThemePicture(value))) problems.push("A picture's address is one on this site (/…) or an https:// address.");
+  if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles }) };
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */

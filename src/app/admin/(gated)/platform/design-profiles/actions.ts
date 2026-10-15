@@ -195,7 +195,7 @@ export async function syncLaunchThemesAction(): Promise<FormState> {
 /** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store and styles. Shown at once while published. */
 export async function saveThemeListingAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const parsed = parseListing({ slug: formData.get("slug"), kinds: formData.getAll("kinds"), styles: formData.getAll("styles") });
+  const parsed = parseListing({ slug: formData.get("slug"), kinds: formData.getAll("kinds"), styles: formData.getAll("styles"), pictures: formData.getAll("pictures") });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
   const result = await saveThemeListing(admin, presetId, parsed.slug, parsed.listing);
   if (!result.ok) return { status: "error", messages: result.problems };

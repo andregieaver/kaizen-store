@@ -99,5 +99,19 @@ address (migration `reserve_themes_slug`); held by `src/lib/store-hosts.test.ts`
 domain and apart from it), the PGlite reserved-address test and `e2e/theme-host.spec.ts` in CI's `hosts` job, which sets the host to
 `themes.localhost:3000` under the store domain `localhost:3000`.
 
-**Not in step 3.** The header's home link on the host leads to the list, not to Kaizena Flow's front page; Open Graph pictures per theme
-and more than one picture per theme are still to come.
+**Not in step 3, and what came after it.** The header's home link on the host leads to the list, as the theme store's own home (Shopify's
+does the same), and stays so. A theme's share picture and its further pictures came next (below).
+
+## After step 3: pictures
+
+**More pictures.** A theme's listing holds up to `THEME_PICTURES_MAX` (6) pictures beside its main one (`ThemeListing.pictures`, read by
+`readListing()`: an address on this site or https only, each once, in order; `parseListing()` says what is wrong), chosen on the *Theme
+store listing* card (`ThemePicturesField`: upload to Kaizena Flow's media library or an address, ordered, removed) and shown on the theme's
+page as a grid with the main picture first. A launch theme's pictures are the admin's: `markLaunchTheme()` writes the code's kinds and styles
+and keeps the pictures.
+
+**Share picture.** A theme without a main picture is shared with one drawn from its published colours (`themeShareCard()` in
+`src/lib/share-card.tsx`, the route `/themes/{slug}/og.png`, given by full address on Kaizena Flow's host, which the themes host's routing
+leaves where it is); one with a main picture is shared with it. Held by `src/lib/theme-store.test.ts`, `theme-store.int.test.ts` (the
+launch theme's pictures kept through a sync) and `e2e/theme-store.spec.ts` (the gallery, `og:image` and the picture itself).
+
