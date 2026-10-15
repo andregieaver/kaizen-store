@@ -2430,6 +2430,20 @@
       "when": 1792097323185,
       "tag": "20261015204843_platform_theme_installs_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 347,
+      "version": "7",
+      "when": 1792102208782,
+      "tag": "20261015221008_platform_theme_updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 348,
+      "version": "7",
+      "when": 1792102225673,
+      "tag": "20261015221025_platform_theme_updates_rules",
+      "breakpoints": true
     }
   ]
 }

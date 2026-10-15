@@ -897,8 +897,10 @@ export const platformThemeInstalls = commerce.table(
     installedBy: uuid("installed_by").references(() => accounts.id, { onDelete: "set null" }),
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
     switchedAt: timestamp("switched_at", { withTimezone: true }),
-    /** What was placed when it was added (as `store_theme_installs.placed`, D245), for updates in a later step. */
+    /** What was placed when it was added or last updated (as `store_theme_installs.placed`, D245), so an update keeps the admins' changes. */
     placed: jsonb("placed"),
+    /** Whether a new version of its theme reaches it by itself (D253, as `store_theme_installs.follows_updates`); on until switched off. */
+    followsUpdates: boolean("follows_updates").notNull().default(true),
   },
   (t) => [
     uniqueIndex("platform_theme_installs_live_idx").on(t.live).where(sql`${t.live}`),
@@ -908,6 +910,41 @@ export const platformThemeInstalls = commerce.table(
     check("platform_theme_installs_title", sql`length(btrim(${t.title})) between 1 and 80`),
     check("platform_theme_installs_look", sql`(${t.live} and ${t.look} is null) or (not ${t.live} and coalesce(jsonb_typeof(${t.look}) = 'object', false))`),
     check("platform_theme_installs_placed", sql`${t.placed} is null or jsonb_typeof(${t.placed}) = 'object'`),
+  ],
+);
+
+/**
+ * Updates of Kaizena Flow's own installed themes (D253, `docs/theme-phase-4.md` step 3), as `theme_install_updates` are a store's (D245): the
+ * look before and after each update, for its undo, and what was kept as the admins' own. Written only by `updatePlatformInstall()` and
+ * `undoPlatformThemeUpdate()` in `src/server/design-presets.ts`; only `undone_at` changes, once (`platform_theme_install_updates_rules()`);
+ * deleted after `THEME_UPDATE_KEEP_DAYS` (`pruneThemeUpdates()`).
+ */
+export const platformThemeInstallUpdates = commerce.table(
+  "platform_theme_install_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    installId: uuid("install_id")
+      .notNull()
+      .references(() => platformThemeInstalls.id, { onDelete: "cascade" }),
+    fromVersionId: uuid("from_version_id").references(() => designPresetVersions.id, { onDelete: "set null" }),
+    toVersionId: uuid("to_version_id").references(() => designPresetVersions.id, { onDelete: "set null" }),
+    before: jsonb("before").notNull(),
+    after: jsonb("after").notNull(),
+    kept: jsonb("kept").notNull().default(sql`'{}'::jsonb`),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("platform_theme_install_updates_created_idx").on(t.createdAt),
+    index("platform_theme_install_updates_install_idx").on(t.installId),
+    index("platform_theme_install_updates_from_idx").on(t.fromVersionId),
+    index("platform_theme_install_updates_to_idx").on(t.toVersionId),
+    index("platform_theme_install_updates_by_idx").on(t.updatedBy),
+    check(
+      "platform_theme_install_updates_looks",
+      sql`jsonb_typeof(${t.before}) = 'object' and jsonb_typeof(${t.after}) = 'object' and jsonb_typeof(${t.kept}) = 'object'`,
+    ),
   ],
 );
 

@@ -258,3 +258,15 @@ export async function removePlatformInstall(admin: Account, installId: string): 
   });
   return { ok: true, title: String(row.title) };
 }
+
+/** Whether one of Kaizena Flow's installs takes new versions of its theme by itself (D253); on until switched off. */
+export async function setPlatformFollowsUpdates(admin: Account, installId: string, follows: boolean): Promise<PlatformInstallResult<{ title: string }>> {
+  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!isUuid(installId)) return refuse(UNKNOWN);
+  const [row] = await db().execute<Row>(sql`
+    update commerce.platform_theme_installs set follows_updates = ${follows} where id = ${installId}::uuid and preset_id is not null returning title
+  `);
+  if (!row) return refuse(UNKNOWN);
+  await audit(admin.id, null, "platform.theme_follows_updates", { install: installId, follows }, { target: { type: "theme_install", id: installId } });
+  return { ok: true, title: String(row.title) };
+}

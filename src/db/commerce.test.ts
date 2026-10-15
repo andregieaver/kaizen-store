@@ -6023,4 +6023,31 @@ describe("Kaizena Flow's installed themes (docs/theme-phase-4.md)", () => {
     await expect(db.query("delete from commerce.design_presets where id = $1", [presetId])).rejects.toThrow();
     await db.query("delete from commerce.platform_theme_installs where id = $1", [id]);
   });
+
+  it("move an install only to another version of its own theme, and keep an update's record but its undo (D253)", async () => {
+    const { id: preset } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot) values ('Updated on Kaizena', $1::jsonb) returning id", [SNAP]);
+    const { id: other } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot) values ('Elsewhere', $1::jsonb) returning id", [SNAP]);
+    const { id: v1 } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb) returning id", [preset, SNAP]);
+    const { id: v2 } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 2, $2::jsonb) returning id", [preset, SNAP]);
+    const { id: foreign } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb) returning id", [other, SNAP]);
+    const { id, follows_updates } = await one<{ id: string; follows_updates: boolean }>(
+      "insert into commerce.platform_theme_installs (preset_id, version_id, title, look) values ($1, $2, 'Updated', '{\"css\":\"\"}'::jsonb) returning id, follows_updates",
+      [preset, v1],
+    );
+    expect(follows_updates).toBe(true);
+    await db.query("update commerce.platform_theme_installs set version_id = $2 where id = $1", [id, v2]);
+    await expect(db.query("update commerce.platform_theme_installs set version_id = $2 where id = $1", [id, foreign])).rejects.toThrow(/platform_theme_installs\.version/);
+    await expect(db.query("update commerce.platform_theme_installs set version_id = null where id = $1", [id])).rejects.toThrow(/platform_theme_installs\.version/);
+    const { id: update } = await one<{ id: string }>(
+      "insert into commerce.platform_theme_install_updates (install_id, from_version_id, to_version_id, before, after) values ($1, $2, $3, '{}'::jsonb, '{}'::jsonb) returning id",
+      [id, v1, v2],
+    );
+    await expect(db.query("insert into commerce.platform_theme_install_updates (install_id, before, after) values ($1, '[]'::jsonb, '{}'::jsonb)", [id])).rejects.toThrow(/platform_theme_install_updates_looks/);
+    await expect(db.query("update commerce.platform_theme_install_updates set after = '{\"x\":1}'::jsonb where id = $1", [update])).rejects.toThrow(/platform_theme_install_updates\.fixed/);
+    await db.query("update commerce.platform_theme_install_updates set undone_at = now() where id = $1", [update]);
+    await expect(db.query("update commerce.platform_theme_install_updates set undone_at = null where id = $1", [update])).rejects.toThrow(/platform_theme_install_updates\.undone/);
+    // Removing the install takes its updates with it.
+    await db.query("delete from commerce.platform_theme_installs where id = $1", [id]);
+    expect((await db.query("select 1 from commerce.platform_theme_install_updates where id = $1", [update])).rows).toHaveLength(0);
+  });
 });

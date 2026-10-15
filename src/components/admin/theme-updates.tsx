@@ -24,6 +24,7 @@ export function ThemeUpdates({
   update,
   undo,
   follow,
+  description,
 }: {
   available: UpdateWaiting[];
   made: UpdateMade[];
@@ -33,18 +34,22 @@ export function ThemeUpdates({
   update: Action | null;
   undo: Action | null;
   follow: Action | null;
+  /** What the card says above the updates; a store's words unless given (Kaizena Flow's own site has its own, D253). */
+  description?: string;
 }) {
   if (available.length === 0 && made.length === 0 && installs.length === 0) return null;
   return (
     <Card
       title="Theme updates"
       description={
+        description ?? (
         <>
           When Kaizena Flow publishes a new version of a theme you installed, it can update by itself or wait for you. An update keeps every
           change you made: your own settings and CSS stay, and a header, footer or product page you edited stays yours, with the new one added as
           a draft beside it. Your words, pictures, products and menus are never touched. You can undo an update for {keepDays} days, as long as
           the theme has not changed since.
         </>
+        )
       }
       compact
     >

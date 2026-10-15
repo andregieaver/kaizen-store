@@ -4,10 +4,18 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { requirePlatformAdmin } from "@/server/auth";
-import { listOfferedDesigns } from "@/server/design-presets";
+import { ThemeUpdates } from "@/components/admin/theme-updates";
+import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
 
-import { addPlatformThemeAction, removePlatformThemeAction, switchPlatformThemeAction } from "./actions";
+import {
+  addPlatformThemeAction,
+  followPlatformUpdatesAction,
+  removePlatformThemeAction,
+  switchPlatformThemeAction,
+  undoPlatformThemeUpdateAction,
+  updatePlatformThemeAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Themes for Kaizena Flow's site" };
 
@@ -19,7 +27,7 @@ export const metadata: Metadata = { title: "Themes for Kaizena Flow's site" };
 export default async function PlatformThemesPage() {
   await connection();
   await requirePlatformAdmin();
-  const [installs, offered] = await Promise.all([listPlatformInstalls(), listOfferedDesigns()]);
+  const [installs, offered, updates] = await Promise.all([listPlatformInstalls(), listOfferedDesigns(), platformThemeUpdates()]);
   const installed = new Set(installs.map((install) => install.presetId).filter(Boolean));
   return (
     <>
@@ -64,6 +72,16 @@ export default async function PlatformThemesPage() {
           ))}
         </List>
       </Card>
+      <ThemeUpdates
+        available={updates.available}
+        made={updates.made}
+        installs={updates.installs}
+        keepDays={THEME_UPDATE_KEEP_DAYS}
+        update={updatePlatformThemeAction}
+        undo={undoPlatformThemeUpdateAction}
+        follow={followPlatformUpdatesAction}
+        description={`When a theme installed here gets a new version, it can update by itself or wait for you. An update keeps every change made to it on Kaizena Flow's site: its own settings, fonts and CSS stay, and a header or footer that was edited stays, with the new one added as a draft beside it. Pages, articles, menus, words and pictures are never touched. An update can be undone for ${THEME_UPDATE_KEEP_DAYS} days, as long as the theme has not changed since.`}
+      />
       <Card title="Add a theme" description="A published theme is added without going live: its header and footer become Kaizena Flow's pages and its pictures are copied into Kaizena Flow's media library. A theme's product page is for stores and is left out.">
         {offered.length === 0 ? (
           <p className="text-sm text-muted">No theme is published yet.</p>

@@ -57,6 +57,9 @@ import { pagesTag } from "./pages";
 import { STARTERS_TAG } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
+import { parseSiteFonts } from "@/lib/fonts-schema";
+
+import { platformTheme } from "./platform-navigation";
 import { PLATFORM_INSTALLS_MAX, platformInstallCount, type PlatformLook } from "./platform-theme-installs";
 
 /**
@@ -1626,27 +1629,6 @@ export async function themeUpdates(storeId: string): Promise<{ available: Availa
     where i.store_id = ${storeId}::uuid
     order by i.live desc, i.title
   `);
-  const available = rows.flatMap((row): AvailableUpdate[] => {
-    const newer = (Array.isArray(row.newer) ? row.newer : []) as { number: number; snapshot: unknown; notes: string | null }[];
-    if (newer.length === 0) return [];
-    let previous = row.current_snapshot ? parseDesignSnapshot(row.current_snapshot) : null;
-    const lines: string[] = [];
-    for (const version of newer) {
-      const snap = parseDesignSnapshot(version.snapshot);
-      if (!snap) continue;
-      for (const line of previous ? whatsNew(previous, snap, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
-      previous = snap;
-    }
-    return [{
-      installId: String(row.id),
-      title: String(row.title),
-      live: row.live === true,
-      from: row.current_number === null || row.current_number === undefined ? null : Number(row.current_number),
-      to: Number(newer.at(-1)!.number),
-      followsUpdates: row.follows_updates === true,
-      whatsNew: lines,
-    }];
-  });
   const made = await db().execute<Row>(sql`
     select u.id, u.created_at, u.updated_by, u.kept, u.undone_at, i.title, f.number as from_number, t.number as to_number
     from commerce.theme_install_updates u
@@ -1656,32 +1638,7 @@ export async function themeUpdates(storeId: string): Promise<{ available: Availa
     where u.store_id = ${storeId}::uuid
     order by u.created_at desc limit 10
   `);
-  const installs = rows.map((row) => ({
-    installId: String(row.id),
-    title: String(row.title),
-    live: row.live === true,
-    version: row.current_number === null || row.current_number === undefined ? null : Number(row.current_number),
-    followsUpdates: row.follows_updates === true,
-  }));
-  return {
-    available,
-    installs,
-    made: made.map((row) => {
-      const kept = (row.kept ?? {}) as { own?: number; settings?: string[]; layouts?: string[] };
-      return {
-        id: String(row.id),
-        title: String(row.title),
-        from: row.from_number === null || row.from_number === undefined ? null : Number(row.from_number),
-        to: row.to_number === null || row.to_number === undefined ? null : Number(row.to_number),
-        at: new Date(String(row.created_at)).toISOString(),
-        automatic: !row.updated_by,
-        own: Number(kept.own ?? 0),
-        keptSettings: Array.isArray(kept.settings) ? kept.settings.length : 0,
-        layoutsKept: Array.isArray(kept.layouts) ? kept.layouts : [],
-        undoneAt: row.undone_at ? new Date(String(row.undone_at)).toISOString() : null,
-      };
-    }),
-  };
+  return updatesView(rows, made);
 }
 
 /** How long an update's log is kept for its undo. */
@@ -1721,12 +1678,336 @@ export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise
   return { updated, refused, stores: [...stores.values()] };
 }
 
-/** The daily job: updates older than `THEME_UPDATE_KEEP_DAYS` can no longer be undone and are deleted. */
+/** The daily job: updates older than `THEME_UPDATE_KEEP_DAYS` can no longer be undone and are deleted, a store's and Kaizena Flow's (D253). */
 export async function pruneThemeUpdates(): Promise<number> {
   const rows = await db().execute<Row>(sql`
     delete from commerce.theme_install_updates where created_at < now() - make_interval(days => ${THEME_UPDATE_KEEP_DAYS}) returning id
   `);
-  return rows.length;
+  const platform = await db().execute<Row>(sql`
+    delete from commerce.platform_theme_install_updates where created_at < now() - make_interval(days => ${THEME_UPDATE_KEEP_DAYS}) returning id
+  `);
+  return rows.length + platform.length;
+}
+
+// ---------------------------------------------------------------------------
+// Updates of Kaizena Flow's own installed themes (D253, docs/theme-phase-4.md step 3)
+// ---------------------------------------------------------------------------
+
+type PlatformLookRecord = PlatformLook & { versionId: string | null; placed: unknown };
+type PlatformLookOnly = Omit<PlatformLookRecord, "versionId" | "placed">;
+const PLATFORM_KINDS = ["header", "footer"] as const;
+const PLATFORM_LOOK_ID = { header: "headerId", footer: "footerId" } as const;
+
+/** The look one of Kaizena Flow's installs shows now: `platform_settings`' columns for the live one, its kept look for another. */
+function platformLookNow(install: Row, settings: Row): PlatformLookOnly {
+  const id = (value: unknown) => (typeof value === "string" && isUuid(value) ? value : null);
+  if (install.live) {
+    return {
+      theme: settings.theme ?? null,
+      fonts: settings.fonts ?? {},
+      css: String(settings.custom_css ?? ""),
+      headerId: id(settings.header_id ? String(settings.header_id) : null),
+      footerId: id(settings.footer_id ? String(settings.footer_id) : null),
+    };
+  }
+  const look = (install.look && typeof install.look === "object" ? install.look : {}) as Row;
+  return {
+    theme: look.theme ?? null,
+    fonts: look.fonts && typeof look.fonts === "object" ? look.fonts : {},
+    css: typeof look.css === "string" ? look.css : "",
+    headerId: id(look.headerId),
+    footerId: id(look.footerId),
+  };
+}
+
+const samePlatformLook = (a: PlatformLookOnly, b: PlatformLookOnly) =>
+  canonicalJson([a.theme, a.fonts, a.css, a.headerId, a.footerId]) === canonicalJson([b.theme, b.fonts, b.css, b.headerId, b.footerId]);
+
+/** Writes an install's look: into `platform_settings`' columns while it is live (D251), into its kept look otherwise. */
+async function writePlatformInstallLook(tx: Pick<ReturnType<typeof db>, "execute">, install: Row, look: PlatformLookOnly) {
+  if (install.live) {
+    await tx.execute(sql`
+      update commerce.platform_settings set theme = ${look.theme === null ? null : JSON.stringify(look.theme)}::jsonb,
+        fonts = ${JSON.stringify(look.fonts ?? {})}::jsonb, custom_css = ${look.css}, header_id = ${look.headerId}::uuid, footer_id = ${look.footerId}::uuid
+    `);
+  } else {
+    const kept: PlatformLook = { theme: look.theme, fonts: look.fonts, css: look.css, headerId: look.headerId, footerId: look.footerId };
+    await tx.execute(sql`update commerce.platform_theme_installs set look = ${JSON.stringify(kept)}::jsonb where id = ${String(install.id)}::uuid`);
+  }
+}
+
+/** Who an update of Kaizena Flow's site is made for when nobody pressed (the job): who installed the theme, else a platform admin. */
+async function platformUpdateActor(install: Row): Promise<string | null> {
+  if (install.installed_by) return String(install.installed_by);
+  const [admin] = await db().execute<Row>(sql`select id from commerce.accounts where platform_admin order by created_at limit 1`);
+  return admin ? String(admin.id) : null;
+}
+
+/**
+ * Updates one of Kaizena Flow's installed themes to its theme's latest published version (D253), as `updateThemeInstall()` does a store's
+ * (D245): the new version's fonts and pictures made ready by `placeSnapshot()` with the platform as the owner, then in one transaction under
+ * `platform_settings`' row lock its settings laid under the admins' own changes (`mergeSettings()`; Kaizena Flow's fonts, a column of their own,
+ * count as its settings), its CSS used only where they left it (`cssFate()`), and its header and footer replaced only where they have not been
+ * edited (`layoutFate()`; an edited one stays and the new one is a draft beside it). A product page is a store's and is left out. The look before
+ * and after are logged for `undoPlatformThemeUpdate()`. `admin` null: the job, for an install that follows updates. Pages, articles, menus, words
+ * and pictures of Kaizena Flow are never touched.
+ */
+export async function updatePlatformInstall(admin: Account | null, installId: string, deps: ApplyDeps = {}): Promise<UpdateResult> {
+  if (admin !== null && !admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (!isUuid(installId)) return refuse(UNKNOWN);
+  const [install] = await db().execute<Row>(sql`
+    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, cur.number as current_number, cur.snapshot as current_snapshot
+    from commerce.platform_theme_installs i
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    where i.id = ${installId}::uuid
+  `);
+  if (!install || !install.preset_id) return refuse("That theme has no versions to update to.");
+  const [latest] = await db().execute<Row>(sql`
+    select v.id, v.number, v.snapshot, p.source_store_id
+    from commerce.design_presets p
+    join commerce.design_preset_versions v on v.preset_id = p.id
+    where p.id = ${String(install.preset_id)}::uuid and p.published and p.archived_at is null
+    order by v.number desc limit 1
+  `);
+  if (!latest || Number(latest.number) <= Number(install.current_number ?? 0)) return refuse("This theme is up to date.");
+  const next = parseDesignSnapshot(latest.snapshot);
+  if (!next) return refuse("The new version of this theme can no longer be read.");
+  const previous = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const actor = admin?.id ?? (await platformUpdateActor(install));
+  if (!actor) return refuse("Kaizena Flow has no admin to make the update for.");
+  const title = String(install.title);
+  const [menus] = await db().execute<Row>(sql`select header_menu_id, footer_menu_id from commerce.platform_settings`);
+
+  const ready = await placeSnapshot(null, next, { sourceId: latest.source_store_id ? String(latest.source_store_id) : null, accountId: actor, title, menus: menus ?? {}, deps });
+  if (!ready.ok) return ready;
+
+  let done: { own: number; kept: string[]; notes: string[]; updateId: string };
+  try {
+    done = await db().transaction(async (tx) => {
+      const [settings] = await tx.execute<Row>(sql`select theme, fonts, custom_css, header_id, footer_id from commerce.platform_settings for update`);
+      const [fresh] = await tx.execute<Row>(sql`select id, live, look, placed, version_id from commerce.platform_theme_installs where id = ${installId}::uuid for update`);
+      if (!settings || !fresh || String(fresh.version_id ?? "") !== String(install.version_id ?? "")) throw new Refused("This theme changed while it was being updated. Try again.");
+      const now = platformLookNow(fresh, settings);
+      const placed = (fresh.placed && typeof fresh.placed === "object" ? fresh.placed : null) as PlacedLook | null;
+      const base: PlacedLook = placed ?? { settings: previous?.theme.settings ?? null, css: previous?.css ?? "", layouts: { header: null, footer: null, productLayout: null } };
+
+      const mine = platformTheme(now.theme, parseSiteFonts(now.fonts));
+      const merged = mergeSettings(base.settings, mine.settings, next.theme.settings);
+      const checked = themeSettingsSchema.safeParse(merged.settings);
+      if (!checked.success) throw new Refused("The changes made to this theme do not fit its new version, so it was not updated. Nothing was changed.");
+      const css = cssFate(base.css, now.css, ready.siteCss);
+
+      const notes: string[] = [];
+      const keptLayouts: string[] = [];
+      const after: PlatformLookOnly = {
+        theme: { base: next.theme.base, savedId: null, settings: checked.data },
+        fonts: checked.data.fonts ?? {},
+        css: css.css,
+        headerId: now.headerId,
+        footerId: now.footerId,
+      };
+      const nextPlaced: PlacedLook = { settings: next.theme.settings, css: ready.siteCss, layouts: { header: null, footer: null, productLayout: null } };
+      for (const kind of PLATFORM_KINDS) {
+        const currentId = now[PLATFORM_LOOK_ID[kind]];
+        let current: { id: string; hash: string } | null = null;
+        if (currentId) {
+          const [page] = await tx.execute<Row>(sql`select published from commerce.pages where id = ${currentId}::uuid and store_id is null`);
+          const content = page ? parsePageContent(page.published) : null;
+          current = { id: currentId, hash: content ? fingerprint(content) : "" };
+        }
+        const page = ready.pages[kind];
+        const fate = layoutFate(base.layouts[kind], current, Boolean(page));
+        const insert = async (published: boolean) => {
+          const type = LAYOUT_PAGE_TYPE[kind];
+          const taken = await tx.execute<Row>(sql`select slug from commerce.pages where store_id is null and type = ${type}`);
+          const slug = designPageSlug(kind, title, taken.map((r) => String(r.slug)));
+          const json = JSON.stringify({ ...page, slug });
+          const [row] = await tx.execute<Row>(sql`
+            insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+            values (null, ${type}, ${slug}, ${json}::jsonb, ${published ? sql`${json}::jsonb` : sql`null`}, ${published ? sql`now()` : sql`null`},
+              ${published ? sql`now()` : sql`null`}, ${actor}::uuid, ${actor}::uuid)
+            returning id
+          `);
+          return String(row.id);
+        };
+        if (fate.kind === "replace" && page) {
+          const id = await insert(true);
+          after[PLATFORM_LOOK_ID[kind]] = id;
+          nextPlaced.layouts[kind] = { id, hash: fingerprint(page) };
+        } else if (fate.kind === "standard") {
+          after[PLATFORM_LOOK_ID[kind]] = null;
+        } else if (fate.kind === "keep") {
+          keptLayouts.push(kind);
+          nextPlaced.layouts[kind] = base.layouts[kind];
+          if (fate.offer && page) {
+            await insert(false);
+            notes.push(`Its ${kind} was edited and stays; the new version's is in Kaizena Flow's ${kind}s as a draft beside it.`);
+          }
+        }
+      }
+
+      await writePlatformInstallLook(tx, fresh, after);
+      await tx.execute(sql`
+        update commerce.platform_theme_installs set version_id = ${String(latest.id)}::uuid, placed = ${JSON.stringify(nextPlaced)}::jsonb where id = ${installId}::uuid
+      `);
+      const before: PlatformLookRecord = { ...now, versionId: install.version_id ? String(install.version_id) : null, placed: fresh.placed ?? null };
+      const record: PlatformLookRecord = { ...after, versionId: String(latest.id), placed: nextPlaced };
+      const kept = { settings: merged.kept, own: merged.own.length, css: css.own, layouts: keptLayouts };
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.platform_theme_install_updates (install_id, from_version_id, to_version_id, before, after, kept, updated_by)
+        values (${installId}::uuid, ${install.version_id ? String(install.version_id) : null}::uuid, ${String(latest.id)}::uuid,
+          ${JSON.stringify(before)}::jsonb, ${JSON.stringify(record)}::jsonb, ${JSON.stringify(kept)}::jsonb, ${admin?.id ?? null}::uuid)
+        returning id
+      `);
+      if (css.kept) notes.push("Its own CSS was edited and stays; the new version's CSS is not used.");
+      return { own: merged.own.length, kept: merged.kept, notes, updateId: String(row.id) };
+    });
+  } catch (error) {
+    if (error instanceof Refused) return refuse(error.message);
+    console.error("[design-presets] updating a theme of Kaizena Flow's site failed", error);
+    return refuse("The theme could not be updated. Nothing was changed; try again.");
+  }
+  await audit(
+    admin?.id ?? null,
+    null,
+    "platform.theme_updated",
+    { install: installId, title, to: Number(latest.number), own: done.own, kept: done.kept.length, update: done.updateId, ...(admin === null && { automatic: true }) },
+    { target: { type: "theme_install", id: installId } },
+  );
+  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...ready.notes, ...done.notes] };
+}
+
+/**
+ * Undoes an update of one of Kaizena Flow's installed themes (D253): the look, version and what was placed go back, only while the install still
+ * shows exactly what the update left. Pages the update made stay among Kaizena Flow's pages, unused.
+ */
+export async function undoPlatformThemeUpdate(admin: Account, updateId: string): Promise<DesignResult<{ title: string }>> {
+  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (!isUuid(updateId)) return refuse("That update is not known.");
+  try {
+    const title = await db().transaction(async (tx) => {
+      const [settings] = await tx.execute<Row>(sql`select theme, fonts, custom_css, header_id, footer_id from commerce.platform_settings for update`);
+      const [update] = await tx.execute<Row>(sql`
+        select id, install_id, before, after, undone_at from commerce.platform_theme_install_updates where id = ${updateId}::uuid for update
+      `);
+      if (!settings || !update) throw new Refused("That update is not known.");
+      if (update.undone_at) throw new Refused("That update was undone already.");
+      const [install] = await tx.execute<Row>(sql`
+        select id, title, live, look, version_id from commerce.platform_theme_installs where id = ${String(update.install_id)}::uuid for update
+      `);
+      if (!install) throw new Refused("That theme is no longer installed.");
+      const before = update.before as PlatformLookRecord;
+      const after = update.after as PlatformLookRecord;
+      if (String(install.version_id ?? "") !== String(after.versionId ?? "") || !samePlatformLook(platformLookNow(install, settings), after)) {
+        throw new Refused("This theme has changed since it was updated, so the update cannot be undone. Nothing was changed.");
+      }
+      await writePlatformInstallLook(tx, install, before);
+      await tx.execute(sql`
+        update commerce.platform_theme_installs set version_id = ${before.versionId}::uuid, placed = ${before.placed === null ? null : JSON.stringify(before.placed)}::jsonb
+        where id = ${String(install.id)}::uuid
+      `);
+      await tx.execute(sql`update commerce.platform_theme_install_updates set undone_at = now() where id = ${updateId}::uuid`);
+      return String(install.title);
+    });
+    await audit(admin.id, null, "platform.theme_update_undone", { update: updateId, title }, { target: { type: "theme_update", id: updateId } });
+    return { ok: true, title };
+  } catch (error) {
+    if (error instanceof Refused) return refuse(error.message);
+    console.error("[design-presets] undoing an update of Kaizena Flow's site failed", error);
+    return refuse("The update could not be undone. Nothing was changed; try again.");
+  }
+}
+
+/** Kaizena Flow's installs with a newer version waiting (D253), with *What's new* across every version between, and its latest updates. */
+export async function platformThemeUpdates(): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
+  const rows = await db().execute<Row>(sql`
+    select i.id, i.title, i.live, i.follows_updates, cur.number as current_number, cur.snapshot as current_snapshot,
+      (select jsonb_agg(jsonb_build_object('number', v.number, 'snapshot', v.snapshot, 'notes', v.notes) order by v.number)
+         from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0)) as newer
+    from commerce.platform_theme_installs i
+    join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    order by i.live desc, i.title
+  `);
+  const made = await db().execute<Row>(sql`
+    select u.id, u.created_at, u.updated_by, u.kept, u.undone_at, i.title, f.number as from_number, t.number as to_number
+    from commerce.platform_theme_install_updates u
+    join commerce.platform_theme_installs i on i.id = u.install_id
+    left join commerce.design_preset_versions f on f.id = u.from_version_id
+    left join commerce.design_preset_versions t on t.id = u.to_version_id
+    order by u.created_at desc limit 10
+  `);
+  return updatesView(rows, made);
+}
+
+/** What `themeUpdates()` and `platformThemeUpdates()` show, from their rows: the installs, what is waiting with *What's new*, and what was made. */
+function updatesView(rows: Row[], made: Row[]): { available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] } {
+  const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
+  const available = rows.flatMap((row): AvailableUpdate[] => {
+    const newer = (Array.isArray(row.newer) ? row.newer : []) as { number: number; snapshot: unknown; notes: string | null }[];
+    if (newer.length === 0) return [];
+    let previous = row.current_snapshot ? parseDesignSnapshot(row.current_snapshot) : null;
+    const lines: string[] = [];
+    for (const version of newer) {
+      const snap = parseDesignSnapshot(version.snapshot);
+      if (!snap) continue;
+      for (const line of previous ? whatsNew(previous, snap, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
+      previous = snap;
+    }
+    return [{ installId: String(row.id), title: String(row.title), live: row.live === true, from: number(row.current_number), to: Number(newer.at(-1)!.number), followsUpdates: row.follows_updates === true, whatsNew: lines }];
+  });
+  return {
+    available,
+    installs: rows.map((row) => ({ installId: String(row.id), title: String(row.title), live: row.live === true, version: number(row.current_number), followsUpdates: row.follows_updates === true })),
+    made: made.map((row) => {
+      const kept = (row.kept ?? {}) as { own?: number; settings?: string[]; layouts?: string[] };
+      return {
+        id: String(row.id),
+        title: String(row.title),
+        from: number(row.from_number),
+        to: number(row.to_number),
+        at: new Date(String(row.created_at)).toISOString(),
+        automatic: !row.updated_by,
+        own: Number(kept.own ?? 0),
+        keptSettings: Array.isArray(kept.settings) ? kept.settings.length : 0,
+        layoutsKept: Array.isArray(kept.layouts) ? kept.layouts : [],
+        undoneAt: row.undone_at ? new Date(String(row.undone_at)).toISOString() : null,
+      };
+    }),
+  };
+}
+
+/**
+ * The job (D253): Kaizena Flow's installs that follow updates and are behind their theme's latest published version are updated by themselves.
+ * A refusal leaves the install as it was, to be tried again next time or updated by hand. Never throws; says whether the live look changed, so the
+ * caller refreshes Kaizena Flow's site.
+ */
+export async function runPlatformThemeUpdates(limit = 5, deps: ApplyDeps = {}): Promise<{ updated: number; refused: number; live: boolean }> {
+  const due = await db().execute<Row>(sql`
+    select i.id, i.live from commerce.platform_theme_installs i
+    join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    where i.follows_updates
+      and exists (select 1 from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0))
+    order by i.installed_at
+    limit ${limit}
+  `);
+  let updated = 0;
+  let refused = 0;
+  let live = false;
+  for (const row of due) {
+    try {
+      const result = await updatePlatformInstall(null, String(row.id), deps);
+      if (result.ok) {
+        updated += 1;
+        if (row.live) live = true;
+      } else refused += 1;
+    } catch (error) {
+      console.error("[design-presets] the theme update job failed for Kaizena Flow's site", error);
+      refused += 1;
+    }
+  }
+  return { updated, refused, live };
 }
 
 // ---------------------------------------------------------------------------

@@ -26,8 +26,12 @@ function sources(dir: string): string[] {
 
 const FILES = sources("src");
 
-/** The writers of Kaizena Flow's look columns: the Theme tab and saved colours, its CSS, its fonts, its header and footer, and switching. */
+/**
+ * The writers of Kaizena Flow's look columns: updating an installed theme and undoing it (D253), its fonts, switching, its CSS, its header and
+ * footer, and the Theme tab and saved colours.
+ */
 const PLATFORM_LOOK_WRITERS = [
+  "src/server/design-presets.ts",
   "src/server/fonts.ts",
   "src/server/platform-theme-installs.ts",
   "src/server/site-css.ts",
@@ -81,6 +85,11 @@ describe("who writes a store's look (D241)", () => {
     const columns = /\b(theme|fonts|custom_css|header_id|footer_id)\s*=|^\s*\$\{/;
     const found = FILES.filter((file) => [...read(file).matchAll(look)].some((m) => columns.test(m[1]))).sort();
     expect(found).toEqual(PLATFORM_LOOK_WRITERS);
+  });
+
+  it("writes the updates of Kaizena Flow's installed themes only where they are made and undone (D253)", () => {
+    const writes = /(insert\s+into|update|delete\s+from)\s+commerce\.platform_theme_install_updates\b/i;
+    expect(FILES.filter((file) => writes.test(read(file))).sort()).toEqual(["src/server/design-presets.ts"]);
   });
 
   it("adds a theme's versions only when it is published", () => {

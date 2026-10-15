@@ -70,8 +70,27 @@ first) with the install's look, inert and `noindex`, the header and footer given
 fonts and never a product page, customising leaves the live look as it was and is refused for the live one and for non-admins, switching wears
 the customised look with nothing else changed). No migration. No browser test, as in step 1.
 
-## Step 3: updates (planned)
+## Step 3: updates (D253)
 
-Kaizena Flow's installs get `follows_updates` and a record of each update with the look before (as `theme_install_updates`), the update laid
-under its own changes by the store's `mergeSettings()`, `cssFate()` and `layoutFate()` (D245) from what the install placed (`placed`, kept since
-step 1), *What's new*, undo, and the five-minute job taking new versions for installs that follow them. Needs a migration.
+**Data.** `platform_theme_installs.follows_updates` (on unless switched off, as a store's) and `commerce.platform_theme_install_updates`: the
+look before and after each update and what was kept as the admins' own, as `theme_install_updates` is a store's (only `undone_at` changes,
+once; removed with its install; deleted after `THEME_UPDATE_KEEP_DAYS` by `pruneThemeUpdates()`). The install's rule now lets its version move,
+only to another version of its own theme (`platform_theme_installs_rules()`, as `store_theme_installs_rules()`).
+
+**Server.** In `src/server/design-presets.ts`, beside the store's: `updatePlatformInstall()` (the new version's fonts and pictures through
+`placeSnapshot()` with the platform as the owner, then under `platform_settings`' row lock the settings by `mergeSettings()` against what was
+placed, Kaizena Flow's fonts counted as its settings, the CSS by `cssFate()`, the header and footer by `layoutFate()`, an edited one kept and the
+new one a draft beside it; no product page), `undoPlatformThemeUpdate()` (only while the install shows exactly what the update left),
+`platformThemeUpdates()` (what is waiting with *What's new*, the installs and the latest updates; shares `updatesView()` with the store's
+`themeUpdates()`) and `runPlatformThemeUpdates()` in the five-minute job, which refreshes Kaizena Flow's look tags when it updated one.
+`setPlatformFollowsUpdates()` is in `platform-theme-installs.ts`. Audited `platform.theme_updated` (with `automatic` for the job),
+`platform.theme_update_undone`, `platform.theme_follows_updates`.
+
+**Admin.** The store's `ThemeUpdates` card on `/admin/platform/themes`, with Kaizena Flow's own words: *Update now*, *What's new*, whether each
+theme updates by itself, the latest updates with *Undo*.
+
+**Built.** The migrations `platform_theme_updates` and `platform_theme_updates_rules`, the functions above, the card and its actions; held by the
+PGlite test of the rules, `src/server/platform-theme-updates.int.test.ts` (a new version laid under fonts chosen on the Fonts page and an edited
+footer, the untouched header replaced as a Kaizena Flow page, the footer's new version a draft, undone back to the look before, the job updating
+only an install that follows updates, admins only, the site's look as it was once switched back) and the scan test of the update log's writers.
+No browser test, as in step 1.
