@@ -29,14 +29,36 @@ export function LifecycleButtons({
   const named = <span className="sr-only"> {title}</span>;
   return (
     <>
-      {offered.includes("publish") && (
-        <ActionForm action={actions.publish}>
-          <SubmitButton>
-            {facts.published ? "Publish changes" : "Publish"}
-            {named}
-          </SubmitButton>
-        </ActionForm>
-      )}
+      {offered.includes("publish") &&
+        (kind === "design profile" ? (
+          // A theme's Publish takes What's new (D245), shown to the stores that installed it when the new version reaches them.
+          <details className="rounded-md border border-line px-3 py-2 text-sm">
+            <summary className="cursor-pointer">
+              {facts.published ? "Publish changes…" : "Publish…"}
+              {named}
+            </summary>
+            <ActionForm action={actions.publish} className="mt-2 flex max-w-md flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span>What&apos;s new (optional)</span>
+                <textarea name="notes" rows={3} maxLength={2000} className="rounded-lg border border-line bg-card px-3 py-2" />
+                <span className="text-muted">Stores that installed this theme see it beside what changed, when the new version reaches them.</span>
+              </label>
+              <div>
+                <SubmitButton>
+                  {facts.published ? "Publish changes" : "Publish"}
+                  {named}
+                </SubmitButton>
+              </div>
+            </ActionForm>
+          </details>
+        ) : (
+          <ActionForm action={actions.publish}>
+            <SubmitButton>
+              {facts.published ? "Publish changes" : "Publish"}
+              {named}
+            </SubmitButton>
+          </ActionForm>
+        ))}
       {offered.includes("unpublish") && (
         <ActionForm action={actions.unpublish}>
           <SubmitButton variant="secondary">

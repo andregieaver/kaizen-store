@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
 import { ThemeFollow } from "@/components/admin/theme-follow";
+import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { ThemeLibrary } from "@/components/admin/theme-library";
 import { ThemeEditor } from "@/components/admin/theme-editor";
 import { designPreviewPath } from "@/lib/design-presets";
-import { latestDesignUse, listOfferedDesigns } from "@/server/design-presets";
+import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { THEME_DETACH_KEEP_DAYS, listDetachRuns } from "@/server/theme-detach";
 import { listInstalls } from "@/server/theme-installs";
@@ -16,6 +17,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import {
   applyDesignAction,
   countThemeFollowAction,
+  followUpdatesAction,
   deleteSavedThemeAction,
   installStoreFontAction,
   saveCartBehaviourAction,
@@ -26,6 +28,8 @@ import {
   runThemeFollowAction,
   switchThemeAction,
   undoThemeFollowAction,
+  undoThemeUpdateAction,
+  updateThemeAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Design" };
@@ -35,6 +39,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
   const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
+  const updates = await themeUpdates(store.id);
   // Design profiles (D176): applied by those who may change the website.
   const canChange = memberCan(member, "website:write");
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
@@ -56,6 +61,15 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         base={`/admin/${store.slug}/settings/design`}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
+      />
+      <ThemeUpdates
+        available={updates.available}
+        made={updates.made}
+        installs={updates.installs}
+        keepDays={THEME_UPDATE_KEEP_DAYS}
+        update={canChange ? updateThemeAction.bind(null, store.slug) : null}
+        undo={canChange ? undoThemeUpdateAction.bind(null, store.slug) : null}
+        follow={canChange ? followUpdatesAction.bind(null, store.slug) : null}
       />
       <ThemeFollow
         runs={runs}

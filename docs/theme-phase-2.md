@@ -97,3 +97,43 @@ preview shows.
 **Not in step 3.** The page builder's canvas still draws a non-live theme's header, footer or product layout in the live theme; *Add this
 theme's pages as drafts* (4.5) waits for themes with demo pages (step 5).
 
+
+## Step 4: updates
+
+**Versions stay; what was placed is kept.** A published version never changes (D241; its *What's new* note, `design_preset_versions.notes`,
+is written with it and fixed by the same trigger). An install now keeps what it placed in the store when it was applied or last updated
+(`store_theme_installs.placed`: the settings and CSS written, and each layout page with a fingerprint of its rows and CSS), so the owner's
+own changes are what differs from that. An install from before step 4 takes its version's snapshot as what was placed, and its layouts
+as the owner's.
+
+**An update.** `updateThemeInstall()` lays the new version under the owner's changes again, in one transaction under the store's and the
+install's row locks: each setting the owner left as placed takes the new version's, one they changed stays theirs (`mergeSettings()`, a
+three-way merge key by key; a list is one setting), the same for the CSS (`cssFate()`); a header, footer or product page the owner has not
+touched is replaced by a new page of the new version's, one they edited or chose stays and the new version's is made beside it as a draft
+(`layoutFate()`); a version without one gives the standard one where the owner's was untouched. The merged settings pass the theme's
+schema, or nothing is changed. A live install writes the store's columns, any other its `look` (D241). The database lets an install's
+version move only to another version of its own theme.
+
+**Following updates.** `store_theme_installs.follows_updates` (on unless the owner turns it off, per installed theme, `setFollowsUpdates()`,
+audited `store.theme_follows_updates`): the five-minute job (`runThemeUpdates()`, twenty a run, open real stores only) updates installs
+that follow, made for the person who installed the theme or else the owner. Others wait for *Update now*.
+
+**What's new.** `whatsNew()` (`src/lib/theme-update.ts`, pure): the theme's own note first (written by the platform's admin in *Publish…*,
+at most 2000 characters), then from facts the areas of settings that changed, new, changed and removed section styles, layouts and CSS.
+Shown on Design settings beside each waiting update (`ThemeUpdates`).
+
+**Undo.** Each update keeps the look before and after (`commerce.theme_install_updates`: only `undone_at` changes, once, by trigger;
+kept 90 days, `pruneThemeUpdates()` in the daily job). `undoThemeUpdate()` puts the look and the version back only while the install
+still has the look the update left; drafts it made stay in the store's pages. Audited `store.theme_updated` (with `automatic`) and
+`store.theme_update_undone`.
+
+**Core section styles.** `publishDesign()` refuses a version without a core section style (D242) the last version had
+(`coreStylesRemoved()`), so no update takes one away.
+
+**Built (D245).** `src/lib/theme-update.ts`; `updateThemeInstall()`, `undoThemeUpdate()`, `themeUpdates()`, `runThemeUpdates()`,
+`pruneThemeUpdates()` and the `placed` record in `applyDesignPreset()` (`src/server/design-presets.ts`); `setFollowsUpdates()` in
+`src/server/theme-installs.ts`; the publish note in `LifecycleButtons`; `ThemeUpdates` on Design settings; held by
+`src/lib/theme-update.test.ts`, `src/server/theme-updates.int.test.ts`, `src/db/commerce.test.ts` and `theme-updates.test.ts` (view).
+
+**Not in step 4.** No email tells an owner of an update; updates of the layouts' content are all or nothing per page (an edited page is
+never merged row by row).

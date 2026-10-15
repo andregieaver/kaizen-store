@@ -28,7 +28,7 @@ const FILES = sources("src");
 
 /** What each writer of the store's look columns writes: everything else must not. */
 const LOOK_WRITERS: Record<string, string> = {
-  "src/server/design-presets.ts": "applying a theme, putting the look back, and a theme's own workspace",
+  "src/server/design-presets.ts": "applying a theme, updating an installed theme to a new version (D245), putting the look back, and a theme's own workspace",
   "src/server/theme-installs.ts": "switching to an installed theme",
   "src/server/themes.ts": "the live theme's settings and saved themes (D60, D182, D183)",
   "src/server/fonts.ts": "the live theme's fonts (D59)",

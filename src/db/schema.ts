@@ -845,9 +845,12 @@ export const designPresetVersions = commerce.table(
     snapshot: jsonb("snapshot").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
     publishedBy: uuid("published_by").references(() => accounts.id),
+    /** *What's new* in this version, as the platform's admin wrote it at Publish (D245); facts are added in code (`whatsNew()`). */
+    notes: text("notes"),
   },
   (t) => [
     uniqueIndex("design_preset_versions_number_idx").on(t.presetId, t.number),
+    check("design_preset_versions_notes", sql`${t.notes} is null or length(${t.notes}) <= 2000`),
     index("design_preset_versions_published_by_idx").on(t.publishedBy),
     check("design_preset_versions_number", sql`${t.number} >= 1`),
     check(
@@ -882,9 +885,17 @@ export const storeThemeInstalls = commerce.table(
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
     /** When it was last made live or put away. */
     switchedAt: timestamp("switched_at", { withTimezone: true }),
+    /** Whether a new version of its theme is applied by itself (D245); the owner switches it off per install. */
+    followsUpdates: boolean("follows_updates").notNull().default(true),
+    /**
+     * What was placed when it was applied or last updated (D245, `Placed` in `src/lib/theme-update.ts`): the settings and CSS written and each
+     * layout page with its fingerprint, so an update can tell the owner's changes from the theme's. Null for installs from before.
+     */
+    placed: jsonb("placed"),
   },
   (t) => [
     uniqueIndex("store_theme_installs_live_idx").on(t.storeId).where(sql`${t.live}`),
+    check("store_theme_installs_placed", sql`${t.placed} is null or jsonb_typeof(${t.placed}) = 'object'`),
     index("store_theme_installs_store_idx").on(t.storeId, t.installedAt),
     index("store_theme_installs_preset_idx").on(t.presetId),
     index("store_theme_installs_version_idx").on(t.versionId),
@@ -928,6 +939,42 @@ export const pageThemeDetaches = commerce.table(
     index("page_theme_detaches_page_idx").on(t.pageId),
     index("page_theme_detaches_created_by_idx").on(t.createdBy),
     check("page_theme_detaches_counts", sql`${t.followed} >= 0 and ${t.kept} >= 0`),
+  ],
+);
+
+/**
+ * The updates of a store's installed themes to a new version (D245, `docs/theme-phase-2.md` step 4): the look before and after (the theme as
+ * stored, the CSS, the chosen layouts, the version and what was placed), what was kept as the owner's, by whom (null: applied by itself), so
+ * an update can be undone while the look is still what it left. Only `undone_at` changes, once; pruned after 90 days
+ * (`pruneThemeInstallUpdates()`). Never copied with a store.
+ */
+export const themeInstallUpdates = commerce.table(
+  "theme_install_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    installId: uuid("install_id")
+      .notNull()
+      .references(() => storeThemeInstalls.id, { onDelete: "cascade" }),
+    fromVersionId: uuid("from_version_id").references(() => designPresetVersions.id, { onDelete: "set null" }),
+    toVersionId: uuid("to_version_id").references(() => designPresetVersions.id, { onDelete: "set null" }),
+    before: jsonb("before").notNull(),
+    after: jsonb("after").notNull(),
+    /** What was kept as the owner's: settings' paths, the CSS, layouts. */
+    kept: jsonb("kept").notNull().default(sql`'{}'::jsonb`),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("theme_install_updates_store_idx").on(t.storeId, t.createdAt),
+    index("theme_install_updates_install_idx").on(t.installId),
+    index("theme_install_updates_from_idx").on(t.fromVersionId),
+    index("theme_install_updates_to_idx").on(t.toVersionId),
+    index("theme_install_updates_by_idx").on(t.updatedBy),
+    check("theme_install_updates_looks", sql`jsonb_typeof(${t.before}) = 'object' and jsonb_typeof(${t.after}) = 'object' and jsonb_typeof(${t.kept}) = 'object'`),
   ],
 );
 

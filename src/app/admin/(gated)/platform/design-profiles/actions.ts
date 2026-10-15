@@ -86,12 +86,13 @@ export async function copyStoreLookAction(presetId: string, _state: FormState, f
 }
 
 /** Publishes a design profile (D177): its draft details, and the look in its workspace as the snapshot stores apply. */
-export async function publishDesignAction(presetId: string): Promise<FormState> {
+export async function publishDesignAction(presetId: string, _state?: FormState, formData?: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const result = await publishDesign(admin, presetId);
+  const notes = formData?.get("notes");
+  const result = await publishDesign(admin, presetId, typeof notes === "string" ? notes : null);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  return { status: "ok", messages: withNotes("Published: every store can apply it as it is now. Stores that applied it before keep the look they got.", result.notes) };
+  return { status: "ok", messages: withNotes("Published: every store can apply it as it is now. Stores that installed it get the new version by itself unless they switched that off, with their own changes kept.", result.notes) };
 }
 
 /** Stops offering a design profile at once (D177). */

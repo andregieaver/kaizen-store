@@ -7,9 +7,9 @@ import { designChoice } from "@/lib/design-presets";
 import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
-import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
+import { applyDesignPreset, designTags, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
 import { detachDryRun, runDetach, undoDetach } from "@/server/theme-detach";
-import { removeInstall, switchToInstall } from "@/server/theme-installs";
+import { removeInstall, setFollowsUpdates, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
@@ -163,4 +163,37 @@ export async function undoThemeFollowAction(storeSlug: string, _state: FormState
   for (const tag of designTags(member.store)) updateTag(tag);
   const since = result.changedSince > 0 ? ` ${pagesWord(result.changedSince)} changed since kept the change.` : "";
   return { status: "ok", messages: [`${pagesWord(result.restored)} put back as they were.${since}`] };
+}
+
+/** Updates an installed theme to its theme's latest version now (D245), keeping the owner's own changes. */
+export async function updateThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await updateThemeInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  const own = result.own > 0 ? ` ${result.own} of your own ${result.own === 1 ? "setting stays" : "settings stay"}.` : "";
+  const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
+  return { status: "ok", messages: [`${result.title} is now version ${result.version}.${own}${notes}`] };
+}
+
+/** Undoes an update of an installed theme (D245) while nothing has changed since. */
+export async function undoThemeUpdateAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await undoThemeUpdate(member.store.id, String(formData.get("update") ?? ""), member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  return { status: "ok", messages: [`${result.title} is back as it was before the update.`] };
+}
+
+/** Whether an installed theme updates by itself (D245). */
+export async function followUpdatesAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const follows = formData.get("follows") === "on";
+  const result = await setFollowsUpdates(member.store.id, String(formData.get("install") ?? ""), member.account.id, follows);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [follows ? `${result.title} will update by itself.` : `${result.title} waits for you to update it.`] };
 }

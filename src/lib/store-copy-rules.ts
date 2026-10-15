@@ -258,6 +258,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_billing: never("The plan and billing belong to the original."),
   store_domains: never("A domain belongs to one store."),
   page_theme_detaches: never("The original's theme migration runs (D243), kept for their undo: a copy's pages are the original's as they are now."),
+  theme_install_updates: never("Updates of the store's own installed themes (D245); a copy starts with its own Custom."),
   store_theme_installs: never("The themes installed in the original (D241): a copy starts with its own look as its live Custom install (`stores_first_install()`), and the other installs' layout pages are the original's."),
   design_preset_uses: never("Which design profiles (D176) the original applied, with the look each replaced: the copy has the original's look already, and its own history starts empty."),
   store_starters: never("A store template's listing (D175) is the platform's: a copy of a template is an ordinary store, never offered as one."),

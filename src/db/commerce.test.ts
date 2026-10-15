@@ -5952,3 +5952,39 @@ describe("the theme migration's runs (D243)", () => {
     expect((await db.query("select 1 from commerce.page_theme_detaches where id = $1", [id])).rows).toHaveLength(0);
   });
 });
+
+describe("updates of installed themes (D245)", () => {
+  const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
+
+  it("move an install only to another version of its own theme, and keep a version's note fixed", async () => {
+    const store = await createStore("theme-updates", ["DE"]);
+    const { id: preset } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot, published) values ('Calm', $1::jsonb, true) returning id", [SNAP]);
+    const { id: other } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot, published) values ('Bold', $1::jsonb, true) returning id", [SNAP]);
+    const { id: v1 } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb) returning id", [preset, SNAP]);
+    const { id: v2 } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot, notes) values ($1, 2, $2::jsonb, 'Calmer') returning id", [preset, SNAP]);
+    const { id: foreign } = await one<{ id: string }>("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb) returning id", [other, SNAP]);
+    const { id: install } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look) values ($1, $2, $3, 'Calm', '{}'::jsonb) returning id",
+      [store, preset, v1],
+    );
+    await db.query("update commerce.store_theme_installs set version_id = $2, follows_updates = false, placed = '{}'::jsonb where id = $1", [install, v2]);
+    await db.query("update commerce.store_theme_installs set version_id = $2 where id = $1", [install, v1]);
+    await expect(db.query("update commerce.store_theme_installs set version_id = $2 where id = $1", [install, foreign])).rejects.toThrow(/store_theme_installs.version/);
+    await expect(db.query("update commerce.store_theme_installs set version_id = null where id = $1", [install])).rejects.toThrow(/store_theme_installs.version/);
+    await expect(db.query("update commerce.store_theme_installs set preset_id = $2 where id = $1", [install, other])).rejects.toThrow(/store_theme_installs.fixed/);
+    await expect(db.query("update commerce.design_preset_versions set notes = 'Other' where id = $1", [v2])).rejects.toThrow(/design_preset_versions.fixed/);
+    await expect(db.query("update commerce.store_theme_installs set placed = '[]'::jsonb where id = $1", [install])).rejects.toThrow(/store_theme_installs_placed/);
+
+    // The log of an update keeps what it recorded; only undone_at changes, once.
+    const { id: update } = await one<{ id: string }>(
+      "insert into commerce.theme_install_updates (store_id, install_id, from_version_id, to_version_id, before, after) values ($1, $2, $3, $4, '{}'::jsonb, '{}'::jsonb) returning id",
+      [store, install, v1, v2],
+    );
+    await expect(db.query("update commerce.theme_install_updates set after = '{\"x\":1}'::jsonb where id = $1", [update])).rejects.toThrow(/theme_install_updates.fixed/);
+    await db.query("update commerce.theme_install_updates set undone_at = now() where id = $1", [update]);
+    await expect(db.query("update commerce.theme_install_updates set undone_at = null where id = $1", [update])).rejects.toThrow(/theme_install_updates.undone/);
+    // Removing the install takes its updates with it.
+    await db.query("delete from commerce.store_theme_installs where id = $1", [install]);
+    expect((await db.query("select 1 from commerce.theme_install_updates where id = $1", [update])).rows).toHaveLength(0);
+  });
+});

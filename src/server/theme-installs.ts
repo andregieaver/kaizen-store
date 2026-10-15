@@ -315,5 +315,20 @@ export async function saveInstallLook(
   return { ok: true, ...patch };
 }
 
+/** Whether an installed theme takes new versions of its theme by itself (D245); on until the owner switches it off. */
+export async function setFollowsUpdates(storeId: string, installId: string, accountId: string, follows: boolean): Promise<InstallResult<{ title: string }>> {
+  if (!isUuid(storeId) || !isUuid(installId) || !isUuid(accountId)) return refuse(UNKNOWN);
+  const refusal = await lookChangeRefusal(storeId, accountId);
+  if (refusal) return refuse(refusal);
+  const [row] = await db().execute<Row>(sql`
+    update commerce.store_theme_installs set follows_updates = ${follows}
+    where id = ${installId}::uuid and store_id = ${storeId}::uuid and preset_id is not null
+    returning title
+  `);
+  if (!row) return refuse(UNKNOWN);
+  await audit(accountId, storeId, "store.theme_follows_updates", { install: installId, follows }, { area: "website", target: { type: "theme_install", id: installId } });
+  return { ok: true, title: String(row.title) };
+}
+
 /** Thrown inside a transaction for a refusal the person reads; the callers in `design-presets.ts` share it. */
 export { Refused as InstallRefused };

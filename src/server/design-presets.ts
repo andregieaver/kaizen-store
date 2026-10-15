@@ -41,7 +41,8 @@ import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader } from "@/lib/site-layout";
 import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
-import { parseStoreTheme, templateSettings } from "@/lib/theme";
+import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
+import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
 
 import { audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
@@ -637,7 +638,7 @@ export async function saveDesignDraft(admin: Account, id: string, details: Desig
  * workspace's library when applied. A profile without a workspace (made before D177 and not edited) keeps its snapshot. Refused while
  * archived. Stores that applied it keep what they got.
  */
-export async function publishDesign(admin: Account, id: string): Promise<DesignResult<{ notes: string[] }>> {
+export async function publishDesign(admin: Account, id: string, whatsNewNote: string | null = null): Promise<DesignResult<{ notes: string[] }>> {
   if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
@@ -653,6 +654,19 @@ export async function publishDesign(admin: Account, id: string): Promise<DesignR
     return refuse("Its snapshot can no longer be read: open its Theme to make it again.");
   }
   const details = shownDesignDetails(design);
+  const note = whatsNewNote?.trim() ? whatsNewNote.trim() : null;
+  if (note && note.length > 2000) return refuse("What's new is at most 2,000 characters.");
+  // An update may never take a core section style away (D245): stores' rows naming it would lose their look.
+  if (snapshot) {
+    const [latest] = await db().execute<Row>(sql`
+      select snapshot from commerce.design_preset_versions where preset_id = ${id}::uuid order by number desc limit 1
+    `);
+    const before = latest ? parseDesignSnapshot(latest.snapshot) : null;
+    const removed = coreStylesRemoved(before?.theme.settings ?? null, snapshot.theme.settings);
+    if (removed.length > 0) {
+      return refuse(`This version no longer has the core section ${removed.length === 1 ? "style" : "styles"} ${removed.join(", ")}, which every version keeps. Put ${removed.length === 1 ? "it" : "them"} back in the theme's Theme tab first.`);
+    }
+  }
   try {
     // A new version (D241) whenever the look published differs from the latest version's, in the same statement as the snapshot.
     const [row] = await db().execute<Row>(sql`
@@ -668,8 +682,8 @@ export async function publishDesign(admin: Account, id: string): Promise<DesignR
       ), latest as (
         select v.number, v.snapshot from commerce.design_preset_versions v where v.preset_id = ${id}::uuid order by v.number desc limit 1
       ), versioned as (
-        insert into commerce.design_preset_versions (preset_id, number, snapshot, published_by)
-        select p.id, coalesce((select number from latest), 0) + 1, p.snapshot, ${admin.id}::uuid from published p
+        insert into commerce.design_preset_versions (preset_id, number, snapshot, published_by, notes)
+        select p.id, coalesce((select number from latest), 0) + 1, p.snapshot, ${admin.id}::uuid, ${note} from published p
         where not exists (select 1 from latest l where l.snapshot = p.snapshot)
         returning number
       )
@@ -956,11 +970,21 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
         `);
         pageIds[kind] = String(row.id);
       }
+      // What was placed (D245): the settings, the CSS and each layout page with its fingerprint, so an update tells the owner's changes apart.
+      const placed: PlacedLook = {
+        settings: snapshot.theme.settings,
+        css: siteCss,
+        layouts: {
+          header: pageIds.header && pages.header ? { id: pageIds.header, hash: fingerprint(pages.header) } : null,
+          footer: pageIds.footer && pages.footer ? { id: pageIds.footer, hash: fingerprint(pages.footer) } : null,
+          productLayout: pageIds.productLayout && pages.productLayout ? { id: pageIds.productLayout, hash: fingerprint(pages.productLayout) } : null,
+        },
+      };
       const [install] = await tx.execute<Row>(sql`
-        insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, live, installed_by, switched_at)
+        insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, live, installed_by, switched_at, placed)
         values (${storeId}::uuid, ${presetId}::uuid,
           (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
-          ${title.slice(0, 80)}, true, ${accountId}::uuid, now())
+          ${title.slice(0, 80)}, true, ${accountId}::uuid, now(), ${JSON.stringify(placed)}::jsonb)
         returning id
       `);
       const theme = { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings };
@@ -1171,4 +1195,370 @@ export async function previewStarters(): Promise<{ id: string; title: string }[]
     where st.published and st.archived_at is null order by st.position, lower(st.title)
   `);
   return rows.map((r) => ({ id: String(r.id), title: String(r.title) }));
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------------
+ * Updates of installed themes (D245, `docs/theme-phase-2.md` step 4, the plan's 4.6).
+ * ---------------------------------------------------------------------------------------------------------------------------------------- */
+
+/** A layout page's fingerprint: its rows and CSS, as `Placed` keeps it to tell whether the owner has edited it since. */
+const fingerprint = (content: { rows: unknown; css?: string }) => createHash("sha256").update(layoutFingerprintSource(content)).digest("hex");
+
+type LookRecord = { theme: unknown; css: string; headerId: string | null; footerId: string | null; productLayoutId: string | null; versionId: string | null; placed: unknown };
+
+const LOOK_ID: Record<DesignLayoutKind, "headerId" | "footerId" | "productLayoutId"> = { header: "headerId", footer: "footerId", productLayout: "productLayoutId" };
+
+/** The look an install shows now: the store's columns for the live one, its kept look for another. */
+function currentLook(install: Row, store: Row): Omit<LookRecord, "versionId" | "placed"> {
+  if (install.live) {
+    return {
+      theme: store.theme ?? {},
+      css: String(store.custom_css ?? ""),
+      headerId: store.header_id ? String(store.header_id) : null,
+      footerId: store.footer_id ? String(store.footer_id) : null,
+      productLayoutId: store.product_layout_id ? String(store.product_layout_id) : null,
+    };
+  }
+  const look = (install.look && typeof install.look === "object" ? install.look : {}) as Row;
+  const id = (value: unknown) => (typeof value === "string" && isUuid(value) ? value : null);
+  return { theme: look.theme ?? {}, css: typeof look.css === "string" ? look.css : "", headerId: id(look.headerId), footerId: id(look.footerId), productLayoutId: id(look.productLayoutId) };
+}
+
+const sameLook = (a: Omit<LookRecord, "versionId" | "placed">, b: Omit<LookRecord, "versionId" | "placed">) =>
+  canonicalJson([a.theme, a.css, a.headerId, a.footerId, a.productLayoutId]) === canonicalJson([b.theme, b.css, b.headerId, b.footerId, b.productLayoutId]);
+
+/** Writes an install's look: into the store's columns while it is live (D241), into its kept look otherwise. */
+async function writeInstallLook(tx: Pick<ReturnType<typeof db>, "execute">, storeId: string, install: Row, look: Omit<LookRecord, "versionId" | "placed">) {
+  if (install.live) {
+    await tx.execute(sql`
+      update commerce.stores set theme = ${JSON.stringify(look.theme)}::jsonb, custom_css = ${look.css},
+        header_id = ${look.headerId}::uuid, footer_id = ${look.footerId}::uuid, product_layout_id = ${look.productLayoutId}::uuid
+      where id = ${storeId}::uuid
+    `);
+  } else {
+    const kept = { theme: look.theme, css: look.css, headerId: look.headerId, footerId: look.footerId, productLayoutId: look.productLayoutId };
+    await tx.execute(sql`update commerce.store_theme_installs set look = ${JSON.stringify(kept)}::jsonb where id = ${String(install.id)}::uuid`);
+  }
+}
+
+export type UpdateResult = DesignResult<{ title: string; version: number; own: number; kept: string[]; notes: string[] }>;
+
+/** Who an update is made for when nobody pressed (the job): the person who installed the theme, else an owner of the store. */
+async function updateActor(storeId: string, install: Row): Promise<string | null> {
+  if (install.installed_by) return String(install.installed_by);
+  const [owner] = await db().execute<Row>(sql`
+    select account_id from commerce.store_members where store_id = ${storeId}::uuid and role = 'owner' and disabled_at is null order by created_at limit 1
+  `);
+  return owner ? String(owner.account_id) : null;
+}
+
+/**
+ * Updates an installed theme to its theme's latest published version (D245): the one writer of an update. The new version's fonts and
+ * pictures are made ready as applying makes them (`placeSnapshot()`); then, in one transaction under the store's row lock, its settings are laid
+ * under the owner's own changes again (`mergeSettings()` against what was placed), its CSS replaces the store's only where the owner left it
+ * (`cssFate()`), and each layout the owner has not edited is replaced by the new version's page, while one they edited stays theirs and the new
+ * version's is added beside it as a draft (`layoutFate()`). The look before and after are logged for `undoThemeUpdate()`. `accountId` null: the
+ * job applying it by itself to an install that follows updates. Words, pictures, products, menus and the owner's pages are never touched.
+ */
+export async function updateThemeInstall(storeId: string, installId: string, accountId: string | null, deps: ApplyDeps = {}): Promise<UpdateResult> {
+  if (!isUuid(storeId) || !isUuid(installId) || (accountId !== null && !isUuid(accountId))) return refuse(UNKNOWN);
+  const [install] = await db().execute<Row>(sql`
+    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, cur.number as current_number, cur.snapshot as current_snapshot
+    from commerce.store_theme_installs i
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    where i.id = ${installId}::uuid and i.store_id = ${storeId}::uuid
+  `);
+  if (!install || !install.preset_id) return refuse("That theme has no versions to update to.");
+  const facts = await actorFacts(storeId, accountId ?? "00000000-0000-4000-8000-000000000000");
+  if (!facts) return refuse("That store no longer exists.");
+  if (accountId !== null && !facts.platform_admin && !facts.member) return refuse("You do not work in this store.");
+  if (facts.status !== "active") return refuse("The store is not open, so its look cannot be changed.");
+  if (!facts.workable) return refuse(KEPT);
+  const [latest] = await db().execute<Row>(sql`
+    select v.id, v.number, v.snapshot, p.title, p.source_store_id
+    from commerce.design_presets p
+    join commerce.design_preset_versions v on v.preset_id = p.id
+    where p.id = ${String(install.preset_id)}::uuid and p.published and p.archived_at is null
+    order by v.number desc limit 1
+  `);
+  if (!latest || Number(latest.number) <= Number(install.current_number ?? 0)) return refuse("This theme is up to date.");
+  const next = parseDesignSnapshot(latest.snapshot);
+  if (!next) return refuse("The new version of this theme can no longer be read.");
+  const previous = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const actor = accountId ?? (await updateActor(storeId, install));
+  if (!actor) return refuse("The store has no owner to make the update for.");
+  const title = String(install.title);
+
+  const ready = await placeSnapshot(storeId, next, { sourceId: latest.source_store_id ? String(latest.source_store_id) : null, accountId: actor, title, menus: facts, deps });
+  if (!ready.ok) return ready;
+
+  let done: { own: number; kept: string[]; notes: string[]; updateId: string };
+  try {
+    done = await db().transaction(async (tx) => {
+      const [store] = await tx.execute<Row>(sql`
+        select status, theme, custom_css, header_id, footer_id, product_layout_id from commerce.stores where id = ${storeId}::uuid for update
+      `);
+      if (!store || store.status !== "active") throw new Refused("The store is not open, so its look cannot be changed.");
+      const [fresh] = await tx.execute<Row>(sql`
+        select id, live, look, placed, version_id from commerce.store_theme_installs where id = ${installId}::uuid and store_id = ${storeId}::uuid for update
+      `);
+      if (!fresh || String(fresh.version_id ?? "") !== String(install.version_id ?? "")) throw new Refused("This theme changed while it was being updated. Try again.");
+      const now = currentLook(fresh, store);
+      const placed = (fresh.placed && typeof fresh.placed === "object" ? fresh.placed : null) as PlacedLook | null;
+      // What was placed; for an install from before updates were kept, the version it came from (its layouts unknown: kept as the owner's).
+      const base: PlacedLook = placed ?? {
+        settings: previous?.theme.settings ?? null,
+        css: previous?.css ?? "",
+        layouts: { header: null, footer: null, productLayout: null },
+      };
+
+      const mine = parseStoreTheme(now.theme);
+      const merged = mergeSettings(base.settings, mine.settings, next.theme.settings);
+      const checked = themeSettingsSchema.safeParse(merged.settings);
+      if (!checked.success) throw new Refused("Your changes to this theme do not fit its new version, so it was not updated. Nothing was changed.");
+      const css = cssFate(base.css, now.css, ready.siteCss);
+
+      const notes: string[] = [];
+      const keptLayouts: string[] = [];
+      const after = { theme: { base: next.theme.base, savedId: null, settings: checked.data }, css: css.css, headerId: now.headerId, footerId: now.footerId, productLayoutId: now.productLayoutId };
+      const nextPlaced: PlacedLook = { settings: next.theme.settings, css: ready.siteCss, layouts: { header: null, footer: null, productLayout: null } };
+      for (const kind of DESIGN_LAYOUT_KINDS) {
+        const currentId = now[LOOK_ID[kind]];
+        let current: { id: string; hash: string } | null = null;
+        if (currentId) {
+          const [page] = await tx.execute<Row>(sql`select published from commerce.pages where id = ${currentId}::uuid and store_id = ${storeId}::uuid`);
+          const content = page ? parsePageContent(page.published) : null;
+          current = { id: currentId, hash: content ? fingerprint(content) : "" };
+        }
+        const page = ready.pages[kind];
+        const fate = layoutFate(base.layouts[kind], current, Boolean(page));
+        const insert = async (published: boolean) => {
+          const type = LAYOUT_PAGE_TYPE[kind];
+          const taken = await tx.execute<Row>(sql`select slug from commerce.pages where store_id = ${storeId}::uuid and type = ${type}`);
+          const slug = designPageSlug(kind, title, taken.map((r) => String(r.slug)));
+          const json = JSON.stringify({ ...page, slug });
+          const [row] = await tx.execute<Row>(sql`
+            insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+            values (${storeId}::uuid, ${type}, ${slug}, ${json}::jsonb, ${published ? sql`${json}::jsonb` : sql`null`}, ${published ? sql`now()` : sql`null`},
+              ${published ? sql`now()` : sql`null`}, ${actor}::uuid, ${actor}::uuid)
+            returning id
+          `);
+          return String(row.id);
+        };
+        if (fate.kind === "replace" && page) {
+          const id = await insert(true);
+          after[LOOK_ID[kind]] = id;
+          nextPlaced.layouts[kind] = { id, hash: fingerprint(page) };
+        } else if (fate.kind === "standard") {
+          after[LOOK_ID[kind]] = null;
+        } else if (fate.kind === "keep") {
+          keptLayouts.push(kind);
+          // Still the owner's: what was placed stays, so a later update sees it as edited too.
+          nextPlaced.layouts[kind] = base.layouts[kind];
+          if (fate.offer && page) {
+            await insert(false);
+            notes.push(`Your ${designPageTitle(kind, "").trim().toLowerCase()} is your own and stays; the new version's is in your pages as a draft beside it.`);
+          }
+        }
+      }
+
+      await writeInstallLook(tx, storeId, fresh, after);
+      await tx.execute(sql`
+        update commerce.store_theme_installs set version_id = ${String(latest.id)}::uuid, placed = ${JSON.stringify(nextPlaced)}::jsonb where id = ${installId}::uuid
+      `);
+      const before: LookRecord = { ...now, versionId: install.version_id ? String(install.version_id) : null, placed: fresh.placed ?? null };
+      const record: LookRecord = { ...after, versionId: String(latest.id), placed: nextPlaced };
+      const kept = { settings: merged.kept, own: merged.own.length, css: css.own, layouts: keptLayouts };
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.theme_install_updates (store_id, install_id, from_version_id, to_version_id, before, after, kept, updated_by)
+        values (${storeId}::uuid, ${installId}::uuid, ${install.version_id ? String(install.version_id) : null}::uuid, ${String(latest.id)}::uuid,
+          ${JSON.stringify(before)}::jsonb, ${JSON.stringify(record)}::jsonb, ${JSON.stringify(kept)}::jsonb, ${accountId}::uuid)
+        returning id
+      `);
+      if (css.kept) notes.push("Your own CSS stays; the new version's CSS is not used.");
+      return { own: merged.own.length, kept: merged.kept, notes, updateId: String(row.id) };
+    });
+  } catch (error) {
+    if (error instanceof Refused) return refuse(error.message);
+    console.error("[design-presets] updating a theme failed", error);
+    return refuse("The theme could not be updated. Nothing was changed; try again.");
+  }
+  await audit(
+    accountId,
+    storeId,
+    "store.theme_updated",
+    { install: installId, title, to: Number(latest.number), own: done.own, kept: done.kept.length, update: done.updateId, ...(accountId === null && { automatic: true }) },
+    { area: "website", target: { type: "theme_install", id: installId } },
+  );
+  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...ready.notes, ...done.notes] };
+}
+
+/**
+ * Undoes an update (D245): the look, version and what was placed go back to what they were before it, only while the install still shows
+ * exactly what the update left (else nothing is changed, and the person is told). Pages the update made stay in the store's pages, unused.
+ */
+export async function undoThemeUpdate(storeId: string, updateId: string, accountId: string): Promise<DesignResult<{ title: string }>> {
+  if (!isUuid(storeId) || !isUuid(updateId) || !isUuid(accountId)) return refuse("That update is not known.");
+  const facts = await actorFacts(storeId, accountId);
+  if (!facts) return refuse("That store no longer exists.");
+  if (!facts.platform_admin && !facts.member) return refuse("You do not work in this store.");
+  if (facts.status !== "active") return refuse("The store is not open, so its look cannot be changed.");
+  try {
+    const title = await db().transaction(async (tx) => {
+      const [store] = await tx.execute<Row>(sql`
+        select theme, custom_css, header_id, footer_id, product_layout_id from commerce.stores where id = ${storeId}::uuid for update
+      `);
+      const [update] = await tx.execute<Row>(sql`
+        select u.id, u.install_id, u.before, u.after, u.undone_at from commerce.theme_install_updates u
+        where u.id = ${updateId}::uuid and u.store_id = ${storeId}::uuid for update
+      `);
+      if (!store || !update) throw new Refused("That update is not known.");
+      if (update.undone_at) throw new Refused("That update was undone already.");
+      const [install] = await tx.execute<Row>(sql`
+        select id, title, live, look, version_id from commerce.store_theme_installs where id = ${String(update.install_id)}::uuid for update
+      `);
+      if (!install) throw new Refused("That theme is no longer installed.");
+      const before = update.before as LookRecord;
+      const after = update.after as LookRecord;
+      if (String(install.version_id ?? "") !== String(after.versionId ?? "") || !sameLook(currentLook(install, store), after)) {
+        throw new Refused("This theme has changed since it was updated, so the update cannot be undone. Nothing was changed.");
+      }
+      await writeInstallLook(tx, storeId, install, before);
+      await tx.execute(sql`
+        update commerce.store_theme_installs set version_id = ${before.versionId}::uuid, placed = ${before.placed === null ? null : JSON.stringify(before.placed)}::jsonb
+        where id = ${String(install.id)}::uuid
+      `);
+      await tx.execute(sql`update commerce.theme_install_updates set undone_at = now() where id = ${updateId}::uuid`);
+      return String(install.title);
+    });
+    await audit(accountId, storeId, "store.theme_update_undone", { update: updateId, title }, { area: "website", target: { type: "theme_update", id: updateId } });
+    return { ok: true, title };
+  } catch (error) {
+    if (error instanceof Refused) return refuse(error.message);
+    console.error("[design-presets] undoing a theme update failed", error);
+    return refuse("The update could not be undone. Nothing was changed; try again.");
+  }
+}
+
+/** An install with a newer version of its theme waiting, and what is new in it. */
+export type AvailableUpdate = { installId: string; title: string; live: boolean; from: number | null; to: number; followsUpdates: boolean; whatsNew: string[] };
+/** An update made, for the owner to see and undo. */
+export type MadeUpdate = { id: string; title: string; from: number | null; to: number | null; at: string; automatic: boolean; own: number; keptSettings: number; layoutsKept: string[]; undoneAt: string | null };
+
+/** The store's installs that have a newer version waiting (D245), with *What's new* across every version between, and its latest updates. */
+export type FollowingInstall = { installId: string; title: string; live: boolean; version: number | null; followsUpdates: boolean };
+
+export async function themeUpdates(storeId: string): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
+  if (!isUuid(storeId)) return { available: [], made: [], installs: [] };
+  const rows = await db().execute<Row>(sql`
+    select i.id, i.title, i.live, i.follows_updates, cur.number as current_number, cur.snapshot as current_snapshot,
+      (select jsonb_agg(jsonb_build_object('number', v.number, 'snapshot', v.snapshot, 'notes', v.notes) order by v.number)
+         from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0)) as newer
+    from commerce.store_theme_installs i
+    join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    where i.store_id = ${storeId}::uuid
+    order by i.live desc, i.title
+  `);
+  const available = rows.flatMap((row): AvailableUpdate[] => {
+    const newer = (Array.isArray(row.newer) ? row.newer : []) as { number: number; snapshot: unknown; notes: string | null }[];
+    if (newer.length === 0) return [];
+    let previous = row.current_snapshot ? parseDesignSnapshot(row.current_snapshot) : null;
+    const lines: string[] = [];
+    for (const version of newer) {
+      const snap = parseDesignSnapshot(version.snapshot);
+      if (!snap) continue;
+      for (const line of previous ? whatsNew(previous, snap, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
+      previous = snap;
+    }
+    return [{
+      installId: String(row.id),
+      title: String(row.title),
+      live: row.live === true,
+      from: row.current_number === null || row.current_number === undefined ? null : Number(row.current_number),
+      to: Number(newer.at(-1)!.number),
+      followsUpdates: row.follows_updates === true,
+      whatsNew: lines,
+    }];
+  });
+  const made = await db().execute<Row>(sql`
+    select u.id, u.created_at, u.updated_by, u.kept, u.undone_at, i.title, f.number as from_number, t.number as to_number
+    from commerce.theme_install_updates u
+    join commerce.store_theme_installs i on i.id = u.install_id
+    left join commerce.design_preset_versions f on f.id = u.from_version_id
+    left join commerce.design_preset_versions t on t.id = u.to_version_id
+    where u.store_id = ${storeId}::uuid
+    order by u.created_at desc limit 10
+  `);
+  const installs = rows.map((row) => ({
+    installId: String(row.id),
+    title: String(row.title),
+    live: row.live === true,
+    version: row.current_number === null || row.current_number === undefined ? null : Number(row.current_number),
+    followsUpdates: row.follows_updates === true,
+  }));
+  return {
+    available,
+    installs,
+    made: made.map((row) => {
+      const kept = (row.kept ?? {}) as { own?: number; settings?: string[]; layouts?: string[] };
+      return {
+        id: String(row.id),
+        title: String(row.title),
+        from: row.from_number === null || row.from_number === undefined ? null : Number(row.from_number),
+        to: row.to_number === null || row.to_number === undefined ? null : Number(row.to_number),
+        at: new Date(String(row.created_at)).toISOString(),
+        automatic: !row.updated_by,
+        own: Number(kept.own ?? 0),
+        keptSettings: Array.isArray(kept.settings) ? kept.settings.length : 0,
+        layoutsKept: Array.isArray(kept.layouts) ? kept.layouts : [],
+        undoneAt: row.undone_at ? new Date(String(row.undone_at)).toISOString() : null,
+      };
+    }),
+  };
+}
+
+/** How long an update's log is kept for its undo. */
+export const THEME_UPDATE_KEEP_DAYS = 90;
+
+/**
+ * The job (D245): installs that follow updates and are behind their theme's latest published version are updated by themselves, a few at a
+ * time, in open stores that are not the platform's own. A refusal (the owner's changes no longer fit, a picture that cannot be copied) leaves
+ * the install as it was, to be tried again next time or updated by hand. Never throws.
+ */
+export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise<{ updated: number; refused: number; stores: { id: string; slug: string }[] }> {
+  const due = await db().execute<Row>(sql`
+    select i.id, i.store_id, s.slug from commerce.store_theme_installs i
+    join commerce.stores s on s.id = i.store_id and s.status = 'active' and not (s.is_template or s.starter)
+    join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
+    left join commerce.design_preset_versions cur on cur.id = i.version_id
+    where i.follows_updates
+      and exists (select 1 from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0))
+    order by i.installed_at
+    limit ${limit}
+  `);
+  let updated = 0;
+  let refused = 0;
+  const stores = new Map<string, { id: string; slug: string }>();
+  for (const row of due) {
+    try {
+      const result = await updateThemeInstall(String(row.store_id), String(row.id), null, deps);
+      if (result.ok) {
+        updated += 1;
+        stores.set(String(row.store_id), { id: String(row.store_id), slug: String(row.slug) });
+      } else refused += 1;
+    } catch (error) {
+      console.error("[design-presets] the theme update job failed for an install", error);
+      refused += 1;
+    }
+  }
+  return { updated, refused, stores: [...stores.values()] };
+}
+
+/** The daily job: updates older than `THEME_UPDATE_KEEP_DAYS` can no longer be undone and are deleted. */
+export async function pruneThemeUpdates(): Promise<number> {
+  const rows = await db().execute<Row>(sql`
+    delete from commerce.theme_install_updates where created_at < now() - make_interval(days => ${THEME_UPDATE_KEEP_DAYS}) returning id
+  `);
+  return rows.length;
 }

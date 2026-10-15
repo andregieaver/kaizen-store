@@ -2381,6 +2381,20 @@
       "when": 1792071775378,
       "tag": "20261015134255_theme_detaches_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 340,
+      "version": "7",
+      "when": 1792079995992,
+      "tag": "20261015155955_theme_updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 341,
+      "version": "7",
+      "when": 1792080008816,
+      "tag": "20261015160008_theme_updates_rules",
+      "breakpoints": true
     }
   ]
 }
