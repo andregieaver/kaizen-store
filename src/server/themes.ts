@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
 import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
 import { colourLibrarySchema } from "@/lib/colour-library";
-import { themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
+import { sectionStylesSchema, themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 import { themeHoverSchema } from "@/lib/hover-timing";
 
 import { parseSiteFonts } from "@/lib/fonts-schema";
@@ -81,6 +81,7 @@ const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as 
 /** What the page builder's Theme tab sends (D182): the elements, the content width and the body background. */
 const themeTabInput = z.object({
   elements: themeElementsSchema.optional(),
+  sections: sectionStylesSchema,
   maxWidth: z.number().int().min(CONTENT_MAX_MIN).max(CONTENT_MAX_MAX).nullable(),
   background: z.object({ light: hexColour, dark: hexColour }),
   hover: themeHoverSchema,
@@ -104,8 +105,8 @@ export async function saveThemeTab(
 function themeTabSettings(current: ThemeSettings, input: unknown): { ok: true; settings: ThemeSettings } | { ok: false; problems: string[] } {
   const parsed = themeTabInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
-  const { elements, maxWidth, background, hover } = parsed.data;
-  return { ok: true, settings: withThemeTab(current, { elements: elements ?? {}, maxWidth, background, hover }) };
+  const { elements, sections, maxWidth, background, hover } = parsed.data;
+  return { ok: true, settings: withThemeTab(current, { elements: elements ?? {}, sections: sections ?? {}, maxWidth, background, hover }) };
 }
 
 /** A theme's settings with its saved colours and gradients replaced (D183): the same for a store and for Kaizen (D235). */

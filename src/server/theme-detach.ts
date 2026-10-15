@@ -21,7 +21,7 @@ export type DetachReport = { pages: DetachPage[]; followed: number; own: number;
 export async function detachDryRun(storeId: string): Promise<DetachReport | null> {
   const [store] = await db().execute<Row>(sql`select theme from commerce.stores where id = ${storeId}::uuid`);
   if (!store) return null;
-  const elements = parseStoreTheme(store.theme).settings.elements;
+  const { elements, sectionStyles } = parseStoreTheme(store.theme).settings;
   const rows = await db().execute<Row>(sql`
     select id, type, slug, coalesce(published, draft) as content from commerce.pages
     where store_id = ${storeId}::uuid and type <> 'variant'
@@ -34,7 +34,7 @@ export async function detachDryRun(storeId: string): Promise<DetachReport | null
       report.unreadable += 1;
       continue;
     }
-    const result = detachThemeValues(content.rows, elements);
+    const result = detachThemeValues(content.rows, elements, sectionStyles);
     report.followed += result.followed;
     report.own += result.own;
     if (result.followed + result.own > 0) {

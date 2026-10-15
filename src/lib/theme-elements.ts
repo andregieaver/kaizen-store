@@ -20,6 +20,7 @@ import { siteFontFamilies } from "./fonts";
 import { type SiteFonts } from "./fonts-schema";
 import { TYPOGRAPHY_KEYS, typographyAt, typographyFamilies, typographyValueAt, type Typography, type TypographyGroups, type TypographyKey, type TypographyOverride } from "./typography";
 import { z } from "zod";
+import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, sectionElements, type SectionStyles } from "./section-styles";
 
 /**
  * Theme elements (D182, `docs/theme-elements.md`): what a store says once, in the page builder's Theme tab, for every row,
@@ -64,6 +65,19 @@ export const themeElementsSchema = z
     const kept = Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as ThemeElements;
     return Object.keys(kept).length > 0 ? kept : undefined;
   });
+
+/**
+ * A theme's section styles (D242): names of `SECTION_STYLE_NAME`'s shape, at most `SECTION_STYLES_MAX`, each a set of elements; a style
+ * that says nothing is left out, and none at all is none.
+ */
+export const sectionStylesSchema = z
+  .record(z.string().regex(SECTION_STYLE_NAME, "A section style's name is lowercase letters, digits and hyphens."), themeElementsSchema)
+  .refine((value) => Object.keys(value).length <= SECTION_STYLES_MAX, `A theme has at most ${SECTION_STYLES_MAX} section styles.`)
+  .transform((value) => {
+    const kept = Object.fromEntries(Object.entries(value).filter(([, style]) => style !== undefined)) as SectionStyles;
+    return Object.keys(kept).length > 0 ? kept : undefined;
+  })
+  .optional();
 
 /** The inner elements of a rich text that take the theme's rules (a list's items too). */
 export const INNER_KEYS = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "list"] as const satisfies readonly ThemeElementKey[];
@@ -261,9 +275,12 @@ function textOnly(at: SizeOverrides): SizeOverrides | undefined {
  * A page's rows as they are drawn: each row, heading, button and rich text with the theme's element laid under what it
  * says itself. The rows are never saved like this; nothing is changed where the theme says nothing.
  */
-export function themedRows(rows: PageRow[], elements: ThemeElements | undefined): PageRow[] {
-  if (!hasThemeElements(elements)) return rows;
+export function themedRows(rows: PageRow[], site: ThemeElements | undefined, sections?: SectionStyles): PageRow[] {
+  if (!hasThemeElements(site) && !hasSectionStyles(sections)) return rows;
   return rows.map((row) => {
+    // A row naming a section style (D242) is drawn with that style's elements laid over the site's.
+    const elements = sectionElements(site, sections, row.sectionStyle, layerElement) ?? {};
+    if (!hasThemeElements(elements)) return row;
     const themedRow = layerUnder(row, elements.row);
     return {
       ...themedRow,
@@ -274,6 +291,26 @@ export function themedRows(rows: PageRow[], elements: ThemeElements | undefined)
       })),
     };
   });
+}
+
+/** Whether a theme has any section style that says something. */
+const hasSectionStyles = (sections: SectionStyles | undefined): sections is SectionStyles =>
+  Boolean(sections) && Object.values(sections!).some((style) => hasThemeElements(style));
+
+/**
+ * One element laid over another (a section style's over the site's, D242): what `top` sets wins at the sizes it sets it, the rest is
+ * `under`'s, a row's widths included.
+ */
+export function layerElement(top: ThemeElement, under: ThemeElement | undefined): ThemeElement {
+  if (!under) return top;
+  const out = layerUnder(top as Record<string, unknown>, under) as ThemeElement;
+  const widths = under as { width?: string; contentWidth?: string };
+  const own = top as { width?: string; contentWidth?: string };
+  return {
+    ...out,
+    ...(own.width === undefined && widths.width !== undefined && { width: widths.width }),
+    ...(own.contentWidth === undefined && widths.contentWidth !== undefined && { contentWidth: widths.contentWidth }),
+  } as ThemeElement;
 }
 
 /** Blocks drawn on their own (a listing's grid): the theme's elements apply to them too. */

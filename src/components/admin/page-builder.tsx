@@ -5,7 +5,8 @@ import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeAttributes, themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
-import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
+import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
+import { CORE_SECTION_LABELS, SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import { InlineHeadingEditor } from "@/components/inline-edit/heading-editor";
 import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
@@ -707,7 +708,7 @@ export function PageBuilder({
   const [themeValue, setThemeValue] = useState<ThemeTabValue | null>(() => (themeTab ? themeTabValue(themeTab.settings) : null));
   const [themeSaved, setThemeSaved] = useState<ThemeTabValue | null>(themeValue);
   const themeNow = useMemo(() => (themeTab && themeValue ? withThemeTab(themeTab.settings, themeValue) : null), [themeTab, themeValue]);
-  const shownRows = useMemo(() => themedRows(rows, themeValue?.elements), [rows, themeValue]);
+  const shownRows = useMemo(() => themedRows(rows, themeValue?.elements, themeValue?.sections), [rows, themeValue]);
   const saveTheme = async (): Promise<string[] | null> => {
     if (!themeTab || !themeValue) return null;
     const result = await themeTab.save(JSON.stringify(themeValue));
@@ -1070,6 +1071,7 @@ export function PageBuilder({
     <FieldGroupsContext value={fieldGroups}>
     <BindEntitiesContext value={bindEntities}>
     <ThemeRowWidths value={themeRowWidths}>
+    <ThemeSections value={themeValue?.sections}>
       <DndContext
         id="page-builder"
         sensors={sensors}
@@ -1313,6 +1315,7 @@ export function PageBuilder({
           onClose={() => setLayoutUse(null)}
         />
       </DndContext>
+    </ThemeSections>
     </ThemeRowWidths>
     </BindEntitiesContext>
     </FieldGroupsContext>
@@ -4797,6 +4800,42 @@ function OverlayFields({
  * the theme's) and write its own only where that is not what it would be without it.
  */
 const ThemeRowWidths = createContext<{ width?: "content" | "full"; contentWidth?: "content" | "full" }>({});
+/** The live theme's section styles (D242), for a row's choice; undefined where the builder has no Theme tab. */
+const ThemeSections = createContext<ThemeTabValue["sections"]>(undefined);
+
+/**
+ * The theme's section style a row is drawn in (D242): None keeps the row on the site's elements; a style the theme does not have
+ * draws as its Plain. The name is all the row keeps, so switching themes restyles it.
+ */
+function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const sections = useContext(ThemeSections);
+  const id = useId();
+  const choices = sectionStyleChoices(sections);
+  const current = row.sectionStyle;
+  const known = current === undefined || choices.includes(current);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        Section style
+      </label>
+      <select
+        id={id}
+        value={current ?? ""}
+        onChange={(event) => onChange({ sectionStyle: event.target.value || undefined })}
+        className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+      >
+        <option value="">None: the site&apos;s look</option>
+        {choices.map((name) => (
+          <option key={name} value={name}>
+            {sectionStyleLabel(name)}
+          </option>
+        ))}
+        {!known && current && <option value={current}>{sectionStyleLabel(current)} (not in this theme: drawn as Plain)</option>}
+      </select>
+      <p className="text-xs text-muted">The theme gives the row and what is in it the style&apos;s look; what you set yourself still wins. Another theme restyles it.</p>
+    </div>
+  );
+}
 
 /** A row's width and what it holds, the same two choices on a row and on the theme's Row (D48, D190). */
 function RowWidthChoices({
@@ -4845,6 +4884,7 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
   const contentWidth = row.contentWidth ?? theme.contentWidth ?? "content";
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <SectionStyleField row={row} onChange={onChange} />
       <RowWidthChoices
         width={width}
         contentWidth={contentWidth}
@@ -7384,12 +7424,20 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
 /** The content widths a theme chooses between, in pixels (`theme.ts`' Narrow, Normal and Wide in rem). */
 const PRESET_WIDTHS = { narrow: 896, normal: 1024, wide: 1280 } as const;
 
-const withElement = (value: ThemeTabValue, key: ThemeElementKey, element: ThemeTabValue["elements"][ThemeElementKey]): ThemeTabValue => {
-  const elements = { ...value.elements };
+const withElement = (value: ThemeTabValue, key: ThemeElementKey, element: ThemeTabValue["elements"][ThemeElementKey], scope = SITE_SCOPE): ThemeTabValue => {
+  const elements = { ...(scope === SITE_SCOPE ? value.elements : (value.sections?.[scope] ?? {})) };
   if (element) elements[key] = element;
   else delete elements[key];
-  return { ...value, elements };
+  if (scope === SITE_SCOPE) return { ...value, elements };
+  // A section style's elements (D242): one that says nothing is left out.
+  const sections = { ...(value.sections ?? {}) };
+  if (Object.keys(elements).length > 0) sections[scope] = elements;
+  else delete sections[scope];
+  return { ...value, sections };
 };
+
+/** The Theme tab's elements are the whole site's unless a section style is chosen (D242). */
+const SITE_SCOPE = "";
 
 /**
  * The theme's settings for a store's rows, headings, paragraphs, lists and buttons, and its content width and body
@@ -7421,10 +7469,15 @@ function ThemePanel({
   const showLight = settings.mode !== "dark" || settings.visitorSwitch;
   const showDark = settings.mode !== "light" || settings.visitorSwitch;
 
+  const [scope, setScope] = useState(SITE_SCOPE);
+  const [newStyle, setNewStyle] = useState("");
+  const styles = sectionStyleChoices(value.sections);
+  const scoped = scope === SITE_SCOPE ? value.elements : (value.sections?.[scope] ?? {});
   const save = async () => {
     const checked = themeElementsSchema.safeParse(value.elements);
-    if (!checked.success) {
-      setProblems([...new Set(checked.error.issues.map((issue) => issue.message))]);
+    const sections = sectionStylesSchema.safeParse(value.sections ?? {});
+    if (!checked.success || !sections.success) {
+      setProblems([...new Set([...(checked.error?.issues ?? []), ...(sections.error?.issues ?? [])].map((issue) => issue.message))]);
       setDone(false);
       return;
     }
@@ -7491,13 +7544,60 @@ function ThemePanel({
         <p className="text-xs text-muted">For every link and button of the site. A row, column or component can have its own in its Advanced tab&apos;s Motion, and a button its own effect.</p>
       </fieldset>
 
+      <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3" data-theme-scope="">
+        <legend className="px-1 text-sm font-medium">Elements for</legend>
+        <select
+          aria-label="Elements for"
+          value={scope}
+          onChange={(event) => setScope(event.target.value)}
+          className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+        >
+          <option value={SITE_SCOPE}>The whole site</option>
+          {styles.map((name) => (
+            <option key={name} value={name}>
+              Section style: {sectionStyleLabel(name)}
+              {value.sections?.[name] ? " (set)" : ""}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted">
+          {scope === SITE_SCOPE
+            ? "Every row, heading, text and button of the site, unless a row names a section style."
+            : `${isCoreSectionStyle(scope) ? CORE_SECTION_LABELS[scope].hint : "One of this theme's own styles."} Rows that choose it take these over the whole site's; what is left empty stays the site's. A row naming a style this theme does not have takes Plain.`}
+        </p>
+        {scope === SITE_SCOPE && styles.length < SECTION_STYLES_MAX && (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs">
+              A style of the theme&apos;s own
+              <input
+                value={newStyle}
+                onChange={(event) => setNewStyle(event.target.value.toLowerCase())}
+                placeholder="banner"
+                className="min-h-9 w-36 rounded-md border border-border bg-background px-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!SECTION_STYLE_NAME.test(newStyle) || styles.includes(newStyle)}
+              onClick={() => {
+                setScope(newStyle);
+                setNewStyle("");
+              }}
+              className="min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-50"
+            >
+              Add style
+            </button>
+          </div>
+        )}
+      </fieldset>
+
       <div className="flex flex-col gap-2">
         {THEME_ELEMENT_KEYS.map((key) => (
           <ThemeElementSection
-            key={key}
+            key={`${scope}:${key}`}
             elementKey={key}
-            element={value.elements[key]}
-            onChange={(element) => change(withElement(value, key, element))}
+            element={scoped[key]}
+            onChange={(element) => change(withElement(value, key, element, scope))}
             install={install}
           />
         ))}

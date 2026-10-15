@@ -9,7 +9,7 @@ import { blockTarget, motionNeeds, partFx } from "@/lib/motion-attrs";
 import { flowRows } from "@/lib/page-modal";
 import { rowWidthStyle } from "@/lib/part-css";
 import { themedRows } from "@/lib/theme-elements";
-import { themeElementsFor } from "@/server/theme-elements";
+import { themeLayersFor } from "@/server/theme-elements";
 import type { GridPlace } from "@/server/content-grid";
 import { placeLang } from "@/server/place-lang";
 
@@ -130,7 +130,8 @@ export function PageRowView(props: {
 }
 
 async function ThemedRowView({ row, ...rest }: Parameters<typeof PageRowView>[0]) {
-  const [themed] = themedRows([row], await themeElementsFor(rest.place.owner));
+  const layers = await themeLayersFor(rest.place.owner);
+  const [themed] = themedRows([row], layers.elements, layers.sections);
   return <RowView row={themed} {...rest} />;
 }
 

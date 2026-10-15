@@ -2,6 +2,7 @@ import { SMALLER_SIZES } from "./breakpoints";
 import { canonicalJson } from "./lifecycle";
 import type { PageBlock, PageColumn, PageRow } from "./page-content";
 import { TYPOGRAPHY_KEYS } from "./typography";
+import type { SectionStyles } from "./section-styles";
 import { themedRows, type ThemeElements } from "./theme-elements";
 
 /**
@@ -127,12 +128,12 @@ function current(row: PageRow, where: Where): Part {
 const THEMED: Record<string, "box" | "text"> = { heading: "box", button: "box", dualButton: "text" };
 
 /** A page's rows with every setting that only repeats the theme taken out, and the counts (`docs/theme-store.md` 4.4). */
-export function detachThemeValues(rows: PageRow[], elements: ThemeElements | undefined): DetachResult {
-  if (!elements || Object.keys(elements).length === 0) return { rows, followed: 0, own: 0 };
+export function detachThemeValues(rows: PageRow[], elements: ThemeElements | undefined, sections?: SectionStyles): DetachResult {
+  if ((!elements || Object.keys(elements).length === 0) && !sections) return { rows, followed: 0, own: 0 };
   let followed = 0;
   let own = 0;
   const out = rows.map((original) => {
-    const drawn = canonicalJson(themedRows([original], elements));
+    const drawn = canonicalJson(themedRows([original], elements, sections));
     let row = original;
     for (const { where, part, isRow } of partsOf(original)) {
       const kind = THEMED[String(part.type)];
@@ -140,7 +141,7 @@ export function detachThemeValues(rows: PageRow[], elements: ThemeElements | und
       const settings = themableSettings(part, isRow).filter((path) => kind !== "text" || path.includes("typography"));
       for (const path of settings) {
         const next = put(row, where, without(current(row, where), path));
-        if (canonicalJson(themedRows([next], elements)) === drawn) {
+        if (canonicalJson(themedRows([next], elements, sections)) === drawn) {
           row = next;
           followed += 1;
         } else {

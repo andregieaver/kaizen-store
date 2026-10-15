@@ -6,7 +6,8 @@ import { breakpointsSchema } from "./breakpoints-schema";
 import { fontFamily, type SiteFonts } from "./fonts-schema";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
 import { colourLibrarySchema, type ColourLibrary } from "./colour-library";
-import { themeElementsSchema, type ThemeElements } from "./theme-elements";
+import { sectionStylesSchema, themeElementsSchema, type ThemeElements } from "./theme-elements";
+import type { SectionStyles } from "./section-styles";
 
 /**
  * Store design themes (D60): every style setting of a storefront, the
@@ -96,6 +97,8 @@ export type ThemeSettings = {
    * (D182, `src/lib/theme-elements.ts`): typography, spacing, frame and, for rows, colour and content width.
    */
   elements?: ThemeElements;
+  /** Named sets of elements for the rows that name them (D242, `src/lib/section-styles.ts`), laid over `elements` for those rows. */
+  sectionStyles?: SectionStyles;
   /** The store's saved colours and gradients (D183), offered in the page builder's colour fields and gradient editors; copied into a part when used. */
   library?: ColourLibrary;
   /** How hover changes play out on the site (D206): their time, easing and the buttons' default answer. */
@@ -129,6 +132,7 @@ export const themeSettingsSchema = z.object({
   }),
   breakpoints: breakpointsSchema.optional(),
   elements: themeElementsSchema.optional(),
+  sectionStyles: sectionStylesSchema,
   library: colourLibrarySchema.optional(),
   hover: themeHoverSchema,
 }) satisfies z.ZodType<ThemeSettings, unknown>;
@@ -377,6 +381,8 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
  */
 export type ThemeTabValue = {
   elements: ThemeElements;
+  /** The theme's section styles (D242), each a set of elements; none when empty. */
+  sections?: SectionStyles;
   maxWidth: number | null;
   background: { light: string; dark: string };
   /** The site's hover timing and the buttons' default answer (D206); none set when empty. */
@@ -385,6 +391,7 @@ export type ThemeTabValue = {
 
 export const themeTabValue = (settings: ThemeSettings): ThemeTabValue => ({
   elements: structuredClone(settings.elements ?? {}),
+  sections: structuredClone(settings.sectionStyles ?? {}),
   maxWidth: settings.layout.maxWidth ?? null,
   background: { light: settings.light.background, dark: settings.dark.background },
   hover: settings.hover ? { ...settings.hover } : {},
@@ -392,9 +399,11 @@ export const themeTabValue = (settings: ThemeSettings): ThemeTabValue => ({
 
 /** The theme with the tab's value in it, and nothing else changed. */
 export function withThemeTab(settings: ThemeSettings, value: ThemeTabValue): ThemeSettings {
-  const { elements: _before, hover: _hover, ...rest } = settings;
+  const { elements: _before, hover: _hover, sectionStyles: _sections, ...rest } = settings;
   void _before;
   void _hover;
+  void _sections;
+  const sections = Object.fromEntries(Object.entries(value.sections ?? {}).filter(([, style]) => style && Object.keys(style).length > 0));
   const hover = value.hover && Object.values(value.hover).some((v) => v !== undefined) ? value.hover : undefined;
   const { maxWidth: _width, ...layout } = settings.layout;
   void _width;
@@ -404,6 +413,7 @@ export function withThemeTab(settings: ThemeSettings, value: ThemeTabValue): The
     light: { ...settings.light, background: value.background.light },
     dark: { ...settings.dark, background: value.background.dark },
     ...(Object.keys(value.elements).length > 0 && { elements: value.elements }),
+    ...(Object.keys(sections).length > 0 && { sectionStyles: sections }),
     ...(hover && { hover }),
   };
 }

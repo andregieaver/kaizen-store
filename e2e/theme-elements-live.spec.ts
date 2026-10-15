@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { storePageWith, testDb } from "./db";
+import { storePageRows, storePageWith, testDb } from "./db";
 
 /**
  * What the page builder's Theme tab says (D182) reaches the live site, not only the builder's canvas (D195): the size of paragraphs,
@@ -45,4 +45,31 @@ test("the Theme tab's settings are what the site draws", async ({ page }) => {
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(253, 246, 227)");
   const width = await page.evaluate(() => getComputedStyle(document.querySelector("main > * , main")!).getPropertyValue("--content-width"));
   expect(width.trim()).toBe("1111px");
+});
+
+/** A row naming a section style (D242) is drawn in the style's look, another in the site's, and a name the theme lacks as its Plain. */
+test("a row naming a section style is drawn in it", async ({ page }) => {
+  const row = (id: string, text: string, sectionStyle?: string) => ({
+    id,
+    type: "row",
+    layout: "1",
+    ...(sectionStyle && { sectionStyle }),
+    columns: [{ id: `${id}-c`, blocks: [{ id: `${id}-h`, type: "heading", text, level: 2 }] }],
+  });
+  const url = await storePageRows("sectionlive", [row("r1", "Stor overskrift", "hero"), row("r2", "Vanlig overskrift"), row("r3", "Ukjent stil", "banner")]);
+  const slug = url.split("/")[2];
+  const sql = testDb();
+  try {
+    const add = { elements: { h2: size(20) }, sectionStyles: { hero: { h2: size(52), row: { style: { padding: { top: 64, right: 0, bottom: 64, left: 0 } } } }, plain: { h2: size(26) } } };
+    await sql`
+      update commerce.stores set theme = jsonb_set(coalesce(theme, '{}'::jsonb), '{settings}', coalesce(theme->'settings', '{}'::jsonb) || ${sql.json(add)}::jsonb, true)
+      where slug = ${slug}`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(url);
+  await expect(page.getByRole("heading", { name: "Stor overskrift" })).toHaveCSS("font-size", "52px");
+  await expect(page.locator(".kz-r1")).toHaveCSS("padding-top", "64px");
+  await expect(page.getByRole("heading", { name: "Vanlig overskrift" })).toHaveCSS("font-size", "20px");
+  await expect(page.getByRole("heading", { name: "Ukjent stil" })).toHaveCSS("font-size", "26px");
 });

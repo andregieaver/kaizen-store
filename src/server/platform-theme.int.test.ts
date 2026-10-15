@@ -44,13 +44,22 @@ describe("Kaizena Flow's theme", () => {
   });
 
   it("keeps what the Theme tab sends, and Kaizena Flow's pages are drawn over it", async () => {
-    const tab = { elements: { h2: { typography: { text: { color: "#123456" } } } }, maxWidth: 1200, background: { light: "#fafaf9", dark: "#0a0a0a" } };
+    const tab = {
+      elements: { h2: { typography: { text: { color: "#123456" } } } },
+      sections: { hero: { h2: { typography: { text: { color: "#654321" } } } } },
+      maxWidth: 1200,
+      background: { light: "#fafaf9", dark: "#0a0a0a" },
+    };
     const saved = await themes.savePlatformThemeTab(admin, tab);
     expect(saved, JSON.stringify(saved)).toMatchObject({ ok: true });
     const theme = await navigation.getPlatformTheme();
     expect(theme.settings.layout.maxWidth).toBe(1200);
     expect(theme.settings.light.background).toBe("#fafaf9");
-    expect(await elements.themeElementsFor(null)).toMatchObject({ h2: { typography: { text: { color: "#123456" } } } });
+    // The site's elements and its section styles (D242) are what Kaizena Flow's pages are drawn over.
+    expect(await elements.themeLayersFor(null)).toMatchObject({
+      elements: { h2: { typography: { text: { color: "#123456" } } } },
+      sections: { hero: { h2: { typography: { text: { color: "#654321" } } } } },
+    });
     const [entry] = await db().execute<Record<string, unknown>>(sql`
       select action, store_id from commerce.audit_log where account_id = ${admin.id}::uuid order by created_at desc limit 1`);
     expect(entry).toMatchObject({ action: "platform.theme_updated", store_id: null });

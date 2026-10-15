@@ -271,7 +271,7 @@ describe("the theme's settings", () => {
   it("is the tab's value and back, changing nothing else", () => {
     const base = settings();
     const value = themeTabValue(base);
-    expect(value).toEqual({ elements: {}, maxWidth: null, background: { light: base.light.background, dark: base.dark.background }, hover: {} });
+    expect(value).toEqual({ elements: {}, sections: {}, maxWidth: null, background: { light: base.light.background, dark: base.dark.background }, hover: {} });
     const next = withThemeTab(base, { elements: { h2: { radius: 4 } }, maxWidth: 1200, background: { light: "#fafafa", dark: "#101010" } });
     expect(next.layout.maxWidth).toBe(1200);
     expect(next.light.background).toBe("#fafafa");

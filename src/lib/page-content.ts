@@ -1,3 +1,4 @@
+import { SECTION_STYLE_NAME } from "./section-styles";
 import { z } from "zod";
 
 import { BUTTON_HOVER_IDS, type ButtonHover } from "./hover-timing";
@@ -1752,6 +1753,11 @@ export type PageRow = PartBase & {
    * number of columns its layout has. None for a row of one line, which is how rows were always.
    */
   moreLines?: RowLayout[];
+  /**
+   * The theme's section style the row is drawn in (D242, `src/lib/section-styles.ts`): a name only, never CSS. The live theme's style of that
+   * name is laid under the row and what it holds, its `plain` when it has none of that name; none keeps the row on the site's elements.
+   */
+  sectionStyle?: string;
   /** The row's own width: the content's (the default) or the whole screen's (D48). */
   width?: "content" | "full";
   /** In a full-width row, whether what is in it keeps to the content's width (the default) or spreads too. */
@@ -3318,6 +3324,7 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
     columns: z.array(pageColumnSchema),
     moreLines: z.array(z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout.")).min(1).max(ROW_LINES_MAX - 1, `A row has at most ${ROW_LINES_MAX} lines of columns.`).optional(),
+    sectionStyle: z.string().regex(SECTION_STYLE_NAME, "A section style's name is lowercase letters, digits and hyphens.").optional(),
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
     contentMax: contentMaxWidth.optional(),
