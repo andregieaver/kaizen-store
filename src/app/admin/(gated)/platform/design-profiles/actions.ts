@@ -22,6 +22,7 @@ import {
   saveDesignDraft,
   unpublishDesign,
 } from "@/server/design-presets";
+import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
 
@@ -172,4 +173,19 @@ export async function restoreDesignForStoreAction(storeSlug: string): Promise<Fo
   for (const tag of designTags(store)) updateTag(tag);
   refresh();
   return { status: "ok", messages: [`The look from before ${result.presetTitle} is back.`] };
+}
+
+/** Adds Kaizena Flow's launch themes not there yet and publishes newer versions of those that are (D246, `syncLaunchThemes()`). */
+export async function syncLaunchThemesAction(): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const result = await syncLaunchThemes(admin);
+  if (result.made.length + result.updated.length > 0) offeredChanged();
+  const said = [
+    result.made.length > 0 && `Added and published: ${result.made.join(", ")}.`,
+    result.updated.length > 0 && `Published a new version of ${result.updated.join(", ")}; stores that follow updates get it by themselves.`,
+    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "Every launch theme is up to date.",
+    result.skipped.length > 0 && `Left alone because archived: ${result.skipped.join(", ")}.`,
+  ].filter((line): line is string => typeof line === "string");
+  if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
+  return { status: "ok", messages: said };
 }

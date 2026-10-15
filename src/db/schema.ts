@@ -762,6 +762,12 @@ export const designPresets = commerce.table(
     /** Archived (D177): hidden from every list but the platform's Archived filter, never published while archived; Restore takes it back. */
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     archivedBy: uuid("archived_by").references(() => accounts.id),
+    /**
+     * One of Kaizena Flow's launch themes (D246, `LAUNCH_THEMES` in `src/lib/launch-themes.ts`): its key there, so `syncLaunchThemes()` finds
+     * it again, and the version of the code's definition last published (null until its first Publish). Null for a theme an admin made.
+     */
+    launchKey: text("launch_key"),
+    launchVersion: integer("launch_version"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -769,6 +775,8 @@ export const designPresets = commerce.table(
   },
   (t) => [
     index("design_presets_offered_idx").on(t.published, t.position),
+    uniqueIndex("design_presets_launch_key_idx").on(t.launchKey),
+    check("design_presets_launch", sql`${t.launchVersion} is null or (${t.launchKey} is not null and ${t.launchVersion} > 0)`),
     uniqueIndex("design_presets_workspace_idx").on(t.workspaceStoreId),
     index("design_presets_archived_by_idx").on(t.archivedBy),
     check("design_presets_archived_unpublished", sql`not (${t.published} and ${t.archivedAt} is not null)`),

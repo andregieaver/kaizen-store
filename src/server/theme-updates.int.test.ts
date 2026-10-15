@@ -5,6 +5,7 @@ import { closeDb, db } from "@/db/client";
 import type { DesignSnapshot } from "@/lib/design-presets";
 import type { PageRow } from "@/lib/page-content";
 import { defaultFooter, defaultHeader } from "@/lib/site-layout";
+import { withCoreStyles } from "@/lib/launch-themes";
 import { templateSettings, type ThemeSettings } from "@/lib/theme";
 
 vi.mock("@/lib/supabase/mailer", () => ({ emailSignInLink: async () => true }));
@@ -191,12 +192,14 @@ describe("updating an installed theme (D245)", () => {
     if (!made.ok) throw new Error(made.problems.join(" "));
     const workspace = (await designs.workspaceOf(admin, made.id))!.store;
     const { saveStoreTheme } = await import("./themes");
-    const withHero = { ...templateSettings("minimal"), sectionStyles: { hero: { row: { radius: 4 } } } };
+    // Every core section style, so the version passes the theme checks (D246).
+    const withHero = withCoreStyles(templateSettings("minimal"));
     expect(await saveStoreTheme(admin, workspace.id, { base: "minimal", savedId: null, settings: withHero })).toMatchObject({ ok: true });
     expect(await designs.publishDesign(admin, made.id, "  First light. ")).toMatchObject({ ok: true });
     expect((await one(sql`select notes from commerce.design_preset_versions where preset_id = ${made.id}::uuid and number = 1`)).notes).toBe("First light.");
     // A version without Hero is refused, and no version is added.
-    expect(await saveStoreTheme(admin, workspace.id, { base: "minimal", savedId: null, settings: templateSettings("minimal") })).toMatchObject({ ok: true });
+    const { hero: _hero, ...withoutHero } = withHero.sectionStyles ?? {};
+    expect(await saveStoreTheme(admin, workspace.id, { base: "minimal", savedId: null, settings: { ...withHero, sectionStyles: withoutHero } })).toMatchObject({ ok: true });
     const refused = await designs.publishDesign(admin, made.id, null);
     expect(refused.ok).toBe(false);
     expect(refused.ok ? "" : refused.problems[0]).toContain("core section style hero");

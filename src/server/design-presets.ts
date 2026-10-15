@@ -42,6 +42,8 @@ import { defaultFooter, defaultHeader } from "@/lib/site-layout";
 import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
+import { withCoreStyles } from "@/lib/launch-themes";
+import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
 
 import { audit, type Account } from "./auth";
@@ -335,7 +337,7 @@ async function makeWorkspace(admin: Account): Promise<{ id: string; slug: string
         `);
         const id = String(row.id);
         await tx.execute(sql`
-          update commerce.stores set starter = true, theme = ${JSON.stringify(STANDARD_THEME)}::jsonb, custom_css = '',
+          update commerce.stores set starter = true, theme = ${JSON.stringify({ ...STANDARD_THEME, settings: withCoreStyles(STANDARD_THEME.settings) })}::jsonb, custom_css = '',
             header_id = null, footer_id = null, product_layout_id = null
           where id = ${id}::uuid
         `);
@@ -477,7 +479,8 @@ async function writeWorkspaceLook(
           chosen[kind] = String(row.id);
         }
       }
-      const theme = { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings };
+      // A theme from a store or from before D246 gets the core section styles it lacks (D246), so it can pass the checks.
+      const theme = { base: snapshot.theme.base, savedId: null, settings: withCoreStyles(snapshot.theme.settings) };
       await tx.execute(sql`
         update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb, custom_css = ${placed.siteCss},
           header_id = ${chosen.header}::uuid, footer_id = ${chosen.footer}::uuid, product_layout_id = ${chosen.productLayout}::uuid
@@ -565,6 +568,19 @@ export async function copyStoreLookToDraft(admin: Account, presetId: string, sto
   if (!written.ok) return written;
   await audit(admin.id, storeId, "platform.design_preset_copied", { preset: presetId, workspace: ready.workspace.store.id }, { target: { type: "design_preset", id: presetId } });
   return { ok: true, notes: [...taken.notes, ...written.notes] };
+}
+
+/**
+ * Writes a look into a profile's workspace as its draft (D246): what Kaizena Flow's launch themes are written with
+ * (`syncLaunchThemes()`), as *Start again from a store* writes a store's. Only the draft changes until Publish.
+ */
+export async function writeDesignLook(admin: Account, presetId: string, snapshot: DesignSnapshot, deps: ApplyDeps = {}): Promise<DesignResult<{ notes: string[] }>> {
+  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  const parsed = parseDesignSnapshot(snapshot);
+  if (!parsed) return refuse("That look cannot be read as a theme.");
+  const ready = await ensureWorkspace(admin, presetId, deps);
+  if (!ready.ok) return ready;
+  return writeWorkspaceLook(ready.workspace.store.id, parsed, { sourceId: null, accountId: admin.id, title: ready.workspace.title, deps });
 }
 
 /**
@@ -667,6 +683,14 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
       return refuse(`This version no longer has the core section ${removed.length === 1 ? "style" : "styles"} ${removed.join(", ")}, which every version keeps. Put ${removed.length === 1 ? "it" : "them"} back in the theme's Theme tab first.`);
     }
   }
+  // Every version passes the theme checks (D246, `docs/theme-store.md` 7): a blocking finding refuses it, warnings are said.
+  const checked = await checkedSnapshot(snapshot ?? (await storedSnapshot(id)));
+  if (checked.blocking > 0) {
+    const lines = blockingLines(checked);
+    return refuse(`It does not pass the theme checks yet (${lines.length} to fix): ${lines.slice(0, 5).join(" ")}${lines.length > 5 ? " …and more, listed on its Details tab." : ""}`);
+  }
+  const warnings = checked.findings.filter((finding) => !finding.blocking).length;
+  if (warnings > 0) notes.push(`The theme checks found ${warnings} ${warnings === 1 ? "thing" : "things"} to look at (not blocking), listed on its Details tab.`);
   try {
     // A new version (D241) whenever the look published differs from the latest version's, in the same statement as the snapshot.
     const [row] = await db().execute<Row>(sql`
@@ -1561,4 +1585,42 @@ export async function pruneThemeUpdates(): Promise<number> {
     delete from commerce.theme_install_updates where created_at < now() - make_interval(days => ${THEME_UPDATE_KEEP_DAYS}) returning id
   `);
   return rows.length;
+}
+
+// ---------------------------------------------------------------------------
+// The theme checks (D246)
+// ---------------------------------------------------------------------------
+
+/** A profile's published snapshot as stored, unread (the checks say what is wrong with it). */
+async function storedSnapshot(id: string): Promise<unknown> {
+  const [row] = await db().execute<Row>(sql`select snapshot from commerce.design_presets where id = ${id}::uuid`);
+  return row?.snapshot ?? null;
+}
+
+/** `themeCheck()` with the page rules a save asks (`pageRulesProblem()`, as a store's page). */
+export async function checkedSnapshot(snapshot: unknown): Promise<ThemeCheckResult> {
+  return themeCheck(snapshot, { rulesProblem: (type, content) => pageRulesProblem("theme", type, content) });
+}
+
+/**
+ * The checks on what Publish would publish (D246): the workspace's draft look when the profile has one, else the snapshot as published.
+ * For the platform admin's Details tab.
+ */
+export async function designChecks(design: DesignRow): Promise<ThemeCheckResult | null> {
+  if (design.workspaceStoreId) {
+    const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+    if (!taken.ok) return { findings: taken.problems.map((message) => ({ check: "package", blocking: true, where: "Theme", message })), blocking: taken.problems.length };
+    return checkedSnapshot(taken.snapshot);
+  }
+  return checkedSnapshot(await storedSnapshot(design.id));
+}
+
+/**
+ * Marks a theme as one of Kaizena Flow's launch themes (D246, `syncLaunchThemes()`): its key, claimed when it is made, and the version of
+ * the code's definition once that is published.
+ */
+export async function markLaunchTheme(presetId: string, key: string, version: number | null): Promise<void> {
+  await db().execute(sql`
+    update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version) where id = ${presetId}::uuid
+  `);
 }

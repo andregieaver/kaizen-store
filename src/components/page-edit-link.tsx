@@ -104,6 +104,8 @@ export function PageEditLink({
       <div aria-hidden className="h-16 print:hidden" />
       <div
         lang="en"
+        // Staff's tools, not the page's content (the theme switch e2e leaves them out).
+        data-staff-tools=""
         className={`fixed z-50 flex flex-col gap-2 print:hidden ${
           // In a store, beside "Back to admin" and above the phone bar.
           store ? "right-4 bottom-20 items-end md:bottom-4" : "bottom-20 left-4 items-start md:bottom-4"

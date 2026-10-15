@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
+import { ThemeChecks } from "@/components/admin/theme-checks";
 import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
-import { shownDesignDetails, snapshotSources } from "@/server/design-presets";
+import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listStarters } from "@/server/store-starters";
 
 import { uploadPlatformImageAction } from "../../actions";
@@ -25,7 +26,7 @@ const KIND_WORDS = { template: "the demo template", starter: "store template", s
  */
 export default async function DesignProfilePage({ params, searchParams }: PageProps<"/admin/platform/design-profiles/[presetId]">) {
   const { admin, design, facts } = await designPage((await params).presetId);
-  const [query, starters, sources] = await Promise.all([searchParams, listStarters(), snapshotSources(admin)]);
+  const [query, starters, sources, checks] = await Promise.all([searchParams, listStarters(), snapshotSources(admin), designChecks(design)]);
   const shown = shownDesignDetails(design);
   const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests });
 
@@ -55,6 +56,8 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
           <p className="text-sm">Made before profiles were edited here: opening its Theme, Header, Footer, Product page or CSS sets it up for editing from what is published.</p>
         )}
       </section>
+
+      <ThemeChecks result={checks} />
 
       <ActionForm action={saveDesignDraftAction.bind(null, design.id)} className="flex max-w-3xl flex-col gap-4">
         <h2 className="text-title text-ink">Details</h2>

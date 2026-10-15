@@ -9,6 +9,7 @@ import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from 
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
 import { requirePlatformAdmin } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
+import { launchThemeStates } from "@/server/launch-themes";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
@@ -18,6 +19,7 @@ import {
   moveDesignAction,
   publishDesignAction,
   unarchiveDesignAction,
+  syncLaunchThemesAction,
   unpublishDesignAction,
 } from "./actions";
 
@@ -38,7 +40,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
   const admin = await requirePlatformAdmin();
   const query = await searchParams;
   const filter = listFilterOf(query.show);
-  const [designs, sources] = await Promise.all([listDesigns(filter), snapshotSources(admin)]);
+  const [designs, sources, launch] = await Promise.all([listDesigns(filter), snapshotSources(admin), launchThemeStates()]);
   const facts = await Promise.all(designs.map((design) => designLifecycle(design)));
   const published = designs.filter((d) => d.published).length;
 
@@ -81,6 +83,39 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
             <DesignItem key={design.id} design={design} facts={facts[index]} first={index === 0} last={index === designs.length - 1} archived={filter === "archived"} />
           ))}
         </ol>
+      )}
+
+      {filter === "current" && (
+        <Card
+          title="Kaizena Flow's themes"
+          description={<>The launch themes are written in Kaizena Flow&apos;s code, each passing the theme checks. Adding makes and publishes the ones not here yet; when the code has a newer version of one, it is published as a new version, which stores that follow updates take with their own changes kept. An archived one is left alone.</>}
+          aside={
+            <ActionForm action={syncLaunchThemesAction}>
+              <SubmitButton>Add and update Kaizena Flow&apos;s themes</SubmitButton>
+            </ActionForm>
+          }
+          compact
+        >
+          <ul aria-label="Launch themes" className="flex flex-col gap-1 text-sm">
+            {launch.map((theme) => (
+              <li key={theme.key}>
+                <span className="text-body-strong text-ink">{theme.title}</span>
+                <span className="text-muted">
+                  {" · "}
+                  {theme.archived
+                    ? "archived, left alone"
+                    : theme.published === null
+                      ? theme.presetId
+                        ? "made, not published yet"
+                        : "not added yet"
+                      : theme.published >= theme.version
+                        ? `version ${theme.version}, up to date`
+                        : `version ${theme.published} published, version ${theme.version} waiting`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       {filter === "current" && (

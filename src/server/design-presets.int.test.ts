@@ -8,6 +8,7 @@ import { newBlock } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { parseStarterDetails } from "@/lib/store-starters";
 import { defaultFooter, defaultHeader } from "@/lib/site-layout";
+import { withCoreStyles } from "@/lib/launch-themes";
 import { parseStoreTheme, templateSettings } from "@/lib/theme";
 
 import type { Account } from "./auth";
@@ -106,8 +107,9 @@ beforeAll(async () => {
   `);
   const header = defaultHeader(src.id, { header: src.headerMenu, footer: src.footerMenu });
   const extra: PageBlock[] = [
-    { ...(newBlock("button", id) as Extract<PageBlock, { type: "button" }>), label: "Book", href: `/s/${src.slug}/no/p/massage` },
-    { ...(newBlock("image", id) as Extract<PageBlock, { type: "image" }>), image: { url: STORAGE, width: 800, height: 400, alt: "Ferns" } },
+    { ...(newBlock("button", id) as Extract<PageBlock, { type: "button" }>), label: "Book", href: "#book" },
+    // A link into the store is taken out of a profile; on a picture, so what is left still passes the theme checks (D246).
+    { ...(newBlock("image", id) as Extract<PageBlock, { type: "image" }>), image: { url: STORAGE, width: 800, height: 400, alt: "Ferns" }, href: `/s/${src.slug}/no/p/massage` },
   ];
   const headerPage = await choose(
     src.id,
@@ -433,7 +435,7 @@ describe("a design profile's workspace and its draft (D177)", () => {
     const header = await designs.chooseWorkspaceLayout(admin, scratch, "header", "build");
     expect(header).toMatchObject({ ok: true, pageId: expect.any(String) });
     const { saveStoreTheme } = await import("./themes");
-    expect(await saveStoreTheme(admin, workspace.id, { base: "bold", savedId: null, settings: templateSettings("bold") })).toMatchObject({ ok: true });
+    expect(await saveStoreTheme(admin, workspace.id, { base: "bold", savedId: null, settings: withCoreStyles(templateSettings("bold")) })).toMatchObject({ ok: true });
     expect(await designs.saveDesignDraft(admin, scratch, details(`Scratch bold ${run}`))).toEqual({ ok: true });
 
     const design = (await designs.getDesign(scratch))!;

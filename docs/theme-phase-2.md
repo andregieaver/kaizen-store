@@ -137,3 +137,41 @@ still has the look the update left; drafts it made stay in the store's pages. Au
 
 **Not in step 4.** No email tells an owner of an update; updates of the layouts' content are all or nothing per page (an edited page is
 never merged row by row).
+
+## Step 5: launch themes and `themeCheck()`
+
+**The checks.** `themeCheck()` (`src/lib/theme-check.ts`, pure; the server passes it the page rules, `checkedSnapshot()`) runs on every
+version before it is published, Kaizena's own included, and on a theme's Details tab (`ThemeChecks`, `designChecks()`, on the draft Publish
+would take). Of the plan's 7 it holds: (1) the package reads (`designSnapshotSchema`) and each header, footer and product page passes
+`pageInput` and `pageRulesProblem()` as the store would get it (`layoutForStore()`); (2) accessibility, `pageIssues()` on each layout in
+every colour set the theme shows (`themeSetsOf()`), the footer's legal parts included; (3) contrast of the palette (text and buttons block,
+secondary text and the surface warn) and of the site-wide elements and every section style, each kind of text over the row's own background
+in light and dark (headings 3:1, the rest 4.5:1, `blend()` first); (4) the core section styles; (5) what the checkout's pages may not hold, in
+the header and footer drawn on them (`pay_page_block`); (6) words through `findClaims()` and no link off the site (a full address, an email
+or a phone number). A blocking finding refuses Publish with what to fix; warnings are said. Speed and phones (7, 8) are held for Kaizena's
+themes by the switch e2e, in a browser.
+
+**Every theme has the core styles.** A theme's workspace is given the core section styles it lacks (`withCoreStyles()`,
+`NEUTRAL_CORE_STYLES`, legible on light and dark pages alike) when it is made from scratch or a look is written into it, so a theme from a
+store passes the checks until the admin makes the styles its own.
+
+**Launch themes.** Four, as data in `src/lib/launch-themes.ts` (`LAUNCH_THEMES`): Calm (from Minimal), Hearth (Warm classic), Signal (Bold
+modern) and Fjord (a blue-grey palette on Minimal), each with its own palette or fonts, elements and all six core section styles, and the
+standard header, footer and product page. *Add and update Kaizena Flow's themes* on the platform's Themes page (`syncLaunchThemes()`,
+`src/server/launch-themes.ts`) makes and publishes each not there yet (found again by `design_presets.launch_key`) and publishes a new
+version of one whose `version` in code is newer than the one published (`launch_version`), its `notes` as *What's new*, which installs
+that follow updates take (D245). An archived one is left alone. A change to a launch theme is a raised `version` and a note.
+
+**The switch e2e.** `e2e/signed-in/theme-switch.spec.ts`: the owner switches a store through every launch theme and back from Design
+settings; every content field (pages and articles, products, their texts, variants and pictures, menus, the logo, business details and the
+store's chosen pages) is fingerprinted in the database before and after each switch and must not change, the storefront's words (as the
+page holds them, not as CSS capitalises them), pictures and links must be the same, the site must draw the theme's accent, and on a phone
+nothing may run off the screen. Staff's own tools on the page (`data-staff-tools`, the way back to the admin) are not content.
+
+**Built (D246).** `src/lib/theme-check.ts`, `src/lib/launch-themes.ts`, `src/server/launch-themes.ts`, `checkedSnapshot()`,
+`designChecks()` and `writeDesignLook()` in `src/server/design-presets.ts`, `ThemeChecks`, the launch themes card and action; held by
+`src/lib/theme-check.test.ts`, `theme-checks.test.ts` (view), `src/server/launch-themes.int.test.ts` and the switch e2e.
+
+**Not in step 5.** Presets of a theme (the plan's 1 to 4 named variations), its own section rows offered in the builder, working-page
+layouts and a demo store: a snapshot is still `v: 1`. The performance budget is not run per theme (a theme adds settings only, no layout or
+CSS of its own). The launch themes are added on a platform admin's press, not by a migration.
