@@ -99,5 +99,5 @@ export const domainInput = z.object({
     .max(300)
     .transform(normalizeHostname)
     .refine((host) => host.length <= 253 && HOSTNAME.test(host), "Write the domain as it is written in a browser, like butikk.example.no.")
-    .refine((host) => !reservedHost(host), "That address is Kaizen's. Add a domain of your own."),
+    .refine((host) => !reservedHost(host), "That address is Kaizena Flow's. Add a domain of your own."),
 });

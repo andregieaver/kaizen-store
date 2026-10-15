@@ -26,7 +26,7 @@ export function KaizenLifePrefill() {
   if (email === null) return null;
   return (
     <p role="status" className="rounded-md border border-border p-3 text-sm">
-      No Kaizen Store account uses {email || "that email address"} yet. Ask for a store below. If you already have a store under another
+      No Kaizena Flow account uses {email || "that email address"} yet. Ask for a store below. If you already have a store under another
       email, sign in with that and connect Kaizen Life under Your account.
     </p>
   );

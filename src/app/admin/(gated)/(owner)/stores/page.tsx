@@ -41,7 +41,7 @@ export default async function AllStoresPage() {
       <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} />
       {full && (
         <p role="note" className="max-w-xl text-sm text-muted">
-          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizen for more. Creating or duplicating a store is switched off until then.
+          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more. Creating or duplicating a store is switched off until then.
         </p>
       )}
 

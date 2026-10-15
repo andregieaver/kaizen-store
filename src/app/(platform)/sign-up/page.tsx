@@ -14,7 +14,7 @@ import { ReferralKeeper } from "./referral-keeper";
 
 export const metadata: Metadata = {
   title: "Start your store",
-  description: "Kaizen is in a private beta. Ask for a store and we will set one up for you.",
+  description: "Kaizena Flow is in a private beta. Ask for a store and we will set one up for you.",
   alternates: { canonical: "/sign-up" },
 };
 
@@ -33,7 +33,7 @@ export default async function SignUpPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Start your store</h1>
         <p className="mt-2 text-muted">
-          Kaizen is in a private beta. Tell us who you are and we will set up your store, ready
+          Kaizena Flow is in a private beta. Tell us who you are and we will set up your store, ready
           to try with demo products.
         </p>
       </div>

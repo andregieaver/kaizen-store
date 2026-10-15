@@ -69,4 +69,4 @@ export function resolveReturnPeriod(scheme: "oss" | "ioss", key: string | undefi
 }
 
 /** Said under every figure of the tools, so the model repeats it. */
-export const NOT_A_RETURN = "These are the store's own figures, made from its invoices and credit notes, for the owner and the owner's accountant. They are not a tax return, Kaizen files nothing, and this is not tax or accounting advice.";
+export const NOT_A_RETURN = "These are the store's own figures, made from its invoices and credit notes, for the owner and the owner's accountant. They are not a tax return, Kaizena Flow files nothing, and this is not tax or accounting advice.";

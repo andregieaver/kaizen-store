@@ -145,7 +145,7 @@ export function AdminFrame({
       <>
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
-          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} collapseOn={workspace} />, null)}
+          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizena Flow" }} label={tabsLabel} collapseOn={workspace} />, null)}
           <div className="flex min-w-0 flex-1 flex-col">
             <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
               {focused(

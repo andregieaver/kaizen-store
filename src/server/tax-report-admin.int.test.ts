@@ -107,7 +107,7 @@ afterAll(async () => {
 describe("the page", () => {
   it("shows an owner the OSS view of the worked example: Part 2b in euro at the ECB rate, Part 5 as the total due, and the line that this is not a tax return", async () => {
     const out = await open(own.slug, { view: "oss", quarter: "2026-Q3" });
-    expect(out).toContain("They are not a tax return and Kaizen files nothing.");
+    expect(out).toContain("They are not a tax return and Kaizena Flow files nothing.");
     expect(out).toContain("OSS return for Q3 2026");
     expect(out).toContain("€52.44");
     expect(out).toContain("€133.77");

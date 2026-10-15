@@ -36,7 +36,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
     <>
       <PageHeader
         title="Media library"
-        description={<>Every picture and video uploaded for Kaizen&apos;s own site, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.</>}
+        description={<>Every picture and video uploaded for Kaizena Flow&apos;s own site, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.</>}
       />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>

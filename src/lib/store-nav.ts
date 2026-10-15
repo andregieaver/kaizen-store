@@ -52,7 +52,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Orders",
         items: [
           item("/orders", "Orders", "Every order: search and filter them, save views, tag, archive, send and print in bulk, open one to fulfil or refund it."),
-          item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizen."),
+          item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizena Flow."),
           item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
           item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant."),
           item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments.", { feature: "subscriptions" }),
@@ -240,7 +240,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop" }),
           item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop" }),
-          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizen.", { feature: "shop" }),
+          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop" }),
           item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop" }),
           item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop" }),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop" }),

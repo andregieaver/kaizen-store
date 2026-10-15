@@ -20,7 +20,7 @@ const builtIn = { home: "Alle produkter", account: "Min konto", cart: "Handlekur
 describe("menuHref", () => {
   const base = "/s/demo/no";
 
-  it("links Kaizen's own pages from the shopper's country", () => {
+  it("links Kaizena Flow's own pages from the shopper's country", () => {
     expect(menuHref({ kind: "home" }, base)).toEqual({ href: base, external: false });
     expect(menuHref({ kind: "account" }, base)).toEqual({ href: `${base}/account`, external: false });
     expect(menuHref({ kind: "cart" }, base)).toEqual({ href: `${base}/cart`, external: false });
@@ -43,7 +43,7 @@ describe("menuHref", () => {
 });
 
 describe("menuLabel", () => {
-  it("uses the owner's text, then Kaizen's name for its pages, then another language's", () => {
+  it("uses the owner's text, then Kaizena Flow's name for its pages, then another language's", () => {
     expect(menuLabel({ label: { "nb-NO": "Alt" }, link: { kind: "home" } }, "nb-NO", builtIn)).toBe("Alt");
     expect(menuLabel({ label: {}, link: { kind: "cart" } }, "nb-NO", builtIn)).toBe("Handlekurv");
     expect(menuLabel({ label: { "sv-SE": "Om oss" }, link: { kind: "url", url: "/om" } }, "nb-NO", builtIn)).toBe("Om oss");
@@ -206,7 +206,7 @@ describe("links to the blog (D57)", () => {
     expect(menuInput.safeParse(menu({ kind: "blog" })).success).toBe(true);
   });
 
-  it("lead to Kaizen's blog and its articles by id, left out while not published", () => {
+  it("lead to Kaizena Flow's blog and its articles by id, left out while not published", () => {
     const platform = { home: "Home", signUp: "Start", signIn: "Sign in", blog: "Blog" };
     const id = "00000000-0000-4000-8000-000000000001";
     const blog = {

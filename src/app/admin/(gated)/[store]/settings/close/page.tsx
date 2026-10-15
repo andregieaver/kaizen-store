@@ -28,21 +28,21 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
         <div>
           <PageHeader
             title={<>{state.status === "closed" ? "This store is closed" : "This store is suspended"}</>}
-            description={<>{state.status === "closed" ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.` : "Kaizen has paused it. It takes no orders and cannot be changed until Kaizen reopens it."}</>}
+            description={<>{state.status === "closed" ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.` : "Kaizena Flow has paused it. It takes no orders and cannot be changed until Kaizena Flow reopens it."}</>}
           />
           {state.reason && <p className="mt-2 text-sm">Reason given: {state.reason}</p>}
         </div>
         {state.status === "closed" && state.closedAt && (
           <p className="text-sm">
             {mayReopen
-              ? `You can reopen the store until ${day(reopenDeadline(state.closedAt))}. After that, ask Kaizen.`
-              : `The thirty days for reopening ended ${day(reopenDeadline(state.closedAt))}. Ask Kaizen to reopen the store.`}
+              ? `You can reopen the store until ${day(reopenDeadline(state.closedAt))}. After that, ask Kaizena Flow.`
+              : `The thirty days for reopening ended ${day(reopenDeadline(state.closedAt))}. Ask Kaizena Flow to reopen the store.`}
           </p>
         )}
         {mayReopen && (
           <ActionForm action={reopenStoreAction.bind(null, store.slug)} className="flex flex-col gap-3" successMessage="The store is open again.">
             <p className="text-sm text-muted">
-              Reopening starts sales again. Its own domains were released when it closed: add them again under Domains. If its Kaizen plan has ended, choose a plan under Billing.
+              Reopening starts sales again. Its own domains were released when it closed: add them again under Domains. If its Kaizena Flow plan has ended, choose a plan under Billing.
             </p>
             <div>
               <SubmitButton>Reopen the store</SubmitButton>

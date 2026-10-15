@@ -33,7 +33,7 @@ export function FocusFrame({ title, description, back, aside, width = "narrow", 
           <span aria-hidden className="flex size-9 items-center justify-center rounded-tile bg-brand text-title text-brand-ink">
             K
           </span>
-          Kaizen
+          Kaizena Flow
         </Link>
         {aside && <div className="text-body text-ink-2">{aside}</div>}
       </header>

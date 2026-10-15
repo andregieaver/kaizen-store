@@ -6,7 +6,7 @@ import { KAIZEN_ICON } from "@/lib/site-icons";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "404 · Kaizen",
+  title: "404 · Kaizena Flow",
   icons: { icon: KAIZEN_ICON },
 };
 
@@ -20,7 +20,7 @@ export default function GlobalNotFound() {
           <span lang="sv">Sidan finns inte.</span> · <span lang="da">Siden findes ikke.</span>
         </p>
         <Link href="/" className="underline">
-          Kaizen
+          Kaizena Flow
         </Link>
       </body>
     </html>

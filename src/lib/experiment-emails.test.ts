@@ -10,7 +10,7 @@ const facts: GuardrailFacts = {
   version: { key: "b", name: "Versjon B", visitors: 5000, buyers: 130 },
   original: { visitors: 5000, buyers: 250 },
   days: 6,
-  url: "https://kaizenstore.cloud/admin/fjord/experiments/abc",
+  url: "https://kaizenaflow.com/admin/fjord/experiments/abc",
 };
 
 describe("orderRate", () => {
@@ -34,7 +34,7 @@ describe("guardrailEmail", () => {
 
   it("says what changed for visitors and what the owner may do, and that nothing is applied by itself", () => {
     expect(email.text).toContain("everyone sees the page as it was before the test");
-    expect(email.text).toContain("Kaizen does not apply anything by itself");
+    expect(email.text).toContain("Kaizena Flow does not apply anything by itself");
     expect(email.text).toContain(facts.url);
   });
 

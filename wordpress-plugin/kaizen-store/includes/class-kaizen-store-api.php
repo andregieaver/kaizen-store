@@ -1,6 +1,6 @@
 <?php
 /**
- * Kaizen Store's plugin API (version 1), read with the connection's token. Every call returns the decoded answer or a WP_Error.
+ * Kaizena Flow's plugin API (version 1), read with the connection's token. Every call returns the decoded answer or a WP_Error.
  *
  * @package KaizenStore
  */
@@ -33,7 +33,7 @@ class Kaizen_Store_Api {
 		if ( $auth ) {
 			$token = Kaizen_Store_Settings::token();
 			if ( '' === $token ) {
-				return new WP_Error( 'kaizen_not_connected', __( 'This site is not connected to Kaizen Store.', 'kaizen-store' ) );
+				return new WP_Error( 'kaizen_not_connected', __( 'This site is not connected to Kaizena Flow.', 'kaizen-store' ) );
 			}
 			$headers['Authorization'] = 'Bearer ' . $token;
 		}
@@ -48,7 +48,7 @@ class Kaizen_Store_Api {
 		}
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'kaizen_unreachable', __( 'Kaizen Store could not be reached. Try again in a moment.', 'kaizen-store' ) );
+			return new WP_Error( 'kaizen_unreachable', __( 'Kaizena Flow could not be reached. Try again in a moment.', 'kaizen-store' ) );
 		}
 		$status  = (int) wp_remote_retrieve_response_code( $response );
 		$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -56,7 +56,7 @@ class Kaizen_Store_Api {
 			return $decoded;
 		}
 		$code    = 'kaizen_error';
-		$message = __( 'Kaizen Store could not answer. Try again in a moment.', 'kaizen-store' );
+		$message = __( 'Kaizena Flow could not answer. Try again in a moment.', 'kaizen-store' );
 		if ( is_array( $decoded ) && isset( $decoded['error']['code'] ) ) {
 			$code    = 'kaizen_' . sanitize_key( $decoded['error']['code'] );
 			$message = isset( $decoded['error']['message'] ) ? sanitize_text_field( $decoded['error']['message'] ) : $message;

@@ -124,7 +124,7 @@ export async function requesterTurn(
   input: { conversation?: string | null; after: number; message: string; aboutStore?: string | null; path?: string | null },
 ): Promise<RequesterAnswer> {
   const context = await chatContext(KAIZEN_PLACE);
-  if (context instanceof Response) return { error: "Kaizen support is not answering in the admin right now. Email Kaizen instead.", status: 503 };
+  if (context instanceof Response) return { error: "Kaizena Flow support is not answering in the admin right now. Email Kaizena Flow instead.", status: 503 };
   const settings = context.settings;
   const desk = requesterDesk(account);
   const words = input.message.trim().slice(0, MESSAGE_MAX.customer);
@@ -179,7 +179,7 @@ export async function requesterFeed(account: Account, id: string, after: number)
   if (!conversation) return { error: "This conversation is not here.", status: 404 };
   const context = await chatContext(KAIZEN_PLACE);
   const settings = context instanceof Response ? null : context.settings;
-  if (!settings) return { error: "Kaizen support is not answering in the admin right now.", status: 503 };
+  if (!settings) return { error: "Kaizena Flow support is not answering in the admin right now.", status: 503 };
   const reply = await visitorReply(requesterDesk(account), settings, conversation, after, null);
   return { state: reply.state, messages: reply.messages, conversation: { id } };
 }

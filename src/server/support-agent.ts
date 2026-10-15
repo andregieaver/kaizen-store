@@ -194,7 +194,7 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
         return { ok: true };
       }
       case "ask_sign_in": {
-        if (!store) return { ok: false, problem: "Kaizen's desk has no customer accounts to sign in to." };
+        if (!store) return { ok: false, problem: "Kaizena Flow's desk has no customer accounts to sign in to." };
         const settings = await deskSettings(staff.desk);
         if (!settings) return { ok: false, problem: REFUSAL_WORDS.support_gone };
         const [row] = await db().execute<Row>(sql`select status, customer_id from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${store}::uuid`);

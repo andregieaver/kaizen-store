@@ -82,7 +82,7 @@ export const VAT_KIND_LABELS: Record<string, string> = { standard: "Standard", r
 export const vatKindLabel = (kind: string | null): string => (kind ? (VAT_KIND_LABELS[kind] ?? kind) : "–");
 
 /** Where a credit note came from. */
-export const SOURCE_LABELS: Record<string, string> = { refund: "Refund", return_outside: "Return refunded outside Kaizen" };
+export const SOURCE_LABELS: Record<string, string> = { refund: "Refund", return_outside: "Return refunded outside Kaizena Flow" };
 export const sourceLabel = (source: string | null): string => (source ? (SOURCE_LABELS[source] ?? source) : "–");
 
 /** A country code as its English name, or the code when the runtime does not know it. */

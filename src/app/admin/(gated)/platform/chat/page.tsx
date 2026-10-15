@@ -15,7 +15,7 @@ export default async function PlatformChatPage() {
   return (
     <ChatAgentView
       storeId={null}
-      siteName="Kaizen"
+      siteName="Kaizena Flow"
       locales={["en-GB"]}
       aiPage="/admin/platform/ai"
       save={savePlatformChatAgentAction}

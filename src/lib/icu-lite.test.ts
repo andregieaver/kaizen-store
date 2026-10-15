@@ -4,7 +4,7 @@ import { formatTemplate, parseTemplate, pluralForms, templateArguments, template
 
 describe("formatting", () => {
   it("puts arguments in by position", () => {
-    expect(formatTemplate("Order {1} from {0}", ["Kaizen", "S1-42"], "en")).toBe("Order S1-42 from Kaizen");
+    expect(formatTemplate("Order {1} from {0}", ["Kaizena Flow", "S1-42"], "en")).toBe("Order S1-42 from Kaizena Flow");
     expect(formatTemplate("No placeholders", [], "en")).toBe("No placeholders");
     expect(formatTemplate("{0} and {0}", ["a"], "en")).toBe("a and a");
   });

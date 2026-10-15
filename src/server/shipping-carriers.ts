@@ -68,7 +68,7 @@ export async function saveCarrier(
   const info = isCarrierId(carrier) ? carrierInfo(carrier) : null;
   if (!info) return { ok: false, problems: ["Unknown carrier."] };
   const key = encryptionKey();
-  if (!key) return { ok: false, problems: ["Kaizen cannot keep the keys safe right now, so nothing was saved. Try again later."] };
+  if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the keys safe right now, so nothing was saved. Try again later."] };
 
   const [current] = await db().execute<Row>(sql`
     select secrets_encrypted, secret_hints from commerce.shipping_carriers

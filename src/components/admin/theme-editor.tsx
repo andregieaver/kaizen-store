@@ -543,7 +543,7 @@ export function ThemeEditor({
           </Section>
 
           <Section title="Fonts">
-            <p className="text-sm text-muted">Any Google Fonts family, copied to Kaizen and loaded from the store itself.</p>
+            <p className="text-sm text-muted">Any Google Fonts family, copied to Kaizena Flow and loaded from the store itself.</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <FontPicker
                 label="Headings"

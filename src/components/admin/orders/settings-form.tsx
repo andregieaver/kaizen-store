@@ -34,7 +34,7 @@ export function OrderSettingsForm({
           </label>
           <p className={hint}>
             The cart then shows a tick box with three fields: To (up to {GIFT_NAME_MAX} characters), From (up to {GIFT_NAME_MAX}) and a message (up to {GIFT_MESSAGE_MAX} characters). The message is printed on the
-            order&apos;s packing slip, which has no prices, so the parcel can carry it. Kaizen does not send the message to anyone: it is kept with the order, shown to you and to the buyer, and erased with the order&apos;s personal data. It
+            order&apos;s packing slip, which has no prices, so the parcel can carry it. Kaizena Flow does not send the message to anyone: it is kept with the order, shown to you and to the buyer, and erased with the order&apos;s personal data. It
             is never in the shipping notice.
           </p>
         </section>
@@ -87,21 +87,21 @@ export function OrderSettingsForm({
 
         <section aria-labelledby="outside" className={card}>
           <h2 id="outside" className="text-title text-ink">
-            Money taken outside Kaizen
+            Money taken outside Kaizena Flow
           </h2>
           {isOwner ? (
             <>
               <input type="hidden" name="staffMarkPaidShown" value="1" />
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="staffMarkPaid" defaultChecked={settings.staffMarkPaid} className="mt-0.5 size-4" />
-                <span>Staff may record a payment taken outside Kaizen, and record a refund of one.</span>
+                <span>Staff may record a payment taken outside Kaizena Flow, and record a refund of one.</span>
               </label>
             </>
           ) : (
-            <p className="text-sm">{settings.staffMarkPaid ? "Staff may record a payment taken outside Kaizen." : "Only the owner can record a payment taken outside Kaizen."}</p>
+            <p className="text-sm">{settings.staffMarkPaid ? "Staff may record a payment taken outside Kaizena Flow." : "Only the owner can record a payment taken outside Kaizena Flow."}</p>
           )}
           <p className={hint}>
-            On a draft order you can record that the customer paid by bank transfer, in cash or another way. Kaizen then treats the order as paid, issues the invoice (which says it was paid outside the online checkout) and sends the
+            On a draft order you can record that the customer paid by bank transfer, in cash or another way. Kaizena Flow then treats the order as paid, issues the invoice (which says it was paid outside the online checkout) and sends the
             confirmation, but it did not touch the money and takes no sale fee on it. A refund of such an order is only recorded here: you pay the customer back yourself. Cash taken when goods are handed over is a cash sale under
             the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register.
           </p>

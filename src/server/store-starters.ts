@@ -192,7 +192,7 @@ export async function createStarter(
   admin: Account,
   input: { slug: string; details: StarterDetails },
 ): Promise<StarterResult<{ id: string; slug: string }>> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizen's admins make store templates."] };
+  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make store templates."] };
   const problem = slugProblem(input.slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   const [taken] = await db().execute<Row>(sql`select 1 as taken from commerce.stores where slug = ${input.slug}`);

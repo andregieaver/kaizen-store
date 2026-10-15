@@ -84,8 +84,8 @@ export function RefundForm({
       {outside && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
           {outside.allowed
-            ? "This was paid outside Kaizen: pay the customer back yourself, then record it here. Kaizen cannot see whether you paid the customer back, and sends no money. The refund gets a credit note, as any refund does."
-            : "This was paid outside Kaizen. Only the owner can record a refund of it, unless the owner has allowed staff to (Settings, Orders)."}
+            ? "This was paid outside Kaizena Flow: pay the customer back yourself, then record it here. Kaizena Flow cannot see whether you paid the customer back, and sends no money. The refund gets a credit note, as any refund does."
+            : "This was paid outside Kaizena Flow. Only the owner can record a refund of it, unless the owner has allowed staff to (Settings, Orders)."}
         </p>
       )}
       {canRefund && !(outside && !outside.allowed) ? (
@@ -106,7 +106,7 @@ export function RefundForm({
           </button>
         </div>
       ) : outside ? null : (
-        <p className="text-sm text-muted">This payment was not taken through Kaizen&apos;s Stripe, so refund it in Stripe.</p>
+        <p className="text-sm text-muted">This payment was not taken through Kaizena Flow&apos;s Stripe, so refund it in Stripe.</p>
       )}
       <label className={label}>
         <span>
@@ -214,7 +214,7 @@ export function CancelForm({
         {unpaid ? (
           "Nothing has been charged. Its items are no longer held for it."
         ) : outside ? (
-          <>Records a refund of {amountLabel} (you pay the customer back yourself, Kaizen sends no money), puts every item back in stock and stops download links.</>
+          <>Records a refund of {amountLabel} (you pay the customer back yourself, Kaizena Flow sends no money), puts every item back in stock and stops download links.</>
         ) : (
           <>Refunds {amountLabel}, puts every item back in stock and stops download links.</>
         )}

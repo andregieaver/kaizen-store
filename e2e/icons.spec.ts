@@ -4,7 +4,7 @@ import { testDb } from "./db";
 
 /** Sites' icons (D62): Kaizen's by default, a store's own once it has one. */
 
-test("Kaizen's pages and stores without an icon show Kaizen's", async ({ page, request }) => {
+test("Kaizena Flow's pages and stores without an icon show Kaizena Flow's", async ({ page, request }) => {
   await page.goto("/");
   await expect(page.locator('head link[rel="icon"]')).toHaveAttribute("href", "/kaizen/favicon.ico");
   const legacy = await request.get("/favicon.ico", { maxRedirects: 0 });

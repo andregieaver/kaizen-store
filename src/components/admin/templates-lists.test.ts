@@ -104,7 +104,7 @@ describe("the template lists", () => {
     expect(heard).toBe(2);
   });
 
-  it("do nothing without actions (Kaizen's own pages)", async () => {
+  it("do nothing without actions (Kaizena Flow's own pages)", async () => {
     const store = createTemplateStore(null);
     store.load("marketplace");
     expect(store.get().lists.marketplace.status).toBe("idle");

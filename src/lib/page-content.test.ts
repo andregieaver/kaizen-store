@@ -115,7 +115,7 @@ describe("page addresses", () => {
     expect(pageSlugProblem("")).toMatch(/address/);
     expect(pageSlugProblem("About")).toMatch(/lowercase/);
     expect(pageSlugProblem("a--b")).toMatch(/single hyphens/);
-    for (const slug of RESERVED_PAGE_SLUGS) expect(pageSlugProblem(slug)).toMatch(/used by Kaizen/);
+    for (const slug of RESERVED_PAGE_SLUGS) expect(pageSlugProblem(slug)).toMatch(/used by Kaizena Flow/);
   });
 });
 
@@ -129,14 +129,14 @@ describe("page input", () => {
   });
   const valid = {
     ...newPageContent(),
-    title: " About Kaizen ",
+    title: " About Kaizena Flow ",
     slug: "about",
     rows: [row([{ id: "b1", type: "richText", doc: doc(p("Hello there")) }])],
   };
 
   it("accepts a page and trims its texts", () => {
     const parsed = pageInput.parse(valid);
-    expect(parsed.title).toBe("About Kaizen");
+    expect(parsed.title).toBe("About Kaizena Flow");
     expect(pageExcerpt(parsed)).toBe("Hello there");
   });
 
@@ -708,8 +708,8 @@ describe("content grids (D51)", () => {
 });
 
 describe("addresses by owner (D53)", () => {
-  it("keeps Kaizen's routes from Kaizen's pages, and a store's routes from its pages", () => {
-    expect(pageSlugProblem("sign-up")).toMatch(/used by Kaizen/);
+  it("keeps Kaizena Flow's routes from Kaizena Flow's pages, and a store's routes from its pages", () => {
+    expect(pageSlugProblem("sign-up")).toMatch(/used by Kaizena Flow/);
     expect(pageSlugProblem("sign-up", reservedPageSlugs("store-id"))).toBeNull();
     expect(pageSlugProblem("cart", reservedPageSlugs("store-id"))).toMatch(/used by the store/);
     expect(pageSlugProblem("cart", reservedPageSlugs(null))).toBeNull();
@@ -721,7 +721,7 @@ describe("addresses by owner (D53)", () => {
 
 describe("article addresses (D57)", () => {
   it("keep the blog's own routes from articles, and the blog's address from pages", () => {
-    expect(pageSlugProblem("blog")).toMatch(/used by Kaizen/);
+    expect(pageSlugProblem("blog")).toMatch(/used by Kaizena Flow/);
     expect(pageSlugProblem("blog", reservedPageSlugs("store-id"))).toMatch(/used by the store/);
     for (const owner of [null, "store-id"]) {
       expect(pageSlugProblem("tag", reservedPageSlugs(owner, "article"))).toBe(
@@ -790,7 +790,7 @@ describe("nested page addresses", () => {
   });
 
   it("are checked against the routes by their first part only", () => {
-    expect(pageSlugProblem("admin/x")).toMatch(/used by Kaizen/);
+    expect(pageSlugProblem("admin/x")).toMatch(/used by Kaizena Flow/);
     expect(pageSlugProblem("x/admin")).toBeNull();
     expect(pageSlugProblem("products/x", RESERVED_STORE_PAGE_SLUGS)).toMatch(/used by the store/);
   });

@@ -369,7 +369,7 @@ describe("a design profile's workspace and its draft (D177)", () => {
   let scratch: string;
   let workspace: { id: string; slug: string };
 
-  it("starts from scratch with Kaizen's standard look, in a workspace of its own", async () => {
+  it("starts from scratch with Kaizena Flow's standard look, in a workspace of its own", async () => {
     const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Scratch ${run}`) }, deps);
     expect(made).toMatchObject({ ok: true });
     scratch = (made as { id: string }).id;

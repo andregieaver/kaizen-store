@@ -22,7 +22,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader
           title="A/B tests"
-          description={<>Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better. Half of the visitors see it as it is, the other half a version you change; Kaizen counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have accepted statistics cookies take part; everyone else sees the page as it is.</>}
+          description={<>Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better. Half of the visitors see it as it is, the other half a version you change; Kaizena Flow counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have accepted statistics cookies take part; everyone else sees the page as it is.</>}
         />
         <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           New test

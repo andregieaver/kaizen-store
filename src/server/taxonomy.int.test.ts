@@ -69,7 +69,7 @@ describe("categories and tags (D50)", () => {
     expect(log.action).toBe("page.category_deleted");
   });
 
-  it("keeps on a page only Kaizen's own page categories and tags", async () => {
+  it("keeps on a page only Kaizena Flow's own page categories and tags", async () => {
     const category = ok(await taxonomy.createTerm(admin, scope, { kind: "category", name: `Help ${run}` }));
     const tag = ok(await taxonomy.createTerm(admin, scope, { kind: "tag", name: `New ${run}` }));
     const unknown = "00000000-0000-4000-8000-000000000000";

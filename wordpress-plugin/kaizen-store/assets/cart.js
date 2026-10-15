@@ -1,9 +1,9 @@
 /*
- * Kaizen Store: the slide-out cart and the product page's choices. Plain JavaScript, no build step.
+ * Kaizena Flow: the slide-out cart and the product page's choices. Plain JavaScript, no build step.
  *
- * The cart lives in this browser (localStorage) until the shopper presses Checkout: this site then asks Kaizen to make the same cart in the
+ * The cart lives in this browser (localStorage) until the shopper presses Checkout: this site then asks Kaizena Flow to make the same cart in the
  * store and sends the shopper there, where the checkout, shipping, discounts and payment happen. Prices, stock and words always come from
- * Kaizen (through this site's REST route); nothing is worked out here but sums of what Kaizen said.
+ * Kaizena Flow (through this site's REST route); nothing is worked out here but sums of what Kaizena Flow said.
  */
 ( function () {
 	'use strict';

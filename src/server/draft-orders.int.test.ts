@@ -733,10 +733,10 @@ describe("reopening", () => {
   });
 });
 
-describe("paid outside Kaizen", () => {
+describe("paid outside Kaizena Flow", () => {
   const owner = (store: TestStore) => ({ ...store.member, kind: "member", permissions: [] }) as unknown as Parameters<typeof recordDraftPaidOutside>[0];
 
-  it("makes the order and records the payment in one step: manual, the whole total, no Kaizen fee, stock drawn, the reference only in the order's history", async () => {
+  it("makes the order and records the payment in one step: manual, the whole total, no Kaizena Flow fee, stock drawn, the reference only in the order's history", async () => {
     const store = await paymentsStore("draft-outside");
     const draft = await draftOf(store, { lines: [await goods(store, "DEMO-MUG-WHITE", 2)], tags: ["invoice"] });
     const levelBefore = await support.totalOnHand(store.storeId, "DEMO-MUG-WHITE");
@@ -839,7 +839,7 @@ describe("paid outside Kaizen", () => {
   });
 });
 
-describe("paid outside Kaizen: the day it was received and the cash ceilings (review fixes)", () => {
+describe("paid outside Kaizena Flow: the day it was received and the cash ceilings (review fixes)", () => {
   const owner = (store: TestStore) => ({ ...store.member, kind: "member", permissions: [] }) as unknown as Parameters<typeof recordDraftPaidOutside>[0];
   const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 
@@ -878,7 +878,7 @@ describe("paid outside Kaizen: the day it was received and the cash ceilings (re
   });
 });
 
-describe("an order paid outside Kaizen has an order page key like any other (review fix)", () => {
+describe("an order paid outside Kaizena Flow has an order page key like any other (review fix)", () => {
   const owner = (store: TestStore) => ({ ...store.member, kind: "member", permissions: [] }) as unknown as Parameters<typeof recordDraftPaidOutside>[0];
 
   it("carries its key in the confirmation's withdrawal link, and the withdrawal function and the order page accept that key", async () => {

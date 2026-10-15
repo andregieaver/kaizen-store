@@ -2041,7 +2041,7 @@ export function importGroups(
     raw === null ||
     (raw as { kaizenFieldGroups?: unknown }).kaizenFieldGroups !== EXPORT_VERSION
   ) {
-    return { ok: false, problem: "This is not a file of field groups from Kaizen." };
+    return { ok: false, problem: "This is not a file of field groups from Kaizena Flow." };
   }
   const list = (raw as { groups?: unknown }).groups;
   if (!Array.isArray(list) || list.length === 0) return { ok: false, problem: "The file holds no groups." };

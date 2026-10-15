@@ -102,7 +102,7 @@ describe("a store's customers (D35)", () => {
   });
 });
 
-describe("Kaizen's customers (D35)", () => {
+describe("Kaizena Flow's customers (D35)", () => {
   it("are the people who run stores, with each store's role and plan", async () => {
     const found = await listPlatformCustomers({ q: `kunder ${run}` });
     expect(found.map((c) => c.id)).toEqual([ownerId]);

@@ -18,14 +18,14 @@ export default async function KaizenSupportSettingsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Support settings"
-        description={<>Who answers visitors of Kaizen&apos;s site in the chat, and what happens when nobody is there.</>}
+        description={<>Who answers visitors of Kaizena Flow&apos;s site in the chat, and what happens when nobody is there.</>}
       />
       <SupportSettingsForm
         settings={settings}
         save={saveKaizenSupportSettingsAction}
         canWrite
         owner
-        deskName="Kaizen"
+        deskName="Kaizena Flow"
         aiSettingsHref="/admin/platform/ai"
         chatHref="/admin/platform/chat"
         openCount={open}

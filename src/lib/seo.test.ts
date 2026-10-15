@@ -110,7 +110,7 @@ describe("the settings form", () => {
     });
   });
 
-  it("leaves AI crawlers allowed when the form has no AI choices (Kaizen's own settings)", () => {
+  it("leaves AI crawlers allowed when the form has no AI choices (Kaizena Flow's own settings)", () => {
     expect(seoFromForm(new FormData(), ["en"])).toMatchObject({ aiAssistants: true, aiTraining: true, image: null });
   });
 

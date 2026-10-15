@@ -82,7 +82,7 @@ function check(
 
 /** Kaizen's own title and description when none are set. */
 export const PLATFORM_DEFAULTS = {
-  title: "Kaizen",
+  title: "Kaizena Flow",
   description:
     "Online stores for Norway, Sweden and Denmark: prices with VAT, product safety details and consumer rights handled from the start, and pages that load in under half a second.",
 };
@@ -649,7 +649,7 @@ export async function platformLlms(): Promise<string> {
           })),
       },
       {
-        heading: "Kaizen",
+        heading: "Kaizena Flow",
         links: [
           { title: "Start a store", url: `${origin}/sign-up` },
           { title: "Sitemap", url: `${origin}/sitemap.xml` },

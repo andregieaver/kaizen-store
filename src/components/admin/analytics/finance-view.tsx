@@ -212,7 +212,7 @@ export const FINANCE_DEFINITIONS: readonly { term: string; text: string }[] = [
   { term: "Cost of goods sold", text: "What the units sold cost you, kept on each order line when it was sold, so a later change of cost never rewrites history. A line sold without a cost counts as costing nothing, and the coverage figure says how much of sales that is." },
   { term: "Gross profit and gross margin", text: "Net revenue less the cost of goods sold. The margin is the gross profit as a share of net revenue." },
   { term: "Payment fees (estimated)", text: "Worked out for every paid order from the fee percentage and fixed fee in Analytics settings, on the order's total with VAT. Your payment provider's statement is the real figure." },
-  { term: "Platform fees", text: "What Kaizen took on the period's payments. This is recorded, not estimated." },
+  { term: "Platform fees", text: "What Kaizena Flow took on the period's payments. This is recorded, not estimated." },
   { term: "Shipping costs (estimated)", text: "The cost of sending one order, from Analytics settings, for every paid order with something physical in it." },
   { term: "Marketing", text: "The ad spend you entered under Marketing, day by day, for the days of the period." },
   { term: "Contribution profit and margin", text: "Net revenue less the cost of goods, payment fees, platform fees, shipping costs and marketing: what each sale leaves before fixed costs. The margin is that as a share of net revenue." },

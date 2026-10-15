@@ -86,7 +86,7 @@ describe("notification_settings", () => {
     expect(JSON.stringify(theirs[0].wording)).not.toContain("own");
   });
 
-  it("refuses an email that is not one Kaizen sends, and a role without settings:read", async () => {
+  it("refuses an email that is not one Kaizena Flow sends, and a role without settings:read", async () => {
     await expect(run(store, "notification_settings", { notification: "order.unknown" })).rejects.toThrow(/no customer email/);
     await expect(run(store, "notification_settings", {}, { role: "admin", permissions: ["orders:read"] })).rejects.toThrow();
     await expect(run(store, "notification_settings", {}, { role: "admin", permissions: ["settings:read"] })).resolves.toBeDefined();

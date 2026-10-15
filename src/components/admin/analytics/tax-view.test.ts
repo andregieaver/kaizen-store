@@ -89,7 +89,7 @@ const props = (over: Partial<TaxViewProps> = {}): TaxViewProps => ({
 describe("the VAT view", () => {
   it("starts with the line that these are not a tax return, and says what the figures are made from", () => {
     const out = html(h(TaxView, props()));
-    expect(out).toContain("They are not a tax return and Kaizen files nothing.");
+    expect(out).toContain("They are not a tax return and Kaizena Flow files nothing.");
     expect(out).toContain("Made from 2 invoices and 1 credit note.");
     expect(out).toContain("your own figures");
   });

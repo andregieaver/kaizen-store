@@ -16,19 +16,19 @@ const WORDS: Record<DesignLayoutKind, { one: string; tab: "header" | "footer" | 
   header: {
     one: "header",
     tab: "header",
-    standard: "Kaizen's standard header",
+    standard: "Kaizena Flow's standard header",
     intro: "The top of every page of a store that applies the profile: its logo, menus, search, account, cart and the rest, with the store's own logo and menus.",
   },
   footer: {
     one: "footer",
     tab: "footer",
-    standard: "Kaizen's standard footer",
+    standard: "Kaizena Flow's standard footer",
     intro: "The bottom of every page of a store that applies the profile, with the store's own logo, menus, business details and cookies link.",
   },
   productLayout: {
     one: "product page layout",
     tab: "productLayout",
-    standard: "Kaizen's standard product page",
+    standard: "Kaizena Flow's standard product page",
     intro: "How product pages are laid out in a store that applies the profile: rows and columns of product components with anything around them.",
   },
 };

@@ -84,7 +84,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <Card title="New design profile" description={<>Start from a store&apos;s look as it is now, or from Kaizen&apos;s standard look, then set it up on the profile&apos;s own pages (theme, header, footer, product page and CSS). It stays unpublished until you publish it.</>} className="flex flex-col gap-3" compact>
+        <Card title="New design profile" description={<>Start from a store&apos;s look as it is now, or from Kaizena Flow&apos;s standard look, then set it up on the profile&apos;s own pages (theme, header, footer, product page and CSS). It stays unpublished until you publish it.</>} className="flex flex-col gap-3" compact>
           <ActionForm action={createDesignAction} className="flex max-w-3xl flex-col gap-3">
             <label className={field}>
               Title
@@ -96,7 +96,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
                 <input type="radio" name="origin" value="scratch" defaultChecked className="mt-0.5 size-4" />
                 <span>
                   Scratch
-                  <span className="block text-muted">Kaizen&apos;s standard look: the standard theme, header, footer and product page, no CSS.</span>
+                  <span className="block text-muted">Kaizena Flow&apos;s standard look: the standard theme, header, footer and product page, no CSS.</span>
                 </span>
               </label>
               <label className="flex items-start gap-2">

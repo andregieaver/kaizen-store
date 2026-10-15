@@ -256,7 +256,7 @@ describe("the referral ledger", () => {
     expect(Number(await scalar("select commerce.referral_apply_invoice($1, 'EUR', 'in_blocked', 400)", [r.id]))).toBe(400);
   });
 
-  it("adds and removes credit for Kaizen, with a reason, and only for an account with a code", async () => {
+  it("adds and removes credit for Kaizena Flow, with a reason, and only for an account with a code", async () => {
     const r = await referrer("adjust");
     await db.query("select commerce.referral_adjust($1, 'EUR', 700, 'goodwill', $2, 'adj-a-1')", [r.id, admin]);
     expect(Number(await scalar("select commerce.referral_adjust($1, 'EUR', -200, 'mistake', $2, 'adj-a-2')", [r.id, admin]))).toBe(-200);

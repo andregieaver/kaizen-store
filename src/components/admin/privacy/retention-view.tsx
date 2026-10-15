@@ -41,7 +41,7 @@ const BASIS_WORDS: Record<RetentionBasis, string> = {
   snippet: "Seen in a search result only",
   secondary: "From a secondary source",
   fallback: "Safe fallback, not read",
-  policy: "Kaizen's own choice",
+  policy: "Kaizena Flow's own choice",
 };
 
 /** A period that is set by a constant in code: the row describes it, and a test holds the two equal. A change here would not change what is enforced. */
@@ -114,7 +114,7 @@ export function RetentionView({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Data retention"
-        description={<>How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them; the rest are Kaizen&apos;s own choice. This is not legal advice.</>}
+        description={<>How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them; the rest are Kaizena Flow&apos;s own choice. This is not legal advice.</>}
       />
 
       <section aria-labelledby="unreviewed" className={card}>

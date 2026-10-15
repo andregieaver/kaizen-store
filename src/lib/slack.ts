@@ -122,7 +122,7 @@ function orderMessage(event: string, order: Data, store: Data, locale: string, t
   const lines = event === "order.paid" || test ? orderLines(order, locale) : null;
   return {
     text: escapeSlack(plain),
-    blocks: [section(head), ...extra.map(section), ...(lines ? [section(lines)] : []), footer(store, order.admin_url, "Open the order in Kaizen")],
+    blocks: [section(head), ...extra.map(section), ...(lines ? [section(lines)] : []), footer(store, order.admin_url, "Open the order in Kaizena Flow")],
     unfurl_links: false,
     unfurl_media: false,
   };
@@ -144,7 +144,7 @@ export function slackMessage(payload: Data, locale: string): SlackMessage | null
       text: escapeSlack(plain),
       blocks: [
         section(`*New customer account*${name ? `\n${escapeSlack(name)}` : ""}`),
-        footer(store, customer.admin_url, "Open the customer in Kaizen"),
+        footer(store, customer.admin_url, "Open the customer in Kaizena Flow"),
       ],
       unfurl_links: false,
       unfurl_media: false,
@@ -157,7 +157,7 @@ export function slackMessage(payload: Data, locale: string): SlackMessage | null
     const count = waiting === 1 ? "1 customer is waiting" : `${waiting} customers are waiting`;
     return {
       text: escapeSlack(`Support: ${count} for a person`),
-      blocks: [section(`*Someone is waiting in support*\n${count} for a person.`), footer(store, support.admin_url, "Open the inbox in Kaizen")],
+      blocks: [section(`*Someone is waiting in support*\n${count} for a person.`), footer(store, support.admin_url, "Open the inbox in Kaizena Flow")],
       unfurl_links: false,
       unfurl_media: false,
     };
@@ -171,7 +171,7 @@ export function slackMessage(payload: Data, locale: string): SlackMessage | null
       text: escapeSlack(`Subscription ${number} ${verb} · ${amount}`),
       blocks: [
         section(`*Subscription ${slackLink(subscription.admin_url, number)} ${verb}*\n${amount}`),
-        footer(store, subscription.admin_url, "Open the subscription in Kaizen"),
+        footer(store, subscription.admin_url, "Open the subscription in Kaizena Flow"),
       ],
       unfurl_links: false,
       unfurl_media: false,

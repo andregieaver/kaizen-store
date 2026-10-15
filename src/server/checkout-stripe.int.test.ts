@@ -156,7 +156,7 @@ describe("starting checkout", () => {
     expect(payment).toEqual({ provider_reference: "cs_fake_1", provider_account: accountId, amount: 59700 });
   });
 
-  it("takes Kaizen's fee and sends Stripe's invoice when the store wants one and Kaizen's own invoicing is off (D159)", async () => {
+  it("takes Kaizena Flow's fee and sends Stripe's invoice when the store wants one and Kaizena Flow's own invoicing is off (D159)", async () => {
     await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
     await db().execute(sql`insert into commerce.invoice_settings (store_id, enabled) values (${storeId}::uuid, false) on conflict (store_id) do update set enabled = false`);
@@ -184,7 +184,7 @@ describe("starting checkout", () => {
     }
   });
 
-  it("starts a subscription on the store's account, with shipping that renews and Kaizen's fee as a share", async () => {
+  it("starts a subscription on the store's account, with shipping that renews and Kaizena Flow's fee as a share", async () => {
     await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
     try {
@@ -284,12 +284,12 @@ describe("starting checkout", () => {
   });
 });
 
-describe("Kaizen's checkout page", () => {
+describe("Kaizena Flow's checkout page", () => {
   beforeAll(async () => {
     await db().execute(sql`update commerce.platform_settings set checkout_ui = 'custom'`);
   });
 
-  it("opens a session for Stripe's form on Kaizen's page and sends the shopper there", async () => {
+  it("opens a session for Stripe's form on Kaizena Flow's page and sends the shopper there", async () => {
     const cartId = await cartWith("DEMO-MUG-WHITE", 1);
     const result = await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
     expect(result).toEqual({ ok: true, url: `https://shop.test/s/${slug}/no/checkout` });

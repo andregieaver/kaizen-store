@@ -95,7 +95,7 @@ function invoice(o: InvoiceOptions = {}): InvoiceDocument {
     reference: "PO 4471",
     notes: null,
     seller: {
-      legalName: "Kaizen Konsult AS",
+      legalName: "Kaizena Flow Konsult AS",
       organisationNumber: "923 456 789",
       vatRegistered: o.vatRegistered ?? true,
       vatNumber: "NO923456789MVA",
@@ -105,7 +105,7 @@ function invoice(o: InvoiceOptions = {}): InvoiceDocument {
       bankAccount: "NO9386011117947",
       bic: "DNBANOKK",
       paymentNote: null,
-      invoiceFooter: "Kaizen Konsult AS · Storgata 1 · Oslo",
+      invoiceFooter: "Kaizena Flow Konsult AS · Storgata 1 · Oslo",
       latePaymentNote: null,
     },
     buyer: {
@@ -134,7 +134,7 @@ function invoice(o: InvoiceOptions = {}): InvoiceDocument {
       amountDueMinor: totals.totalMinor,
     },
     latePaymentNote: defaultLatePaymentNote(language),
-    footer: "Kaizen Konsult AS · Storgata 1 · Oslo",
+    footer: "Kaizena Flow Konsult AS · Storgata 1 · Oslo",
     amounts: { totalMinor: totals.totalMinor, paidMinor: 0, creditedMinor: 0, outstandingMinor: totals.totalMinor },
     creditNotes: [],
     publicToken: null,
@@ -275,7 +275,7 @@ describe("the invoice document, in the four document languages", () => {
     expect(html).toContain(c.hours);
     expect(html).toContain(c.late);
     // Seller, buyer, payment details.
-    expect(html).toContain("Kaizen Konsult AS");
+    expect(html).toContain("Kaizena Flow Konsult AS");
     expect(html).toContain("923 456 789");
     expect(html).toContain("NO923456789MVA");
     expect(html).toContain("NO9386011117947");
@@ -533,7 +533,7 @@ describe("what a document does with text it was given", () => {
 
   it("puts only the seller's footer at the bottom, and none when there is none", () => {
     expect(render(invoice())).toContain(
-      '<footer class="wd-footer wd-lines">Kaizen Konsult AS · Storgata 1 · Oslo</footer>',
+      '<footer class="wd-footer wd-lines">Kaizena Flow Konsult AS · Storgata 1 · Oslo</footer>',
     );
     const doc = invoice();
     doc.seller.invoiceFooter = "  ";
@@ -658,6 +658,6 @@ describe("the credit note document", () => {
     const html = renderCredit(creditNote());
     expect(html).toContain("<caption>Kreditnota WCN-1</caption>");
     expect(html).toContain('<th scope="col">');
-    expect(html).toContain("Kaizen Konsult AS");
+    expect(html).toContain("Kaizena Flow Konsult AS");
   });
 });

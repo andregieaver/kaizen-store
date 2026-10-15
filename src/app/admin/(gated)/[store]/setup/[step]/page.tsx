@@ -66,7 +66,7 @@ export default async function SetupStepPage({ params }: Props) {
         <SetupFrame
           {...frame}
           title="What will you sell?"
-          intro="Kaizen switches on what your store needs and keeps the rest out of your way. You can change all of it later under Settings, Features."
+          intro="Kaizena Flow switches on what your store needs and keeps the rest out of your way. You can change all of it later under Settings, Features."
         >
           <FeaturesStep member={member} answered={progress.features} />
         </SetupFrame>
@@ -212,12 +212,12 @@ async function PaymentsStep({ member }: { member: Membership }) {
     <div className="flex flex-col gap-4">
       {settings.modes.includes("test") ? (
         <p role="status" className="rounded-md border border-line p-3 text-sm">
-          Test payments are on, with nothing to set up: Kaizen creates a test Stripe account for your
+          Test payments are on, with nothing to set up: Kaizena Flow creates a test Stripe account for your
           store. Try your checkout with the card 4242 4242 4242 4242.
         </p>
       ) : (
         <p role="status" className="rounded-md border border-line p-3 text-sm">
-          Payments are not available on Kaizen yet. You can continue; your store is ready for them.
+          Payments are not available on Kaizena Flow yet. You can continue; your store is ready for them.
         </p>
       )}
       {settings.modes.includes("live") && (

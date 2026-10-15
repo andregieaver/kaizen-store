@@ -100,7 +100,7 @@ const props = (over: Partial<OssViewProps> & { view?: ReturnView } = {}): OssVie
 describe("the OSS view", () => {
   it("starts with the line that these are not a tax return and shows the deadline of the quarter", () => {
     const out = html(h(OssView, props()));
-    expect(out).toContain("They are not a tax return and Kaizen files nothing.");
+    expect(out).toContain("They are not a tax return and Kaizena Flow files nothing.");
     expect(out).toContain("Q3 2026: submit and pay by 31 October 2026.");
   });
 
@@ -139,7 +139,7 @@ describe("the OSS view", () => {
     expect(out).toContain("Part 2d");
     expect(out).toContain("Member State of dispatch");
     expect(out).toContain(">PL<");
-    expect(out).toContain("Kaizen does not hold it, so you enter it yourself");
+    expect(out).toContain("Kaizena Flow does not hold it, so you enter it yourself");
     // Services have no dispatch state: their table has no such column.
     const services = html(h(OssView, props({ view: viewOf({ groups: [g({ hasPhysical: false, hasDownload: true })] }) })));
     expect(services).not.toContain("Member State of dispatch");
@@ -233,7 +233,7 @@ describe("the OSS view", () => {
   it("warns that a deadline has passed without saying a return is late", () => {
     const out = html(h(OssView, props({ view: viewOf({ today: "2026-11-05" }) })));
     expect(out).toContain("Deadline passed");
-    expect(out).toContain("Kaizen does not know what was filed");
+    expect(out).toContain("Kaizena Flow does not know what was filed");
   });
 
   it("sets no cookie or storage and loads no script of its own (React adds its own form-replay script for the rate forms)", () => {
@@ -253,7 +253,7 @@ describe("the IOSS view", () => {
     expect(out).toContain("/admin/shop/settings/tax");
     expect(out).not.toContain("analytics/tax/export");
     expect(out).not.toContain("Part 4");
-    expect(out).toContain("They are not a tax return and Kaizen files nothing.");
+    expect(out).toContain("They are not a tax return and Kaizena Flow files nothing.");
   });
 
   it("shows the marked sales of the month per Member State and rate, monthly, due at the end of the next month", () => {

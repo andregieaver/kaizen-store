@@ -40,7 +40,7 @@ export const REDIRECT_PROBLEMS = {
   too_many: `Choose at most ${REDIRECT_BULK_DELETE_MAX} redirects at a time.`,
   nothing: "Choose at least one redirect.",
   taken: "Another redirect already goes from that address. Edit that one instead.",
-  automatic: "This redirect is made by Kaizen when an address changes. Delete it, or make a redirect of your own from the same address to replace it.",
+  automatic: "This redirect is made by Kaizena Flow when an address changes. Delete it, or make a redirect of your own from the same address to replace it.",
 } as const;
 export type RedirectProblemCode = keyof typeof REDIRECT_PROBLEMS;
 

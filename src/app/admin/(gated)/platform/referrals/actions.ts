@@ -44,7 +44,7 @@ export async function saveReferralSettingsAction(_state: FormState, formData: Fo
   let note = "";
   if (formData.get("enabled") === "on") {
     const added = (await Promise.all(platformModes().map((mode) => ensureBillingEvents(mode)))).flat();
-    if (added.length > 0) note = ` Kaizen's Stripe billing webhook now also sends ${added.join(", ")}.`;
+    if (added.length > 0) note = ` Kaizena Flow's Stripe billing webhook now also sends ${added.join(", ")}.`;
   }
   return { status: "ok", messages: [`Saved.${note}`] };
 }

@@ -147,7 +147,7 @@ describe("a return's status page: the label and the exchange (D239)", () => {
     html(h(ReturnStatusView, { m: t(lang).returns, ret: r, locale, extras: e }));
   const booked = { source: "carrier" as const, carrierId: "bring", service: "9300", consignmentNumber: "70438101", trackingNumber: "370438101", trackingUrl: "https://tracking.bring.com/tracking/370438101", costMinor: 9900, test: false, bookedAt: "2026-10-03T10:00:00.000Z" };
 
-  it("prints a booked label through Kaizen's label route, never the carrier's address, with the carrier, tracking and who pays", () => {
+  it("prints a booked label through Kaizena Flow's label route, never the carrier's address, with the carrier, tracking and who pays", () => {
     const out = drawn(ret({ label: booked }));
     expect(out).toContain("Your return label");
     expect(out).toContain('href="/s/demo/no/returns/abc/label"');

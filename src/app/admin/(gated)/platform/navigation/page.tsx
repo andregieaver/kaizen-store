@@ -15,13 +15,13 @@ import { savePlatformNavigationAction } from "./actions";
 export const metadata: Metadata = { title: "Header and footer" };
 
 const COPY: NavigationCopy = {
-  logo: "Shown in the header instead of Kaizen's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
+  logo: "Shown in the header instead of Kaizena Flow's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
   logoDark:
     "Optional: a light version of the logo, shown instead to visitors in dark mode. Without it, the logo above is shown in both.",
   header:
     "Across the top on computers, and in the slide-out menu on phones. Sign in and Start your store are always there, so they need no link in it.",
   footer: "At the bottom of every page, beside the business details below.",
-  saved: "Saved. Kaizen's pages show it now.",
+  saved: "Saved. Kaizena Flow's pages show it now.",
   view: "View the site",
 };
 
@@ -38,7 +38,7 @@ export default async function PlatformNavigationPage() {
     <>
       <PageHeader
         title="Header and footer"
-        description={<>Kaizen&apos;s logo, its icon, who runs it and the menus its standard header and footer show. To make or change a menu, go to{" "}<Link href="/admin/platform/menus" className="underline">Menus</Link>; to lay out the header and footer themselves, build them under{" "}<Link href="/admin/platform/headers" className="underline">Headers</Link>{" "}and{" "}<Link href="/admin/platform/footers" className="underline">Footers</Link>.</>}
+        description={<>Kaizena Flow&apos;s logo, its icon, who runs it and the menus its standard header and footer show. To make or change a menu, go to{" "}<Link href="/admin/platform/menus" className="underline">Menus</Link>; to lay out the header and footer themselves, build them under{" "}<Link href="/admin/platform/headers" className="underline">Headers</Link>{" "}and{" "}<Link href="/admin/platform/footers" className="underline">Footers</Link>.</>}
       />
       <NavigationEditor
         initial={{ ...navigation, headerMenuId, footerMenuId }}

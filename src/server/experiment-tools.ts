@@ -114,7 +114,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       hypothesis: test.hypothesis || undefined,
       started: when(test.startedAt),
       stopped: when(test.stoppedAt),
-      stop_reason: test.stopReason === "guardrail" ? "Kaizen stopped it because a version was clearly selling less." : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
+      stop_reason: test.stopReason === "guardrail" ? "Kaizena Flow stopped it because a version was clearly selling less." : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
     },
     admin: adminLink(store, `/experiments/${test.id}`),
@@ -227,7 +227,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     who_takes_part: sample === null ? "Too few cookie choices recorded to say how many visitors accept statistics cookies." : `About ${Math.round(sample * 100)} % of the visitors who made a cookie choice in the last 90 days accepted statistics cookies: only they are in a test.`,
     paid_orders_last_30_days: Number(orders?.n ?? 0),
     from_cart_to_paid_order: { carts_with_products: funnel.carts_with_products, paid: funnel.orders_paid, share: funnel.from_filled_cart_to_paid },
-    how_long: estimate ? { about_days: estimate.days, sentence: estimate.sentence } : "Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent): Kaizen does not count page views, so do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
+    how_long: estimate ? { about_days: estimate.days, sentence: estimate.sentence } : "Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent): Kaizena Flow does not count page views, so do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
     rules: [
       "One thing at a time, so the owner knows what made the difference.",
       "Prices, discounts, shipping and legal pages are never tested.",

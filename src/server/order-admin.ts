@@ -169,7 +169,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     `),
     db().execute<Row>(sql`
       select coalesce(sum(amount_minor) filter (where status = 'captured'), 0)::bigint as paid,
-             -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizen (D173, refunded by being recorded), can be refunded here.
+             -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizena Flow (D173, refunded by being recorded), can be refunded here.
              -- An exchange order's credit (D239, provider exchange) is refunded at the original order's payment, so it is refundable here too.
              coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'manual', 'exchange')), 0)::bigint as online,
              bool_or(status = 'captured' and (provider_account is not null or provider = 'exchange')) as connect,
@@ -713,7 +713,7 @@ export async function refundOrder(
   if (!order) return { ok: false, problem: "This order no longer exists." };
   if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   if (options.outside && input.amountMinor !== 0) return { ok: false, problem: "Nothing is sent from here for a refund made outside Stripe." };
-  if (!order.canRefund && !options.outside) return { ok: false, problem: "This order was not paid through Kaizen's Stripe, so refund it in Stripe." };
+  if (!order.canRefund && !options.outside) return { ok: false, problem: "This order was not paid through Kaizena Flow's Stripe, so refund it in Stripe." };
   // A change waiting for the customer's payment (D174) keeps the order as it was sold until it is paid, cancelled or expired: no refund meanwhile.
   if (order.fulfilment.editPending && !options.whileEditPending) return { ok: false, problem: "A change to this order waits for the customer's payment: cancel the change, or wait for it, before refunding." };
   if (!Number.isInteger(input.amountMinor) || input.amountMinor < 0 || input.amountMinor > order.refundableMinor) {
@@ -780,7 +780,7 @@ export async function refundOrder(
   if (parts === null) return { ok: false, problem: "The amount is more than is left to refund." };
   // Who may record a refund of money taken outside Kaizen is who may record the payment: the owner, or staff when the owner allows it (D173). A refund through Stripe is any staff member's.
   if (parts.some((part) => part.provider === "manual") && !(await accountMayRecordOutside(storeId, accountId))) {
-    return { ok: false, problem: "Only the owner can record a refund of a payment taken outside Kaizen, unless the owner has allowed staff to." };
+    return { ok: false, problem: "Only the owner can record a refund of a payment taken outside Kaizena Flow, unless the owner has allowed staff to." };
   }
 
   // Stripe first, part by part (each with its own idempotency key: the caller's for the first, the same key and the payment for the others), then the database.

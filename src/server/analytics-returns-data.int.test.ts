@@ -314,7 +314,7 @@ describe("returnsReport: the rates", () => {
     expect(r.tracked).toBe(false);
     expect(r.cohort.orders).toBe(35);
     expect(r.orderRate.value).toBeNull();
-    expect(r.orderRate.missing).toContain("No return has been recorded in Kaizen yet");
+    expect(r.orderRate.missing).toContain("No return has been recorded in Kaizena Flow yet");
     expect(r.unitRate.value).toBeNull();
     expect(r.timing.requestToRefund.medianDays).toBeNull();
     expect(r.timing.requestToRefund.missing).toBeTruthy();
@@ -377,7 +377,7 @@ describe("returnsReport: reasons", () => {
 });
 
 describe("returnsReport: refunds, times and what is overdue", () => {
-  it("adds what was refunded in the period without VAT, outside Kaizen's Stripe included and counted apart", async () => {
+  it("adds what was refunded in the period without VAT, outside Kaizena Flow's Stripe included and counted apart", async () => {
     const r = await returnsReport(A, PERIOD, LATER);
     // W1 W2 W3 W4 W6 W10 and V3 at 8000, W5 10000, W11 80000.
     expect(r.refunded).toEqual({ minor: 7 * 8_000 + 10_000 + 80_000, returns: 9, outside: 1 });

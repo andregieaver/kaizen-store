@@ -125,5 +125,5 @@ export async function StoreChat({ store, market }: { store: Store; market: Marke
 export async function KaizenChat() {
   const profile = await chatWidgetFor(null);
   if (!profile) return null;
-  return <ChatWidget site={{}} locale="en-GB" agent={profile} deskName="Kaizen" labels={chatLabels("en", "en-GB", profile, "Kaizen")} />;
+  return <ChatWidget site={{}} locale="en-GB" agent={profile} deskName="Kaizena Flow" labels={chatLabels("en", "en-GB", profile, "Kaizena Flow")} />;
 }

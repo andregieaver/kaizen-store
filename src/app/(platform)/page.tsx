@@ -31,13 +31,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           seo,
         })}
       />
-      <h1 className="text-4xl font-semibold tracking-tight">Kaizen</h1>
+      <h1 className="text-4xl font-semibold tracking-tight">Kaizena Flow</h1>
       <p className="text-lg">
         Online stores for Norway and the EU: prices, VAT, product safety and
         consumer rules handled from the start, and pages that load in under
         half a second.
       </p>
-      <p className="text-muted">Kaizen is in a private beta.</p>
+      <p className="text-muted">Kaizena Flow is in a private beta.</p>
       <div className="flex flex-wrap gap-3">
         <Link
           href="/sign-up"

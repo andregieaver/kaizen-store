@@ -122,7 +122,7 @@ export function templateProblems(template: EmailTemplate, notificationId: string
     const bare = withoutPlaceholders(text);
     for (const match of bare.matchAll(ADDRESS)) {
       if (isAbbreviation(match[0])) continue;
-      add("address", `${SLOT_WORDS[slot]} holds a web address (${match[0]}). Links are added by Kaizen as buttons; leave addresses out.`, { detail: match[0] });
+      add("address", `${SLOT_WORDS[slot]} holds a web address (${match[0]}). Links are added by Kaizena Flow as buttons; leave addresses out.`, { detail: match[0] });
     }
     if (slot !== "body" && fillNamed(text, Object.fromEntries([...allowed].map((n) => [n, null])), { dropBareLines: true }).replace(/[\s\p{P}]/gu, "") === "") {
       add("empty_after_fill", `${SLOT_WORDS[slot]} would be empty when its placeholders have no value. Add some words.`);

@@ -113,8 +113,8 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["refund", "tracking", "ship", "cancel order", "partial fulfilment", "partly sent", "split shipment", "parcel", "edit order", "change order", "ready for pickup", "collected", "local delivery", "out for delivery"],
     feature: "shop",
   }),
-  store("order.edit", "/orders/[orderId]/edit", "Edit order", "Main", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizen) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
-    tasks: ["Take an item off an order", "Lower a quantity", "Add a product to a paid order", "Change the shipping price", "Send the customer a pay link for a higher total", "Record a change as paid outside Kaizen"],
+  store("order.edit", "/orders/[orderId]/edit", "Edit order", "Main", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizena Flow) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
+    tasks: ["Take an item off an order", "Lower a quantity", "Add a product to a paid order", "Change the shipping price", "Send the customer a pay link for a higher total", "Record a change as paid outside Kaizena Flow"],
     keywords: ["edit order", "change order", "modify order", "add item", "remove item", "order edit", "endre ordre", "swap item"],
     feature: "shop",
   }),
@@ -147,8 +147,8 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["new draft", "create order", "manual order"],
     feature: "shop",
   }),
-  store("orders.draft", "/orders/drafts/[draftId]", "Draft order", "Main", "One draft order: the customer, lines (products and custom items, with a custom price), a discount the buyer sees, shipping, notes and tags, and the summary with VAT worked out by the checkout's own rules. Send it to the customer as a pay link or make a link to share, reopen a sent draft, or record that it was paid outside Kaizen (bank transfer, cash).", {
-    tasks: ["Add products and custom items", "Give a discount or a custom price", "Send the pay link", "Make a link to share", "Reopen a sent draft", "Record a payment taken outside Kaizen"],
+  store("orders.draft", "/orders/drafts/[draftId]", "Draft order", "Main", "One draft order: the customer, lines (products and custom items, with a custom price), a discount the buyer sees, shipping, notes and tags, and the summary with VAT worked out by the checkout's own rules. Send it to the customer as a pay link or make a link to share, reopen a sent draft, or record that it was paid outside Kaizena Flow (bank transfer, cash).", {
+    tasks: ["Add products and custom items", "Give a discount or a custom price", "Send the pay link", "Make a link to share", "Reopen a sent draft", "Record a payment taken outside Kaizena Flow"],
     keywords: ["pay link", "payment link", "send invoice", "mark as paid", "paid outside", "bank transfer", "cash", "custom item", "custom price", "staff discount"],
     feature: "shop",
   }),
@@ -193,12 +193,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["taxonomy", "collections", "unit price", "price per kg", "requires unit price"],
     feature: "shop",
   }),
-  store("products.export", "/products/export", "Export products", "Main", "Downloads the store's products as a CSV file: one row for each variant, with texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A small store gets the file at once, a large one a job with a Download button. The file reads back into Kaizen as it is.", {
+  store("products.export", "/products/export", "Export products", "Main", "Downloads the store's products as a CSV file: one row for each variant, with texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A small store gets the file at once, a large one a job with a Download button. The file reads back into Kaizena Flow as it is.", {
     tasks: ["Export all products, a status, or a category or tag", "Choose the Excel (Nordic) or the standard file format", "Download a finished export", "See what the file does not carry"],
     keywords: ["export products", "csv", "download products", "spreadsheet", "excel", "backup", "product file", "eksporter produkter"],
     feature: "shop",
   }),
-  store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizen's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
+  store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
     tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
     keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],
     feature: "shop",
@@ -411,7 +411,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Turn the referral program on or off", "Change the friend's welcome discount", "Change how much a referrer earns", "Block a referrer who abuses it", "See who referred whom"],
     keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"], feature: "referrals" }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: "shop" }),
-  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, and the custom fields staff entered about them. The owner's only. Kaizen does not record marketing consent yet, so the file must not be used as a mailing list.", {
+  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, and the custom fields staff entered about them. The owner's only. Kaizena Flow does not record marketing consent yet, so the file must not be used as a mailing list.", {
     needs: "owner",
     tasks: ["Export all customers", "Download a finished export"],
     keywords: ["export customers", "csv", "customer list", "download customers", "mailing list", "excel", "eksporter kunder"],
@@ -496,9 +496,9 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
     feature: "shop",
   }),
-  store("orders.settings", "/settings/orders", "Orders settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizen.", {
+  store("orders.settings", "/settings/orders", "Orders settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
     keywords: ["gift message", "gift", "auto archive", "archive orders", "pay link valid", "draft order link", "payment outside", "cash", "bank transfer", "staff may mark paid"],
-    tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizen"],
+    tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizena Flow"],
     feature: "shop",
   }),
   store("notifications", "/settings/notifications", "Notifications", "Settings", "The emails customers get about orders and returns (D238): each one's switch (the order confirmation, the change and renewal confirmations, the withdrawal acknowledgement and the return decisions are always sent), which languages have the store's own wording, and links to edit each email and to choose who on the team gets staff alerts.", {
@@ -646,7 +646,7 @@ const PAGES: readonly AdminPage[] = [
   store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
-  store("redirects", "/redirects", "Redirects", "Store", "Redirects send shoppers and search engines from an address that moved to its new one, in every country and language. Kaizen makes one itself when a product's, category's or tag's address changes; here you add, edit, delete and search your own (a path to a path on the store, permanent), and see how often each was used. Needs the right to change the website.", {
+  store("redirects", "/redirects", "Redirects", "Store", "Redirects send shoppers and search engines from an address that moved to its new one, in every country and language. Kaizena Flow makes one itself when a product's, category's or tag's address changes; here you add, edit, delete and search your own (a path to a path on the store, permanent), and see how often each was used. Needs the right to change the website.", {
     tasks: ["Redirect an old address to a new one", "Search the redirects", "Delete a redirect", "See which redirects are used", "Import or export redirects"],
     keywords: ["301", "404", "broken link", "moved page", "omdiriger", "redirect", "old url", "change handle", "permalink"],
   }),
@@ -680,7 +680,7 @@ const PAGES: readonly AdminPage[] = [
   store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and design profiles, a whole look (theme, header, footer, product page and CSS) to apply and put back.", {
     keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
-  store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizen plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
+  store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizena Flow plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
     keywords: ["close store", "delete store", "archive store", "shut down", "stop selling", "reopen store", "suspend"],
     tasks: ["Close the store", "See what stops me closing the store", "Reopen a closed store"],
@@ -698,7 +698,7 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
-  store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizen's.", { keywords: ["model", "provider", "openai"] }),
+  store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizena Flow's.", { keywords: ["model", "provider", "openai"] }),
   store("features", "/settings/features", "Features", "Store", "Switches the online shop and the store's features on or off (D178): subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs; what is in use, what blocks switching it off, and the store's time zone and appointment reminder. Every member sees it; only owners switch. (Work is switched on under Work, at the owner's level.)", {
     tasks: ["Switch the online shop off to run a website only", "Switch a feature on or off", "Set the store's time zone"],
     keywords: ["modules", "features", "switch on", "switch off", "online shop", "website only", "bookings", "subscription boxes", "time zone", "loyalty", "bonus program", "referral program", "sell to businesses", "b2b", "several languages", "several currencies", "several countries"],
@@ -708,7 +708,7 @@ const PAGES: readonly AdminPage[] = [
   }),
 
   // Store: account ---------------------------------------------------------------------------
-  store("billing", "/billing", "Billing", "Account", "The store's Kaizen plan, the fee per sale, and Kaizen's invoices.", {
+  store("billing", "/billing", "Billing", "Account", "The store's Kaizena Flow plan, the fee per sale, and Kaizena Flow's invoices.", {
     needs: "owner",
     keywords: ["plan", "subscription to kaizen", "invoice", "fee"],
   }),
@@ -751,7 +751,7 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["copy progress", "duplicate progress"],
   }),
-  account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizen's fee.", {
+  account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizena Flow's fee.", {
     keywords: ["plan", "subscription", "invoice", "renews", "fee", "cost"],
   }),
   account("account.appearance", "/account/appearance", "Appearance", "How the admin looks for you: light or dark, and the colour scheme, with every scheme drawn in light and dark with the admin's buttons, cards, figures and lists so you can compare them. Your stores keep their own colours.", {
@@ -762,7 +762,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],
   }),
-  account("account.referrals", "/account/referrals", "Referrals", "Your referral link and code, how many came by it, the stores that opened through it and the credit you earned on what they pay Kaizen, which comes off your own Kaizen invoices.", {
+  account("account.referrals", "/account/referrals", "Referrals", "Your referral link and code, how many came by it, the stores that opened through it and the credit you earned on what they pay Kaizena Flow, which comes off your own Kaizena Flow invoices.", {
     needs: "owner",
     keywords: ["referral", "refer", "affiliate", "invite", "recommend", "commission", "credit", "link", "code"],
     tasks: ["Copy your referral link", "See the stores that opened through it", "See your credit and how it is used"],
@@ -779,33 +779,33 @@ const PAGES: readonly AdminPage[] = [
   account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),
-  account("account.kaizen_support", "/account/kaizen-support", "Kaizen support", "Ask Kaizen itself for help (a problem with the admin, billing with Kaizen, how something works): your conversations with Kaizen's support, answered first by Kaizen's assistant and then by people from Kaizen, with answers also by email. A new request may name the store it is about. ?c= opens one.", {
+  account("account.kaizen_support", "/account/kaizen-support", "Kaizena Flow support", "Ask Kaizena Flow itself for help (a problem with the admin, billing with Kaizena Flow, how something works): your conversations with Kaizena Flow's support, answered first by Kaizena Flow's assistant and then by people from Kaizena Flow, with answers also by email. A new request may name the store it is about. ?c= opens one.", {
     keywords: ["help", "contact kaizen", "kaizen support", "bug", "problem", "ask kaizen"],
-    tasks: ["Ask Kaizen for help", "Read Kaizen's answer to a request"],
+    tasks: ["Ask Kaizena Flow for help", "Read Kaizena Flow's answer to a request"],
   }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),
 
   // Platform ---------------------------------------------------------------------------------
-  platform("website", "/website", "Website", "Kaizen site", "Kaizen's own website: pages, blog, media, templates, menus, header, footer and fonts, each a card.", { keywords: ["site"] }),
-  platform("settings", "/settings", "Settings", "Platform", "Kaizen's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
+  platform("website", "/website", "Website", "Kaizena Flow site", "Kaizena Flow's own website: pages, blog, media, templates, menus, header, footer and fonts, each a card.", { keywords: ["site"] }),
+  platform("settings", "/settings", "Settings", "Platform", "Kaizena Flow's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
   platform("overview", "", "Home", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
     keywords: ["dashboard", "home", "attention", "status"],
   }),
-  platform("support", "/support", "Support inbox", "Support", "Kaizen's own support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", {
+  platform("support", "/support", "Support inbox", "Support", "Kaizena Flow's own support desk: conversations with visitors of Kaizena Flow's site and owners asking Kaizena Flow, live.", {
     keywords: ["inbox", "live chat", "helpdesk", "conversations"],
   }),
-  platform("support.reports", "/support/reports", "Support reports", "Support", "Figures for Kaizen's own support desk over a period: conversations, the AI alone, hand-overs, waiting times, ratings, tone and topics.", {
+  platform("support.reports", "/support/reports", "Support reports", "Support", "Figures for Kaizena Flow's own support desk over a period: conversations, the AI alone, hand-overs, waiting times, ratings, tone and topics.", {
     keywords: ["support report", "response time", "kaizen support"],
   }),
   platform("support.stores", "/support/stores", "Stores' support", "Support", "Each store's support desk in figures over a period: mode, waiting now, conversations, the AI alone, hand-overs, first answer, missed and ratings. Counts and rates only, never a conversation.", {
     keywords: ["stores support", "support totals", "support per store"],
   }),
-  platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizen's support desk's saved replies: texts with a /shortcut that Kaizen's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
+  platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizena Flow's support desk's saved replies: texts with a /shortcut that Kaizena Flow's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
     keywords: ["saved replies", "canned responses", "macros"],
   }),
-  platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizen's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
+  platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizena Flow's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "opening hours", "email follow-up"],
   }),
   platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
@@ -836,7 +836,7 @@ const PAGES: readonly AdminPage[] = [
   platform("design-profile.css", "/design-profiles/[presetId]/css", "Design profile CSS", "Platform", "A design profile's own CSS for every page, checked when saved; part of the profile's draft."),
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a design profile to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
-  platform("plans", "/plans", "Plans", "Platform", "Kaizen's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
+  platform("plans", "/plans", "Plans", "Platform", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
     keywords: ["compare plans", "features", "what is included", "tiers"],
   }),
@@ -845,43 +845,43 @@ const PAGES: readonly AdminPage[] = [
   platform("plan-reminders", "/plan-reminders", "Plan reminders", "Platform", "Emails to owners who left a plan checkout."),
   platform("plan-reminder.new", "/plan-reminders/new", "New plan reminder", "Platform", "Adds a plan reminder step."),
   platform("plan-reminder", "/plan-reminders/[stepId]", "Plan reminder", "Platform", "One plan reminder step."),
-  platform("referrals", "/referrals", "Referrals", "Platform", "Kaizen's referral program: whether it is on, the commission, months, pending days and cookie days; the referrers with block, unblock and credit adjustments; the referred stores with void; and totals per currency.", {
+  platform("referrals", "/referrals", "Referrals", "Platform", "Kaizena Flow's referral program: whether it is on, the commission, months, pending days and cookie days; the referrers with block, unblock and credit adjustments; the referred stores with void; and totals per currency.", {
     keywords: ["referral", "refer", "affiliate", "commission", "invite", "credit", "referrer"],
     tasks: ["Switch the referral program on or off and set its terms", "Block or unblock a referrer", "Void a referral", "Add or remove a referrer's credit with a reason"],
   }),
-  platform("stripe", "/stripe", "Stripe", "Platform", "Kaizen's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
-  platform("pages", "/pages", "Pages", "Kaizen site", "Kaizen's own website pages."),
-  platform("page.new", "/pages/new", "New page", "Kaizen site", "Starts a Kaizen page."),
-  platform("page", "/pages/[pageId]", "Page", "Kaizen site", "Builds a Kaizen page."),
-  platform("page.preview", "/pages/[pageId]/preview", "Page preview", "Kaizen site", "Previews a Kaizen page."),
-  platform("page.ai", "/pages/ai", "Create a page with AI", "Kaizen site", "The AI page studio for Kaizen's site."),
-  platform("page.categories", "/pages/categories", "Page categories and tags", "Kaizen site", "Categories and tags for Kaizen's pages."),
-  platform("articles", "/articles", "Blog", "Kaizen site", "Kaizen's blog."),
-  platform("article.new", "/articles/new", "New article", "Kaizen site", "Starts a Kaizen article."),
-  platform("article", "/articles/[pageId]", "Article", "Kaizen site", "Writes a Kaizen article."),
-  platform("article.preview", "/articles/[pageId]/preview", "Article preview", "Kaizen site", "Previews a Kaizen article."),
-  platform("article.categories", "/articles/categories", "Blog categories and tags", "Kaizen site", "Categories and tags for Kaizen's articles."),
-  platform("headers", "/headers", "Headers", "Kaizen site", "Kaizen's custom headers."),
-  platform("header.new", "/headers/new", "New header", "Kaizen site", "Starts a Kaizen header."),
-  platform("header", "/headers/[pageId]", "Header", "Kaizen site", "Builds a Kaizen header."),
-  platform("header.preview", "/headers/[pageId]/preview", "Header preview", "Kaizen site", "Previews a Kaizen header."),
-  platform("footers", "/footers", "Footers", "Kaizen site", "Kaizen's custom footers."),
-  platform("footer.new", "/footers/new", "New footer", "Kaizen site", "Starts a Kaizen footer."),
-  platform("footer", "/footers/[pageId]", "Footer", "Kaizen site", "Builds a Kaizen footer."),
-  platform("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Kaizen site", "Previews a Kaizen footer."),
-  platform("media", "/media", "Media", "Kaizen site", "Kaizen's media library."),
-  platform("templates", "/templates", "Templates", "Kaizen site", "The marketplace's templates, store owners' and Kaizen's own: hide one from every store's list, or show it again.", {
+  platform("stripe", "/stripe", "Stripe", "Platform", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
+  platform("pages", "/pages", "Pages", "Kaizena Flow site", "Kaizena Flow's own website pages."),
+  platform("page.new", "/pages/new", "New page", "Kaizena Flow site", "Starts a Kaizena Flow page."),
+  platform("page", "/pages/[pageId]", "Page", "Kaizena Flow site", "Builds a Kaizena Flow page."),
+  platform("page.preview", "/pages/[pageId]/preview", "Page preview", "Kaizena Flow site", "Previews a Kaizena Flow page."),
+  platform("page.ai", "/pages/ai", "Create a page with AI", "Kaizena Flow site", "The AI page studio for Kaizena Flow's site."),
+  platform("page.categories", "/pages/categories", "Page categories and tags", "Kaizena Flow site", "Categories and tags for Kaizena Flow's pages."),
+  platform("articles", "/articles", "Blog", "Kaizena Flow site", "Kaizena Flow's blog."),
+  platform("article.new", "/articles/new", "New article", "Kaizena Flow site", "Starts a Kaizena Flow article."),
+  platform("article", "/articles/[pageId]", "Article", "Kaizena Flow site", "Writes a Kaizena Flow article."),
+  platform("article.preview", "/articles/[pageId]/preview", "Article preview", "Kaizena Flow site", "Previews a Kaizena Flow article."),
+  platform("article.categories", "/articles/categories", "Blog categories and tags", "Kaizena Flow site", "Categories and tags for Kaizena Flow's articles."),
+  platform("headers", "/headers", "Headers", "Kaizena Flow site", "Kaizena Flow's custom headers."),
+  platform("header.new", "/headers/new", "New header", "Kaizena Flow site", "Starts a Kaizena Flow header."),
+  platform("header", "/headers/[pageId]", "Header", "Kaizena Flow site", "Builds a Kaizena Flow header."),
+  platform("header.preview", "/headers/[pageId]/preview", "Header preview", "Kaizena Flow site", "Previews a Kaizena Flow header."),
+  platform("footers", "/footers", "Footers", "Kaizena Flow site", "Kaizena Flow's custom footers."),
+  platform("footer.new", "/footers/new", "New footer", "Kaizena Flow site", "Starts a Kaizena Flow footer."),
+  platform("footer", "/footers/[pageId]", "Footer", "Kaizena Flow site", "Builds a Kaizena Flow footer."),
+  platform("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Kaizena Flow site", "Previews a Kaizena Flow footer."),
+  platform("media", "/media", "Media", "Kaizena Flow site", "Kaizena Flow's media library."),
+  platform("templates", "/templates", "Templates", "Kaizena Flow site", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", {
     keywords: ["marketplace", "saved parts", "moderation"],
   }),
-  platform("menus", "/menus", "Menus", "Kaizen site", "Kaizen's menus."),
-  platform("navigation", "/navigation", "Header and footer", "Kaizen site", "Kaizen's logos, icon, business details and menus."),
-  platform("fonts", "/fonts", "Fonts", "Kaizen site", "Kaizen's self-hosted fonts."),
-  platform("seo", "/seo", "Search", "Kaizen site", "How search engines and AI crawlers see Kaizen's site."),
-  platform("cookies", "/cookies", "Cookies", "Kaizen site", "Kaizen's cookies, tracking and consents."),
-  platform("emails", "/emails", "Emails", "Platform", "Every email Kaizen and the stores sent, and email setup."),
+  platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
+  platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
+  platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
+  platform("seo", "/seo", "Search", "Kaizena Flow site", "How search engines and AI crawlers see Kaizena Flow's site."),
+  platform("cookies", "/cookies", "Cookies", "Kaizena Flow site", "Kaizena Flow's cookies, tracking and consents."),
+  platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),
   platform("email", "/emails/[emailId]", "Email", "Platform", "One email."),
-  platform("ai", "/ai", "AI", "Platform", "Kaizen's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
-  platform("ai.usage", "/ai/usage", "AI usage", "Platform", "What every store, store owner account and Kaizen itself used of the AI, per provider and model.", {
+  platform("ai", "/ai", "AI", "Platform", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("ai.usage", "/ai/usage", "AI usage", "Platform", "What every store, store owner account and Kaizena Flow itself used of the AI, per provider and model.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
     tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],
   }),
@@ -895,8 +895,8 @@ const PAGES: readonly AdminPage[] = [
   platform("ai.prices", "/ai/prices", "AI prices", "Platform", "What each AI model costs per million tokens in US dollars: set a price, see earlier ones, and the models used without a price. The usage pages show cost from these.", {
     keywords: ["cost", "price", "dollars", "model"],
   }),
-  platform("chat", "/chat", "Chat assistant", "Support", "Kaizen's public site chat assistant and its knowledge base."),
-  platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
+  platform("chat", "/chat", "Chat assistant", "Support", "Kaizena Flow's public site chat assistant and its knowledge base."),
+  platform("google-reviews", "/google-reviews", "Google reviews", "Kaizena Flow site", "Kaizena Flow's own Google reviews for testimonials."),
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
   }),

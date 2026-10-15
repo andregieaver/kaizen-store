@@ -58,7 +58,7 @@ export function closureWarnings(o: Obligations): string[] {
   if (o.openCheckouts > 0) out.push(`${many(o.openCheckouts, "order is", "orders are")} waiting for payment. Closing cancels ${o.openCheckouts === 1 ? "it" : "them"}.`);
   if (o.futureBookings > 0) out.push(`${many(o.futureBookings, "booking is", "bookings are")} still to come. Closing does not cancel ${o.futureBookings === 1 ? "it" : "them"}: contact the customers.`);
   if (o.openReturns > 0) out.push(`${many(o.openReturns, "return is", "returns are")} still open. You can keep handling ${o.openReturns === 1 ? "it" : "them"} while the store is closed.`);
-  if (o.livePlan) out.push("The Kaizen plan ends when the period you have paid for is over. Nothing is refunded.");
+  if (o.livePlan) out.push("The Kaizena Flow plan ends when the period you have paid for is over. Nothing is refunded.");
   if (o.domains > 0) out.push(`${many(o.domains, "domain of the store's own is", "domains of the store's own are")} released. You add ${o.domains === 1 ? "it" : "them"} again if you reopen.`);
   out.push("Money Stripe holds for you is paid out as usual: check your Stripe dashboard for the balance.");
   return out;

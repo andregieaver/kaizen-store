@@ -117,7 +117,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 className={`${control} py-2`}
               />
               <span className={hint}>
-                Printed on the invoice. Kaizen adds no interest or fees by itself: write only what you are entitled to.
+                Printed on the invoice. Kaizena Flow adds no interest or fees by itself: write only what you are entitled to.
               </span>
             </label>
           </div>

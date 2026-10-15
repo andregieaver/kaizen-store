@@ -60,7 +60,7 @@ describe("the WordPress plugin (D169)", () => {
     }
   });
 
-  it("asks only for routes Kaizen has", async () => {
+  it("asks only for routes Kaizena Flow has", async () => {
     const api = await read("includes/class-kaizen-store-api.php");
     const wanted = [...api.matchAll(/(?:request\(\s*'(?:GET|POST|DELETE)',\s*)'([^']+)'/g)].map((m) => m[1]);
     expect(wanted.length).toBeGreaterThan(4);
@@ -83,7 +83,7 @@ describe("the WordPress plugin (D169)", () => {
     expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/cart/handoff'");
   });
 
-  it("speaks the approval's words: the request Kaizen reads and the answer it gives back", async () => {
+  it("speaks the approval's words: the request Kaizena Flow reads and the answer it gives back", async () => {
     const connect = await read("includes/class-kaizen-store-connect.php");
     for (const word of ["/admin/account/wordpress/connect", "'site'", "'name'", "'return'", "'state'", "'challenge'", "kaizen_state", "kaizen_code", "kaizen_error"]) expect(connect, word).toContain(word);
     const lib = await readFile(path.join(import.meta.dirname, "wordpress.ts"), "utf8");
@@ -101,7 +101,7 @@ describe("the WordPress plugin (D169)", () => {
     for (const word of ["stores_in_use()", "Kaizen_Store_Views::UUID", "$quantity > 20", "count( $lines ) > 30", "allowed( 'quote'", "allowed( 'checkout'"]) expect(rest, word).toContain(word);
   });
 
-  it("speaks the cart's words: what the script reads from Kaizen's answers exists in them", async () => {
+  it("speaks the cart's words: what the script reads from Kaizena Flow's answers exists in them", async () => {
     const script = await read("assets/cart.js");
     const lib = await readFile(path.join(import.meta.dirname, "wordpress-cart.ts"), "utf8");
     for (const label of [...script.matchAll(/labels\(\)\.([a-zA-Z]+)/g)].map((m) => m[1]).filter((name) => name !== "loading").concat(["cart", "checkout", "subtotal", "addToCart", "emptyCart"])) {

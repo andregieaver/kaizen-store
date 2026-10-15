@@ -261,12 +261,12 @@ describe("sequential order numbering", () => {
   });
 });
 
-describe("Kaizen's pages with a place of their own (D143)", () => {
+describe("Kaizena Flow's pages with a place of their own (D143)", () => {
   const page = async (storeId: string | null, slug: string, type = "page") =>
     (await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft, type) values ($1, $2, '{}', $3) returning id", [storeId, slug, type])).id;
   const place = (role: string, pageId: string) => db.query("insert into commerce.platform_page_roles (role, page_id) values ($1, $2)", [role, pageId]);
 
-  it("holds a place for one of Kaizen's own pages, one place for a page, and lets go of it when the page is deleted", async () => {
+  it("holds a place for one of Kaizena Flow's own pages, one place for a page, and lets go of it when the page is deleted", async () => {
     const a = await page(null, "d143-a");
     const b = await page(null, "d143-b");
     await place("front", a);
@@ -2150,7 +2150,7 @@ describe("pages", () => {
 });
 
 describe("owners' own CSS (D100)", () => {
-  it("keeps a store's and Kaizen's CSS, empty until written and at most 50,000 characters", async () => {
+  it("keeps a store's and Kaizena Flow's CSS, empty until written and at most 50,000 characters", async () => {
     const shop = await createStore("css-test", ["NO"]);
     expect((await one<{ custom_css: string }>("select custom_css from commerce.stores where id = $1", [shop])).custom_css).toBe("");
     await db.query("update commerce.stores set custom_css = $2 where id = $1", [shop, "h1 { color: red; }"]);
@@ -2354,7 +2354,7 @@ describe("templates (D125)", () => {
     await expect(part({ store, sharing: "everyone" })).rejects.toThrow(/saved_parts_sharing/);
   });
 
-  it("makes Kaizen's own parts the marketplace's, never private or for stores", async () => {
+  it("makes Kaizena Flow's own parts the marketplace's, never private or for stores", async () => {
     await expect(part({ store: null })).rejects.toThrow(/saved_parts_kaizen_sharing/);
     await expect(part({ store: null, sharing: "private" })).rejects.toThrow(/saved_parts_kaizen_sharing/);
     await expect(part({ store: null, sharing: "stores" })).rejects.toThrow(/saved_parts_kaizen_sharing/);
@@ -2746,7 +2746,7 @@ describe("selling to businesses (B2B)", () => {
 });
 
 describe("Google reviews (D91)", () => {
-  it("keeps one key and business for Kaizen and one per store, a business always with its name", async () => {
+  it("keeps one key and business for Kaizena Flow and one per store, a business always with its name", async () => {
     const insert = (storeId: string | null, placeId: string | null, placeName: string | null) =>
       db.query(
         `insert into commerce.google_places (store_id, api_key_encrypted, api_key_hint, place_id, place_name)
@@ -2763,7 +2763,7 @@ describe("Google reviews (D91)", () => {
 });
 
 describe("AI providers (D73)", () => {
-  it("keeps one provider for Kaizen and one per store, with an address only for other APIs", async () => {
+  it("keeps one provider for Kaizena Flow and one per store, with an address only for other APIs", async () => {
     const insert = (storeId: string | null, provider: string, baseUrl: string | null) =>
       db.query(
         `insert into commerce.ai_providers (store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model)
@@ -2965,7 +2965,7 @@ describe("menus (D85)", () => {
     const { id: main } = await menu(template, "Main menu");
     const { id: footer } = await menu(template, "Footer menu");
     const { id: theirs } = await menu(other, "Main menu");
-    const { id: kaizens } = await menu(null, "Kaizen menu");
+    const { id: kaizens } = await menu(null, "Kaizena Flow menu");
     await expect(menu(template, "Main menu")).rejects.toThrow(/menus_store_name_key/);
     await expect(menu(template, " ")).rejects.toThrow(/menus_name/);
 

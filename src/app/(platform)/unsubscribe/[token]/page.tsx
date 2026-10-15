@@ -22,11 +22,11 @@ export default function UnsubscribePage({ params, searchParams }: Props) {
 async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { token } = await params;
   const query = await searchParams;
-  if (query.done) return <p role="status">You are unsubscribed. Kaizen will send you no more reminders about plans.</p>;
+  if (query.done) return <p role="status">You are unsubscribed. Kaizena Flow will send you no more reminders about plans.</p>;
   if (query.unknown) return <p role="alert">We could not find this link. It may be too old.</p>;
   return (
     <form action={unsubscribePlanAction.bind(null, token)} className="flex flex-col gap-4">
-      <p>Stop getting reminders from Kaizen about plans you started paying for? You can turn them on again on your Billing page.</p>
+      <p>Stop getting reminders from Kaizena Flow about plans you started paying for? You can turn them on again on your Billing page.</p>
       <button type="submit" className="min-h-11 self-start rounded-full bg-foreground px-5 font-medium text-background">
         Unsubscribe
       </button>

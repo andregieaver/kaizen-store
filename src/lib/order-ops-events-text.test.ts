@@ -18,14 +18,14 @@ describe("the history of the wave 3 order operations", () => {
     expect(opsEventText(ORDER_OPS_EVENTS.unarchived, { note: "A return was started" }, money)).toBe("Unarchived: A return was started");
   });
 
-  it("names how it was paid outside Kaizen and keeps the reference as the note", () => {
-    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "bank_transfer", note: "KID 123" }, money)).toBe("Payment recorded outside Kaizen: bank transfer · KID 123");
-    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "cash" }, money)).toBe("Payment recorded outside Kaizen: cash");
-    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "something else" }, money)).toBe("Payment recorded outside Kaizen");
+  it("names how it was paid outside Kaizena Flow and keeps the reference as the note", () => {
+    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "bank_transfer", note: "KID 123" }, money)).toBe("Payment recorded outside Kaizena Flow: bank transfer · KID 123");
+    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "cash" }, money)).toBe("Payment recorded outside Kaizena Flow: cash");
+    expect(opsEventText(ORDER_OPS_EVENTS.paidOutside, { method: "something else" }, money)).toBe("Payment recorded outside Kaizena Flow");
   });
 
   it("says a recorded refund sent nothing", () => {
-    expect(opsEventText(ORDER_OPS_EVENTS.refundedOutside, { amount: 12500, note: "Wrong size" }, money)).toBe("Refund recorded outside Kaizen 125.00 kr · Wrong size: nothing was sent, the store paid the customer back");
+    expect(opsEventText(ORDER_OPS_EVENTS.refundedOutside, { amount: 12500, note: "Wrong size" }, money)).toBe("Refund recorded outside Kaizena Flow 125.00 kr · Wrong size: nothing was sent, the store paid the customer back");
   });
 
   it("is null for every other event", () => {

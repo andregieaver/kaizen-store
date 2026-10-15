@@ -175,7 +175,7 @@ export async function exchangePaidOutsideAction(storeSlug: string, returnId: str
   const recorded = await recordExchangePaidOutside(found.member, exchangeId, { method, receivedOn: text(form, "receivedOn") || null, reference: text(form, "reference").slice(0, 100) || null });
   if (!recorded.ok) return failed(recorded.message);
   refresh();
-  return done(recorded.cashWarning ? "Recorded and settled. Check the cash rules of the customer's country with your accountant." : "Recorded as paid outside Kaizen. The exchange is settled.");
+  return done(recorded.cashWarning ? "Recorded and settled. Check the cash rules of the customer's country with your accountant." : "Recorded as paid outside Kaizena Flow. The exchange is settled.");
 }
 
 /** *Cancel the exchange and refund instead*: its order is cancelled (stock released), and the ordinary refund is offered. */

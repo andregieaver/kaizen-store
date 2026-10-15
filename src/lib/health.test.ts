@@ -27,7 +27,7 @@ describe("checkHealth", () => {
       region: "dub1",
       commit: "abc",
       uploadKey: "sb_publishable_wrong",
-      emailEnv: { RESEND_API_KEY: "re_secret", EMAIL_FROM: "butikk@kaizenstore.cloud" },
+      emailEnv: { RESEND_API_KEY: "re_secret", EMAIL_FROM: "butikk@kaizenaflow.com" },
     });
 
     expect(report).toEqual({

@@ -19,13 +19,13 @@ export type StatusEmailFacts = {
   reopenUntil: Date | null;
 };
 
-const FOOTER = ["Kaizen · kaizenstore.cloud"];
+const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 export function statusEmail(facts: StatusEmailFacts): EmailContent {
   const { storeName: name, by } = facts;
-  const who = by === "owner" ? "was closed from its settings" : "was closed by Kaizen";
+  const who = by === "owner" ? "was closed from its settings" : "was closed by Kaizena Flow";
   if (facts.change === "closed") {
     return {
       subject: `${name} is closed`,
@@ -34,13 +34,13 @@ export function statusEmail(facts: StatusEmailFacts): EmailContent {
       footer: [name, ...FOOTER],
       blocks: [
         { type: "heading", text: `${name} is closed` },
-        { type: "paragraph", text: `${name} ${who}. The shop no longer takes orders, its Kaizen plan ends when the period you have paid for is over, and its own domains are released.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
+        { type: "paragraph", text: `${name} ${who}. The shop no longer takes orders, its Kaizena Flow plan ends when the period you have paid for is over, and its own domains are released.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
         { type: "paragraph", text: "Nothing was deleted. You can still open the store's orders, invoices, returns and customer data in the admin, and download them: invoices and orders are kept for the bookkeeping period of the seller's country, and then made anonymous." },
         {
           type: "paragraph",
           text: facts.reopenUntil
-            ? `You can reopen the store yourself until ${day(facts.reopenUntil)} (${REOPEN_DAYS} days). After that, ask Kaizen.`
-            : "To reopen the store, ask Kaizen.",
+            ? `You can reopen the store yourself until ${day(facts.reopenUntil)} (${REOPEN_DAYS} days). After that, ask Kaizena Flow.`
+            : "To reopen the store, ask Kaizena Flow.",
         },
         { type: "button", text: "Open the store in the admin", url: facts.url },
       ],
@@ -49,13 +49,13 @@ export function statusEmail(facts: StatusEmailFacts): EmailContent {
   if (facts.change === "suspended") {
     return {
       subject: `${name} is suspended`,
-      preview: `${name} is paused by Kaizen and takes no orders until it is reopened.`,
+      preview: `${name} is paused by Kaizena Flow and takes no orders until it is reopened.`,
       lang: "en",
       footer: [name, ...FOOTER],
       blocks: [
         { type: "heading", text: `${name} is suspended` },
-        { type: "paragraph", text: `Kaizen has suspended ${name}. The shop takes no orders and cannot be changed until Kaizen reopens it.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
-        { type: "paragraph", text: "You can still see orders, invoices, returns and customer data in the admin and handle what has already been sold. Reply to this email or write to Kaizen to have the store reopened." },
+        { type: "paragraph", text: `Kaizena Flow has suspended ${name}. The shop takes no orders and cannot be changed until Kaizena Flow reopens it.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
+        { type: "paragraph", text: "You can still see orders, invoices, returns and customer data in the admin and handle what has already been sold. Reply to this email or write to Kaizena Flow to have the store reopened." },
         { type: "button", text: "Open the store in the admin", url: facts.url },
       ],
     };
@@ -67,7 +67,7 @@ export function statusEmail(facts: StatusEmailFacts): EmailContent {
     footer: [name, ...FOOTER],
     blocks: [
       { type: "heading", text: `${name} is open again` },
-      { type: "paragraph", text: `${name} was reopened${by === "owner" ? " from its settings" : " by Kaizen"}. The shop takes orders again. If you had closed it, add its own domains again under Settings, Domains, and check that its Kaizen plan is still on.` },
+      { type: "paragraph", text: `${name} was reopened${by === "owner" ? " from its settings" : " by Kaizena Flow"}. The shop takes orders again. If you had closed it, add its own domains again under Settings, Domains, and check that its Kaizena Flow plan is still on.` },
       { type: "button", text: "Open the store in the admin", url: facts.url },
     ],
   };

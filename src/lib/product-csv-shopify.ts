@@ -137,15 +137,15 @@ const MAP: Record<string, string> = {
 /** Columns that are known and deliberately not read, with the reason the member is told. */
 const IGNORED: Record<string, string> = {
   vendor: "Vendor is never turned into the product's manufacturer: that is a legal designation you make yourself in the editor",
-  "product category": "Shopify's own product taxonomy; Kaizen has its own categories",
-  type: "Shopify's product type; Kaizen has its own categories and tags",
+  "product category": "Shopify's own product taxonomy; Kaizena Flow has its own categories",
+  type: "Shopify's product type; Kaizena Flow has its own categories and tags",
   "option1 linked to": "Shopify's linked options are not used",
   "option2 linked to": "Shopify's linked options are not used",
   "option3 linked to": "Shopify's linked options are not used",
-  "inventory tracker": "Kaizen keeps stock for every goods variant",
-  "variant inventory tracker": "Kaizen keeps stock for every goods variant",
-  "fulfillment service": "Kaizen has no fulfilment service setting",
-  "variant fulfillment service": "Kaizen has no fulfilment service setting",
+  "inventory tracker": "Kaizena Flow keeps stock for every goods variant",
+  "variant inventory tracker": "Kaizena Flow keeps stock for every goods variant",
+  "fulfillment service": "Kaizena Flow has no fulfilment service setting",
+  "variant fulfillment service": "Kaizena Flow has no fulfilment service setting",
   "weight unit for display": "Weights are read in grams",
   "variant weight unit": "Weights are read in grams",
   "variant image alt text": "A variant's picture has no separate alt text",
@@ -154,9 +154,9 @@ const IGNORED: Record<string, string> = {
 function ignoredReason(name: string): string {
   if (Object.hasOwn(IGNORED, name)) return IGNORED[name];
   if (name.startsWith("google shopping")) return "Google Shopping columns come with the product feed, not the import";
-  if (/\(product\.metafields\./.test(name) || /\(variant\.metafields\./.test(name)) return "Only Kaizen's own custom fields are imported";
-  if (name.startsWith("inventory quantity /")) return "Stock per location is not imported: Kaizen has one stock figure until locations arrive";
-  return "Kaizen does not have this column";
+  if (/\(product\.metafields\./.test(name) || /\(variant\.metafields\./.test(name)) return "Only Kaizena Flow's own custom fields are imported";
+  if (name.startsWith("inventory quantity /")) return "Stock per location is not imported: Kaizena Flow has one stock figure until locations arrive";
+  return "Kaizena Flow does not have this column";
 }
 
 /** Shopify's measure units to Kaizen's; null for one Kaizen cannot hold (mg, mm, m3, oz, ...). */

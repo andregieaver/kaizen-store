@@ -41,7 +41,7 @@ export async function previewNotificationAction(storeSlug: string, id: string, l
   const member = await checkPermission(storeSlug, "settings:read");
   if (!member) return { ok: false, message: "You do not have access to the store's emails." };
   const preview = await previewNotification(member.store.id, String(id), String(lang), draft === null ? null : draftOf(draft));
-  if (!preview) return { ok: false, message: "This email is not one Kaizen sends." };
+  if (!preview) return { ok: false, message: "This email is not one Kaizena Flow sends." };
   return {
     ok: true,
     subject: preview.email.subject,

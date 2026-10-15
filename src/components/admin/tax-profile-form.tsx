@@ -107,7 +107,7 @@ export function TaxProfileForm({
             One Stop Shop (OSS)
           </h2>
           <p className="text-sm text-muted">
-            Record the registration here. Kaizen charges the VAT of the buyer&apos;s country on every consumer sale, as OSS requires. The returns are not made here.
+            Record the registration here. Kaizena Flow charges the VAT of the buyer&apos;s country on every consumer sale, as OSS requires. The returns are not made here.
           </p>
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="mb-1 font-medium">Scheme</legend>
@@ -312,7 +312,7 @@ export function TaxWarnings({ warnings }: { warnings: readonly string[] }) {
       <h2 id="warnings" className="text-title text-ink">
         Read this with your accountant
       </h2>
-      <p className="text-sm text-muted">This is how Kaizen handles VAT, and where it stops. It is not tax advice.</p>
+      <p className="text-sm text-muted">This is how Kaizena Flow handles VAT, and where it stops. It is not tax advice.</p>
       <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
         {warnings.map((warning) => (
           <li key={warning}>{warning}</li>

@@ -83,7 +83,7 @@ beforeAll(async () => {
 afterEach(() => vi.unstubAllGlobals());
 afterAll(async () => closeDb());
 
-describe("an account's requests to Kaizen", () => {
+describe("an account's requests to Kaizena Flow", () => {
   it("are the account's own: another account cannot list, read or write in them", async () => {
     model([{ content: "Hello! How can I help?" }]);
     const answer = await kaizen.requesterTurn(ana, { message: "My checkout does not work.", aboutStore: anaStore, after: 0 });
@@ -116,7 +116,7 @@ describe("an account's requests to Kaizen", () => {
     expect(row.about_store_id).toBeNull();
   });
 
-  it("are answered with Kaizen's tools for the account: its stores and their status only, and the admin's pages as chips", async () => {
+  it("are answered with Kaizena Flow's tools for the account: its stores and their status only, and the admin's pages as chips", async () => {
     const results = model([
       call("my_stores"),
       call("store_status", { store: boStore }),

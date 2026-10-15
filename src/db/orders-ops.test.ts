@@ -541,7 +541,7 @@ describe("the staff discount and the staff-made order", () => {
 // 3.3 point 6: payments taken outside Kaizen
 // ---------------------------------------------------------------------------------------------------------------------
 
-describe("a payment taken outside Kaizen", () => {
+describe("a payment taken outside Kaizena Flow", () => {
   it("is a payment with provider manual, a method and the staff member who recorded it, and nothing else carries a method", async () => {
     const o = await order(storeA);
     await payment(storeA, o.id, { provider: "manual", method: "bank_transfer", recordedBy: account });
@@ -575,7 +575,7 @@ describe("a payment taken outside Kaizen", () => {
   });
 });
 
-describe("a payment taken outside Kaizen: the day it was received and refunds that never exceed it (review fixes)", () => {
+describe("a payment taken outside Kaizena Flow: the day it was received and refunds that never exceed it (review fixes)", () => {
   it("dates the invoice's supply by the day the money was received, never later than the day it is issued; a Stripe payment cannot carry one", async () => {
     const s = await createInvoiceStore(db, `ops-received-${n()}`);
     const early = await placeOrder(db, s, { lines: [{ sku: "R1", unit: 20000 }], provider: "manual", method: "bank_transfer", receivedOn: "2026-09-30" });
@@ -619,7 +619,7 @@ describe("a payment taken outside Kaizen: the day it was received and refunds th
     expect(Number(await scalar("select sum(amount_minor) from commerce.refunds where payment_id = $1", [pay2]))).toBe(5000);
   });
 
-  it("leaves a Stripe payment's refunds to Stripe: the trigger holds only a payment taken outside Kaizen", async () => {
+  it("leaves a Stripe payment's refunds to Stripe: the trigger holds only a payment taken outside Kaizena Flow", async () => {
     const o = await order(storeA, { status: "paid", total: 10000 });
     await payment(storeA, o.id, { provider: "stripe", amount: 10000 });
     const pay = await scalar<string>("select id from commerce.payments where order_id = $1", [o.id]);
@@ -1037,7 +1037,7 @@ describe("a draft's order follows it", () => {
     expect(await one("select status, paid_at is not null as paid from commerce.draft_orders where id = $1", [d.id])).toEqual({ status: "paid", paid: true });
   });
 
-  it("makes the draft paid through complete_order_payment(), with a payment of Stripe or one recorded outside Kaizen", async () => {
+  it("makes the draft paid through complete_order_payment(), with a payment of Stripe or one recorded outside Kaizena Flow", async () => {
     for (const manual of [false, true]) {
       const s = await createInvoiceStore(db, `ops-pay-${n()}`);
       const d = await draft({ store: s });

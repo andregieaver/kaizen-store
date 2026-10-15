@@ -59,7 +59,7 @@ export type RefundDeps = {
 /** A refund of Kaizen's own whose row is not there yet: the webhook is refused so Stripe sends the event again. */
 export class RefundNotRecordedYet extends Error {
   constructor() {
-    super("The refund is Kaizen's own and its row is not recorded yet.");
+    super("The refund is Kaizena Flow's own and its row is not recorded yet.");
   }
 }
 

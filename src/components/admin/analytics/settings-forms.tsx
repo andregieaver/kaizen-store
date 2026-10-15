@@ -289,7 +289,7 @@ function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSett
           </dl>
         )}
         <p className="text-sm text-muted">
-          What Kaizen takes on each sale is real, not an estimate, and needs no entry. Money here is typed like a price, in {currency}.
+          What Kaizena Flow takes on each sale is real, not an estimate, and needs no entry. Money here is typed like a price, in {currency}.
         </p>
       </div>
     </AnalyticsSection>
@@ -461,7 +461,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 
         <Note title="Your part">
           Your cookie page describes this in each of your languages while it is on. Mention it in your privacy policy too, including that a visit is tied to a cart and its order: that
-          text is yours to write and Kaizen does not write it for you. Counting starts when you switch it on and cannot be filled in for earlier days. Counted visits are deleted after
+          text is yours to write and Kaizena Flow does not write it for you. Counting starts when you switch it on and cannot be filled in for earlier days. Counted visits are deleted after
           25 months. Counts are not tamper-proof: a script can add visits, within limits per address and per day, so look at a sudden jump before you trust it.
         </Note>
 

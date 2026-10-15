@@ -91,7 +91,7 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
     <>
       <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label="The file">
         <span className="font-medium break-all">{job.inputName ?? "Product file"}</span>
-        <span className="text-muted">{job.format === "shopify" ? "Shopify file" : "Kaizen file"}</span>
+        <span className="text-muted">{job.format === "shopify" ? "Shopify file" : "Kaizena Flow file"}</span>
         <span className="text-muted">Uploaded {momentText(job.createdAt, store.timeZone)}</span>
         <span className="text-muted">{STATUS_WORDS[job.status]}</span>
       </section>

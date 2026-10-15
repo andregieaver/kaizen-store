@@ -198,7 +198,7 @@ describe("sanitizeTemplate", () => {
     expect(byId(clean, "b11")).toEqual({ id: "b11", type: "customField" });
   });
 
-  it("empties another owner's HTML, but not Kaizen's", () => {
+  it("empties another owner's HTML, but not Kaizena Flow's", () => {
     expect(byId(clean, "b10").html).toBe("");
     const kaizen = sanitizeTemplate("row", row(), { id: null, slug: null, hosts: [] }, true);
     expect(byId(kaizen, "b10").html).toBe("<script>track()</script>");
@@ -316,7 +316,7 @@ describe("page layouts (D127)", () => {
     expect(blocks.find((b) => b.id === "p1")).toMatchObject({ type: "product", part: "title" });
   });
 
-  it("empties another owner's HTML in every row, but not Kaizen's", () => {
+  it("empties another owner's HTML in every row, but not Kaizena Flow's", () => {
     const html = (l: PageLayout) => partBlocks("page", l).find((b) => b.id === "b10") as { html: string };
     expect(html(cleaned(layout())).html).toBe("");
     expect(html(cleaned(layout(), true)).html).toBe("<script>track()</script>");

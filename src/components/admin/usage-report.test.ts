@@ -45,7 +45,7 @@ describe("cost in the usage report (D145)", () => {
     expect(out).toContain("3,000,000 tokens · $3.50");
     expect(out).toContain("2026-10-01: 3,000,000 tokens, $3.50, 4 requests");
     expect(out).toContain("$3.50 in all");
-    expect(out).toContain("$3.50 on Kaizen&#x27;s key, $0.50 on stores&#x27; own");
+    expect(out).toContain("$3.50 on Kaizena Flow&#x27;s key, $0.50 on stores&#x27; own");
   });
 
   it("says where a model has no price, marks a total that is more than shown, and sends the platform to set one", () => {

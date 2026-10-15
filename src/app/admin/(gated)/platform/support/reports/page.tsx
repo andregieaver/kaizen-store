@@ -19,7 +19,7 @@ export default async function KaizenSupportReportsPage({ searchParams }: PagePro
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Support reports"
-        description={<>How Kaizen&apos;s own desk did: visitors of Kaizen&apos;s site and owners asking Kaizen.</>}
+        description={<>How Kaizena Flow&apos;s own desk did: visitors of Kaizena Flow&apos;s site and owners asking Kaizena Flow.</>}
       />
       {notice && <p className="text-sm">{notice}</p>}
       <ReportsView

@@ -332,7 +332,7 @@ describe("reverse charge: from the cart to a paid order", () => {
 
   });
 
-  it("tells the store's Stripe invoice: the words and both VAT numbers, in four fields (while Kaizen's own invoicing is off, D159)", async () => {
+  it("tells the store's Stripe invoice: the words and both VAT numbers, in four fields (while Kaizena Flow's own invoicing is off, D159)", async () => {
     reset(de);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
     await db().execute(sql`insert into commerce.invoice_settings (store_id, enabled) values (${storeId}::uuid, false) on conflict (store_id) do update set enabled = false`);

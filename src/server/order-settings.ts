@@ -53,7 +53,7 @@ export type SaveSettingsResult = { ok: true; settings: OrderSettings } | { ok: f
 export const SETTINGS_PROBLEMS = {
   archive_days: "Automatic archiving is off, or after 14 to 365 days.",
   valid_days: `A pay link is valid for ${DRAFT_VALID_DAYS_MIN} to ${DRAFT_VALID_DAYS_MAX} days.`,
-  owner_only: "Only the owner can change whether staff may record payments taken outside Kaizen.",
+  owner_only: "Only the owner can change whether staff may record payments taken outside Kaizena Flow.",
 } as const;
 
 /**

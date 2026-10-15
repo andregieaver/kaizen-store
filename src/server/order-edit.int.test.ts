@@ -351,7 +351,7 @@ describe("a higher total: a pay link, applied only when paid (E2, CRD Art. 22)",
     expect(await eventsOf(order.orderId, "order.edit_payment_refunded")).toHaveLength(1);
   });
 
-  it("records a change as paid outside Kaizen (the owner), applied at once with a manual payment of the difference", async () => {
+  it("records a change as paid outside Kaizena Flow (the owner), applied at once with a manual payment of the difference", async () => {
     const order = await paidOrder(store, [["DEMO-TOTE", 1]]);
     const raw = { added: [{ variantId: await variantOf(store, "DEMO-MUG-BLACK"), quantity: 2 }], reason: "customer_request" };
     expect(await edits.recordEditPaidOutside(store.storeId, { orderId: order.orderId, raw }, { method: "cash" }, staffActor(other.accountId))).toMatchObject({ ok: false, problems: [{ code: "not_allowed" }] });

@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {
   return (
     <FocusFrame
-      title="Sign in to Kaizen"
+      title="Sign in to Kaizena Flow"
       aside={
         <Link href="/sign-up" className="underline-offset-2 hover:underline">
           Ask for a store
@@ -65,7 +65,7 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
         </SubmitButton>
       </ActionForm>
       <p className="text-body text-muted">
-        Kaizen is in a private beta: only invited accounts can sign in.{" "}
+        Kaizena Flow is in a private beta: only invited accounts can sign in.{" "}
         <Link href="/sign-up" className="underline">
           Ask for a store
         </Link>

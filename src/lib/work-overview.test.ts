@@ -229,7 +229,7 @@ describe("timers and balances", () => {
 describe("what needs attention", () => {
   it("puts an invoice far overdue first and points at Work's own pages", () => {
     const o = overview({
-      label: "Kaizen",
+      label: "Kaizena Flow",
       invoices: [
         invoice({ id: "a", status: "sent", totalMinor: 100, dueOn: "2026-09-20" }),
         invoice({ id: "b", status: "sent", currency: "EUR", totalMinor: 100, dueOn: "2026-09-10" }),
@@ -237,7 +237,7 @@ describe("what needs attention", () => {
       ],
     });
     expect(o.attention[0]).toEqual({
-      text: "Kaizen: 2 invoices are overdue, the oldest by 19 days.",
+      text: "Kaizena Flow: 2 invoices are overdue, the oldest by 19 days.",
       href: `${BASE}/invoices?show=overdue`,
       action: "Open invoices",
       urgent: true,

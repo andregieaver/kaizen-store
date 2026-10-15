@@ -126,6 +126,6 @@ export async function platformSupportOverviewTool() {
         .map((s) => ({ store: s.store.name, conversations: s.report.conversations, handed_to_a_person: rateWords(s.report.handover), missed: s.report.missed.count })),
       page: "/admin/platform/support/stores",
     },
-    note: "Stores' conversations are theirs: Kaizen sees counts and rates only.",
+    note: "Stores' conversations are theirs: Kaizena Flow sees counts and rates only.",
   };
 }

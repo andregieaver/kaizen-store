@@ -39,7 +39,7 @@ beforeAll(async () => {
     select ${store.id}::uuid, code, currency, default_locale, locales, true from commerce.countries where code in ('NO', 'SE') on conflict do nothing
   `);
   await db().execute(sql`
-    update commerce.stores set country = 'NO', legal_name = 'Kaizen Keramikk AS', organisation_number = '999 888 777', contact_email = 'butikk@keramikk.example',
+    update commerce.stores set country = 'NO', legal_name = 'Kaizena Flow Keramikk AS', organisation_number = '999 888 777', contact_email = 'butikk@keramikk.example',
       postal_address = 'Storgata 1, 0155 Oslo', locales = array['nb-NO', 'en-GB'], features = features || array['countries', 'languages', 'currencies'] where id = ${store.id}::uuid
   `);
   await reload();
@@ -64,7 +64,7 @@ describe("making a starter", () => {
     expect(page.state).toBe("draft");
     expect(page.draft.title).toBe("Kjøpsvilkår");
     const body = text(page.draft.rows);
-    expect(body).toContain("Kaizen Keramikk AS");
+    expect(body).toContain("Kaizena Flow Keramikk AS");
     expect(body).toContain("999 888 777");
     expect(body).toContain("butikk@keramikk.example");
     expect(body).toContain("legal-review-notice");
@@ -118,7 +118,7 @@ describe("making a starter", () => {
     expect(f.shipping.find((s) => s.code === "NO")).toMatchObject({ rateMinor: 7900, freeAboveMinor: 100000, currency: "NOK" });
     expect(f.shipping.find((s) => s.code === "SE")).toMatchObject({ rateMinor: 9900, freeAboveMinor: null });
     expect(f.returns).toMatchObject({ windowDays: 30, whoPays: "store", refundWhen: "request" });
-    expect(f.legalName).toBe("Kaizen Keramikk AS");
+    expect(f.legalName).toBe("Kaizena Flow Keramikk AS");
     expect(f.links.withdraw).toMatch(/\/no\/withdraw$/);
     // No tax profile yet: the VAT number is not known either way.
     expect(f.vat).toEqual({ number: null, registered: null });
@@ -207,7 +207,7 @@ describe("publishing a starter and choosing it", () => {
     const log = (await auditRows(store.id, "store.page_published_with_issues")).at(-1)!;
     expect(log.details).toMatchObject({ page: made.id, issues: expect.arrayContaining([{ rule: "legal_notice", count: 1 }]) });
     // Counts only: not one word of the page.
-    expect(JSON.stringify(log)).not.toContain("Kaizen Keramikk");
+    expect(JSON.stringify(log)).not.toContain("Kaizena Flow Keramikk");
   });
 
   it("refuses a draft as a role, then makes the published page the terms, served at its own address and linked in the store's legal pages", async () => {

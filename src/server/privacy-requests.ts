@@ -350,7 +350,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{ dueSoo
         kind: which === "overdue" ? "privacy.overdue" : "privacy.due",
         to: String(owner.email),
         email,
-        fromName: "Kaizen",
+        fromName: "Kaizena Flow",
         idempotencyKey: `${reminderKey(which, request.id)}:${String(owner.id)}`,
       });
       if (outcome === "sent" || outcome === "logged") sentAny = true;

@@ -31,8 +31,8 @@ export const ORDER_OPS_EVENT_LABELS: Record<OrderOpsEvent, string> = {
   "order.tags_changed": "Tags changed",
   "order.archived": "Archived",
   "order.unarchived": "Unarchived",
-  "order.paid_outside": "Payment recorded outside Kaizen",
-  "order.refunded_outside": "Refund recorded outside Kaizen",
+  "order.paid_outside": "Payment recorded outside Kaizena Flow",
+  "order.refunded_outside": "Refund recorded outside Kaizena Flow",
 };
 
 /** The audit actions of these operations. One entry for a batch (counts only, never the order numbers) or for a change to a view, a draft or a payment. */
@@ -107,7 +107,7 @@ export const FULFILMENT_EVENT_LABELS: Record<FulfilmentEvent, string> = {
   "order.edit_sent": "Change sent to the customer for payment",
   "order.edit_cancelled": "Change cancelled",
   "order.edit_expired": "Change expired unpaid",
-  "order.edit_paid_outside": "Change paid outside Kaizen",
+  "order.edit_paid_outside": "Change paid outside Kaizena Flow",
   "order.edit_payment_refunded": "Late payment for a change refunded",
   "credit_note.covered_by_edit": "Refund covered by the change's credit note",
   "credit_note.covered_by_exchange": "Refund covered by the exchanged return's credit note",

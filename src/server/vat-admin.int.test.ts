@@ -87,7 +87,7 @@ describe("categories", () => {
 });
 
 describe("rates with history", () => {
-  const base = { country: "NO", ratePercent: 10, validFrom: "2026-01-01", source: "Kaizen test data, not a rate", checkedOn: "2026-10-03", note: "" };
+  const base = { country: "NO", ratePercent: 10, validFrom: "2026-01-01", source: "Kaizena Flow test data, not a rate", checkedOn: "2026-10-03", note: "" };
 
   it("sets a first rate, and the next one ends the old period and begins a new, never an edit in place", async () => {
     expect(await admin.setVatRate(platform, { ...base, category: code })).toEqual({ ok: true });

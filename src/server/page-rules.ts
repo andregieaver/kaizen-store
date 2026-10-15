@@ -39,7 +39,7 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
 
 /** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
 function plansProblem(owner: PageOwner, content: PageContent): string | null {
-  if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizen's plans belong on Kaizen's own pages.";
+  if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizena Flow's plans belong on Kaizena Flow's own pages.";
   return null;
 }
 
@@ -85,7 +85,7 @@ function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string |
       return "Choose the store and market for each content grid of products.";
     }
     if (owner === null && block.source.recommend) {
-      return "Recommendations work on a store's own pages, not on Kaizen's.";
+      return "Recommendations work on a store's own pages, not on Kaizena Flow's.";
     }
     if (owner !== null && block.source.storeId && block.source.storeId !== owner) {
       return "A content grid on a store's page shows that store's own products.";

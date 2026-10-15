@@ -31,8 +31,8 @@ class Kaizen_Store_Views {
 			self::POST_TYPE,
 			array(
 				'labels'              => array(
-					'name'               => __( 'Kaizen views', 'kaizen-store' ),
-					'singular_name'      => __( 'Kaizen view', 'kaizen-store' ),
+					'name'               => __( 'Kaizena Flow views', 'kaizen-store' ),
+					'singular_name'      => __( 'Kaizena Flow view', 'kaizen-store' ),
 					'menu_name'          => __( 'Views', 'kaizen-store' ),
 					'add_new'            => __( 'Add view', 'kaizen-store' ),
 					'add_new_item'       => __( 'Add a view', 'kaizen-store' ),
@@ -208,7 +208,7 @@ class Kaizen_Store_Views {
 	}
 
 	/**
-	 * The stores the saved views use: the only stores the product page and the cart ask Kaizen about, so a visitor cannot ask this site's
+	 * The stores the saved views use: the only stores the product page and the cart ask Kaizena Flow about, so a visitor cannot ask this site's
 	 * connection for a store none of its pages shows.
 	 *
 	 * @return string[]
@@ -313,7 +313,7 @@ class Kaizen_Store_Views {
 	}
 
 	/**
-	 * What to ask Kaizen for a view's products.
+	 * What to ask Kaizena Flow for a view's products.
 	 *
 	 * @param array $config A view's settings.
 	 * @return array

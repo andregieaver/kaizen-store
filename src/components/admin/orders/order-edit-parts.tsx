@@ -39,14 +39,14 @@ export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { 
   const [receivedOn, setReceivedOn] = useState("");
   const [reference, setReference] = useState("");
   if (!allowed) {
-    return <p className={hint}>Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>;
+    return <p className={hint}>Only the owner can record a payment taken outside Kaizena Flow, unless the owner allows staff to (Settings, Orders).</p>;
   }
   return (
     <details className="rounded-md border border-line p-3">
-      <summary className="cursor-pointer font-medium">Record as paid outside Kaizen</summary>
+      <summary className="cursor-pointer font-medium">Record as paid outside Kaizena Flow</summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className={hint}>
-          The customer paid you {amountText} by bank transfer, in cash or another way. The change is applied at once and the additional invoice says it was paid outside the online checkout. Kaizen
+          The customer paid you {amountText} by bank transfer, in cash or another way. The change is applied at once and the additional invoice says it was paid outside the online checkout. Kaizena Flow
           did not touch the money and takes no sale fee on it.
         </p>
         <fieldset className="flex flex-col gap-1">
@@ -76,7 +76,7 @@ export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { 
             type="button"
             disabled={disabled}
             onClick={() => {
-              if (!window.confirm(`Record ${amountText} as paid outside Kaizen and apply the change? This cannot be undone: a mistake is corrected with a refund.`)) return;
+              if (!window.confirm(`Record ${amountText} as paid outside Kaizena Flow and apply the change? This cannot be undone: a mistake is corrected with a refund.`)) return;
               record({ method, ...(receivedOn ? { receivedOn } : {}), ...(reference.trim() ? { reference: reference.trim() } : {}) });
             }}
             className={secondary}

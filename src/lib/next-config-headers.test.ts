@@ -23,7 +23,7 @@ describe("next.config headers (wave 1, 1e)", async () => {
     }
   });
 
-  it("does not send it on the store's other pages, Kaizen's pages or the admin", () => {
+  it("does not send it on the store's other pages, Kaizena Flow's pages or the admin", () => {
     for (const path of ["/s/x/no", "/s/x/no/products", "/s/x/no/account", "/", "/blog/cart", "/admin/x/orders", "/api/chat", "/s/x"]) {
       expect(forPath(path), path).toHaveLength(0);
     }

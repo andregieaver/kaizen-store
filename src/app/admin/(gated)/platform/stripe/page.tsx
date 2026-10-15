@@ -28,7 +28,7 @@ export default async function PlatformStripePage() {
     <>
       <PageHeader
         title="Stripe"
-        description={<>Kaizen is a Stripe Connect platform: each store sells through its own Stripe account, and Kaizen bills stores for their plans from its own. Keys come from Vercel (<code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the{" "}<code>_LIVE</code> pair). Plans are billed in live mode once live keys are set.</>}
+        description={<>Kaizena Flow is a Stripe Connect platform: each store sells through its own Stripe account, and Kaizena Flow bills stores for their plans from its own. Keys come from Vercel (<code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the{" "}<code>_LIVE</code> pair). Plans are billed in live mode once live keys are set.</>}
       />
       <ul className="grid gap-3 sm:grid-cols-2">
         {PAYMENT_MODES.map((mode) => {
@@ -43,8 +43,8 @@ export default async function PlatformStripePage() {
                 {connected
                   ? `Webhooks connected ${hooks[0].updatedAt.slice(0, 10)} (${new URL(hooks[0].url).host}).`
                   : hooks.length > 0
-                    ? "Webhooks need reconnecting: plan events do not reach Kaizen yet."
-                    : "Webhooks are not connected: payments, account changes and plans will not reach Kaizen."}
+                    ? "Webhooks need reconnecting: plan events do not reach Kaizena Flow yet."
+                    : "Webhooks are not connected: payments, account changes and plans will not reach Kaizena Flow."}
               </p>
               {configured && (
                 <ActionForm action={connectWebhooksAction}>
@@ -68,7 +68,7 @@ export default async function PlatformStripePage() {
           <label className="flex items-start gap-2">
             <input type="radio" name="ui" value="custom" defaultChecked={checkoutUi === "custom"} className="mt-0.5 size-4" />
             <span>
-              Kaizen&apos;s checkout page
+              Kaizena Flow&apos;s checkout page
               <span className="block text-muted">
                 On the store&apos;s own site, with Stripe&apos;s payment form: the payment methods each
                 store has turned on in Stripe, plus Apple Pay and Google Pay where the shopper has them.

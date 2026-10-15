@@ -1,4 +1,4 @@
-/* Kaizen Store: previous and next buttons of a carousel. Without this the carousel still scrolls by touch, wheel and keyboard. */
+/* Kaizena Flow: previous and next buttons of a carousel. Without this the carousel still scrolls by touch, wheel and keyboard. */
 ( function () {
 	'use strict';
 

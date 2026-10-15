@@ -5,7 +5,7 @@ import { faviconRedirect, KAIZEN_ICON, siteIcons } from "./site-icons";
 describe("sites' icons (D62)", () => {
   const favicon = { url: "https://cdn.example/icon.png", smallUrl: "https://cdn.example/icon-480.png" };
 
-  it("gives a site's own icons, small for tabs and large for home screens, or Kaizen's", () => {
+  it("gives a site's own icons, small for tabs and large for home screens, or Kaizena Flow's", () => {
     expect(siteIcons(null)).toEqual({ icon: KAIZEN_ICON });
     expect(siteIcons(favicon)).toEqual({
       icon: [
@@ -16,7 +16,7 @@ describe("sites' icons (D62)", () => {
     });
   });
 
-  it("leads /favicon.ico to the small icon, or Kaizen's", () => {
+  it("leads /favicon.ico to the small icon, or Kaizena Flow's", () => {
     expect(faviconRedirect(favicon).headers.get("Location")).toBe(favicon.smallUrl);
     expect(faviconRedirect(null).headers.get("Location")).toBe(KAIZEN_ICON);
     expect(faviconRedirect(null).status).toBe(302);

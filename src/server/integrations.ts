@@ -110,7 +110,7 @@ export async function saveIntegration(
     const checked = checkWebhookUrl(provider, input.url);
     if (!checked.ok) return { ok: false, problems: [checked.problem] };
     const key = encryptionKey();
-    if (!key) return { ok: false, problems: ["Kaizen cannot keep the address safe right now, so it was not saved. Try again later."] };
+    if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the address safe right now, so it was not saved. Try again later."] };
     encrypted = encryptSecret(checked.url, key);
     hint = webhookHint(checked.url);
   } else if (!existing) {
@@ -136,7 +136,7 @@ export async function connectSlackWebhook(
   const checked = checkWebhookUrl("slack", webhook.url);
   if (!checked.ok) return { ok: false, problems: [checked.problem] };
   const key = encryptionKey();
-  if (!key) return { ok: false, problems: ["Kaizen cannot keep the address safe right now, so it was not saved. Try again later."] };
+  if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the address safe right now, so it was not saved. Try again later."] };
   const existing = await getIntegration(store.id, "slack");
   const channel = webhook.channel.trim() || "a channel";
   const hint = webhook.team.trim() ? `${channel} in ${webhook.team.trim()}` : channel;
@@ -388,7 +388,7 @@ async function post(provider: Provider, url: string, deliveryId: string, event: 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Kaizen-Webhooks/1.0",
+        "User-Agent": "KaizenaFlow-Webhooks/1.0",
         "X-Kaizen-Event": event,
         "X-Kaizen-Delivery": deliveryId,
       },
@@ -441,7 +441,7 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
   };
   if (!delivery.encryptedUrl) return fail("Disconnected");
   if (!delivery.enabled && delivery.event !== "test") return fail("Switched off");
-  if (!key) return fail("Kaizen could not read the address");
+  if (!key) return fail("Kaizena Flow could not read the address");
   if (!payload) {
     payload = await buildPayload(
       { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName },
@@ -460,7 +460,7 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
   try {
     url = decryptSecret(delivery.encryptedUrl, key);
   } catch {
-    return fail("Kaizen could not read the address");
+    return fail("Kaizena Flow could not read the address");
   }
   const outcome = await post(delivery.provider, url, delivery.id, delivery.event, payload);
   const tries = delivery.attempts + 1;

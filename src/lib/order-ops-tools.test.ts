@@ -42,11 +42,11 @@ describe("the order tools in the owner assistant's catalogue", () => {
     expect(OWNER_TOOLS_BY_NAME.create_draft_order.description).toContain("nothing is sent");
   });
 
-  it("has NO tool that records a payment, takes money outside Kaizen, deletes a draft or refunds a draft: the catalogue holds no such name", () => {
+  it("has NO tool that records a payment, takes money outside Kaizena Flow, deletes a draft or refunds a draft: the catalogue holds no such name", () => {
     const names = OWNER_TOOLS.map((t) => t.name);
     expect(names.filter((n) => /paid_outside|record_payment|mark_(draft_)?paid|delete_draft|manual_payment|manual_refund/.test(n))).toEqual([]);
     // The one refund tool says a payment taken outside Kaizen is not refunded from here.
-    expect(OWNER_TOOLS_BY_NAME.refund_order.description).toMatch(/paid outside Kaizen/);
+    expect(OWNER_TOOLS_BY_NAME.refund_order.description).toMatch(/paid outside Kaizena Flow/);
     // No new tool is a manager's or a platform's: the store's MCP server serves them with the other owner tools.
     for (const name of NEW_TOOLS) expect(MANAGER_TOOLS.some((t) => (t.name as string) === name)).toBe(false);
   });

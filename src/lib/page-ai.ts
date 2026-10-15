@@ -329,7 +329,7 @@ export const pagePlan = z.object({
         return parsed.success ? [parsed.data] : [];
       }),
     )
-    .pipe(z.array(planSection).min(1, "The plan held no section Kaizen knows.").max(SECTIONS_MAX * 2)),
+    .pipe(z.array(planSection).min(1, "The plan held no section Kaizena Flow knows.").max(SECTIONS_MAX * 2)),
 });
 export type PagePlan = z.infer<typeof pagePlan>;
 
@@ -524,7 +524,7 @@ const RULES = [
 function factsText(facts: SiteFacts): string {
   const site = {
     site: facts.name,
-    kind: facts.kind === "store" ? "an online store" : "Kaizen, the platform online stores are built on",
+    kind: facts.kind === "store" ? "an online store" : "Kaizena Flow, the platform online stores are built on",
     language: facts.language.name,
     about: facts.about || undefined,
     sellsTo: facts.audience ?? undefined,

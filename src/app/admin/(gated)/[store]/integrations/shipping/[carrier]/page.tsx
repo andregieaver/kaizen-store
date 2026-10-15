@@ -122,7 +122,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         </h2>
         {!owner && <p className="mb-3 text-sm text-muted">Only an owner of the store can change these.</p>}
         <p className="mb-4 text-sm text-muted">
-          Kept encrypted on Kaizen&apos;s servers in Europe. Keys are never shown again after saving, only their last
+          Kept encrypted on Kaizena Flow&apos;s servers in Europe. Keys are never shown again after saving, only their last
           characters; leave a key empty to keep the one saved.
         </p>
         <ActionForm action={saveCarrierAction.bind(null, store.slug, info.id)} className="flex flex-col gap-4">

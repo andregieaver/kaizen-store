@@ -150,7 +150,7 @@ export async function explainReturnTool(ctx: Ctx, { return: ref }: OwnerToolInpu
       ? {
           refunded: m(d.refund.amountMinor ?? 0),
           on: day(store, d.refund.at),
-          how: d.refund.outside ? "Outside Kaizen's Stripe (recorded here)" : "Through Stripe",
+          how: d.refund.outside ? "Outside Kaizena Flow's Stripe (recorded here)" : "Through Stripe",
           note: d.refund.note ?? undefined,
         }
       : d.working

@@ -391,7 +391,7 @@ export function ReturnDetailView({
                   {money(detail.refund.amountMinor ?? 0)}
                   {detail.refund.at && <span className="text-muted"> on {timeText(detail.refund.at, timeZone)}</span>}
                 </Fact>
-                <Fact label="How">{detail.outcome === "exchanged" ? "It paid the new order; any rest was refunded to the customer's payment" : detail.refund.outside ? "Outside Kaizen's Stripe: recorded only" : "Through Stripe, on the store's account"}</Fact>
+                <Fact label="How">{detail.outcome === "exchanged" ? "It paid the new order; any rest was refunded to the customer's payment" : detail.refund.outside ? "Outside Kaizena Flow's Stripe: recorded only" : "Through Stripe, on the store's account"}</Fact>
                 {detail.refund.computedMinor !== null && detail.refund.computedMinor !== detail.refund.amountMinor && (
                   <Fact label="Changed from">
                     {money(detail.refund.computedMinor)}

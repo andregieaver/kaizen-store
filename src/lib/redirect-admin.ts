@@ -90,7 +90,7 @@ export const manualCountWords = (n: number, max: number): string => redirectSent
 export function emptyListWords(q: string, filter: string): string {
   if (q.trim() !== "") return "No redirect matches the search.";
   if (filter === "manual") return "You have no redirects of your own yet. Add one above, import a file, or use the pages-not-found report.";
-  if (filter === "all") return "No redirects yet. Kaizen makes one when a product, category or tag changes its address; add your own above.";
+  if (filter === "all") return "No redirects yet. Kaizena Flow makes one when a product, category or tag changes its address; add your own above.";
   return "No redirects of this kind yet.";
 }
 

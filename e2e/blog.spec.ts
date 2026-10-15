@@ -6,19 +6,19 @@ import { expect, test } from "@playwright/test";
  * settings. The seed has one article each.
  */
 
-test("Kaizen's blog lists its articles, newest first, and an article has its header and Article data", async ({ page }) => {
+test("Kaizena Flow's blog lists its articles, newest first, and an article has its header and Article data", async ({ page }) => {
   await page.goto("/blog");
   await expect(page.getByRole("heading", { level: 1, name: "Blog" })).toBeVisible();
-  const tile = page.getByRole("listitem").filter({ hasText: "Welcome to the Kaizen blog" });
+  const tile = page.getByRole("listitem").filter({ hasText: "Welcome to the Kaizena Flow blog" });
   await expect(tile.locator("time")).toBeVisible();
-  await tile.getByRole("link", { name: "Welcome to the Kaizen blog" }).click();
+  await tile.getByRole("link", { name: "Welcome to the Kaizena Flow blog" }).click();
   await expect(page).toHaveURL("/blog/welcome");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Welcome to the Kaizen blog");
-  await expect(page.getByText("By Kaizen team")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Welcome to the Kaizena Flow blog");
+  await expect(page.getByText("By Kaizena Flow team")).toBeVisible();
   await expect(page.getByText("This is where we write about selling online across the EU.")).toBeVisible();
   const data = (await page.locator('script[type="application/ld+json"]').allTextContents()).map((text) => JSON.parse(text));
   const article = data.find((d) => d["@type"] === "Article");
-  expect(article).toMatchObject({ headline: "Welcome to the Kaizen blog", author: { "@type": "Person", name: "Kaizen team" } });
+  expect(article).toMatchObject({ headline: "Welcome to the Kaizena Flow blog", author: { "@type": "Person", name: "Kaizena Flow team" } });
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "article");
   for (const path of ["/blog/nope", "/blog/category/nope", "/blog/tag/nope"]) {
     expect((await page.goto(path))?.status(), path).toBe(404);

@@ -3065,7 +3065,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
-  plans: "Kaizen's plans: the plans and their prices show where the page is seen.",
+  plans: "Kaizena Flow's plans: the plans and their prices show where the page is seen.",
   customField: "Custom fields.",
   fieldLoop: "A field loop: double-click or use the wrench to choose a repeater.",
   storePart: "A shop page component.",
@@ -6872,7 +6872,7 @@ function PlansStandIn({ block }: { block: PlansBlock }) {
   ];
   return (
     <div className="rounded-md border border-dashed border-border bg-surface p-4 text-sm">
-      <p className="font-medium">Kaizen&apos;s plans</p>
+      <p className="font-medium">Kaizena Flow&apos;s plans</p>
       <p className="text-xs text-muted">A card for each plan, from the plans you have set up: {parts.join(", ")}.</p>
     </div>
   );
@@ -7001,7 +7001,7 @@ const SITE_HELP: Record<SitePart, string> = {
   logo: "The site's logo, linking to its front page; its name where there is no logo. The logo is set under Header and footer.",
   menuButton: "The button that opens the menu on phones. It shows on phones only.",
   search: "A link to the store's search.",
-  account: "A link to the shopper's account (sign in on Kaizen's site).",
+  account: "A link to the shopper's account (sign in on Kaizena Flow's site).",
   wishlist: "A link to the wishlist, with how many products are saved.",
   cart: "A link to the cart, with how many products are in it.",
   markets: "The countries the store sells to, to switch between. Shown only with two or more.",
@@ -7215,7 +7215,7 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
                 placeholder={`${PART_HEADINGS[block.part]} (in the shopper's language)`}
                 className={field}
               />
-              <span className="font-normal text-xs text-muted">Empty: Kaizen&apos;s own words, in each country&apos;s language.</span>
+              <span className="font-normal text-xs text-muted">Empty: Kaizena Flow&apos;s own words, in each country&apos;s language.</span>
             </label>
           )}
         </>

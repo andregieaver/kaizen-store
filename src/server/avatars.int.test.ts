@@ -53,7 +53,7 @@ const accountPath = async () =>
   (await db().execute<Row>(sql`select avatar_path from commerce.accounts where id = ${accountId}::uuid`))[0].avatar_path;
 
 describe("avatarFor", () => {
-  it("shows their own picture, else their Gravatar through Kaizen, else initials", () => {
+  it("shows their own picture, else their Gravatar through Kaizena Flow, else initials", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
     const own = avatarFor({ name: "Ada Lovelace", email: "ada@example.com", avatarPath: "accounts/a/b.webp" });

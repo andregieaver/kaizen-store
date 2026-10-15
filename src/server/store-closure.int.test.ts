@@ -191,7 +191,7 @@ describe("closing a store as its owner", () => {
     expect(again).toEqual({ ok: false, problems: ["The store is already closed."] });
   });
 
-  it("is not for a suspended store, whose owner is told to write to Kaizen", async () => {
+  it("is not for a suspended store, whose owner is told to write to Kaizena Flow", async () => {
     const s = await makeStore("scsuspended");
     expect((await closure.suspendStore(platformAdmin, s.id, "Selling something we do not allow")).ok).toBe(true);
     const result = await closure.closeStore(s.account, s.id, { by: "owner", typed: s.slug });
@@ -340,7 +340,7 @@ describe("the owner's page and actions", () => {
     await expect(render(s.slug)).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
-  it("tells a closed store's owner, after thirty days, to ask Kaizen", async () => {
+  it("tells a closed store's owner, after thirty days, to ask Kaizena Flow", async () => {
     const s = await makeStore("sclate");
     const sub = await linkAuthUser(s.account.id);
     await closure.closeStore(s.account, s.id, { by: "owner", typed: s.slug });

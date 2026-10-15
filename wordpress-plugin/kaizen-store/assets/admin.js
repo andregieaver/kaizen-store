@@ -1,4 +1,4 @@
-/* Kaizen Store: the editor of a view. Plain JavaScript, no build step. */
+/* Kaizena Flow: the editor of a view. Plain JavaScript, no build step. */
 ( function () {
 	'use strict';
 

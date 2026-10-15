@@ -8,13 +8,13 @@ const { deliver, emailSettings, emailSetup, senderName } = await import("./email
 const { verifyEmailEvent } = await import("./email-events");
 
 describe("emailSettings", () => {
-  const full = { RESEND_API_KEY: "re_123", EMAIL_FROM: "butikk@kaizenstore.cloud" };
+  const full = { RESEND_API_KEY: "re_123", EMAIL_FROM: "butikk@kaizenaflow.com" };
 
   it("needs a Resend key and a real sender address", () => {
-    expect(emailSettings(full)).toEqual({ apiKey: "re_123", from: "butikk@kaizenstore.cloud" });
+    expect(emailSettings(full)).toEqual({ apiKey: "re_123", from: "butikk@kaizenaflow.com" });
     expect(emailSettings({ ...full, RESEND_API_KEY: "" })).toBeNull();
     expect(emailSettings({ ...full, RESEND_API_KEY: "sk_live_x" })).toBeNull();
-    expect(emailSettings({ ...full, EMAIL_FROM: "Kaizen <b@x.no>" })).toBeNull();
+    expect(emailSettings({ ...full, EMAIL_FROM: "Kaizena Flow <b@x.no>" })).toBeNull();
     expect(emailSetup(full)).toBe("ok");
     expect(emailSetup({})).toBe("not_set");
     expect(emailSetup({ RESEND_API_KEY: "wrong" })).toBe("unrecognised");
@@ -24,12 +24,12 @@ describe("emailSettings", () => {
 describe("senderName", () => {
   it("keeps the store's name safe for an email header", () => {
     expect(senderName('Kopp "&" Kanne\r\nBcc: x')).toBe("Kopp & KanneBcc: x");
-    expect(senderName("   ")).toBe("Kaizen");
+    expect(senderName("   ")).toBe("Kaizena Flow");
   });
 });
 
 describe("deliver", () => {
-  const settings = { apiKey: "re_123", from: "butikk@kaizenstore.cloud" };
+  const settings = { apiKey: "re_123", from: "butikk@kaizenaflow.com" };
   const message = {
     storeId: "11111111-1111-4111-8111-111111111111",
     kind: "order.confirmation",
@@ -46,7 +46,7 @@ describe("deliver", () => {
     expect(url).toBe("https://api.resend.com/emails");
     expect(init.headers).toMatchObject({ Authorization: "Bearer re_123", "Idempotency-Key": "email-abc" });
     expect(JSON.parse(init.body)).toEqual({
-      from: '"Kopp & Kanne" <butikk@kaizenstore.cloud>',
+      from: '"Kopp & Kanne" <butikk@kaizenaflow.com>',
       to: ["kari@example.com"],
       subject: "Takk",
       html: "<p>Takk</p>",

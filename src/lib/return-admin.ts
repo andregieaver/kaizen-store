@@ -233,7 +233,7 @@ export function eventSentence(type: string, data: Record<string, unknown>, curre
         const back = whole(data.refundMinor) ?? 0;
         return `Exchanged: ${money(whole(data.transferMinor))} of the credit paid the new order${back > 0 ? `, ${money(back)} refunded` : ""}`;
       }
-      return `Refunded ${money(whole(data.amountMinor))}${data.outside === true ? ", outside Kaizen's Stripe" : ""}`;
+      return `Refunded ${money(whole(data.amountMinor))}${data.outside === true ? ", outside Kaizena Flow's Stripe" : ""}`;
     case "return.refund_overridden":
       return `The refund was changed from ${money(whole(data.computedMinor))} to ${money(whole(data.requestedMinor))}${text(data.reason) ? `: ${text(data.reason)}` : ""}`;
     case "return.closed":

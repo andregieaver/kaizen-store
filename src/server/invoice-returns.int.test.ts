@@ -178,7 +178,7 @@ describe("a return refunded through Stripe", () => {
   });
 });
 
-describe("a return refunded outside Kaizen", () => {
+describe("a return refunded outside Kaizena Flow", () => {
   it("is a credit note from the return, once, with the same working, and is linked in the return's refund email", async () => {
     const own = await fx.makeStore("rt-out");
     // Paid at the venue: nothing was taken through Stripe, so the refund is made outside.

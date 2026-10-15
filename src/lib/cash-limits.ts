@@ -58,7 +58,7 @@ export function cashRuleWords(): string {
   return Object.entries(CASH_RULES)
     .map(([country, rule]) => {
       const amount = new Intl.NumberFormat("en", { style: "currency", currency: rule.currency, maximumFractionDigits: 0 }).format(rule.limitMinor / 100);
-      return `${country}: ${rule.mode === "refuse" ? "Kaizen does not record" : "take care with"} cash of ${amount} or more${rule.verified ? "" : " (not yet checked by a person)"}.`;
+      return `${country}: ${rule.mode === "refuse" ? "Kaizena Flow does not record" : "take care with"} cash of ${amount} or more${rule.verified ? "" : " (not yet checked by a person)"}.`;
     })
     .join(" ");
 }

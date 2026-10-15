@@ -98,7 +98,7 @@ export const EXCHANGE_REFUSALS = {
   sends_limit: "This exchange has been sent 5 times today. Try again tomorrow, or copy the link.",
   busy: "A refund of this return is being made right now. Reload the page in a moment.",
   not_received: "The store refunds when the goods are back or on their way: mark them as on their way or received first.",
-  not_allowed: "Only the owner can record a payment taken outside Kaizen, unless the owner has allowed staff to.",
+  not_allowed: "Only the owner can record a payment taken outside Kaizena Flow, unless the owner has allowed staff to.",
   processing: "A payment for this exchange is being processed. Wait for it before changing the exchange.",
   paid: "The customer has paid: the exchange is settled.",
   received_on: "The day the money was received is not in the future and not more than a few weeks back.",

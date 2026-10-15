@@ -160,12 +160,12 @@ describe("fromStoresOwnPage", () => {
   const platform = { requestHost: "kaizen.example", slug: "demo", ownHosts: [], storesOnPlatformHost: true };
   const own = { requestHost: "demo.shop.example", slug: "demo", ownHosts: ["demo.shop.example"], storesOnPlatformHost: false };
 
-  it("takes a page of the store on Kaizen's host: the Referer is under /s/{store}", () => {
+  it("takes a page of the store on Kaizena Flow's host: the Referer is under /s/{store}", () => {
     expect(fromStoresOwnPage({ ...platform, origin: "https://kaizen.example", referer: "https://kaizen.example/s/demo/no/cart?x=1" })).toBe(true);
     expect(fromStoresOwnPage({ ...platform, origin: null, referer: "https://kaizen.example/s/demo" })).toBe(true);
   });
 
-  it("refuses another store's page, or a request with no Referer, on Kaizen's host", () => {
+  it("refuses another store's page, or a request with no Referer, on Kaizena Flow's host", () => {
     expect(fromStoresOwnPage({ ...platform, origin: "https://kaizen.example", referer: "https://kaizen.example/s/other/no" })).toBe(false);
     expect(fromStoresOwnPage({ ...platform, origin: "https://kaizen.example", referer: "https://kaizen.example/s/demo-two/no" })).toBe(false);
     expect(fromStoresOwnPage({ ...platform, origin: "https://kaizen.example", referer: "https://kaizen.example/admin/demo" })).toBe(false);

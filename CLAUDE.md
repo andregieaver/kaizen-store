@@ -1,8 +1,8 @@
 @AGENTS.md
 
-# Kaizen Store
+# Kaizena Flow
 
-An AI-native online store selling EU-wide, built from scratch. The research and
+Kaizena Flow (formerly Kaizen Store; the code keeps `kaizen` in its names) is an AI-native online store selling EU-wide, built from scratch. The research and
 phased build plan are in `docs/plan.md`; read it before architectural work.
 
 ## Workflow
@@ -1125,6 +1125,7 @@ stand-in is the only fake, and only it is told it is one.
 
 ## Conventions
 
+- The platform's name is Kaizena Flow (D240) in every string a person or an assistant reads, and its domain `kaizenaflow.com`; `Kaizen` stays in code names, cookie names, the webhook headers and Kaizen Life (another product). `src/lib/brand.scan.test.ts` fails on the old name or an old domain in any string.
 - Environment variables are validated in `src/lib/env.ts` when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.

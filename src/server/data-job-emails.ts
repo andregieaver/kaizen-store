@@ -34,11 +34,11 @@ export function readyEmail(facts: ReadyFacts): EmailContent {
     subject: `Your ${facts.what} is ready`,
     preview: "Open the page to download it. The file is kept for 7 days.",
     lang: "en",
-    footer: [facts.storeName, "Kaizen · kaizenstore.cloud"],
+    footer: [facts.storeName, "Kaizena Flow · kaizenaflow.com"],
     blocks: [
       { type: "heading", text: `Your ${facts.what} is ready` },
       { type: "paragraph", text: `The file you asked for in ${facts.storeName} is ready. Sign in to the admin to download it. The file is kept for 7 days and then deleted.` },
-      { type: "paragraph", text: "Kaizen does not send the file by email, because it can hold personal data. The page asks you to sign in before it gives you the file." },
+      { type: "paragraph", text: "Kaizena Flow does not send the file by email, because it can hold personal data. The page asks you to sign in before it gives you the file." },
       { type: "button", text: "Open the page", url: facts.url },
     ],
   };
@@ -62,7 +62,7 @@ export async function notifyReady(job: Pick<DataJob, "id" | "storeId" | "kind" |
       kind: "data_job.ready",
       to: String(row.email),
       email,
-      fromName: "Kaizen",
+      fromName: "Kaizena Flow",
       idempotencyKey: `data_job.ready:${job.id}`,
     });
   } catch (error) {

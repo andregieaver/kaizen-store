@@ -37,14 +37,14 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   const current = usingOwn
     ? `Your own AI · ${describe(own)}`
     : kaizen?.enabled
-      ? `Kaizen's AI · ${describe(kaizen)}`
+      ? `Kaizena Flow's AI · ${describe(kaizen)}`
       : "No AI: search finds products by their words only.";
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title="AI" description={<>{current}</>} />
-        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizen's AI", "Use your own AI below to choose one.")}</p>
+        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizena Flow's AI", "Use your own AI below to choose one.")}</p>
         {owner && (
           <p className="mt-1 text-sm">
             <Link href={`/admin/account/usage?store=${store.slug}`} className="underline">
@@ -59,7 +59,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
         <h2 id="about" className="mb-1 text-title text-ink">What the store uses AI for</h2>
         <p className="text-sm">
           Search by meaning, so shoppers find products described in other words than theirs. Search still works by the words
-          alone whenever the AI does not answer. Kaizen&apos;s AI is included in your plan; you can use your own provider instead,
+          alone whenever the AI does not answer. Kaizena Flow&apos;s AI is included in your plan; you can use your own provider instead,
           paid on your own account with them.
         </p>
       </section>
@@ -104,8 +104,8 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
             <DeleteDiscountButton
               action={removeStoreAiAction.bind(null, store.slug)}
               code="your AI provider"
-              label="Go back to Kaizen's AI"
-              question="Forget your own AI provider and its key, and use Kaizen's again?"
+              label="Go back to Kaizena Flow's AI"
+              question="Forget your own AI provider and its key, and use Kaizena Flow's again?"
             />
           </div>
         </section>

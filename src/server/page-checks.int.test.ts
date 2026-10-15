@@ -102,7 +102,7 @@ describe("publishing with a blocking issue", () => {
     if (!held.ok) expect(held.issues?.map((i) => i.rule)).toEqual(["placeholder"]);
   });
 
-  it("is asked of Kaizen's own pages too (the checker is generic), and a checker error does not stop publishing", async () => {
+  it("is asked of Kaizena Flow's own pages too (the checker is generic), and a checker error does not stop publishing", async () => {
     const [account] = await db().execute<Row>(sql`select id, email from commerce.accounts where id = ${store.account.id}::uuid`);
     const platformAccount = { id: String(account.id), email: String(account.email), name: null, platformAdmin: true };
     const held = await pages.savePage(platformAccount, null, null, { ...page([row(picture(""))]), slug: `platform-checks-${run}` }, { publish: true });

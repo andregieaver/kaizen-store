@@ -69,7 +69,7 @@ describe("stores' own domains (P8)", () => {
     expect(await addStoreDomain(owner, kari.id, { hostname: "not a domain" }, services, true)).toMatchObject({ ok: false });
     expect(await addStoreDomain(owner, kari.id, { hostname }, services, false)).toEqual({
       ok: false,
-      problems: ["Custom domains are not set up on Kaizen yet."],
+      problems: ["Custom domains are not set up on Kaizena Flow yet."],
     });
     const added = await addStoreDomain(owner, kari.id, { hostname: `https://${hostname.toUpperCase()}/` }, services, true);
     if (!added.ok) throw new Error(added.problems.join(" "));

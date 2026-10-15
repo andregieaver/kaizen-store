@@ -146,7 +146,7 @@ describe("the search component", () => {
     expect(rules.pageRulesProblem(storeId, "product_layout", withSearch())).toBeTruthy();
   });
 
-  it("is refused when Kaizen's page is saved with it", async () => {
+  it("is refused when Kaizena Flow's page is saved with it", async () => {
     const result = await pages.savePage(member.account, null, null, withSearch(), { publish: false });
     expect(result).toMatchObject({ ok: false });
   });
@@ -163,7 +163,7 @@ describe("the shop components", () => {
     expect(rules.pageRulesProblem(storeId, "footer", withPart())).toBeTruthy();
   });
 
-  it("are refused when Kaizen's page is saved with one", async () => {
+  it("are refused when Kaizena Flow's page is saved with one", async () => {
     expect(await pages.savePage(member.account, null, null, withPart(), { publish: false })).toMatchObject({ ok: false });
   });
 

@@ -22,7 +22,7 @@ export function RedirectExportForm({ slug }: { slug: string }) {
           <input type="radio" name="scope" value="all" className="mt-1" />
           <span>
             All redirects, the automatic ones too
-            <span className={`${hint} block`}>Adds the redirects Kaizen made when a product, category or tag changed its address.</span>
+            <span className={`${hint} block`}>Adds the redirects Kaizena Flow made when a product, category or tag changed its address.</span>
           </span>
         </label>
       </fieldset>

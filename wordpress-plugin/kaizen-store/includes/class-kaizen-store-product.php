@@ -2,7 +2,7 @@
 /**
  * The product page: one WordPress page holding [kaizen_product] shows any product of a connected store, chosen by the address
  * (/product/{store}/{market}/{handle}/, or ?kz_store=&kz_market=&kz_handle= without pretty permalinks). It is drawn on the server, from what
- * Kaizen answers, so it can be read by search engines; the choice of a variant, the picture and the cart are the script's.
+ * Kaizena Flow answers, so it can be read by search engines; the choice of a variant, the picture and the cart are the script's.
  *
  * @package KaizenStore
  */
@@ -131,7 +131,7 @@ class Kaizen_Store_Product {
 	}
 
 	/**
-	 * Reads the product asked for (once per request) from the cache or from Kaizen.
+	 * Reads the product asked for (once per request) from the cache or from Kaizena Flow.
 	 *
 	 * @param string $store  Store slug.
 	 * @param string $market Market slug (may be empty).

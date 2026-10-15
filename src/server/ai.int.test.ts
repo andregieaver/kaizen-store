@@ -78,7 +78,7 @@ function fakeProvider(body: unknown, status = 200) {
 }
 
 describe("AI providers (D73)", () => {
-  it("gives stores Kaizen's AI, or their own while it is on", async () => {
+  it("gives stores Kaizena Flow's AI, or their own while it is on", async () => {
     expect(await ai.aiFor(storeId)).toBeNull();
     expect(await ai.saveAiSettings(accountId, null, form(kaizen))).toEqual({ ok: true });
 

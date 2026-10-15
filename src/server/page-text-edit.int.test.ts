@@ -234,7 +234,7 @@ describe("who may edit, and where", () => {
     expect(words((await stored(id)).published, "heading-1")).toBe("Welcome");
   });
 
-  it("keeps Kaizen's own pages to platform admins, and a store's member out of them", async () => {
+  it("keeps Kaizena Flow's own pages to platform admins, and a store's member out of them", async () => {
     const store = await makeStore("kz");
     const id = await make(`kaizen-${run}`, true);
     const s = await stored(id);

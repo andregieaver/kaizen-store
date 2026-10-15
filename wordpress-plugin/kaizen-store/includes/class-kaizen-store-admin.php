@@ -1,6 +1,6 @@
 <?php
 /**
- * The admin: the Kaizen menu with the connection page, and the editor of a view (a box on the view's own screen) with its live preview.
+ * The admin: the Kaizena Flow menu with the connection page, and the editor of a view (a box on the view's own screen) with its live preview.
  *
  * @package KaizenStore
  */
@@ -35,8 +35,8 @@ class Kaizen_Store_Admin {
 
 	public static function menu() {
 		add_menu_page(
-			__( 'Kaizen Store', 'kaizen-store' ),
-			__( 'Kaizen', 'kaizen-store' ),
+			__( 'Kaizena Flow', 'kaizen-store' ),
+			__( 'Kaizena Flow', 'kaizen-store' ),
 			'manage_options',
 			Kaizen_Store_Connect::PAGE,
 			array( __CLASS__, 'connection_page' ),
@@ -86,7 +86,7 @@ class Kaizen_Store_Admin {
 						'up'           => __( 'Move up', 'kaizen-store' ),
 						'down'         => __( 'Move down', 'kaizen-store' ),
 						'nothingPicked' => __( 'No products picked yet.', 'kaizen-store' ),
-						'error'        => __( 'Kaizen could not be reached. Try again in a moment.', 'kaizen-store' ),
+						'error'        => __( 'Kaizena Flow could not be reached. Try again in a moment.', 'kaizen-store' ),
 						'previewing'   => __( 'Loading preview…', 'kaizen-store' ),
 						'copied'       => __( 'Copied', 'kaizen-store' ),
 					),
@@ -104,14 +104,14 @@ class Kaizen_Store_Admin {
 		$known  = array(
 			'connected'      => array( 'success', __( 'Connected. Your stores are ready to use in a view.', 'kaizen-store' ) ),
 			'disconnected'   => array( 'success', __( 'Disconnected. Your saved views stay, and show nothing until you connect again.', 'kaizen-store' ) ),
-			'denied'         => array( 'warning', __( 'The connection was cancelled in Kaizen.', 'kaizen-store' ) ),
-			'expired'        => array( 'error', __( 'That connection attempt has expired. Choose Connect to Kaizen to start again.', 'kaizen-store' ) ),
-			'failed'         => array( 'error', __( 'Kaizen would not accept the connection. Choose Connect to Kaizen to start again.', 'kaizen-store' ) ),
-			'https'          => array( 'error', __( 'Kaizen only connects sites that use https. Switch this site to https, then try again.', 'kaizen-store' ) ),
+			'denied'         => array( 'warning', __( 'The connection was cancelled in Kaizena Flow.', 'kaizen-store' ) ),
+			'expired'        => array( 'error', __( 'That connection attempt has expired. Choose Connect to Kaizena Flow to start again.', 'kaizen-store' ) ),
+			'failed'         => array( 'error', __( 'Kaizena Flow would not accept the connection. Choose Connect to Kaizena Flow to start again.', 'kaizen-store' ) ),
+			'https'          => array( 'error', __( 'Kaizena Flow only connects sites that use https. Switch this site to https, then try again.', 'kaizen-store' ) ),
 			'cache'          => array( 'success', __( 'The saved product lists were cleared. Pages show current products from now on.', 'kaizen-store' ) ),
-			'address'        => array( 'success', __( 'Kaizen\'s address was saved.', 'kaizen-store' ) ),
+			'address'        => array( 'success', __( 'Kaizena Flow\'s address was saved.', 'kaizen-store' ) ),
 			'shop'           => array( 'success', __( 'The shop settings were saved.', 'kaizen-store' ) ),
-			'address_locked' => array( 'error', __( 'Disconnect before changing Kaizen\'s address.', 'kaizen-store' ) ),
+			'address_locked' => array( 'error', __( 'Disconnect before changing Kaizena Flow\'s address.', 'kaizen-store' ) ),
 		);
 		if ( isset( $known[ $notice ] ) ) {
 			echo '<div class="notice notice-' . esc_attr( $known[ $notice ][0] ) . ' is-dismissible"><p>' . esc_html( $known[ $notice ][1] ) . '</p></div>';
@@ -122,7 +122,7 @@ class Kaizen_Store_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You are not allowed to see this page.', 'kaizen-store' ), 403 );
 		}
-		echo '<div class="wrap kaizen-admin"><h1>' . esc_html__( 'Kaizen Store', 'kaizen-store' ) . '</h1>';
+		echo '<div class="wrap kaizen-admin"><h1>' . esc_html__( 'Kaizena Flow', 'kaizen-store' ) . '</h1>';
 		self::notices();
 		if ( Kaizen_Store_Settings::is_connected() ) {
 			self::connected_panel();
@@ -136,18 +136,18 @@ class Kaizen_Store_Admin {
 		?>
 		<div class="kaizen-panel">
 			<h2><?php esc_html_e( 'Connect this site to your stores', 'kaizen-store' ); ?></h2>
-			<p><?php esc_html_e( 'Show products from your Kaizen Store stores on this site, as a grid or a carousel, with a shortcode. You sign in on Kaizen and approve this site there: your password never comes here. This site can then read the products, prices and pictures your stores show shoppers, and make a cart in a store for a shopper who presses Checkout. It reads no orders or customers and changes nothing.', 'kaizen-store' ); ?></p>
+			<p><?php esc_html_e( 'Show products from your Kaizena Flow stores on this site, as a grid or a carousel, with a shortcode. You sign in on Kaizena Flow and approve this site there: your password never comes here. This site can then read the products, prices and pictures your stores show shoppers, and make a cart in a store for a shopper who presses Checkout. It reads no orders or customers and changes nothing.', 'kaizen-store' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="kaizen_store_connect">
 				<?php wp_nonce_field( 'kaizen_store_connect' ); ?>
-				<?php submit_button( __( 'Connect to Kaizen', 'kaizen-store' ), 'primary', 'submit', false ); ?>
+				<?php submit_button( __( 'Connect to Kaizena Flow', 'kaizen-store' ), 'primary', 'submit', false ); ?>
 			</form>
 			<details class="kaizen-advanced">
 				<summary><?php esc_html_e( 'Advanced', 'kaizen-store' ); ?></summary>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="kaizen_store_save_address">
 					<?php wp_nonce_field( 'kaizen_store_save_address' ); ?>
-					<p><label for="kaizen_api_url"><?php esc_html_e( 'Kaizen\'s address (leave as it is unless you were told otherwise)', 'kaizen-store' ); ?></label><br>
+					<p><label for="kaizen_api_url"><?php esc_html_e( 'Kaizena Flow\'s address (leave as it is unless you were told otherwise)', 'kaizen-store' ); ?></label><br>
 					<input type="url" id="kaizen_api_url" name="kaizen_api_url" class="regular-text" value="<?php echo esc_attr( Kaizen_Store_Settings::api_url() ); ?>"></p>
 					<?php submit_button( __( 'Save address', 'kaizen-store' ), 'secondary', 'submit', false ); ?>
 				</form>
@@ -174,8 +174,8 @@ class Kaizen_Store_Admin {
 			<?php else : ?>
 				<p>
 					<?php
-					/* translators: %s: email address of the Kaizen account. */
-					echo esc_html( sprintf( __( 'Signed in to Kaizen as %s.', 'kaizen-store' ), isset( $connection['email'] ) ? $connection['email'] : '' ) );
+					/* translators: %s: email address of the Kaizena Flow account. */
+					echo esc_html( sprintf( __( 'Signed in to Kaizena Flow as %s.', 'kaizen-store' ), isset( $connection['email'] ) ? $connection['email'] : '' ) );
 					?>
 				</p>
 				<?php if ( ! empty( $check['stores'] ) ) : ?>
@@ -192,7 +192,7 @@ class Kaizen_Store_Admin {
 						</tbody>
 					</table>
 				<?php else : ?>
-					<p><?php esc_html_e( 'No stores are connected to this Kaizen account yet.', 'kaizen-store' ); ?></p>
+					<p><?php esc_html_e( 'No stores are connected to this Kaizena Flow account yet.', 'kaizen-store' ); ?></p>
 				<?php endif; ?>
 			<?php endif; ?>
 			<p class="kaizen-actions">
@@ -242,7 +242,7 @@ class Kaizen_Store_Admin {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="kaizen-inline">
 				<input type="hidden" name="action" value="kaizen_store_disconnect">
 				<?php wp_nonce_field( 'kaizen_store_disconnect' ); ?>
-				<?php submit_button( __( 'Disconnect from Kaizen', 'kaizen-store' ), 'delete', 'submit', false ); ?>
+				<?php submit_button( __( 'Disconnect from Kaizena Flow', 'kaizen-store' ), 'delete', 'submit', false ); ?>
 			</form>
 		</div>
 		<?php
@@ -271,7 +271,7 @@ class Kaizen_Store_Admin {
 	public static function settings_box( $post ) {
 		wp_nonce_field( 'kaizen_store_save_view', 'kaizen_store_view_nonce' );
 		if ( ! Kaizen_Store_Settings::is_connected() ) {
-			echo '<p>' . esc_html__( 'Connect this site to Kaizen first.', 'kaizen-store' ) . ' <a href="' . esc_url( Kaizen_Store_Connect::page_url() ) . '">' . esc_html__( 'Open the connection', 'kaizen-store' ) . '</a></p>';
+			echo '<p>' . esc_html__( 'Connect this site to Kaizena Flow first.', 'kaizen-store' ) . ' <a href="' . esc_url( Kaizen_Store_Connect::page_url() ) . '">' . esc_html__( 'Open the connection', 'kaizen-store' ) . '</a></p>';
 			return;
 		}
 		$stored = get_post_meta( $post->ID, Kaizen_Store_Views::META_KEY, true );

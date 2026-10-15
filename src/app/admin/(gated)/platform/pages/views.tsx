@@ -38,15 +38,15 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 type Params = Promise<{ pageId: string }>;
 
 const INTRO: Record<PageType, string> = {
-  page: "Kaizen's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer. Choose any page as Kaizen's front page, blog page or 404 page under Special pages.",
+  page: "Kaizena Flow's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer. Choose any page as Kaizena Flow's front page, blog page or 404 page under Special pages.",
   article:
-    "Kaizen's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
+    "Kaizena Flow's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
   // Stores' own (D79); Kaizen has no products.
   product_layout: "",
   header:
-    "The top of Kaizen's pages, built from components: the logo, menus, sign-in, the Start your store button and anything else. Publish a header, then choose it as the site's header; until you do, the standard one is shown.",
+    "The top of Kaizena Flow's pages, built from components: the logo, menus, sign-in, the Start your store button and anything else. Publish a header, then choose it as the site's header; until you do, the standard one is shown.",
   footer:
-    "The bottom of Kaizen's pages, built from components: the logo, menus, business details, the cookies link and anything else. Publish a footer, then choose it as the site's footer; until you do, the standard one is shown. A footer shows the business details and the cookies link, as the law asks.",
+    "The bottom of Kaizena Flow's pages, built from components: the logo, menus, business details, the cookies link and anything else. Publish a footer, then choose it as the site's footer; until you do, the standard one is shown. A footer shows the business details and the cookies link, as the law asks.",
   // A store's A/B test copies (D148); Kaizen's own tests come later.
   variant: "",
 };
@@ -109,7 +109,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           <div className="flex flex-col gap-1">
             <h2 id="special-pages" className="text-title text-ink">Special pages</h2>
             <p className="max-w-2xl text-sm text-muted">
-              Kaizen&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
+              Kaizena Flow&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
               of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
             </p>
           </div>
@@ -132,7 +132,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           type={type}
           layouts={pages}
           current={(await siteLayoutChoice(null))[type]}
-          siteName="Kaizen's site"
+          siteName="Kaizena Flow's site"
           action={choosePlatformSiteLayoutAction.bind(null, type)}
         />
       )}
@@ -153,7 +153,7 @@ export async function PageTermsView({ type }: { type: PageType }) {
         </Link>
         <PageHeader
           title="Categories and tags"
-          description={<>Sort Kaizen&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site when the {copy.one} is published.</>}
+          description={<>Sort Kaizena Flow&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site when the {copy.one} is published.</>}
         />
         </div>
       <TermsManager
@@ -263,7 +263,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
           <ArticleView
             content={page.draft}
             date={page.publishedAt}
-            byline={page.draft.author || "Kaizen"}
+            byline={page.draft.author || "Kaizena Flow"}
             lang="en"
             locale="en-GB"
             place={{ pageId: page.id, owner: null }}

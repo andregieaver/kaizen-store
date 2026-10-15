@@ -274,7 +274,7 @@ export function NotificationEditor({
               (the email&apos;s buttons link to the order). This is a message about an order. Do not add offers or advertising: an email that promotes is
               marketing and needs the customer&apos;s consent. The text you write is your responsibility.
             </p>
-            <p className={hint}>The order lines, totals, VAT statement, invoice link and the right of withdrawal are always added by Kaizen.</p>
+            <p className={hint}>The order lines, totals, VAT statement, invoice link and the right of withdrawal are always added by Kaizena Flow.</p>
           </section>
         )}
 

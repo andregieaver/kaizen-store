@@ -42,7 +42,7 @@ export async function sendSecurityEmail(
       kind: `security.${event}`,
       to: String(account.email),
       email,
-      fromName: "Kaizen",
+      fromName: "Kaizena Flow",
       idempotencyKey: `security.${event}:${accountId}:${at.toISOString()}`,
     });
   } catch (error) {

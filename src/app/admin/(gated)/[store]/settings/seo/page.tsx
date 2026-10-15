@@ -40,7 +40,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
     <div className="flex flex-col gap-6">
       <PageHeader
         title={<>SEO &amp; Reach</>}
-        description={<>How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such as ChatGPT and Claude. Kaizen fills in what it can from your products and business details; everything here is optional.</>}
+        description={<>How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such as ChatGPT and Claude. Kaizena Flow fills in what it can from your products and business details; everything here is optional.</>}
       />
 
       <section aria-labelledby="status-heading" className={card}>
@@ -54,7 +54,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             ? "Your store is not opened yet. Once you finish the setup, search engines are welcome."
             : seo.hidden
               ? "You have hidden the store below. Shoppers with the link can still buy."
-              : "Kaizen tells search engines about every product, in every country you sell to, with prices, stock, shipping and your return policy."}
+              : "Kaizena Flow tells search engines about every product, in every country you sell to, with prices, stock, shipping and your return policy."}
         </p>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <li>
@@ -97,7 +97,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             <h2 id="home-heading" className="text-title text-ink">
               Your front page in search results
             </h2>
-            <p className={hint}>Empty fields use the store&apos;s name and a line Kaizen writes.</p>
+            <p className={hint}>Empty fields use the store&apos;s name and a line Kaizena Flow writes.</p>
           </div>
           {store.markets.map((market) => (
             <fieldset key={market.code} className="flex min-w-0 flex-col gap-2 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0">
@@ -159,7 +159,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               AI assistants
             </h2>
             <p className={hint}>
-              Kaizen gives AI assistants a summary of your store, terms and products with prices
+              Kaizena Flow gives AI assistants a summary of your store, terms and products with prices
               (llms.txt), so they can answer shoppers and link to you.
             </p>
           </div>
@@ -195,7 +195,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               <a href={`${base}/llms.txt`} className="underline">
                 llms.txt
               </a>
-              , above the list of products Kaizen keeps up to date.
+              , above the list of products Kaizena Flow keeps up to date.
             </span>
           </label>
         </section>
@@ -228,7 +228,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               className={`${input} py-2 font-mono`}
             />
             <span className={hint}>
-              Write paths from the store&apos;s front door (such as /no/p/product); Kaizen adds the
+              Write paths from the store&apos;s front door (such as /no/p/product); Kaizena Flow adds the
               store&apos;s address. Carts and order pages are always left out.{" "}
               <a href={`${base}/robots.txt`} className="underline">
                 See the result

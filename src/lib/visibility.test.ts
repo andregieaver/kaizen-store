@@ -185,7 +185,7 @@ describe("each fact and operator", () => {
     expect(holds({ fact: "currency", op: "in", value: ["EUR"] }, { ...guest, currency: "EUR" })).toBe(true);
   });
 
-  it("a fact a place does not have never holds, whatever the operator (Kaizen's pages)", () => {
+  it("a fact a place does not have never holds, whatever the operator (Kaizena Flow's pages)", () => {
     const store: Condition[] = [
       { fact: "customerGroup", op: "notIn", value: [TIER] },
       { fact: "company", op: "is", value: false },
@@ -347,12 +347,12 @@ describe("limits and parts that are always shown", () => {
     expect(displaysProblem([rowWith([withdrawal])])).toMatch(/withdrawal/);
   });
 
-  it("Kaizen's pages ask only sign-in, language, time and address; a header or footer never the address", () => {
+  it("Kaizena Flow's pages ask only sign-in, language, time and address; a header or footer never the address", () => {
     expect(factsOffered("kaizen", "page")).toEqual([...KAIZEN_FACTS]);
     expect(factsOffered("store", "header")).not.toContain("query");
     expect(factsOffered("store", "page")).toContain("query");
     const cartRule = [rowWith([separator("a", { rules: [[{ fact: "cartValue", op: "gte", value: { currency: "NOK", min: 1 } }]] })])];
-    expect(displayFactsProblem(cartRule, "kaizen", "page")).toMatch(/Kaizen/);
+    expect(displayFactsProblem(cartRule, "kaizen", "page")).toMatch(/Kaizena Flow/);
     expect(displayFactsProblem(cartRule, "store", "page")).toBeNull();
     const queryRule = [rowWith([separator("q", { rules: [[{ fact: "query", op: "exists", value: { name: "x" } }]] })])];
     expect(displayFactsProblem(queryRule, "store", "footer")).toMatch(/Address parameters/);

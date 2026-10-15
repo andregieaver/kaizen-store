@@ -15,7 +15,7 @@ export async function savePlatformTrackingAction(_state: FormState, form: FormDa
   if (!result.ok) return { status: "error", messages: result.problems };
   // Kaizen's layout loads the tools and asks about them, with its header and footer settings.
   updateTag(PLATFORM_NAVIGATION_TAG);
-  return { status: "ok", messages: ["Saved. Kaizen's site asks and loads accordingly now."] };
+  return { status: "ok", messages: ["Saved. Kaizena Flow's site asks and loads accordingly now."] };
 }
 
 /** Scans Kaizen's own site soon (D58). */

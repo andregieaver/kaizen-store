@@ -13,7 +13,7 @@ import { Note } from "./section";
  */
 
 /** The line every view starts with and every file carries: whose figures these are, and what they are not. */
-export const NOT_A_RETURN = "These are your own figures, made from your invoices and credit notes, for you and your accountant. They are not a tax return and Kaizen files nothing.";
+export const NOT_A_RETURN = "These are your own figures, made from your invoices and credit notes, for you and your accountant. They are not a tax return and Kaizena Flow files nothing.";
 
 export function TaxStatement({ children }: { children?: ReactNode }) {
   return (

@@ -19,7 +19,7 @@ export default async function PlatformFontsPage() {
     <>
       <PageHeader
         title="Fonts"
-        description={<>Any Google Fonts family for the headings and other text of Kaizen&apos;s own site. Components on its pages can use their own. Fonts are copied to Kaizen and load from the site itself, never from Google. Each store chooses its own under Fonts in its admin.</>}
+        description={<>Any Google Fonts family for the headings and other text of Kaizena Flow&apos;s own site. Components on its pages can use their own. Fonts are copied to Kaizena Flow and load from the site itself, never from Google. Each store chooses its own under Fonts in its admin.</>}
       />
       <Card compact>
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />

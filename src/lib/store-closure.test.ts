@@ -44,7 +44,7 @@ describe("what is only worth a warning", () => {
     expect(text).toMatch(/2 orders are waiting for payment\. Closing cancels them/);
     expect(text).toMatch(/1 booking is still to come\. Closing does not cancel it/);
     expect(text).toMatch(/3 returns are still open/);
-    expect(text).toMatch(/Kaizen plan ends when the period you have paid for is over/);
+    expect(text).toMatch(/Kaizena Flow plan ends when the period you have paid for is over/);
     expect(text).toMatch(/2 domains of the store's own are released/);
   });
 });

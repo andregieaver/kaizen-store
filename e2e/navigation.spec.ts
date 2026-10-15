@@ -9,7 +9,7 @@ test("on a computer, the header's menu links and hides while scrolling down", as
   await page.setViewportSize({ width: 1280, height: 700 });
   await page.goto("/s/demo/no");
   const menu = page.getByRole("navigation", { name: "Hovedmeny" });
-  await expect(page.getByRole("link", { name: "Kaizen Demo" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Kaizena Flow Demo" }).first()).toBeVisible();
   await menu.getByRole("link", { name: "Notatbok" }).click();
   await expect(page).toHaveURL("/s/demo/no/p/demo-notatbok");
   // Scroll the product page, not the moment before it arrives.

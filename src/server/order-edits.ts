@@ -323,7 +323,7 @@ export type EditProblem = { code: OrderEditProblemCode | EditBlockReason | "need
 
 const CASH_LIMIT =
   "This much cash for one order is above the country's cash ceiling, so it cannot be recorded as paid in cash: the order's cash payments and this change are one transaction. Ask the customer to pay by card or bank transfer.";
-const NEEDS_PAYMENT = "The new total is higher: send the customer a pay link, share one, or record the difference as paid outside Kaizen.";
+const NEEDS_PAYMENT = "The new total is higher: send the customer a pay link, share one, or record the difference as paid outside Kaizena Flow.";
 const problem = (code: EditProblem["code"], key?: string): EditProblem => ({
   code,
   ...(key ? { key } : {}),
@@ -335,7 +335,7 @@ const problem = (code: EditProblem["code"], key?: string): EditProblem => ({
         : code === "invalid"
           ? "Check the change and try again."
           : code === "not_allowed"
-            ? "Only the owner can record money taken or paid back outside Kaizen, unless the owner has allowed staff to."
+            ? "Only the owner can record money taken or paid back outside Kaizena Flow, unless the owner has allowed staff to."
             : code === "cash_limit"
               ? CASH_LIMIT
               : orderEditProblemText(code),

@@ -27,7 +27,7 @@ describe("codes", () => {
 
   it("make the link and where it leads", () => {
     expect(referralPath("abcd2345")).toBe("/r/abcd2345");
-    expect(referralUrl("https://kaizenstore.cloud/", "abcd2345")).toBe("https://kaizenstore.cloud/r/abcd2345");
+    expect(referralUrl("https://kaizenaflow.com/", "abcd2345")).toBe("https://kaizenaflow.com/r/abcd2345");
     expect(referralSignUpPath("abcd2345")).toBe("/sign-up?ref=abcd2345");
     expect(referralSignUpPath(null)).toBe("/sign-up");
   });
@@ -89,7 +89,7 @@ describe("settings", () => {
 });
 
 describe("the cookie (D58)", () => {
-  it("is kept only when the visitor has allowed marketing on Kaizen's site", () => {
+  it("is kept only when the visitor has allowed marketing on Kaizena Flow's site", () => {
     expect(mayKeepReferral("")).toBe(false);
     expect(mayKeepReferral(consent(NO_CONSENT))).toBe(false);
     expect(mayKeepReferral(consent({ ...NO_CONSENT, preferences: true, statistics: true }))).toBe(false);
@@ -120,7 +120,7 @@ describe("the cookie (D58)", () => {
     expect(referralCodeFor(null, null)).toBeNull();
   });
 
-  it("is listed on Kaizen's cookie page as a marketing cookie only while the program is on", () => {
+  it("is listed on Kaizena Flow's cookie page as a marketing cookie only while the program is on", () => {
     const known = KNOWN_COOKIES.find((c) => c.name === REFERRAL_COOKIE);
     expect(known).toMatchObject({ category: "marketing", on: "platform", referrals: true });
     expect(known!.pattern.test(REFERRAL_COOKIE)).toBe(true);

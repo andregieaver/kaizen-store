@@ -5,7 +5,7 @@ import { requireAccount } from "@/server/auth";
 import { myStores, requesterConversations } from "@/server/support-kaizen";
 import { PageHeader } from "@/components/admin/ui";
 
-export const metadata: Metadata = { title: "Kaizen support" };
+export const metadata: Metadata = { title: "Kaizena Flow support" };
 
 /**
  * *Your requests to Kaizen* (D216, 2.8, step 11): the account's own conversations with Kaizen's support, and a new one. Kaizen's
@@ -19,8 +19,8 @@ export default async function KaizenSupportPage({ searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Kaizen support"
-        description={<>Ask Kaizen for help with your stores or your account. Kaizen&apos;s assistant answers first, and a person from Kaizen takes over when needed. Answers also come by email when you are away.</>}
+        title="Kaizena Flow support"
+        description={<>Ask Kaizena Flow for help with your stores or your account. Kaizena Flow&apos;s assistant answers first, and a person from Kaizena Flow takes over when needed. Answers also come by email when you are away.</>}
       />
       <KaizenRequests initial={rows} stores={stores.map((s) => ({ slug: s.store, name: s.name }))} initialOpen={open} />
     </div>

@@ -274,7 +274,7 @@ describe("a changed slug of a category or a tag leaves a redirect that points at
     expect(await sourcesOf()).not.toContain("/category/twice-b");
   });
 
-  it("not for the terms of pages and articles, nor Kaizen's own (they have no such pages)", async () => {
+  it("not for the terms of pages and articles, nor Kaizena Flow's own (they have no such pages)", async () => {
     const page = await term(shop, "category", "pg-old", "page");
     await db.query("update commerce.terms set slug = 'pg-new' where id = $1", [page]);
     const article = await term(null, "category", "ar-old", "article");

@@ -295,7 +295,7 @@ describe("SubscriptionsView, a normal store", () => {
 
   it("labels the failed-payment figure as a snapshot of today", () => {
     expect(out).toContain("Failed payments are a snapshot");
-    expect(out).toContain("Kaizen keeps no history of failed payments");
+    expect(out).toContain("Kaizena Flow keeps no history of failed payments");
     expect(out).toContain(money(4 * 30_000));
   });
 

@@ -51,12 +51,12 @@ export default async function PaymentSettingsPage({
           <Card title="Payments are not available yet" className="text-sm" compact>
             {account.platformAdmin ? (
               <p>
-                Add Kaizen&apos;s Stripe keys in Vercel (<code>STRIPE_SECRET_KEY_TEST</code> and{" "}
+                Add Kaizena Flow&apos;s Stripe keys in Vercel (<code>STRIPE_SECRET_KEY_TEST</code> and{" "}
                 <code>STRIPE_PUBLISHABLE_KEY_TEST</code>, and the <code>_LIVE</code> pair when going
                 live), redeploy, then connect the webhooks under Platform → Stripe.
               </p>
             ) : (
-              <p>Kaizen is switching payments on shortly. Your other settings already work.</p>
+              <p>Kaizena Flow is switching payments on shortly. Your other settings already work.</p>
             )}
           </Card>
         </div>
@@ -66,10 +66,10 @@ export default async function PaymentSettingsPage({
         <Card title="Test payments" className="flex flex-col gap-2 text-sm" compact>
           <p>
             {testReady
-              ? "Ready. Nothing to set up: Kaizen created a test Stripe account for your store."
+              ? "Ready. Nothing to set up: Kaizena Flow created a test Stripe account for your store."
               : testSetup && !testSetup.ok
-                ? `Kaizen could not create your test Stripe account yet: ${testSetup.problem}`
-                : "Kaizen is creating a test Stripe account for your store. It is ready in a few seconds, with nothing for you to fill in."}
+                ? `Kaizena Flow could not create your test Stripe account yet: ${testSetup.problem}`
+                : "Kaizena Flow is creating a test Stripe account for your store. It is ready in a few seconds, with nothing for you to fill in."}
           </p>
           <p className="text-muted">
             Try your checkout with the card 4242 4242 4242 4242, any future date and any CVC. Test
@@ -94,7 +94,7 @@ export default async function PaymentSettingsPage({
           <p className="mb-4 text-sm text-muted">
             Currently {stripe.enabled ? "on" : "off"}
             {stripe.enabled ? `, in ${stripe.activeMode} mode` : ""}.{" "}
-            {!modes.includes("live") && "Real payments open when Kaizen goes live."}
+            {!modes.includes("live") && "Real payments open when Kaizena Flow goes live."}
           </p>
           <ActionForm action={setStripeProviderAction.bind(null, store.slug)} className="flex flex-col gap-4">
             <fieldset disabled={!isOwner || readyModes.length === 0} className="flex flex-col gap-4">
@@ -140,7 +140,7 @@ export default async function PaymentSettingsPage({
                   </span>
                   {kaizenInvoices && (
                     <span className="mt-1 block font-medium">
-                      Not used while Kaizen makes the invoices: every paid order gets a numbered invoice from the store, and a shopper never gets two. Change this in the{" "}
+                      Not used while Kaizena Flow makes the invoices: every paid order gets a numbered invoice from the store, and a shopper never gets two. Change this in the{" "}
                       <Link href={`/admin/${store.slug}/settings/invoices`} className="underline">
                         invoicing settings
                       </Link>

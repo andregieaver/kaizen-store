@@ -90,7 +90,7 @@ describe("a parcel's tracking on the staff order page (D238, 2.3)", () => {
     const unverified = plain(renderToString(h(ParcelStatus, { tracking: tracking({ phaseVerified: false }), carrierName: "Helthjem", when, checkNow: null })));
     expect(unverified).toContain("no email or delivery date comes from it");
     const stopped = plain(renderToString(h(ParcelStatus, { tracking: tracking({ stopped: "carrier_failing" }), carrierName: "Helthjem", when, checkNow: action })));
-    expect(stopped).toContain("Kaizen could not reach the carrier");
+    expect(stopped).toContain("Kaizena Flow could not reach the carrier");
   });
 
   it("shows a carrier's delivery and a warning for a problem", () => {
@@ -100,7 +100,7 @@ describe("a parcel's tracking on the staff order page (D238, 2.3)", () => {
   });
 
   it("tells staff how to have a parcel followed when its carrier is not connected", () => {
-    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null })))).toContain("Kaizen follows parcels from carriers you connect under Shipping.");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null })))).toContain("Kaizena Flow follows parcels from carriers you connect under Shipping.");
     expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ followed: null }), carrierName: "x", when, checkNow: null })))).toContain("carriers you connect under Shipping");
   });
 });

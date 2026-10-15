@@ -191,13 +191,13 @@ export function ExchangeCard({
                 <ResendExchangeForm action={stepActions.resend} toPay />
                 {mayRecordOutside ? (
                   <details>
-                    <summary className="cursor-pointer text-sm underline">Record as paid outside Kaizen</summary>
+                    <summary className="cursor-pointer text-sm underline">Record as paid outside Kaizena Flow</summary>
                     <div className="mt-3">
                       <ExchangePaidOutsideForm action={stepActions.paidOutside} today={today} amount={money(shown.outcome.toPayMinor)} />
                     </div>
                   </details>
                 ) : (
-                  <p className="text-sm text-muted">Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>
+                  <p className="text-sm text-muted">Only the owner can record a payment taken outside Kaizena Flow, unless the owner allows staff to (Settings, Orders).</p>
                 )}
               </>
             )}

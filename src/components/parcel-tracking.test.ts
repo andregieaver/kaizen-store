@@ -55,7 +55,7 @@ const text = (markup: string) =>
     .trim();
 
 describe("ParcelTracking", () => {
-  it("draws nothing for a parcel Kaizen does not follow (its link stays in the parcel, as before)", () => {
+  it("draws nothing for a parcel Kaizena Flow does not follow (its link stays in the parcel, as before)", () => {
     expect(draw(undefined)).toBe("");
     expect(draw(row({ followed: null, events: [] }))).toBe("");
   });
@@ -158,7 +158,7 @@ describe("OrderShipments with tracking", () => {
   const draw2 = (tracking: Row[]) =>
     renderToString(createElement(OrderShipments, { fulfilment, tracking, m: t("en"), locale: "en-IE", timeZone: "Europe/Oslo" }));
 
-  it("draws each parcel's own tracking under it, and only the link for a parcel Kaizen does not follow", () => {
+  it("draws each parcel's own tracking under it, and only the link for a parcel Kaizena Flow does not follow", () => {
     const markup = draw2([row({ shipmentId: "p1" }), row({ shipmentId: "p2", followed: null, events: [] })]);
     expect(markup.match(/data-parcel-tracking=/g)?.length).toBe(1);
     expect(markup).toContain("https://www.dhl.com/track?JD0001");

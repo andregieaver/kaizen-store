@@ -26,7 +26,7 @@ describe("the sentences that touch the law", () => {
   it("say what the spec says (section 8 lists them for a person to read)", () => {
     expect(PERSONAL_DATA_WARNING).toBe(`This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`);
     expect(PERSONAL_DATA_WARNING).toContain("7 days");
-    expect(NO_CONSENT_NOTE).toBe("Kaizen does not record marketing consent yet. Do not treat this file as a mailing list.");
+    expect(NO_CONSENT_NOTE).toBe("Kaizena Flow does not record marketing consent yet. Do not treat this file as a mailing list.");
     expect(IMPORT_CONFIRMATION).toContain("You cannot undo an import as a whole");
     expect(COMPARE_AT_NOTE).toContain("lowest price of the last 30 days");
   });

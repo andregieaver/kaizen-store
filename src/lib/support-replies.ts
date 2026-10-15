@@ -19,7 +19,7 @@ export const SHORTCUT = /^[a-z0-9][a-z0-9-]{0,19}$/;
 export const PLACEHOLDERS = {
   customer_first_name: "The customer's first name, when it is known",
   agent_first_name: "Your name as customers see it",
-  store: "The store's name (Kaizen on Kaizen's desk)",
+  store: "The store's name (Kaizena Flow on Kaizena Flow's desk)",
 } as const;
 export type Placeholder = keyof typeof PLACEHOLDERS;
 

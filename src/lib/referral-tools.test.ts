@@ -35,7 +35,7 @@ describe("the referral program's tools in the AI manager (D131)", () => {
 
   it("describes the change in words for the approval", () => {
     expect(approvalSummary("set_referral_program", { enabled: true, percent: 12, months: 18 })).toBe(
-      "Change the referral program: switch the referral program on; commission 12 % of the fees a referred store pays Kaizen; earned for 18 months after a store opens.",
+      "Change the referral program: switch the referral program on; commission 12 % of the fees a referred store pays Kaizena Flow; earned for 18 months after a store opens.",
     );
     expect(approvalSummary("set_referral_program", {})).toBe("Change the referral program: no change.");
   });

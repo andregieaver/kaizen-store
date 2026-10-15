@@ -37,7 +37,7 @@ describe("gravatar", () => {
     expect(isGravatarHash("abc")).toBe(false);
   });
 
-  it("signs addresses so only Kaizen's own work", () => {
+  it("signs addresses so only Kaizena Flow's own work", () => {
     const hash = gravatarHash("a@example.com");
     const path = gravatarPath("A@example.com", secret);
     const k = new URL(path, "https://kaizen.test").searchParams.get("k")!;

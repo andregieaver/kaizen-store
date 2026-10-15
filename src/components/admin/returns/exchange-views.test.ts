@@ -213,7 +213,7 @@ describe("the exchange card", () => {
     expect(text).toContain("Waiting for payment");
     expect(text).toContain("Order 1042 is made");
     expect(html).toContain('href="/admin/s/orders/88888888-8888-4888-8888-888888888888"');
-    expect(text).toContain("Record as paid outside Kaizen");
+    expect(text).toContain("Record as paid outside Kaizena Flow");
     expect(text).toContain("Cancel the exchange and refund instead");
     expect(card({ detail: detail({ actions: ["cancel_exchange"] }), exchange: x, mayRecordOutside: false }).text).toContain("Only the owner can record a payment");
   });

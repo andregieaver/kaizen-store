@@ -134,7 +134,7 @@ describe("where a request for a store's page goes (addressDecision)", () => {
     return request;
   };
 
-  it("serves a store that sells in one country without its country, on Kaizen's address and its own host", () => {
+  it("serves a store that sells in one country without its country, on Kaizena Flow's address and its own host", () => {
     expect(addressDecision(at("/s/kaiza"), single)).toEqual({ rewrite: "/s/kaiza/no" });
     expect(addressDecision(at("/s/kaiza/home"), single)).toEqual({ rewrite: "/s/kaiza/no/home" });
     expect(addressDecision(at("/s/kaiza/p/kopp"), single)).toEqual({ rewrite: "/s/kaiza/no/p/kopp" });
@@ -200,7 +200,7 @@ describe("the parts after the market, on any shape of address", () => {
 describe("the proxy's store matcher", () => {
   const matched = (pathname: string): boolean => Boolean(match(STORE_MATCHER.source)(pathname));
 
-  it("runs for every store page, short or long, on Kaizen's address and a store's host", () => {
+  it("runs for every store page, short or long, on Kaizena Flow's address and a store's host", () => {
     for (const path of ["/", "/home", "/en/home", "/eur", "/no", "/no/p/lamp", "/no-en/cart", "/cart", "/s/kaiza", "/s/kaiza/", "/s/kaiza/home", "/s/kaiza/no/p/x", "/collections/shoes", "/pages/page.html", "/old.php", "/om-oss"]) {
       expect(matched(path), path).toBe(true);
     }

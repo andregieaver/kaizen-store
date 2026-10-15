@@ -40,7 +40,7 @@ function route(routes: ReturnType<typeof storeHostRoutes>, host: string, pathnam
 describe("stores on their own hosts (P7)", () => {
   it("changes nothing until the store domain is set", () => {
     expect(storeDomain()).toBeNull();
-    expect(storeHostRoutes(null, "https://kaizenstore.cloud")).toEqual({ redirects: [], rewrites: [] });
+    expect(storeHostRoutes(null, "https://kaizenaflow.com")).toEqual({ redirects: [], rewrites: [] });
     expect(storeBase("demo")).toBe("/s/demo");
     expect(storeHome("demo")).toBe("/s/demo");
     expect(marketPath("demo", "no", "/cart")).toBe("/s/demo/no/cart");
@@ -67,8 +67,8 @@ describe("stores on their own hosts (P7)", () => {
     expect(() => storeDomain()).toThrow(/host name/);
   });
 
-  it("serves each store's host from its pages, and nothing else of Kaizen's there", () => {
-    const routes = storeHostRoutes("kaizenstores.com", "https://kaizenstore.cloud");
+  it("serves each store's host from its pages, and nothing else of Kaizena Flow's there", () => {
+    const routes = storeHostRoutes("kaizenstores.com", "https://kaizenaflow.com");
     const store = (path: string) => route(routes, "demo.kaizenstores.com", path);
     expect(store("/")).toEqual({ rewrite: "/s/demo" });
     expect(store("/no")).toEqual({ rewrite: "/s/demo/no" });
@@ -90,20 +90,20 @@ describe("stores on their own hosts (P7)", () => {
     expect(store("/apis")).toEqual({ rewrite: "/s/demo/apis" });
   });
 
-  it("moves store addresses on Kaizen's host to the store's, and the bare domain to Kaizen", () => {
-    const routes = storeHostRoutes("kaizenstores.com", "https://kaizenstore.cloud");
-    const kaizen = (path: string) => route(routes, "kaizenstore.cloud", path);
+  it("moves store addresses on Kaizena Flow's host to the store's, and the bare domain to Kaizena Flow", () => {
+    const routes = storeHostRoutes("kaizenstores.com", "https://kaizenaflow.com");
+    const kaizen = (path: string) => route(routes, "kaizenaflow.com", path);
     expect(kaizen("/s/demo")).toEqual({ redirect: "https://demo.kaizenstores.com/" });
     expect(kaizen("/s/demo/no/p/demo-keramikkopp")).toEqual({ redirect: "https://demo.kaizenstores.com/no/p/demo-keramikkopp" });
     expect(kaizen("/")).toEqual({});
     expect(kaizen("/admin")).toEqual({});
-    expect(route(routes, "kaizenstores.com", "/pricing")).toEqual({ redirect: "https://kaizenstore.cloud/pricing" });
-    expect(route(routes, "www.kaizenstores.com", "/")).toEqual({ redirect: "https://kaizenstore.cloud/" });
+    expect(route(routes, "kaizenstores.com", "/pricing")).toEqual({ redirect: "https://kaizenaflow.com/pricing" });
+    expect(route(routes, "www.kaizenstores.com", "/")).toEqual({ redirect: "https://kaizenaflow.com/" });
     // Another domain ending the same way is not the store domain.
     expect(route(routes, "demo.notkaizenstores.com", "/no")).toEqual({});
   });
 
-  it("works on localhost, where Kaizen and the domain share a host name", () => {
+  it("works on localhost, where Kaizena Flow and the domain share a host name", () => {
     const routes = storeHostRoutes("localhost:3000", "http://localhost:3000");
     expect(route(routes, "localhost:3000", "/")).toEqual({});
     expect(route(routes, "localhost:3000", "/s/demo/no")).toEqual({ redirect: "http://demo.localhost:3000/no" });
@@ -112,7 +112,7 @@ describe("stores on their own hosts (P7)", () => {
 
   it("serves a store on its primary domain, and leads its other addresses there (P8)", () => {
     const hosts = { kari: { primary: "butikk.example.no", hosts: ["butikk.example.no", "example.no"] }, ola: { primary: null, hosts: ["ola.no"] } };
-    const routes = storeHostRoutes("kaizenstore.site", "https://kaizenstore.cloud", hosts);
+    const routes = storeHostRoutes("kaizenstore.site", "https://kaizenaflow.com", hosts);
     expect(route(routes, "butikk.example.no", "/")).toEqual({ rewrite: "/s/kari" });
     expect(route(routes, "butikk.example.no", "/no/p/kopp")).toEqual({ rewrite: "/s/kari/no/p/kopp" });
     expect(route(routes, "butikk.example.no", "/api/consent")).toEqual({});
@@ -120,7 +120,7 @@ describe("stores on their own hosts (P7)", () => {
     // Its other domain, its host on the store domain and its old address all lead to the primary.
     expect(route(routes, "example.no", "/no")).toEqual({ redirect: "https://butikk.example.no/no" });
     expect(route(routes, "kari.kaizenstore.site", "/no")).toEqual({ redirect: "https://butikk.example.no/no" });
-    expect(route(routes, "kaizenstore.cloud", "/s/kari/no")).toEqual({ redirect: "https://butikk.example.no/no" });
+    expect(route(routes, "kaizenaflow.com", "/s/kari/no")).toEqual({ redirect: "https://butikk.example.no/no" });
     // Without a primary, the store stays on its host and its domain leads there.
     expect(route(routes, "ola.no", "/no")).toEqual({ redirect: "https://ola.kaizenstore.site/no" });
     expect(route(routes, "ola.kaizenstore.site", "/no")).toEqual({ rewrite: "/s/ola/no" });

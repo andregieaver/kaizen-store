@@ -150,7 +150,7 @@ export function exportFile(name: string, events: ExportEvent[], stamp = new Date
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Kaizen//Calendar sync//EN",
+    "PRODID:-//Kaizena Flow//Calendar sync//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${icsText(name)}`,

@@ -44,7 +44,7 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
         <StoreCopyWizard choices={result.choices} start={startStoreCopyAction} />
       ) : (
         <p role="status" className={`max-w-xl p-5 text-sm ${CARD_CLASS}`}>
-          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.
+          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more.
         </p>
       )}
     </div>

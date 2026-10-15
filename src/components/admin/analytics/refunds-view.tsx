@@ -42,7 +42,7 @@ export function refundCards({ currency, locale, report: r }: RefundsViewProps): 
       emphasis: true,
       good: "down",
       help: HELP.refunded,
-      hint: r.refunds === 0 ? "No refund was made from Kaizen in this period." : `${formatCount(r.refunds)} ${refundsWord} for ${formatCount(r.refundedOrders)} ${plural(r.refundedOrders, "order", "orders")}.`,
+      hint: r.refunds === 0 ? "No refund was made from Kaizena Flow in this period." : `${formatCount(r.refunds)} ${refundsWord} for ${formatCount(r.refundedOrders)} ${plural(r.refundedOrders, "order", "orders")}.`,
     },
     r.refundRate === null
       ? { label: "Refund rate", value: null, state: "missing", missing: { text: "There was no revenue in this period, so there is nothing to compare refunds with." }, help: HELP.rate }
@@ -146,7 +146,7 @@ export function RefundsView(props: RefundsViewProps) {
 
       {none ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          No refund was made from Kaizen in this period, so there are no reasons, products or markets to show.
+          No refund was made from Kaizena Flow in this period, so there are no reasons, products or markets to show.
         </div>
       ) : (
         <>

@@ -71,7 +71,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         <AiManagerLauncher
           area="platform"
           base={`${base}/assistant`}
-          siteName="Kaizen"
+          siteName="Kaizena Flow"
           settingsHref={`${base}/ai`}
           start={startPlatformAssistantAction}
           actions={{

@@ -13,16 +13,16 @@ const isAnswer = (body: unknown): body is Answer => Boolean(body && typeof body 
 /** A system line in the account's own words (the admin is in English). */
 function lineWords(message: VisitorMessage): string | null {
   const name = (message.data as { name?: unknown } | undefined)?.name;
-  const who = typeof name === "string" && name ? name : "Someone from Kaizen";
+  const who = typeof name === "string" && name ? name : "Someone from Kaizena Flow";
   switch (message.kind) {
     case "queued":
-      return "Waiting for a person from Kaizen.";
+      return "Waiting for a person from Kaizena Flow.";
     case "joined":
       return `${who} joined the conversation.`;
     case "left":
       return `${who} left the conversation.`;
     case "assistant_back":
-      return "Kaizen's assistant is back.";
+      return "Kaizena Flow's assistant is back.";
     case "ended":
       return "The conversation has ended.";
     case "reopened":
@@ -146,7 +146,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           New request
         </button>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted">You have not asked Kaizen anything yet.</p>
+          <p className="text-sm text-muted">You have not asked Kaizena Flow anything yet.</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {rows.map((row) => (
@@ -159,7 +159,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
                 >
                   <span className="line-clamp-1 font-medium">{row.title ?? row.lastMessage ?? "Request"}</span>
                   <span className="text-xs text-muted">
-                    {row.status === "ended" ? "Ended" : row.handler === "human" ? "With Kaizen" : row.handler === "queue" ? "Waiting for Kaizen" : "With the assistant"}
+                    {row.status === "ended" ? "Ended" : row.handler === "human" ? "With Kaizena Flow" : row.handler === "queue" ? "Waiting for Kaizena Flow" : "With the assistant"}
                     {row.aboutStore ? ` · ${row.aboutStore}` : ""} · {new Date(row.lastMessageAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
                   </span>
                 </button>
@@ -169,9 +169,9 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
         )}
       </aside>
 
-      <section aria-label="Conversation with Kaizen" className="flex min-h-[28rem] flex-col rounded-panel bg-sunken">
+      <section aria-label="Conversation with Kaizena Flow" className="flex min-h-[28rem] flex-col rounded-panel bg-sunken">
         <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
-          <span className="font-medium">{person ? person.name : open ? "Kaizen support" : "A new request"}</span>
+          <span className="font-medium">{person ? person.name : open ? "Kaizena Flow support" : "A new request"}</span>
           {open && state?.status === "open" && (
             <button type="button" onClick={() => void end()} className="text-muted underline">
               End the conversation
@@ -179,7 +179,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           )}
         </header>
         <ol ref={listRef} role="log" aria-live="polite" aria-label="Messages" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-          {!open && <li className="text-sm text-muted">Write what you need help with. Kaizen&apos;s assistant (an AI) answers first; ask for a person at any time.</li>}
+          {!open && <li className="text-sm text-muted">Write what you need help with. Kaizena Flow&apos;s assistant (an AI) answers first; ask for a person at any time.</li>}
           {messages.map((message) => {
             if (message.author === "system") {
               const words = lineWords(message);
@@ -190,7 +190,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
               ) : null;
             }
             const mine = message.author === "customer";
-            const name = mine ? "You" : message.author === "ai" ? "Kaizen's assistant (AI)" : (((message.data as { name?: unknown } | undefined)?.name as string | undefined) ?? "Kaizen");
+            const name = mine ? "You" : message.author === "ai" ? "Kaizena Flow's assistant (AI)" : (((message.data as { name?: unknown } | undefined)?.name as string | undefined) ?? "Kaizena Flow");
             return (
               <li key={message.seq} className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
                 <span className="text-xs text-muted">{name}</span>
@@ -215,7 +215,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           {state?.status === "open" && state.handler === "queue" && (
             <li className="text-center text-xs text-muted">
               {state.queue ? `You are number ${state.queue.position} in line. ` : ""}
-              {state.available ? "Someone from Kaizen answers here." : "Nobody from Kaizen is online now: you get the answer here and by email."}
+              {state.available ? "Someone from Kaizena Flow answers here." : "Nobody from Kaizena Flow is online now: you get the answer here and by email."}
             </li>
           )}
           {busy && <li className="text-sm text-muted">Writing …</li>}
@@ -241,7 +241,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             </label>
           )}
           <label className="sr-only" htmlFor="kaizen-message">
-            Your message to Kaizen
+            Your message to Kaizena Flow
           </label>
           <textarea
             id="kaizen-message"
@@ -252,7 +252,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             }}
             maxLength={1000}
             rows={3}
-            placeholder="Your message to Kaizen"
+            placeholder="Your message to Kaizena Flow"
             className="rounded-panel border border-line bg-card px-3 py-2 text-sm"
           />
           {problem && <p role="alert" className="text-sm">{problem}</p>}

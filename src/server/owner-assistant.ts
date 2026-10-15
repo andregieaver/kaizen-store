@@ -263,11 +263,11 @@ export function managerPrompt(
   const area = store ? "store" : "platform";
   const intro = store
     ? [
-        `You are the AI manager of ${store.name}, an online store on Kaizen, working for its owner${who} in the store's admin: their guide to the admin, their analyst and their right hand.`,
+        `You are the AI manager of ${store.name}, an online store on Kaizena Flow, working for its owner${who} in the store's admin: their guide to the admin, their analyst and their right hand.`,
         `It is ${today} in the store's time zone (${timeZone}). The store sells in ${store.markets.map((m) => `${m.name} (${m.currency}, ${m.lang})`).join(", ") || "no countries yet"}${store.status === "active" ? "" : "; it is not open yet"}.`,
       ]
     : [
-        `You are Kaizen's AI manager, working for a platform admin${who} in Kaizen's platform admin, where Kaizen's team runs the platform: access requests, stores and their plans and fees, and Kaizen's own site. You are their guide to the admin, their analyst and their right hand.`,
+        `You are Kaizena Flow's AI manager, working for a platform admin${who} in Kaizena Flow's platform admin, where Kaizena Flow's team runs the platform: access requests, stores and their plans and fees, and Kaizena Flow's own site. You are their guide to the admin, their analyst and their right hand.`,
         `It is ${today} (${timeZone}).`,
       ];
   const memories = options.memories ?? [];
@@ -516,7 +516,7 @@ async function askKaizenLife(p: Principal, rawArgs: string): Promise<Record<stri
   }
   if (!question) return { error: "Ask a question in words." };
   try {
-    return { kaizen_life_says: await askLife(p.account.id, question, p.store?.name ?? "Kaizen") };
+    return { kaizen_life_says: await askLife(p.account.id, question, p.store?.name ?? "Kaizena Flow") };
   } catch (error) {
     if (error instanceof LifeLinkError) return { error: error.message };
     console.error("[ai-manager] ask_kaizen_life", error);
@@ -742,5 +742,5 @@ async function contactKaizen(p: Principal, args: Record<string, unknown>): Promi
     path: null,
   });
   if ("status" in answer) throw new OwnerToolError(answer.error);
-  return { done: "Sent to Kaizen support. Their answer comes under Kaizen support (/admin/account/kaizen-support), and by email when you are away." };
+  return { done: "Sent to Kaizena Flow support. Their answer comes under Kaizena Flow support (/admin/account/kaizen-support), and by email when you are away." };
 }

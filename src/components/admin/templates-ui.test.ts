@@ -27,7 +27,7 @@ const LIST = [
     kind: "block",
     name: "Delivery promise",
     summary: "Text",
-    publisher: "Kaizen",
+    publisher: "Kaizena Flow",
     fromKaizen: true,
     active: true,
   }),
@@ -148,13 +148,13 @@ describe("the templates modal", () => {
     for (const name of ["Delivery promise", "Hero with picture", "Contact details", "Three reasons"])
       expect(out).toContain(name);
     expect(out.indexOf("Rows")).toBeLessThan(out.indexOf("Components"));
-    expect(out).toContain("By Kaizen");
+    expect(out).toContain("By Kaizena Flow");
     expect(out).toContain("By Café Nord");
   });
 
-  it("marks Kaizen's templates and says which are on", () => {
+  it("marks Kaizena Flow's templates and says which are on", () => {
     const out = modal();
-    expect(out.match(/>Kaizen</g)).toHaveLength(1);
+    expect(out.match(/>Kaizena Flow</g)).toHaveLength(1);
     expect(out).toContain("Activated");
     expect(out).toContain('aria-label="Deactivate Delivery promise"');
     expect(out).toContain('aria-label="Activate Hero with picture"');
@@ -302,7 +302,7 @@ describe("the builder's sidebars", () => {
     expect(out).toContain("grid-cols-4");
   });
 
-  it("has no Templates tab on Kaizen's own pages, nor Layers or Coming soon", () => {
+  it("has no Templates tab on Kaizena Flow's own pages, nor Layers or Coming soon", () => {
     const out = builder(null);
     expect(out).not.toContain("Templates");
     expect(out).not.toContain("Browse templates");
@@ -324,7 +324,7 @@ describe("the builder's sidebars", () => {
     expect(out).toContain("Page title");
   });
 
-  it("shows who can use each saved part in a store's builder, and nothing about it on Kaizen's", () => {
+  it("shows who can use each saved part in a store's builder, and nothing about it on Kaizena Flow's", () => {
     const parts = [saved("p1", "marketplace", "Hero"), saved("p2", "private", "Contact")];
     const store = builder(fakeActions().actions, parts);
     expect(store).toContain('aria-label="Sharing of Hero"');
@@ -336,8 +336,8 @@ describe("the builder's sidebars", () => {
     expect(kaizen).not.toContain("Shared with");
   });
 
-  it("no longer has Kaizen's library under Saved", () => {
-    expect(builder(fakeActions().actions)).not.toContain("Kaizen's library");
+  it("no longer has Kaizena Flow's library under Saved", () => {
+    expect(builder(fakeActions().actions)).not.toContain("Kaizena Flow's library");
     expect(builder(null)).not.toContain("library");
   });
 });

@@ -31,7 +31,7 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <Card title="Design profiles" description={<>A whole look made by Kaizen: the theme (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before is kept so you can put it back.</>} className="flex flex-col gap-4" compact>
+    <Card title="Design profiles" description={<>A whole look made by Kaizena Flow: the theme (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before is kept so you can put it back.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">

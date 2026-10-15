@@ -425,7 +425,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </dl>
             {order.paidOutside && (
               <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
-                Paid outside Kaizen by {MANUAL_METHOD_LABELS[order.paidOutside.method].toLowerCase()}, recorded {when(order.paidOutside.recordedAt)}. Kaizen did not take the money and took no sale fee on it. The invoice says it was
+                Paid outside Kaizena Flow by {MANUAL_METHOD_LABELS[order.paidOutside.method].toLowerCase()}, recorded {when(order.paidOutside.recordedAt)}. Kaizena Flow did not take the money and took no sale fee on it. The invoice says it was
                 paid outside the online checkout.
               </p>
             )}
@@ -645,8 +645,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 Paid {money(order.paidMinor)}
                 {order.refundedMinor > 0 && `, refunded ${money(order.refundedMinor)}`}.{" "}
                 {order.paidOutside
-                  ? "The money was taken outside Kaizen, so Kaizen sends nothing: you pay the customer back yourself and record it here."
-                  : "Refunds go back to the customer's card or payment method through Stripe; Kaizen's fee on the refunded amount is returned to you."}
+                  ? "The money was taken outside Kaizena Flow, so Kaizena Flow sends nothing: you pay the customer back yourself and record it here."
+                  : "Refunds go back to the customer's card or payment method through Stripe; Kaizena Flow's fee on the refunded amount is returned to you."}
               </p>
               {awaitingEdit && (
                 <p role="note" className="mb-3 rounded-md border border-line bg-sunken p-3 text-sm">

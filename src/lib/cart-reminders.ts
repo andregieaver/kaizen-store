@@ -141,7 +141,7 @@ const PLAN_DEFAULTS: [ReminderText, ReminderText, ReminderText] = [
   {
     subject: "Finish choosing a plan for {store}",
     heading: "Your plan is one step away",
-    body: "You started paying for a Kaizen plan for {store} but did not finish. Pick up where you left off: it takes a minute.",
+    body: "You started paying for a Kaizena Flow plan for {store} but did not finish. Pick up where you left off: it takes a minute.",
     button: "Finish choosing your plan",
   },
   {
@@ -151,7 +151,7 @@ const PLAN_DEFAULTS: [ReminderText, ReminderText, ReminderText] = [
     button: "Choose your plan",
   },
   {
-    subject: "Last reminder about your Kaizen plan",
+    subject: "Last reminder about your Kaizena Flow plan",
     heading: "Last reminder",
     body: "This is the last reminder about the plan for {store}.",
     button: "Choose your plan",
@@ -174,7 +174,7 @@ export function defaultPlanText(n = 0): ReminderText {
 const PLAN_WORDS = {
   total: "Total",
   codeAdded: (code: string) => `The discount code ${code} is applied to your plan when you follow the link.`,
-  stop: "No more reminders about Kaizen plans?",
+  stop: "No more reminders about Kaizena Flow plans?",
   stopLink: "Unsubscribe",
 };
 

@@ -24,7 +24,7 @@ export async function asPlugin(request: Request, handle: (caller: WpCaller) => P
     return await handle(auth.caller);
   } catch (error) {
     console.warn(`[wordpress] ${error instanceof Error ? error.message : String(error)}`);
-    return problem(503, "unavailable", "Kaizen could not answer just now.");
+    return problem(503, "unavailable", "Kaizena Flow could not answer just now.");
   }
 }
 

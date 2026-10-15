@@ -279,7 +279,7 @@ export async function startStoreCopy(
       (select count(*)::int from commerce.store_copies c where c.requested_by = ${account.id}::uuid and c.status = 'running') as running
   `);
   if (!account.platformAdmin && Number(owned?.stores ?? 0) >= MAX_STORES_PER_OWNER) {
-    return problem(`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.`);
+    return problem(`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more.`);
   }
   if (Number(owned?.running ?? 0) >= COPIES_RUNNING_MAX) {
     return problem("You already have stores being copied. Wait for one to finish, then try again.");
@@ -624,7 +624,7 @@ export async function runStoreCopy(id: string, deps: StoreCopyDeps = {}): Promis
         if (pointing.length > 0) {
           console.error("[store-copy] the copy still names files of the original in:", pointing.join(", "));
           throw new CopyStopped(
-            "Some pictures could not be separated from the original store, so the copy was stopped rather than share its files. Try the copy again, and tell Kaizen if it happens again.",
+            "Some pictures could not be separated from the original store, so the copy was stopped rather than share its files. Try the copy again, and tell Kaizena Flow if it happens again.",
           );
         }
         const [store] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${copy.newId}::uuid`);

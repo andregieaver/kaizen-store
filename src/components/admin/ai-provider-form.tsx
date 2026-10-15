@@ -103,7 +103,7 @@ export function AiProviderForm({
             className={`${field} font-mono text-sm`}
           />
           <p id={`${id}-base-hint`} className="font-normal text-muted">
-            An OpenAI-compatible API: Kaizen adds /embeddings and /chat/completions to this address.
+            An OpenAI-compatible API: Kaizena Flow adds /embeddings and /chat/completions to this address.
           </p>
         </div>
       )}
@@ -228,7 +228,7 @@ export function AiProviderForm({
             id={`${id}-image`}
             name="imageModel"
             label="Picture model"
-            hint="Newest first where Kaizen knows them; type any other."
+            hint="Newest first where Kaizena Flow knows them; type any other."
             suggestions={imageInfo.imageModels}
             defaultValue={settings && (settings.imageProvider ?? "") === imageProvider ? (settings.imageModel ?? "") : ""}
           />
@@ -247,7 +247,7 @@ export function AiProviderForm({
               placeholder="https://api.example.com/v1"
               className={`${field} font-mono text-sm`}
             />
-            <p className="font-normal text-muted">An OpenAI-compatible API: Kaizen adds /images/generations to this address.</p>
+            <p className="font-normal text-muted">An OpenAI-compatible API: Kaizena Flow adds /images/generations to this address.</p>
           </div>
         )}
         {imageProvider && (
@@ -312,7 +312,7 @@ export function AiProviderForm({
             id={`${id}-live`}
             name="liveModel"
             label="Live voice model"
-            hint="Newest first where Kaizen knows them; type any other."
+            hint="Newest first where Kaizena Flow knows them; type any other."
             suggestions={liveInfo.liveModels}
             defaultValue={liveSaved ? (settings.liveModel ?? "") : ""}
           />
@@ -340,7 +340,7 @@ export function AiProviderForm({
               placeholder="https://api.example.com/v1"
               className={`${field} font-mono text-sm`}
             />
-            <p className="font-normal text-muted">Kaizen adds /live/sessions to this address.</p>
+            <p className="font-normal text-muted">Kaizena Flow adds /live/sessions to this address.</p>
           </div>
         )}
         {liveProvider && (

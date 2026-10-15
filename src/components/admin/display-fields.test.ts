@@ -56,10 +56,10 @@ describe("Display", () => {
     expect(out).toContain("always shown");
   });
 
-  it("says what signed in means on Kaizen's pages", () => {
+  it("says what signed in means on Kaizena Flow's pages", () => {
     const out = clean(renderToString(createElement(DisplayFields, { show: "signedIn", onChange: () => {}, setup: { kaizen: true, facts: KAIZEN_FACTS } })));
     expect(out).toMatch(/<option value="signedIn" selected="">/);
-    expect(out).toContain("signed in to Kaizen");
+    expect(out).toContain("signed in to Kaizena Flow");
   });
 
   it("writes Always as nothing and keeps the size visibility beside a display", () => {
@@ -93,7 +93,7 @@ describe("the rule builder", () => {
     expect(out).toContain("the store's time zone, Europe/Oslo");
   });
 
-  it("offers the store's facts by group, and only Kaizen's on Kaizen's pages", () => {
+  it("offers the store's facts by group, and only Kaizena Flow's on Kaizena Flow's pages", () => {
     const out = draw();
     for (const group of ["Visitor", "Place and language", "Time", "Cart and address"]) expect(out).toContain(`<optgroup label="${group}">`);
     expect(out).toContain(">Cart contains a product in category</option>");

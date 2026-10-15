@@ -253,7 +253,7 @@ describe("the draft editor", () => {
   it("shows the market, the customer, the lines, the discount, the shipping, the notes and the summary", () => {
     const html = draw();
     const text = check(html);
-    for (const heading of ["Market", "Customer", "Lines", "Discount", "Shipping", "Notes and tags", "Summary", "Send it", "Mark as paid outside Kaizen"]) expect(text).toContain(heading);
+    for (const heading of ["Market", "Customer", "Lines", "Discount", "Shipping", "Notes and tags", "Summary", "Send it", "Mark as paid outside Kaizena Flow"]) expect(text).toContain(heading);
     expect(html).toContain('value="kari@example.no"');
     expect(text).toContain("Mug (White)");
     expect(html).toContain('value="Engraving"');
@@ -309,9 +309,9 @@ describe("the draft editor", () => {
     expect(html).not.toContain("<b>y</b>");
   });
 
-  it("does not offer to record a payment outside Kaizen to someone the owner has not allowed", () => {
+  it("does not offer to record a payment outside Kaizena Flow to someone the owner has not allowed", () => {
     const text = check(draw({ mayRecordOutside: false }));
-    expect(text).toContain("Only the owner can record a payment taken outside Kaizen");
+    expect(text).toContain("Only the owner can record a payment taken outside Kaizena Flow");
     expect(text).not.toContain("Record the payment");
   });
 });
@@ -379,7 +379,7 @@ describe("a draft that is not open", () => {
     expect(text).toContain("Send again");
     expect(text).toContain("Create a link to share");
     expect(text).toContain("Reopen to edit");
-    expect(text).toContain("Mark as paid outside Kaizen");
+    expect(text).toContain("Mark as paid outside Kaizena Flow");
     expect(text).toContain("5 times a day (1 today)");
     expect(text).not.toContain("Delete draft");
   });
@@ -408,7 +408,7 @@ describe("a draft that is not open", () => {
     expect(text).toContain("Phoned on Monday");
     expect(text).not.toContain("Send again");
     expect(text).not.toContain("Reopen to edit");
-    expect(text).not.toContain("Mark as paid outside Kaizen");
+    expect(text).not.toContain("Mark as paid outside Kaizena Flow");
     expect(check(draw("open", { canWrite: false }))).toContain("only someone who may change orders can edit it");
   });
 

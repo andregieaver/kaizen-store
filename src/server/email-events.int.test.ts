@@ -40,7 +40,7 @@ describe("Resend's delivery events (D32)", () => {
     expect(await status(id)).toMatchObject({ status: "complained" });
   });
 
-  it("record why an email bounced, and ignore events for emails Kaizen did not send", async () => {
+  it("record why an email bounced, and ignore events for emails Kaizena Flow did not send", async () => {
     const id = await sentEmail(`re-${run}-2`);
     await applyEmailEvent({
       type: "email.bounced",

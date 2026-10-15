@@ -619,9 +619,9 @@ export function renderSummary(rows: readonly ParityRow[]): string {
     ? "so half-built features, not absent ones, are the main shape of the gap"
     : "so absent features, not half-built ones, are the main shape of the gap";
   return [
-    `Kaizen Store has **${pct(h.core.weighted)}** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across ${h.core.rows} core features weighted by importance to an EU small or mid-size merchant, and **${pct(h.mustHave.weighted)}** on the must-haves (the ${h.mustHave.rows} features with weight 4 or 5). The unweighted figures are ${pct(h.core.unweighted)} overall and ${pct(h.mustHave.unweighted)} for must-haves. Counting app-only features gives ${pct(h.coreApp.weighted)}; counting Plus-only as well gives ${pct(h.all.weighted)}.`,
+    `Kaizena Flow has **${pct(h.core.weighted)}** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across ${h.core.rows} core features weighted by importance to an EU small or mid-size merchant, and **${pct(h.mustHave.weighted)}** on the must-haves (the ${h.mustHave.rows} features with weight 4 or 5). The unweighted figures are ${pct(h.core.unweighted)} overall and ${pct(h.mustHave.unweighted)} for must-haves. Counting app-only features gives ${pct(h.coreApp.weighted)}; counting Plus-only as well gives ${pct(h.all.weighted)}.`,
     best
-      ? `Kaizen is strongest on ${best.name.toLowerCase()} (${pct(best.core.weighted)}) and weakest on ${list(weakest)}. Of the ${h.core.rows} core features, ${h.core.full} are full, ${h.core.partial} partial and ${h.core.missing} missing, ${shape}.`
+      ? `Kaizena Flow is strongest on ${best.name.toLowerCase()} (${pct(best.core.weighted)}) and weakest on ${list(weakest)}. Of the ${h.core.rows} core features, ${h.core.full} are full, ${h.core.partial} partial and ${h.core.missing} missing, ${shape}.`
       : "",
   ].filter(Boolean).join(" ");
 }
@@ -808,7 +808,7 @@ function evidenceCell(row: ParityRow): string {
 export function renderDetail(rows: readonly ParityRow[], domain: Domain): string {
   const own = rows.filter((r) => r.domain === domain);
   return table(
-    ["Feature", "Shopify", "Kaizen", "W", "Plan", "Gap and evidence"],
+    ["Feature", "Shopify", "Kaizena Flow", "W", "Plan", "Gap and evidence"],
     own.map((r) => [
       cell(r.feature),
       shopifyCell(r),

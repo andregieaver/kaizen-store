@@ -131,7 +131,7 @@ export async function startEnrolment(now: Date = new Date()): Promise<EnrolStart
   try {
     const supabase = await createClient();
     for (const stale of known.factors.filter((factor) => factor.status !== "verified")) await supabase.auth.mfa.unenroll({ factorId: stale.id });
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "Kaizen Store", friendlyName: `Authenticator ${now.toISOString()}` });
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "Kaizena Flow", friendlyName: `Authenticator ${now.toISOString()}` });
     if (error || !data || data.type !== "totp") return { ok: false, problem: "Two-step sign-in could not be started. Try again." };
     return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
   } catch {

@@ -158,7 +158,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   bonus_entries: never("Customers' bonus credits (D130) are their balance with the original store, like their orders' payments."),
   affiliates: never("Customers' referral codes (D131) belong to the original store's customers; a copied customer makes theirs again when they open Refer a friend."),
   affiliate_attributions: never("Which order came through whose link, and what it earned (D131), is history of the original store: a copied order never carries a referral."),
-  referrals: never("Kaizen's referral program (D131) is the platform's: a store referred by a link stays so, and a copy is not a new referral."),
+  referrals: never("Kaizena Flow's referral program (D131) is the platform's: a store referred by a link stays so, and a copy is not a new referral."),
   referral_visits: never("Counts of visits to referral links by day and code (D131), with nothing about the visitor; they stay where they were counted."),
   ai_providers: never("The owner's own AI keys are secrets."),
   ai_usage: never("A log of the original's AI use."),

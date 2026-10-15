@@ -14,11 +14,11 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/invoice-settings.ts": { count: 1, reason: "reads `payment_providers` (the store's Stripe settings), not payments" },
   "src/server/settings.ts": { count: 6, reason: "reads `payment_providers` (the store's Stripe switches and keys), not payments" },
   "src/server/control-center.ts": { count: 1, reason: "reads `payment_providers` (is Stripe on), not payments" },
-  "src/server/connect.ts": { count: 2, reason: "reads `platform_webhooks`, Kaizen's own endpoints at Stripe" },
+  "src/server/connect.ts": { count: 2, reason: "reads `platform_webhooks`, Kaizena Flow's own endpoints at Stripe" },
   "src/server/referral-billing.ts": { count: 1, reason: "reads `platform_webhooks`" },
   "src/server/stripe-refunds.ts": { count: 1, reason: "a refund Stripe reports belongs to the Stripe payment it names; a manual refund is never reported by Stripe" },
   "src/server/stripe-webhooks.ts": { count: 3, reason: "Stripe's events and sessions find the Stripe payment by its provider reference" },
-  "src/server/subscriptions.ts": { count: 3, reason: "a subscription's payments and Kaizen's webhook endpoint are Stripe's; a draft order is never a subscription" },
+  "src/server/subscriptions.ts": { count: 3, reason: "a subscription's payments and Kaizena Flow's webhook endpoint are Stripe's; a draft order is never a subscription" },
   "src/server/standing-orders.ts": { count: 2, reason: "a weekly delivery's saved card and pay link are Stripe's; a draft order is never a delivery" },
   "src/server/no-show.ts": { count: 1, reason: "a no-show fee is charged to the card Stripe saved with a deposit; a booking is never a draft order" },
   "src/server/dac7.ts": { count: 2, reason: "a host's orders are paid through Stripe on the host's account (D71); a draft order has no host" },
@@ -37,15 +37,15 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/exchanges.ts": {
     count: 6,
     reason:
-      "exchanges (D239): which of the original order's captured payments the transfer comes from (Stripe's first, then manual) and whether Kaizen can refund it (Stripe on a connected account, or manual); the Stripe session of a difference; the manual payment of a difference recorded outside Kaizen; a returned order's Stripe mode for the test-mode block",
+      "exchanges (D239): which of the original order's captured payments the transfer comes from (Stripe's first, then manual) and whether Kaizena Flow can refund it (Stripe on a connected account, or manual); the Stripe session of a difference; the manual payment of a difference recorded outside Kaizena Flow; a returned order's Stripe mode for the test-mode block",
   },
   "src/server/exchange-pay.ts": { count: 1, reason: "the exchange's pay link counts its Stripe sessions for a new idempotency key per press (D239)" },
   "src/server/order-edits.ts": {
     count: 7,
     reason:
-      "an order change (D174): whether the order was paid through Stripe (a lower total is refunded there) or only outside Kaizen (refunded by being recorded), its test mode, what is left to refund (Stripe's and manual's captured money), the manual payment that records a change paid outside Kaizen, and the order's cash recorded outside Kaizen for the country's cash ceiling (review fix)",
+      "an order change (D174): whether the order was paid through Stripe (a lower total is refunded there) or only outside Kaizena Flow (refunded by being recorded), its test mode, what is left to refund (Stripe's and manual's captured money), the manual payment that records a change paid outside Kaizena Flow, and the order's cash recorded outside Kaizena Flow for the country's cash ceiling (review fix)",
   },
-  "src/server/order-edit-emails.ts": { count: 1, reason: "the change email says the store pays a refund back itself when the refunded payment was taken outside Kaizen (manual)" },
+  "src/server/order-edit-emails.ts": { count: 1, reason: "the change email says the store pays a refund back itself when the refunded payment was taken outside Kaizena Flow (manual)" },
   "src/server/order-export.ts": { count: 1, reason: "flags a venue payment made in Stripe's test mode in the order file; a manual payment is never a test payment (`payments_manual_real`)" },
   "src/server/orders.ts": { count: 3, reason: "the order page's key reads stripe, venue and manual payments; the other two read `payment_providers`" },
   "src/server/booking-changes.ts": { count: 1, reason: "the order page's key: stripe, venue and manual" },
@@ -90,7 +90,7 @@ describe("every reader of payments.provider is known and says why (D173 review)"
     for (const [file, entry] of Object.entries(READERS)) expect(entry.reason.length, file).toBeGreaterThan(20);
   });
 
-  it("leaves 'manual' out of no list that holds both 'stripe' and 'venue': the order page's key must see a payment taken outside Kaizen", () => {
+  it("leaves 'manual' out of no list that holds both 'stripe' and 'venue': the order page's key must see a payment taken outside Kaizena Flow", () => {
     const missing: string[] = [];
     for (const file of files) {
       const text = readFileSync(file, "utf8");

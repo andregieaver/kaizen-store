@@ -8,20 +8,20 @@ import { bpsText } from "./referrals";
  * customers: a store's name only.
  */
 
-const FOOTER = ["Kaizen · kaizenstore.cloud"];
+const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 export function referredStoreOpenedEmail(input: { storeName: string; commissionBps: number; months: number; url: string }): EmailContent {
   return {
     subject: `${input.storeName} opened its store through your link`,
-    preview: `You earn ${bpsText(input.commissionBps)} of what it pays Kaizen for ${input.months} months, as credit on your own invoices.`,
+    preview: `You earn ${bpsText(input.commissionBps)} of what it pays Kaizena Flow for ${input.months} months, as credit on your own invoices.`,
     lang: "en",
     footer: FOOTER,
     blocks: [
       { type: "heading", text: "Your referral opened a store" },
-      { type: "paragraph", text: `${input.storeName} opened its Kaizen store through your referral link.` },
+      { type: "paragraph", text: `${input.storeName} opened its Kaizena Flow store through your referral link.` },
       {
         type: "paragraph",
-        text: `For the next ${input.months} months you earn ${bpsText(input.commissionBps)} of the fees it pays Kaizen, its plan and Kaizen's fee on its sales, as credit on your own Kaizen invoices. Credit can be used a few weeks after the fee is paid.`,
+        text: `For the next ${input.months} months you earn ${bpsText(input.commissionBps)} of the fees it pays Kaizena Flow, its plan and Kaizena Flow's fee on its sales, as credit on your own Kaizena Flow invoices. Credit can be used a few weeks after the fee is paid.`,
       },
       { type: "button", text: "See your referrals", url: input.url },
     ],
@@ -37,7 +37,7 @@ export function referralCreditAppliedEmail(input: {
   const amount = formatMoney(input.amountMinor, input.currency, "en-GB");
   const invoice = input.invoiceNumber ? `invoice ${input.invoiceNumber}` : "your next invoice";
   return {
-    subject: `${amount} of referral credit was taken off your Kaizen invoice`,
+    subject: `${amount} of referral credit was taken off your Kaizena Flow invoice`,
     preview: `Your referral credit paid for part of ${invoice}.`,
     lang: "en",
     footer: FOOTER,

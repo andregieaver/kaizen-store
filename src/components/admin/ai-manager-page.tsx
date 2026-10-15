@@ -42,7 +42,7 @@ export async function AiManagerPage({
     <div className="flex flex-col gap-4">
       <PageHeader
         title="AI manager"
-        description={<>Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizen"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).</>}
+        description={<>Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizena Flow"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).</>}
       />
       <nav aria-label="AI manager" className="flex gap-1">
         <Link href={base} className={tabClass(!memory)} aria-current={!memory ? "page" : undefined}>

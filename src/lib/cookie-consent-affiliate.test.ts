@@ -14,7 +14,7 @@ describe("a store's referral cookie, on the cookie page", () => {
     expect(knownCookie("kaizen_aff_not-an-id")).toBeNull();
   });
 
-  it("is listed only for a store whose program is on, never on Kaizen's own site", () => {
+  it("is listed only for a store whose program is on, never on Kaizena Flow's own site", () => {
     expect(declaredCookies("store", {}).map((c) => c.name)).not.toContain("kaizen_aff_…");
     expect(declaredCookies("store", {}, { affiliate: true }).map((c) => c.name)).toContain("kaizen_aff_…");
     expect(declaredCookies("platform", {}, { affiliate: true }).map((c) => c.name)).not.toContain("kaizen_aff_…");
@@ -28,7 +28,7 @@ describe("a store's referral cookie, on the cookie page", () => {
 
   it("says what it is for in every language the site's texts are written in, and how long at most", () => {
     const cookie = KNOWN_COOKIES.find((c) => c.affiliate);
-    expect(cookie).toMatchObject({ provider: "Kaizen", on: "store", days: 90 });
+    expect(cookie).toMatchObject({ provider: "Kaizena Flow", on: "store", days: 90 });
     for (const lang of ["en", "nb", "sv", "da"]) expect(cookiePurpose(cookie!, lang).length, lang).toBeGreaterThan(30);
     expect(cookiePurpose(cookie!, "nb")).toMatch(/venn/i);
   });

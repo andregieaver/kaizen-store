@@ -397,7 +397,7 @@ describe("the languages", () => {
   });
 });
 
-describe("an invoice for a payment the seller took outside Kaizen (D173)", () => {
+describe("an invoice for a payment the seller took outside Kaizena Flow (D173)", () => {
   const manual = (locale: string, method: "cash" | "bank_transfer" | "other") =>
     buildInvoiceSnapshot(facts([line("a", "Ullgenser", 90000, 1, 0.25)], { locale, onlineProvider: "manual", onlineMethod: method }), ctx);
 

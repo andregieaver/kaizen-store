@@ -30,7 +30,7 @@ export default async function PlatformCookiesPage() {
     <>
       <PageHeader
         title="Cookies and tracking"
-        description={<>What Kaizen&apos;s own site stores in visitors&apos; browsers, the tools it uses to measure and market, and the choices visitors make. Each store sets its own under Cookies and tracking in its admin.</>}
+        description={<>What Kaizena Flow&apos;s own site stores in visitors&apos; browsers, the tools it uses to measure and market, and the choices visitors make. Each store sets its own under Cookies and tracking in its admin.</>}
       />
       <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" />
       <CookieScanPanel

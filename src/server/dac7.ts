@@ -324,7 +324,7 @@ export function dac7Csv(report: Dac7Report, part: "sellers" | "properties"): str
         "Business registration number", "IBAN", "Currency",
         ...Q.map((q) => `Consideration ${q}`), ...Q.map((q) => `Commission ${q}`), ...Q.map((q) => `Activities ${q}`),
         // Not asked for by DAC7: for the store's own records.
-        ...Q.map((q) => `Kaizen fee ${q}`), ...Q.map((q) => `Net earnings ${q}`),
+        ...Q.map((q) => `Kaizena Flow fee ${q}`), ...Q.map((q) => `Net earnings ${q}`),
       ],
       ...report.sellers.map((s) => [
         s.name, s.email, s.details?.kind ?? "", s.details?.legalName ?? "", s.details?.dateOfBirth ?? "", s.details?.address ?? "",

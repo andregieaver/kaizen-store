@@ -19,7 +19,7 @@ export default async function KaizenSupportRepliesPage() {
   const replies = await listReplies(staff);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Saved replies" description={<>Answers Kaizen&apos;s people use often, put in a reply with / in the inbox.</>} />
+      <PageHeader title="Saved replies" description={<>Answers Kaizena Flow&apos;s people use often, put in a reply with / in the inbox.</>} />
       <RepliesManager replies={replies} languages={KAIZEN_LANGUAGES.map((code) => ({ code, name: languageName(code) }))} save={saveKaizenReplyAction} remove={deleteKaizenReplyAction} />
     </div>
   );

@@ -19,7 +19,7 @@ describe("where a custom fields component may be (D118)", () => {
     expect(pageRulesProblem(store, "article", withBlock(fields))).toBeNull();
   });
 
-  it("is refused on Kaizen's own pages, headers, footers and product layouts", () => {
+  it("is refused on Kaizena Flow's own pages, headers, footers and product layouts", () => {
     expect(pageRulesProblem(null, "page", withBlock(fields))).toMatch(/store's pages and articles/);
     expect(pageRulesProblem(store, "product_layout", withBlock(fields))).toMatch(/store's pages and articles/);
     // A header or footer is refused for other reasons first; never accepted.
@@ -36,7 +36,7 @@ describe("where a custom fields component may be (D118)", () => {
 describe("the store's own custom fields in headers, footers and product layouts (D120)", () => {
   const ofStore: PageBlock = { id: "cf", type: "customField", source: "store" };
 
-  it("may be shown wherever a store has a layout, but never Kaizen's own pages", () => {
+  it("may be shown wherever a store has a layout, but never Kaizena Flow's own pages", () => {
     expect(pageRulesProblem(store, "header", withBlock(ofStore))).toBeNull();
     expect(pageRulesProblem(store, "product_layout", withBlock(ofStore))).toBeNull();
     expect(pageRulesProblem(store, "page", withBlock(ofStore))).toBeNull();
@@ -52,15 +52,15 @@ describe("the store's own custom fields in headers, footers and product layouts 
 describe("where a plans component may be (D142)", () => {
   const plans: PageBlock = { id: "pl", type: "plans", buttonLabel: "", buttonHref: "" };
 
-  it("belongs on Kaizen's own pages, which sell its plans", () => {
+  it("belongs on Kaizena Flow's own pages, which sell its plans", () => {
     expect(pageRulesProblem(null, "page", withBlock(plans))).toBeNull();
     expect(pageRulesProblem(null, "article", withBlock(plans))).toBeNull();
   });
 
-  it("is refused on a store's pages: a store does not sell Kaizen's plans", () => {
+  it("is refused on a store's pages: a store does not sell Kaizena Flow's plans", () => {
     for (const type of ["page", "article", "header", "footer"] as PageType[]) {
       expect(pageRulesProblem(store, type, withBlock(plans))).not.toBeNull();
     }
-    expect(pageRulesProblem(store, "page", withBlock(plans))).toMatch(/Kaizen's own pages/);
+    expect(pageRulesProblem(store, "page", withBlock(plans))).toMatch(/Kaizena Flow's own pages/);
   });
 });

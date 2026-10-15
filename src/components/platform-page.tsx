@@ -24,14 +24,14 @@ export function platformPageMetadata(page: PublishedPage, url: string): Metadata
   const description = c.seo.description || pageExcerpt(c) || PLATFORM_DEFAULTS.description;
   const images = c.thumbnail
     ? [{ url: c.thumbnail.url, alt: c.thumbnail.alt || c.title, width: c.thumbnail.width, height: c.thumbnail.height }]
-    : [{ url: "/og.png", alt: "Kaizen", width: 1200, height: 630 }];
+    : [{ url: "/og.png", alt: "Kaizena Flow", width: 1200, height: 630 }];
   return {
     // The page's own search title is used as written; otherwise "Title · Kaizen".
     title: c.seo.title ? { absolute: c.seo.title } : c.title,
     description,
     alternates: { canonical: url },
     ...(!c.searchEngines && { robots: { index: false } }),
-    openGraph: { type: "article", siteName: "Kaizen", locale: "en_GB", url, title, description, images },
+    openGraph: { type: "article", siteName: "Kaizena Flow", locale: "en_GB", url, title, description, images },
     twitter: { card: "summary_large_image", title, description, images },
   };
 }

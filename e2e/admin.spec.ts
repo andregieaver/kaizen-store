@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("the admin sends visitors without a session to sign in", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL("/admin/sign-in");
-  await expect(page.getByRole("heading", { name: "Sign in to Kaizen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to Kaizena Flow" })).toBeVisible();
   await expect(page.locator('head meta[name="robots"]').first()).toHaveAttribute(
     "content",
     /noindex/,
@@ -187,7 +187,7 @@ test("the AI manager answers only a signed-in owner or platform admin (D94, D103
   await expect(page).toHaveURL("/admin/sign-in");
 });
 
-test("an app asking to sign someone in with Kaizen Store sends them to sign in first, and back (D95)", async ({ page }) => {
+test("an app asking to sign someone in with Kaizena Flow sends them to sign in first, and back (D95)", async ({ page }) => {
   await page.goto("/admin/oauth/consent?authorization_id=abc12345xyz");
   await expect(page).toHaveURL(/\/admin\/sign-in\?next=%2Fadmin%2Foauth%2Fconsent%3Fauthorization_id%3Dabc12345xyz$/);
   // The way back is kept through the sign-in form.
@@ -200,7 +200,7 @@ test("an app asking to sign someone in with Kaizen Store sends them to sign in f
 
 test("someone from Kaizen Life without a store asks for one with what Kaizen Life knows (D95)", async ({ page }) => {
   await page.goto("/sign-up?via=kaizen-life&email=kari%40example.com&name=Kari%20Nordmann");
-  await expect(page.getByText("No Kaizen Store account uses kari@example.com yet.")).toBeVisible();
+  await expect(page.getByText("No Kaizena Flow account uses kari@example.com yet.")).toBeVisible();
   await expect(page.getByLabel("Your name")).toHaveValue("Kari Nordmann");
   await expect(page.getByLabel("Email")).toHaveValue("kari@example.com");
   await page.goto("/sign-up");

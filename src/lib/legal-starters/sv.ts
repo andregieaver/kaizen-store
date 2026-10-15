@@ -13,7 +13,7 @@ export const SV: StarterText = {
   locale: "sv-SE",
   m: {
     notice:
-      "UTKAST: måste granskas juridiskt före användning. Kaizen Store har gjort den här texten av butikens uppgifter som en utgångspunkt. Den är inte juridisk rådgivning och ingen jurist har kontrollerat den. Läs varje mening, fyll i delarna inom [[hakparenteser]] och ta bort den här anteckningen när du har gjort det.",
+      "UTKAST: måste granskas juridiskt före användning. Kaizena Flow har gjort den här texten av butikens uppgifter som en utgångspunkt. Den är inte juridisk rådgivning och ingen jurist har kontrollerat den. Läs varje mening, fyll i delarna inom [[hakparenteser]] och ta bort den här anteckningen när du har gjort det.",
     "notice.language": "Den här texten är på svenska eftersom den inte finns på butikens språk: låt en person översätta och granska den före användning.",
     "ph.add": "Lägg till",
     "ph.check": "Kontrollera",
@@ -143,7 +143,7 @@ export const SV: StarterText = {
 
     "h.privacy.controller": "Vem som är ansvarig",
     "privacy.controller.1": "{name}, organisationsnummer {org}, adress {address}, driver {store} och är personuppgiftsansvarig för de personuppgifter som beskrivs här.",
-    "privacy.controller.2": "Butiken körs på plattformen Kaizen Store. Plattformen behandlar personuppgifter för vår räkning, som vårt personuppgiftsbiträde.",
+    "privacy.controller.2": "Butiken körs på plattformen Kaizena Flow. Plattformen behandlar personuppgifter för vår räkning, som vårt personuppgiftsbiträde.",
     "h.privacy.contact": "Kontakt",
     "privacy.contact.1": "Frågor om dina personuppgifter: {email}. Telefon: {phone}.",
     "h.privacy.purposes_basis": "Vad vi använder uppgifterna till",
@@ -156,7 +156,7 @@ export const SV: StarterText = {
     "privacy.purpose.visits": "att räkna besök i butiken utan cookies, för att se hur den används; vi sparar ingen IP-adress och ingen webbläsaridentifierare (vårt berättigade intresse)",
     "h.privacy.recipients": "Vilka som får uppgifterna",
     "privacy.recipients.1": "Vi delar personuppgifter bara med dem som behöver dem:",
-    "privacy.recipient.platform": "plattformen Kaizen Store, som driver butiken och behandlar uppgifter för vår räkning",
+    "privacy.recipient.platform": "plattformen Kaizena Flow, som driver butiken och behandlar uppgifter för vår räkning",
     "privacy.recipient.stripe": "Stripe, vår betaltjänstleverantör, som hanterar betalningar",
     "privacy.recipient.email": "den e-posttjänst som plattformen använder för att skicka orderbekräftelser och andra meddelanden till dig",
     "privacy.recipient.carriers": "fraktbolag som levererar dina varor: {carriers}",

@@ -12,7 +12,7 @@ export const EN: StarterText = {
   m: {
     // The notice every starter opens with, and the extra sentence for a store whose language is not one of the four.
     notice:
-      "DRAFT: needs legal review before use. Kaizen Store made this text from your store's details as a starting point. It is not legal advice and no lawyer has checked it. Read every sentence, fill in the [[bracketed]] parts, and delete this notice when you have.",
+      "DRAFT: needs legal review before use. Kaizena Flow made this text from your store's details as a starting point. It is not legal advice and no lawyer has checked it. Read every sentence, fill in the [[bracketed]] parts, and delete this notice when you have.",
     "notice.language": "This text is in English because it is not available in your store's language: have it translated and reviewed by a person before use.",
     "ph.add": "Add",
     "ph.check": "Check",
@@ -147,7 +147,7 @@ export const EN: StarterText = {
     // Privacy statement.
     "h.privacy.controller": "Who is responsible",
     "privacy.controller.1": "{name}, organisation number {org}, address {address}, runs {store} and is the controller of the personal data described here.",
-    "privacy.controller.2": "The store runs on the Kaizen Store platform. The platform processes personal data on our behalf, as our processor.",
+    "privacy.controller.2": "The store runs on the Kaizena Flow platform. The platform processes personal data on our behalf, as our processor.",
     "h.privacy.contact": "Contact",
     "privacy.contact.1": "Questions about your personal data: {email}. Phone: {phone}.",
     "h.privacy.purposes_basis": "What we use your data for",
@@ -160,7 +160,7 @@ export const EN: StarterText = {
     "privacy.purpose.visits": "to count visits to the store without cookies, to see how it is used; we keep no IP address and no user agent (our legitimate interest)",
     "h.privacy.recipients": "Who receives your data",
     "privacy.recipients.1": "We share personal data only with those who need it:",
-    "privacy.recipient.platform": "the Kaizen Store platform, which runs the store and processes data on our behalf",
+    "privacy.recipient.platform": "the Kaizena Flow platform, which runs the store and processes data on our behalf",
     "privacy.recipient.stripe": "Stripe, our payment provider, which handles payments",
     "privacy.recipient.email": "the email service the platform uses to send order confirmations and other messages to you",
     "privacy.recipient.carriers": "carriers that deliver your goods: {carriers}",

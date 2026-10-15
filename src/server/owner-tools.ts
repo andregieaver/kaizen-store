@@ -759,7 +759,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
             step(p.products, "Own products (not only the demo ones)", "/products"),
           ]
         : []),
-      step(p.plan, "A Kaizen plan", "/billing"),
+      step(p.plan, "A Kaizena Flow plan", "/billing"),
     ],
     ...(selling && { products: { own: p.counts.ownProducts, demo: p.counts.demoProducts } }),
   };
@@ -818,7 +818,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
   for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
   // The history of stock (D172): the movements of a variant at a location add up to its level; a pair that does not is a level written in a way no trigger saw.
-  add(ledger.length > 0, `The stock history does not add up for ${ledger.length === 50 ? "50 or more" : ledger.length} variant(s) at a location. Tell Kaizen's support.`, "/inventory/history");
+  add(ledger.length > 0, `The stock history does not add up for ${ledger.length === 50 ? "50 or more" : ledger.length} variant(s) at a location. Tell Kaizena Flow's support.`, "/inventory/history");
   // The tax profile (D157): registered without a number, a number never checked valid, IOSS or OSS half filled in.
   for (const finding of taxFindings) add(true, finding.message, "/settings/tax");
   // Invoices and credit notes (D159): numbering in sequence, invoices waiting, a refund with no credit note, PDFs that could not be made.
@@ -1084,7 +1084,7 @@ async function refundOrderTool(ctx: OwnerToolContext, { order, amount, reason, r
   const admin = await getOrderAdmin(store.id, orderId);
   if (!admin) return fail(`No order ${order} in this store.`);
   // Money taken outside Kaizen (D173, a draft order paid in cash or by bank transfer): nothing can be sent from here, and a refund there is only RECORDED once someone has paid the customer back, on the order's page.
-  if (admin.paidOutside) return fail(`Order ${admin.number} was paid outside Kaizen (${admin.paidOutside.method.replace("_", " ")}), so there is nothing to send back through Stripe. Whoever pays the customer back records the refund on the order's page.`);
+  if (admin.paidOutside) return fail(`Order ${admin.number} was paid outside Kaizena Flow (${admin.paidOutside.method.replace("_", " ")}), so there is nothing to send back through Stripe. Whoever pays the customer back records the refund on the order's page.`);
   if (!admin.canRefund || admin.refundableMinor <= 0) return fail(`Order ${admin.number} has nothing left to refund through Stripe.`);
   const amountMinor = amount ? parsePrice(amount, admin.currency) : admin.refundableMinor;
   if (amountMinor === null || amountMinor <= 0) return fail(`"${amount}" is not an amount.`);

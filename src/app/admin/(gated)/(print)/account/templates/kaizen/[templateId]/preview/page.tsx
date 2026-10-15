@@ -66,7 +66,7 @@ export default async function KaizenTemplatePreviewPage({
             ) : type === "footer" ? (
               <KaizenSiteFooter chrome={chrome} layout={{ id: preview.id, content }} />
             ) : type === "article" ? (
-              <ArticleView content={content} date={null} byline="Kaizen" lang="en" locale="en-GB" place={place} inAdmin />
+              <ArticleView content={content} date={null} byline="Kaizena Flow" lang="en" locale="en-GB" place={place} inAdmin />
             ) : (
               <PageArticle content={content} place={place} inAdmin />
             )}

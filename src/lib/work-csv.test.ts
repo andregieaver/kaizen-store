@@ -175,7 +175,7 @@ describe("the client period report", () => {
 describe("invoices, payments and credit notes", () => {
   const invoice: InvoiceCsv = {
     documentNumber: "W-1001",
-    sellerName: "Kaizen Consulting AS",
+    sellerName: "Kaizena Flow Consulting AS",
     clientName: "Acme AS",
     clientEmail: "ap@acme.example",
     issuedOn: "2026-09-29",
@@ -201,7 +201,7 @@ describe("invoices, payments and credit notes", () => {
     expect(invoiceToCsv(invoice)).toBe(
       [
         "Invoice number,W-1001",
-        "Seller,Kaizen Consulting AS",
+        "Seller,Kaizena Flow Consulting AS",
         "Client,Acme AS",
         "Client email,ap@acme.example",
         "Issued,2026-09-29",

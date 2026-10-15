@@ -68,7 +68,7 @@ export type SlackWebhook = { url: string; channel: string; team: string };
 /** The callback's code, exchanged for the channel's webhook. */
 export async function slackWebhookFor(params: URLSearchParams): Promise<SlackWebhook> {
   const app = slackApp();
-  if (!app) throw new SlackConnectError("Kaizen's Slack app is not set up here.");
+  if (!app) throw new SlackConnectError("Kaizena Flow's Slack app is not set up here.");
   if (params.get("error")) throw new SlackConnectError(params.get("error") ?? "Cancelled", "cancelled");
   const code = params.get("code");
   if (!code) throw new SlackConnectError("Slack did not connect.");

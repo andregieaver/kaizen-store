@@ -91,8 +91,8 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Kaizen's codes for plans (D31)", () => {
-  it("are made in Kaizen and put in Stripe as a coupon and a promotion code", async () => {
+describe("Kaizena Flow's codes for plans (D31)", () => {
+  it("are made in Kaizena Flow and put in Stripe as a coupon and a promotion code", async () => {
     const result = await createPlatformDiscount(
       admin,
       { code: `start${run}`, kind: "percent", percent: "20", duration: "repeating", durationMonths: "3", maxRedemptions: "50" },
@@ -176,7 +176,7 @@ describe("Kaizen's codes for plans (D31)", () => {
     await applySubscription({ ...structuredClone(fake.subscription), discounts: [] } as unknown as Stripe.Subscription, "test");
   });
 
-  it("stop working when switched off, in Kaizen and in Stripe", async () => {
+  it("stop working when switched off, in Kaizena Flow and in Stripe", async () => {
     const [row] = await db().execute<Row>(sql`select id from commerce.platform_discount_codes where code = ${`START${run}`}`);
     expect(await setPlatformDiscountActive(admin, String(row.id), false)).toMatchObject({ ok: true });
     expect(fake.calls.at(-1)).toMatchObject({ method: "promotionCodes.update", params: { active: false } });

@@ -192,7 +192,7 @@ describe("the history's words for parcels and changes (fulfilmentEventText)", ()
     expect(fulfilmentEventText("order.edit_sent", { label: "E2", difference: 14900, emailed: true }, money)).toBe("Change E2 waiting for the customer's payment of 149.00 kr: emailed to the customer");
     expect(fulfilmentEventText("order.edit_sent", { label: "E2", again: true, emailed: false }, money)).toBe("New pay link for change E2: made into a link to share");
     expect(fulfilmentEventText("order.edit_expired", { label: "E2" }, money)).toBe("Change expired unpaid (E2)");
-    expect(fulfilmentEventText("order.edit_paid_outside", { label: "E3", method: "bank_transfer", note: "ref 77" }, money)).toBe("Change paid outside Kaizen (E3): bank transfer · ref 77");
+    expect(fulfilmentEventText("order.edit_paid_outside", { label: "E3", method: "bank_transfer", note: "ref 77" }, money)).toBe("Change paid outside Kaizena Flow (E3): bank transfer · ref 77");
     expect(fulfilmentEventText("order.edit_payment_refunded", { label: "E3", amount: 14900 }, money)).toMatch(/149\.00 kr given back/);
   });
 

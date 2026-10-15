@@ -175,10 +175,10 @@ describe("reading", () => {
     expect(file.ignored).toEqual([]);
   });
 
-  it("ignores a column Kaizen does not have, with a reason, and keeps one a language or a field makes", () => {
+  it("ignores a column Kaizena Flow does not have, with a reason, and keeps one a language or a field makes", () => {
     const rows = [["handle", "title", "color", "title:sv-SE", "field:anything", "price:DK"], ["a", "A", "red", "Å", "x", "5"]];
     const file = readNeutral(rows, ctx);
-    expect(file.ignored).toEqual([{ column: "color", reason: "Kaizen does not have this column" }]);
+    expect(file.ignored).toEqual([{ column: "color", reason: "Kaizena Flow does not have this column" }]);
     expect([...file.columns].sort()).toEqual(["field:anything", "handle", "price:DK", "title", "title:sv-SE"]);
   });
 

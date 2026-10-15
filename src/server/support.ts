@@ -872,7 +872,7 @@ export async function agentIdentity(desk: Desk, accountId: string, settings?: Pi
     left join commerce.stores s on s.id = ${desk.storeId}::uuid
     where a.id = ${accountId}::uuid
   `);
-  const deskName = row?.store_name ? String(row.store_name) : "Kaizen";
+  const deskName = row?.store_name ? String(row.store_name) : "Kaizena Flow";
   const naming = settings?.agentNaming ?? (row?.naming === "desk" ? "desk" : "first_name");
   const first = String(row?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const name = row?.display_name ? String(row.display_name) : naming === "desk" ? deskName : first || deskName;

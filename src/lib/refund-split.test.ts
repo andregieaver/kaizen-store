@@ -29,7 +29,7 @@ describe("splitRefund", () => {
     expect(splitRefund([A], 1.5)).toBeNull();
   });
 
-  it("keeps a payment taken outside Kaizen as its own part", () => {
+  it("keeps a payment taken outside Kaizena Flow as its own part", () => {
     expect(splitRefund([A, { id: "m", provider: "manual", leftMinor: 1_000 }], 30_000)).toEqual([
       { paymentId: "a", provider: "stripe", amountMinor: 29_800 },
       { paymentId: "m", provider: "manual", amountMinor: 200 },

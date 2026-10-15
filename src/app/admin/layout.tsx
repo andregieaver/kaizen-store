@@ -15,7 +15,7 @@ import "./admin.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: { default: "Kaizen admin", template: "%s · Kaizen admin" },
+    title: { default: "Kaizena Flow admin", template: "%s · Kaizena Flow admin" },
     robots: { index: false, follow: false },
     // Kaizen's icon (D62).
     icons: siteIcons(await getPlatformFavicon()),

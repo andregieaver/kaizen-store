@@ -231,7 +231,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   let hint: string | null = null;
   if (input.apiKey) {
     const key = encryptionKey();
-    if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+    if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the key safe right now, so it was not saved. Try again later."] };
     encrypted = encryptSecret(input.apiKey, key);
     hint = keyHint(input.apiKey);
   } else if (!sameEndpoint) {
@@ -243,7 +243,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   let imageHint: string | null = null;
   if (input.imageProvider && input.imageApiKey) {
     const key = encryptionKey();
-    if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+    if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the key safe right now, so it was not saved. Try again later."] };
     imageEncrypted = encryptSecret(input.imageApiKey, key);
     imageHint = keyHint(input.imageApiKey);
   } else if (input.imageProvider && !(existing?.imageProvider === input.imageProvider && existing.imageBaseUrl === imageBaseUrl)) {
@@ -255,7 +255,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   let liveHint: string | null = null;
   if (input.liveProvider && input.liveApiKey) {
     const key = encryptionKey();
-    if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+    if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the key safe right now, so it was not saved. Try again later."] };
     liveEncrypted = encryptSecret(input.liveApiKey, key);
     liveHint = keyHint(input.liveApiKey);
   } else if (input.liveProvider && !(existing?.liveProvider === input.liveProvider && existing.liveBaseUrl === liveBaseUrl)) {

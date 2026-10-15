@@ -10,7 +10,7 @@ import { isOwner } from "@/server/kaizen-life";
 import { decideConsentAction } from "./actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
-export const metadata: Metadata = { title: "Sign in with Kaizen Store" };
+export const metadata: Metadata = { title: "Sign in with Kaizena Flow" };
 
 /** What each scope an app asks for shares, in words. */
 const SCOPE_WORDS: Record<string, string> = {
@@ -55,7 +55,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
       <FocusFrame>
         <FocusHeading title="For store owners" />
         <p className="text-sm">
-          Only store owners can sign in to other apps with their Kaizen Store account. You are signed in as {account.email}.
+          Only store owners can sign in to other apps with their Kaizena Flow account. You are signed in as {account.email}.
         </p>
         <form action={decideConsentAction}>
           <input type="hidden" name="authorization_id" value={id} />
@@ -82,7 +82,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   const app = data.client.name || "An app";
   return (
     <FocusFrame>
-      <FocusHeading title={<>Sign in to {app} with Kaizen Store</>} />
+      <FocusHeading title={<>Sign in to {app} with Kaizena Flow</>} />
       {failed && (
         <p role="alert" className="text-sm">
           That did not go through. Try again.

@@ -71,7 +71,7 @@ export default async function PlanRemindersPage() {
         <div className="max-w-2xl text-body text-ink-2">
           <p>
             {settings.enabled
-              ? "When an owner goes to Stripe to pay for a plan, Kaizen keeps their email and the plan. The owner's Billing page and Stripe's page say a reminder may come; the Billing page and every reminder let the owner say no. Reminders stop once the store is on a plan, and emails are erased after 60 days."
+              ? "When an owner goes to Stripe to pay for a plan, Kaizena Flow keeps their email and the plan. The owner's Billing page and Stripe's page say a reminder may come; the Billing page and every reminder let the owner say no. Reminders stop once the store is on a plan, and emails are erased after 60 days."
               : "Turn them on to start with three reminders, after an hour, a day and three days, which you can change."}
           </p>
         </div>

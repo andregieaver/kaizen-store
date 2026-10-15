@@ -130,7 +130,7 @@ describe("saving and publishing", () => {
     expect(redirect).toBeUndefined();
   });
 
-  it("refuses an address another page has, and one Kaizen uses", async () => {
+  it("refuses an address another page has, and one Kaizena Flow uses", async () => {
     const slug = `taken-${run}`;
     await saved(await pages.savePage(admin, null, null, content(slug), { publish: false }));
     expect(await pages.savePage(admin, null, null, content(slug), { publish: false })).toEqual({
@@ -211,7 +211,7 @@ describe("search engines, AI assistants and menus", () => {
     const menus = await import("./menus");
     const id = await saved(await pages.savePage(admin, null, null, content(`menu-${run}`), { publish: false }));
     const menu = await menus.savePlatformMenu(admin, null, {
-      name: `Kaizen ${run}`,
+      name: `Kaizena Flow ${run}`,
       items: [
         { label: {}, link: { kind: "page", pageId: id }, depth: 0 },
         { label: { en: "Docs" }, link: { kind: "url", url: "https://example.com" }, depth: 1 },
@@ -219,11 +219,11 @@ describe("search engines, AI assistants and menus", () => {
     });
     if (!menu.ok) throw new Error(menu.problems.join(" "));
     const original = await nav.getPlatformNavigationForEdit();
-    const business = { legalName: "Kaizen AS", organisationNumber: "123 456 789", postalAddress: "Oslo", contactEmail: "hei@example.com" };
+    const business = { legalName: "Kaizena Flow AS", organisationNumber: "123 456 789", postalAddress: "Oslo", contactEmail: "hei@example.com" };
     try {
       expect(await nav.savePlatformNavigation(admin, { logo: null, headerMenuId: menu.id, business })).toEqual({ ok: true });
       let chrome = await nav.getPlatformChrome();
-      expect(chrome.business.legalName).toBe("Kaizen AS");
+      expect(chrome.business.legalName).toBe("Kaizena Flow AS");
       expect(chrome.headerMenuId).toBe(menu.id);
       expect(chrome.menus.find((m) => m.id === menu.id)?.items).toHaveLength(2);
       expect(chrome.pages.has(id)).toBe(false);
@@ -234,7 +234,7 @@ describe("search engines, AI assistants and menus", () => {
 
       expect(
         await menus.savePlatformMenu(admin, menu.id, {
-          name: `Kaizen ${run}`,
+          name: `Kaizena Flow ${run}`,
           items: [{ label: {}, link: { kind: "page", pageId: "00000000-0000-4000-8000-000000000000" }, depth: 0 }],
         }),
       ).toEqual({ ok: false, problems: ["A link goes to a page that no longer exists. Choose another."] });
@@ -275,7 +275,7 @@ describe("a store's pages (D53)", () => {
     expect(await pages.deletePage(admin, null, own)).toBe(false);
   });
 
-  it("refuses the store's own routes as addresses, but not Kaizen's", async () => {
+  it("refuses the store's own routes as addresses, but not Kaizena Flow's", async () => {
     expect(await pages.savePage(admin, storeId, null, content("cart"), { publish: false })).toEqual({
       ok: false,
       problems: ["The address cart is used by the store itself. Choose another."],

@@ -210,7 +210,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       );
     case "business": {
       const b = chrome.business;
-      const legal = [b.legalName || "Kaizen", b.organisationNumber && `Org. ${b.organisationNumber}`].filter(Boolean).join(" · ");
+      const legal = [b.legalName || "Kaizena Flow", b.organisationNumber && `Org. ${b.organisationNumber}`].filter(Boolean).join(" · ");
       return <Business legal={legal} address={b.postalAddress} email={b.contactEmail} />;
     }
     case "cookies":

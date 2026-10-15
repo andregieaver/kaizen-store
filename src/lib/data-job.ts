@@ -151,7 +151,7 @@ export const FINDINGS = {
   "file.no_header": { severity: "error", sentence: () => "The file has no header row with column names." },
   "file.unknown_format": {
     severity: "error",
-    sentence: () => "This is not a product file we know. Use a file exported from Kaizen, or Shopify's product export.",
+    sentence: () => "This is not a product file we know. Use a file exported from Kaizena Flow, or Shopify's product export.",
   },
   "file.encoding_assumed": {
     severity: "warning",
@@ -165,7 +165,7 @@ export const FINDINGS = {
   },
   "price_basis.required": {
     severity: "error",
-    sentence: () => "Say whether the prices in this Shopify file include VAT. Kaizen stores prices with VAT, so it cannot guess.",
+    sentence: () => "Say whether the prices in this Shopify file include VAT. Kaizena Flow stores prices with VAT, so it cannot guess.",
   },
   "row.handle_missing": { severity: "error", sentence: () => "This row has no handle, and it is not a picture row of a product above it." },
   "row.handle_invalid": {
@@ -230,7 +230,7 @@ export const FINDINGS = {
   "field.ambiguous": { severity: "error", sentence: (p) => `${col(p)} names more than one custom field of this store. Rename one of them.` },
   "field.invalid": { severity: "error", sentence: (p) => `A value in ${col(p)} of ${prod(p)} is not valid for that field${p.reason ? `: ${p.reason}` : ""}.` },
   "column.ignored": { severity: "info", sentence: (p) => `${col(p)} was left out${p.reason ? `: ${p.reason}` : ""}.` },
-  "giftcard.not_supported": { severity: "error", sentence: (p) => `${prod(p)} is a gift card, which Kaizen does not import.` },
+  "giftcard.not_supported": { severity: "error", sentence: (p) => `${prod(p)} is a gift card, which Kaizena Flow does not import.` },
   "inventory.continue_selling_ignored": {
     severity: "warning",
     sentence: () =>
@@ -242,7 +242,7 @@ export const FINDINGS = {
   },
   "compare_at.ignored": {
     severity: "info",
-    sentence: () => "Compare-at prices are never imported: Kaizen shows a reduction only against the lowest price of the last 30 days, from its own price history.",
+    sentence: () => "Compare-at prices are never imported: Kaizena Flow shows a reduction only against the lowest price of the last 30 days, from its own price history.",
   },
   "product.exists": { severity: "info", sentence: (p) => `${prod(p)} already exists, and this import only creates new products, so it was left as it is.` },
   "product.missing": { severity: "info", sentence: (p) => `${prod(p)} does not exist, and this import only updates existing products, so it was skipped.` },
@@ -294,7 +294,7 @@ export const FINDINGS = {
   "exists.update": { severity: "info", sentence: (p) => `A redirect from ${addr(p)} exists, and its new address is replaced.` },
   "exists.same": { severity: "info", sentence: (p) => `The redirect from ${addr(p)} is already there as it is.` },
   "exists.skipped": { severity: "info", sentence: (p) => `A redirect from ${addr(p)} exists, and the import was told to keep it, so the line was skipped.` },
-  "exists.replaced_automatic": { severity: "info", sentence: (p) => `Kaizen made a redirect from ${addr(p)} when an address changed. This line replaces it.` },
+  "exists.replaced_automatic": { severity: "info", sentence: (p) => `Kaizena Flow made a redirect from ${addr(p)} when an address changed. This line replaces it.` },
   "limit.reached": { severity: "error", sentence: (p) => `The store would have more than ${p.max ?? 100000} redirects of its own, which is the most it can have. Delete some or import fewer.` },
 
   // Stock files (wave 3, D172, docs/wave-3-inventory.md 2.4): a row is a count of one variant at one location. A sentence names a SKU or a column, never a cell.

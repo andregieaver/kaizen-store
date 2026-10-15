@@ -21,7 +21,7 @@ const text = (props: ReturnsViewProps) =>
 const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 const money = (minor: number) => moneyWriter("NOK", "nb-NO")(minor).replace(/[  ]/g, " ");
 
-const NOT_SEEN_RETURNS_NOTE = "Returns made without Kaizen's withdrawal function or a return request (a parcel sent back with no message) are not included.";
+const NOT_SEEN_RETURNS_NOTE = "Returns made without Kaizena Flow's withdrawal function or a return request (a parcel sent back with no message) are not included.";
 
 const noTiming = timingOf([], "a request date");
 
@@ -103,7 +103,7 @@ describe("returnCards", () => {
     expect(cards[2].value).toBe("9.0 %");
     expect(cards[2].hint).toBe(`18 of 200 units sold, so far; worth ${money(690_000)} without VAT.`);
     expect(cards[3].value).toBe(money(570_000));
-    expect(cards[3].hint).toMatch(/10 returns, 2 outside Kaizen's Stripe/);
+    expect(cards[3].hint).toMatch(/10 returns, 2 outside Kaizena Flow's Stripe/);
     expect(cards[4].value).toBe("3 days");
     expect(cards[4].hint).toMatch(/Median of 5 returns; the slowest took 9 days/);
     expect(cards[5].value).toBe("2");
@@ -118,7 +118,7 @@ describe("returnCards", () => {
       expect(c.value, label).toBeNull();
       expect(c.missing?.text, label).toBeTruthy();
     }
-    expect(cards.find((c) => c.label === "Return rate, orders")!.missing!.text).toContain("No return has been recorded in Kaizen yet");
+    expect(cards.find((c) => c.label === "Return rate, orders")!.missing!.text).toContain("No return has been recorded in Kaizena Flow yet");
   });
 
   it("shows the volume it needs when there are too few orders", () => {
@@ -140,7 +140,7 @@ describe("returnCards", () => {
     const never = returnCards(props(normalReport())).find((c) => c.label === "Exchanged")!;
     expect(never.state).toBe("missing");
     expect(never.value).toBeNull();
-    expect(never.missing!.text).toContain("No return has been exchanged in Kaizen yet");
+    expect(never.missing!.text).toContain("No return has been exchanged in Kaizena Flow yet");
 
     const few = returnCards(
       props(normalReport({ exchanges: { returns: 3, share: exchangeShare({ exchanged: 3, returns: 14, tracked: true }), keptMinor: 120_000, transfers: 3, tracked: true } })),
@@ -171,14 +171,14 @@ describe("ReturnsView, a store with no return recorded", () => {
 
   it("is calm: a plain sentence, no tables, no chart, no NaN", () => {
     expect(out).toContain("Returns");
-    expect(out).toContain("No return has been recorded in Kaizen yet, so there are no rates, reasons or products to show.");
+    expect(out).toContain("No return has been recorded in Kaizena Flow yet, so there are no rates, reasons or products to show.");
     expect(out).not.toMatch(BAD);
     expect(out).not.toContain("<svg");
     expect(out).not.toContain("<table");
   });
 
-  it("still says that returns made outside Kaizen are not seen", () => {
-    expect(out).toContain("Returns made outside Kaizen are not seen");
+  it("still says that returns made outside Kaizena Flow are not seen", () => {
+    expect(out).toContain("Returns made outside Kaizena Flow are not seen");
     expect(out).toContain(NOT_SEEN_RETURNS_NOTE);
   });
 });

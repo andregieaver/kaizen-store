@@ -600,7 +600,7 @@ describe("a return's credit note", () => {
     expect(note.snapshot.lines.map((l: any) => l.kind)).toEqual(["refund"]);
   });
 
-  it("P8: a return refunded outside Kaizen gets its note from the return, once", async () => {
+  it("P8: a return refunded outside Kaizena Flow gets its note from the return, once", async () => {
     const o = await placeOrder(db, shop, { lines: [{ sku: "OU1", unit: 7000 }], provider: "venue", account: null });
     expect(o.invoiceId).toBeNull();
     // The store is in test mode until it has a live Stripe account, so a venue order has none; a live store's has.
@@ -711,7 +711,7 @@ describe("what the migration and the registries say", () => {
     expect(rls.rows.map((r) => r.relrowsecurity)).toEqual([true, true, true, true, true]);
   });
 
-  it("every currency Kaizen offers has two decimals, as the SQL assumes (commerce.minor_unit_digits)", async () => {
+  it("every currency Kaizena Flow offers has two decimals, as the SQL assumes (commerce.minor_unit_digits)", async () => {
     expect(OFFERABLE_CURRENCIES.map((c) => minorUnitDigits(c))).toEqual(OFFERABLE_CURRENCIES.map(() => 2));
     expect(await scalar(db, "select commerce.minor_unit_digits('NOK')")).toBe(2);
   });

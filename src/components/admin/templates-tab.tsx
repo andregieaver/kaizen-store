@@ -58,7 +58,7 @@ export function TemplatesTab({
     <>
       <p className="text-xs text-muted">
         {own
-          ? "Kaizen's own templates: page layouts, rows, columns and components saved as templates. Press Preview to see one first, or Use to add a copy to the page."
+          ? "Kaizena Flow's own templates: page layouts, rows, columns and components saved as templates. Press Preview to see one first, or Use to add a copy to the page."
           : "Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to change, and later edits by whoever shared it never reach it."}
       </p>
       <div role="group" aria-label="Templates from" hidden={own} className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">

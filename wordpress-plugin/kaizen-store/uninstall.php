@@ -1,6 +1,6 @@
 <?php
 /**
- * Removes what the plugin keeps outside its views when it is deleted: the connection (Kaizen is told nothing: disconnect first to end
+ * Removes what the plugin keeps outside its views when it is deleted: the connection (Kaizena Flow is told nothing: disconnect first to end
  * the token there), the address setting and the saved product lists. The saved views are the owner's content and are left in place.
  *
  * @package KaizenStore

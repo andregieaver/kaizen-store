@@ -15,7 +15,7 @@ export default async function PlatformSettingsPage() {
   return (
     <SectionHub
       title="Settings"
-      intro="How Kaizen's site is found, what it sets, how it takes payment, its AI, emails and languages."
+      intro="How Kaizena Flow's site is found, what it sets, how it takes payment, its AI, emails and languages."
       items={SETTINGS_ITEMS}
     />
   );

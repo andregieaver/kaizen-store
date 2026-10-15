@@ -170,7 +170,7 @@ describe("the AI manager's support tools and the integrations' event (step 14)",
     expect(JSON.stringify(listed)).not.toMatch(/Hi"|Hello"|A person please|Anyone\?/);
   });
 
-  it("gives the platform Kaizen's desk and the stores' totals, never a store's conversation", async () => {
+  it("gives the platform Kaizena Flow's desk and the stores' totals, never a store's conversation", async () => {
     const overview = await tools.platformSupportOverviewTool();
     expect(overview.kaizen_desk.now).toBeDefined();
     expect(overview.stores_last_30_days.conversations).toBeGreaterThanOrEqual(15);

@@ -15,7 +15,7 @@ export default async function PlatformWebsitePage() {
   return (
     <SectionHub
       title="Website"
-      intro="Everything that makes Kaizen's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts."
+      intro="Everything that makes Kaizena Flow's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts."
       items={WEBSITE_ITEMS}
     />
   );

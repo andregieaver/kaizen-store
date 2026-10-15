@@ -39,7 +39,7 @@ afterAll(async () => {
 });
 
 describe("owners' own CSS (D100)", () => {
-  it("keeps a store's and Kaizen's CSS for every page, only when it can be used", async () => {
+  it("keeps a store's and Kaizena Flow's CSS for every page, only when it can be used", async () => {
     expect(await saveSiteCss(owner, storeId, "  h2 { text-wrap: balance; }  ")).toEqual({ ok: true });
     const [store] = await db().execute<Row>(sql`select custom_css from commerce.stores where id = ${storeId}::uuid`);
     expect(store.custom_css).toBe("h2 { text-wrap: balance; }");

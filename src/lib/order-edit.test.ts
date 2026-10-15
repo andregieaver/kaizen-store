@@ -184,7 +184,7 @@ describe("which orders can be changed (4.4)", () => {
     expect(editBlock(facts({ editCount: 19 }))).toBeNull();
   });
 
-  it("refuses money through Stripe when payments are off or the mode differs, and never for nothing or money outside Kaizen", () => {
+  it("refuses money through Stripe when payments are off or the mode differs, and never for nothing or money outside Kaizena Flow", () => {
     const base = { differenceMinor: -500, throughStripe: true, paymentsOn: true, orderTestMode: false, storeTestMode: false };
     expect(moneyBlock(base)).toBeNull();
     expect(moneyBlock({ ...base, paymentsOn: false })).toBe("payments_off");

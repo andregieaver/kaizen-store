@@ -103,8 +103,8 @@ describe("the credit notes tab", () => {
     expect(text).toContain("1 credit note");
   });
 
-  it("names a return refunded outside Kaizen", () => {
-    expect(draw({ query: query({ tab: "credit-notes" }), documents: { rows: [noteRow({ source: "return_outside" })], total: 1 } }).text).toContain("Return refunded outside Kaizen");
+  it("names a return refunded outside Kaizena Flow", () => {
+    expect(draw({ query: query({ tab: "credit-notes" }), documents: { rows: [noteRow({ source: "return_outside" })], total: 1 } }).text).toContain("Return refunded outside Kaizena Flow");
   });
 
   it("explains an empty month", () => {

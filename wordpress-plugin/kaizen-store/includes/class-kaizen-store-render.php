@@ -1,7 +1,7 @@
 <?php
 /**
  * Draws a view's products as a grid or a carousel. The products, their prices (with VAT as the store shows them, a reduction only when
- * it is a genuine one, the price per kilo or litre) and their words come from Kaizen ready written in the market's language: the plugin
+ * it is a genuine one, the price per kilo or litre) and their words come from Kaizena Flow ready written in the market's language: the plugin
  * never works out or rewrites a price.
  *
  * @package KaizenStore
@@ -17,7 +17,7 @@ class Kaizen_Store_Render {
 	const STALE_PREFIX = 'kaizen_store_s_';
 
 	/**
-	 * Seconds a view's products are kept before Kaizen is asked again.
+	 * Seconds a view's products are kept before Kaizena Flow is asked again.
 	 *
 	 * @return int
 	 */
@@ -26,7 +26,7 @@ class Kaizen_Store_Render {
 	}
 
 	/**
-	 * The products of a view: from the cache while fresh, else from Kaizen; if Kaizen cannot answer, the last good answer (kept for a week).
+	 * The products of a view: from the cache while fresh, else from Kaizena Flow; if Kaizena Flow cannot answer, the last good answer (kept for a week).
 	 *
 	 * @param array $config A view's settings.
 	 * @param bool  $fresh  Skip the cache (the editor's preview).
@@ -46,7 +46,7 @@ class Kaizen_Store_Render {
 		}
 		$view = Kaizen_Store_Api::view( $config['store'], $query );
 		if ( is_wp_error( $view ) ) {
-			// The last good list is only a stand-in while Kaizen cannot answer: a refusal (a disconnected site, a store that is no longer yours) shows nothing.
+			// The last good list is only a stand-in while Kaizena Flow cannot answer: a refusal (a disconnected site, a store that is no longer yours) shows nothing.
 			$outage = in_array( $view->get_error_code(), array( 'kaizen_unreachable', 'kaizen_error', 'kaizen_unavailable', 'kaizen_rate_limited' ), true );
 			$stale  = $fresh || ! $outage ? false : get_transient( self::STALE_PREFIX . $key );
 			if ( ! $outage ) {
@@ -106,7 +106,7 @@ class Kaizen_Store_Render {
 	}
 
 	/**
-	 * The price of a product as Kaizen wrote it.
+	 * The price of a product as Kaizena Flow wrote it.
 	 *
 	 * @param array $price Price from the view.
 	 * @return string
@@ -204,7 +204,7 @@ class Kaizen_Store_Render {
 	}
 
 	/**
-	 * A view's HTML. Only what Kaizen answered, escaped; nothing from the visitor.
+	 * A view's HTML. Only what Kaizena Flow answered, escaped; nothing from the visitor.
 	 *
 	 * @param array $view   Answer of the view call.
 	 * @param array $config A view's settings.
@@ -271,6 +271,6 @@ class Kaizen_Store_Render {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return '';
 		}
-		return '<p class="kaizen-note"><strong>Kaizen Store:</strong> ' . esc_html( $message ) . ' <em>' . esc_html__( '(Only administrators see this message.)', 'kaizen-store' ) . '</em></p>';
+		return '<p class="kaizen-note"><strong>Kaizena Flow:</strong> ' . esc_html( $message ) . ' <em>' . esc_html__( '(Only administrators see this message.)', 'kaizen-store' ) . '</em></p>';
 	}
 }

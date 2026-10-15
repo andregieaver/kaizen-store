@@ -28,7 +28,7 @@ const ITEMS: TemplateItem[] = [
     kind: "block",
     name: "Delivery promise",
     summary: "Text",
-    publisher: "Kaizen",
+    publisher: "Kaizena Flow",
     fromKaizen: true,
     active: true,
   }),

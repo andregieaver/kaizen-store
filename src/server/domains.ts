@@ -98,7 +98,7 @@ export async function addStoreDomain(
   services: DomainServices = vercelDomains,
   configured = domainsConfigured(),
 ): Promise<Result<{ domain: StoreDomain }>> {
-  if (!configured) return { ok: false, problems: ["Custom domains are not set up on Kaizen yet."] };
+  if (!configured) return { ok: false, problems: ["Custom domains are not set up on Kaizena Flow yet."] };
   const parsed = domainInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const { hostname } = parsed.data;
@@ -109,7 +109,7 @@ export async function addStoreDomain(
       exists (select 1 from commerce.store_domains where hostname = ${hostname} and status = 'active') as taken
   `);
   if (counts.mine) return { ok: false, problems: [`${hostname} is already one of your store's domains.`] };
-  if (counts.taken) return { ok: false, problems: [`${hostname} is another store's address on Kaizen.`] };
+  if (counts.taken) return { ok: false, problems: [`${hostname} is another store's address on Kaizena Flow.`] };
   if (Number(counts.own) >= MAX_DOMAINS) return { ok: false, problems: [`A store can have at most ${MAX_DOMAINS} domains.`] };
 
   // On the project already when another store is claiming it too; it stays until neither needs it.
@@ -177,7 +177,7 @@ export async function checkStoreDomain(
         where hostname = ${domain.hostname} and status = 'active' and store_id <> ${storeId}::uuid
       `)
     : [];
-  if (taken) checks = { ...checks, problem: `${domain.hostname} became another store's address on Kaizen first.` };
+  if (taken) checks = { ...checks, problem: `${domain.hostname} became another store's address on Kaizena Flow first.` };
 
   const activate = ready && !taken;
   const save = (found: DomainChecks, active: boolean) =>
@@ -196,7 +196,7 @@ export async function checkStoreDomain(
     `);
   // Two stores proving the same domain at once: the database lets one have it.
   const [updated] = await save(checks, activate).catch(() =>
-    save({ ...checks, problem: `${domain.hostname} became another store's address on Kaizen first.` }, false),
+    save({ ...checks, problem: `${domain.hostname} became another store's address on Kaizena Flow first.` }, false),
   );
   const result = toDomain(updated);
   if (result.status === "active") {

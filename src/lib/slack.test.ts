@@ -15,7 +15,7 @@ const order = {
   shipping_address: { line1: "Storgata 1", city: "Oslo" },
   lines: [{ title: "Handlenett", quantity: 2, total: 398 }],
   shipment: null,
-  admin_url: "https://kaizenstore.cloud/admin/kaffe/orders/abc",
+  admin_url: "https://kaizenaflow.com/admin/kaffe/orders/abc",
 };
 /** Intl writes amounts with no-break spaces; the tests compare plain ones. */
 const spaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
@@ -27,10 +27,10 @@ describe("Slack messages (D101)", () => {
     const message = slackMessage({ event: "order.paid", store, order }, "nb-NO")!;
     expect(text(message)).toBe("New order #1001 · 497,00 kr · Kari Nordmann");
     expect(all({ ...message, blocks: [message.blocks[0]] })).toContain(
-      '"text":{"type":"mrkdwn","text":"*New order <https://kaizenstore.cloud/admin/kaffe/orders/abc|#1001>*\\n497,00 kr from Kari Nordmann · NO"}',
+      '"text":{"type":"mrkdwn","text":"*New order <https://kaizenaflow.com/admin/kaffe/orders/abc|#1001>*\\n497,00 kr from Kari Nordmann · NO"}',
     );
     expect(all(message)).toContain("• 2 × Handlenett  398,00 kr");
-    expect(all(message)).toContain("Kaffe &amp; Co · <https://kaizenstore.cloud/admin/kaffe/orders/abc|Open the order in Kaizen>");
+    expect(all(message)).toContain("Kaffe &amp; Co · <https://kaizenaflow.com/admin/kaffe/orders/abc|Open the order in Kaizena Flow>");
     expect(message.unfurl_links).toBe(false);
   });
 
@@ -87,13 +87,13 @@ describe("Slack messages (D101)", () => {
 
   it("tell of new customers by name only, and of subscriptions", () => {
     const customer = slackMessage(
-      { event: "customer.created", store, customer: { name: "Ola", email: "ola@example.com", admin_url: "https://kaizenstore.cloud/admin/kaffe/customers/1" } },
+      { event: "customer.created", store, customer: { name: "Ola", email: "ola@example.com", admin_url: "https://kaizenaflow.com/admin/kaffe/customers/1" } },
       "nb-NO",
     )!;
     expect(text(customer)).toBe("New customer account: Ola");
     expect(all(customer)).not.toContain("ola@example.com");
     expect(text(slackMessage({ event: "customer.created", store, customer: { name: "" } }, "nb-NO"))).toBe("New customer account");
-    const subscription = { number: "S1", currency: "EUR", total_per_renewal: 19.9, every: "1 month", admin_url: "https://kaizenstore.cloud/admin/kaffe/subscriptions/1" };
+    const subscription = { number: "S1", currency: "EUR", total_per_renewal: 19.9, every: "1 month", admin_url: "https://kaizenaflow.com/admin/kaffe/subscriptions/1" };
     expect(text(slackMessage({ event: "subscription.started", store, subscription }, "en-IE"))).toBe("Subscription #S1 started · €19.90 every month");
     expect(text(slackMessage({ event: "subscription.cancelled", store, subscription: { ...subscription, every: "3 week" } }, "en-IE"))).toBe(
       "Subscription #S1 cancelled · €19.90 every 3 weeks",
@@ -116,9 +116,9 @@ describe("Slack messages (D101)", () => {
 
 describe("someone waiting in support (D216, step 14)", () => {
   it("says how many wait and links to the inbox, never who", () => {
-    const message = slackMessage({ event: "support.waiting", store, support: { waiting: 2, admin_url: "https://kaizenstore.cloud/admin/kaffe/support" } }, "nb-NO")!;
+    const message = slackMessage({ event: "support.waiting", store, support: { waiting: 2, admin_url: "https://kaizenaflow.com/admin/kaffe/support" } }, "nb-NO")!;
     expect(text(message)).toBe("Support: 2 customers are waiting for a person");
-    expect(all(message)).toContain("https://kaizenstore.cloud/admin/kaffe/support");
+    expect(all(message)).toContain("https://kaizenaflow.com/admin/kaffe/support");
     expect(text(slackMessage({ event: "support.waiting", store, support: { waiting: 1 } }, "nb-NO"))).toBe("Support: 1 customer is waiting for a person");
     expect(slackMessage({ event: "support.waiting", store }, "nb-NO")).toBeNull();
   });

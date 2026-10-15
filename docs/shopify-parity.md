@@ -87,7 +87,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizen Store has **64.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 60.6% overall and 75.8% for must-haves. Counting app-only features gives 63.9%; counting Plus-only as well gives 63.6%. Kaizen is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 84 are full, 100 partial and 37 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **64.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **76.3%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 60.6% overall and 75.8% for must-haves. Counting app-only features gives 63.9%; counting Plus-only as well gives 63.6%. Kaizena Flow is strongest on storefront, themes and content (83.2%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 84 are full, 100 partial and 37 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -262,7 +262,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-catalogue -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Products with variants and options (limits) | Native. [page](https://changelog.shopify.com/posts/we-ve-increased-the-product-variant-limit-to-2048) | Partial | 4 | A, wave 6 | Same 3 options but 100 variants (`MAX_VARIANTS` in `src/lib/product-input.ts`), so large matrices do not fit; the editor offers every combination of option values but has no matrix grid for thousands of rows. Code: `src/lib/product-input.ts`, `src/components/admin/product-editor.tsx`. |
 | Product data fields (SKU, barcode, weight, cost, HS code, origin) | Native. [page](https://help.shopify.com/en/manual/products/details/product-details-page) | Full | 3 |  | Evidence: `src/lib/product-input.ts`, `src/server/products.ts`, `src/components/admin/product-editor.tsx` and 1 more; 3 test files; D24, D152. |
@@ -301,7 +301,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-storefront -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Theme store (free and paid themes) | Native. [page](https://help.shopify.com/en/manual/online-store/themes/adding-themes) | Partial | 3 | A, wave 7 | Three built-in looks (`THEME_TEMPLATES`: Minimal, Warm classic, Bold modern) plus the store's own saved themes (D60); the marketplace (D125, D127) shares rows, columns, components and whole page layouts, never a whole theme (settings, header, footer and product layout together). No theme listing, preview or switch between published themes. Code: `src/lib/theme.ts`, `src/server/themes.ts`. |
 | Visual drag-and-drop editor | Native. [page](https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections-and-blocks) | Full | 5 |  | Caveat, not a gap in the editor: nesting is fixed at three levels (row, column, block), with at most 50 rows and 100 blocks per page (`ROWS_MAX`, `BLOCKS_MAX`); Shopify allows 25 sections, 1,250 blocks and up to eight nested levels per template. Evidence: `src/components/admin/page-builder.tsx`, `src/components/admin/page-editor.tsx`, `src/components/admin/block-fields.tsx` and 4 more; 6 test files; D43, D44, D45, D46, D47, D48, D49, D91, D98, D151. |
@@ -343,7 +343,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-checkout -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Checkout branding | Native. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Partial (was full) | 3 | A, wave 7 | The page around the payment form is the store's own: theme, header and footer, builder pieces, custom CSS (D60, D100, D113, D117). But Stripe's payment form is drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius, so the store's accent colour, fonts and corner style stop at the payment fields; there is no checkout-specific logo, background or button setting. Rated partial on re-reading the code (first report: full, not rechecked). Code: `src/components/checkout-form.tsx`, `src/lib/theme.ts`. |
 | Checkout extensibility (UI extensions, Functions) | Plus. [page](https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility) | Partial | 2 | C, wave 9 | The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). There is no extension API, no store-defined fields collected from the shopper at checkout and no hook for rules (shipping, payment or discount logic). Fields (D118) are never shown to the shopper at checkout. Code: `src/lib/store-parts.ts`, `src/lib/ab-site.ts`. |
@@ -375,7 +375,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-orders -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Order list: search, filters, saved views, bulk | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/viewing-orders/searching-orders) | Partial | 4 | A, wave 3 | Built and held by tests (wave 3 run 2, D173, in production since 6 October 2026). The Orders page reads its whole state from the address (`parseOrderListParams()`, the one parser) and builds every condition in `orderListWhere()`: search over number, email, name, line title, SKU, tag and tracking number (words escaped and bound, AND over at most five words, an erased person not found by email or name, no other store's order); filters for status, payment, fulfilment, tag, market, source, gift, archive and a store-day date range; keyset paging 50 at a time (250 orders walked with each of the four sorts, none lost or repeated; the total sort compares converted totals in a store with several currencies, a review fix); named views per store, 30 at most, opening one gives the orders its parameters typed give; and bulk tag, untag, archive, unarchive and mark as sent on up to 250 ticked orders or on 'all matching' (the query is re-read on the server), each order in its own transaction with every refusal named, one audit entry a batch, plus bulk packing slips without prices. The four criteria hold at the server and action layer (order-list, order-views, order-bulk and order-actions integration tests, run 2026-10-06 on a fresh database: 14 integration files, 286 tests, and the 6 of the action file, all passed). Held at Partial because the feature is the screen and no test clicks it: there is no signed-in admin browser fixture, so the filter bar, the selection state, the 'all matching' confirmation, the view bar and the cursor links are held by `renderToString` view tests only, and `page.tsx`'s own glue is type-checked, not run; the spec's forced-failure test of per-order atomicity (a failure on the third order leaves the first two applied) was not written, the property is read in `runBulk()` and held by the refusal tests; the 5,000-order timing test uses a generous bound on a test database and the spec calls it flaky on a busy one, so there is no measure on a real store's data. Not built, deliberately (spec section 7): bulk cancel, refund and capture, labels, Flow, a Local Delivery view, saved views per person, exporting the filtered list. Full after the signed-in by-hand pass of spec 9.7 item 1 is done and accepted. Code: `src/app/admin/(gated)/[store]/orders/page.tsx`, `src/app/admin/(gated)/[store]/orders/list-actions.ts`. |
 | Order statuses, timeline, notes | Native. [page](https://help.shopify.com/en/manual/fulfillment/managing-orders/managing-order-details) | Full | 4 |  | Evidence: `src/server/orders.ts`, `src/server/order-admin.ts`, `src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx` and 3 more; **untested**; D27, D153. |
@@ -416,7 +416,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-customers -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Customer profiles, notes, CSV import and export | Native. [page](https://help.shopify.com/en/manual/customers/manage-customers) | Partial | 4 | A, wave 5 | Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import (the owner-only customer export was built with wave 2's first run, D165, and is held in `platform.product-customer-and-order-csv`; its `marketing_consent` column says not_recorded until the subscriber list with consent, wave 5), no staff GDPR export or erasure; a customer can delete their own account (D28). Code: `src/server/customer-admin.ts`, `src/app/admin/(gated)/[store]/customers/page.tsx`. |
 | Customer segments and tags | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Missing (was partial) | 3 | A, wave 5 | Nothing here is a segment or a tag. RFM groups, cohorts and lifetime value are computed as counts and advice in analytics (D152) and discount groups (D108) are assigned by hand. No customer tags, no saved rule-based segment, no member list, and nothing (discounts, campaigns, emails) can target a segment. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
@@ -452,7 +452,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-analytics -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Dashboard with period comparison | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/overview-dashboard) | Full | 4 |  | Residual: fixed layout, not owner-customisable. Evidence: `src/app/admin/(gated)/[store]/analytics/page.tsx`, `src/components/admin/analytics/overview-view.tsx`, `src/components/admin/analytics/kpi-card.tsx` and 4 more; 6 test files; D152. |
 | Live View | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/live-view) | Missing | 2 | A, wave 8 | Visits are one row per hashed visitor and store day (`visits`, no timestamps of activity); nothing is real-time. Confirmed: no live page, route or query in the code. Code: `src/server/analytics-visits.ts`, `src/lib/visit-record.ts`. |
@@ -491,7 +491,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-international -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Markets | Native. [page](https://help.shopify.com/manual/markets/managing-markets) | Full | 4 |  | Evidence: `src/lib/markets.ts`, `src/lib/market-slug.ts`, `src/server/stores.ts` and 1 more; 3 test files; D109. |
 | Market-specific catalogs | Native. [page](https://help.shopify.com/en/manual/markets/customizations/catalogs) | Partial | 3 | A, wave 7 | Availability is implied by a price row (the product editor says: leave a country empty to not sell there); there is no catalog object, no per-market switch that keeps the price, and no per-market product set shared across countries. Code: `src/server/catalog.ts`, `src/server/listing.ts`. |
@@ -528,7 +528,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-platform -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | App Store and ecosystem | Native. [page](https://apps.shopify.com) | Missing | 3 | C, no wave yet | No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list (Zapier, Make, Slack: D41, D101) and the owner's own code is limited to CSS (D100), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask. |
 | Public Admin API and custom apps | Native. [page](https://shopify.dev/docs/api/admin-graphql) | Missing (was partial) | 3 | A, wave 9 | No merchant-facing API: an owner cannot create a token or choose scopes, and there are no REST or GraphQL endpoints over products, orders or customers. `/api/mcp` (D96) accepts only access tokens issued to Kaizen Life (`mcpCaller()` compares the token's client id with `KAIZEN_LIFE_CLIENT_ID`), so it is a first-party integration, not an Admin API; one-way events go to Zapier, Make and Slack (D41). Re-rated from partial: nothing here is usable by a merchant or a developer of theirs. Code: `src/app/api/mcp/route.ts`, `src/server/store-mcp.ts`. |
@@ -563,7 +563,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 
 <!-- parity:generated:start detail-ai -->
 
-| Feature | Shopify | Kaizen | W | Plan | Gap and evidence |
+| Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Admin AI assistant that performs tasks | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Partial | 3 | A, wave 8 | 71 owner tools plus 8 manager tools (D94, D103 to D105, D153 added list_returns, explain_return, approve_return, decline_return), calls that send, publish or spend are only kept for the owner's yes. Writes are narrow: discounts, campaigns, recommendations, bonus and affiliate programmes, custom fields, stock by SKU, A/B tests, returns, refunds, email to one customer. There is no tool to create or edit a product, a page (only unpublish_page), a menu, a theme or a customer segment, and a turn runs inside one request: no background tasks and no notification when work is done. Code: `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`. |
 | Assistant voice mode | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick) | Full | 1 |  | Evidence debt: hands-free listening by loudness and barge-in are browser code (`voice-mode.ts`, `live-voice.ts`) with no test, and no test covers the path with no speech model; `speech-text.test.ts` holds sentence cutting and `saysYes`, `live-voice.int.test.ts` the server side. Evidence: `src/components/admin/voice-mode.ts`, `src/components/admin/live-voice.ts`, `src/lib/speech-text.ts` and 5 more; **untested**; D104, D105. |

@@ -230,7 +230,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       {grants.length > 0 && (
         <section aria-labelledby="apps-heading" className="flex max-w-md flex-col gap-3">
           <h2 id="apps-heading" className="text-title text-ink">
-            Apps you sign in to with Kaizen Store
+            Apps you sign in to with Kaizena Flow
           </h2>
           <ul className="flex flex-col gap-2">
             {grants.map((grant) => (

@@ -58,7 +58,7 @@ test("a followed parcel shows its phase and the carrier's events, newest first, 
   await expect(parcel.getByRole("link", { name: /Spor pakken/ })).toHaveAttribute("href", "https://sporing.posten.no/sporing/70712345678901234");
 });
 
-test("a followed parcel with no events yet says so plainly; a parcel Kaizen does not follow keeps only its link", async ({ page }) => {
+test("a followed parcel with no events yet says so plainly; a parcel Kaizena Flow does not follow keeps only its link", async ({ page }) => {
   const f = await paidGoodsOrder();
   const followed = await sendParcel(f, { carrier: "Posten / Bring", tracking: "70799", url: "https://sporing.posten.no/sporing/70799", lines: [{ lineId: f.lines.sweater, quantity: 1 }], daysAgo: 2 });
   await storeTracking(f, followed, "bring", []);

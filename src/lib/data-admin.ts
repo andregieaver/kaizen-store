@@ -11,7 +11,7 @@ import { isEnded, type JobKind, type JobPhase, type JobStatus } from "./data-job
 export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`;
 
 /** Shown on the customer export page: Kaizen records no marketing consent yet, so the file must never be used as a mailing list (section 2.5). */
-export const NO_CONSENT_NOTE = "Kaizen does not record marketing consent yet. Do not treat this file as a mailing list.";
+export const NO_CONSENT_NOTE = "Kaizena Flow does not record marketing consent yet. Do not treat this file as a mailing list.";
 
 /** The main-currency columns of the order file: indicative, not for a tax return (section 2.3.3). */
 export const MAIN_CURRENCY_NOTE =
@@ -40,7 +40,7 @@ export const IMPORT_CONFIRMATION =
   "Products are saved one at a time; a product with an error is left as it was. You cannot undo an import as a whole; a bulk edit can be undone.";
 
 /** The Omnibus sentence of a bulk price change is `OMNIBUS_SENTENCE` in `bulk-edit.ts`; this is the one-line rule behind an import's compare-at column. */
-export const COMPARE_AT_NOTE = "A compare-at price in a file is never imported: a reduction is shown to shoppers only against the lowest price of the last 30 days, which Kaizen takes from its own price history.";
+export const COMPARE_AT_NOTE = "A compare-at price in a file is never imported: a reduction is shown to shoppers only against the lowest price of the last 30 days, which Kaizena Flow takes from its own price history.";
 
 // ---------------------------------------------------------------------------
 // Sizes, times, counts

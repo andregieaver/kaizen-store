@@ -84,7 +84,7 @@ export function ImportUpload({
           A CSV file of products
         </label>
         <input id="import-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>Up to {formatBytes(IMPORT_MAX_BYTES)}. Kaizen&apos;s own file (the one a product export makes) and a Shopify product file are read. Nothing is changed until you have seen the check and pressed Import.</p>
+        <p className={hint}>Up to {formatBytes(IMPORT_MAX_BYTES)}. Kaizena Flow&apos;s own file (the one a product export makes) and a Shopify product file are read. Nothing is changed until you have seen the check and pressed Import.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={send} disabled={working} className={primary}>
@@ -201,7 +201,7 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
             <label className="flex items-center gap-2 text-sm">
               <input type="radio" name="basis" checked={options.pricesIncludeVat === false} onChange={() => set("pricesIncludeVat", false)} /> No, the prices are without VAT
             </label>
-            <p className={hint}>There is no default: a wrong answer would change every price. Kaizen prices are kept with VAT for each country.</p>
+            <p className={hint}>There is no default: a wrong answer would change every price. Kaizena Flow prices are kept with VAT for each country.</p>
           </div>
           {choices.markets.length > 1 && (
             <div className="flex flex-col gap-1">

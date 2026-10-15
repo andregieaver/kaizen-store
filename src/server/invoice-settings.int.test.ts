@@ -143,7 +143,7 @@ describe("what is missing before invoices can be issued", () => {
     expect(readiness.ready).toBe(false);
   });
 
-  it("says Stripe's own invoice option is ignored while Kaizen invoicing is on", async () => {
+  it("says Stripe's own invoice option is ignored while Kaizena Flow invoicing is on", async () => {
     const c = await fx.makeStore("set-g");
     expect((await settings.invoiceReadiness(c.storeId)).stripeInvoicesIgnored).toBe(false);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${c.storeId}::uuid and provider = 'stripe'`);

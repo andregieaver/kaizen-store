@@ -109,7 +109,7 @@ export function ExchangePaidOutsideForm({ action, today, amount }: { action: Ste
         <input name="reference" maxLength={100} autoComplete="off" className={input} />
       </label>
       <div>
-        <SubmitButton variant="secondary">Record as paid outside Kaizen</SubmitButton>
+        <SubmitButton variant="secondary">Record as paid outside Kaizena Flow</SubmitButton>
       </div>
     </ActionForm>
   );

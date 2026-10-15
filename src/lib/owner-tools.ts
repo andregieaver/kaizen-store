@@ -75,7 +75,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "get_order",
-    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history, its tags, whether it is archived or staff-made (made from a draft order), whether it is an exchange (D239: the replacement goods of a return, with the return's and the original order's numbers) and whether it was paid outside Kaizen and how. A gift order is said to be a gift; its message is the customer's own words to a third party and is not given here. Since wave 3 (D174) it also says where the sending stands (not sent, partly sent, sent, withdrawn before sending), what each parcel held, the units still to send per line, and the order's changes after purchase (E1, E2, …: when, the difference in the total, and whether applied, waiting for the customer's payment, cancelled or expired). Read-only: changing an order, sending part of it and recording a change's payment are done on the order's page.",
+    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history, its tags, whether it is archived or staff-made (made from a draft order), whether it is an exchange (D239: the replacement goods of a return, with the return's and the original order's numbers) and whether it was paid outside Kaizena Flow and how. A gift order is said to be a gift; its message is the customer's own words to a third party and is not given here. Since wave 3 (D174) it also says where the sending stands (not sent, partly sent, sent, withdrawn before sending), what each parcel held, the units still to send per line, and the order's changes after purchase (E1, E2, …: when, the difference in the total, and whether applied, waiting for the customer's payment, cancelled or expired). Read-only: changing an order, sending part of it and recording a change's payment are done on the order's page.",
     z.object({ order: orderRef }),
   ),
   tool(
@@ -119,12 +119,12 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "parcel_tracking",
-    "Where an order's parcels are (D238), from the carrier events Kaizen stored when it last checked (every few minutes; nothing is asked of the carrier here): each parcel's carrier and tracking number, its phase (on its way, out for delivery, ready to collect, delivered, …), its newest events with times and places, when it was last checked and whether that failed, and why it is no longer followed. PostNord's, Helthjem's and Porterbuddy's codes are not verified yet: their events are listed, but Kaizen records no delivery and sends no email from them, and the answer says so. It also says whether the order's delivery is recorded and by whom (staff, the handover, or the carrier). Read-only: Check now is on the order's page.",
+    "Where an order's parcels are (D238), from the carrier events Kaizena Flow stored when it last checked (every few minutes; nothing is asked of the carrier here): each parcel's carrier and tracking number, its phase (on its way, out for delivery, ready to collect, delivered, …), its newest events with times and places, when it was last checked and whether that failed, and why it is no longer followed. PostNord's, Helthjem's and Porterbuddy's codes are not verified yet: their events are listed, but Kaizena Flow records no delivery and sends no email from them, and the answer says so. It also says whether the order's delivery is recorded and by whom (staff, the handover, or the carrier). Read-only: Check now is on the order's page.",
     z.object({ order: orderRef }),
   ),
   tool(
     "list_draft_orders",
-    "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizen and deleting a draft are done on the draft's page.",
+    "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizena Flow and deleting a draft are done on the draft's page.",
     listDraftOrdersInput,
   ),
   tool(
@@ -415,7 +415,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "ai_usage",
-    "How much of the AI the store used in a period: requests and tokens in total, per provider and model, per feature (such as the AI manager or the chat agent) and, for all their stores, per store; and whether it ran on Kaizen's AI or the owner's own key.",
+    "How much of the AI the store used in a period: requests and tokens in total, per provider and model, per feature (such as the AI manager or the chat agent) and, for all their stores, per store; and whether it ran on Kaizena Flow's AI or the owner's own key.",
     z.object({
       days: z.number().int().min(1).max(365).default(30),
       scope: z.enum(["this_store", "all_my_stores"]).default("this_store").describe("Only this store, or every store the owner owns."),
@@ -454,7 +454,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "send_draft_order",
-    "Sends a draft order to its customer (D173): the order is made now with the next order number, its goods are held until the pay link ends (1 to 30 days), and the customer is emailed a link to pay on the store's own page. The store checks it can be sent (an email, goods that are for sale and in stock, payments on, an open store) and refuses with the reason. Needs the owner's approval. You cannot record a payment, take money outside Kaizen or delete a draft.",
+    "Sends a draft order to its customer (D173): the order is made now with the next order number, its goods are held until the pay link ends (1 to 30 days), and the customer is emailed a link to pay on the store's own page. The store checks it can be sent (an email, goods that are for sale and in stock, payments on, an open store) and refuses with the reason. Needs the owner's approval. You cannot record a payment, take money outside Kaizena Flow or delete a draft.",
     sendDraftOrderInput,
     "send",
   ),
@@ -472,7 +472,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "refund_order",
-    "Refunds all or part of a paid order through Stripe, optionally putting its items back in stock, and emails the customer. Needs the owner's approval. An order paid outside Kaizen (cash or bank transfer, on a draft order) is refused: nothing can be sent from here, so its refund is recorded on its own page by someone who has paid the customer back.",
+    "Refunds all or part of a paid order through Stripe, optionally putting its items back in stock, and emails the customer. Needs the owner's approval. An order paid outside Kaizena Flow (cash or bank transfer, on a draft order) is refused: nothing can be sent from here, so its refund is recorded on its own page by someone who has paid the customer back.",
     z.object({
       order: orderRef,
       amount: z.string().trim().max(30).optional().describe("How much to refund, as the owner writes it (such as 199 or 199,50); the whole refundable amount if left out."),
@@ -744,7 +744,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "suggest_experiments",
-    "Facts for choosing what to A/B test, all counted by the store: the pages, header, footer and product layouts that can be tested with what is on each (the headings, buttons and texts and their block ids), what was tested on them before and how it came out, how much of the store's visitors accepted statistics cookies (only they take part), orders and the way from cart to paid order over the last 30 days, and how many tests are running of the five allowed. Pick at most three things worth testing, say why in the owner's words, and say that nothing is started without their yes. Optionally give visitors a day and the share who do the thing now to get how long a test would take, worked out by the store; Kaizen does not count page views, so never guess these.",
+    "Facts for choosing what to A/B test, all counted by the store: the pages, header, footer and product layouts that can be tested with what is on each (the headings, buttons and texts and their block ids), what was tested on them before and how it came out, how much of the store's visitors accepted statistics cookies (only they take part), orders and the way from cart to paid order over the last 30 days, and how many tests are running of the five allowed. Pick at most three things worth testing, say why in the owner's words, and say that nothing is started without their yes. Optionally give visitors a day and the share who do the thing now to get how long a test would take, worked out by the store; Kaizena Flow does not count page views, so never guess these.",
     z.object({
       visitors_per_day: z.number().int().min(1).max(10_000_000).optional().describe("Roughly how many visitors a day see the page and accept cookies, if the owner knows."),
       current_rate_percent: z.number().min(0.01).max(99).optional().describe("The share (%) of those who do the thing the test should improve today, if the owner knows."),
@@ -861,7 +861,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "send_draft_order":
       return sendDraftSummary(text("draft"), input.valid_days ? Number(input.valid_days) : null);
     case "contact_kaizen_support":
-      return `Ask Kaizen support${text("store") ? ` about ${text("store")}` : ""}: "${text("summary").slice(0, 300)}"`;
+      return `Ask Kaizena Flow support${text("store") ? ` about ${text("store")}` : ""}: "${text("summary").slice(0, 300)}"`;
     case "cancel_booking":
       return `Cancel booking ${text("booking")}${input.notify === false ? "" : " and email the customer"}.`;
     case "archive_product":
@@ -973,7 +973,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "set_referral_program": {
       const parts = [
         input.enabled === true ? "switch the referral program on" : input.enabled === false ? "switch the referral program off" : "",
-        input.percent !== undefined ? `commission ${text("percent")} % of the fees a referred store pays Kaizen` : "",
+        input.percent !== undefined ? `commission ${text("percent")} % of the fees a referred store pays Kaizena Flow` : "",
         input.months !== undefined ? `earned for ${text("months")} months after a store opens` : "",
         input.pending_days !== undefined ? `credit waits ${text("pending_days")} days before it can be used` : "",
         input.cookie_days !== undefined ? `the referral cookie lasts ${text("cookie_days")} days` : "",

@@ -54,7 +54,7 @@ describe("self-hosted Google Fonts (D59)", () => {
     );
   });
 
-  it("downloads a family once, keeps its files, and serves a stylesheet pointing at Kaizen's copies", async () => {
+  it("downloads a family once, keeps its files, and serves a stylesheet pointing at Kaizena Flow's copies", async () => {
     await db().execute(sql`delete from commerce.fonts where family = 'Lora'`);
     const google = fakeGoogle();
     expect(await installFont("Lora", google.fetcher)).toEqual({ ok: true });

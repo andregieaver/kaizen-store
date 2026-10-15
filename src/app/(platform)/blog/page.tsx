@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (page) return platformPageMetadata(page, "/blog");
   return {
     title: "Blog",
-    description: "News and guides from Kaizen: selling online across the EU, and how the platform works.",
+    description: "News and guides from Kaizena Flow: selling online across the EU, and how the platform works.",
     alternates: { canonical: "/blog" },
   };
 }

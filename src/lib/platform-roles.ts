@@ -32,21 +32,21 @@ export const PLATFORM_ROLE_COPY: Record<
     name: "Front page",
     address: "/",
     standard: "The standard front page",
-    hint: "What visitors see first at Kaizen's address (/): the standard front page, or one of your published pages, such as one with the Plans component.",
+    hint: "What visitors see first at Kaizena Flow's address (/): the standard front page, or one of your published pages, such as one with the Plans component.",
     slug: "front-page",
   },
   blog: {
     name: "Blog page",
     address: "/blog",
     standard: "The standard list of articles",
-    hint: "What visitors see at Kaizen's blog (/blog): the standard list of articles, or one of your published pages with a content grid of articles. Blog categories and tags keep the standard list.",
+    hint: "What visitors see at Kaizena Flow's blog (/blog): the standard list of articles, or one of your published pages with a content grid of articles. Blog categories and tags keep the standard list.",
     slug: "blog-archive",
   },
   not_found: {
     name: "404 page",
     address: "",
     standard: "The standard message",
-    hint: "What visitors see when an address on Kaizen's site does not exist: a short message, or one of your published pages. It is shown with a 404 status, so search engines know the address is gone.",
+    hint: "What visitors see when an address on Kaizena Flow's site does not exist: a short message, or one of your published pages. It is shown with a 404 status, so search engines know the address is gone.",
     slug: "page-not-found",
   },
 };
@@ -77,9 +77,9 @@ export function platformStarterPage(role: PlatformRole, id: NewId): PageContent 
   const page = (title: string, rows: PageRow[]): PageContent => ({ ...base, title, slug: PLATFORM_ROLE_COPY[role].slug, rows });
   switch (role) {
     case "front":
-      return page("Kaizen", [
+      return page("Kaizena Flow", [
         row(
-          heading("Kaizen"),
+          heading("Kaizena Flow"),
           text("Online stores for Norway and the EU: prices, VAT, product safety and consumer rules handled from the start, and pages that load in under half a second."),
           button("Start your store", "/sign-up"),
           button("Sign in", "/admin", "outline"),
@@ -94,6 +94,6 @@ export function platformStarterPage(role: PlatformRole, id: NewId): PageContent 
       ]);
     }
     case "not_found":
-      return page("This page does not exist.", [row(heading("This page does not exist."), button("Kaizen's front page", "/"))]);
+      return page("This page does not exist.", [row(heading("This page does not exist."), button("Kaizena Flow's front page", "/"))]);
   }
 }

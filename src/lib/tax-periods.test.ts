@@ -114,7 +114,7 @@ describe("deadlines (Commission OSS guidelines, Part 2)", () => {
     const q3 = quarterPeriod(2026, 3);
     expect(deadlineSentence(q3, "2026-10-04")).toBe("Q3 2026: submit and pay by 31 October 2026.");
     expect(deadlineSentence(q3, "2026-09-01")).toContain("still in progress");
-    expect(deadlineSentence(q3, "2026-11-05")).toContain("Kaizen does not know what was filed");
+    expect(deadlineSentence(q3, "2026-11-05")).toContain("Kaizena Flow does not know what was filed");
     expect(periodLabel(monthPeriod(2026, 9))).toBe("September 2026");
     expect(longDate("2027-01-05")).toBe("5 January 2027");
   });

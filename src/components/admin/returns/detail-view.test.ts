@@ -152,9 +152,9 @@ describe("goods that are back", () => {
     expect(text).not.toContain("How the refund is worked out");
   });
 
-  it("says when the order was paid outside Kaizen's Stripe", () => {
+  it("says when the order was paid outside Kaizena Flow's Stripe", () => {
     const { text } = draw(received, preview({ canRefund: false }));
-    expect(text).toContain("not paid through Kaizen's Stripe");
+    expect(text).toContain("not paid through Kaizena Flow's Stripe");
     expect(text).toContain("Record as refunded outside");
   });
 

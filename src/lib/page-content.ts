@@ -2207,7 +2207,7 @@ export function pageSlugProblem(slug: string, reserved: readonly string[] = RESE
   const first = slug.split("/")[0];
   if (reserved.includes(first)) {
     return reserved === RESERVED_PAGE_SLUGS
-      ? `The address /${first} is used by Kaizen itself. Choose another.`
+      ? `The address /${first} is used by Kaizena Flow itself. Choose another.`
       : reserved === RESERVED_ARTICLE_SLUGS
         ? `The address blog/${first} is used by the blog itself. Choose another.`
         : `The address ${first} is used by the store itself. Choose another.`;

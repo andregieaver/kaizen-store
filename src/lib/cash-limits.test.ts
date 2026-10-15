@@ -31,6 +31,6 @@ describe("the cash ceilings (D173 review)", () => {
       expect(rule.limitMinor).toBeGreaterThan(0);
       expect(rule.verified).toBe(false);
     }
-    expect(cashRuleWords()).toContain("NO: Kaizen does not record cash of");
+    expect(cashRuleWords()).toContain("NO: Kaizena Flow does not record cash of");
   });
 });

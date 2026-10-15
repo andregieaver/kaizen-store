@@ -266,7 +266,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   order_views: "A saved view of the order list (D173): a title, the list's filters and its columns, staff configuration. A saved search text sits in `params.q`: the screen says not to save a search for a person's name, and the audit entry never holds it.",
   order_settings: "The store's order settings (D173): switches, a number of days and the draft counter.",
   plan_features: "A plan comparison row.",
-  plan_reminder_steps: "Kaizen's own reminder email text.",
+  plan_reminder_steps: "Kaizena Flow's own reminder email text.",
   plans: "A plan's name.",
   platform_languages: "A language's name.",
   product_files: "A downloadable file's name.",

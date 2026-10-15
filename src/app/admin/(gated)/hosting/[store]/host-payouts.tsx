@@ -45,7 +45,7 @@ export function HostPayouts({
         <>
           Guests pay your own Stripe account: you are the seller, and refunds come from it. The store keeps {commissionPercent} % of each payment as its
           commission, no-show fees included.
-          {mode === "test" && " The store is in test mode, so no real money moves: Kaizen set up a test account for you."}
+          {mode === "test" && " The store is in test mode, so no real money moves: Kaizena Flow set up a test account for you."}
         </>
       }
       className="flex flex-col gap-4"
@@ -91,7 +91,7 @@ export function HostPayouts({
                   <th className="py-1 pr-3 text-right font-normal">Guest paid</th>
                   <th className="py-1 pr-3 text-right font-normal">Refunded</th>
                   <th className="py-1 pr-3 text-right font-normal">Commission</th>
-                  <th className="py-1 pr-3 text-right font-normal">Kaizen&apos;s fee</th>
+                  <th className="py-1 pr-3 text-right font-normal">Kaizena Flow&apos;s fee</th>
                   <th className="py-1 text-right font-normal">You get</th>
                 </tr>
               </thead>
@@ -114,7 +114,7 @@ export function HostPayouts({
             </table>
           </div>
         )}
-        <p className="text-xs text-muted">The commission and Kaizen&apos;s fee come off each payment, and are given back in part with refunds. &quot;You get&quot; is before Stripe&apos;s own fees, which also come off what you are paid; see them in your Stripe Dashboard.</p>
+        <p className="text-xs text-muted">The commission and Kaizena Flow&apos;s fee come off each payment, and are given back in part with refunds. &quot;You get&quot; is before Stripe&apos;s own fees, which also come off what you are paid; see them in your Stripe Dashboard.</p>
       </div>
     </Card>
   );

@@ -61,7 +61,7 @@ export function calendarFile(events: CalendarEvent[], { stamp = new Date().toISO
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Kaizen//Bookings//EN",
+    "PRODID:-//Kaizena Flow//Bookings//EN",
     "CALSCALE:GREGORIAN",
     `METHOD:${cancel ? "CANCEL" : "PUBLISH"}`,
     ...events.flatMap((event) => [

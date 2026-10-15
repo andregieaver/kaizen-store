@@ -11,7 +11,7 @@ test("a store's chooser offers every market without redirecting", async ({ page 
   const response = await page.goto("/s/demo");
   expect(response?.status()).toBe(200);
   await expect(page).toHaveURL("/s/demo");
-  await expect(page.getByRole("heading", { level: 1, name: "Kaizen Demo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Kaizena Flow Demo" })).toBeVisible();
   for (const name of ["Norge", "Sverige", "Danmark"]) {
     await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
   }
@@ -48,7 +48,7 @@ test("a product page shows stock, safety details and structured data", async ({ 
   await page.goto("/s/demo/no");
   await page.getByRole("link", { name: "Demo: Keramikkopp" }).click();
   await expect(page).toHaveURL("/s/demo/no/p/demo-keramikkopp");
-  await expect(page).toHaveTitle("Demo: Keramikkopp · Kaizen Demo");
+  await expect(page).toHaveTitle("Demo: Keramikkopp · Kaizena Flow Demo");
 
   // The variant dropdown shows the chosen one's stock, and each one's in its list.
   const variants = page.getByRole("region", { name: "Varianter" });
@@ -56,7 +56,7 @@ test("a product page shows stock, safety details and structured data", async ({ 
   await variants.getByRole("combobox", { name: "Velg variant" }).click();
   await expect(variants.getByRole("option", { name: /Farge: Hvit/ })).toContainText("På lager");
   await page.keyboard.press("Escape");
-  await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();
+  await expect(page.getByText("Kaizena Flow Demo AS, Storgata 1")).toBeVisible();
   await expect(page.getByText("Ansvarlig person i EU")).toBeVisible();
 
   // Colours are variants of one product group, each with its own offer.
@@ -104,7 +104,7 @@ test("search engines and AI assistants get a sitemap, crawler rules and llms.txt
   const llms = await request.get("/s/demo/llms.txt");
   expect(llms.headers()["content-type"]).toContain("text/markdown");
   const text = await llms.text();
-  expect(text).toMatch(/^# Kaizen Demo\n\n> /);
+  expect(text).toMatch(/^# Kaizena Flow Demo\n\n> /);
   expect(text).toContain("/s/demo/no/p/demo-keramikkopp): NOK 249.00");
   expect(await (await request.get("/llms.txt")).text()).toContain("/s/demo/llms.txt");
 
@@ -114,7 +114,7 @@ test("search engines and AI assistants get a sitemap, crawler rules and llms.txt
 
 test("a market's front page describes the store to search engines", async ({ page }) => {
   await page.goto("/s/demo/no");
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Kaizen Demo/);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Kaizena Flow Demo/);
   const jsonLd = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}");
   const types = jsonLd["@graph"].map((node: { "@type": string }) => node["@type"]);
   expect(types).toEqual(["OnlineStore", "WebSite", "CollectionPage"]);

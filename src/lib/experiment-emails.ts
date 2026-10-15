@@ -20,7 +20,7 @@ export type GuardrailFacts = {
   url: string;
 };
 
-const FOOTER = ["Kaizen · kaizenstore.cloud"];
+const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 const number = (n: number) => n.toLocaleString("en-GB");
 const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
@@ -38,14 +38,14 @@ export function guardrailEmail(facts: GuardrailFacts): EmailContent {
   const figures = `${number(version.buyers)} of ${number(version.visitors)} visitors who saw version ${letter} ordered (${orderRate(version.buyers, version.visitors)}), against ${number(original.buyers)} of ${number(original.visitors)} who saw the original (${orderRate(original.buyers, original.visitors)}).`;
   return {
     subject: `Your A/B test "${facts.testName}" was stopped: fewer orders in version ${letter}`,
-    preview: `Version ${letter} clearly got fewer orders than the original, so Kaizen stopped the test. Everyone sees the original again.`,
+    preview: `Version ${letter} clearly got fewer orders than the original, so Kaizena Flow stopped the test. Everyone sees the original again.`,
     lang: "en",
     footer: [facts.storeName, ...FOOTER],
     blocks: [
-      { type: "heading", text: "Kaizen stopped your A/B test" },
+      { type: "heading", text: "Kaizena Flow stopped your A/B test" },
       {
         type: "paragraph",
-        text: `The test "${facts.testName}" of ${facts.target} in ${facts.storeName} had run for ${days(facts.days)} when version ${letter} (${version.name}) clearly got fewer orders per visitor than the original. It was far enough behind that luck is a very unlikely reason, so Kaizen stopped the test to protect your sales.`,
+        text: `The test "${facts.testName}" of ${facts.target} in ${facts.storeName} had run for ${days(facts.days)} when version ${letter} (${version.name}) clearly got fewer orders per visitor than the original. It was far enough behind that luck is a very unlikely reason, so Kaizena Flow stopped the test to protect your sales.`,
       },
       { type: "paragraph", text: figures },
       {
@@ -54,7 +54,7 @@ export function guardrailEmail(facts: GuardrailFacts): EmailContent {
       },
       {
         type: "paragraph",
-        text: "Open the results to read them. You can discard the test, or, if you still want to use one of the other versions, apply it. Kaizen does not apply anything by itself.",
+        text: "Open the results to read them. You can discard the test, or, if you still want to use one of the other versions, apply it. Kaizena Flow does not apply anything by itself.",
       },
       { type: "button", text: "See the results", url: facts.url },
     ],

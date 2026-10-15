@@ -39,7 +39,7 @@ function read(rows: string[][], options: Partial<ImportOptions> = {}, c = ctx) {
 }
 
 describe("which format a header is", () => {
-  it("knows Shopify's current names, its older names, and Kaizen's own", () => {
+  it("knows Shopify's current names, its older names, and Kaizena Flow's own", () => {
     expect(detectFormat(HEADER)).toBe("shopify");
     expect(detectFormat(["Handle", "Title", "Body (HTML)", "Vendor", "Type", "Tags", "Published", "Option1 Name", "Option1 Value", "Variant SKU", "Variant Price", "Image Src"])).toBe("shopify");
     expect(detectFormat(["Handle", "Title", "Tags"])).toBe("shopify");
@@ -70,7 +70,7 @@ describe("a Shopify description as plain text", () => {
 });
 
 describe("units", () => {
-  it("maps Shopify's units to Kaizen's and refuses the rest", () => {
+  it("maps Shopify's units to Kaizena Flow's and refuses the rest", () => {
     expect(["mL", "L", "g", "kg", "m", "m2", "item", "cm"].map(mapUnit)).toEqual(["ml", "l", "g", "kg", "m", "m2", "piece", "cm"]);
     expect(["mg", "mm", "oz", "m3", ""].map(mapUnit)).toEqual([null, null, null, null, null]);
     expect(mapBase("100", "mL")).toBe("100ml");
@@ -84,7 +84,7 @@ describe("units", () => {
 describe("reading Shopify's file", () => {
   const rows = [HEADER, SIMPLE, SECOND, PICTURE];
 
-  it("maps its columns onto Kaizen's, said and counted: what is read and what is left out, with the reason", () => {
+  it("maps its columns onto Kaizena Flow's, said and counted: what is read and what is left out, with the reason", () => {
     const { file } = read(rows);
     expect(file.format).toBe("shopify");
     expect([...file.columns].sort()).toEqual(
@@ -216,7 +216,7 @@ describe("importing Shopify's file", () => {
     expect(tax.input?.vatCategory).toBe("standard");
   });
 
-  it("reads the unit price's content, and flags one Kaizen cannot hold", () => {
+  it("reads the unit price's content, and flags one Kaizena Flow cannot hold", () => {
     const r = (amount: string, unit: string, base = "100", baseUnit = "mL") =>
       read([HEADER, row({ "URL handle": "a", Title: "A", SKU: "A1", Price: "10", "Unit price total measure": amount, "Unit price total measure unit": unit, "Unit price base measure": base, "Unit price base measure unit": baseUnit })], { pricesIncludeVat: true }).plan().products[0];
     expect(r("250", "mL").input?.variants[0].measure).toEqual({ amount: "250", unit: "ml", base: "100ml" });

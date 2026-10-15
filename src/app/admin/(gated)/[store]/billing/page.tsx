@@ -59,7 +59,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Billing" description={<>What {store.name} pays Kaizen. Each store has its own plan.</>} />
+      <PageHeader title="Billing" description={<>What {store.name} pays Kaizena Flow. Each store has its own plan.</>} />
 
       <Card title={<>{onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}</>} className="text-sm" compact>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
@@ -79,10 +79,10 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               )}
             </>
           )}
-          <dt className="text-muted">Kaizen&apos;s fee</dt>
+          <dt className="text-muted">Kaizena Flow&apos;s fee</dt>
           <dd>{formatBps(billing?.feeBps ?? 0)} of each sale, taken when the shopper pays</dd>
         </dl>
-        {mode === "test" && <p className="mt-3 text-muted">Kaizen is in test mode: no real money is charged.</p>}
+        {mode === "test" && <p className="mt-3 text-muted">Kaizena Flow is in test mode: no real money is charged.</p>}
       </Card>
 
       {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}
@@ -106,8 +106,8 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           {!onPlan && isOwner && reminders && (
             <form action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
               {optedOut
-                ? "Kaizen sends you no reminders about plans you start paying for. "
-                : "If you go to pay and do not finish, Kaizen may email you a reminder. "}
+                ? "Kaizena Flow sends you no reminders about plans you start paying for. "
+                : "If you go to pay and do not finish, Kaizena Flow may email you a reminder. "}
               <button type="submit" className="underline hover:text-ink">
                 {optedOut ? "Send me reminders" : "Do not send me reminders"}
               </button>
@@ -143,7 +143,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       {onPlan && isOwner && (
         <Card title="Invoices and payment" compact>
           <p className="mb-4 text-sm text-muted">
-            See all of Kaizen&apos;s invoices, pay an open one, or change the card you pay with.
+            See all of Kaizena Flow&apos;s invoices, pay an open one, or change the card you pay with.
           </p>
           <div className="flex flex-wrap gap-3">
             <ActionForm action={openBillingPortalAction.bind(null, store.slug)}>
@@ -229,7 +229,7 @@ function PlanCard({
         {discount && (monthly || yearly) && (
           <WithCode discount={discount} currency={currency} monthly={monthly?.amountMinor} yearly={yearly?.amountMinor} />
         )}
-        <p className="mt-2">{formatBps(plan.saleFeeBps)} Kaizen fee per sale</p>
+        <p className="mt-2">{formatBps(plan.saleFeeBps)} Kaizena Flow fee per sale</p>
       </div>
       <ActionForm action={choosePlanAction.bind(null, storeSlug)} className="mt-auto flex flex-col gap-2">
         {button(yearly, "yearly")}

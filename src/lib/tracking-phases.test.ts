@@ -43,7 +43,7 @@ const BRING_CODES: Record<string, string> = {
 
 const ev = (at: string, code: string, carrier = "bring"): StoredEvent => ({ at, code, ...phaseOf(carrier, code), description: code, location: null });
 
-describe("phaseOf(): carrier codes to Kaizen's phases (4.4)", () => {
+describe("phaseOf(): carrier codes to Kaizena Flow's phases (4.4)", () => {
   it("maps every Bring status of the documentation, verified (but UNKNOWN)", () => {
     // Every code but Kaizen's own PACKAGE_DELIVERED (one package of several, parseTracking()) is Bring's documented list.
     expect(Object.keys(CARRIER_PHASES.bring.codes).filter((code) => code !== "PACKAGE_DELIVERED").sort()).toEqual(Object.keys(BRING_CODES).sort());

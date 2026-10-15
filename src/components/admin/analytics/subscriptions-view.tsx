@@ -394,7 +394,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
         </div>
         {report.pastDue.count > 0 ? (
           <Note tone="warning" title="Failed payments are a snapshot">
-            {`${formatCount(report.pastDue.count)} ${plural(report.pastDue.count, "subscription is", "subscriptions are")} in failed payment today, worth ${money(report.pastDue.mrrMinor)} a month. Kaizen keeps no history of failed payments, so there is no trend to show. `}
+            {`${formatCount(report.pastDue.count)} ${plural(report.pastDue.count, "subscription is", "subscriptions are")} in failed payment today, worth ${money(report.pastDue.mrrMinor)} a month. Kaizena Flow keeps no history of failed payments, so there is no trend to show. `}
             <Link href={`${base}/subscriptions`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
               Open subscriptions
             </Link>
@@ -414,7 +414,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
       <AnalyticsSection
         id="movement"
         title="How MRR moved"
-        description={`From the start of the period to ${endsNow ? "today" : "its end"}: what was won, what was lost, and what Kaizen cannot see. ${period}.`}
+        description={`From the start of the period to ${endsNow ? "today" : "its end"}: what was won, what was lost, and what Kaizena Flow cannot see. ${period}.`}
       >
         <p className="max-w-prose text-sm">{growthLine(report, money)}</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -425,7 +425,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
           </div>
         </div>
         <Note title="Expansion, contraction and reactivation are not tracked">
-          {`Kaizen keeps a subscription's price, quantity and status only as they are today. A price increase cannot be told from a new subscription, a decrease cannot be seen, and a returning subscriber cannot be told from a new one. These rows show a dash, not 0. Their effect, if any, is inside "Other changes"${m.otherMinor === 0 ? ", which is 0 here" : ""}.`}
+          {`Kaizena Flow keeps a subscription's price, quantity and status only as they are today. A price increase cannot be told from a new subscription, a decrease cannot be seen, and a returning subscriber cannot be told from a new one. These rows show a dash, not 0. Their effect, if any, is inside "Other changes"${m.otherMinor === 0 ? ", which is 0 here" : ""}.`}
         </Note>
       </AnalyticsSection>
 

@@ -47,7 +47,7 @@ export function featureWords(feature: string): string {
 }
 
 /** Whose key paid: Kaizen's (`platform`), or the owner's own (`store`). */
-export const SOURCE_WORDS = { platform: "Kaizen's AI", store: "The store's own key" } as const;
+export const SOURCE_WORDS = { platform: "Kaizena Flow's AI", store: "The store's own key" } as const;
 export type AiSource = keyof typeof SOURCE_WORDS;
 
 /** What one call used. */
@@ -176,8 +176,8 @@ export function groupUsage(rows: UsageRow[], keyOf: (row: UsageRow) => { key: st
 
 export const totalOf = (rows: UsageRow[]): UsageSums => rows.reduce((sums, row) => addSums(sums, row), emptySums());
 
-export const withOwner = (row: UsageRow) => ({ key: row.ownerId ?? "none", label: row.ownerName ?? row.ownerEmail ?? (row.storeId ? "No store owner" : "Kaizen itself"), sub: row.ownerName ? (row.ownerEmail ?? undefined) : undefined });
-export const withStore = (row: UsageRow) => ({ key: row.storeId ?? "none", label: row.storeName ?? "Kaizen itself", sub: row.storeSlug ?? undefined });
+export const withOwner = (row: UsageRow) => ({ key: row.ownerId ?? "none", label: row.ownerName ?? row.ownerEmail ?? (row.storeId ? "No store owner" : "Kaizena Flow itself"), sub: row.ownerName ? (row.ownerEmail ?? undefined) : undefined });
+export const withStore = (row: UsageRow) => ({ key: row.storeId ?? "none", label: row.storeName ?? "Kaizena Flow itself", sub: row.storeSlug ?? undefined });
 export const withFeature = (row: UsageRow) => ({ key: row.feature, label: featureWords(row.feature) });
 export const withModel = (row: UsageRow) => ({ key: `${row.provider}\u0000${row.model}`, label: row.model, sub: row.provider });
 
@@ -210,6 +210,6 @@ export function summarizeUsage(rows: UsageRow[], limit = 12) {
     by_provider_and_model: models(rows),
     by_store: named(groupUsage(rows, withStore)),
     by_feature: groupUsage(rows, withFeature).slice(0, limit).map((g) => ({ feature: g.label, ...sumsForModel(g.sums) })),
-    note: "Tokens are as the providers reported, or counted by Kaizen (about four characters a token) where they did not. Cost is an estimate in US dollars from the platform's price list for each model at the time of the call; requests_without_a_price used a model with no price (or no price for pictures, speech or audio), so the real cost is higher. Pictures, speech and live calls are priced per picture, per million characters and per minute where the platform has set those prices.",
+    note: "Tokens are as the providers reported, or counted by Kaizena Flow (about four characters a token) where they did not. Cost is an estimate in US dollars from the platform's price list for each model at the time of the call; requests_without_a_price used a model with no price (or no price for pictures, speech or audio), so the real cost is higher. Pictures, speech and live calls are priced per picture, per million characters and per minute where the platform has set those prices.",
   };
 }

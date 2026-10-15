@@ -323,8 +323,8 @@ async function portalConfiguration(stripe: Stripe, mode: PaymentModeName): Promi
   if (existing) return existing;
   const configuration = await stripe.billingPortal.configurations.create(
     {
-      name: "Kaizen stores",
-      business_profile: { headline: "Your Kaizen plan: invoices and payment details" },
+      name: "Kaizena Flow stores",
+      business_profile: { headline: "Your Kaizena Flow plan: invoices and payment details" },
       features: {
         invoice_history: { enabled: true },
         payment_method_update: { enabled: true },
@@ -760,7 +760,7 @@ export async function assignPlan(
         days_until_due: 14,
         ...(trialDays > 0 && { trial_period_days: trialDays }),
         ...(vatRates.length > 0 && { default_tax_rates: vatRates }),
-        description: `Kaizen ${p.price.planName}: ${p.store.name}`,
+        description: `Kaizena Flow ${p.price.planName}: ${p.store.name}`,
         metadata: { ...p.metadata, ...waiting.metadata },
       },
       // A double click must not start two subscriptions.
@@ -811,7 +811,7 @@ export async function choosePlan(
         custom_text: {
           submit: {
             message:
-              "If you do not finish, Kaizen may email you a reminder about this plan. You can turn reminders off on your Billing page or in any reminder.",
+              "If you do not finish, Kaizena Flow may email you a reminder about this plan. You can turn reminders off on your Billing page or in any reminder.",
           },
         },
       }),
@@ -820,7 +820,7 @@ export async function choosePlan(
       // A code saved on the Plan page goes along; without one, Stripe's page has a field for Kaizen's codes (D38).
       ...(waiting.promotionCode ? { discounts: [{ promotion_code: waiting.promotionCode }] } : { allow_promotion_codes: true }),
       subscription_data: {
-        description: `Kaizen ${p.price.planName}: ${p.store.name}`,
+        description: `Kaizena Flow ${p.price.planName}: ${p.store.name}`,
         metadata: { ...p.metadata, ...waiting.metadata },
       },
       metadata: p.metadata,
@@ -907,13 +907,13 @@ export async function portalUrl(
   const billing = await getStoreBilling(storeId);
   const mode = billing?.mode ?? billingMode();
   const stripe = mode && platformStripe(mode);
-  if (!mode || !stripe || !billing?.subscriptionId) return { ok: false, problem: "Your store has no plan with Kaizen yet." };
+  if (!mode || !stripe || !billing?.subscriptionId) return { ok: false, problem: "Your store has no plan with Kaizena Flow yet." };
   try {
     // The Stripe account the plan is billed to (a store's test account can
     // have been replaced since the plan started).
     const subscription = await stripe.subscriptions.retrieve(billing.subscriptionId);
     const customerAccount = subscription.customer_account ?? (await getStripeAccounts(storeId))[mode]?.accountId;
-    if (!customerAccount) return { ok: false, problem: "Your store has no plan with Kaizen yet." };
+    if (!customerAccount) return { ok: false, problem: "Your store has no plan with Kaizena Flow yet." };
     const configuration = await portalConfiguration(stripe, mode);
     const session = await stripe.billingPortal.sessions.create({
       customer_account: customerAccount,

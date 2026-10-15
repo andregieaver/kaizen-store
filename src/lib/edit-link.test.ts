@@ -59,8 +59,8 @@ describe("the note of a pass", () => {
 
 describe("where the button starts", () => {
   it("is the admin's route, with the store and the page to come back to, both encoded", () => {
-    expect(grantUrl("https://kaizenstore.cloud", "kopp", "/no/om oss?a=1&b=2")).toBe(
-      "https://kaizenstore.cloud/api/platform/editor/grant?store=kopp&to=%2Fno%2Fom%20oss%3Fa%3D1%26b%3D2",
+    expect(grantUrl("https://kaizenaflow.com", "kopp", "/no/om oss?a=1&b=2")).toBe(
+      "https://kaizenaflow.com/api/platform/editor/grant?store=kopp&to=%2Fno%2Fom%20oss%3Fa%3D1%26b%3D2",
     );
   });
 });

@@ -509,7 +509,7 @@ describe("a difference to pay goes out as a pay link (6.1 criterion 3)", () => {
     expect(kinds).toContain("settled_by_return");
   });
 
-  it("records the difference as paid outside Kaizen and settles at once", async () => {
+  it("records the difference as paid outside Kaizena Flow and settles at once", async () => {
     const store = await liveStore("ex-outside");
     const order = await paidOrder(store, [["DEMO-TOTE", 1]]);
     const returnId = await withdrawal(store, order);

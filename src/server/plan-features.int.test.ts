@@ -40,7 +40,7 @@ afterAll(async () => {
 const form = (entries: Record<string, string>) => ({ get: (name: string) => entries[name] ?? null });
 
 describe("the plan comparison", () => {
-  it("starts with the features Kaizen has, in no plan", async () => {
+  it("starts with the features Kaizena Flow has, in no plan", async () => {
     const matrix = await getFeatureMatrix();
     const seeded = matrix.features.filter((f) => !f.category.includes(tag));
     expect(seeded.length).toBeGreaterThanOrEqual(40);

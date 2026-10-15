@@ -28,7 +28,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
     <>
       <PageHeader
         title="Menus"
-        description={<>Lists of links to use around Kaizen&apos;s site: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page shows once it is published, and follows it to a new address.</>}
+        description={<>Lists of links to use around Kaizena Flow&apos;s site: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page shows once it is published, and follows it to a new address.</>}
       />
       {/* The menu chosen in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
@@ -79,7 +79,7 @@ async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platfor
         blogCategory: termTargets(blogTerms).category,
       }}
       copy={{
-        siteLinks: "Kaizen links",
+        siteLinks: "Kaizena Flow links",
         sections: {
           page: "Pages",
           category: "Page categories",
@@ -87,7 +87,7 @@ async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platfor
           article: "Blog articles",
           blogCategory: "Blog categories",
         },
-        urlHint: "A full address opens that site; one starting with / is a page on Kaizen's site; # or #name is an anchor on the page shown.",
+        urlHint: "A full address opens that site; one starting with / is a page on Kaizena Flow's site; # or #name is an anchor on the page shown.",
         urlPlaceholder: "https://…, /sign-up or #anchor",
       }}
       save={savePlatformMenuAction}

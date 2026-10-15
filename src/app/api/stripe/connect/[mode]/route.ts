@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
   }
 
   const store = event.account ? await storeForAccount(mode as PaymentModeName, event.account) : null;
-  if (!store) return Response.json({ received: true, ignored: "not a Kaizen store" });
+  if (!store) return Response.json({ received: true, ignored: "not a Kaizena Flow store" });
 
   try {
     await handleStripeEvent(store.storeId, event);

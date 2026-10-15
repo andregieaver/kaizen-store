@@ -13,7 +13,7 @@ import { bookedLabelFixture } from "./exchange-fixtures";
 
 const l = nbReturnLabel;
 
-test("a booked label is printed through Kaizen's route, with the carrier, the tracking number and what is taken off the refund", async ({ page }) => {
+test("a booked label is printed through Kaizena Flow's route, with the carrier, the tracking number and what is taken off the refund", async ({ page }) => {
   const f = await bookedLabelFixture();
   await page.goto(`/s/${f.slug}/no/returns/${f.returnToken}`);
   const card = page.locator("[data-return-label]");

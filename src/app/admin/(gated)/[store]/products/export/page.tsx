@@ -59,7 +59,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="mt-2">An import leaves these as they are. The file reads back into Kaizen as it is: <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/products/import`}>import products</Link>.</p>
+        <p className="mt-2">An import leaves these as they are. The file reads back into Kaizena Flow as it is: <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/products/import`}>import products</Link>.</p>
       </Notice>
       <ExportSection member={member} kind="product_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/products/export`} now={new Date()} />
     </>

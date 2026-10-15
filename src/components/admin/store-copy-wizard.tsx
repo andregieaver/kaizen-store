@@ -553,7 +553,7 @@ export function StoreCopyWizard({
           </label>
           <p id="copy-email-texts-note" className="pl-6 text-sm text-muted">
             The subjects, headings and texts you wrote for the order and return emails, in each language. Without it the new store
-            sends Kaizen&apos;s standard texts. Which emails are switched on is a setting and always comes along.
+            sends Kaizena Flow&apos;s standard texts. Which emails are switched on is a setting and always comes along.
           </p>
         </div>
       </fieldset>

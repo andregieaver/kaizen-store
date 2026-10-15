@@ -500,7 +500,7 @@ export async function createDesign(
   input: { origin: DesignOrigin; details: DesignDetails },
   deps: ApplyDeps = {},
 ): Promise<DesignResult<{ id: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse("Only Kaizen's admins make design profiles.");
+  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins make design profiles.");
   const { origin } = input;
   const notes: string[] = [];
   let source: DesignSnapshot | null = null;

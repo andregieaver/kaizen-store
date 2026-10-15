@@ -38,7 +38,7 @@ export function ReferralKeeper({ enabled, days }: { enabled: boolean; days: numb
     <>
       <input type="hidden" name="ref" value={code} />
       <p role="status" className="rounded-md border border-border p-3 text-sm">
-        You were invited to Kaizen. Ask for a store below.
+        You were invited to Kaizena Flow. Ask for a store below.
       </p>
     </>
   );

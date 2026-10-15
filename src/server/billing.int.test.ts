@@ -62,7 +62,7 @@ const fake = vi.hoisted(() => {
     hosted_invoice_url: "https://invoice.stripe.test/i/1",
     invoice_pdf: "https://invoice.stripe.test/i/1.pdf",
     customer_account: account,
-    lines: { data: [{ description: "Kaizen Standard", amount: 34900 }, { description: "MVA 25 %", amount: 8725 }] },
+    lines: { data: [{ description: "Kaizena Flow Standard", amount: 34900 }, { description: "MVA 25 %", amount: 8725 }] },
   });
   /** What the fake Checkout session hands back on return. */
   const sessions = { storeId: "", stripePrice: "" };
@@ -306,7 +306,7 @@ describe("plans", () => {
     expect(await billing.storeFeeBps(storeId)).toBe(150);
   });
 
-  it("brings Kaizen's own test account up to date instead of making another", async () => {
+  it("brings Kaizena Flow's own test account up to date instead of making another", async () => {
     const { ensureTestAccount } = await import("./connect");
     await db().execute(sql`
       update commerce.stripe_accounts set card_payments = 'pending' where store_id = ${storeId}::uuid and mode = 'test'
@@ -502,7 +502,7 @@ describe("owners choosing their own plan", () => {
       line_items: [{ quantity: 1, tax_rates: [expect.stringMatching(/^txr_/)] }],
       subscription_data: { metadata: { kaizen_store_id: ownerStore, kaizen_price_id: price?.id } },
       success_url: `https://kaizen.test/admin/${ownerSlug}/billing?checkout={CHECKOUT_SESSION_ID}`,
-      custom_text: { submit: { message: expect.stringContaining("Kaizen may email you a reminder") } },
+      custom_text: { submit: { message: expect.stringContaining("Kaizena Flow may email you a reminder") } },
       // No code saved on the Plan page: Stripe's page has a field for one (D38).
       allow_promotion_codes: true,
     });
@@ -619,7 +619,7 @@ describe("owners choosing their own plan", () => {
     });
     expect(await billing.getStoreInvoice(ownerStore, "in_fake2")).toMatchObject({
       lines: [
-        { description: "Kaizen Standard", amountMinor: 34900 },
+        { description: "Kaizena Flow Standard", amountMinor: 34900 },
         { description: "MVA 25 %", amountMinor: 8725 },
       ],
     });

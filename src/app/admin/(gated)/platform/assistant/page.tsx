@@ -28,7 +28,7 @@ export default async function PlatformAssistantPage({ searchParams }: PageProps<
     <AiManagerPage
       area="platform"
       base="/admin/platform/assistant"
-      siteName="Kaizen"
+      siteName="Kaizena Flow"
       settingsHref="/admin/platform/ai"
       accountId={account.id}
       tab={typeof tab === "string" ? tab : undefined}

@@ -252,7 +252,7 @@ export async function refreshKnowledge(): Promise<{ sites: number; cut: number; 
       const connection = await aiFor(storeId, { feature: "knowledge" });
       if (connection) embedded += (await embedKnowledge(storeId, connection)).embedded;
     } catch (error) {
-      console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   return { sites: agents.length, cut, embedded };
@@ -265,7 +265,7 @@ export async function refreshSiteKnowledge(storeId: string | null): Promise<void
     const connection = await aiFor(storeId, { feature: "knowledge" });
     if (connection) await embedKnowledge(storeId, connection);
   } catch (error) {
-    console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

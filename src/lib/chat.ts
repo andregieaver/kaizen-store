@@ -150,19 +150,19 @@ export function kaizenTools() {
     storeTools().find((tool) => tool.name === "search_content")!,
     {
       name: "site_info",
-      description: "Kaizen's facts: who runs it, contact details, and its pages.",
+      description: "Kaizena Flow's facts: who runs it, contact details, and its pages.",
       parameters: { type: "object", properties: {} },
     },
     {
       name: "navigate",
-      description: "Open a page of Kaizen's site in the visitor's browser now.",
+      description: "Open a page of Kaizena Flow's site in the visitor's browser now.",
       parameters: {
         type: "object",
         properties: { to: { type: "string", enum: [...KAIZEN_DESTINATIONS] }, slug: text("For a page or article: its address.") },
         required: ["to"],
       },
     },
-  ].map((tool) => (tool.name === "search_content" ? { ...tool, description: "Search Kaizen's pages, articles and knowledge base for the passages that answer a question." } : tool));
+  ].map((tool) => (tool.name === "search_content" ? { ...tool, description: "Search Kaizena Flow's pages, articles and knowledge base for the passages that answer a question." } : tool));
 }
 
 // The rules -------------------------------------------------------------------
@@ -196,7 +196,7 @@ export function systemPrompt(ctx: PromptContext): string {
   const topics =
     ctx.kind === "store"
       ? "its products and services, bookings, delivery, returns, payment, its pages and articles, and what its knowledge base says"
-      : "Kaizen, the platform for running an online store: what it offers, plans, getting started, and its pages, articles and knowledge base";
+      : "Kaizena Flow, the platform for running an online store: what it offers, plans, getting started, and its pages, articles and knowledge base";
   return [
     `You are ${who || "the assistant"} at ${ctx.site}, answering its visitors in a chat on its website. You are an AI assistant, and the visitor is told so.`,
     `Answer in ${language}, or in the visitor's language if they write in another.`,
@@ -204,7 +204,7 @@ export function systemPrompt(ctx: PromptContext): string {
     "State products, prices, stock, costs, times, rules and policies only as your tools gave them in this conversation. Never guess, work out or round a price, never make up products, discounts, promises or deadlines, and never say something is the best, cheapest or better for the environment. When the tools do not say, say you do not know and point to the store's contact details.",
     ctx.kind === "store"
       ? "Search before answering questions about products or the store. When you suggest, recommend or promote products, use recommend_products and present only what it returns; do not pick products yourself. Products you find are shown under your answer as cards with their prices, so mention them briefly."
-      : "Search before answering questions about Kaizen.",
+      : "Search before answering questions about Kaizena Flow.",
     "Use navigate to open a page for the visitor when they ask to see or go somewhere, or when it clearly helps; say in a few words what you opened.",
     ctx.support
       ? "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more."
@@ -216,7 +216,7 @@ export function systemPrompt(ctx: PromptContext): string {
       : []),
     ...(ctx.admin
       ? [
-          "The person writes from Kaizen's admin: they run one or more stores on Kaizen, as an owner or a member of staff. For their stores use my_stores and store_status, and say only what they give. To show where something is done in the admin, use find_admin_page: its pages are shown as buttons under your answer. You never change anything in a store and never promise a fix, a refund or a date: tell them where they can do it themselves, or hand over to a person at Kaizen.",
+          "The person writes from Kaizena Flow's admin: they run one or more stores on Kaizena Flow, as an owner or a member of staff. For their stores use my_stores and store_status, and say only what they give. To show where something is done in the admin, use find_admin_page: its pages are shown as buttons under your answer. You never change anything in a store and never promise a fix, a refund or a date: tell them where they can do it themselves, or hand over to a person at Kaizena Flow.",
         ]
       : []),
     ...(ctx.handoff

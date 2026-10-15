@@ -15,7 +15,7 @@ const fontCss = (family: string, slug: string, stack: string) =>
   `/* latin */\n@font-face { font-family: '${family}'; font-style: normal; font-weight: 400; font-display: swap; src: url(/api/fonts/files/${FILE}) format('woff2'); }\n` +
   `.kf-${slug}, .kf-${slug} :where(h1, h2, h3, h4, h5, h6) { font-family: "${family}", ${stack}; font-synthesis-weight: none; }\n`;
 
-test("a store's fonts and a component's own font load from Kaizen, never from Google", async ({ page, request }) => {
+test("a store's fonts and a component's own font load from Kaizena Flow, never from Google", async ({ page, request }) => {
   const slug = `fonts-${Date.now()}`;
   const sql = testDb();
   try {

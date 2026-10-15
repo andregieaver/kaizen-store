@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name:       Kaizen Store
- * Plugin URI:        https://kaizenstore.cloud
- * Description:       Show products from your Kaizen Store stores on your WordPress site, as a grid or a carousel, with shortcodes you generate once and reuse anywhere.
+ * Plugin Name:       Kaizena Flow
+ * Plugin URI:        https://kaizenaflow.com
+ * Description:       Show products from your Kaizena Flow stores on your WordPress site, as a grid or a carousel, with shortcodes you generate once and reuse anywhere.
  * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
- * Author:            Kaizen Store
- * Author URI:        https://kaizenstore.cloud
+ * Author:            Kaizena Flow
+ * Author URI:        https://kaizenaflow.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       kaizen-store

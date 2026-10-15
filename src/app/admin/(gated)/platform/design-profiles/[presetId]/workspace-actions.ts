@@ -31,7 +31,7 @@ import { deleteSavedTheme, saveSavedTheme, saveStoreTheme } from "@/server/theme
  * builder only saves drafts here: what stores apply changes when the profile is published.
  */
 
-const NOT_YOURS = "Only Kaizen's admins edit design profiles.";
+const NOT_YOURS = "Only Kaizena Flow's admins edit design profiles.";
 const isId = (id: unknown): id is string => typeof id === "string" && z.uuid().safeParse(id).success;
 
 /** The admin and the profile's workspace, or null: the check every action starts with. */

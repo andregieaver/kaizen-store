@@ -142,7 +142,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
     };
     const about = suggest.can_be_tested.find((t) => t.target === "om-oss");
     expect(about).toMatchObject({ kind: "page" });
-    expect(about!.blocks).toEqual(expect.arrayContaining([expect.objectContaining({ id: "heading-about", kind: "heading", text: "Om Kaizen Demo" })]));
+    expect(about!.blocks).toEqual(expect.arrayContaining([expect.objectContaining({ id: "heading-about", kind: "heading", text: "Om Kaizena Flow Demo" })]));
     expect(suggest.room_for_more).toBe(5);
     expect(suggest.who_takes_part).toMatch(/Too few cookie choices/);
     expect(typeof suggest.how_long).toBe("string");
@@ -176,14 +176,14 @@ describe("the AI manager's A/B test tools (D148)", () => {
     })) as { done: string; id: string; tests: string; next: string };
     testId = made.id;
     expect(made.done).toContain("Nothing is shown to visitors yet");
-    expect(made.tests).toMatch(/^Heading “Om Kaizen Demo” in row 1 only$/);
+    expect(made.tests).toMatch(/^Heading “Om Kaizena Flow Demo” in row 1 only$/);
     expect(made.next).toMatch(/start_experiment, which needs their approval/);
     const test = (await admin.getExperiment(member.store.id, testId))!;
     expect(test).toMatchObject({ status: "draft", name: "Varmere overskrift", goal: "cart", part: { id: "heading-about", kind: "block" } });
     versionB = test.variants.find((v) => v.key === "b")!.pageId!;
     expect(await headingOf(versionB)).toBe("Velkommen til en rolig butikk");
     // The original is not touched, and nothing runs.
-    expect(await headingOf(aboutId)).toBe("Om Kaizen Demo");
+    expect(await headingOf(aboutId)).toBe("Om Kaizena Flow Demo");
     expect((await ownerTools.runOwnerTool(ctx(), "list_experiments", {})) as { running: number }).toMatchObject({ running: 0 });
     // A draft says what is left, and that it can be started.
     expect(await ownerTools.runOwnerTool(ctx(), "explain_results", { experiment: "varmere overskrift" })).toMatchObject({
@@ -196,7 +196,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
   it("is kept for approval to start, described from the test, and starts only on a yes", async () => {
     const { queued } = await keptAndApproved("start_experiment", { experiment: "Varmere overskrift" });
     expect(queued.summary).toContain('Start the A/B test "Varmere overskrift"');
-    expect(queued.summary).toContain("/om-oss, Heading “Om Kaizen Demo” in row 1");
+    expect(queued.summary).toContain("/om-oss, Heading “Om Kaizena Flow Demo” in row 1");
     expect(queued.summary).toContain("2 versions, 100 % of the visitors who accepted statistics cookies, at least 14 days");
     expect((await admin.getExperiment(member.store.id, testId))!.status).toBe("draft");
     const decided = await assistant.decideApproval(member, queued.id, true, (tag) => void tags.push(tag));
@@ -252,8 +252,8 @@ describe("the AI manager's A/B test tools (D148)", () => {
       update commerce.pages set published = jsonb_set(published, '{rows,0,columns,0,blocks,1,htmlId}', '"edited-after"'), draft = jsonb_set(draft, '{rows,0,columns,0,blocks,1,htmlId}', '"edited-after"') where id = ${aboutId}::uuid
     `);
     const { queued } = await keptAndApproved("apply_winner", { experiment: "Varmere overskrift", version: "b" });
-    expect(queued.summary).toContain("make Version B replace Heading “Om Kaizen Demo” in row 1 for good");
-    expect(await headingOf(aboutId)).toBe("Om Kaizen Demo");
+    expect(queued.summary).toContain("make Version B replace Heading “Om Kaizena Flow Demo” in row 1 for good");
+    expect(await headingOf(aboutId)).toBe("Om Kaizena Flow Demo");
     const decided = await assistant.decideApproval(member, queued.id, true, (tag) => void tags.push(tag));
     expect(decided).toMatchObject({ status: "done", outcome: expect.stringContaining("Version B is now Heading") });
     expect(await headingOf(aboutId)).toBe("Velkommen til en rolig butikk");

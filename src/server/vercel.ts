@@ -51,7 +51,7 @@ export const domainsConfigured = () => settings() !== null;
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const s = settings();
-  if (!s) throw new VercelError("Custom domains are not set up on Kaizen yet.", 503, null);
+  if (!s) throw new VercelError("Custom domains are not set up on Kaizena Flow yet.", 503, null);
   const url = new URL(`https://api.vercel.com${path}`);
   if (s.teamId) url.searchParams.set("teamId", s.teamId);
   const response = await fetch(url, {
@@ -118,7 +118,7 @@ export const vercelDomains: DomainServices = {
   },
   async deploy() {
     const s = settings();
-    if (!s) throw new VercelError("Custom domains are not set up on Kaizen yet.", 503, null);
+    if (!s) throw new VercelError("Custom domains are not set up on Kaizena Flow yet.", 503, null);
     const response = await fetch(s.deployHook, { method: "POST", signal: AbortSignal.timeout(15_000), cache: "no-store" });
     if (!response.ok) throw new VercelError(`The deploy hook answered ${response.status}.`, response.status, null);
   },

@@ -208,7 +208,7 @@ describe("Slack (D101)", () => {
     // Amounts as the store's main language writes them.
     expect(String(paid.text).replace(/\s/g, " ")).toMatch(new RegExp(`^New order #S1-${run} · 497[,.]00 (kr|NOK) · Kari Nordmann$`));
     expect(JSON.stringify(paid)).toContain("Handlenett");
-    expect(JSON.stringify(paid)).toContain(`/admin/int-${run}/orders/${orderId}|Open the order in Kaizen>`);
+    expect(JSON.stringify(paid)).toContain(`/admin/int-${run}/orders/${orderId}|Open the order in Kaizena Flow>`);
     expect(JSON.stringify(paid)).not.toContain(`kari-${run}@example.com`);
     expect(JSON.stringify(paid)).not.toContain("Storgata");
     expect(customer).toMatchObject({ text: "New customer account: Siri" });

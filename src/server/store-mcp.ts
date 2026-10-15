@@ -94,20 +94,20 @@ function withStore(tool: OwnerTool): McpToolInfo {
   const { parameters } = toolDefinition(tool);
   const properties = { store: STORE_ARG, ...((parameters.properties as Record<string, unknown>) ?? {}) };
   const required = ["store", ...(((parameters.required as string[]) ?? []))];
-  const gate = tool.gate ? " It is not done from here: it is kept for the owner to approve in Kaizen Store's admin." : "";
+  const gate = tool.gate ? " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin." : "";
   return { name: tool.name, description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required } };
 }
 
 export const MCP_TOOLS: McpToolInfo[] = [
   {
     name: "list_stores",
-    description: "The stores the owner has in Kaizen Store: slug, name. Every other tool takes one of these slugs.",
+    description: "The stores the owner has in Kaizena Flow: slug, name. Every other tool takes one of these slugs.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "ask_store_assistant",
     description:
-      "Asks the store's own assistant, in Kaizen Store, a question or for something to be done, in words; it answers from the store's data with its tools. Changes it prepares wait for the owner's approval in Kaizen Store's admin.",
+      "Asks the store's own assistant, in Kaizena Flow, a question or for something to be done, in words; it answers from the store's data with its tools. Changes it prepares wait for the owner's approval in Kaizena Flow's admin.",
     inputSchema: {
       type: "object",
       properties: { store: STORE_ARG, question: { type: "string", maxLength: 4000 } },
@@ -186,7 +186,7 @@ export async function callMcpTool(
       kept_for_approval: true,
       what: approval.summary,
       where: `${siteUrl()}/admin/${member.store.slug}/assistant?c=${conversation}`,
-      note: "Not done yet: the owner approves or declines it in Kaizen Store's admin.",
+      note: "Not done yet: the owner approves or declines it in Kaizena Flow's admin.",
     });
   }
   try {
@@ -227,6 +227,6 @@ export function protectedResource() {
     resource: `${siteUrl()}/api/mcp`,
     authorization_servers: [`${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "")}/auth/v1`],
     bearer_methods_supported: ["header"],
-    resource_name: "Kaizen Store",
+    resource_name: "Kaizena Flow",
   };
 }

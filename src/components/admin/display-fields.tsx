@@ -108,7 +108,7 @@ export function DisplayFields({
       <p id={`${id}-hint`} className="text-xs text-muted">
         {locked ??
           (setup.kaizen
-            ? "Signed in is a person signed in to Kaizen's admin. Hidden parts are left out of the page by the server, not just hidden."
+            ? "Signed in is a person signed in to Kaizena Flow's admin. Hidden parts are left out of the page by the server, not just hidden."
             : "Signed in is a shopper signed in to their customer account. Hidden parts are left out of the page by the server, not just hidden; search engines see what a signed-out visitor sees.")}
       </p>
       {typeof show === "object" && <RuleBuilder rules={show.rules} onChange={(rules) => onChange(rules.length > 0 ? { rules } : undefined)} setup={setup} choices={choices} />}
@@ -135,7 +135,7 @@ export function RuleBuilder({
     <div className="flex flex-col gap-2 rounded-md border border-line p-3" data-rule-builder="">
       <p className="text-xs text-muted">
         Shown when every condition of a group holds, in any group.
-        {choices && choices.timeZone && <> Times are in {setup.kaizen ? "Kaizen's" : "the store's"} time zone, {choices.timeZone}.</>}
+        {choices && choices.timeZone && <> Times are in {setup.kaizen ? "Kaizena Flow's" : "the store's"} time zone, {choices.timeZone}.</>}
       </p>
       {rules.map((group, groupIndex) => (
         <div key={groupIndex} className="flex flex-col gap-2">

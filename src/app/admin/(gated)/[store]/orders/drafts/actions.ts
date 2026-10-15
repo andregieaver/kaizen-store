@@ -221,7 +221,7 @@ export async function recordPaidOutsideAction(storeSlug: string, draftId: string
   if (!done.ok) {
     const message: Record<typeof done.problem, string> = {
       not_found: GONE,
-      not_allowed: "Only the owner can record a payment taken outside Kaizen, unless the owner has allowed staff to (Settings, Orders).",
+      not_allowed: "Only the owner can record a payment taken outside Kaizena Flow, unless the owner has allowed staff to (Settings, Orders).",
       invalid: "Choose how it was paid.",
       conflict: CHANGED,
       closed: "This store is not open.",

@@ -208,7 +208,7 @@ describe("the visitor's facts", () => {
     expect(facts.cart).toEqual({ minor: 0, currency: "NOK", products: [], categories: [] });
   });
 
-  it("Kaizen's pages: the admin's sign-in, English, Kaizen's time zone and none of a store's facts", async () => {
+  it("Kaizena Flow's pages: the admin's sign-in, English, Kaizena Flow's time zone and none of a store's facts", async () => {
     jar.clear();
     const facts = await visitorFacts({ pageId: null, owner: null, query: Promise.resolve({ ref: "x" }) }, rules({ fact: "query", op: "exists", value: { name: "ref" } }));
     expect(facts).toMatchObject({ signedIn: false, language: "en", cart: null, tierIds: null, company: null, query: { ref: "x" } });

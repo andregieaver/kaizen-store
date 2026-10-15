@@ -31,7 +31,7 @@ const chip = "rounded-full border border-edge px-3 py-1.5 text-left text-sm hove
 
 const STARTERS: Record<"store" | "platform", string[]> = {
   store: ["How is the store doing this week?", "What needs my attention?", "What should I do next to get ready?", "How do I run a sale?"],
-  platform: ["How is Kaizen doing?", "Who is waiting for access?", "Which emails failed?", "Show me the stores without a plan."],
+  platform: ["How is Kaizena Flow doing?", "Who is waiting for access?", "Which emails failed?", "Show me the stores without a plan."],
 };
 
 /** Text with the admin's own paths and web addresses as links; the rest stays text, never HTML. */
@@ -332,7 +332,7 @@ export function AiManagerChat({
   if (!abilities.text) {
     return (
       <p className="m-4 rounded-panel border border-line p-4 text-sm">
-        The AI manager uses {area === "store" ? "the store's" : "Kaizen's"} AI and needs a text model.{" "}
+        The AI manager uses {area === "store" ? "the store's" : "Kaizena Flow's"} AI and needs a text model.{" "}
         <Link href={settingsHref} className="underline" onClick={onNavigate}>
           Set one up under AI
         </Link>
@@ -408,7 +408,7 @@ export function AiManagerChat({
               <p className="text-sm">
                 {area === "store"
                   ? `I know every part of ${siteName}'s admin, can look at orders, products, customers and sales, and can take you to the right page. Changes that email customers, change the site or cost money wait for your yes.`
-                  : "I know every part of Kaizen's admin, can look at requests, stores, plans and emails, and can take you to the right page. Approvals and emails wait for your yes."}
+                  : "I know every part of Kaizena Flow's admin, can look at requests, stores, plans and emails, and can take you to the right page. Approvals and emails wait for your yes."}
               </p>
               <div className="flex flex-wrap gap-2">
                 {starters.map((s) => (

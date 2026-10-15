@@ -91,7 +91,7 @@ export async function deliver(
 
 /** A display name safe in an email header: no quotes, line breaks or angle brackets. */
 export function senderName(name: string): string {
-  return name.replace(/["\r\n<>\\]/g, "").trim().slice(0, 60) || "Kaizen";
+  return name.replace(/["\r\n<>\\]/g, "").trim().slice(0, 60) || "Kaizena Flow";
 }
 
 export type OutgoingEmail = {

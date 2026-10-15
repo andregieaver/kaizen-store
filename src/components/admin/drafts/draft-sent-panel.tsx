@@ -118,7 +118,7 @@ export function DraftSentPanel({
               The pay link
             </h2>
             <p className={hint}>
-              A new link replaces the old one, so an earlier link stops working. A draft&apos;s link can be sent {DRAFT_SENDS_PER_DAY} times a day ({paySendsToday} today). Kaizen keeps only a fingerprint of a link, so one made for sharing is shown once.
+              A new link replaces the old one, so an earlier link stops working. A draft&apos;s link can be sent {DRAFT_SENDS_PER_DAY} times a day ({paySendsToday} today). Kaizena Flow keeps only a fingerprint of a link, so one made for sharing is shown once.
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={working} onClick={() => run(() => actions.resend({ createLink: false }))} className={secondary}>

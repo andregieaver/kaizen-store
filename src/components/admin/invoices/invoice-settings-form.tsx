@@ -115,7 +115,7 @@ export function InvoiceSettingsForm({
             <Link href={paymentsHref} className="underline">
               Payments
             </Link>
-            , and is not used while Kaizen makes the invoices, so a shopper never gets two.
+            , and is not used while Kaizena Flow makes the invoices, so a shopper never gets two.
           </p>
         )}
       </section>

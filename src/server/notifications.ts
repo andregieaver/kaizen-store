@@ -101,7 +101,7 @@ export type SwitchResult = { ok: true; enabled: boolean } | { ok: false; problem
 
 /** Switches a notification on or off. A required one is refused (the database refuses it too); audited `notification.switched`. */
 export async function setNotification(storeId: string, id: string, enabled: boolean, accountId: string | null): Promise<SwitchResult> {
-  if (!isNotificationId(id)) return { ok: false, problem: "unknown", message: "This email is not one Kaizen sends." };
+  if (!isNotificationId(id)) return { ok: false, problem: "unknown", message: "This email is not one Kaizena Flow sends." };
   if (isRequiredNotification(id)) {
     return { ok: false, problem: "required", message: "This email is required and is always sent: it cannot be switched off." };
   }
@@ -221,7 +221,7 @@ export async function saveTemplate(
   accountId: string | null,
 ): Promise<SaveTemplateResult> {
   const n = notificationOf(id);
-  if (!n) return { ok: false, problem: "unknown", message: "This email is not one Kaizen sends." };
+  if (!n) return { ok: false, problem: "unknown", message: "This email is not one Kaizena Flow sends." };
   if (!n.editable) return { ok: false, problem: "locked", message: "This email is the legal acknowledgement of a withdrawal and cannot be changed." };
   const locale = templateLocale(lang);
   const store = await storeById(storeId);
@@ -319,21 +319,21 @@ export function fixedSlots(id: string, lang: string, values: PlaceholderValues):
 
 /** Stand-ins for the parts the code adds that need a real order (2.1 point 3): said in English, in brackets, so the preview is not taken for a real email. */
 const STAND_INS: Record<string, string[]> = {
-  "order.confirmation": ["[Kaizen adds: the VAT statement, the invoice link and the right of withdrawal]"],
-  "subscription.renewed": ["[Kaizen adds: the invoice link and the subscription's details]"],
-  "order.changed": ["[Kaizen adds: what changed, the refund or what is left to pay, and the change's documents]"],
-  "order.sent": ["[Kaizen adds: the parcel's contents, the tracking link, the delivery address and the right of withdrawal]"],
-  "order.parcel_out_for_delivery": ["[Kaizen adds: the parcel's contents and the tracking link]"],
-  "order.parcel_delivered": ["[Kaizen adds: the parcel's contents and the tracking link]"],
-  "order.refunded": ["[Kaizen adds: the credit note and, for a reverse-charge order, the VAT note]"],
+  "order.confirmation": ["[Kaizena Flow adds: the VAT statement, the invoice link and the right of withdrawal]"],
+  "subscription.renewed": ["[Kaizena Flow adds: the invoice link and the subscription's details]"],
+  "order.changed": ["[Kaizena Flow adds: what changed, the refund or what is left to pay, and the change's documents]"],
+  "order.sent": ["[Kaizena Flow adds: the parcel's contents, the tracking link, the delivery address and the right of withdrawal]"],
+  "order.parcel_out_for_delivery": ["[Kaizena Flow adds: the parcel's contents and the tracking link]"],
+  "order.parcel_delivered": ["[Kaizena Flow adds: the parcel's contents and the tracking link]"],
+  "order.refunded": ["[Kaizena Flow adds: the credit note and, for a reverse-charge order, the VAT note]"],
   "order.cancelled": [],
-  "order.ready_for_pickup": ["[Kaizen adds: the place, its opening hours, what to collect and what to bring]"],
-  "order.out_for_delivery": ["[Kaizen adds: the delivery area's information and where it goes]"],
-  "return.acknowledgement": ["[Kaizen adds: the goods withdrawn, the reference and the dates the law requires]"],
-  "return.approved": ["[Kaizen adds: the goods, who pays for sending them back, the return address and the label]"],
-  "return.declined": ["[Kaizen adds: your reason and the statement that statutory rights are not affected]"],
-  "return.received": ["[Kaizen adds: what happens next]"],
-  "return.refunded": ["[Kaizen adds: how the amount was worked out and when it arrives]"],
+  "order.ready_for_pickup": ["[Kaizena Flow adds: the place, its opening hours, what to collect and what to bring]"],
+  "order.out_for_delivery": ["[Kaizena Flow adds: the delivery area's information and where it goes]"],
+  "return.acknowledgement": ["[Kaizena Flow adds: the goods withdrawn, the reference and the dates the law requires]"],
+  "return.approved": ["[Kaizena Flow adds: the goods, who pays for sending them back, the return address and the label]"],
+  "return.declined": ["[Kaizena Flow adds: your reason and the statement that statutory rights are not affected]"],
+  "return.received": ["[Kaizena Flow adds: what happens next]"],
+  "return.refunded": ["[Kaizena Flow adds: how the amount was worked out and when it arrives]"],
 };
 
 /** The sample order's market for a language: the store's country in that language when it has one, its currency the country's own. */
@@ -428,7 +428,7 @@ export async function sendTestNotification(
 ): Promise<TestResult> {
   if (!account.email) return { ok: false, problem: "no_address", message: "Your account has no email address to send the test to." };
   const preview = await previewNotification(storeId, id, lang, draft, now);
-  if (!preview) return { ok: false, problem: "unknown", message: "This email is not one Kaizen sends." };
+  if (!preview) return { ok: false, problem: "unknown", message: "This email is not one Kaizena Flow sends." };
   const slot = await takeTestSlot(storeId, account.id, now);
   if (!slot.ok) {
     const at = new Date(slot.opensAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
@@ -440,7 +440,7 @@ export async function sendTestNotification(
     kind: "notification.test",
     to: account.email,
     email: { ...preview.email, subject: `[Test] ${preview.email.subject}` },
-    fromName: store?.name ?? "Kaizen",
+    fromName: store?.name ?? "Kaizena Flow",
     idempotencyKey: `notification-test:${crypto.randomUUID()}`,
   });
   return { ok: true, outcome };

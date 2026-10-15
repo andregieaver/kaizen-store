@@ -19,12 +19,12 @@ export const PHASE_WORDS: Record<TrackingPhase, string> = {
 };
 
 const STOP_WORDS: Record<TrackingStop, string> = {
-  delivered: "Kaizen stopped following it: delivered.",
-  returned: "Kaizen stopped following it: on its way back to you.",
-  old: "Kaizen stopped following it: sent more than 30 days ago.",
-  undone: "Kaizen stopped following it: the parcel was undone.",
-  carrier_failing: "Kaizen could not reach the carrier for this parcel and stopped asking. Check now tries again.",
-  no_agreement: "The carrier's agreement is no longer saved under Shipping, so Kaizen stopped asking. Check now tries again.",
+  delivered: "Kaizena Flow stopped following it: delivered.",
+  returned: "Kaizena Flow stopped following it: on its way back to you.",
+  old: "Kaizena Flow stopped following it: sent more than 30 days ago.",
+  undone: "Kaizena Flow stopped following it: the parcel was undone.",
+  carrier_failing: "Kaizena Flow could not reach the carrier for this parcel and stopped asking. Check now tries again.",
+  no_agreement: "The carrier's agreement is no longer saved under Shipping, so Kaizena Flow stopped asking. Check now tries again.",
 };
 
 const SHOWN = 5;
@@ -48,7 +48,7 @@ export function ParcelStatus({
   checkNow: FormAction | null;
 }) {
   if (!tracking || !tracking.followed) {
-    return <p className="text-xs text-muted">Kaizen follows parcels from carriers you connect under Shipping.</p>;
+    return <p className="text-xs text-muted">Kaizena Flow follows parcels from carriers you connect under Shipping.</p>;
   }
   const signal = tracking.phase === "returned_to_sender" || tracking.phase === "problem" || tracking.phase === "attempted" ? "warning" : tracking.phase === "delivered" ? "positive" : "neutral";
   return (
@@ -79,7 +79,7 @@ export function ParcelStatus({
         </ol>
       )}
       <div className="flex flex-wrap items-center gap-2 text-muted">
-        {tracking.checkedAt ? `Last checked ${when(tracking.checkedAt)}` : "Kaizen checks it within a few minutes"}
+        {tracking.checkedAt ? `Last checked ${when(tracking.checkedAt)}` : "Kaizena Flow checks it within a few minutes"}
         {tracking.lastCheckFailed && !tracking.stopped && ` · the last ${tracking.failures === 1 ? "check" : `${tracking.failures} checks`} did not reach ${carrierName}`}
         {checkNow && tracking.stopped !== "undone" && (
           <ActionForm action={checkNow} successMessage="Checked." className="flex items-center gap-2">

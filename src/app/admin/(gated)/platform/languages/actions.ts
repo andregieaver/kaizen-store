@@ -69,7 +69,7 @@ export async function generateAction(lang: string, keys: unknown): Promise<Chunk
   const parsed = z.array(z.string().max(200)).max(200).safeParse(keys);
   if (!language || !parsed.success) return { ok: false, problem: "Unknown language." };
   const connection = await uiConnection(account.id);
-  if (!connection?.textModel) return { ok: false, problem: "Kaizen has no AI text model. Choose one under AI." };
+  if (!connection?.textModel) return { ok: false, problem: "Kaizena Flow has no AI text model. Choose one under AI." };
   return generateChunk(connection, { accountId: account.id }, language, parsed.data);
 }
 

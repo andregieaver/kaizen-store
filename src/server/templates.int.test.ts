@@ -115,7 +115,7 @@ afterAll(async () => {
 });
 
 describe("who can share a saved part", () => {
-  it("lets owners share and staff keep to private, and makes Kaizen's own the marketplace's", async () => {
+  it("lets owners share and staff keep to private, and makes Kaizena Flow's own the marketplace's", async () => {
     const shared = await saved.createSavedPart(both, pub, block("Owner shares", "Hi", "marketplace"));
     expect(shared.ok && shared.parts.find((p) => p.id === shared.id)?.sharing).toBe("marketplace");
     expect(await saved.createSavedPart(staff, pub, block("Staff shares", "Hi", "stores"))).toEqual({
@@ -127,7 +127,7 @@ describe("who can share a saved part", () => {
     expect(plain.find((p) => p.name === `Staff keeps ${run}`)?.sharing).toBe("private");
 
     // Kaizen's own are the marketplace's whatever the input says.
-    const kaizen = await saved.createSavedPart(moderator, null, block("Kaizen own", "Hi", "private"));
+    const kaizen = await saved.createSavedPart(moderator, null, block("Kaizena Flow own", "Hi", "private"));
     expect(kaizen.ok && kaizen.parts.find((p) => p.id === kaizen.id)?.sharing).toBe("marketplace");
   });
 
@@ -293,10 +293,10 @@ describe("which templates a store sees", () => {
   it("lists every marketplace template for moderation, not the private ones", async () => {
     const list = (await templates.listMarketplaceTemplates()).filter((t) => t.name.endsWith(run));
     expect(list.map((t) => t.name.replace(` ${run}`, ""))).toEqual(
-      expect.arrayContaining(["Vis market", "Kaizen own"]),
+      expect.arrayContaining(["Vis market", "Kaizena Flow own"]),
     );
-    expect(list.find((t) => t.name.startsWith("Kaizen own"))).toMatchObject({
-      publisher: "Kaizen",
+    expect(list.find((t) => t.name.startsWith("Kaizena Flow own"))).toMatchObject({
+      publisher: "Kaizena Flow",
       fromKaizen: true,
       storeSlug: null,
     });
@@ -305,12 +305,12 @@ describe("which templates a store sees", () => {
 });
 
 describe("switching templates on", () => {
-  it("has Kaizen's on until a store switches them off, and every other off until switched on", async () => {
+  it("has Kaizena Flow's on until a store switches them off, and every other off until switched on", async () => {
     const kaizenId = await part(null, moderator, "Act kaizen");
     const shared = await part(pub, both, "Act shared", "marketplace");
     const find = async (storeId: string, who: Account, id: string) =>
       (await templates.listTemplates(storeId, who, "marketplace")).find((t) => t.id === id);
-    expect(await find(mine, both, kaizenId)).toMatchObject({ active: true, fromKaizen: true, publisher: "Kaizen" });
+    expect(await find(mine, both, kaizenId)).toMatchObject({ active: true, fromKaizen: true, publisher: "Kaizena Flow" });
     expect(await find(mine, both, shared)).toMatchObject({ active: false });
 
     expect(await templates.setTemplateActive(mine, both, kaizenId, false)).toEqual({ ok: true });
@@ -567,7 +567,7 @@ describe("using a template", () => {
     expect(JSON.stringify(part.content)).not.toContain(pub);
   });
 
-  it("uses Kaizen's own templates the same way, copying its pictures and keeping its HTML", async () => {
+  it("uses Kaizena Flow's own templates the same way, copying its pictures and keeping its HTML", async () => {
     const own = await picture(null, "kaizen-pic");
     const row = {
       id: "row",
@@ -909,7 +909,7 @@ describe("previewing a template (D127)", () => {
     }
   });
 
-  it("names Kaizen as the publisher of its own templates, and keeps its HTML", async () => {
+  it("names Kaizena Flow as the publisher of its own templates, and keeps its HTML", async () => {
     const made = await saved.createSavedPart(moderator, null, {
       kind: "block",
       name: `PV kaizen ${run}`,
@@ -917,7 +917,7 @@ describe("previewing a template (D127)", () => {
     });
     if (!made.ok) throw new Error("not saved");
     const view = await preview(theirs, other, made.id);
-    expect(view).toMatchObject({ publisher: "Kaizen", fromKaizen: true });
+    expect(view).toMatchObject({ publisher: "Kaizena Flow", fromKaizen: true });
     expect(view.rows[0].columns[0].blocks[0]).toMatchObject({ html: "<b>Hi</b>" });
   });
 
@@ -945,8 +945,8 @@ describe("previewing a template (D127)", () => {
   });
 });
 
-describe("Kaizen's own builder (D236)", () => {
-  it("lists only Kaizen's own templates that are not hidden, always on and from Kaizen", async () => {
+describe("Kaizena Flow's own builder (D236)", () => {
+  it("lists only Kaizena Flow's own templates that are not hidden, always on and from Kaizena Flow", async () => {
     const own = await part(null, moderator, "K own");
     const hidden = await part(null, moderator, "K hidden");
     const store = await part(pub, both, "K store", "marketplace");
@@ -956,16 +956,16 @@ describe("Kaizen's own builder (D236)", () => {
     expect(names).toContain("K own");
     expect(names).not.toContain("K hidden");
     expect(names).not.toContain("K store");
-    expect(listed.find((t) => t.id === own)).toMatchObject({ active: true, fromKaizen: true, publisher: "Kaizen", sharing: "marketplace" });
+    expect(listed.find((t) => t.id === own)).toMatchObject({ active: true, fromKaizen: true, publisher: "Kaizena Flow", sharing: "marketplace" });
     expect(listed.some((t) => t.id === store)).toBe(false);
   });
 
-  it("uses and previews Kaizen's own only, unchanged and audited, and refuses a hidden one or a store's", async () => {
+  it("uses and previews Kaizena Flow's own only, unchanged and audited, and refuses a hidden one or a store's", async () => {
     const own = await part(null, moderator, "K use");
     const used = await templates.applyKaizenTemplate(moderator, own);
     expect(used).toMatchObject({ ok: true, part: { id: own, kind: "block", sharing: "private", global: false } });
     expect(await audited("platform.template_used", null)).toBeGreaterThan(0);
-    expect(await templates.previewKaizenTemplate(own)).toMatchObject({ ok: true, preview: { id: own, publisher: "Kaizen", fromKaizen: true } });
+    expect(await templates.previewKaizenTemplate(own)).toMatchObject({ ok: true, preview: { id: own, publisher: "Kaizena Flow", fromKaizen: true } });
 
     const store = await part(pub, both, "K theirs", "marketplace");
     const hidden = await part(null, moderator, "K gone");

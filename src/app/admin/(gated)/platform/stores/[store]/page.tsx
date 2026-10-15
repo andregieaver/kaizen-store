@@ -123,7 +123,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
 
       <Card title={<>{onPlan ? "Change plan" : "Start a plan"}</>} compact>
         {!mode ? (
-          <p className="text-sm text-muted">Kaizen&apos;s Stripe keys are not set (Platform → Stripe).</p>
+          <p className="text-sm text-muted">Kaizena Flow&apos;s Stripe keys are not set (Platform → Stripe).</p>
         ) : offered.length === 0 ? (
           <p className="text-sm text-muted">
             There are no plans to offer yet.{" "}
@@ -138,7 +138,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
               {onPlan
                 ? "The change applies now; Stripe credits or charges the difference on the next invoice."
                 : `Stripe emails the store an invoice for each period, due in 14 days${(store.details.country ?? "NO") === "NO" ? ", with 25 % Norwegian VAT" : ", without VAT (reverse charge)"}.`}
-              {mode === "test" && " Kaizen is in test mode: no real invoices are sent."}
+              {mode === "test" && " Kaizena Flow is in test mode: no real invoices are sent."}
             </p>
             <label className="flex flex-col gap-1 text-sm font-medium">
               Plan and price

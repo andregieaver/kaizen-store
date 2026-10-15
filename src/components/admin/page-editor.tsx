@@ -619,7 +619,7 @@ export function PageEditor({
                   </label>
                   <span id="author-hint" className={hint}>
                     Shown under the title with the date, and told to search engines. Empty shows{" "}
-                    {context.owner === null ? "Kaizen" : "the store"} as the author.
+                    {context.owner === null ? "Kaizena Flow" : "the store"} as the author.
                   </span>
                 </div>
               </section>
@@ -769,7 +769,7 @@ export function PageEditor({
         open={cssOpen}
         onClose={() => setCssOpen(false)}
         noun={noun}
-        siteName={context.owner === null ? "Kaizen's site" : "your store"}
+        siteName={context.owner === null ? "Kaizena Flow's site" : "your store"}
         pageCss={content.css ?? ""}
         onPageCss={changeCss}
         siteCss={siteCss}

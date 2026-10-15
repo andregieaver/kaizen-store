@@ -20,7 +20,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
     return (
       <PageHeader
         title="Domains"
-        description={<>Your store is at {storeHref(store.slug, storeBase(store.slug))} on Kaizen&apos;s own address for now. Stores get addresses of their own, and can use their own domains, once Kaizen&apos;s store domain is set up.</>}
+        description={<>Your store is at {storeHref(store.slug, storeBase(store.slug))} on Kaizena Flow&apos;s own address for now. Stores get addresses of their own, and can use their own domains, once Kaizena Flow&apos;s store domain is set up.</>}
       />
     );
   }
@@ -31,7 +31,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
   if (deploying) await deployIfBehind(store.slug, domains).catch(() => false);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizen, or a domain of your own.</>} />
+      <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
       <DomainsPanel
         address={storeHref(store.slug, storeBase(store.slug))}
         hostAddress={hostOrigin(`${store.slug}.${domain.split(":")[0]}`)}

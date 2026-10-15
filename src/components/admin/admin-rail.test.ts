@@ -18,7 +18,7 @@ const tabs: NavItem[] = [
   { href: "/admin/s/settings", label: "Settings", icon: "cog", exact: true, also: ["/admin/s/settings/tax"], foot: true },
 ];
 const areas: NavArea[] = [{ prefixes: ["/admin/s/settings/tax"], exact: ["/admin/s/settings"], groups: [{ heading: "Money", items: [{ href: "/admin/s/settings/tax", label: "Tax" }] }] }];
-const rail = () => renderToStaticMarkup(h(AdminRail, { items: tabs, home: { href: "/admin", label: "Kaizen: all your stores" }, label: "Main sections" }));
+const rail = () => renderToStaticMarkup(h(AdminRail, { items: tabs, home: { href: "/admin", label: "Kaizena Flow: all your stores" }, label: "Main sections" }));
 
 beforeEach(() => {
   path.current = "/admin/s/orders/123";
@@ -30,7 +30,7 @@ describe("the rail", () => {
     expect(out).toContain('aria-label="Orders" aria-current="page"');
     expect(out).toContain('aria-label="Home"');
     expect(out).not.toContain('aria-label="Home" aria-current');
-    expect(out).toContain('aria-label="Kaizen: all your stores"');
+    expect(out).toContain('aria-label="Kaizena Flow: all your stores"');
     expect(out).toMatch(/data-admin-rail="true" class="[^"]*hidden[^"]*md:flex/);
   });
 

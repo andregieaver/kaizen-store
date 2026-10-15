@@ -29,6 +29,6 @@ export async function POST(request: Request) {
     return json({ token: swapped.token, account: swapped.account });
   } catch (error) {
     console.warn(`[wordpress] token: ${error instanceof Error ? error.message : String(error)}`);
-    return problem(503, "unavailable", "Kaizen could not answer just now.");
+    return problem(503, "unavailable", "Kaizena Flow could not answer just now.");
   }
 }

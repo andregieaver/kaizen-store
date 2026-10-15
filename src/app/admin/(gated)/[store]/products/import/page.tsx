@@ -35,7 +35,7 @@ export default async function ProductImportPage({ params }: Props) {
         backHref={`/admin/${store.slug}/products`}
         backLabel="Products"
         title="Import products"
-        intro="Bring products in from a CSV file: the file Kaizen exports, or a Shopify product file. You see what the import would do, row by row, before anything is changed. An import never deletes a product and never changes an address."
+        intro="Bring products in from a CSV file: the file Kaizena Flow exports, or a Shopify product file. You see what the import would do, row by row, before anything is changed. An import never deletes a product and never changes an address."
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />

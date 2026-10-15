@@ -316,7 +316,7 @@ export function CreditForm({
             <span>
               I have paid {money(canRefund)} back to the client: record it
               <span className={`block ${hintText}`}>
-                Kaizen does not move money. This only writes the refund into the invoice&apos;s payments.
+                Kaizena Flow does not move money. This only writes the refund into the invoice&apos;s payments.
               </span>
             </span>
           </label>

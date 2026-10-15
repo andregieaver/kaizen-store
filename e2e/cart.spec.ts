@@ -142,7 +142,7 @@ test.describe("without JavaScript", () => {
     await page.goto("/s/demo/no/p/demo-notatbok");
     await expect(page.getByRole("heading", { level: 1, name: "Demo: Notatbok A5" })).toBeVisible();
     await expect(page.getByText("129,00").first()).toBeVisible();
-    await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();
+    await expect(page.getByText("Kaizena Flow Demo AS, Storgata 1")).toBeVisible();
   });
 });
 

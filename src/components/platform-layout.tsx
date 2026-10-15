@@ -63,13 +63,13 @@ export function Brand({ chrome, size, height }: Props & { size: "header" | "foot
           logo={logo}
           logoDark={chrome.navigation.logoDark}
           darkBehind={{ light: false, dark: true }}
-          alt="Kaizen"
+          alt="Kaizena Flow"
           priority={size === "header"}
           style={height ? { height } : undefined}
           className={`${height ? "max-w-none" : `${size === "header" ? "h-8 md:h-10" : "h-8"} max-w-44 md:max-w-56`} w-auto min-w-0 object-contain object-left`}
         />
       ) : (
-        <span className="truncate text-lg font-semibold">Kaizen</span>
+        <span className="truncate text-lg font-semibold">Kaizena Flow</span>
       )}
     </Link>
   );
@@ -156,7 +156,7 @@ export function PlatformMenu({ chrome }: Props) {
 /** Who runs Kaizen (required on every page of a web service) and the footer menu. */
 export function PlatformFooter({ chrome }: Props) {
   const b = chrome.business;
-  const legal = [b.legalName || "Kaizen", b.organisationNumber && `Org. ${b.organisationNumber}`]
+  const legal = [b.legalName || "Kaizena Flow", b.organisationNumber && `Org. ${b.organisationNumber}`]
     .filter(Boolean)
     .join(" · ");
   return (

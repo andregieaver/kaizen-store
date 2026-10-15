@@ -21,7 +21,7 @@ describe("calendar files", () => {
     expect(file.split("\r\n")).toEqual([
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Kaizen//Bookings//EN",
+      "PRODID:-//Kaizena Flow//Bookings//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       "BEGIN:VEVENT",

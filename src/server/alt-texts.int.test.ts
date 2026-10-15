@@ -130,7 +130,7 @@ describe("alt texts written by the store's AI (D89)", () => {
       "en",
     ]);
     expect(site?.languages.at(-1)).toEqual({ locale: "en", name: "English", extra: true });
-    expect(await altTexts.altSite({ storeId: null, storeSlug: null })).toEqual({ name: "Kaizen", languages: [{ locale: "en", name: "English" }] });
+    expect(await altTexts.altSite({ storeId: null, storeSlug: null })).toEqual({ name: "Kaizena Flow", languages: [{ locale: "en", name: "English" }] });
   });
 
   it("writes every missing picture's, in each language, leaving staff's, videos and drawings alone", async () => {

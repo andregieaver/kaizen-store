@@ -223,7 +223,7 @@ describe("the invoice's snapshot: SQL and the oracle agree", () => {
     });
   });
 
-  it("a payment recorded outside Kaizen is stated as paid outside, with its method, never as paid online (D173)", async () => {
+  it("a payment recorded outside Kaizena Flow is stated as paid outside, with its method, never as paid online (D173)", async () => {
     for (const method of ["bank_transfer", "cash", "other"] as const) {
       await expectParity(no, { lines: [{ sku: `MAN-${method}`, unit: 15000, quantity: 2, rate: 0.25 }], shipping: 5900, provider: "manual", method }, (snap) => {
         expect(snap.payments).toEqual([{ kind: "paid_outside", amountMinor: snap.totals.grossMinor, provider: "manual", method }]);
@@ -413,7 +413,7 @@ describe("a return's credit note: SQL and the oracle agree", () => {
     await returnParity(no, twoRates, ([a, b]) => workingOf({ lines: [{ lineId: a, quantity: 2, valueMinor: 20000, deductionMinor: 0 }, { lineId: b, quantity: 1, valueMinor: 5000, deductionMinor: 0 }], deliveryMinor: 0, returnShippingMinor: 0, amountMinor: 21111 }));
   });
 
-  it("refunded outside Kaizen, in euros in a store of kroner", async () => {
+  it("refunded outside Kaizena Flow, in euros in a store of kroner", async () => {
     const { notes } = await returnParity(no, { lines: [{ sku: "OE", unit: 7777, quantity: 2, rate: 0.24 }, { sku: "OF", unit: 1717, rate: 0.14 }], shipping: 595, shippingRate: 0.24, market: "FI", currency: "EUR" }, ([a]) => workingOf({ lines: [{ lineId: a, quantity: 1, valueMinor: 7777, deductionMinor: 200 }], deliveryMinor: 0, returnShippingMinor: 0, amountMinor: 7577 }), "outside");
     expect(notes[0].snapshot.source).toBe("return_outside");
   });
@@ -533,7 +533,7 @@ describe("a change's documents (D174): SQL and the oracle agree", () => {
     expect(editNote!.snapshot.vatHome.fxRate).toBe(invoices.find((i: any) => i.kind === "order")!.snapshot.vatHome.fxRate);
   });
 
-  it("a higher total recorded as paid outside Kaizen: the method on the additional invoice", async () => {
+  it("a higher total recorded as paid outside Kaizena Flow: the method on the additional invoice", async () => {
     const { order } = await expectParity(no, { lines: [{ sku: "PO", unit: 5000, rate: 0.25 }] });
     const v = await editFx.newVariant(db, no);
     const { editId } = await edit(no, order.id, { added: [{ variantId: v, unitPriceMinor: 2500, quantity: 2 }], shipping: { kind: "keep" } });

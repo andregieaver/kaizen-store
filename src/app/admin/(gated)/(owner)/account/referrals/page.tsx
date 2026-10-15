@@ -30,7 +30,7 @@ export default async function ReferralsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Referrals"
-        description={<>Tell another store owner about Kaizen. When they open a store through your link, you earn {bpsText(settings.commissionBps)} of what their store pays Kaizen for {settings.months} months: its plan and Kaizen&apos;s fee on its sales. You earn it as credit, which comes off your own Kaizen invoices.</>}
+        description={<>Tell another store owner about Kaizena Flow. When they open a store through your link, you earn {bpsText(settings.commissionBps)} of what their store pays Kaizena Flow for {settings.months} months: its plan and Kaizena Flow&apos;s fee on its sales. You earn it as credit, which comes off your own Kaizena Flow invoices.</>}
       />
 
       {!overview.enabled && !overview.code ? (
@@ -41,7 +41,7 @@ export default async function ReferralsPage() {
         <>
           {overview.blocked && (
             <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-              Your referrals are paused. Nothing more is earned and your credit is not used on invoices. Contact Kaizen if you think this is a mistake.
+              Your referrals are paused. Nothing more is earned and your credit is not used on invoices. Contact Kaizena Flow if you think this is a mistake.
             </p>
           )}
           {!overview.enabled && (
@@ -55,8 +55,8 @@ export default async function ReferralsPage() {
             </h2>
             <ReferralLink link={referralUrl(siteUrl(), overview.code)} code={overview.code} />
             <p className="text-sm text-muted">
-              Anyone who opens the link is taken to Kaizen&apos;s sign-up form. A store earns you credit only if it opens through your link, and
-              never your own stores. Kaizen keeps a count of visits, and nothing about the visitors.
+              Anyone who opens the link is taken to Kaizena Flow&apos;s sign-up form. A store earns you credit only if it opens through your link, and
+              never your own stores. Kaizena Flow keeps a count of visits, and nothing about the visitors.
             </p>
           </section>
 
@@ -75,7 +75,7 @@ export default async function ReferralsPage() {
                   sub={
                     b.pendingMinor > 0
                       ? `${money(b.pendingMinor, b.currency)} more from ${b.pendingAt ? date(b.pendingAt) : "soon"}`
-                      : "Comes off your next Kaizen invoice"
+                      : "Comes off your next Kaizena Flow invoice"
                   }
                 />
               ))
@@ -83,7 +83,7 @@ export default async function ReferralsPage() {
           </StatGrid>
           <p className="max-w-3xl text-sm text-muted">
             Credit is kept per currency and never changed from one to another. It becomes usable {settings.pendingDays} days after the fee is paid,
-            in case the fee is refunded, and then comes off your Kaizen plan invoices in the same currency until it is used up. A refund of a fee
+            in case the fee is refunded, and then comes off your Kaizena Flow plan invoices in the same currency until it is used up. A refund of a fee
             takes back its share of the credit, never more than you still have.
           </p>
 
@@ -119,7 +119,7 @@ export default async function ReferralsPage() {
           <Section id="history-heading" title="History">
             {overview.entries.length === 0 ? (
               <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-                Nothing yet. Credit shows here when a store you referred pays Kaizen.
+                Nothing yet. Credit shows here when a store you referred pays Kaizena Flow.
               </p>
             ) : (
               <Card compact>

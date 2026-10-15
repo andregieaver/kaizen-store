@@ -118,7 +118,7 @@ export async function connectWebhooksAction(_state: FormState, formData: FormDat
   const result = await connectPlatformWebhooks(admin, mode.data, await origin());
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [`Stripe sends ${mode.data} events to Kaizen now.`] };
+  return { status: "ok", messages: [`Stripe sends ${mode.data} events to Kaizena Flow now.`] };
 }
 
 /** Kaizen's fee on each storefront sale, entered as a percentage. */
@@ -188,7 +188,7 @@ export async function savePlanAction(
   // Kaizen's pages that show its plans (D142) follow the change.
   updateTag(PLANS_TAG);
   refresh();
-  return { status: "ok", messages: [result.note ?? (planId ? "Plan saved and updated in Stripe." : "Plan created in Kaizen and Stripe.")] };
+  return { status: "ok", messages: [result.note ?? (planId ? "Plan saved and updated in Stripe." : "Plan created in Kaizena Flow and Stripe.")] };
 }
 
 /** Copies every plan to Stripe again, e.g. after a failure or new keys. */
@@ -196,7 +196,7 @@ export async function syncPlansAction(): Promise<FormState> {
   await requirePlatformAdmin();
   const problems: string[] = [];
   const modes = platformModes();
-  if (modes.length === 0) return { status: "error", messages: ["Kaizen's Stripe keys are not set."] };
+  if (modes.length === 0) return { status: "error", messages: ["Kaizena Flow's Stripe keys are not set."] };
   for (const mode of modes) {
     const result = await syncPlans(mode);
     if (!result.ok) problems.push(...result.problems.map((p) => `${mode}: ${p}`));

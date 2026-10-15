@@ -318,11 +318,11 @@ describe("the order page's Change the items card (D174 2.2)", () => {
     const awaitingActions = { resend: answer, cancel: answer, paidOutside: answer };
     const waiting = edit({ status: "awaiting_payment", differenceMinor: 14900, expiresAt: "2026-10-13T10:00:00Z", appliedAt: null });
     const text = check(renderToString(h(OrderEditCard, { ...base, canWrite: true, blockText: EDIT_BLOCKS.edit_pending, edits: [waiting], awaitingActions })));
-    for (const words of ["Send again", "Create a link to share", "Record as paid outside Kaizen", "Cancel the change", "The order stays as it is until it is paid"]) expect(text).toContain(words);
+    for (const words of ["Send again", "Create a link to share", "Record as paid outside Kaizena Flow", "Cancel the change", "The order stays as it is until it is paid"]) expect(text).toContain(words);
     // Without an email address there is nobody to send it to; without the owner's leave, staff cannot record money taken outside Kaizen.
     const noEmail = check(renderToString(h(OrderEditCard, { ...base, hasEmail: false, mayRecordOutside: false, canWrite: true, blockText: null, edits: [waiting], awaitingActions })));
     expect(noEmail).not.toContain("Send again");
-    expect(noEmail).toContain("Only the owner can record a payment taken outside Kaizen");
+    expect(noEmail).toContain("Only the owner can record a payment taken outside Kaizena Flow");
   });
 });
 
@@ -399,13 +399,13 @@ describe("the order editor (D174 2.2)", () => {
     expect(text).toContain("Ask the customer to pay");
     expect(text).toContain("Send the customer a pay link");
     expect(text).toContain("Create a link to share");
-    expect(text).toContain("Record as paid outside Kaizen");
+    expect(text).toContain("Record as paid outside Kaizena Flow");
     expect(text).not.toContain("Save the change and refund");
     expect(text).toContain("always, for a change that asks them to pay or takes something off");
     expect(html).toMatch(/<input type="checkbox" disabled="" class="size-4" checked=""\/>Tell the customer/);
   });
 
-  it("refunds a lower total on save, and says only the owner may pay back money taken outside Kaizen", () => {
+  it("refunds a lower total on save, and says only the owner may pay back money taken outside Kaizena Flow", () => {
     const { view } = summaryOf({ quantities: { [BOOK]: 0 }, outside: true });
     const text = check(renderToString(h(OrderEditEditor, { ...props, mayRecordOutside: false, initialSummary: view })));
     expect(text).toContain("Save the change and refund");

@@ -529,7 +529,7 @@ export function displayFactsProblem(rows: readonly PageRow[], owner: "store" | "
     const missing = showFacts(show).find((fact) => !offered.has(fact));
     if (missing) {
       return owner === "kaizen"
-        ? `Kaizen's pages offer only sign-in, language, time and address conditions, not "${FACT_INFO[missing].label}".`
+        ? `Kaizena Flow's pages offer only sign-in, language, time and address conditions, not "${FACT_INFO[missing].label}".`
         : `Address parameters are read on pages only, not in a ${pageType.replace("_", " ")}.`;
     }
   }

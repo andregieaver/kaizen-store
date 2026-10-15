@@ -89,7 +89,7 @@ describe("the notification editor (D238, 2.1 points 2 to 6)", () => {
     for (const name of ["{store_name}", "{order_number}", "{customer_first_name}", "{carrier}", "{tracking_number}"]) expect(html).toContain(name);
     expect(html).not.toContain("{refund_amount}");
     expect(html).toContain("Do not add offers or advertising");
-    expect(html).toContain("always added by Kaizen");
+    expect(html).toContain("always added by Kaizena Flow");
     expect(html).toContain("Use standard text");
     expect(html).toContain("Send a test to me");
     expect(html).toContain('sandbox=""');

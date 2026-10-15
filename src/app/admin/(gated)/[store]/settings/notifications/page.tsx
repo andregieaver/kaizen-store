@@ -47,9 +47,9 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
       />
       <NotificationList items={items} base={base} handovers={handovers} switchAction={canWrite ? (id) => switchNotificationAction.bind(null, store.slug, id) : null} />
       {!canWrite && <p className="text-sm text-muted">You can see the store&apos;s emails but not change them.</p>}
-      <Card title="What Kaizen always adds" description="Your words replace the subject, the heading and the first text of an email. The rest stays Kaizen's, so nothing the law or the money needs can be removed.">
+      <Card title="What Kaizena Flow always adds" description="Your words replace the subject, the heading and the first text of an email. The rest stays Kaizena Flow's, so nothing the law or the money needs can be removed.">
         <p className="text-body text-ink-2">
-          The order lines, totals, VAT statement, invoice link, tracking, pickup details and the right of withdrawal are always added by Kaizen, in the
+          The order lines, totals, VAT statement, invoice link, tracking, pickup details and the right of withdrawal are always added by Kaizena Flow, in the
           order&apos;s own language and currency.
         </p>
       </Card>

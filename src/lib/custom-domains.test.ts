@@ -12,16 +12,16 @@ describe("stores' own domains (P8)", () => {
     expect(domainInput.parse({ hostname: "WWW.Example.no" })).toEqual({ hostname: "www.example.no" });
   });
 
-  it("refuses what is not a domain, and Kaizen's own addresses", () => {
+  it("refuses what is not a domain, and Kaizena Flow's own addresses", () => {
     vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstore.site");
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "kaizenstore.cloud");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "kaizenaflow.com");
     const problem = (hostname: string) => domainInput.safeParse({ hostname }).error?.issues[0]?.message;
     expect(problem("localhost")).toMatch(/as it is written in a browser/);
     expect(problem("192.168.1.1")).toMatch(/as it is written in a browser/);
     expect(problem("-bad.example.no")).toMatch(/as it is written in a browser/);
-    expect(problem("demo.kaizenstore.site")).toMatch(/Kaizen's/);
-    expect(problem("kaizenstore.cloud")).toMatch(/Kaizen's/);
-    expect(problem("my-app.vercel.app")).toMatch(/Kaizen's/);
+    expect(problem("demo.kaizenstore.site")).toMatch(/Kaizena Flow's/);
+    expect(problem("kaizenaflow.com")).toMatch(/Kaizena Flow's/);
+    expect(problem("my-app.vercel.app")).toMatch(/Kaizena Flow's/);
     expect(problem("butikk.example.no")).toBeUndefined();
   });
 

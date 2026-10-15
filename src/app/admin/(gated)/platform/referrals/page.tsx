@@ -92,7 +92,7 @@ export default async function PlatformReferralsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Referrals"
-        description={<>Store owners refer other store owners and earn credit on their own Kaizen invoices: a share of the plan and the sales fee the referred store pays Kaizen, for a number of months. The terms a referral is made with are the ones below on the day the request is approved; changing them later does not change stores already referred.</>}
+        description={<>Store owners refer other store owners and earn credit on their own Kaizena Flow invoices: a share of the plan and the sales fee the referred store pays Kaizena Flow, for a number of months. The terms a referral is made with are the ones below on the day the request is approved; changing them later does not change stores already referred.</>}
       />
 
       <Section id="settings-heading" title="The program">
@@ -103,7 +103,7 @@ export default async function PlatformReferralsPage() {
           </label>
           <p className="-mt-2 text-sm text-muted">
             Off: no new referrals and no new commission. Credit already earned stays and can still be used. Turning it on also lists the referral
-            cookie on Kaizen&apos;s cookie page and asks visitors about marketing cookies.
+            cookie on Kaizena Flow&apos;s cookie page and asks visitors about marketing cookies.
           </p>
           <label className={label}>
             Commission, % of the fees the referred store pays

@@ -322,7 +322,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </Card>
       )}
       {test.status === "stopped" && (
-        <Card title="Decide" description={<>The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}{test.part ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.` : "A version replaces the page's content at once; the address stays."}{test.stopReason === "guardrail" && " Kaizen stopped it because a version was clearly selling less."}{test.stopReason === "planned_end" && " It stopped itself at its planned end."}</>} className="flex flex-col gap-3" compact>
+        <Card title="Decide" description={<>The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}{test.part ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.` : "A version replaces the page's content at once; the address stays."}{test.stopReason === "guardrail" && " Kaizena Flow stopped it because a version was clearly selling less."}{test.stopReason === "planned_end" && " It stopped itself at its planned end."}</>} className="flex flex-col gap-3" compact>
           <div className="flex flex-wrap gap-3">
             {test.variants
               .filter((v) => v.key !== "a")

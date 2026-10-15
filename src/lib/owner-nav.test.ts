@@ -29,7 +29,7 @@ describe("the store owner's sections (D147)", () => {
   it("has a sidebar for Account (owners' pages only for owners) and for no other section", () => {
     const owner = ownerAreas({ owner: true, work: true });
     expect(owner.filter((a) => a.groups.length > 0)).toHaveLength(1);
-    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizen support", "Billing", "AI usage", "Referrals", "WordPress"]);
+    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Billing", "AI usage", "Referrals", "WordPress"]);
     const staff = ownerAreas({ owner: false, work: true });
     expect(staff.every((a) => a.groups.length === 0)).toBe(true);
   });

@@ -175,7 +175,7 @@ async function getMyReferrals(ctx: ManagerContext) {
     blocked: o.blocked,
     link: referralUrl(siteUrl(), o.code),
     code: o.code,
-    terms: `${percent(o.settings.commissionBps)} of the fees a referred store pays Kaizen for ${o.settings.months} months, as credit on their own Kaizen invoices; usable ${o.settings.pendingDays} days after the fee is paid`,
+    terms: `${percent(o.settings.commissionBps)} of the fees a referred store pays Kaizena Flow for ${o.settings.months} months, as credit on their own Kaizena Flow invoices; usable ${o.settings.pendingDays} days after the fee is paid`,
     visits: o.visits,
     asked_for_a_store: o.signedUp,
     stores: o.stores.map((s) => ({
@@ -383,7 +383,7 @@ async function listPlatformEmails(_ctx: ManagerContext, { failed_only, limit }: 
   return rows
     .filter((e) => !failed_only || ["failed", "bounced", "complained"].includes(e.status))
     .slice(0, limit)
-    .map((e) => ({ what: e.kind, to: e.to, subject: e.subject, store: e.storeName ?? "Kaizen", status: e.status, error: e.error, sent: e.createdAt }));
+    .map((e) => ({ what: e.kind, to: e.to, subject: e.subject, store: e.storeName ?? "Kaizena Flow", status: e.status, error: e.error, sent: e.createdAt }));
 }
 
 async function platformAiUsage(_ctx: ManagerContext, { days, store, owner }: PlatformToolInput<"platform_ai_usage">) {

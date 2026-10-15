@@ -83,11 +83,11 @@ describe("the switch, the note and the email option", () => {
     expect(form(settings({ enabledFrom: "2026-10-04T08:00:00.000Z" })).text).toContain("Switched on 4 Oct 2026.");
   });
 
-  it("says Stripe's own invoice is not used while Kaizen makes them, with a link to payments", () => {
+  it("says Stripe's own invoice is not used while Kaizena Flow makes them, with a link to payments", () => {
     const { html, text } = form(settings(), readiness({ stripeInvoicesIgnored: true }));
-    expect(text).toContain("is not used while Kaizen makes the invoices");
+    expect(text).toContain("is not used while Kaizena Flow makes the invoices");
     expect(html).toContain('href="/admin/s/settings/payments"');
-    expect(form().text).not.toContain("not used while Kaizen");
+    expect(form().text).not.toContain("not used while Kaizena Flow");
   });
 });
 

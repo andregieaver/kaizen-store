@@ -264,7 +264,7 @@ function planLine(plan: PlanShown): ReminderLine {
   return {
     variantId: "plan",
     sellingPlanId: null,
-    title: `Kaizen ${plan.name}, paid ${plan.interval === "year" ? "yearly" : "monthly"}`,
+    title: `Kaizena Flow ${plan.name}, paid ${plan.interval === "year" ? "yearly" : "monthly"}`,
     quantity: 1,
     unitPriceMinor: plan.amountMinor,
   };
@@ -293,7 +293,7 @@ async function sendPlanReminder(input: {
     locale: "en-GB",
     currency: input.plan.currency,
     storeName: String(store.name),
-    footer: ["Kaizen · kaizenstore.cloud"],
+    footer: ["Kaizena Flow · kaizenaflow.com"],
     lines: [planLine(input.plan)],
     code: discount,
     restoreUrl: links.resumeUrl,
@@ -306,7 +306,7 @@ async function sendPlanReminder(input: {
     kind: input.test ? "plan_reminder.test" : "plan_reminder",
     to: input.to,
     email: renderEmail(content),
-    fromName: "Kaizen",
+    fromName: "Kaizena Flow",
     idempotencyKey: input.checkoutId ? `plan-reminder:${input.checkoutId}:${input.stepId}` : undefined,
     headers: input.test
       ? undefined

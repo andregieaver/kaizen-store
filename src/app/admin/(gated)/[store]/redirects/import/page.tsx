@@ -71,7 +71,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </li>
           <li>An address that is a live page, product, category, tag or article is refused: a redirect only works from an address that does not exist. A draft or archived product&apos;s address is free.</li>
           <li>A redirect to another website is refused, a loop is refused, and a chain is saved as its final destination.</li>
-          <li>An address that already has a redirect of its own is replaced or kept, as you choose. A redirect Kaizen made itself is replaced. No redirect is ever deleted by an import.</li>
+          <li>An address that already has a redirect of its own is replaced or kept, as you choose. A redirect Kaizena Flow made itself is replaced. No redirect is ever deleted by an import.</li>
           <li>
             At most {REDIRECT_IMPORT_MAX_ROWS.toLocaleString("en-GB")} lines in a file and {REDIRECTS_MAX.toLocaleString("en-GB")} redirects of your own in a store. Start from an export to see the layout:{" "}
             <Link href={redirectPaths(store.slug).export} className="underline underline-offset-2">

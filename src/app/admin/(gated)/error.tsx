@@ -15,7 +15,7 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
       <h1 className="text-display text-ink">This page could not be loaded</h1>
       <p className="text-sm text-muted">
         Something went wrong on our side. Nothing you entered was lost. Try again, and if it keeps
-        happening, tell Kaizen{error.digest ? ` (reference ${error.digest})` : ""}.
+        happening, tell Kaizena Flow{error.digest ? ` (reference ${error.digest})` : ""}.
       </p>
       <div>
         <button

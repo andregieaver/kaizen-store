@@ -293,11 +293,11 @@ describe("the Connect webhooks", () => {
     expect((await orderRow(id)).status).toBe("paid");
   });
 
-  it("ignores events from accounts that are not Kaizen stores, and refuses bad signatures", async () => {
+  it("ignores events from accounts that are not Kaizena Flow stores, and refuses bad signatures", async () => {
     const body = event("cs_elsewhere", "acct_someoneelse");
     const signed = signer.webhooks.generateTestHeaderString({ payload: body, secret });
     expect(await (await call(connectWebhook, "/api/stripe/connect/test", body, signed)).json()).toMatchObject({
-      ignored: "not a Kaizen store",
+      ignored: "not a Kaizena Flow store",
     });
     const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_other" });
     expect((await call(connectWebhook, "/api/stripe/connect/test", body, forged)).status).toBe(400);
@@ -308,7 +308,7 @@ describe("the Connect webhooks", () => {
     ).toBe(404);
   });
 
-  it("checks account events are signed, and ignores accounts that are not Kaizen stores", async () => {
+  it("checks account events are signed, and ignores accounts that are not Kaizena Flow stores", async () => {
     const body = JSON.stringify({
       id: "evt_thin_1",
       object: "v2.core.event",
@@ -320,7 +320,7 @@ describe("the Connect webhooks", () => {
     const signed = signer.webhooks.generateTestHeaderString({ payload: body, secret: thinSecret });
     const response = await call(connectAccountsWebhook, path, body, signed);
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ignored: "not a Kaizen store" });
+    expect(await response.json()).toMatchObject({ ignored: "not a Kaizena Flow store" });
 
     const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_other" });
     expect((await call(connectAccountsWebhook, path, body, forged)).status).toBe(400);
@@ -434,12 +434,12 @@ describe("buying for a business (B2B)", () => {
       expect(await placeOrder({ storeId, market: no }, without)).toEqual({ ok: false, problem: "company" });
 
       await db().execute(sql`
-        update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${without}::uuid
+        update commerce.carts set company_name = 'Kaizena Flow AS', organisation_number = '923609016' where id = ${without}::uuid
       `);
       const result = await placeOrder({ storeId, market: no }, without);
       if (!result.ok) throw new Error(result.problem);
-      expect(result.order.company).toEqual({ name: "Kaizen AS", number: "923609016" });
-      expect(await orderRow(result.order.orderId)).toMatchObject({ company_name: "Kaizen AS", organisation_number: "923609016" });
+      expect(result.order.company).toEqual({ name: "Kaizena Flow AS", number: "923609016" });
+      expect(await orderRow(result.order.orderId)).toMatchObject({ company_name: "Kaizena Flow AS", organisation_number: "923609016" });
 
       // Products for everyone need no company, unless the store sells only to businesses.
       expect((await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-MUG-WHITE", 1]]))).ok).toBe(true);
@@ -453,10 +453,10 @@ describe("buying for a business (B2B)", () => {
       // on the cart is not kept, and the rest is bought privately.
       await db().execute(sql`update commerce.stores set audience = 'both', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
       const stale = await cart(no, [["DEMO-TOTE", 1]]);
-      await db().execute(sql`update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${stale}::uuid`);
+      await db().execute(sql`update commerce.carts set company_name = 'Kaizena Flow AS', organisation_number = '923609016' where id = ${stale}::uuid`);
       expect(await placeOrder({ storeId, market: no }, stale)).toEqual({ ok: false, problem: "unavailable" });
       const mugs = await cart(no, [["DEMO-MUG-WHITE", 1]]);
-      await db().execute(sql`update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${mugs}::uuid`);
+      await db().execute(sql`update commerce.carts set company_name = 'Kaizena Flow AS', organisation_number = '923609016' where id = ${mugs}::uuid`);
       const privately = await placeOrder({ storeId, market: no }, mugs);
       if (!privately.ok) throw new Error(privately.problem);
       expect(privately.order.company).toBeNull();

@@ -53,7 +53,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
         <PageHeader
           back={{ href: base, label: "Product layouts" }}
           title={<>Where “{layout.draft.title || "Untitled"}” is used</>}
-          description={<>A product&apos;s page uses its own layout if it has one (chosen in the product editor), else its nearest category&apos;s, else one of its tags&apos;, else the store&apos;s standard layout, else Kaizen&apos;s.{use.products > 0 && ` ${use.products === 1 ? "One product has" : `${use.products} products have`} this layout as its own.`}</>}
+          description={<>A product&apos;s page uses its own layout if it has one (chosen in the product editor), else its nearest category&apos;s, else one of its tags&apos;, else the store&apos;s standard layout, else Kaizena Flow&apos;s.{use.products > 0 && ` ${use.products === 1 ? "One product has" : `${use.products} products have`} this layout as its own.`}</>}
         />
         {layout.state === "draft" && (
           <p role="note" className="mt-2 rounded-md bg-sunken p-3 text-sm">

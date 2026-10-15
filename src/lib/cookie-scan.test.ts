@@ -5,7 +5,7 @@ import { parseScannedItems, reviewFindings, sameSite, type ScannedItem } from ".
 const item = (over: Partial<ScannedItem>): ScannedItem => ({
   kind: "cookie",
   name: "x",
-  domain: "kaizenstore.cloud",
+  domain: "kaizenaflow.com",
   thirdParty: false,
   days: null,
   beforeConsent: false,
@@ -14,7 +14,7 @@ const item = (over: Partial<ScannedItem>): ScannedItem => ({
 });
 
 describe("cookie scan findings (D58)", () => {
-  it("knows Kaizen's cookies, takes the owner's word for the rest, and puts faults first", () => {
+  it("knows Kaizena Flow's cookies, takes the owner's word for the rest, and puts faults first", () => {
     const reviewed = reviewFindings(
       [
         item({ name: "cart_00000000-0000-0000-0000-000000000000_no", beforeConsent: true }),
@@ -25,7 +25,7 @@ describe("cookie scan findings (D58)", () => {
         item({ kind: "localStorage", name: "widget", beforeConsent: true }),
       ],
       [
-        { kind: "localStorage", name: "widget", domain: "kaizenstore.cloud", category: "marketing", provider: "Widget", purpose: "Ads." },
+        { kind: "localStorage", name: "widget", domain: "kaizenaflow.com", category: "marketing", provider: "Widget", purpose: "Ads." },
       ],
     );
     expect(reviewed.map((r) => [r.kind, r.name, r.category, r.problem])).toEqual([
@@ -47,9 +47,9 @@ describe("cookie scan findings (D58)", () => {
   });
 
   it("counts a site's subdomains as the site itself", () => {
-    expect(sameSite("kaizenstore.cloud", ".kaizenstore.cloud")).toBe(true);
-    expect(sameSite("www.kaizenstore.cloud", "kaizenstore.cloud")).toBe(true);
-    expect(sameSite("kaizenstore.cloud", "facebook.com")).toBe(false);
-    expect(sameSite("kaizenstore.cloud", "notkaizenstore.cloud")).toBe(false);
+    expect(sameSite("kaizenaflow.com", ".kaizenaflow.com")).toBe(true);
+    expect(sameSite("www.kaizenaflow.com", "kaizenaflow.com")).toBe(true);
+    expect(sameSite("kaizenaflow.com", "facebook.com")).toBe(false);
+    expect(sameSite("kaizenaflow.com", "notkaizenaflow.com")).toBe(false);
   });
 });

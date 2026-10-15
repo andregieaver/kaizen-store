@@ -23,15 +23,15 @@ export type SecurityFacts = {
   signInUrl: string;
 };
 
-const FOOTER = ["Kaizen · kaizenstore.cloud"];
+const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 export function securityEmail(facts: SecurityFacts): EmailContent {
   const intro =
     facts.event === "recovery_code_used"
-      ? `A recovery code was used to get into your Kaizen account on ${facts.when}. Using a recovery code takes your two-step sign-in away, so you are asked to set it up again the next time you sign in, and your other recovery codes no longer work.`
+      ? `A recovery code was used to get into your Kaizena Flow account on ${facts.when}. Using a recovery code takes your two-step sign-in away, so you are asked to set it up again the next time you sign in, and your other recovery codes no longer work.`
       : facts.event === "two_step_removed"
-        ? `Two-step sign-in was switched off for your Kaizen account on ${facts.when}.`
-        : `A platform admin${facts.by ? ` (${facts.by})` : ""} reset the two-step sign-in of your Kaizen account on ${facts.when}. You are asked to set it up again the next time you sign in.`;
+        ? `Two-step sign-in was switched off for your Kaizena Flow account on ${facts.when}.`
+        : `A platform admin${facts.by ? ` (${facts.by})` : ""} reset the two-step sign-in of your Kaizena Flow account on ${facts.when}. You are asked to set it up again the next time you sign in.`;
   const subject =
     facts.event === "recovery_code_used"
       ? "A recovery code was used on your account"

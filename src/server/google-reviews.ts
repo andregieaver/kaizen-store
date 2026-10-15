@@ -82,7 +82,7 @@ export async function saveGoogleKey(accountId: string, storeId: string | null, r
   const parsed = googleKeyInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [parsed.error.issues[0].message] };
   const key = encryptionKey();
-  if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+  if (!key) return { ok: false, problems: ["Kaizena Flow cannot keep the key safe right now, so it was not saved. Try again later."] };
   const hint = `…${parsed.data.slice(-4)}`;
   await db().execute(sql`
     insert into commerce.google_places (store_id, api_key_encrypted, api_key_hint, updated_by)

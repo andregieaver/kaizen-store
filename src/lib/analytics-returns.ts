@@ -33,7 +33,7 @@ export function gatedRate(input: { part: number; whole: number; min: number; uni
   const { part, whole, min, unit, tracked } = input;
   const singular = unit === "orders" ? "order" : "unit";
   if (!tracked) {
-    return { value: null, missing: "No return has been recorded in Kaizen yet, so there is nothing to rate. Returns made through the withdrawal function or a return request appear here." };
+    return { value: null, missing: "No return has been recorded in Kaizena Flow yet, so there is nothing to rate. Returns made through the withdrawal function or a return request appear here." };
   }
   if (whole <= 0) return { value: null, missing: `No goods ${unit === "orders" ? "orders were" : "units were"} sold in this period.` };
   if (whole < min) {
@@ -163,7 +163,7 @@ export function maturityNote(period: { to: string }, today: string, windowDays: 
 export function exchangeShare(input: { exchanged: number; returns: number; tracked: boolean; min?: number }): Figure {
   const { exchanged, returns, tracked } = input;
   const min = input.min ?? MIN_RATE_ORDERS;
-  if (!tracked) return { value: null, missing: "No return has been exchanged in Kaizen yet. An exchange is made on a return's page, and appears here once it is settled." };
+  if (!tracked) return { value: null, missing: "No return has been exchanged in Kaizena Flow yet. An exchange is made on a return's page, and appears here once it is settled." };
   if (returns <= 0) return { value: null, missing: "No return was made in this period." };
   if (returns < min) {
     return { value: null, missing: `Only ${formatCount(returns)} ${plural(returns, "return", "returns")} made in this period: a share needs at least ${formatCount(min)}.` };

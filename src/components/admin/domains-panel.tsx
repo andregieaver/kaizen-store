@@ -68,7 +68,7 @@ export function DomainsPanel({
         </p>
         {deploying && (
           <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
-            Your domains changed. Kaizen is putting the change live, which takes a few minutes; this page updates by
+            Your domains changed. Kaizena Flow is putting the change live, which takes a few minutes; this page updates by
             itself.
             <RefreshWhile seconds={20} />
           </p>
@@ -91,7 +91,7 @@ export function DomainsPanel({
           </p>
         </div>
         {!configured ? (
-          <p className="text-sm">Custom domains are not set up on Kaizen yet.</p>
+          <p className="text-sm">Custom domains are not set up on Kaizena Flow yet.</p>
         ) : owner ? (
           <ActionForm action={actions.add} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <label className="flex flex-1 flex-col gap-1 text-sm font-medium">

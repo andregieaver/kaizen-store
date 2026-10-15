@@ -110,7 +110,7 @@ export function CustomCodeForm({
       </div>
       {!live && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          Your store is still at Kaizen&apos;s own address. The code is saved now and added once stores move to addresses
+          Your store is still at Kaizena Flow&apos;s own address. The code is saved now and added once stores move to addresses
           of their own.
         </p>
       )}

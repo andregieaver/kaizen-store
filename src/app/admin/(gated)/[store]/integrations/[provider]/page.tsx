@@ -79,7 +79,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             {integration ? "Change the channel" : "Add to Slack"}
           </h2>
           <p className="mb-3 text-sm text-muted">
-            Slack asks which channel Kaizen may post to. Kaizen can post there and nothing else: it cannot read your messages.
+            Slack asks which channel Kaizena Flow may post to. Kaizena Flow can post there and nothing else: it cannot read your messages.
           </p>
           <form action={connectSlackAction.bind(null, store.slug)}>
             <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
@@ -107,8 +107,8 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
         <h2 id="settings" className="mb-1 text-title text-ink">Settings</h2>
         <p className="mb-4 text-sm text-muted">
           {slack
-            ? "Messages name the shopper and what they bought, never their email or address: open the order in Kaizen for those. Everyone in the channel sees them, so choose one for the people who handle orders, and make sure your agreement with Slack covers personal data (a data processing agreement)."
-            : `Kaizen sends shoppers’ names, emails and addresses to ${info.name}. Make sure your agreement with ${info.name} covers personal data (a data processing agreement).`}
+            ? "Messages name the shopper and what they bought, never their email or address: open the order in Kaizena Flow for those. Everyone in the channel sees them, so choose one for the people who handle orders, and make sure your agreement with Slack covers personal data (a data processing agreement)."
+            : `Kaizena Flow sends shoppers’ names, emails and addresses to ${info.name}. Make sure your agreement with ${info.name} covers personal data (a data processing agreement).`}
         </p>
         {owner ? (
           <ActionForm action={saveIntegrationAction.bind(null, store.slug, provider)} className="flex flex-col gap-5">
@@ -213,8 +213,8 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
           code={info.name}
           question={
             slack
-              ? "Disconnect Slack? Kaizen stops posting and forgets the webhook. You can remove the app from your workspace in Slack too."
-              : `Disconnect ${info.name}? Kaizen stops sending to it and forgets the address.`
+              ? "Disconnect Slack? Kaizena Flow stops posting and forgets the webhook. You can remove the app from your workspace in Slack too."
+              : `Disconnect ${info.name}? Kaizena Flow stops sending to it and forgets the address.`
           }
           label={`Disconnect ${info.name}`}
         />

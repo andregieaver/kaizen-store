@@ -7,7 +7,7 @@ import { PAYMENT_MODES, platformKey, type PaymentModeName } from "@/lib/stripe-a
 const OPTIONS: Stripe.StripeConfig = {
   maxNetworkRetries: 2,
   timeout: 15_000,
-  appInfo: { name: "Kaizen" },
+  appInfo: { name: "Kaizena Flow" },
 };
 
 /** A Stripe client for a store's own secret key (payments before Connect). */
@@ -130,15 +130,15 @@ export async function createPlatformWebhooks(
       url: snapshotUrl,
       connect: true,
       enabled_events: WEBHOOK_EVENTS,
-      description: "Kaizen: payments in stores' accounts",
+      description: "Kaizena Flow: payments in stores' accounts",
     });
     const billing = await stripe.webhookEndpoints.create({
       url: billingUrl,
       enabled_events: BILLING_EVENTS,
-      description: "Kaizen: stores' plans",
+      description: "Kaizena Flow: stores' plans",
     });
     const thin = await stripe.v2.core.eventDestinations.create({
-      name: "Kaizen: stores' Stripe accounts",
+      name: "Kaizena Flow: stores' Stripe accounts",
       type: "webhook_endpoint",
       event_payload: "thin",
       events_from: ["other_accounts"],

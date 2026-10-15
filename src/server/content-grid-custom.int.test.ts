@@ -127,7 +127,7 @@ describe("gridData() for custom items", () => {
     expect(main.items[0].title).toBe("Title a");
   });
 
-  it("is English with links from the root on Kaizen's own pages, which have no store's products", async () => {
+  it("is English with links from the root on Kaizena Flow's own pages, which have no store's products", async () => {
     const block = grid([item("a", { link: { kind: "page", slug: "pricing" } }), item("b", { link: { kind: "product", handle: "kopp" } })]);
     const data = await gridData(block, { pageId: null, owner: null });
     expect(data.lang).toBe("en");

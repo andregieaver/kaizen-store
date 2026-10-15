@@ -204,7 +204,7 @@ describe("the AI manager (D103)", () => {
     expect(await assistant.rateAnswer(member, id, null, null)).toBe(true);
   });
 
-  it("works for platform admins with Kaizen's own tools, apart from stores' conversations", async () => {
+  it("works for platform admins with Kaizena Flow's own tools, apart from stores' conversations", async () => {
     const platform: Principal = { account: admin, store: null };
     const [request] = await db().execute<Row>(sql`
       insert into commerce.access_requests (email, name, store_name, message) values (${`asks-${run}@example.com`}, 'Per', 'Pers te', 'Tea') returning id
@@ -216,7 +216,7 @@ describe("the AI manager (D103)", () => {
     );
     const { events } = await turn(platform, "Who is waiting?", { path: "/admin/platform/stores" });
     const prompt = String(requests[0].messages[0].content);
-    expect(prompt).toContain("Kaizen's AI manager");
+    expect(prompt).toContain("Kaizena Flow's AI manager");
     expect(prompt).toContain("They are on Stores [stores]");
     expect(prompt).toContain("review-requests:");
     expect(toolNames(requests[0])).toEqual(expect.arrayContaining(["platform_overview", "list_access_requests", "open_admin_page"]));
@@ -240,7 +240,7 @@ describe("the AI manager (D103)", () => {
 
   it("refuses platform tools to anyone who is not a platform admin", async () => {
     const requests = fakeModel(calls({ name: "platform_overview", args: {} }), says("I can't."));
-    await turn({ account: member.account, store: null }, "How is Kaizen doing?");
+    await turn({ account: member.account, store: null }, "How is Kaizena Flow doing?");
     expect(String(requests[1].messages.at(-1)!.content)).toContain("Only platform admins");
   });
 

@@ -192,7 +192,7 @@ describe("working a return through the forms' actions", () => {
       Number((await db().execute<Row>(sql`select coalesce(sum(l.on_hand), 0)::int as n from commerce.inventory_levels l join commerce.order_lines ol on ol.variant_id = l.variant_id where ol.id = ${line}::uuid`))[0].n);
     const stockBefore = await onHand();
     const refunded = await actions.refundReturnAction(slug, id, idle, form({ amount: "180,00", reason: "", [`restock:${line}`]: "2" }));
-    expect(refunded).toEqual({ status: "ok", messages: ["Recorded as refunded outside Kaizen's Stripe."] });
+    expect(refunded).toEqual({ status: "ok", messages: ["Recorded as refunded outside Kaizena Flow's Stripe."] });
     expect(await r.getReturn(storeId, id)).toMatchObject({ refund: { recorded: true, amountMinor: 18_000, computedMinor: 18_000, outside: true } });
     // The two mugs are back in stock.
     expect(await onHand()).toBe(stockBefore + 2);

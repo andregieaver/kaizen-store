@@ -155,8 +155,8 @@ describe("the platform's VAT pages (D157)", () => {
   it("add a category, set a rate from a date, verify it and keep a shipping rule, each audit-logged", async () => {
     expect(await platformActions.addVatCategoryAction(idle, form({ code, nameEn: "Action goods", description: "", sort: "910" }))).toMatchObject({ status: "ok" });
     expect(await platformActions.addVatCategoryAction(idle, form({ code, nameEn: "Again" }))).toMatchObject({ status: "error" });
-    expect(await platformActions.setVatRateAction(idle, form({ country: "NO", category: code, ratePercent: "11", validFrom: "2026-01-01", source: "Kaizen test data", checkedOn: "2026-10-03", note: "" }))).toMatchObject({ status: "ok" });
-    expect(await platformActions.setVatRateAction(idle, form({ country: "NO", category: code, ratePercent: "11", validFrom: "2026-01-01", source: "Kaizen test data", checkedOn: "2026-10-03" }))).toMatchObject({ status: "error" });
+    expect(await platformActions.setVatRateAction(idle, form({ country: "NO", category: code, ratePercent: "11", validFrom: "2026-01-01", source: "Kaizena Flow test data", checkedOn: "2026-10-03", note: "" }))).toMatchObject({ status: "ok" });
+    expect(await platformActions.setVatRateAction(idle, form({ country: "NO", category: code, ratePercent: "11", validFrom: "2026-01-01", source: "Kaizena Flow test data", checkedOn: "2026-10-03" }))).toMatchObject({ status: "error" });
     expect(await platformActions.verifyVatRateAction("NO", code, "2026-01-01")).toMatchObject({ status: "ok" });
     expect(await platformActions.setVatCategoryActiveAction(code, false)).toMatchObject({ status: "ok" });
     expect(await platformActions.setVatCategoryActiveAction("standard", false)).toMatchObject({ status: "error" });

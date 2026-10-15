@@ -82,8 +82,8 @@ describe("a store's planMotionAction", () => {
   });
 });
 
-describe("Kaizen's planMotionAction", () => {
-  it("is for platform admins and uses Kaizen's AI", async () => {
+describe("Kaizena Flow's planMotionAction", () => {
+  it("is for platform admins and uses Kaizena Flow's AI", async () => {
     const result = await platformAction("article", JSON.stringify(rows));
     expect(requirePlatformAdmin).toHaveBeenCalled();
     expect(aiFor).toHaveBeenCalledWith(null, { feature: "page_motion", accountId: "admin-1" });

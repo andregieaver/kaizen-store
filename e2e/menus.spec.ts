@@ -21,7 +21,7 @@ async function storeWithMenus(): Promise<string> {
       { label: { "nb-NO": "Utvalg" }, link: { kind: "products" }, depth: 0 },
       { label: { "nb-NO": "Skrivesaker" }, link: { kind: "product", handle: "demo-notatbok" }, depth: 1 },
       { label: { "nb-NO": "Koppen" }, link: { kind: "product", handle: "demo-keramikkopp" }, depth: 2 },
-      { label: { "nb-NO": "Kaizen" }, link: { kind: "url", url: "https://kaizenstore.cloud" }, depth: 0, newTab: true },
+      { label: { "nb-NO": "Kaizena Flow" }, link: { kind: "url", url: "https://kaizenaflow.com" }, depth: 0, newTab: true },
     ];
     const [menu] = await sql`
       update commerce.menus set items = ${sql.json(items)}
@@ -67,7 +67,7 @@ test("a menu's links under a link open below it in the header, and show nested i
   await expect(main.getByRole("link", { name: "Koppen" })).toBeVisible();
   await expect(under).toHaveAttribute("href", `/s/${slug}/p/demo-notatbok`);
   // A link set to open in a new tab says so.
-  await expect(main.getByRole("link", { name: "Kaizen (åpnes i ny fane)" })).toHaveAttribute("target", "_blank");
+  await expect(main.getByRole("link", { name: "Kaizena Flow (åpnes i ny fane)" })).toHaveAttribute("target", "_blank");
 
   // On its own page, a menu component shows the same menu, one level under another.
   await page.goto(`/s/${slug}/meny`);

@@ -42,7 +42,7 @@ export const ADMIN_LAYOUTS = [
     name: "Focus",
     // Drawn by `FocusFrame`, not `AdminFrame`: the pages before a person is let in, where no level's sections exist yet.
     regions: ["topbar", "main"],
-    for: "One task on its own: Kaizen's mark in a plain top bar and one card on the canvas. The sign-in, two-step, password and consent pages.",
+    for: "One task on its own: Kaizena Flow's mark in a plain top bar and one card on the canvas. The sign-in, two-step, password and consent pages.",
   },
 ] as const satisfies readonly AdminLayout[];
 

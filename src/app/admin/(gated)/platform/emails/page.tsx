@@ -29,7 +29,7 @@ export default async function PlatformEmailsPage() {
             {!webhook && (
               <p className="text-muted">
                 Deliveries and bounces are not reported back yet: add a webhook in Resend (Webhooks → Add endpoint,{" "}
-                <span className="font-mono text-xs">https://kaizenstore.cloud/api/resend/webhook</span>, all email
+                <span className="font-mono text-xs">https://kaizenaflow.com/api/resend/webhook</span>, all email
                 events) and put its signing secret in Vercel as <span className="font-mono text-xs">RESEND_WEBHOOK_SECRET</span>.
               </p>
             )}
@@ -42,7 +42,7 @@ export default async function PlatformEmailsPage() {
             </p>
             <ul className="list-disc pl-5 font-mono text-xs">
               <li>RESEND_API_KEY (a sending-access key, starts with re_)</li>
-              <li>EMAIL_FROM (an address on the domain verified in Resend, e.g. butikk@kaizenstore.cloud)</li>
+              <li>EMAIL_FROM (an address on the domain verified in Resend, e.g. butikk@kaizenaflow.com)</li>
               <li>RESEND_WEBHOOK_SECRET (the webhook&apos;s signing secret, starts with whsec_)</li>
             </ul>
             <p className="text-muted">

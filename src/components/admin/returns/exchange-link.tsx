@@ -32,7 +32,7 @@ export function ExchangeLinkPanel({ link, onDone }: { link: string; onDone: () =
       <h3 id={`${id}-link`} className="text-body-strong text-ink">
         The link to the exchange
       </h3>
-      <p className={hint}>It is shown only now: Kaizen keeps only a fingerprint of it. Anyone who has it can open the customer&apos;s exchange page. Sending again makes a new one and this one stops working.</p>
+      <p className={hint}>It is shown only now: Kaizena Flow keeps only a fingerprint of it. Anyone who has it can open the customer&apos;s exchange page. Sending again makes a new one and this one stops working.</p>
       <input readOnly value={link} aria-label="The link to the exchange" onFocus={(e) => e.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
       <div className="flex gap-2">
         <button

@@ -135,7 +135,7 @@ export function deadlineSentence(period: TaxPeriod, today: string): string {
     case "in_progress":
       return `${label} is still in progress: a return cannot be submitted before the period ends. It is then due by ${due}.`;
     case "passed":
-      return `${label}: submit and pay by ${due}. That day has passed; Kaizen does not know what was filed.`;
+      return `${label}: submit and pay by ${due}. That day has passed; Kaizena Flow does not know what was filed.`;
     default:
       return `${label}: submit and pay by ${due}.`;
   }

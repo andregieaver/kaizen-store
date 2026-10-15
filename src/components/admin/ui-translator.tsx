@@ -65,7 +65,7 @@ export function UiTranslator({
     <div className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
       <h2 className="text-title text-ink">Translate with AI</h2>
       <p className="text-sm text-muted">
-        Kaizen&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders
+        Kaizena Flow&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders
         and plural forms; one that fails is left for you. Texts you have edited yourself are never replaced.
       </p>
       <div className="flex flex-wrap gap-2">

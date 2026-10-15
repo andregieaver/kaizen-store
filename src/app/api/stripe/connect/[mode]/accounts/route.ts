@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
       ? notification.related_object.id
       : null;
   const store = accountId ? await storeForAccount(mode as PaymentModeName, accountId) : null;
-  if (!store) return Response.json({ received: true, ignored: "not a Kaizen store" });
+  if (!store) return Response.json({ received: true, ignored: "not a Kaizena Flow store" });
 
   // A host's account (D71), or the store's own.
   const account = store.hostId

@@ -48,7 +48,7 @@ export const TOP_RETURNED_PRODUCTS = 10;
 export const TIMING_CAP = 5_000;
 
 export const NOT_SEEN_RETURNS_NOTE =
-  "Returns made without Kaizen's withdrawal function or a return request (a parcel sent back with no message) are not included.";
+  "Returns made without Kaizena Flow's withdrawal function or a return request (a parcel sent back with no message) are not included.";
 
 export type ReturnKind = "withdrawal" | "return";
 

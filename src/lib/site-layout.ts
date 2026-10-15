@@ -138,7 +138,7 @@ export function siteLayoutProblem(storeId: string | null, type: PageType, conten
   if (content.categories.length > 0 || content.tags.length > 0) return `A ${type} has no categories or tags.`;
   const offered = sitePartsFor(storeId);
   const foreign = parts.find((block) => !offered.includes(block.part));
-  if (foreign) return storeId === null ? "Kaizen's site has no cart, wishlist, search, countries or buyer switch." : "A store's site has no Start your store button.";
+  if (foreign) return storeId === null ? "Kaizena Flow's site has no cart, wishlist, search, countries or buyer switch." : "A store's site has no Start your store button.";
   // What the law asks of a footer (business details, cookies link, withdrawal link) is a warning in the page checker, never a reason not to save.
   return null;
 }

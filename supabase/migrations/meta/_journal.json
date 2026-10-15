@@ -2346,6 +2346,13 @@
       "when": 1792053550085,
       "tag": "20261015083910_exchanges_bonus_base",
       "breakpoints": true
+    },
+    {
+      "idx": 335,
+      "version": "7",
+      "when": 1792061258397,
+      "tag": "20261015104738_kaizena_flow_rename",
+      "breakpoints": true
     }
   ]
 }

@@ -48,7 +48,7 @@ export function formVisitor(address: string): string {
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 async function formOwner(storeId: string | null): Promise<FormOwner | null> {
-  if (!storeId) return { storeId: null, store: null, name: "Kaizen", origin: siteUrl(), lang: "en", timeZone: "UTC" };
+  if (!storeId) return { storeId: null, store: null, name: "Kaizena Flow", origin: siteUrl(), lang: "en", timeZone: "UTC" };
   const [store, [zone]] = await Promise.all([
     storeById(storeId),
     db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`),
@@ -100,7 +100,7 @@ const worst = (outcomes: SendOutcome[]): "sent" | "logged" | "failed" =>
   outcomes.includes("failed") ? "failed" : outcomes.every((o) => o === "sent" || o === "duplicate") ? "sent" : "logged";
 
 function ownerFooter(owner: FormOwner): string[] {
-  if (!owner.store) return ["Kaizen"];
+  if (!owner.store) return ["Kaizena Flow"];
   const d = owner.store.details;
   return [[d.legalName ?? owner.name, d.organisationNumber && `Org.nr. ${d.organisationNumber}`].filter(Boolean).join(" · "), d.postalAddress?.replace(/\n/g, ", ") ?? ""].filter(
     Boolean,

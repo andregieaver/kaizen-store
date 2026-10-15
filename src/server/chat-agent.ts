@@ -434,14 +434,14 @@ async function kaizenTool(name: string, args: Record<string, unknown>): Promise<
     case "site_info": {
       const chrome = await getPlatformChrome();
       const pages = [...chrome.pages.values()].map((page) => ({ slug: page.slug, title: page.title })).slice(0, 30);
-      return { result: json({ name: "Kaizen", company: chrome.business.legalName || null, email: chrome.business.contactEmail || null, pages }) };
+      return { result: json({ name: "Kaizena Flow", company: chrome.business.legalName || null, email: chrome.business.contactEmail || null, pages }) };
     }
     case "navigate": {
       const parsed = navigateArgs.safeParse(args);
       if (!parsed.success) return { result: json({ error: "Say where to go." }) };
       const { to, slug = "" } = parsed.data;
       const go = (href: string, label: string): ToolOutcome => ({ result: json({ opened: href }), action: { type: "navigate", href, label } });
-      if (to === "home") return go("/", "Kaizen");
+      if (to === "home") return go("/", "Kaizena Flow");
       if (to === "blog") return go("/blog", "Blog");
       if (to === "signUp") return go("/sign-up", "Start your store");
       if (to === "signIn") return go("/admin", "Sign in");
@@ -499,7 +499,7 @@ export async function runChat(
     {
       role: "system",
       content: systemPrompt({
-        site: site.kind === "store" ? site.store.name : "Kaizen",
+        site: site.kind === "store" ? site.store.name : "Kaizena Flow",
         kind: site.kind,
         agentName: agent.name,
         occupation: agent.occupation,

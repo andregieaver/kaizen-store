@@ -38,7 +38,7 @@ const leave = await import("./leave/route");
 
 const store = { id: "11111111-1111-4111-8111-111111111111", slug: "min-butikk" };
 const person = { id: "22222222-2222-4222-8222-222222222222" };
-const ADMIN = "https://kaizenstore.cloud";
+const ADMIN = "https://kaizenaflow.com";
 const HOST = "min-butikk.kaizenstore.test";
 
 const originalDomain = process.env.NEXT_PUBLIC_STORE_DOMAIN;
@@ -159,7 +159,7 @@ describe("the store's host taking the link", () => {
   });
 
   it("gives nothing on a host that is not the store's: another store's, the admin's, or any other", async () => {
-    for (const host of ["annen-butikk.kaizenstore.test", "kaizenstore.cloud", "evil.example", ""]) {
+    for (const host of ["annen-butikk.kaizenstore.test", "kaizenaflow.com", "evil.example", ""]) {
       const response = await enterOn(host, link());
       expect(response.status, host).toBe(400);
       expect(response.headers.get("set-cookie")).toBeNull();

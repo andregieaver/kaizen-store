@@ -1,5 +1,5 @@
 /** Kaizen's own domain, where its pages and the admin live. */
-const KAIZEN_HOST = "kaizenstore.cloud";
+const KAIZEN_HOST = "kaizenaflow.com";
 
 /**
  * Kaizen's public origin, for canonical URLs, structured data, emails and

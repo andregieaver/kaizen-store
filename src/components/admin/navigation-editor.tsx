@@ -34,7 +34,7 @@ export const STORE_COPY: NavigationCopy = {
     "Optional: a light version of the logo, shown instead where the background is dark, such as a black header or dark mode in your theme (under Design). Without it, the logo above is shown everywhere.",
   header:
     "Across the top on computers, and in the slide-out menu on phones. The cart, My account and the country choice are always there, so they need no link in it.",
-  footer: "At the bottom of every page, beside your business details, which the law requires and Kaizen always shows.",
+  footer: "At the bottom of every page, beside your business details, which the law requires and Kaizena Flow always shows.",
   saved: "Saved. Your store shows it now.",
   view: "View the store",
 };
@@ -257,7 +257,7 @@ function FaviconField({
         <p className="text-sm text-muted">
           Shown in browser tabs and bookmarks, and on phones&apos; home screens. A square picture of at least 512 pixels
           works best: a simple mark rather than the whole logo, as it is shown as small as 16 pixels. Without one,
-          Kaizen&apos;s icon is shown.
+          Kaizena Flow&apos;s icon is shown.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-4">

@@ -27,7 +27,7 @@ export default async function DraftsPage({ params, searchParams }: Props) {
       <PageHeader
         back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
         title="Draft orders"
-        description={<>A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizen.</>}
+        description={<>A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizena Flow.</>}
       />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />

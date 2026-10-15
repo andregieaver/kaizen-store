@@ -325,7 +325,7 @@ describe("the inbox at three levels sees only its desks (C15, step 3)", () => {
     const b = await newStore("Inbox B");
     const inA = await conversationOn(a.id, "Question to A");
     const inB = await conversationOn(b.id, "Question to B");
-    const kaizen = await conversationOn(null, "Question to Kaizen");
+    const kaizen = await conversationOn(null, "Question to Kaizena Flow");
 
     const listA = await support.staffList([systemDesk(a.id)], a.owner.id, { tab: "ai" });
     expect(listA.map((r) => r.id)).toEqual([inA]);

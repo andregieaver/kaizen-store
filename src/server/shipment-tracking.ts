@@ -348,7 +348,7 @@ export async function checkParcelNow(storeId: string, orderId: string, shipmentI
     select 1 from commerce.shipments sh join commerce.orders o on o.store_id = sh.store_id and o.id = sh.order_id
     where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid and ${TRACKABLE}
   `);
-  if (!trackable) return { ok: false, problem: "not_tracked", message: "Kaizen does not follow this parcel: it has no tracking number, or its carrier is not one you connect under Shipping." };
+  if (!trackable) return { ok: false, problem: "not_tracked", message: "Kaizena Flow does not follow this parcel: it has no tracking number, or its carrier is not one you connect under Shipping." };
   if (row.checked_at && now.getTime() - new Date(String(row.checked_at)).getTime() < CHECK_NOW_SECONDS * 1000) {
     return { ok: false, problem: "too_soon", message: "This parcel was checked less than a minute ago. Try again in a moment." };
   }

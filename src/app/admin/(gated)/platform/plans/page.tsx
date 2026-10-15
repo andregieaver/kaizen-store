@@ -29,13 +29,13 @@ export default async function PlansPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Plans"
-          description={<>What stores pay Kaizen: a price per month or year (excluding VAT; Norwegian stores are charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to Stripe. A changed price applies to new subscriptions; stores on the old price keep it until you move them.{" "}<Link href="/admin/platform/plans/features" className="underline">Say what each plan includes</Link>.</>}
+          description={<>What stores pay Kaizena Flow: a price per month or year (excluding VAT; Norwegian stores are charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to Stripe. A changed price applies to new subscriptions; stores on the old price keep it until you move them.{" "}<Link href="/admin/platform/plans/features" className="underline">Say what each plan includes</Link>.</>}
         />
         <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe." className="flex flex-col items-end gap-1">
           <SubmitButton disabled={modes.length === 0}>Sync to Stripe</SubmitButton>
           <p className="text-sm text-muted">
             {modes.length === 0
-              ? "Needs Kaizen's Stripe keys"
+              ? "Needs Kaizena Flow's Stripe keys"
               : modes
                   .map((mode) => `${plans.filter((plan) => plan.sync[mode]?.synced).length} of ${plans.length} plans in Stripe (${mode})`)
                   .join(" · ")}
@@ -45,7 +45,7 @@ export default async function PlansPage() {
 
       {modes.length === 0 && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          Kaizen&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
+          Kaizena Flow&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
           place (Platform → Stripe), press Sync to Stripe: each plan becomes a Stripe product with
           a monthly and a yearly price in every currency.
         </p>

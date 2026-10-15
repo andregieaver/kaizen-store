@@ -13,7 +13,7 @@ import { CARD_CLASS } from "@/components/admin/ui";
  * The cash warning beside the Cash method (wave 3, D173, `docs/wave-3-orders.md` section 8, items 6 and 7). English admin text, flagged for review. It names the cash register rules and the ceilings on cash
  * payments held as data (`src/lib/cash-limits.ts`: some are refused when recorded).
  */
-export const CASH_WARNING = `Cash taken when goods are handed over is a cash sale under the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register. Some countries also forbid a business to receive cash above a ceiling. ${cashRuleWords()} Other countries may have a rule Kaizen does not know of: ask your accountant.`;
+export const CASH_WARNING = `Cash taken when goods are handed over is a cash sale under the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register. Some countries also forbid a business to receive cash above a ceiling. ${cashRuleWords()} Other countries may have a rule Kaizena Flow does not know of: ask your accountant.`;
 
 /** A result line of an action: green-neutral when it worked, red when it did not, with the problems of the draft listed when there are any. */
 export function ActionMessage({ result }: { result: DraftActionResponse | null }) {
@@ -44,7 +44,7 @@ export function LinkNotice({ link, onClose }: { link: string; onClose: () => voi
       <h2 id={id} className="text-title text-ink">
         The pay link
       </h2>
-      <p className={hint}>It is shown only now: Kaizen keeps nothing it could show again. Anyone who has it can open the page to pay this order. If you lose it, make a new one: the old one stops working.</p>
+      <p className={hint}>It is shown only now: Kaizena Flow keeps nothing it could show again. Anyone who has it can open the page to pay this order. If you lose it, make a new one: the old one stops working.</p>
       <input readOnly value={link} aria-label="The pay link" onFocus={(event) => event.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
       <div className="flex gap-2">
         <button
@@ -159,19 +159,19 @@ export function PaidOutsideBox({
   if (!allowed) {
     return (
       <section className={`p-4 text-sm ${CARD_CLASS}`}>
-        <h2 className="mb-1 text-title text-ink">Paid outside Kaizen</h2>
-        <p className="text-muted">Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>
+        <h2 className="mb-1 text-title text-ink">Paid outside Kaizena Flow</h2>
+        <p className="text-muted">Only the owner can record a payment taken outside Kaizena Flow, unless the owner allows staff to (Settings, Orders).</p>
       </section>
     );
   }
   return (
     <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
-        Mark as paid outside Kaizen
+        Mark as paid outside Kaizena Flow
       </h2>
       <p className={hint}>
         The customer paid you by bank transfer, in cash or another way. The order is made and marked paid, the invoice is issued saying it was paid outside the online checkout, and the confirmation (which states the right of
-        withdrawal) is emailed to the customer. Kaizen did not touch the money and takes no sale fee on it. A refund of it is only recorded: you pay the customer back yourself.
+        withdrawal) is emailed to the customer. Kaizena Flow did not touch the money and takes no sale fee on it. A refund of it is only recorded: you pay the customer back yourself.
       </p>
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 font-medium">How was it paid?</legend>
@@ -205,7 +205,7 @@ export function PaidOutsideBox({
           type="button"
           disabled={working || !hasEmail || blockedReason !== null}
           onClick={() => {
-            if (!window.confirm("Record this draft as paid outside Kaizen? The order is made and paid, the invoice is issued and the customer is emailed. This cannot be undone: a mistake is corrected with a refund.")) return;
+            if (!window.confirm("Record this draft as paid outside Kaizena Flow? The order is made and paid, the invoice is issued and the customer is emailed. This cannot be undone: a mistake is corrected with a refund.")) return;
             startTransition(async () => {
               setResult(null);
               const version = await ensureSaved();

@@ -1,6 +1,6 @@
 <?php
 /**
- * Connecting to Kaizen: the owner is sent to Kaizen to approve this site, and comes back with a one-time code that is swapped, server
+ * Connecting to Kaizena Flow: the owner is sent to Kaizena Flow to approve this site, and comes back with a one-time code that is swapped, server
  * to server, for a token. The password never reaches WordPress; the token reads the stores' public products and nothing else.
  *
  * @package KaizenStore
@@ -38,7 +38,7 @@ class Kaizen_Store_Connect {
 	}
 
 	/**
-	 * Step one: makes the secrets, keeps them for ten minutes, and sends the browser to Kaizen's approval page.
+	 * Step one: makes the secrets, keeps them for ten minutes, and sends the browser to Kaizena Flow's approval page.
 	 */
 	public static function start() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -73,13 +73,13 @@ class Kaizen_Store_Connect {
 			'&',
 			PHP_QUERY_RFC3986
 		);
-		// Kaizen is another site: wp_safe_redirect would refuse it.
+		// Kaizena Flow is another site: wp_safe_redirect would refuse it.
 		wp_redirect( $url ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 		exit;
 	}
 
 	/**
-	 * Step two: back from Kaizen with `kaizen_code`, swaps it for the token and keeps it.
+	 * Step two: back from Kaizena Flow with `kaizen_code`, swaps it for the token and keeps it.
 	 */
 	public static function finish() {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- the state below is the proof.
@@ -118,7 +118,7 @@ class Kaizen_Store_Connect {
 	}
 
 	/**
-	 * Disconnects: tells Kaizen to end the token (when it can be reached), and forgets it here either way.
+	 * Disconnects: tells Kaizena Flow to end the token (when it can be reached), and forgets it here either way.
 	 */
 	public static function disconnect() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -140,7 +140,7 @@ class Kaizen_Store_Connect {
 	}
 
 	/**
-	 * Kaizen's address, for a staging copy or a developer's own machine; only while not connected.
+	 * Kaizena Flow's address, for a staging copy or a developer's own machine; only while not connected.
 	 */
 	public static function save_address() {
 		if ( ! current_user_can( 'manage_options' ) ) {

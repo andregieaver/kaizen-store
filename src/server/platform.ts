@@ -322,7 +322,7 @@ export async function createStoreForOwner(
     return { ok: false, problems: ["Only store owners can create more stores. Ask for a store at /sign-up."] };
   }
   if (!account.platformAdmin && count >= MAX_STORES_PER_OWNER) {
-    return { ok: false, problems: [`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.`] };
+    return { ok: false, problems: [`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more.`] };
   }
   if (await isSlugTaken(slug)) return { ok: false, problems: [`The address ${slug} is taken. Choose another.`] };
 

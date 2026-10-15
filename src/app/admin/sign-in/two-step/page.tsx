@@ -56,7 +56,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
 
   return (
     <>
-      <FocusHeading title="Two-step sign-in" description="Open your authenticator app and type the six-digit code it shows for Kaizen Store." />
+      <FocusHeading title="Two-step sign-in" description="Open your authenticator app and type the six-digit code it shows for Kaizena Flow." />
       <ActionForm action={verifyTwoStepAction.bind(null, next)} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           Code

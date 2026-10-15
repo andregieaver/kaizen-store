@@ -98,7 +98,7 @@ class Kaizen_Store_Shortcode {
 		);
 		$config = Kaizen_Store_Views::get( (int) $atts['id'] );
 		if ( null === $config ) {
-			return Kaizen_Store_Render::note( __( 'This shortcode points at a view that does not exist. Check its id under Kaizen, Views.', 'kaizen-store' ) );
+			return Kaizen_Store_Render::note( __( 'This shortcode points at a view that does not exist. Check its id under Kaizena Flow, Views.', 'kaizen-store' ) );
 		}
 		if ( in_array( $atts['layout'], array( 'grid', 'carousel' ), true ) ) {
 			$config['layout'] = $atts['layout'];

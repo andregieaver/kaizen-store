@@ -33,12 +33,12 @@ export default async function PlatformAiPage() {
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title="AI" description={<>{status}</>} />
-        <p className="text-sm text-muted">{pictureLine(settings, "Kaizen's AI")}</p>
+        <p className="text-sm text-muted">{pictureLine(settings, "Kaizena Flow's AI")}</p>
         <p className="mt-1 text-sm">
           <Link href="/admin/platform/ai/usage" className="underline">
             AI usage
           </Link>
-          : what every store and Kaizen itself used, per provider and model.
+          : what every store and Kaizena Flow itself used, per provider and model.
         </p>
       </div>
 
@@ -71,9 +71,9 @@ export default async function PlatformAiPage() {
           <div className="mt-4">
             <DeleteDiscountButton
               action={removePlatformAiAction}
-              code="Kaizen's AI"
-              label="Remove Kaizen's provider"
-              question="Remove Kaizen's AI provider and its key? Stores without their own AI keep keyword search only."
+              code="Kaizena Flow's AI"
+              label="Remove Kaizena Flow's provider"
+              question="Remove Kaizena Flow's AI provider and its key? Stores without their own AI keep keyword search only."
             />
           </div>
         </section>

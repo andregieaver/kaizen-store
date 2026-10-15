@@ -18,8 +18,8 @@ describe("cart reminder emails (D33)", () => {
       footer: ["Kopp & Kanne AS"],
       lines,
       code: "TILBAKE10",
-      restoreUrl: "https://kaizenstore.cloud/s/kopp/no/cart/restore/abc?code=TILBAKE10",
-      unsubscribeUrl: "https://kaizenstore.cloud/s/kopp/no/unsubscribe/abc",
+      restoreUrl: "https://kaizenaflow.com/s/kopp/no/cart/restore/abc?code=TILBAKE10",
+      unsubscribeUrl: "https://kaizenaflow.com/s/kopp/no/unsubscribe/abc",
     });
     expect(content.subject).toBe("Glemte du noe hos Kopp & Kanne?");
     expect(content.blocks.filter((b) => b.type === "paragraph").map((b) => (b as { text: string }).text)).toEqual([
@@ -31,8 +31,8 @@ describe("cart reminder emails (D33)", () => {
     expect(text).toContain("2 × Kopp");
     expect(text).toContain("Sum");
     expect(text.replace(/\s/g, " ")).toContain("697,00");
-    expect(html).toContain('href="https://kaizenstore.cloud/s/kopp/no/unsubscribe/abc"');
-    expect(text).toContain("Meld deg av: https://kaizenstore.cloud/s/kopp/no/unsubscribe/abc");
+    expect(html).toContain('href="https://kaizenaflow.com/s/kopp/no/unsubscribe/abc"');
+    expect(text).toContain("Meld deg av: https://kaizenaflow.com/s/kopp/no/unsubscribe/abc");
   });
 
   it("start stores with three reminders in their languages", () => {

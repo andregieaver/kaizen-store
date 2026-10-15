@@ -39,7 +39,7 @@ describe("cookie consent (D58)", () => {
     }
   });
 
-  it("knows Kaizen's cookies and the tools', and lists those each kind of site uses", () => {
+  it("knows Kaizena Flow's cookies and the tools', and lists those each kind of site uses", () => {
     expect(knownCookie("cart_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c_no")?.category).toBe("necessary");
     expect(knownCookie("_ga_ABC123")?.category).toBe("statistics");
     expect(knownCookie("_fbp")?.provider).toBe("Meta");

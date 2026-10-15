@@ -21,7 +21,7 @@ const invoice = (over: Partial<InvoiceShape> = {}): InvoiceShape => ({
   ...over,
 });
 
-describe("Kaizen's plan invoices and the referral program (D131)", () => {
+describe("Kaizena Flow's plan invoices and the referral program (D131)", () => {
   it("counts the invoices a subscription made", () => {
     expect(isPlanInvoice(invoice({ parent: { type: "subscription_details" } }))).toBe(true);
     expect(isPlanInvoice(invoice({ billing_reason: "subscription_cycle" }))).toBe(true);

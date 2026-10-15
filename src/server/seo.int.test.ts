@@ -121,7 +121,7 @@ describe("a store's search settings", () => {
     expect(sitemap).not.toContain("/alle-produkter");
     const llms = await seo.storeLlms(slug);
     expect(llms).toContain("## Pages\n\n- [Om oss](");
-    expect(llms).toContain(`/s/${slug}/no/om-oss): Kaizen Demo selger`);
+    expect(llms).toContain(`/s/${slug}/no/om-oss): Kaizena Flow Demo selger`);
 
     // A page closed to AI assistants is closed to their crawlers in every market.
     await db().execute(sql`
@@ -142,12 +142,12 @@ describe("a store's search settings", () => {
   });
 });
 
-describe("Kaizen's own search settings", () => {
+describe("Kaizena Flow's own search settings", () => {
   it("saves them, with sitemap lines allowed in its crawler rules", async () => {
     const before = await seo.getPlatformSeo();
     const result = await seo.savePlatformSeo(
       member.account,
-      settings({ title: { en: "Kaizen" }, robots: "Sitemap: https://example.com/extra.xml" }),
+      settings({ title: { en: "Kaizena Flow" }, robots: "Sitemap: https://example.com/extra.xml" }),
     );
     expect(result).toEqual({ ok: true });
     expect(await seo.siteRobots()).toContain("Sitemap: https://example.com/extra.xml");

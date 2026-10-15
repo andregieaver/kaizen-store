@@ -156,7 +156,7 @@ describe("the timeline's sentences", () => {
     const refunded = eventSentence("return.refunded", { amountMinor: 12_345 }, "NOK", "en-GB");
     expect(refunded).toMatch(/^Refunded /);
     expect(refunded.replace(/[\s ]/g, "")).toContain("123.45");
-    expect(eventSentence("return.refunded", { amountMinor: 100, outside: true }, "NOK")).toContain("outside Kaizen's Stripe");
+    expect(eventSentence("return.refunded", { amountMinor: 100, outside: true }, "NOK")).toContain("outside Kaizena Flow's Stripe");
     const changed = eventSentence("return.refund_overridden", { computedMinor: 10_000, requestedMinor: 8_000, reason: "Goodwill" }, "NOK");
     expect(changed).toMatch(/changed from .*100.* to .*80.*: Goodwill/);
     expect(eventSentence("return.closed", { outcome: "no_refund" }, "NOK")).toBe("Closed with no refund");

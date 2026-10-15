@@ -146,7 +146,7 @@ describe("the import-products playbook", () => {
     }
   });
 
-  it("says what an import never does, that the assistant cannot start one, and that Kaizen records no marketing consent", () => {
+  it("says what an import never does, that the assistant cannot start one, and that Kaizena Flow records no marketing consent", () => {
     const text = skill!.steps.join("\n");
     expect(text).toMatch(/never deletes a product/);
     expect(text).toMatch(/never imports a compare-at price/);

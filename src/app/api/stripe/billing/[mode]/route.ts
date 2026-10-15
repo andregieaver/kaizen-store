@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
 
   try {
     const known = await applySubscription(event.data.object as Stripe.Subscription, mode as PaymentModeName);
-    return Response.json({ received: true, ...(known ? {} : { ignored: "not a Kaizen store" }) });
+    return Response.json({ received: true, ...(known ? {} : { ignored: "not a Kaizena Flow store" }) });
   } catch {
     // Stripe retries on errors, with backoff, for up to three days.
     return new Response("Could not process the event", { status: 500 });

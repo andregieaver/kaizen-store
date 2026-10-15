@@ -28,7 +28,7 @@ export default async function PlatformTemplatesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Templates"
-        description={<>Whole page layouts, rows, columns and components that store owners share with every store, live as soon as they are shared, with the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in no store&apos;s list; pages that already have a copy keep it.</>}
+        description={<>Whole page layouts, rows, columns and components that store owners share with every store, live as soon as they are shared, with the store&apos;s name on them, and Kaizena Flow&apos;s own saved parts. Hide one and it is in no store&apos;s list; pages that already have a copy keep it.</>}
       />
       <p className="text-sm text-muted">
         {templates.length === 0

@@ -168,13 +168,13 @@ describe("lists", () => {
 });
 
 describe("the focus layout", () => {
-  it("draws Kaizen's mark, one card on the canvas with the page's h1, and no level's navigation", () => {
+  it("draws Kaizena Flow's mark, one card on the canvas with the page's h1, and no level's navigation", () => {
     const out = html(
-      h(FocusFrame, { title: "Sign in to Kaizen", description: "Only invited accounts.", back: { href: "/admin/sign-in", label: "Back to sign in" }, aside: "Ask for a store", children: "form" }),
+      h(FocusFrame, { title: "Sign in to Kaizena Flow", description: "Only invited accounts.", back: { href: "/admin/sign-in", label: "Back to sign in" }, aside: "Ask for a store", children: "form" }),
     );
     expect(out).toContain('data-admin-layout="focus"');
     expect(out).toContain("bg-canvas");
-    expect(out).toContain('<h1 class="text-display text-ink">Sign in to Kaizen</h1>');
+    expect(out).toContain('<h1 class="text-display text-ink">Sign in to Kaizena Flow</h1>');
     expect(out).toContain('href="/admin/sign-in"');
     expect(out).toContain("Ask for a store");
     expect(out).toContain("rounded-card bg-card");

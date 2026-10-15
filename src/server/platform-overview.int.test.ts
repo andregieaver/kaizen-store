@@ -13,7 +13,7 @@ afterAll(async () => {
 });
 
 describe("the platform overview (D107)", () => {
-  it("counts waiting requests and stores from Kaizen's own data", async () => {
+  it("counts waiting requests and stores from Kaizena Flow's own data", async () => {
     const before = await platformOverview();
     const run = Date.now().toString(36);
     await db().execute(sql`insert into commerce.access_requests (email, name, store_name) values (${`overview-${run}@example.com`}, 'Kari', 'Kaffe')`);

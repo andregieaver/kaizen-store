@@ -77,7 +77,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.store}
-      home={{ href: "/admin", label: "Kaizen: all your stores" }}
+      home={{ href: "/admin", label: "Kaizena Flow: all your stores" }}
       before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
       switcher={
         <Suspense fallback={<span className="px-2 font-medium">{store.name}</span>}>
@@ -154,7 +154,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
           <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>
           <p className="text-muted">
             {store.status === "suspended"
-              ? "Kaizen has paused it: it takes no orders and cannot be changed. You can still see and handle what was already sold."
+              ? "Kaizena Flow has paused it: it takes no orders and cannot be changed. You can still see and handle what was already sold."
               : "It takes no orders. Its orders, invoices, returns and customer data stay here to read and download."}
             {isOwner && store.status === "closed" && (
               <>

@@ -31,7 +31,7 @@ describe("gatedRate", () => {
     expect(gatedRate({ part: 0, whole: 100, min: 30, unit: "orders", tracked: true })).toEqual({ value: 0, missing: null });
     const untracked = gatedRate({ part: 0, whole: 100, min: 30, unit: "orders", tracked: false });
     expect(untracked.value).toBeNull();
-    expect(untracked.missing).toContain("No return has been recorded in Kaizen yet");
+    expect(untracked.missing).toContain("No return has been recorded in Kaizena Flow yet");
   });
 
   it("says when nothing was sold, and speaks of one unit in the singular", () => {
@@ -152,7 +152,7 @@ describe("maturityNote", () => {
 
 describe("exchangeShare (D239)", () => {
   it("is words for a store that never exchanged, and for a period with no return, never 0 %", () => {
-    expect(exchangeShare({ exchanged: 0, returns: 50, tracked: false })).toEqual({ value: null, missing: expect.stringContaining("No return has been exchanged in Kaizen yet") });
+    expect(exchangeShare({ exchanged: 0, returns: 50, tracked: false })).toEqual({ value: null, missing: expect.stringContaining("No return has been exchanged in Kaizena Flow yet") });
     expect(exchangeShare({ exchanged: 0, returns: 0, tracked: true })).toEqual({ value: null, missing: "No return was made in this period." });
   });
 

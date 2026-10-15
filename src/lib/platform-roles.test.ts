@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { pageInput, pageBlocks } from "./page-content";
 import { isPlatformRole, PLATFORM_ROLE_COPY, PLATFORM_ROLES, platformStarterPage } from "./platform-roles";
 
-describe("Kaizen's pages with a place of their own (D143)", () => {
+describe("Kaizena Flow's pages with a place of their own (D143)", () => {
   const ids = () => {
     let n = 0;
     return () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;

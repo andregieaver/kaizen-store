@@ -266,7 +266,7 @@ describe("the Returns section's exchanges (docs/analytics.md, Exchanged return)"
     const report = await returnsReport(empty, period, new Date());
     expect(report.exchanges).toMatchObject({ returns: 0, keptMinor: 0, transfers: 0, tracked: false });
     expect(report.exchanges.share.value).toBeNull();
-    expect(report.exchanges.share.missing).toContain("No return has been exchanged in Kaizen yet");
+    expect(report.exchanges.share.missing).toContain("No return has been exchanged in Kaizena Flow yet");
   });
 });
 

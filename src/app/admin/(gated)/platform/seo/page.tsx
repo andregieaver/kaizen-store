@@ -30,7 +30,7 @@ export default async function PlatformSeoPage() {
     <>
       <PageHeader
         title="Search"
-        description={<>How Kaizen&apos;s own pages show up in search results, when shared and to AI assistants. Each store sets its own under Search in its admin; the site&apos;s{" "}<a href="/robots.txt" className="underline">robots.txt</a>,{" "}<a href="/sitemap.xml" className="underline">sitemap</a>{" "}and{" "}<a href="/llms.txt" className="underline">llms.txt</a>{" "}bring Kaizen&apos;s and every open store&apos;s together.</>}
+        description={<>How Kaizena Flow&apos;s own pages show up in search results, when shared and to AI assistants. Each store sets its own under Search in its admin; the site&apos;s{" "}<a href="/robots.txt" className="underline">robots.txt</a>,{" "}<a href="/sitemap.xml" className="underline">sitemap</a>{" "}and{" "}<a href="/llms.txt" className="underline">llms.txt</a>{" "}bring Kaizena Flow&apos;s and every open store&apos;s together.</>}
       />
 
       <ActionForm action={savePlatformSeoAction} successMessage="Search and sharing saved." className="flex flex-col gap-6">
@@ -65,7 +65,7 @@ export default async function PlatformSeoPage() {
           </h2>
           <label className={label}>
             <span>
-              Kaizen&apos;s profiles elsewhere <span className={hint}>(one address per line)</span>
+              Kaizena Flow&apos;s profiles elsewhere <span className={hint}>(one address per line)</span>
             </span>
             <textarea
               name="sameAs"

@@ -115,7 +115,7 @@ export function noneActivated(source: TemplateSource, own = false): { title: str
     hint:
       source === "stores"
         ? "Page layouts, rows, columns and components you share from your other stores can be switched on here. Browse them to choose."
-        : "Browse the marketplace and switch on the templates you want to build with. Kaizen's start out on.",
+        : "Browse the marketplace and switch on the templates you want to build with. Kaizena Flow's start out on.",
   };
 }
 
@@ -129,7 +129,7 @@ export function nothingShared(source: TemplateSource, own = false): { title: str
       }
     : {
         title: "Nothing in the marketplace yet",
-        hint: "Templates shared with the marketplace by Kaizen and other stores appear here.",
+        hint: "Templates shared with the marketplace by Kaizena Flow and other stores appear here.",
       };
 }
 

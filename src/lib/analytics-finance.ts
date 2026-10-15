@@ -158,7 +158,7 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
     missing: feesUnset,
     note: feesUnset ? "No payment fee is set in Analytics settings, so it counts as 0." : "Estimated from the fee in Analytics settings and each order's total with VAT.",
   });
-  push("platformFees", "Platform fees", -totals.platformFeesMinor, { note: "What Kaizen took on the period's payments." });
+  push("platformFees", "Platform fees", -totals.platformFeesMinor, { note: "What Kaizena Flow took on the period's payments." });
   const shippingUnset = orders > 0 && settings.shippingCostMinor === 0;
   push("shippingCosts", "Shipping costs (estimated)", -totals.shippingCostsMinor, {
     estimated: true,

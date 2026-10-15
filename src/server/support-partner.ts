@@ -168,7 +168,7 @@ export async function runPartner(staff: StaffDesk, conversationId: string, trigg
   const messages: ToolChatMessage[] = [
     {
       role: "system",
-      content: partnerPrompt({ agent: agentName, desk: staff.store?.name ?? "Kaizen", signedIn: facts.signedIn, language: LANGUAGES[facts.locale.split("-")[0]] ?? "the customer's language", question: question !== null }),
+      content: partnerPrompt({ agent: agentName, desk: staff.store?.name ?? "Kaizena Flow", signedIn: facts.signedIn, language: LANGUAGES[facts.locale.split("-")[0]] ?? "the customer's language", question: question !== null }),
     },
     { role: "user", content: `${transcript || "(No messages yet.)"}${question ? `\n\nThe agent asks: ${question}` : ""}` },
   ];

@@ -180,7 +180,7 @@ describe("oss_return_data", () => {
       expect.objectContaining({ currency: "DKK", for_day: "2026-09-30", rate: "1 EUR = 7.4755 DKK", rate_date: "2026-09-30", source: "The European Central Bank's reference rate" }),
     ]);
     expect(answer.deadline).toContain("31 October 2026");
-    expect(answer.deadline).toMatch(/Kaizen does not know what was filed|submit and pay by/);
+    expect(answer.deadline).toMatch(/Kaizena Flow does not know what was filed|submit and pay by/);
     expect(answer.not_a_tax_return).toMatch(/not a tax return/);
     expect(answer.page).toBe(`/admin/${own.slug}/analytics/tax?view=oss&quarter=2026-Q3&mode=filing`);
   });

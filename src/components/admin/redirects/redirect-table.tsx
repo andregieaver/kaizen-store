@@ -276,7 +276,7 @@ function RowGroup({
               <RedirectForm actions={actions} initial={{ from: row.source, to: row.target ?? "" }} editing={{ id: row.id, source: row.source }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} />
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-sm">Kaizen made this redirect when an address changed, so it cannot be edited. Make a redirect of your own from the same address to replace it.</p>
+                <p className="text-sm">Kaizena Flow made this redirect when an address changed, so it cannot be edited. Make a redirect of your own from the same address to replace it.</p>
                 <RedirectForm actions={actions} initial={{ from: row.source, to: "" }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} submitLabel="Replace it with this redirect" />
               </div>
             )}

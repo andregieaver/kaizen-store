@@ -96,7 +96,7 @@ export async function recordNewEditPaidOutsideAction(storeSlug: string, orderId:
   const result = await recordEditPaidOutside(member.store.id, { orderId, raw }, outside, staffActor(member.account.id));
   if (!result.ok) return refusedWith(result.problems);
   refresh();
-  return { ok: true, label: result.label, message: `Change ${result.label} is recorded as paid outside Kaizen and applied to the order.${result.cashWarning ? ` ${CASH_WARNING}` : ""}` };
+  return { ok: true, label: result.label, message: `Change ${result.label} is recorded as paid outside Kaizena Flow and applied to the order.${result.cashWarning ? ` ${CASH_WARNING}` : ""}` };
 }
 
 /** *Record as paid outside Kaizen* for a change already waiting for the customer's payment. */
@@ -107,7 +107,7 @@ export async function recordWaitingEditPaidOutsideAction(storeSlug: string, edit
   const result = await recordEditPaidOutside(member.store.id, { editId }, outside, staffActor(member.account.id));
   if (!result.ok) return refusedWith(result.problems);
   refresh();
-  return { ok: true, label: result.label, message: `Change ${result.label} is recorded as paid outside Kaizen and applied to the order.${result.cashWarning ? ` ${CASH_WARNING}` : ""}` };
+  return { ok: true, label: result.label, message: `Change ${result.label} is recorded as paid outside Kaizena Flow and applied to the order.${result.cashWarning ? ` ${CASH_WARNING}` : ""}` };
 }
 
 /** A `warn` country's cash ceiling (D173's rule, `src/lib/cash-limits.ts`): recorded, with a notice. */

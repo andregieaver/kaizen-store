@@ -39,7 +39,7 @@ describe("headers and footers (D80)", () => {
     expect(pageInput.safeParse(defaultHeader("store", menus)).success).toBe(true);
   });
 
-  it("offers a store's parts to stores and Kaizen's to Kaizen", () => {
+  it("offers a store's parts to stores and Kaizena Flow's to Kaizena Flow", () => {
     expect(sitePartsFor("store")).toContain("cart");
     expect(sitePartsFor("store")).not.toContain("signUp");
     expect(sitePartsFor(null)).toContain("signUp");

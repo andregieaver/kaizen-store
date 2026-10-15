@@ -21,7 +21,7 @@ describe("alt texts written by the site's AI (D89)", () => {
     expect(user).toContain("nb-NO (Norwegian Bokmål), en (English)");
     expect(user).toContain("File name: hvit-kopp.webp");
     expect(user).toContain("Used in: Product: Demo: Keramikkopp; Page: Om oss");
-    expect(altTextPrompt({ siteName: "Kaizen", languages, fileName: "x.webp", uses: [] }).user).toContain("Not used on the site yet.");
+    expect(altTextPrompt({ siteName: "Kaizena Flow", languages, fileName: "x.webp", uses: [] }).user).toContain("Not used on the site yet.");
   });
 
   it("cleans a text: one line, no quotes, links or opener, cut at a word", () => {

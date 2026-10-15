@@ -109,7 +109,7 @@ export function AdminSwitcher({
         aria-expanded={open}
         className="flex min-h-10 max-w-full items-center gap-2 rounded-pill px-2 hover:bg-sunken"
       >
-        <span className="hidden font-medium sm:inline">Kaizen</span>
+        <span className="hidden font-medium sm:inline">Kaizena Flow</span>
         <span aria-hidden="true" className="hidden text-muted sm:inline">
           /
         </span>
@@ -146,7 +146,7 @@ export function AdminSwitcher({
             </Section>
           )}
           {platform && (
-            <Section id="switch-kaizen" title="Kaizen" first={!owner && shown.length === 0}>
+            <Section id="switch-kaizen" title="Kaizena Flow" first={!owner && shown.length === 0}>
               <Link role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
                 Platform
                 {platform.waiting > 0 && <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">{platform.waiting} waiting</span>}

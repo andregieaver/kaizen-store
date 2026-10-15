@@ -86,7 +86,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
             : stage === null
               ? "Payments are off in the store."
               : mode === "test"
-                ? "Kaizen sets up the host's test account; it is ready within a few minutes."
+                ? "Kaizena Flow sets up the host's test account; it is ready within a few minutes."
                 : "The host has not finished setting up Stripe in their area, so their listings cannot be paid for yet."}
         </p>
         {earnings.length > 0 && (
@@ -96,7 +96,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
               {[...netByCurrency].map(([currency, net]) => formatMoney(net, currency, locale)).join(" + ")}
             </span>{" "}
             from {earnings.length === 1 ? "this payment" : `these ${earnings.length} payments`}, after refunds, your commission and
-            Kaizen&apos;s fee (before Stripe&apos;s own fees).
+            Kaizena Flow&apos;s fee (before Stripe&apos;s own fees).
           </p>
         )}
         {earnings.length > 0 && (
@@ -108,7 +108,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
                   {e.kind === "no_show" && <span className="block text-xs text-muted">No-show fee</span>}
                   <span className="block text-xs text-muted tabular-nums">
                     Guest paid {formatMoney(e.paidMinor - e.refundedMinor, e.currency, locale)}
-                    {e.refundedMinor > 0 && " after refunds"} · Kaizen&apos;s fee {formatMoney(e.kaizenFeeMinor, e.currency, locale)} ·
+                    {e.refundedMinor > 0 && " after refunds"} · Kaizena Flow&apos;s fee {formatMoney(e.kaizenFeeMinor, e.currency, locale)} ·
                     Host got {formatMoney(e.netMinor, e.currency, locale)}
                   </span>
                 </Link>

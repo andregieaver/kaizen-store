@@ -241,12 +241,12 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
             total.unpricedRequests > 0
               ? `${n(total.unpricedRequests)} requests have no price yet`
               : onOwn.costMicros > 0
-                ? `${formatUsd(onKaizen.costMicros)} on Kaizen's key, ${formatUsd(onOwn.costMicros)} on stores' own`
+                ? `${formatUsd(onKaizen.costMicros)} on Kaizena Flow's key, ${formatUsd(onOwn.costMicros)} on stores' own`
                 : undefined
           }
         />
         <Tile
-          label={scope === "platform" ? "On Kaizen's key" : "On Kaizen's AI"}
+          label={scope === "platform" ? "On Kaizena Flow's key" : "On Kaizena Flow's AI"}
           value={n(onKaizen.inputTokens + onKaizen.outputTokens)}
           note={onOwn.requests > 0 ? `${n(onOwn.inputTokens + onOwn.outputTokens)} tokens on stores' own keys` : "tokens"}
         />
@@ -266,7 +266,7 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
       </Section>
 
       {scope === "platform" && (
-        <Section id="owners" title="By store owner account" note="Each owner account's stores together, with the providers and models they used. Kaizen's own use (its AI manager and chat agent) is listed apart.">
+        <Section id="owners" title="By store owner account" note="Each owner account's stores together, with the providers and models they used. Kaizena Flow's own use (its AI manager and chat agent) is listed apart.">
           <GroupList groups={perOwner} empty="Nothing used in this period." />
         </Section>
       )}
@@ -284,7 +284,7 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
       </Section>
 
       <p className="text-sm text-muted">
-        Counted from each call to a model as it is made. {anyEstimated && `${n(total.estimatedRequests)} requests are counted by Kaizen (about four characters a token) because the provider did not report tokens. `}
+        Counted from each call to a model as it is made. {anyEstimated && `${n(total.estimatedRequests)} requests are counted by Kaizena Flow (about four characters a token) because the provider did not report tokens. `}
         Live voice calls are counted as one request with their length.
         Cost is an estimate in US dollars: each call&apos;s tokens, pictures, minutes of audio and spoken characters at the prices set for its model on the day it was made
         {scope === "platform" ? (

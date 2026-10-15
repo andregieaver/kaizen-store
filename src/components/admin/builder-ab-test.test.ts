@@ -47,7 +47,7 @@ describe("the builder's A/B test button (D148)", () => {
     expect((out.match(/title="A\/B test this"/g) ?? []).length).toBe(3);
   });
 
-  it("is nowhere when the page cannot be tested (Kaizen's pages, layouts, unpublished pages) or while translating", () => {
+  it("is nowhere when the page cannot be tested (Kaizena Flow's pages, layouts, unpublished pages) or while translating", () => {
     expect(builder()).not.toContain("A/B test this");
     expect(
       builder({ onTestPart: () => {}, translate: { name: "Svenska", mainName: "Norsk", source: rows } }),

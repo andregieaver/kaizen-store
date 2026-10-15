@@ -34,7 +34,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
       <div className="flex flex-col gap-3">
         <PageHeader
           title="AI usage"
-          description={<>What the AI used for {store ? store.name : owned.length === 1 ? owned[0].name : "the stores you own"}, {chosen.label.toLowerCase()}. Kaizen&apos;s AI is included in your plan; usage on a key of your own is billed by that provider.</>}
+          description={<>What the AI used for {store ? store.name : owned.length === 1 ? owned[0].name : "the stores you own"}, {chosen.label.toLowerCase()}. Kaizena Flow&apos;s AI is included in your plan; usage on a key of your own is billed by that provider.</>}
         />
         <PeriodLinks base={base} period={chosen.id} extra={keep} />
         {owned.length > 1 && (

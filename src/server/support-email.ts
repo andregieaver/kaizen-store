@@ -64,7 +64,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
     from commerce.support_conversations c
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
-    -- An account asking Kaizen from the admin (step 11) is answered at its own address.
+    -- An account asking Kaizena Flow from the admin (step 11) is answered at its own address.
     left join commerce.accounts ra on c.source = 'admin' and ra.id = c.requester_id
     where c.anonymised_at is null and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
       and coalesce(cu.email, ra.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
@@ -118,9 +118,9 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
   const admin = row.source === "admin";
   const token = admin ? "" : await newEmailToken(desk, id);
   if (admin) {
-    deskName = "Kaizen";
+    deskName = "Kaizena Flow";
     url = `${siteUrl()}/admin/account/kaizen-support?c=${id}`;
-    footer = ["Kaizen"];
+    footer = ["Kaizena Flow"];
   } else if (storeId) {
     const market = row.market ? String(row.market) : "";
     const ctx = await emailContext(storeId, market.slice(0, 2).toUpperCase(), locale);
@@ -130,9 +130,9 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     footer = emailFooter(ctx.store, ctx.text);
     replyTo = ctx.store.details.contactEmail;
   } else {
-    deskName = "Kaizen";
+    deskName = "Kaizena Flow";
     url = `${siteUrl()}/support/c/${token}`;
-    footer = ["Kaizen"];
+    footer = ["Kaizena Flow"];
   }
   const blocks: EmailBlock[] = [
     { type: "heading", text: words.heading },
@@ -141,7 +141,7 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     ...lines,
     { type: "button", text: words.button, url },
     ...(admin
-      ? [{ type: "paragraph" as const, text: "You get this email because you asked Kaizen for help in the admin. The link opens the conversation after you sign in." }]
+      ? [{ type: "paragraph" as const, text: "You get this email because you asked Kaizena Flow for help in the admin. The link opens the conversation after you sign in." }]
       : [
           { type: "paragraph" as const, text: words.linkNote },
           { type: "paragraph" as const, text: words.why },
@@ -186,14 +186,14 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
     try {
       const storeId = row.store_id ? String(row.store_id) : null;
       const people = await deskPeopleAway(storeId);
-      const where = storeId ? String(row.name) : "Kaizen";
+      const where = storeId ? String(row.name) : "Kaizena Flow";
       const inbox = storeId ? `${siteUrl()}/admin/${String(row.slug)}/support` : `${siteUrl()}/admin/platform/support`;
       const minutes = Math.max(1, Number(row.minutes));
       const email = renderEmail({
         subject: `Someone is waiting in ${where}'s support`,
         preview: `A conversation has waited ${minutes} min for a person.`,
         lang: "en",
-        footer: ["Kaizen"],
+        footer: ["Kaizena Flow"],
         blocks: [
           { type: "heading", text: "Someone is waiting for a person" },
           { type: "paragraph", text: `A conversation in ${where}'s support has waited ${minutes} min, and nobody who can answer is online. Open the inbox to take it.` },
@@ -203,7 +203,7 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
       });
       const queuedAt = new Date(String(row.queued_at)).toISOString();
       for (const person of people) {
-        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email, fromName: "Kaizen", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
+        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email, fromName: "Kaizena Flow", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
         if (TOLD.includes(outcome)) out.waiting += 1;
         else out.failed += 1;
       }

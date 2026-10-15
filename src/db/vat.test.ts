@@ -160,7 +160,7 @@ describe("the seeded rates", () => {
     }
     const sources = await rows<{ source: string; checked_on: string }>("select source, checked_on::text from commerce.vat_rates where category = 'accommodation'");
     expect(sources).toHaveLength(3);
-    expect(sources.every((s) => !s.source.startsWith("Kaizen seed"))).toBe(true);
+    expect(sources.every((s) => !s.source.startsWith("Kaizena Flow seed"))).toBe(true);
   });
 
   it("lists how many rows each category has, so a reviewer sees the coverage", async () => {

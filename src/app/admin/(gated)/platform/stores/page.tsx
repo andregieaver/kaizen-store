@@ -18,7 +18,7 @@ export default async function PlatformStoresPage() {
     <>
       <PageHeader
         title="Stores"
-        description={<>Each store&apos;s plan with Kaizen and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.</>}
+        description={<>Each store&apos;s plan with Kaizena Flow and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.</>}
       />
       <Card compact>
         <List label="Stores">

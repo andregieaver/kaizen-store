@@ -1,7 +1,7 @@
 <?php
 /**
  * What the cart in the browser asks this site: the lines' live prices, and the hand-over of the cart to the store's checkout. The site's
- * server asks Kaizen with the connection's token, which the browser never sees. Anyone may ask (a visitor has no account), so the calls
+ * server asks Kaizena Flow with the connection's token, which the browser never sees. Anyone may ask (a visitor has no account), so the calls
  * are limited: only stores a saved view shows, a short list of well-formed lines, and a few calls a minute from one address.
  *
  * @package KaizenStore

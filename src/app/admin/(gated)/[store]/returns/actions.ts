@@ -192,7 +192,7 @@ export async function refundReturnAction(storeSlug: string, returnId: string, _p
     outside: result.outside,
   });
   refresh();
-  return done(result.outside ? "Recorded as refunded outside Kaizen's Stripe." : "Refunded.");
+  return done(result.outside ? "Recorded as refunded outside Kaizena Flow's Stripe." : "Refunded.");
 }
 
 export async function closeReturnAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {

@@ -252,7 +252,7 @@ describe("support in the database (D216)", () => {
     expect((await one<{ won: boolean }>("select commerce.support_take_partner_turn($1, $2) as won", [id, next + 5])).won).toBe(false);
   });
 
-  it("9. holds the checks: assignee with a person, a token for the site, a requester for the admin, no customer on Kaizen's desk", async () => {
+  it("9. holds the checks: assignee with a person, a token for the site, a requester for the admin, no customer on Kaizena Flow's desk", async () => {
     const id = await conversation("people");
     await db.exec("begin");
     await db.query("select set_config('kaizen.support_transition', 'on', true)");

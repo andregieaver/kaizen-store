@@ -13,7 +13,7 @@ describe("a remembered closing of a modal, on the cookie page", () => {
     expect(knownCookie("kaizen_modal_Promo")).toBeNull();
   });
 
-  it("is listed only on a site with such a modal, for a store and for Kaizen's own", () => {
+  it("is listed only on a site with such a modal, for a store and for Kaizena Flow's own", () => {
     expect(declaredCookies("store", {}).map((c) => c.name)).not.toContain("kaizen_modal_…");
     expect(declaredCookies("platform", {}).map((c) => c.name)).not.toContain("kaizen_modal_…");
     expect(declaredCookies("store", {}, { modals: true }).map((c) => c.name)).toContain("kaizen_modal_…");

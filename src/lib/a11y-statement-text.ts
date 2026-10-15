@@ -13,7 +13,7 @@ const EN: A11yText = {
   locale: "en-GB",
   m: {
     notice:
-      "DRAFT: needs legal review before use. Kaizen Store made this text from your store's details and your answers as a starting point. It is not legal advice and no lawyer has checked it. Read every sentence, fill in the [[bracketed]] parts, and delete this notice when you have.",
+      "DRAFT: needs legal review before use. Kaizena Flow made this text from your store's details and your answers as a starting point. It is not legal advice and no lawyer has checked it. Read every sentence, fill in the [[bracketed]] parts, and delete this notice when you have.",
     "notice.language": "This text is in English because it is not available in your store's language: have it translated and reviewed by a person before use.",
     "ph.add": "Add",
     "ph.check": "Check",
@@ -70,7 +70,7 @@ const NB: A11yText = {
   locale: "nb-NO",
   m: {
     notice:
-      "UTKAST: må gjennomgås juridisk før bruk. Kaizen Store har laget denne teksten av butikkens opplysninger og svarene dine som et utgangspunkt. Den er ikke juridisk rådgivning, og ingen jurist har kontrollert den. Les hver setning, fyll inn delene i [[klammer]], og slett denne merknaden når du har gjort det.",
+      "UTKAST: må gjennomgås juridisk før bruk. Kaizena Flow har laget denne teksten av butikkens opplysninger og svarene dine som et utgangspunkt. Den er ikke juridisk rådgivning, og ingen jurist har kontrollert den. Les hver setning, fyll inn delene i [[klammer]], og slett denne merknaden når du har gjort det.",
     "notice.language": "Denne teksten er på norsk bokmål fordi den ikke finnes på butikkens språk: la en person oversette og gjennomgå den før bruk.",
     "ph.add": "Legg til",
     "ph.check": "Kontroller",
@@ -127,7 +127,7 @@ const SV: A11yText = {
   locale: "sv-SE",
   m: {
     notice:
-      "UTKAST: måste granskas juridiskt före användning. Kaizen Store har gjort den här texten av butikens uppgifter och dina svar som en utgångspunkt. Den är inte juridisk rådgivning och ingen jurist har kontrollerat den. Läs varje mening, fyll i delarna inom [[hakparenteser]] och ta bort den här anteckningen när du har gjort det.",
+      "UTKAST: måste granskas juridiskt före användning. Kaizena Flow har gjort den här texten av butikens uppgifter och dina svar som en utgångspunkt. Den är inte juridisk rådgivning och ingen jurist har kontrollerat den. Läs varje mening, fyll i delarna inom [[hakparenteser]] och ta bort den här anteckningen när du har gjort det.",
     "notice.language": "Den här texten är på svenska eftersom den inte finns på butikens språk: låt en person översätta och granska den före användning.",
     "ph.add": "Lägg till",
     "ph.check": "Kontrollera",
@@ -184,7 +184,7 @@ const DA: A11yText = {
   locale: "da-DK",
   m: {
     notice:
-      "UDKAST: skal gennemgås juridisk før brug. Kaizen Store har lavet denne tekst af butikkens oplysninger og dine svar som et udgangspunkt. Den er ikke juridisk rådgivning, og ingen jurist har kontrolleret den. Læs hver sætning, udfyld delene i [[klammer]], og slet denne note, når du har gjort det.",
+      "UDKAST: skal gennemgås juridisk før brug. Kaizena Flow har lavet denne tekst af butikkens oplysninger og dine svar som et udgangspunkt. Den er ikke juridisk rådgivning, og ingen jurist har kontrolleret den. Læs hver sætning, udfyld delene i [[klammer]], og slet denne note, når du har gjort det.",
     "notice.language": "Denne tekst er på dansk, fordi den ikke findes på butikkens sprog: lad en person oversætte og gennemgå den før brug.",
     "ph.add": "Tilføj",
     "ph.check": "Kontrollér",

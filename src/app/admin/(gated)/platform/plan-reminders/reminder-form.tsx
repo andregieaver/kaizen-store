@@ -19,7 +19,7 @@ export async function PlanReminderForm({
     <ReminderEditor
       initial={step}
       storeName={preview.storeName}
-      languages={[{ locale: "en", label: "English", currency: preview.currency, footer: ["Kaizen · kaizenstore.cloud"], sample: preview.sample }]}
+      languages={[{ locale: "en", label: "English", currency: preview.currency, footer: ["Kaizena Flow · kaizenaflow.com"], sample: preview.sample }]}
       discounts={discounts
         .filter((d) => d.active || d.id === step.discountCodeId)
         .map((d) => ({ id: d.id, code: d.code, gives: platformDiscountSummary(d, money) }))}

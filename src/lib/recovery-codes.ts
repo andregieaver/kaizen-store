@@ -53,7 +53,7 @@ export function generateRecoveryCodes(random: RandomBytes, count: number = RECOV
 /** The text of a set to copy or print: a heading that says what they are, one numbered code to a line. */
 export function formatCodes(codes: readonly string[], context: { account: string; madeOn: string }): string {
   return [
-    `Kaizen Store recovery codes for ${context.account}`,
+    `Kaizena Flow recovery codes for ${context.account}`,
     `Made ${context.madeOn}. Each code works once, and only until you make a new set.`,
     "Keep them somewhere safe, apart from the device with your authenticator app.",
     "",

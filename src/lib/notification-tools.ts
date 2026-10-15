@@ -70,7 +70,7 @@ export function shapeNotification(n: ToolNotification) {
           text: l.own ? `the store's own ${l.slots.map((s) => SLOT_WORDS[s]).join(", ")}` : "standard text",
           ...(l.invalid ? { problem: "Its saved words no longer pass the checks, so the standard text is sent until it is corrected." } : {}),
         }))
-      : "fixed: Kaizen's legal wording in every language",
+      : "fixed: Kaizena Flow's legal wording in every language",
   };
 }
 
@@ -144,7 +144,7 @@ export type ToolParcel = {
 export function shapeParcel(p: ToolParcel) {
   const base = { carrier: p.carrier ?? "not named", tracking_number: p.trackingNumber ?? "none", sent_at: p.sentAt };
   if (!p.followed) {
-    return { ...base, followed: false, note: "Kaizen does not follow this parcel (no tracking number, or a carrier the store has not connected): only its link is shown to the customer." };
+    return { ...base, followed: false, note: "Kaizena Flow does not follow this parcel (no tracking number, or a carrier the store has not connected): only its link is shown to the customer." };
   }
   if (p.phase === null) {
     return {
@@ -160,7 +160,7 @@ export function shapeParcel(p: ToolParcel) {
     phase: PHASE_WORDS[p.phase],
     ...(p.phaseVerified
       ? {}
-      : { phase_note: "This carrier's codes are not verified against its documentation, so Kaizen shows the events but records no delivery and sends no email from them." }),
+      : { phase_note: "This carrier's codes are not verified against its documentation, so Kaizena Flow shows the events but records no delivery and sends no email from them." }),
     ...(p.outAt ? { out_for_delivery_at: p.outAt } : {}),
     ...(p.deliveredAt ? { delivered_at: p.deliveredAt } : {}),
     last_checked: p.checkedAt,

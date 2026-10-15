@@ -172,7 +172,7 @@ export function ShareImageField({
         />
         <div className="flex flex-col gap-2 text-sm">
           <p className="text-muted">
-            {url ? "Your picture." : "No picture chosen: Kaizen draws one with the name, as shown."} Best at
+            {url ? "Your picture." : "No picture chosen: Kaizena Flow draws one with the name, as shown."} Best at
             1200 × 630 pixels.
           </p>
           {upload ? (

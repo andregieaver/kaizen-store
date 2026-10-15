@@ -55,10 +55,10 @@ export async function setPlatformPageRole(account: Account, role: PlatformRole, 
     where id = ${pageId}::uuid and store_id is null and type = 'page'
   `);
   if (!page) return { ok: false, problems: ["That page no longer exists."] };
-  if (!page.published) return { ok: false, problems: [`Publish the page before making it Kaizen's ${name}.`] };
+  if (!page.published) return { ok: false, problems: [`Publish the page before making it Kaizena Flow's ${name}.`] };
   if (page.other_role && page.other_role !== role) {
     const other = isPlatformRole(page.other_role) ? PLATFORM_ROLE_COPY[page.other_role].name.toLowerCase() : "other special page";
-    return { ok: false, problems: [`That page is Kaizen's ${other}. Choose another page for the ${name}.`] };
+    return { ok: false, problems: [`That page is Kaizena Flow's ${other}. Choose another page for the ${name}.`] };
   }
   await db().execute(sql`
     insert into commerce.platform_page_roles (role, page_id, updated_by) values (${role}, ${pageId}::uuid, ${account.id}::uuid)

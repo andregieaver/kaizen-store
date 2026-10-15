@@ -172,11 +172,11 @@ function entryNote(row: Row): string {
     case "reverse":
       return store ? `${store}: ${what} refunded` : `A referred store: ${what} refunded`;
     case "apply":
-      return "Taken off a Kaizen invoice";
+      return "Taken off a Kaizena Flow invoice";
     case "restore":
       return "Returned: the invoice was not paid with credit";
     default:
-      return row.note ? String(row.note) : "Adjusted by Kaizen";
+      return row.note ? String(row.note) : "Adjusted by Kaizena Flow";
   }
 }
 
@@ -453,7 +453,7 @@ export async function notifyReferralOpened(storeId: string): Promise<SendOutcome
     kind: "referral.store_opened",
     to: String(row.email),
     email,
-    fromName: "Kaizen",
+    fromName: "Kaizena Flow",
     idempotencyKey: `referral-opened:${String(row.id)}`,
   });
 }
@@ -481,7 +481,7 @@ export async function notifyCreditApplied(input: {
     kind: "referral.credit_applied",
     to: String(row.email),
     email,
-    fromName: "Kaizen",
+    fromName: "Kaizena Flow",
     idempotencyKey: `referral-credit-applied:${input.invoiceId}`,
   });
 }

@@ -6,7 +6,7 @@ import { siteCookies } from "@/server/site-cookies";
 
 export const metadata: Metadata = {
   title: "Cookies",
-  description: "The cookies Kaizen's site uses, who sets them, why and for how long.",
+  description: "The cookies Kaizena Flow's site uses, who sets them, why and for how long.",
   alternates: { canonical: "/cookies" },
 };
 

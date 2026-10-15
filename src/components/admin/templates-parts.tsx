@@ -10,7 +10,7 @@ import { forLabel } from "./templates-helpers";
 export function KaizenBadge() {
   return (
     <span className="shrink-0 rounded-full border border-line bg-sunken px-1.5 py-px text-[11px] font-medium leading-4 text-ink">
-      Kaizen
+      Kaizena Flow
     </span>
   );
 }

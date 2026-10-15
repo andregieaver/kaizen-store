@@ -21,7 +21,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Integrations"
-        description={<>Connect Kaizen to the services you already use. Orders, customers and subscriptions go there as they happen.</>}
+        description={<>Connect Kaizena Flow to the services you already use. Orders, customers and subscriptions go there as they happen.</>}
       />
       <ul className="grid gap-4 sm:grid-cols-2">
         {INTEGRATIONS.map((info) => {

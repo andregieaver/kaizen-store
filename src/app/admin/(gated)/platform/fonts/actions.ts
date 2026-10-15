@@ -16,7 +16,7 @@ export async function savePlatformFontsAction(_state: FormState, form: FormData)
   if (!result.ok) return { status: "error", messages: result.problems };
   // Kaizen's layout sets the fonts, with its header and footer settings.
   updateTag(PLATFORM_NAVIGATION_TAG);
-  return { status: "ok", messages: ["Saved. Kaizen's site uses these fonts now."] };
+  return { status: "ok", messages: ["Saved. Kaizena Flow's site uses these fonts now."] };
 }
 
 /** Copies a Google Fonts family to Kaizen for its own pages (D59). */

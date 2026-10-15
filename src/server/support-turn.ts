@@ -64,7 +64,7 @@ export async function runSupportTurn(
           : null;
     reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null });
   } catch (error) {
-    console.warn(`[support] ${context.storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(`[support] ${context.storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof AiError) return { reply: null, error: m.chat.sorry };
     throw error;
   }

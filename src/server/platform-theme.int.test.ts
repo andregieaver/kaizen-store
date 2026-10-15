@@ -35,15 +35,15 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Kaizen's theme", () => {
-  it("is Minimal with Kaizen's own fonts until it is changed", () => {
+describe("Kaizena Flow's theme", () => {
+  it("is Minimal with Kaizena Flow's own fonts until it is changed", () => {
     const fonts = { body: { family: "Inter" } } as never;
     const theme = navigation.platformTheme(null, fonts);
     expect(theme.base).toBe("minimal");
     expect(theme.settings).toEqual({ ...templateSettings("minimal"), fonts });
   });
 
-  it("keeps what the Theme tab sends, and Kaizen's pages are drawn over it", async () => {
+  it("keeps what the Theme tab sends, and Kaizena Flow's pages are drawn over it", async () => {
     const tab = { elements: { h2: { typography: { text: { color: "#123456" } } } }, maxWidth: 1200, background: { light: "#fafaf9", dark: "#0a0a0a" } };
     const saved = await themes.savePlatformThemeTab(admin, tab);
     expect(saved, JSON.stringify(saved)).toMatchObject({ ok: true });

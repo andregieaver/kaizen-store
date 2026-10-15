@@ -134,7 +134,7 @@ describe("a custom item's picture and links", () => {
     expect(out).toContain('href="/s/demo/no/p/kopp"');
   });
 
-  it("links from Kaizen's pages to its own pages and drops a store's products", () => {
+  it("links from Kaizena Flow's pages to its own pages and drops a store's products", () => {
     const out = draw(grid({ items: [item({ id: "a", link: { kind: "page", slug: "pricing" } }), item({ id: "b", title: "Shop", link: { kind: "product", handle: "kopp" } })] }), "en", null);
     expect(out).toContain('href="/pricing"');
     expect(out).not.toContain("/p/kopp");

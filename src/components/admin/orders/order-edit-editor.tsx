@@ -405,7 +405,7 @@ export function OrderEditEditor({
             ) : (
               <>
                 {summary?.money === "refund" && summary.outside && !mayRecordOutside && (
-                  <p className={hint}>The order was paid outside Kaizen: only the owner, or staff the owner allows, can record paying it back.</p>
+                  <p className={hint}>The order was paid outside Kaizena Flow: only the owner, or staff the owner allows, can record paying it back.</p>
                 )}
                 <div>
                   <button

@@ -38,7 +38,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       <PageHeader
         back={{ href: base, label: "Hosts" }}
         title="Tax report (DAC7)"
-        description={<>As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizen has gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid, refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is what they earned after the commission and Kaizen&apos;s fee (before Stripe&apos;s own fees); it is for your records, and not part of what the report asks for.</>}
+        description={<>As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizena Flow has gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid, refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is what they earned after the commission and Kaizena Flow&apos;s fee (before Stripe&apos;s own fees); it is for your records, and not part of what the report asks for.</>}
       />
 
       <nav aria-label="Year" className="flex flex-wrap gap-2 text-sm">

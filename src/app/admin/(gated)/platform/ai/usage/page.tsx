@@ -25,7 +25,7 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
       <div className="flex flex-col gap-3">
         <PageHeader
           title="AI usage"
-          description={<>What every store and Kaizen itself used, {chosen.label.toLowerCase()}.{" "}<Link href="/admin/platform/ai" className="underline">AI settings</Link></>}
+          description={<>What every store and Kaizena Flow itself used, {chosen.label.toLowerCase()}.{" "}<Link href="/admin/platform/ai" className="underline">AI settings</Link></>}
         />
         <PeriodLinks base="/admin/platform/ai/usage" period={chosen.id} />
       </div>

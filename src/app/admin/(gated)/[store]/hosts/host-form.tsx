@@ -37,7 +37,7 @@ export function HostForm({ host, action }: { host: Host | null; action: (state: 
           defaultValue={host ? host.commissionBps / 100 : 15}
           className={control}
         />
-        <span className="font-normal text-muted">The store&apos;s share of each booking, before Kaizen&apos;s fee. The host is paid the rest.</span>
+        <span className="font-normal text-muted">The store&apos;s share of each booking, before Kaizena Flow&apos;s fee. The host is paid the rest.</span>
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name="vatRegistered" defaultChecked={host?.vatRegistered ?? false} className="mt-0.5 size-4" />

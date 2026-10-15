@@ -100,7 +100,7 @@ describe("an order that carries a paid change has two Stripe payments", () => {
   });
 });
 
-describe("a change recorded as paid in cash outside Kaizen", () => {
+describe("a change recorded as paid in cash outside Kaizena Flow", () => {
   it("is held to the country's cash ceiling as a draft paid in cash is (D173, src/lib/cash-limits.ts: Norway refuses 40,000 NOK or more)", async () => {
     const order = await paidOrder(store, [["DEMO-TOTE", 1]]);
     const raw = { added: [{ variantId: await variantOf(store, "DEMO-LAMP"), quantity: 1, unitPriceMinor: 4_500_000 }], reason: "customer_request" };

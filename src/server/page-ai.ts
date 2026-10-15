@@ -95,7 +95,7 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
 
   if (owner.storeId === null) {
     const links: SiteLink[] = [
-      { label: "Kaizen's front page", href: "/" },
+      { label: "Kaizena Flow's front page", href: "/" },
       { label: "Start a store (sign up)", href: "/sign-up" },
       ...pages.map((page) => ({ label: `Page: ${page.content.title}`, href: `/${page.slug}` })),
       ...(articles.length > 0 ? [{ label: "The blog", href: "/blog" }] : []),
@@ -103,9 +103,9 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
     ];
     return {
       kind: "kaizen",
-      name: "Kaizen",
+      name: "Kaizena Flow",
       language,
-      about: "Kaizen is an AI-native platform for online stores selling across the EU.",
+      about: "Kaizena Flow is an AI-native platform for online stores selling across the EU.",
       audience: null,
       contact: { email: null, address: null },
       links,
@@ -242,7 +242,7 @@ export async function planPage(
       }
       messages.push({ role: "assistant", content: text.slice(0, 8000) }, { role: "user", content: `That could not be read (${read.problem}). Answer again with the JSON only.` });
     }
-    return { ok: false, problem: "The site's AI did not answer with a plan Kaizen could read. Try again, or choose another text model." };
+    return { ok: false, problem: "The site's AI did not answer with a plan Kaizena Flow could read. Try again, or choose another text model." };
   } catch (error) {
     if (!(error instanceof AiError)) throw error;
     return { ok: false, problem: problemOf(error) };

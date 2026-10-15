@@ -93,10 +93,10 @@ describe("the refund panel", () => {
     expect(html).toMatch(/name="restock:l1"[^>]*max="2"|max="2"[^>]*name="restock:l1"/);
   });
 
-  it("records a refund made outside Kaizen's Stripe as that", () => {
+  it("records a refund made outside Kaizena Flow's Stripe as that", () => {
     const { text } = panel({ preview: preview({ canRefund: false }) });
     expect(text).toContain("Record as refunded outside");
-    expect(text).toContain("not paid through Kaizen's Stripe");
+    expect(text).toContain("not paid through Kaizena Flow's Stripe");
   });
 
   it("leaves out the stock fieldset when nothing physical came back", () => {

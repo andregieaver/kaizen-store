@@ -163,7 +163,7 @@ export async function ensureHostTestAccount(
       displayName: `${String(host.name)} (test)`,
       email: String(host.email),
       currency: String(host.currency),
-      description: `Test host ${String(host.name)} on Kaizen`,
+      description: `Test host ${String(host.name)} on Kaizena Flow`,
       metadata: { store_id: storeId, store_slug: String(host.slug), host_id: hostId, kaizen_test_account: "true" },
       idempotencyKey: `kaizen-host-test-account-${hostId}-${minute}`,
       minute,

@@ -87,7 +87,7 @@ export const REFERRAL_KIND_LABELS: Record<ReferralEntryKind, string> = {
   apply: "Used on an invoice",
   restore: "Returned",
   reverse: "Taken back",
-  adjust: "Adjusted by Kaizen",
+  adjust: "Adjusted by Kaizena Flow",
 };
 
 /** An account's referral credit in one currency, in minor units. */

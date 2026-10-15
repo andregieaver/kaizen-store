@@ -122,7 +122,7 @@ export async function applyKaizenTemplateAction(id: string) {
 /** Kaizen's own templates are always on in its builder, and their sharing is always the marketplace's (D125, D236). */
 export async function kaizenTemplateFixedAction(): Promise<{ ok: false; problems: string[] }> {
   await requirePlatformAdmin();
-  return { ok: false, problems: ["Kaizen's own templates are always on, and always shared with the marketplace."] };
+  return { ok: false, problems: ["Kaizena Flow's own templates are always on, and always shared with the marketplace."] };
 }
 
 /** Kaizen's own CSS for every one of its pages (D100): live at once. */
@@ -228,7 +228,7 @@ export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _stat
   const result = await chooseSiteLayout(admin, null, type, choice || null);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
-  return { status: "ok", messages: [choice ? `Saved. Kaizen's pages show this ${type} now.` : `Saved. Kaizen's pages show the standard ${type} now.`] };
+  return { status: "ok", messages: [choice ? `Saved. Kaizena Flow's pages show this ${type} now.` : `Saved. Kaizena Flow's pages show the standard ${type} now.`] };
 }
 
 /** Chooses the page Kaizen's front page, blog or 404 page shows (D143), or the standard one; the site follows at once. */
@@ -241,7 +241,7 @@ export async function setPlatformPageRoleAction(role: string, _state: FormState,
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
   const name = PLATFORM_ROLE_COPY[role].name.toLowerCase();
-  return { status: "ok", messages: [choice ? `Saved. Kaizen's ${name} is this page now.` : `Saved. Kaizen's ${name} is the standard one now.`] };
+  return { status: "ok", messages: [choice ? `Saved. Kaizena Flow's ${name} is this page now.` : `Saved. Kaizena Flow's ${name} is the standard one now.`] };
 }
 
 /** Makes a starter page for one of Kaizen's places, published and in place, to change in the builder (D143). */

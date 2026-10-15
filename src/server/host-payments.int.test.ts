@@ -425,10 +425,10 @@ describe("paying hosts (D71)", () => {
     // What the host got online, and the part the guest was to pay on arrival (D66).
     expect(sum(seller.netMinor)).toBe(earnings.reduce((total, e) => total + e.netMinor, 0) + (paidOrder.total - paidOrder.due));
     const csv = dac7.dac7Csv(report, "sellers").split("\r\n");
-    expect(csv[0]).toMatch(/,Kaizen fee Q1,Kaizen fee Q2,Kaizen fee Q3,Kaizen fee Q4,Net earnings Q1,Net earnings Q2,Net earnings Q3,Net earnings Q4$/);
+    expect(csv[0]).toMatch(/,Kaizena Flow fee Q1,Kaizena Flow fee Q2,Kaizena Flow fee Q3,Kaizena Flow fee Q4,Net earnings Q1,Net earnings Q2,Net earnings Q3,Net earnings Q4$/);
   });
 
-  it("registers the site's domain on the host's account for wallets on Kaizen's checkout page, once", async () => {
+  it("registers the site's domain on the host's account for wallets on Kaizena Flow's checkout page, once", async () => {
     await db().execute(sql`update commerce.platform_settings set checkout_ui = 'custom'`);
     try {
       for (const weeks of [2, 4]) {

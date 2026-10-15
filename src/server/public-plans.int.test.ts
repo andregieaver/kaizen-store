@@ -45,7 +45,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Kaizen's plans for its pages (D142)", () => {
+describe("Kaizena Flow's plans for its pages (D142)", () => {
   it("lists active plans with their active prices and the features each includes, and nothing a visitor should not see", async () => {
     const data = await getPublicPlans();
     const mine = data.plans.filter((p) => p.name.endsWith(tag));

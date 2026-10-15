@@ -288,7 +288,7 @@ describe("a refund Stripe left pending completes by its event, and one made in t
     expect(await refunds.applyStripeRefund(own.storeId, { ...refund, id: "re_foreign_3", payment_intent: `pi_for_${mine.sessionId}`, currency: "eur" } as unknown as Stripe.Refund, { stripe: fake.client as unknown as Stripe, account: own.account })).toEqual({ outcome: "unmatched", reason: "other_currency" });
   });
 
-  it("refuses an event for a refund of Kaizen's own whose row is not written yet (Stripe sends it again), and records it after two minutes", async () => {
+  it("refuses an event for a refund of Kaizena Flow's own whose row is not written yet (Stripe sends it again), and records it after two minutes", async () => {
     fake.state.status = "succeeded";
     const own = await fx.makeStore("rf-own");
     const order = await fx.paidOrder(own, [["DEMO-MUG-WHITE", 2]]);

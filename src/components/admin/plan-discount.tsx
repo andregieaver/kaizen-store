@@ -42,7 +42,7 @@ export function PlanDiscount({
           )}
         </div>
       ) : (
-        <p className="mb-4 text-muted">Have a code from Kaizen? It lowers your plan&apos;s invoices.</p>
+        <p className="mb-4 text-muted">Have a code from Kaizena Flow? It lowers your plan&apos;s invoices.</p>
       )}
       {canEdit && (
         <ActionForm action={apply} className="flex flex-wrap items-end gap-2">

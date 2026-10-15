@@ -52,7 +52,7 @@ export async function notifyGuardrailStop(store: Pick<Store, "id" | "slug" | "na
           kind: "experiment.guardrail",
           to: String(person.email),
           email,
-          fromName: "Kaizen",
+          fromName: "Kaizena Flow",
           idempotencyKey: `experiment.guardrail:${test.id}:${String(person.id)}`,
         }),
       );

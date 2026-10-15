@@ -37,7 +37,7 @@ export type AltSite = { name: string; languages: AltLanguage[] };
 export async function altSite(owner: MediaOwner): Promise<AltSite | null> {
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const language = (locale: string) => ({ locale, name: names.of(locale) ?? locale });
-  if (!owner.storeId) return { name: "Kaizen", languages: [language("en")] };
+  if (!owner.storeId) return { name: "Kaizena Flow", languages: [language("en")] };
   const store = owner.storeSlug ? await getStore(owner.storeSlug) : null;
   if (!store || store.markets.length === 0) return null;
   const locales = store.localization.locales;

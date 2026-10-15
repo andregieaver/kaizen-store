@@ -275,7 +275,7 @@ describe("a custom grid's items as grid data", () => {
     expect(itemLinkHref(null, "/s/demo/no")).toBeNull();
   });
 
-  it("link from Kaizen's own pages by address, with no store's products, account or cart", () => {
+  it("link from Kaizena Flow's own pages by address, with no store's products, account or cart", () => {
     expect(itemLinkHref({ kind: "page", slug: "om-oss" }, null)).toEqual({ href: "/om-oss", external: false });
     expect(itemLinkHref({ kind: "home" }, null)).toEqual({ href: "/", external: false });
     expect(itemLinkHref({ kind: "blog" }, null)).toEqual({ href: "/blog", external: false });
@@ -320,7 +320,7 @@ describe("copying what a grid shows now into custom items", () => {
     expect(a.link).toEqual({ kind: "article", slug: "a" });
   });
 
-  it("copies at most CUSTOM_ITEMS_MAX, takes the fields as detail lines, and drops a product link on Kaizen's pages", () => {
+  it("copies at most CUSTOM_ITEMS_MAX, takes the fields as detail lines, and drops a product link on Kaizena Flow's pages", () => {
     const many = Array.from({ length: CUSTOM_ITEMS_MAX + 5 }, (_, i) => tile({ id: `p${i}` }));
     expect(itemsFromGrid("pages", many, options)).toHaveLength(CUSTOM_ITEMS_MAX);
     const [withFields] = itemsFromGrid("products", [tile({ fields: [{ label: "A", text: "1" }, { label: "B", text: "2" }, { label: "C", text: "3" }, { label: "D", text: "4" }] })], options);

@@ -136,7 +136,7 @@ export type RefundsReport = {
 };
 
 export const NOT_SEEN_NOTE =
-  "Refunds made only in Stripe's dashboard are not included: Kaizen only sees refunds made from its own admin, and the reasons are free text.";
+  "Refunds made only in Stripe's dashboard are not included: Kaizena Flow only sees refunds made from its own admin, and the reasons are free text.";
 
 // ---------------------------------------------------------------------------
 // Pure parts

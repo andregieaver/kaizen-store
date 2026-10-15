@@ -287,7 +287,7 @@ export const ORDER_EDIT_PROBLEMS = {
   over_refundable: "The difference is more than is left to refund on this order (earlier refunds took the rest).",
   changed: "The order changed while you edited it: start again.",
   refund_failed: "The refund was refused, so nothing was changed.",
-  amount_too_small: "The amount is too small to pay by card: record it as paid outside Kaizen or change the price of what is added.",
+  amount_too_small: "The amount is too small to pay by card: record it as paid outside Kaizena Flow or change the price of what is added.",
 } as const;
 export type OrderEditProblemCode = keyof typeof ORDER_EDIT_PROBLEMS;
 export type OrderEditProblem = { code: OrderEditProblemCode | EditBlockReason; key?: string };

@@ -11,7 +11,7 @@ for (const path of ["/admin/sign-in/two-step", "/admin/sign-in/two-step/set-up",
   test(`${path} sends someone who has not signed in to sign in`, async ({ page }) => {
     await page.goto(path);
     await expect(page).toHaveURL("/admin/sign-in");
-    await expect(page.getByRole("heading", { name: "Sign in to Kaizen" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in to Kaizena Flow" })).toBeVisible();
   });
 }
 

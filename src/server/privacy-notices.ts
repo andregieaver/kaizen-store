@@ -44,7 +44,7 @@ export async function notifyOwners(storeId: string, action: "export" | "erasure"
       kind: "privacy.owners_notice",
       to: strs(owner.email),
       email,
-      fromName: "Kaizen",
+      fromName: "Kaizena Flow",
       idempotencyKey: `privacy.owners:${action}:${requestId ?? now.getTime()}:${actorId}:${strs(owner.id)}`,
     });
     if (outcome === "sent" || outcome === "logged") sent++;

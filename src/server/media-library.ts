@@ -781,7 +781,7 @@ export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedde
       const connection = await aiFor(owner.storeId, { feature: "media" });
       if (connection) embedded += (await embedMedia(owner, connection)).embedded;
     } catch (error) {
-      console.warn(`[media] refresh failed for ${owner.storeSlug ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`[media] refresh failed for ${owner.storeSlug ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   return { sites: owners.length, embedded };

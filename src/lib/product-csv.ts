@@ -301,7 +301,7 @@ export function readNeutral(raw: readonly (readonly string[])[], ctx: ProductCsv
         columns.add(name);
         keep.push(i);
       }
-    } else ignored.push({ column: name, reason: "Kaizen does not have this column" });
+    } else ignored.push({ column: name, reason: "Kaizena Flow does not have this column" });
   });
   const rows: NeutralRow[] = raw.slice(1).map((cells, i) => {
     const v: Record<string, string> = {};

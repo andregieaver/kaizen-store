@@ -20,7 +20,7 @@ export default async function PlatformNotFound() {
     <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-24">
       <h1 className="text-2xl font-semibold">This page does not exist.</h1>
       <Link href="/" className="w-fit underline">
-        Kaizen&apos;s front page
+        Kaizena Flow&apos;s front page
       </Link>
     </main>
   );

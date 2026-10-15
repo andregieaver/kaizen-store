@@ -40,13 +40,13 @@ const content = (title: string, slug: string, text: string, extra: Record<string
   ...extra,
 });
 
-test("a published page shows in Kaizen's header and footer; a draft does not show at all", async ({ page }) => {
+test("a published page shows in Kaizena Flow's header and footer; a draft does not show at all", async ({ page }) => {
   const live = `about-${run}`;
   const draft = `draft-${run}`;
   const sql = testDb();
   try {
     // Rows of columns, as the builder saves them.
-    const { blocks, ...rest } = content("About Kaizen", live, "We make online stores. ");
+    const { blocks, ...rest } = content("About Kaizena Flow", live, "We make online stores. ");
     const published = {
       ...rest,
       rows: [
@@ -80,15 +80,15 @@ test("a published page shows in Kaizen's header and footer; a draft does not sho
   }
 
   await page.goto(`/${live}`);
-  await expect(page).toHaveTitle("About Kaizen · Kaizen");
+  await expect(page).toHaveTitle("About Kaizena Flow · Kaizena Flow");
   // The title is the page's heading for screen readers and search engines, not shown (D45).
-  await expect(page.getByRole("heading", { level: 1, name: "About Kaizen" })).toBeAttached();
+  await expect(page.getByRole("heading", { level: 1, name: "About Kaizena Flow" })).toBeAttached();
   await expect(page.getByRole("heading", { level: 2, name: "Who we are" })).toBeVisible();
   // The row's two columns sit side by side on a computer, the second one narrower.
   const main = await page.getByText("We make online stores.").boundingBox();
   const side = await page.getByText("In the sidebar.").boundingBox();
   expect(side!.x).toBeGreaterThan(main!.x + main!.width - 1);
-  await expect(page.getByRole("banner").getByRole("link", { name: "Kaizen", exact: true })).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Kaizena Flow", exact: true })).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
   // Visitors without a session never see the editor's button.
   await expect(page.getByRole("link", { name: "Edit page" })).toHaveCount(0);

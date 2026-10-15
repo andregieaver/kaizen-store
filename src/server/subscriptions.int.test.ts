@@ -166,7 +166,7 @@ describe("a subscription's life", () => {
     `);
   });
 
-  it("learns Stripe's subscription by Kaizen's id, even before the checkout event", async () => {
+  it("learns Stripe's subscription by Kaizena Flow's id, even before the checkout event", async () => {
     await syncSubscription(storeId, {
       id: reference,
       status: "incomplete",
@@ -265,7 +265,7 @@ describe("a subscription's life", () => {
     // A category of this run's own with a rate of 10 % in Norway: the seeded rates are shared and never changed by a test.
     const category = `r${run}`.slice(0, 20);
     await db().execute(sql`insert into commerce.vat_categories (code, name_en, sort, active) values (${category}, 'Renewal test', 997, true)`);
-    await db().execute(sql`select commerce.set_vat_rate('NO', ${category}, 0.10, date '2026-01-01', 'Kaizen test data, not a rate', date '2026-10-03', '', null)`);
+    await db().execute(sql`select commerce.set_vat_rate('NO', ${category}, 0.10, date '2026-01-01', 'Kaizena Flow test data, not a rate', date '2026-10-03', '', null)`);
     await db().execute(sql`update commerce.products set vat_category = ${category} where store_id = ${storeId}::uuid and handle = 'demo-notatbok'`);
     try {
       const renewal = await renewSubscription(storeId, {

@@ -194,7 +194,7 @@ export async function makeTestAccount(
         entity_type: "individual",
         business_details: testBusinessDetails,
         individual: {
-          given_name: "Kaizen",
+          given_name: "Kaizena Flow",
           surname: "Test",
           email: input.email,
           phone: "+4722222222",
@@ -203,7 +203,7 @@ export async function makeTestAccount(
         },
         attestations: {
           terms_of_service: {
-            account: { date: new Date(input.minute).toISOString(), ip: input.ip, user_agent: "Kaizen test setup" },
+            account: { date: new Date(input.minute).toISOString(), ip: input.ip, user_agent: "Kaizena Flow test setup" },
           },
         },
       },
@@ -282,7 +282,7 @@ export async function ensureTestAccount(
   `);
   if (!store) return { ok: false, problem: "Unknown store." };
   if (!store.currency) return { ok: false, problem: "The store sells to no country yet, so its test account has no currency." };
-  const email = store.email ? String(store.email) : "test@kaizenstore.cloud";
+  const email = store.email ? String(store.email) : "test@kaizenaflow.com";
   // Admin pages opened together ask at the same time: the same minute and
   // place give the same request, which Stripe answers with one account.
   const minute = Math.floor(Date.now() / 60_000) * 60_000;
@@ -293,7 +293,7 @@ export async function ensureTestAccount(
       displayName: `${String(store.name)} (test)`,
       email,
       currency: String(store.currency),
-      description: `Test store for ${String(store.name)} on Kaizen`,
+      description: `Test store for ${String(store.name)} on Kaizena Flow`,
       metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
       idempotencyKey: `kaizen-test-account-${storeId}-${minute}-${ip}`,
       minute,

@@ -295,7 +295,7 @@ export function DiscountEditor({
           />
           <span>
             Once per customer
-            <span className={`block ${hint}`}>Shoppers must sign in to My account to use it, so Kaizen knows who they are.</span>
+            <span className={`block ${hint}`}>Shoppers must sign in to My account to use it, so Kaizena Flow knows who they are.</span>
           </span>
         </label>
         <label className="flex items-center gap-3 text-sm font-medium">

@@ -180,7 +180,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       )}
 
       <section aria-labelledby="emails" className={card}>
-        <h2 id="emails" className="mb-3 text-title text-ink">Emails from Kaizen</h2>
+        <h2 id="emails" className="mb-3 text-title text-ink">Emails from Kaizena Flow</h2>
         {kaizenEmails.length === 0 ? (
           <p className="text-sm text-muted">No emails yet.</p>
         ) : (

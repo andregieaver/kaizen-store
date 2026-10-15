@@ -57,7 +57,7 @@ export type OssViewProps = {
 
 /** What the page says under every goods table: the dispatch state's own VAT number is the owner's to enter, nothing here holds it. */
 export const DISPATCH_NOTE =
-  "Goods are totalled per Member State of dispatch as well. A return also asks for the VAT or tax number the dispatch Member State gave you; Kaizen does not hold it, so you enter it yourself.";
+  "Goods are totalled per Member State of dispatch as well. A return also asks for the VAT or tax number the dispatch Member State gave you; Kaizena Flow does not hold it, so you enter it yourself.";
 
 export const PART_LABEL: Record<ReturnPart, string> = {
   "2a": "Part 2a: services from your Member State of identification",

@@ -245,7 +245,7 @@ describe("get_order and refund_order for the new kinds of order", () => {
     expect(JSON.stringify(listed)).not.toContain("SECRET-GIFT-WORDS");
   });
 
-  it("refuses to refund an order paid outside Kaizen, and says where that is done; a Stripe order is refunded as before", async () => {
+  it("refuses to refund an order paid outside Kaizena Flow, and says where that is done; a Stripe order is refunded as before", async () => {
     const store = await newPlainStore("tool-outside");
     const outside = await seedOrder(store, { status: "paid", draft: { accountId: store.accountId } });
     await db().execute(sql`
@@ -253,7 +253,7 @@ describe("get_order and refund_order for the new kinds of order", () => {
       values (${store.storeId}::uuid, ${outside.id}::uuid, 'manual', ${`manual_${outside.id}`}, 10000, 'NOK', 'captured', 'cash', ${store.accountId}::uuid)
     `);
     const message = await refusalOf(run(store, "refund_order", { order: outside.number, reason: "customer asked" }));
-    expect(message).toMatch(/paid outside Kaizen \(cash\)/);
+    expect(message).toMatch(/paid outside Kaizena Flow \(cash\)/);
     expect(message).toMatch(/records the refund on the order's page/);
     expect((await db().execute<Row>(sql`select 1 from commerce.refunds where store_id = ${store.storeId}::uuid`)).length).toBe(0);
     expect(await run(store, "get_order", { order: outside.number })).toMatchObject({ paid_outside_kaizen: "cash", staff_made: true });

@@ -123,7 +123,7 @@ export async function closeStore(actor: Account, storeId: string, options: Close
   if (state.isTemplate) return fail("The template store cannot be closed.");
   if (state.status === "closed") return fail("The store is already closed.");
   if (options.by === "platform" && !actor.platformAdmin) return fail("Only the platform can do this.");
-  if (options.by === "owner" && state.status !== "active") return fail("Kaizen has suspended this store: write to Kaizen about it.");
+  if (options.by === "owner" && state.status !== "active") return fail("Kaizena Flow has suspended this store: write to Kaizena Flow about it.");
   if (options.by === "owner" && !confirmationMatches(options.typed ?? "", state.slug)) return fail("Type the store's address to confirm.");
 
   const obligations = await storeObligations(storeId);
@@ -134,7 +134,7 @@ export async function closeStore(actor: Account, storeId: string, options: Close
   let planEnded = false;
   if (obligations.livePlan) {
     const ended = await cancelPlan(actor, storeId, "period_end");
-    if (!ended.ok) return fail(`Kaizen could not end the plan (${ended.problems.join(" ")}). Nothing was closed. Try again in a moment.`);
+    if (!ended.ok) return fail(`Kaizena Flow could not end the plan (${ended.problems.join(" ")}). Nothing was closed. Try again in a moment.`);
     planEnded = true;
   }
 
@@ -264,7 +264,7 @@ export async function reopenStore(actor: Account, storeId: string, options: Reop
   if (options.by === "platform") {
     if (!actor.platformAdmin) return fail("Only the platform can do this.");
   } else if (!ownerMayReopen(state.status, state.closedAt, now)) {
-    return fail(state.status === "suspended" ? "Kaizen suspended this store: write to Kaizen to have it reopened." : "The thirty days for reopening have passed: ask Kaizen to reopen the store.");
+    return fail(state.status === "suspended" ? "Kaizena Flow suspended this store: write to Kaizena Flow to have it reopened." : "The thirty days for reopening have passed: ask Kaizena Flow to reopen the store.");
   }
   const [changed] = await db().execute<Row>(sql`
     update commerce.stores set status = 'active', status_changed_by = ${actor.id}::uuid
@@ -281,8 +281,8 @@ export async function reopenStore(actor: Account, storeId: string, options: Reop
     `);
     if (plan?.ending) {
       const undone = await cancelPlan(actor, storeId, "undo").catch(() => ({ ok: false as const, problems: [] as string[] }));
-      if (!undone.ok) warnings.push("The store's Kaizen plan could not be kept going: check it under Billing.");
-    } else if (plan) warnings.push("The store's Kaizen plan has ended: choose a plan under Billing.");
+      if (!undone.ok) warnings.push("The store's Kaizena Flow plan could not be kept going: check it under Billing.");
+    } else if (plan) warnings.push("The store's Kaizena Flow plan has ended: choose a plan under Billing.");
   }
   await audit(actor.id, storeId, "store.reopened", { by: options.by, from: state.status }, { target: { type: "store", id: storeId } });
   refreshTag(storeTag(state.slug));
@@ -312,7 +312,7 @@ async function notifyOwners(state: StoreStateInfo, change: "closed" | "suspended
         kind: "store.status",
         to: String(person.email),
         email,
-        fromName: "Kaizen",
+        fromName: "Kaizena Flow",
         idempotencyKey: `store.status:${state.id}:${change}:${actorId}:${Date.now()}:${String(person.id)}`,
       });
     }

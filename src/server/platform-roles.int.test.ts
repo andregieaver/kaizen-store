@@ -60,7 +60,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Kaizen's front page, blog and 404 page (D143)", () => {
+describe("Kaizena Flow's front page, blog and 404 page (D143)", () => {
   it("shows the standard page until a published page is chosen, then that page, and the standard again when cleared", async () => {
     expect(await roles.platformPageForRole("front")).toBeNull();
     const about = await make("about", true);

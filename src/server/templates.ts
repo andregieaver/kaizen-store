@@ -102,7 +102,7 @@ export async function listTemplates(
 ): Promise<TemplateItem[]> {
   const rows = await db().execute<Row>(sql`
     select sp.id, sp.kind, sp.name, sp.content, sp.sharing, sp.updated_at, sp.store_id is null as from_kaizen,
-      coalesce(s.name, 'Kaizen') as publisher, coalesce(a.active, sp.store_id is null) as active
+      coalesce(s.name, 'Kaizena Flow') as publisher, coalesce(a.active, sp.store_id is null) as active
     from commerce.saved_parts sp
     left join commerce.stores s on s.id = sp.store_id
     left join commerce.template_activations a on a.part_id = sp.id and a.store_id = ${storeId}::uuid
@@ -178,7 +178,7 @@ async function readTemplate(
   if (!isId(id)) return unavailable;
   const [row] = await db().execute<Row>(sql`
     select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.store_id as source_id, s.slug as source_slug,
-      coalesce(s.name, 'Kaizen') as publisher
+      coalesce(s.name, 'Kaizena Flow') as publisher
     from commerce.saved_parts sp
     left join commerce.stores s on s.id = sp.store_id
     where sp.id = ${id}::uuid and ${visibleTo(storeId, account.id, "any")}
@@ -378,7 +378,7 @@ export async function listKaizenTemplates(): Promise<TemplateItem[]> {
         pageType: part.kind === "page" ? part.content.pageType : null,
         name: part.name,
         summary: templateSummary(part.kind, part.content),
-        publisher: "Kaizen",
+        publisher: "Kaizena Flow",
         fromKaizen: true,
         sharing: "marketplace",
         active: true,
@@ -422,7 +422,7 @@ export async function previewKaizenTemplate(id: string): Promise<TemplateResult<
       id,
       kind: template.kind,
       name: template.name,
-      publisher: "Kaizen",
+      publisher: "Kaizena Flow",
       fromKaizen: true,
       pageType: template.kind === "page" ? template.content.pageType : null,
       summary: templateSummary(template.kind, template.content),
@@ -494,7 +494,7 @@ export type ModerationItem = {
 export async function listMarketplaceTemplates(): Promise<ModerationItem[]> {
   const rows = await db().execute<Row>(sql`
     select sp.id, sp.kind, sp.name, sp.content, sp.sharing, sp.updated_at, sp.hidden_at, sp.store_id is null as from_kaizen,
-      coalesce(s.name, 'Kaizen') as publisher, s.slug as store_slug
+      coalesce(s.name, 'Kaizena Flow') as publisher, s.slug as store_slug
     from commerce.saved_parts sp
     left join commerce.stores s on s.id = sp.store_id
     where sp.sharing = 'marketplace' or sp.hidden_at is not null

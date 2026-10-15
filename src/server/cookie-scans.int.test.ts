@@ -133,7 +133,7 @@ describe("cookie scans (D58)", () => {
     expect(latest?.items).toEqual([item]);
   });
 
-  it("lists what the scan found that Kaizen knows or the owner described, and asks about its categories", async () => {
+  it("lists what the scan found that Kaizena Flow knows or the owner described, and asks about its categories", async () => {
     const found = (name: string, kind = "cookie", domain = "localhost") =>
       ({ kind, name, domain, thirdParty: domain !== "localhost", days: 90, beforeConsent: false, page: "/" });
     await db().execute(sql`

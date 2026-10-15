@@ -88,7 +88,7 @@ export function standardCard(previewHref: string | null): StarterCard {
   return {
     id: "",
     title: "Standard store",
-    summary: "Kaizen's demo store: a few demo products of every kind, the usual pages and settings. Change everything after.",
+    summary: "Kaizena Flow's demo store: a few demo products of every kind, the usual pages and settings. Change everything after.",
     description: "",
     category: null,
     pictureUrl: null,

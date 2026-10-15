@@ -1,6 +1,6 @@
 <?php
 /**
- * What the plugin keeps about the connection to Kaizen: the address of Kaizen, the token, and who connected.
+ * What the plugin keeps about the connection to Kaizena Flow: the address of Kaizena Flow, the token, and who connected.
  *
  * @package KaizenStore
  */
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Kaizen_Store_Settings {
 
 	const OPTION     = 'kaizen_store_connection';
-	const DEFAULT_URL = 'https://kaizenstore.cloud';
+	const DEFAULT_URL = 'https://kaizenaflow.com';
 
 	/**
 	 * The connection: array( 'api_url', 'token', 'email', 'connected_at' ), or an empty array.
@@ -27,7 +27,7 @@ class Kaizen_Store_Settings {
 	/**
 	 * Keeps a connection. Never loaded on every page (autoload is off): only the shortcode and the admin read it.
 	 *
-	 * @param string $token Token from Kaizen.
+	 * @param string $token Token from Kaizena Flow.
 	 * @param string $email Who approved it.
 	 */
 	public static function save_connection( $token, $email ) {
@@ -60,7 +60,7 @@ class Kaizen_Store_Settings {
 	}
 
 	/**
-	 * The address of Kaizen, without a trailing slash. The constant KAIZEN_STORE_API_URL (wp-config.php) wins, then
+	 * The address of Kaizena Flow, without a trailing slash. The constant KAIZEN_STORE_API_URL (wp-config.php) wins, then
 	 * the address the connection was made to, then the setting, then the default.
 	 *
 	 * @return string
@@ -115,7 +115,7 @@ class Kaizen_Store_Settings {
 	}
 
 	/**
-	 * This site's origin as Kaizen will check it against the return address: the admin's own.
+	 * This site's origin as Kaizena Flow will check it against the return address: the admin's own.
 	 *
 	 * @return string
 	 */

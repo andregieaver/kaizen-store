@@ -610,7 +610,7 @@ describe("starting a copy", () => {
     );
     expect(await start(limited, NOTHING, { source: String(own.slug) })).toEqual({
       ok: false,
-      problems: [`You can own up to ${10} stores. Contact Kaizen for more.`],
+      problems: [`You can own up to ${10} stores. Contact Kaizena Flow for more.`],
     });
     // A platform admin has no limit, but no more than three copies at once either.
     const busy = await account("busy", true);

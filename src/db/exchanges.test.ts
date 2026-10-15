@@ -561,7 +561,7 @@ describe("settling: the transfer, the remainder, the difference (3.3 points 4 an
     });
   });
 
-  it("to pay (T > C): transfer C and the difference recorded outside Kaizen; the invoice says both", async () => {
+  it("to pay (T > C): transfer C and the difference recorded outside Kaizena Flow; the invoice says both", async () => {
     const { order, ret, variant } = await scene();
     const e = await propose(ret, order.id, [{ variant, unit: 12000 }]);
     await confirm(e.id);

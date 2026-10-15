@@ -77,8 +77,8 @@ describe("the preview dialog", () => {
     expect(out).toContain("For articles");
     expect(out).toContain("By Café Nord");
     expect(out).toContain("3 rows: heading, text");
-    const kaizen = preview({ item: layoutItem({ id: "k", publisher: "Kaizen", fromKaizen: true }) });
-    expect(kaizen).toContain("By Kaizen");
+    const kaizen = preview({ item: layoutItem({ id: "k", publisher: "Kaizena Flow", fromKaizen: true }) });
+    expect(kaizen).toContain("By Kaizena Flow");
   });
 
   it("starts loading, with a status a screen reader hears", () => {
@@ -254,7 +254,7 @@ describe("saving a page's layout as a template", () => {
     expect(out).toContain("Save template");
   });
 
-  it("offers who can use it in a store, and nothing about it in Kaizen's own builder", () => {
+  it("offers who can use it in a store, and nothing about it in Kaizena Flow's own builder", () => {
     const store = dialog();
     expect(store).toContain("Only this store");
     expect(store).toContain("Marketplace");
@@ -473,7 +473,7 @@ describe("the builder with page layouts", () => {
     expect(out).toContain("saved page layout: open to rename, share or delete");
   });
 
-  it("shows saved page layouts on Kaizen's builder too, without any sharing", () => {
+  it("shows saved page layouts on Kaizena Flow's builder too, without any sharing", () => {
     const layout = {
       ...saved("pl", "private", "Landing page"),
       kind: "page" as const,

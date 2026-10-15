@@ -51,14 +51,14 @@ export const MANAGER_TOOLS = [
   ),
   tool(
     "get_my_referrals",
-    "The person's own referrals (Kaizen's referral program): their link and code, visits, how many asked for a store, the stores that opened through it with the credit each earned, and their credit per currency, usable and waiting. Answers only from their own account; it never shows a referred store's customers or orders.",
+    "The person's own referrals (Kaizena Flow's referral program): their link and code, visits, how many asked for a store, the stores that opened through it with the credit each earned, and their credit per currency, usable and waiting. Answers only from their own account; it never shows a referred store's customers or orders.",
     z.object({}),
   ),
   tool(
     "contact_kaizen_support",
-    "Asks Kaizen's own support for help on the person's behalf (D216): opens a conversation with Kaizen with their summary as the first message, which Kaizen's assistant and people answer under Your requests to Kaizen. Use it when they want help from Kaizen itself (a bug, billing with Kaizen, something the admin cannot do), never for their customers. Needs their approval.",
+    "Asks Kaizena Flow's own support for help on the person's behalf (D216): opens a conversation with Kaizena Flow with their summary as the first message, which Kaizena Flow's assistant and people answer under Your requests to Kaizena Flow. Use it when they want help from Kaizena Flow itself (a bug, billing with Kaizena Flow, something the admin cannot do), never for their customers. Needs their approval.",
     z.object({
-      summary: z.string().trim().min(10).max(1000).describe("What they need help with, in their words, as the first message to Kaizen."),
+      summary: z.string().trim().min(10).max(1000).describe("What they need help with, in their words, as the first message to Kaizena Flow."),
       store: z.string().trim().max(63).optional().describe("The store it is about (its address name), if any."),
     }),
     "send",
@@ -80,12 +80,12 @@ const slug = z
 export const PLATFORM_TOOLS = [
   tool(
     "support_overview",
-    "Kaizen's own support desk in figures (waiting now, with the AI or a person, tone alerts, today, and the last 30 days: the AI alone, hand-overs, first answer, missed, ratings, topics), and the stores' support in totals over the last 30 days: how many stores have it, conversations, how many wait now and the busiest stores, counts and rates only. A store's conversations are its own: never ask for or describe one. Rates and medians need 10 conversations; repeat what is missing when it says so.",
+    "Kaizena Flow's own support desk in figures (waiting now, with the AI or a person, tone alerts, today, and the last 30 days: the AI alone, hand-overs, first answer, missed, ratings, topics), and the stores' support in totals over the last 30 days: how many stores have it, conversations, how many wait now and the busiest stores, counts and rates only. A store's conversations are its own: never ask for or describe one. Rates and medians need 10 conversations; repeat what is missing when it says so.",
     z.object({}),
   ),
   tool(
     "platform_overview",
-    "Kaizen at a glance: stores by status, stores on a plan, access requests waiting, plans, and stores with their own AI.",
+    "Kaizena Flow at a glance: stores by status, stores on a plan, access requests waiting, plans, and stores with their own AI.",
     z.object({}),
   ),
   tool(
@@ -119,10 +119,10 @@ export const PLATFORM_TOOLS = [
     "One store: its status, plan, fee, discount, owner and how many products and paid orders it has.",
     z.object({ store: slug.describe("The store's address (slug).") }),
   ),
-  tool("list_plans", "Kaizen's plans: name, fee per sale, prices per currency and interval, and how many stores are on each.", z.object({})),
+  tool("list_plans", "Kaizena Flow's plans: name, fee per sale, prices per currency and interval, and how many stores are on each.", z.object({})),
   tool(
     "list_owners",
-    "Store owners and staff on Kaizen with their stores and plans. `search` matches the name or email.",
+    "Store owners and staff on Kaizena Flow with their stores and plans. `search` matches the name or email.",
     z.object({ search: z.string().trim().max(100).optional(), limit: z.number().int().min(1).max(50).default(15) }),
   ),
   tool(
@@ -133,20 +133,20 @@ export const PLATFORM_TOOLS = [
   tool("plan_reminder_stats", "Plan checkouts owners left unfinished: how many, reminded, and finished after a reminder.", z.object({})),
   tool(
     "list_platform_emails",
-    "The latest emails Kaizen and the stores sent: what, to whom, from which store and whether they went out. `failed_only` shows those that did not.",
+    "The latest emails Kaizena Flow and the stores sent: what, to whom, from which store and whether they went out. `failed_only` shows those that did not.",
     z.object({ failed_only: z.boolean().default(false), limit: z.number().int().min(1).max(50).default(20) }),
   ),
   tool(
     "get_referral_program",
-    "Kaizen's referral program: whether it is on, its commission, months, pending days and cookie days, and its totals per currency (referrers, referred stores, commission earned, credit used and credit owed). `referrers` lists the most active referrers with what they brought in and their credit.",
+    "Kaizena Flow's referral program: whether it is on, its commission, months, pending days and cookie days, and its totals per currency (referrers, referred stores, commission earned, credit used and credit owed). `referrers` lists the most active referrers with what they brought in and their credit.",
     z.object({ referrers: z.boolean().default(false), limit: z.number().int().min(1).max(25).default(10) }),
   ),
   tool(
     "set_referral_program",
-    "Changes Kaizen's referral program: switch it on or off, or change the commission (percent of the fees the referred store pays Kaizen), the months a store earns it, the days earned credit waits before it can be used, or the days the referral cookie lasts. Leave out what should not change. A referral already made keeps the terms it was made with. Changes what Kaizen pays out, so it is kept for the platform admin's approval.",
+    "Changes Kaizena Flow's referral program: switch it on or off, or change the commission (percent of the fees the referred store pays Kaizena Flow), the months a store earns it, the days earned credit waits before it can be used, or the days the referral cookie lasts. Leave out what should not change. A referral already made keeps the terms it was made with. Changes what Kaizena Flow pays out, so it is kept for the platform admin's approval.",
     z.object({
       enabled: z.boolean().optional(),
-      percent: z.number().min(0).max(REFERRAL_COMMISSION_BPS_MAX / 100).optional().describe(`Commission in percent of the fees the referred store pays Kaizen, 0 to ${REFERRAL_COMMISSION_BPS_MAX / 100}, at most two decimals.`),
+      percent: z.number().min(0).max(REFERRAL_COMMISSION_BPS_MAX / 100).optional().describe(`Commission in percent of the fees the referred store pays Kaizena Flow, 0 to ${REFERRAL_COMMISSION_BPS_MAX / 100}, at most two decimals.`),
       months: z.number().int().min(1).max(REFERRAL_MONTHS_MAX).optional().describe("How many months after a store opens it earns commission."),
       pending_days: z.number().int().min(0).max(REFERRAL_PENDING_DAYS_MAX).optional().describe("Days before earned credit can be used."),
       cookie_days: z.number().int().min(1).max(REFERRAL_COOKIE_DAYS_MAX).optional().describe("Days the referral cookie lasts, once a visitor allows it."),
@@ -170,7 +170,7 @@ export const PLATFORM_TOOLS = [
   ),
   tool(
     "platform_ai_usage",
-    "How much of the AI every store and Kaizen itself used in a period: requests and tokens in total, per provider and model, per store, per feature, and how much ran on Kaizen's own key. Ask for one store or store owner account to see theirs, per provider and model.",
+    "How much of the AI every store and Kaizena Flow itself used in a period: requests and tokens in total, per provider and model, per store, per feature, and how much ran on Kaizena Flow's own key. Ask for one store or store owner account to see theirs, per provider and model.",
     z.object({
       days: z.number().int().min(1).max(365).default(30),
       store: z.string().trim().max(60).optional().describe("A store's address (slug) to look at only that store."),
@@ -268,7 +268,7 @@ export const TOOL_WORDS: Record<string, string> = {
   stop_experiment: "Preparing to stop the test",
   apply_winner: "Preparing the choice",
   decide_approval: "Carrying out your answer",
-  contact_kaizen_support: "Writing to Kaizen support",
+  contact_kaizen_support: "Writing to Kaizena Flow support",
   add_order_note: "Adding a note",
   mark_order_sent: "Preparing the shipment",
   cancel_booking: "Preparing the cancellation",
@@ -298,7 +298,7 @@ export const TOOL_WORDS: Record<string, string> = {
   remember: "Remembering",
   forget: "Forgetting",
   recall: "Remembering",
-  platform_overview: "Looking at Kaizen",
+  platform_overview: "Looking at Kaizena Flow",
   list_access_requests: "Looking at requests",
   approve_access_request: "Preparing the approval",
   decline_access_request: "Preparing the answer",

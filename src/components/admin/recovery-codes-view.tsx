@@ -61,7 +61,7 @@ export function RecoveryCodesView({
         </p>
       </div>
       <div data-print-area="" className={`p-4 ${CARD_CLASS}`}>
-        <p className="mb-3 text-sm">Kaizen Store recovery codes for {account}. Made {madeOn}.</p>
+        <p className="mb-3 text-sm">Kaizena Flow recovery codes for {account}. Made {madeOn}.</p>
         <ol className="grid grid-cols-1 gap-x-8 gap-y-2 font-mono text-base sm:grid-cols-2">
           {codes.map((code) => (
             <li key={code} className="tabular-nums">

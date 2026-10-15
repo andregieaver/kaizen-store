@@ -7,7 +7,7 @@ import type { EmailContent } from "./email-layout";
  * controls that take the place of Shopify's 10-day cancel window.
  */
 
-const FOOTER = ["Kaizen · kaizenstore.cloud"];
+const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
 
 export type OwnersNoticeFacts = {
   storeName: string;

@@ -35,7 +35,7 @@ export default async function PlatformOverviewPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Home" description={<>How Kaizen is doing, and what needs the team.</>} />
+      <PageHeader title="Home" description={<>How Kaizena Flow is doing, and what needs the team.</>} />
 
       <Attention items={attention} empty="Nothing is waiting. No requests, overdue plans or failed emails." />
 

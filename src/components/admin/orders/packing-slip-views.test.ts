@@ -152,7 +152,7 @@ describe("the order settings", () => {
     expect(html).toContain('name="staffMarkPaid"');
     expect(text).toContain("up to 60 characters");
     expect(text).toContain("up to 300 characters");
-    expect(text).toContain("Kaizen does not send the message to anyone");
+    expect(text).toContain("Kaizena Flow does not send the message to anyone");
     expect(text).toContain("Off by default.");
     expect(text).toContain("Recording a payment here does not replace a cash register.");
     expect(text).not.toMatch(/\bnull\b|undefined|NaN/);
@@ -172,7 +172,7 @@ describe("the order settings", () => {
     const staff = draw2({ isOwner: false, settings: { ...settings, staffMarkPaid: true } });
     expect(staff).not.toContain('name="staffMarkPaid"');
     expect(staff).not.toContain('name="staffMarkPaidShown"');
-    expect(plain(staff)).toContain("Staff may record a payment taken outside Kaizen.");
+    expect(plain(staff)).toContain("Staff may record a payment taken outside Kaizena Flow.");
     expect(plain(staff)).toContain("Only the owner can change this choice.");
   });
 

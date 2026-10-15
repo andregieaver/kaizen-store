@@ -313,7 +313,7 @@ async function fetchFeed(url: string, fetcher: typeof fetch): Promise<string> {
     const response = await fetcher(address, {
       redirect: "manual",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: { Accept: "text/calendar, text/plain;q=0.8, */*;q=0.1", "User-Agent": "Kaizen calendar sync" },
+      headers: { Accept: "text/calendar, text/plain;q=0.8, */*;q=0.1", "User-Agent": "Kaizena Flow calendar sync" },
     });
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");

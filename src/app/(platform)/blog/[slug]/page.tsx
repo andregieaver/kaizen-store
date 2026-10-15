@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const url = `/blog/${page.slug}`;
   const images = c.thumbnail
     ? [{ url: c.thumbnail.url, alt: c.thumbnail.alt || c.title, width: c.thumbnail.width, height: c.thumbnail.height }]
-    : [{ url: "/og.png", alt: "Kaizen", width: 1200, height: 630 }];
+    : [{ url: "/og.png", alt: "Kaizena Flow", width: 1200, height: 630 }];
   return {
     title: c.seo.title ? { absolute: c.seo.title } : c.title,
     description,
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ...(!c.searchEngines && { robots: { index: false } }),
     openGraph: {
       type: "article",
-      siteName: "Kaizen",
+      siteName: "Kaizena Flow",
       locale: "en_GB",
       url,
       title,
@@ -87,7 +87,7 @@ export default async function ArticlePage({ params }: Props) {
       <ArticleView
         content={c}
         date={page.firstPublishedAt}
-        byline={c.author || "Kaizen"}
+        byline={c.author || "Kaizena Flow"}
         lang="en"
         locale="en-GB"
         place={{ pageId: page.id, owner: null }}

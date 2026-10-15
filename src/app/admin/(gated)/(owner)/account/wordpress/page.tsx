@@ -33,7 +33,7 @@ export default async function WordpressPage() {
         <ol className="list-decimal pl-5 text-sm text-muted">
           <li>Download the plugin (version {WORDPRESS_PLUGIN_VERSION}).</li>
           <li>In WordPress, open Plugins, Add New Plugin, Upload Plugin, choose the file and activate it.</li>
-          <li>Open Kaizen in the WordPress menu, choose Connect to Kaizen, and approve the connection on the page that opens here.</li>
+          <li>Open Kaizena Flow in the WordPress menu, choose Connect to Kaizena Flow, and approve the connection on the page that opens here.</li>
         </ol>
         <div>
           <a href={WORDPRESS_PLUGIN_FILE} download className={primaryButton}>

@@ -189,7 +189,7 @@ function FontDialog({
         </div>
 
         <p className="text-sm text-muted">
-          Fonts are copied to Kaizen when chosen and load from the site itself, so visitors&apos; browsers never contact Google.
+          Fonts are copied to Kaizena Flow when chosen and load from the site itself, so visitors&apos; browsers never contact Google.
         </p>
         {problem && (
           <p role="alert" className="text-sm text-danger-text">

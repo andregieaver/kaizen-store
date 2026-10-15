@@ -63,7 +63,7 @@ describe("basketShipping", () => {
 });
 
 describe("subscription status", () => {
-  it("maps Stripe's statuses to Kaizen's", () => {
+  it("maps Stripe's statuses to Kaizena Flow's", () => {
     expect(subscriptionStatusFor("trialing")).toBe("active");
     expect(subscriptionStatusFor("unpaid")).toBe("past_due");
     expect(subscriptionStatusFor("incomplete")).toBe("pending");

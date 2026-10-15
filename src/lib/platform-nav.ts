@@ -13,14 +13,14 @@ export type SectionItem = { path: string; label: string; description: string; ex
 const item = (path: string, label: string, description: string, exact = false): SectionItem => ({ path, label, description, exact });
 
 export const WEBSITE_ITEMS: SectionItem[] = [
-  item("/pages", "Pages", "Kaizen's own pages, built in the page builder: draft, publish, and choose the front page, blog page and 404 page."),
-  item("/articles", "Blog", "Kaizen's blog: articles, their categories and tags."),
-  item("/media", "Media", "Pictures and videos for Kaizen's pages, searchable, with alt texts."),
-  item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizen's own: hide one from every store's list, or show it again."),
-  item("/menus", "Menus", "Lists of links for Kaizen's header, footer and pages."),
-  item("/headers", "Header", "Headers built from components; choose the one Kaizen's site shows."),
-  item("/footers", "Footer", "Footers built from components; choose the one Kaizen's site shows."),
-  item("/fonts", "Fonts", "The self-hosted fonts Kaizen's pages use."),
+  item("/pages", "Pages", "Kaizena Flow's own pages, built in the page builder: draft, publish, and choose the front page, blog page and 404 page."),
+  item("/articles", "Blog", "Kaizena Flow's blog: articles, their categories and tags."),
+  item("/media", "Media", "Pictures and videos for Kaizena Flow's pages, searchable, with alt texts."),
+  item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again."),
+  item("/menus", "Menus", "Lists of links for Kaizena Flow's header, footer and pages."),
+  item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows."),
+  item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows."),
+  item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use."),
 ];
 
 /** The Stores section (D175): every store, the store templates new stores start from, and the design profiles any store can apply (D176). */
@@ -31,37 +31,37 @@ export const STORE_ITEMS: SectionItem[] = [
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [
-  item("/plans", "Editor", "Kaizen's plans, their prices and fees, synced to Stripe.", true),
+  item("/plans", "Editor", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", true),
   item("/plans/features", "Features", "Every feature with a tick for each plan that includes it: the comparison stores see."),
   item("/plan-reminders", "Reminders", "Emails to owners who left a plan checkout."),
   item("/discounts", "Discounts", "Discount codes for stores' plans."),
-  item("/referrals", "Referrals", "Kaizen's referral program: commission, referrers, referred stores."),
+  item("/referrals", "Referrals", "Kaizena Flow's referral program: commission, referrers, referred stores."),
 ];
 
 /** Support (D216): Kaizen's own desk, and the chat assistant that answers its visitors first. */
 export const SUPPORT_ITEMS: SectionItem[] = [
-  item("/support", "Inbox", "Kaizen's support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", true),
-  item("/support/reports", "Reports", "How Kaizen's own desk did: conversations, the AI alone, waiting times, ratings and topics."),
+  item("/support", "Inbox", "Kaizena Flow's support desk: conversations with visitors of Kaizena Flow's site and owners asking Kaizena Flow, live.", true),
+  item("/support/reports", "Reports", "How Kaizena Flow's own desk did: conversations, the AI alone, waiting times, ratings and topics."),
   item("/support/stores", "Stores", "Each store's support in figures: counts and rates only, never a conversation."),
-  item("/support/replies", "Saved replies", "Texts Kaizen's people put in an answer with / in the inbox, filled in with names."),
-  item("/chat", "Chat assistant", "Kaizen's public site chat assistant and its knowledge base."),
-  item("/support/settings", "Settings", "Who answers Kaizen's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),
+  item("/support/replies", "Saved replies", "Texts Kaizena Flow's people put in an answer with / in the inbox, filled in with names."),
+  item("/chat", "Chat assistant", "Kaizena Flow's public site chat assistant and its knowledge base."),
+  item("/support/settings", "Settings", "Who answers Kaizena Flow's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),
 ];
 
 export const SETTINGS_ITEMS: SectionItem[] = [
-  item("/navigation", "Header and footer", "Kaizen's logos, icon, business details and which menus its standard header and footer show."),
+  item("/navigation", "Header and footer", "Kaizena Flow's logos, icon, business details and which menus its standard header and footer show."),
   item("/experiments", "A/B tests", "Every store's A/B tests: what is running, what needs a look and what waits for a decision."),
   item("/search-test", "Search", "The search experiment: keyword against hybrid search."),
-  item("/seo", "SEO", "How search engines and AI crawlers see Kaizen's site."),
-  item("/cookies", "Cookies", "Kaizen's cookies, tracking tools and consents."),
+  item("/seo", "SEO", "How search engines and AI crawlers see Kaizena Flow's site."),
+  item("/cookies", "Cookies", "Kaizena Flow's cookies, tracking tools and consents."),
   item("/vat", "VAT", "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed."),
   item("/retention", "Data retention", "How long each kind of personal data is kept, where each period comes from, and what the daily job removed."),
-  item("/google-reviews", "Google reviews", "Kaizen's own Google reviews for testimonials."),
-  item("/stripe", "Stripe", "Kaizen's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
-  item("/ai", "AI", "Kaizen's default AI provider and models.", true),
-  item("/ai/usage", "AI usage", "What every store, owner and Kaizen itself used of the AI."),
+  item("/google-reviews", "Google reviews", "Kaizena Flow's own Google reviews for testimonials."),
+  item("/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
+  item("/ai", "AI", "Kaizena Flow's default AI provider and models.", true),
+  item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI."),
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost."),
-  item("/emails", "Emails", "Every email Kaizen and the stores sent, and email setup."),
+  item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup."),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands."),
   item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when."),
 ];

@@ -15,7 +15,7 @@ export default async function PlatformGoogleReviewsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Google reviews"
-        description={<>Kaizen&apos;s rating and reviews on Google, for Testimonials components on Kaizen&apos;s own pages. Stores set up their own under Integrations.</>}
+        description={<>Kaizena Flow&apos;s rating and reviews on Google, for Testimonials components on Kaizena Flow&apos;s own pages. Stores set up their own under Integrations.</>}
       />
       <GoogleReviewsSettings
         hint={settings?.hint ?? null}

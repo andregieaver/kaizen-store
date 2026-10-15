@@ -97,7 +97,7 @@ vi.mock("./shipping-carriers", async (importOriginal) => ({
   carrierContext: async (storeId: string) => ({
     storeId,
     environment: "test",
-    details: { senderName: "Kaizen Test", senderStreet: "Gate 1", senderPostalCode: "0150", senderCity: "Oslo" },
+    details: { senderName: "Kaizena Flow Test", senderStreet: "Gate 1", senderPostalCode: "0150", senderCity: "Oslo" },
     secrets: {},
   }),
 }));
@@ -2270,7 +2270,7 @@ describe("VAT categories and rates, D157", () => {
     const code = `t${run}`.slice(0, 20);
     await db().execute(sql`insert into commerce.vat_categories (code, name_en, sort, active) values (${code}, 'Test goods', 999, true)`);
     const [{ today }] = await db().execute<Row>(sql`select (now() at time zone 'Europe/Oslo')::date::text as today`);
-    await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.10, date '2026-01-01', 'Kaizen test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
+    await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.10, date '2026-01-01', 'Kaizena Flow test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
     await setCategory("demo-keramikkopp", code);
     try {
       jar.clear();
@@ -2278,7 +2278,7 @@ describe("VAT categories and rates, D157", () => {
       await add("DEMO-MUG-WHITE", 2);
       const first = await placed();
       expect(first.order.lines[0].taxRate).toBe(0.1);
-      await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.18, ${String(today)}::date, 'Kaizen test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
+      await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.18, ${String(today)}::date, 'Kaizena Flow test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
       // The order that was placed keeps its rate...
       expect((await getOrder(storeId, first.order.id))!.lines[0].taxRate).toBe(0.1);
       // ...and the next cart takes the new one.
@@ -2552,7 +2552,7 @@ describe("draft orders from staff (D173)", () => {
     await expectDocuments(sent.orderId, { euro: scenario.euro });
   });
 
-  it("paid outside Kaizen, shown in euro: the invoice says the money was paid outside, the VAT is the order's, and a recorded refund gets its credit note", async () => {
+  it("paid outside Kaizena Flow, shown in euro: the invoice says the money was paid outside, the VAT is the order's, and a recorded refund gets its credit note", async () => {
     jar.clear();
     view = noInEuro;
     const { recordDraftPaidOutside } = await import("./draft-orders");

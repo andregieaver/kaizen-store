@@ -97,14 +97,14 @@ describe("a category's search texts", () => {
     expect(await taxonomy.updateTerm(owner.account, scopeOf(fx), theirs.id, { name: "Deres", slug: "deres" })).toMatchObject({ ok: false });
   });
 
-  it("are for a store's product categories and tags only: Kaizen's and a page's terms refuse them", async () => {
+  it("are for a store's product categories and tags only: Kaizena Flow's and a page's terms refuse them", async () => {
     const [admin] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`termseo-admin-${fx.slug}@example.com`}, 'Admin', true) returning id, email`);
     const account = { id: String(admin.id), email: String(admin.email), name: "Admin", platformAdmin: true };
-    const refused = await taxonomy.createTerm(account, { storeId: null, contentType: "page" }, { kind: "category", name: `Kaizen ${fx.slug}`, seo: { en: { title: "x", description: "" } } });
+    const refused = await taxonomy.createTerm(account, { storeId: null, contentType: "page" }, { kind: "category", name: `Kaizena Flow ${fx.slug}`, seo: { en: { title: "x", description: "" } } });
     expect(refused).toMatchObject({ ok: false, problems: [expect.stringContaining("product categories")] });
     // Sending none is fine.
-    expect(ok(await taxonomy.createTerm(account, { storeId: null, contentType: "page" }, { kind: "category", name: `Kaizen ok ${fx.slug}`, seo: {} })).id).toBeTruthy();
-    await db().execute(sql`delete from commerce.terms where store_id is null and name like ${`Kaizen%${fx.slug}`}`);
+    expect(ok(await taxonomy.createTerm(account, { storeId: null, contentType: "page" }, { kind: "category", name: `Kaizena Flow ok ${fx.slug}`, seo: {} })).id).toBeTruthy();
+    await db().execute(sql`delete from commerce.terms where store_id is null and name like ${`Kaizena Flow%${fx.slug}`}`);
   });
 
   it("write an entry that says THAT the search texts changed, never what they say", async () => {

@@ -234,7 +234,7 @@ describe("VAT numbers", () => {
 
 describe("what a store must have before it issues", () => {
   const seller: SellerDetails = {
-    legalName: "Kaizen Consulting AS",
+    legalName: "Kaizena Flow Consulting AS",
     organisationNumber: "123456789",
     postalAddress: "Storgata 1, 0155 Oslo",
     country: "NO",

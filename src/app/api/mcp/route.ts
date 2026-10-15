@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
   const caller = token ? await mcpCaller(token) : null;
   if (!caller) {
-    return new Response(JSON.stringify({ error: "A Kaizen Store access token for Kaizen Life is needed." }), {
+    return new Response(JSON.stringify({ error: "A Kaizena Flow access token for Kaizen Life is needed." }), {
       status: 401,
       headers: {
         "Content-Type": "application/json",

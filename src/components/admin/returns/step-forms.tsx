@@ -320,11 +320,11 @@ export function RefundPanel({
       <RefundWorking preview={preview} currency={currency} locale={locale} />
       {!preview.canRefund && (
         <p role="note" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          This order was not paid through Kaizen&apos;s Stripe, or there is nothing left to refund through it. Refund the customer where they paid;
+          This order was not paid through Kaizena Flow&apos;s Stripe, or there is nothing left to refund through it. Refund the customer where they paid;
           pressing the button records the refund as made outside, and puts goods back in stock.
         </p>
       )}
-      <ActionForm action={action} successMessage={preview.canRefund ? "Refunded." : "Recorded as refunded outside Kaizen's Stripe."} className="flex flex-col gap-3">
+      <ActionForm action={action} successMessage={preview.canRefund ? "Refunded." : "Recorded as refunded outside Kaizena Flow's Stripe."} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
           {whoPays === "shopper" ? (
             <label className={label}>

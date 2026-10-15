@@ -12,7 +12,7 @@ const BASIS_OPTIONS: Record<string, string> = {
   snippet: "Seen in a search result only",
   secondary: "From a secondary source",
   fallback: "Safe fallback, not read",
-  policy: "Kaizen's own choice",
+  policy: "Kaizena Flow's own choice",
 };
 
 /** The form that starts a new period for a kind of data (`commerce.set_retention_rule()`: the old row is closed, never edited). */
@@ -68,7 +68,7 @@ export function ChangeRuleForm({ action, today, kinds }: { action: Action; today
           <span className={hint}>The first day the new period applies. It must be after the latest one.</span>
         </label>
         <label className={`${label} sm:col-span-2`}>
-          Source <span className={hint}>(the act and section, or why Kaizen chose it)</span>
+          Source <span className={hint}>(the act and section, or why Kaizena Flow chose it)</span>
           <input name="source" required maxLength={600} autoComplete="off" className={input} />
         </label>
         <label className={label}>

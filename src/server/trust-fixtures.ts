@@ -116,7 +116,7 @@ export function fakeSupabase(state: FakeAuthState) {
           state.calls.push("enroll");
           const factor: FakeFactor = { id: randomUUID(), status: "unverified", factor_type: "totp" };
           state.factors.push(factor);
-          return ok({ id: factor.id, type: "totp", friendly_name: params.friendlyName, totp: { qr_code: "<svg></svg>", secret: "JBSWY3DPEHPK3PXP", uri: "otpauth://totp/Kaizen:test?secret=JBSWY3DPEHPK3PXP" } });
+          return ok({ id: factor.id, type: "totp", friendly_name: params.friendlyName, totp: { qr_code: "<svg></svg>", secret: "JBSWY3DPEHPK3PXP", uri: "otpauth://totp/Kaizena Flow:test?secret=JBSWY3DPEHPK3PXP" } });
         },
         async challenge(params: { factorId: string }) {
           state.calls.push("challenge");

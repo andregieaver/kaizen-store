@@ -84,7 +84,7 @@ export function returnCards({ currency, locale, report: r, queueHref }: ReturnsV
     hint:
       r.refunded.returns === 0
         ? "No return was refunded in this period."
-        : `${formatCount(r.refunded.returns)} ${plural(r.refunded.returns, "return", "returns")}${r.refunded.outside > 0 ? `, ${formatCount(r.refunded.outside)} outside Kaizen's Stripe` : ""}.`,
+        : `${formatCount(r.refunded.returns)} ${plural(r.refunded.returns, "return", "returns")}${r.refunded.outside > 0 ? `, ${formatCount(r.refunded.outside)} outside Kaizena Flow's Stripe` : ""}.`,
   });
 
   const t = r.timing.requestToRefund;
@@ -199,7 +199,7 @@ export function ReturnsView(props: ReturnsViewProps) {
       title="Returns"
       description="How much comes back, why, which products, and how fast you refund. Without VAT; rates are of the orders placed in the period, whenever they were returned."
     >
-      <Note title="Returns made outside Kaizen are not seen">{r.notSeenNote}</Note>
+      <Note title="Returns made outside Kaizena Flow are not seen">{r.notSeenNote}</Note>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {returnCards(props).map((c) => (
           <KpiCard key={c.label} {...c} />
@@ -218,7 +218,7 @@ export function ReturnsView(props: ReturnsViewProps) {
 
       {!r.tracked ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          No return has been recorded in Kaizen yet, so there are no rates, reasons or products to show. They appear once a shopper uses the withdrawal function or a return request.
+          No return has been recorded in Kaizena Flow yet, so there are no rates, reasons or products to show. They appear once a shopper uses the withdrawal function or a return request.
         </div>
       ) : nothing ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">

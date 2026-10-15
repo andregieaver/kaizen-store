@@ -281,7 +281,7 @@ export const redirectSentences = {
   permanent: "Redirects are permanent. Browsers and search engines remember them, so change or remove one with care.",
   fromHelp: (from: string, to: string) => `Shoppers who open ${from} in any country go to ${to} in the same country.`,
   replaceAsk: (from: string, old: string) => `Replace the redirect from ${from}? It goes to ${old} now.`,
-  automaticReplaced: (from: string) => `Kaizen made a redirect from ${from} when an address changed. Saving this one replaces it.`,
+  automaticReplaced: (from: string) => `Kaizena Flow made a redirect from ${from} when an address changed. Saving this one replaces it.`,
   count: (n: number, max: number) => `${n.toLocaleString("en")} of ${max.toLocaleString("en")} manual redirects`,
   handleChanged: (from: string, to: string) => `The old address ${from} now redirects to ${to}.`,
   atLeast: "Counts are at least what happened: a request answered from a cache is not seen.",

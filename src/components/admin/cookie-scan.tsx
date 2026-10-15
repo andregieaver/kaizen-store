@@ -162,7 +162,7 @@ export function CookieScanPanel({
       )}
       {undescribed.length > 0 && (
         <p className="text-sm">
-          {undescribed.length === 1 ? "One item Kaizen does not know needs" : `${undescribed.length} items Kaizen does not know need`}{" "}
+          {undescribed.length === 1 ? "One item Kaizena Flow does not know needs" : `${undescribed.length} items Kaizena Flow does not know need`}{" "}
           a description before the cookie page lists {undescribed.length === 1 ? "it" : "them"}.
           {noteAction ? "" : " An owner can describe them."}
         </p>

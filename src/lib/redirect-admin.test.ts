@@ -87,7 +87,7 @@ describe("the list's words", () => {
   it("says why a list is empty, by what was asked", () => {
     expect(emptyListWords("shoes", "all")).toBe("No redirect matches the search.");
     expect(emptyListWords("", "manual")).toContain("no redirects of your own");
-    expect(emptyListWords("", "all")).toContain("Kaizen makes one");
+    expect(emptyListWords("", "all")).toContain("Kaizena Flow makes one");
     expect(emptyListWords("", "terms")).toBe("No redirects of this kind yet.");
   });
 

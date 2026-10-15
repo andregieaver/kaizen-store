@@ -57,10 +57,10 @@ describe("which model looks at pictures", () => {
   });
 
   it("says in one line what the site does about pictures", () => {
-    expect(pictureLine({ enabled: true, visionModel: "claude", textModel: "haiku" }, "Kaizen's AI")).toBe("Kaizen's AI looks at pictures with claude.");
+    expect(pictureLine({ enabled: true, visionModel: "claude", textModel: "haiku" }, "Kaizena Flow's AI")).toBe("Kaizena Flow's AI looks at pictures with claude.");
     expect(pictureLine({ enabled: true, visionModel: null, textModel: "haiku" }, "Your AI")).toMatch(/with haiku \(the text model: check/);
     expect(pictureLine({ enabled: false, visionModel: "claude", textModel: null }, "Your AI")).toMatch(/no model that looks at pictures/);
-    expect(pictureLine(null, "Kaizen's AI", "Use your own AI below to choose one.")).toMatch(/Use your own AI below/);
+    expect(pictureLine(null, "Kaizena Flow's AI", "Use your own AI below to choose one.")).toMatch(/Use your own AI below/);
   });
 
   it("offers a suggestion for every provider that has models, each with a note", () => {

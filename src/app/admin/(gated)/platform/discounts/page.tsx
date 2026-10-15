@@ -34,7 +34,7 @@ export default async function PlatformDiscountsPage() {
     <>
       <PageHeader
         title="Discounts"
-        description={<>Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good. Kaizen puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the plan&apos;s invoices. A code can be changed or deleted at any time; plans that already have it keep what they got.</>}
+        description={<>Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good. Kaizena Flow puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the plan&apos;s invoices. A code can be changed or deleted at any time; plans that already have it keep what they got.</>}
       />
 
       {discounts.length > 0 && (

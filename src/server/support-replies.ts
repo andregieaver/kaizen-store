@@ -90,7 +90,7 @@ export async function repliesFor(staff: StaffDesk, conversationId: string): Prom
   const facts = {
     customerFirstName: firstName(c.who_name ? String(c.who_name) : null),
     agentFirstName: firstName(identity.name),
-    store: c.store_name ? String(c.store_name) : "Kaizen",
+    store: c.store_name ? String(c.store_name) : "Kaizena Flow",
   };
   return { locale: String(c.locale), replies: replies.map((reply) => ({ ...reply, body: fillPlaceholders(reply.body, facts) })) };
 }

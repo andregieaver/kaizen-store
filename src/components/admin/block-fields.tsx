@@ -1313,7 +1313,7 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
         {source}
         <p className="text-sm text-muted">
           Your business&apos;s rating and newest reviews on Google, in the page&apos;s language, with Google named as their source. Set up
-          the Google key and choose your business under Integrations, Google reviews (Kaizen&apos;s under Platform, Google reviews). They
+          the Google key and choose your business under Integrations, Google reviews (Kaizena Flow&apos;s under Platform, Google reviews). They
           are asked of Google each time the page is shown, as Google does not allow keeping them.
         </p>
         <Choices

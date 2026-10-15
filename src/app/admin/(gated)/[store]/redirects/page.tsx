@@ -33,7 +33,7 @@ export default async function RedirectsPage({ params, searchParams }: Props) {
         slug={store.slug}
         active="list"
         title="Redirects"
-        intro={`When an address on ${store.name} moves, a redirect sends shoppers and search engines to the new one, in every country and language. Kaizen makes one itself when a product, category or tag changes its address. Here you add your own, for example for an old shop's addresses, and see how often each is used.`}
+        intro={`When an address on ${store.name} moves, a redirect sends shoppers and search engines to the new one, in every country and language. Kaizena Flow makes one itself when a product, category or tag changes its address. Here you add your own, for example for an old shop's addresses, and see how often each is used.`}
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />

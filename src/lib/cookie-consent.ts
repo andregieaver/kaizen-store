@@ -140,7 +140,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // In local storage, not a cookie: only once a visitor chooses light or dark (D99).
     name: "color_mode_…",
     pattern: /^color_mode_[0-9a-f-]{36}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "store",
@@ -156,37 +156,37 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // In local storage, not a cookie: set in Kaizen's admin by someone signed in who chooses light or dark (D99).
     name: "kaizen_admin_color_mode",
     pattern: /^kaizen_admin_color_mode$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "platform",
     purpose: {
-      en: "In Kaizen's admin: remembers whether you chose light or dark colours, so pages open in them.",
-      nb: "I Kaizens administrasjon: husker om du valgte lyse eller mørke farger, så sidene åpnes med dem.",
-      sv: "I Kaizens administration: kommer ihåg om du valde ljusa eller mörka färger, så att sidorna öppnas med dem.",
-      da: "I Kaizens administration: husker, om du valgte lyse eller mørke farver, så siderne åbner med dem.",
+      en: "In Kaizena Flow's admin: remembers whether you chose light or dark colours, so pages open in them.",
+      nb: "I Kaizena Flows administrasjon: husker om du valgte lyse eller mørke farger, så sidene åpnes med dem.",
+      sv: "I Kaizena Flows administration: kommer ihåg om du valde ljusa eller mörka färger, så att sidorna öppnas med dem.",
+      da: "I Kaizena Flows administration: husker, om du valgte lyse eller mørke farver, så siderne åbner med dem.",
     },
   },
   {
     // In local storage, not a cookie: set in Kaizen's admin by someone signed in who chooses a colour scheme (D221).
     name: "kaizen_admin_scheme",
     pattern: /^kaizen_admin_scheme$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "platform",
     purpose: {
-      en: "In Kaizen's admin: remembers the colour scheme you chose, so pages open in it.",
-      nb: "I Kaizens administrasjon: husker fargeskjemaet du valgte, så sidene åpnes med det.",
-      sv: "I Kaizens administration: kommer ihåg färgschemat du valde, så att sidorna öppnas med det.",
-      da: "I Kaizens administration: husker det farveskema, du valgte, så siderne åbner med det.",
+      en: "In Kaizena Flow's admin: remembers the colour scheme you chose, so pages open in it.",
+      nb: "I Kaizena Flows administrasjon: husker fargeskjemaet du valgte, så sidene åpnes med det.",
+      sv: "I Kaizena Flows administration: kommer ihåg färgschemat du valde, så att sidorna öppnas med det.",
+      da: "I Kaizena Flows administration: husker det farveskema, du valgte, så siderne åbner med det.",
     },
   },
   {
     // In the tab's session storage, not a cookie: only once a visitor writes to the chat agent (D81).
     name: "kaizen_chat",
     pattern: /^kaizen_chat$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "both",
@@ -203,7 +203,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // In the tab's session storage, not a cookie: only on a store whose recommendations are on, and only what the visitor does in this tab (D139).
     name: "kaizen_rec",
     pattern: /^kaizen_rec$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "store",
@@ -221,7 +221,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // Two cookies and one item of session storage, only in a store with a running A/B test (D148) and only once a visitor has allowed statistics.
     name: "kaizen_ab_…",
     pattern: /^kaizen_ab(_[0-9a-f-]{36}|_reload)?$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "statistics",
     days: 90,
     on: "store",
@@ -238,7 +238,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // pop-up (a modal in a page, D121) that opens by itself, and only for one shown once per visit or every so many days.
     name: "kaizen_modal_…",
     pattern: /^kaizen_modal_[a-z0-9-]+$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "preferences",
     days: null,
     on: "both",
@@ -254,16 +254,16 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // In a cookie, set by the sign-up page and only once a visitor who allowed marketing arrives by a referral link (D131).
     name: "kaizen_ref",
     pattern: /^kaizen_ref$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "marketing",
     days: 30,
     on: "platform",
     referrals: true,
     purpose: {
-      en: "Remembers which Kaizen store owner's referral link you came from, so they are credited if you ask for a store; kept for the number of days the referral program sets.",
-      nb: "Husker hvilken Kaizen-butikkeiers anbefalingslenke du kom fra, slik at vedkommende får æren hvis du ber om en butikk; lagres i så mange dager som anbefalingsprogrammet bestemmer.",
-      sv: "Kommer ihåg vilken Kaizen-butiksägares rekommendationslänk du kom från, så att hen krediteras om du ber om en butik; sparas i så många dagar som rekommendationsprogrammet bestämmer.",
-      da: "Husker, hvilken Kaizen-butiksejers anbefalingslink du kom fra, så vedkommende krediteres, hvis du beder om en butik; gemmes i det antal dage, anbefalingsprogrammet bestemmer.",
+      en: "Remembers which Kaizena Flow store owner's referral link you came from, so they are credited if you ask for a store; kept for the number of days the referral program sets.",
+      nb: "Husker hvilken Kaizena Flow-butikkeiers anbefalingslenke du kom fra, slik at vedkommende får æren hvis du ber om en butikk; lagres i så mange dager som anbefalingsprogrammet bestemmer.",
+      sv: "Kommer ihåg vilken Kaizena Flow-butiksägares rekommendationslänk du kom från, så att hen krediteras om du ber om en butik; sparas i så många dagar som rekommendationsprogrammet bestämmer.",
+      da: "Husker, hvilken Kaizena Flow-butiksejers anbefalingslink du kom fra, så vedkommende krediteres, hvis du beder om en butik; gemmes i det antal dage, anbefalingsprogrammet bestemmer.",
     },
   },
   {
@@ -271,7 +271,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // is on and only for a visitor who opened a friend's link (D131).
     name: "kaizen_aff_…",
     pattern: /^kaizen_aff_[0-9a-f-]{36}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "marketing",
     days: 90,
     on: "store",
@@ -287,7 +287,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "cart_…",
     pattern: /^cart_[0-9a-f-]{36}_[a-z]{2}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: 30,
     on: "store",
@@ -303,7 +303,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "account_…",
     pattern: /^account_[0-9a-f-]{36}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: 60,
     on: "store",
@@ -317,7 +317,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "wishlist_…",
     pattern: /^wishlist_[0-9a-f-]{36}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: 365,
     on: "store",
@@ -333,7 +333,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "buyer_…",
     pattern: /^buyer_[0-9a-f-]{36}$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: 365,
     on: "store",
@@ -349,7 +349,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "consent_…",
     pattern: /^consent_([0-9a-f-]{36}|kaizen)$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: CONSENT_DAYS,
     on: "both",
@@ -363,7 +363,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
   {
     name: "sb-…-auth-token",
     pattern: /^sb-[a-z0-9]+-auth-token(\.\d+)?$/,
-    provider: "Kaizen (Supabase)",
+    provider: "Kaizena Flow (Supabase)",
     category: "necessary",
     days: 400,
     on: "platform",
@@ -378,7 +378,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // Only while an owner connects Kaizen Life for the assistant (D96).
     name: "kaizen_life_link",
     pattern: /^kaizen_life_link$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "platform",
@@ -393,7 +393,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // Only while an owner adds Kaizen's Slack app to a channel (D101).
     name: "kaizen_slack_connect",
     pattern: /^kaizen_slack_connect$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "platform",
@@ -408,7 +408,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     // Only for signed-in staff who press "Edit text" on a store's own domain, where the admin's sign-in cannot be seen (D193); closed to scripts.
     name: "kaizen_edit",
     pattern: /^kaizen_edit$/,
-    provider: "Kaizen",
+    provider: "Kaizena Flow",
     category: "necessary",
     days: null,
     on: "store",
