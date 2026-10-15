@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listOfferedDesigns } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
@@ -43,6 +43,9 @@ export default async function PlatformThemesPage() {
               />
               {!install.live && (
                 <RowActions>
+                  <ButtonLink href={`/admin/platform/themes/${install.id}`}>
+                    Preview and customise<span className="sr-only"> {install.title}</span>
+                  </ButtonLink>
                   <ActionForm action={switchPlatformThemeAction}>
                     <input type="hidden" name="install" value={install.id} />
                     <SubmitButton>

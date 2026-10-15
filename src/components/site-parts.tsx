@@ -330,22 +330,25 @@ export async function StoreSiteFooter({ store, market, layout, withdrawal = true
 }
 
 /** Kaizen's own header (D80). */
-export function KaizenSiteHeader({ chrome, layout }: { chrome: PlatformChrome; layout: SiteLayout }) {
+/** `theme`: the layers to draw it in when they are not Kaizena Flow's live theme's (an installed theme's preview, D252). */
+type KaizenLayers = GridPlace["theme"];
+
+export function KaizenSiteHeader({ chrome, layout, theme }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers }) {
   const overlay = layout.content.overlay;
   return (
     <HidingHeader overlay={overlay && { textColor: overlay.textColor }}>
       <header className="site-header border-b border-border bg-background/95 backdrop-blur">
-        <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "header" }} place={{ pageId: layout.id, owner: null }} />
+        <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "header" }} place={{ pageId: layout.id, owner: null, theme }} />
       </header>
     </HidingHeader>
   );
 }
 
 /** Kaizen's own footer (D80). */
-export function KaizenSiteFooter({ chrome, layout }: { chrome: PlatformChrome; layout: SiteLayout }) {
+export function KaizenSiteFooter({ chrome, layout, theme }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers }) {
   return (
     <footer data-reveal={layout.content.footerReveal ? "" : undefined} className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(layout.content)}`}>
-      <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer" }} place={{ pageId: layout.id, owner: null }} />
+      <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer" }} place={{ pageId: layout.id, owner: null, theme }} />
     </footer>
   );
 }

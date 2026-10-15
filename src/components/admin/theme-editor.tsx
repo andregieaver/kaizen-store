@@ -41,8 +41,9 @@ type Failure = { ok: false; problems: string[] };
 
 export type ThemeActions = {
   save: (payload: string) => Promise<Result<{ theme: StoreTheme }> | Failure>;
-  saveSaved: (payload: string) => Promise<Result<{ theme: SavedTheme }> | Failure>;
-  removeSaved: (id: string) => Promise<{ ok: boolean }>;
+  /** Absent where no saved themes are kept (Kaizena Flow's own installs, D252): *Save as new theme* is not offered. */
+  saveSaved?: (payload: string) => Promise<Result<{ theme: SavedTheme }> | Failure>;
+  removeSaved?: (id: string) => Promise<{ ok: boolean }>;
   installFont: InstallFont;
 };
 
@@ -355,6 +356,7 @@ export function ThemeEditor({
 
   const saveAs = (id: string | null, name: string) =>
     startTransition(async () => {
+      if (!actions.saveSaved) return;
       const result = await actions.saveSaved(JSON.stringify({ id, name, base: theme.base, settings }));
       if (!result.ok) {
         setMessage({ tone: "error", text: result.problems });
@@ -372,6 +374,7 @@ export function ThemeEditor({
   const remove = (entry: SavedTheme) => {
     if (!window.confirm(`Delete the theme “${entry.name}”? The store keeps its look.`)) return;
     startTransition(async () => {
+      if (!actions.removeSaved) return;
       const result = await actions.removeSaved(entry.id);
       if (!result.ok) return;
       setSaved((list) => list.filter((s) => s.id !== entry.id));
@@ -452,9 +455,11 @@ export function ThemeEditor({
                 Update “{loaded.name}”
               </button>
             )}
-            <button type="button" disabled={pending} onClick={() => setNaming(loaded ? `${loaded.name} 2` : `My ${THEME_TEMPLATES[theme.base].name}`)} className={`${button} border border-border`}>
-              Save as new theme…
-            </button>
+            {actions.saveSaved && (
+              <button type="button" disabled={pending} onClick={() => setNaming(loaded ? `${loaded.name} 2` : `My ${THEME_TEMPLATES[theme.base].name}`)} className={`${button} border border-border`}>
+                Save as new theme…
+              </button>
+            )}
             {loaded && changedFromSource && (
               <button type="button" disabled={pending} onClick={() => set(structuredClone(loaded.settings))} className={`${button} border border-border`}>
                 Undo changes

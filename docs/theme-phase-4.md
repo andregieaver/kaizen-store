@@ -7,7 +7,8 @@ with no library of installed themes, and no theme can be applied to it. Built in
 | Step | Builds | Done when |
 |---|---|---|
 | 1. The library | Kaizena Flow's installed themes (its *Custom* look first), adding a published theme without going live, switching, removing, at `/admin/platform/themes` | a platform admin adds a launch theme, switches the site to it and back, and no page, menu, word or picture of Kaizena Flow's changes |
-| 2. Try before switching | a non-live install's preview on Kaizena Flow's own pages, customising it, *What changes*, updates of a followed theme | an admin previews and customises a theme before switching, and a new version reaches Kaizena Flow's site as it reaches a store |
+| 2. Try before switching | a non-live install's preview on Kaizena Flow's own pages, customising it, *What changes* | an admin previews and customises a theme before switching, and nothing visitors see changes until the switch |
+| 3. Updates | a followed theme's new version reaching Kaizena Flow's installs (under its own changes, with undo), as a store's do (D245) | a new version reaches Kaizena Flow's site as it reaches a store |
 
 ## Decisions
 
@@ -47,4 +48,30 @@ changed and pages, menus and settings the same, the live one kept, a theme in us
 table's and the look columns' writers (`theme-installs.scan.test.ts`).
 
 **Not in step 1.** No browser test: the signed-in fixtures have no platform admin (who would need two-step sign-in); the integration test
-holds the behaviour. Previewing and customising an install before switching, and updates of a followed theme, are step 2.
+holds the behaviour. Previewing and customising an install before switching are step 2; updates of a followed theme are step 3.
+
+## Step 2: try before switching
+
+**Server.** `savePlatformInstallLook()` in `src/server/platform-theme-installs.ts` keeps theme settings (checked as the live theme's are,
+`checkPlatformTheme()` in `src/server/themes.ts`; the settings' fonts written into the look's `fonts` as well) or its own CSS (`cssProblem()`)
+in an install that is not live, refused for the live one, audited `platform.theme_customised`. `platformInstallLook()` reads any install with
+its look (the live one's from `platform_settings`). `src/server/platform-theme-preview.ts`: `platformInstallPreview()` (the look with its fonts
+laid over it by `platformTheme()`, its header and footer while they are Kaizena Flow's published pages, Kaizena Flow's published pages and
+articles), `platformPreviewPage()` and `whatChangesForPlatform()` (the store's `whatChanges()`; Kaizena Flow has no product page, so that
+layout is never named).
+
+**Admin.** `/admin/platform/themes/{install}` (from the library's *Preview and customise*): *Switch to it*, *What changes*, its header and
+footer to edit, the store's `ThemeEditor` (without saved themes: Kaizena Flow keeps none) and its own CSS; the live one goes back to the
+library. `/admin/platform/themes/{install}/preview` in the admin's `(print)` group: one of Kaizena Flow's pages or articles (its front page
+first) with the install's look, inert and `noindex`, the header and footer given the install's layers (`KaizenSiteHeader`/`KaizenSiteFooter`
+`theme`).
+
+**Built.** The above, held by `src/server/platform-theme-installs.int.test.ts` (the preview reads the install's look, *What changes* names the
+fonts and never a product page, customising leaves the live look as it was and is refused for the live one and for non-admins, switching wears
+the customised look with nothing else changed). No migration. No browser test, as in step 1.
+
+## Step 3: updates (planned)
+
+Kaizena Flow's installs get `follows_updates` and a record of each update with the look before (as `theme_install_updates`), the update laid
+under its own changes by the store's `mergeSettings()`, `cssFate()` and `layoutFate()` (D245) from what the install placed (`placed`, kept since
+step 1), *What's new*, undo, and the five-minute job taking new versions for installs that follow them. Needs a migration.

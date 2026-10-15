@@ -13,6 +13,7 @@ const { syncLaunchThemes } = await import("./launch-themes");
 const designs = await import("./design-presets");
 const installs = await import("./platform-theme-installs");
 const fixtures = await import("./trust-fixtures");
+const previews = await import("./platform-theme-preview");
 
 /**
  * Kaizena Flow's own site on themes (`docs/theme-phase-4.md` step 1): a published theme is added to its library without going live, the site
@@ -90,6 +91,60 @@ describe("Kaizena Flow's theme library", () => {
     expect(await designs.deleteDesign(admin, hearth.id)).toMatchObject({ ok: false });
     expect((await installs.removePlatformInstall(admin, added.installId)).ok).toBe(true);
     expect((await designs.getDesign(hearth.id))?.onPlatform).toBe(false);
+  });
+
+  it("previews and customises an installed theme before switching, without touching the live look (D252)", async () => {
+    const hearth = (await designs.listOfferedDesigns()).find((design) => design.title === "Hearth");
+    if (!hearth) throw new Error("Hearth is not published");
+    const added = await designs.installPresetOnPlatform(admin, hearth.id, deps);
+    if (!added.ok) throw new Error(added.problems.join(" "));
+    const content = await contentNow();
+
+    // The preview draws the install's look: its theme, fonts, header and footer, over Kaizena Flow's own pages.
+    const preview = await previews.platformInstallPreview(added.installId);
+    if (!preview) throw new Error("No preview");
+    expect(preview.install.live).toBe(false);
+    expect(preview.theme.settings.fonts).toEqual({ heading: "Playfair Display", body: "Lora" });
+    expect(preview.header?.id ?? null).toBe(preview.install.look.headerId);
+    expect(preview.pages.every((page) => page.type === "page" || page.type === "article")).toBe(true);
+
+    // What changes: from the live Custom to Hearth, its header named when it brings one, its fonts, never a product page.
+    const changes = await previews.whatChangesForPlatform(added.installId);
+    expect(changes).toMatchObject({ live: "Custom", target: "Hearth" });
+    expect(changes?.changes.layouts.some((layout) => layout.kind === "header")).toBe(preview.install.look.headerId !== (before.header_id ?? null));
+    expect(changes?.changes.fontsAdded).toEqual(expect.arrayContaining(["Playfair Display", "Lora"]));
+    expect(changes?.changes.layouts.map((layout) => layout.kind)).not.toContain("productLayout");
+
+    // Customising writes the install only, fonts into its own fonts as Kaizena Flow keeps them.
+    const theme = { ...preview.theme, settings: { ...preview.theme.settings, fonts: { heading: "Archivo", body: "Inter" } } };
+    const saved = await installs.savePlatformInstallLook(admin, added.installId, { theme });
+    if (!saved.ok) throw new Error(saved.problems.join(" "));
+    expect((await installs.savePlatformInstallLook(admin, added.installId, { css: ".hearth-test { color: red; }" })).ok).toBe(true);
+    expect((await installs.savePlatformInstallLook(admin, added.installId, { css: "</style><script>" })).ok).toBe(false);
+    expect((await installs.savePlatformInstallLook(admin, added.installId, { theme: { nonsense: true } })).ok).toBe(false);
+    expect(await lookNow()).toEqual(before);
+    const kept = await installs.platformInstallLook(added.installId);
+    expect(kept?.look.fonts).toEqual({ heading: "Archivo", body: "Inter" });
+    expect(kept?.look.css).toBe(".hearth-test { color: red; }");
+    expect((await previews.platformInstallPreview(added.installId))?.theme.settings.fonts).toEqual({ heading: "Archivo", body: "Inter" });
+
+    // The live theme is not changed here, and only admins customise.
+    const custom = (await installs.listPlatformInstalls()).find((install) => install.presetId === null);
+    if (!custom) throw new Error("Custom is gone");
+    expect((await installs.savePlatformInstallLook(admin, custom.id, { css: "" })).ok).toBe(false);
+    expect((await installs.savePlatformInstallLook(owner, added.installId, { css: "" })).ok).toBe(false);
+    expect(await previews.whatChangesForPlatform(custom.id)).toBeNull();
+    expect((await installs.platformInstallLook(custom.id))?.look.css).toBe(String(before.custom_css ?? ""));
+
+    // Switching wears the customised look; nothing else of the site changes.
+    expect((await installs.switchPlatformInstall(admin, added.installId)).ok).toBe(true);
+    const worn = await lookNow();
+    expect(worn.fonts).toEqual({ heading: "Archivo", body: "Inter" });
+    expect(worn.custom_css).toBe(".hearth-test { color: red; }");
+    expect(await contentNow()).toEqual(content);
+    expect((await installs.switchPlatformInstall(admin, custom.id)).ok).toBe(true);
+    expect(await lookNow()).toEqual(before);
+    expect((await installs.removePlatformInstall(admin, added.installId)).ok).toBe(true);
   });
 
   it("is a platform admin's only", async () => {

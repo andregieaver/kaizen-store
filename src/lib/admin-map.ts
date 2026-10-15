@@ -885,6 +885,9 @@ const PAGES: readonly AdminPage[] = [
   platform("site_themes", "/themes", "Themes", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
     keywords: ["theme", "look", "switch theme", "design", "kaizena site look"],
   }),
+  platform("site_themes.theme", "/themes/[install]", "Customise theme", "Kaizena Flow site", "One theme installed on Kaizena Flow's own site that is not live: its preview on Kaizena Flow's own pages, what switching to it changes (header, footer, section styles, settings that stay its own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the site switches.", {
+    keywords: ["preview theme", "try a theme", "what changes", "customise theme", "kaizena site theme"],
+  }),
   platform("seo", "/seo", "Search", "Kaizena Flow site", "How search engines and AI crawlers see Kaizena Flow's site."),
   platform("cookies", "/cookies", "Cookies", "Kaizena Flow site", "Kaizena Flow's cookies, tracking and consents."),
   platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),

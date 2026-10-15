@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
 import { audit, type Account } from "./auth";
+import { checkPlatformTheme } from "./themes";
 
 /**
  * Kaizena Flow's own installed themes (phase 4 of `docs/theme-store.md`, `docs/theme-phase-4.md` step 1): as a store's (D241, `theme-installs.ts`),
@@ -62,6 +63,98 @@ export async function listPlatformInstalls(): Promise<PlatformInstall[]> {
     installedAt: new Date(String(row.installed_at)).toISOString(),
     switchedAt: row.switched_at ? new Date(String(row.switched_at)).toISOString() : null,
   }));
+}
+
+export type PlatformInstallWithLook = PlatformInstall & { look: PlatformLook };
+
+const lookOf = (value: unknown): PlatformLook => {
+  const look = (value && typeof value === "object" ? value : {}) as Partial<PlatformLook>;
+  return {
+    theme: look.theme ?? null,
+    fonts: look.fonts && typeof look.fonts === "object" ? look.fonts : {},
+    css: typeof look.css === "string" ? look.css : "",
+    headerId: typeof look.headerId === "string" ? look.headerId : null,
+    footerId: typeof look.footerId === "string" ? look.footerId : null,
+  };
+};
+
+/**
+ * One of Kaizena Flow's installs with its look (D252): the live one's is `platform_settings`' columns as they are now, any other's what its
+ * row keeps. Null for an id that is not one of them.
+ */
+export async function platformInstallLook(installId: string): Promise<PlatformInstallWithLook | null> {
+  if (!isUuid(installId)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select i.id, i.title, i.preset_id, v.number as version, i.live, i.installed_at, i.switched_at, i.look,
+      s.theme as live_theme, s.fonts as live_fonts, s.custom_css as live_css, s.header_id as live_header, s.footer_id as live_footer
+    from commerce.platform_theme_installs i
+    left join commerce.design_preset_versions v on v.id = i.version_id
+    cross join commerce.platform_settings s
+    where i.id = ${installId}::uuid
+  `);
+  if (!row) return null;
+  const live = Boolean(row.live);
+  const look = live
+    ? lookOf({ theme: row.live_theme, fonts: row.live_fonts, css: row.live_css, headerId: row.live_header && String(row.live_header), footerId: row.live_footer && String(row.live_footer) })
+    : lookOf(row.look);
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    presetId: row.preset_id ? String(row.preset_id) : null,
+    version: row.version == null ? null : Number(row.version),
+    live,
+    installedAt: new Date(String(row.installed_at)).toISOString(),
+    switchedAt: row.switched_at ? new Date(String(row.switched_at)).toISOString() : null,
+    look,
+  };
+}
+
+/** The live install with its look, for *What changes*. */
+export async function livePlatformInstall(): Promise<PlatformInstallWithLook | null> {
+  const [row] = await db().execute<Row>(sql`select id from commerce.platform_theme_installs where live`);
+  return row ? platformInstallLook(String(row.id)) : null;
+}
+
+/**
+ * Keeps theme settings (checked as the live theme's are, `checkPlatformTheme()`) or its own CSS (`cssProblem()`) in one of Kaizena Flow's
+ * installs that is not live (D252). Its fonts go into the look's own `fonts` as well, which is how Kaizena Flow keeps them (D235). Visitors
+ * see nothing of it until the site is switched to it; the live theme is edited where it always was (the page builder's Theme tab, Fonts,
+ * Custom CSS). Audited `platform.theme_customised`.
+ */
+export async function savePlatformInstallLook(
+  admin: Account,
+  installId: string,
+  change: { theme: unknown } | { css: string },
+): Promise<PlatformInstallResult<{ theme?: unknown; css?: string }>> {
+  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!isUuid(installId)) return refuse(UNKNOWN);
+  let patch: Record<string, unknown>;
+  let shown: { theme?: unknown; css?: string };
+  if ("theme" in change) {
+    const checked = await checkPlatformTheme(change.theme);
+    if (!checked.ok) return checked;
+    patch = { theme: checked.theme, fonts: checked.theme.settings.fonts ?? {} };
+    shown = { theme: checked.theme };
+  } else {
+    const css = typeof change.css === "string" ? change.css : "";
+    const problem = cssProblem(css);
+    if (problem) return refuse(problem);
+    patch = { css };
+    shown = { css };
+  }
+  const [row] = await db().execute<Row>(sql`
+    update commerce.platform_theme_installs set look = coalesce(look, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb
+    where id = ${installId}::uuid and not live
+    returning title
+  `);
+  if (!row) {
+    const [exists] = await db().execute<Row>(sql`select live from commerce.platform_theme_installs where id = ${installId}::uuid`);
+    return refuse(exists ? "This theme is live: change it in the page builder's Theme tab, Fonts and Custom CSS, where its changes reach visitors at once." : UNKNOWN);
+  }
+  await audit(admin.id, null, "platform.theme_customised", { install: installId, title: String(row.title), changed: Object.keys(shown) }, {
+    target: { type: "theme_install", id: installId },
+  });
+  return { ok: true, ...shown };
 }
 
 /** How many themes Kaizena Flow's site has installed. */

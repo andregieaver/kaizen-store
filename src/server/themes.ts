@@ -142,15 +142,25 @@ export async function saveThemeLibrary(
 }
 
 /**
+ * A theme for Kaizena Flow's own site, checked as a store's is (`checkStoreTheme()`): the same schema and fonts that Google Fonts has. Kaizena
+ * Flow keeps no saved themes, so `savedId` is always null. Used for its live theme and for an installed one that is not live (D252).
+ */
+export async function checkPlatformTheme(input: unknown): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const parsed = storeThemeInput.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
+  const fontProblems = await readyFonts(parsed.data.settings);
+  if (fontProblems.length > 0) return { ok: false, problems: fontProblems };
+  return { ok: true, theme: { ...parsed.data, savedId: null } };
+}
+
+/**
  * Kaizen's own theme (D235, `platform_settings.theme`), written as a store's is: checked by the same schema and kept in a
  * store's shape. Its fonts stay `platform_settings.fonts` (the Fonts page), laid over it when read.
  */
 async function savePlatformTheme(account: Account, settings: ThemeSettings): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
-  const parsed = storeThemeInput.safeParse({ base: "minimal", savedId: null, settings });
-  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
-  const fontProblems = await readyFonts(parsed.data.settings);
-  if (fontProblems.length > 0) return { ok: false, problems: fontProblems };
-  const theme = parsed.data;
+  const checked = await checkPlatformTheme({ base: "minimal", savedId: null, settings });
+  if (!checked.ok) return checked;
+  const { theme } = checked;
   await db().execute(sql`update commerce.platform_settings set theme = ${JSON.stringify(theme)}::jsonb where id`);
   await audit(account.id, null, "platform.theme_updated", {});
   return { ok: true, theme };
