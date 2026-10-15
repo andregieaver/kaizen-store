@@ -13,7 +13,10 @@ Each is done by a person in the service's own dashboard; none is in the reposito
 3. **Stores' own addresses**, if stores are on subdomains (`NEXT_PUBLIC_STORE_DOMAIN`): add `*.kaizenaflow.com` as a wildcard domain, set
    `NEXT_PUBLIC_STORE_DOMAIN=kaizenaflow.com` (and `NEXT_PUBLIC_STORE_HOSTS` if used), and redirect `*.{old domain}` to the same store on the new one.
    This changes every store's address: do it at a quiet time, and tell owners.
-4. **Environment variables** (Production): `SITE_URL=https://kaizenaflow.com`; `EMAIL_FROM` to an address on the new domain once step 2.1 is done.
+4. **The theme store's own host** (`docs/theme-phase-3.md` step 3): add `themes.kaizenaflow.com` to the project (a CNAME to Vercel, or covered by
+   the wildcard of step 3 when stores are under `kaizenaflow.com`) and set `NEXT_PUBLIC_THEMES_HOST=themes.kaizenaflow.com`. Until it is set, the theme
+   store stays at `https://kaizenaflow.com/themes`; once it is, those addresses move there (308) and the next deploy routes the host.
+5. **Environment variables** (Production): `SITE_URL=https://kaizenaflow.com`; `EMAIL_FROM` to an address on the new domain once step 2.1 is done.
    Then redeploy (CI's *redeploy* workflow input, or a push).
 
 ## 2. Email (Resend)

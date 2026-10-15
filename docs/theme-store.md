@@ -1,6 +1,6 @@
 # Themes and the theme store (Kaizena Flow): the plan
 
-Status: phases 1 and 2 built (D241 to D246, 15 October 2026); phase 3 (the theme store) in steps, step 1 built (D247). The decision number is given when phase 1 is built (the waves in flight may take the next
+Status: phases 1 and 2 built (D241 to D246, 15 October 2026); phase 3 (the theme store) built in three steps (D247 to D249, `docs/theme-phase-3.md`). The decision number is given when phase 1 is built (the waves in flight may take the next
 numbers). This document is the contract for the work; each phase ends with its own section in `docs/decisions.md`.
 
 ## 0. Decisions already made by the owner (15 October 2026)

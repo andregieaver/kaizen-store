@@ -32,6 +32,7 @@ import {
   type StoreSeo,
 } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
+import { themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
 import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
@@ -495,8 +496,9 @@ export async function platformSitemap(): Promise<string> {
   ];
   const urls = [
     ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
-    // The theme store (`docs/theme-phase-3.md`): its list and each theme's page.
-    ...(themes.length > 0 ? ["/themes", ...themes.map((theme) => `/themes/${theme.slug}`)] : []).map((path) => `<url><loc>${xml(`${origin}${path}`)}</loc></url>`),
+    // The theme store (`docs/theme-phase-3.md`): its list and each theme's page, here until it has a host of its own (step 3), whose
+    // sitemap lists them then (`themeStoreSitemap()`), as a sitemap lists only its own host's addresses.
+    ...(themes.length > 0 && !themesHost() ? ["/themes", ...themes.map((theme) => `/themes/${theme.slug}`)] : []).map((path) => `<url><loc>${xml(`${origin}${path}`)}</loc></url>`),
     ...listed.map(
       ({ page, path }) =>
         `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)
@@ -765,4 +767,18 @@ export async function storeLlms(slug: string): Promise<string | null> {
       },
     ],
   });
+}
+
+/** The theme store's own host's sitemap (`docs/theme-phase-3.md` step 3): its list and each theme's page; null while it has no host. */
+export async function themeStoreSitemap(): Promise<string | null> {
+  if (!themesHost()) return null;
+  const themes = await themeStoreCards();
+  const urls = [themeStoreUrl(), ...themes.map((theme) => themeStoreUrl(theme.slug))].map((url) => `<url><loc>${xml(url)}</loc></url>`);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+}
+
+/** The theme store's own host's rules for crawlers: everything open, and its sitemap; null while it has no host. */
+export function themeStoreRobots(): string | null {
+  const origin = themesOrigin();
+  return origin ? `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n` : null;
 }

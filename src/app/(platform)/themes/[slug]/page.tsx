@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { JsonLdScript } from "@/components/json-ld";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
 import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeTryLink } from "@/lib/theme-store";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
+import { platformHref, themeStorePath, themeStoreUrl, themesHost } from "@/lib/theme-host";
 
 /** Every theme's page is prerendered; one published later is drawn on its first visit. */
 export async function generateStaticParams() {
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]">):
   return {
     title: `${theme.title} theme`,
     description,
-    alternates: { canonical: `/themes/${theme.slug}` },
+    alternates: { canonical: themeStoreUrl(theme.slug) },
     openGraph: { title: `${theme.title} theme`, description, ...(theme.pictureUrl && { images: [{ url: theme.pictureUrl, alt: "" }] }) },
   };
 }
@@ -32,15 +33,22 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]">):
  * `noindex`), its changelog, and *Start with this theme*, which opens sign-up with it chosen. Free; no price anywhere.
  */
 export default async function ThemePage({ params }: PageProps<"/themes/[slug]">) {
-  const theme = await themeStorePage((await params).slug);
-  if (!theme) notFound();
-  const preview = designPreviewPath(theme.id);
-  const url = `${siteUrl()}/themes/${theme.slug}`;
+  const { slug } = await params;
+  const theme = await themeStorePage(slug);
+  if (!theme) {
+    // On the theme store's own host every one-part address comes here: one that is no theme is Kaizena Flow's own (the header's
+    // `/pricing`, `/sign-up`), so it goes there (`docs/theme-phase-3.md` step 3). Without the host, `/themes/{slug}` has nothing else.
+    if (themesHost()) redirect(`${siteUrl()}/${slug}`);
+    notFound();
+  }
+  // Kaizena Flow's own site serves the preview, sign-up and the try route: full addresses while the theme store has its own host.
+  const preview = platformHref(designPreviewPath(theme.id));
+  const url = themeStoreUrl(theme.slug);
   return (
     <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10">
       <JsonLdScript data={themeJsonLd(theme, url, "Kaizena Flow")} />
       <nav aria-label="Breadcrumb" className="text-sm">
-        <Link href="/themes" className="underline underline-offset-2">
+        <Link href={themeStorePath()} className="underline underline-offset-2">
           Themes
         </Link>
       </nav>
@@ -54,11 +62,11 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href={`/sign-up?theme=${theme.id}`} className="button-primary inline-flex min-h-11 items-center rounded-button px-5 font-medium">
+          <a href={platformHref(`/sign-up?theme=${theme.id}`)} className="button-primary inline-flex min-h-11 items-center rounded-button px-5 font-medium">
             Start with this theme
-          </Link>
+          </a>
           {/* A route that knows who is signed in, then the admin (another root layout): a plain link (`docs/theme-phase-3.md` step 2). */}
-          <a href={themeTryLink(theme.slug)} className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
+          <a href={platformHref(themeTryLink(theme.slug))} className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
             Try it in your store
           </a>
           <a href={preview} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">

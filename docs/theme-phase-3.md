@@ -73,3 +73,31 @@ the permission again and opens the install's page (D244) with `?added=1`: a note
 `src/server/theme-store.int.test.ts` (not live, columns unchanged, counted as used, an outsider refused), the scan test (both go through
 `placeDesign()`), `e2e/signed-in/theme-try.spec.ts` (owner adds from the theme store, a Read-only member is offered no store, signed out
 goes to sign in) and the Try link in `e2e/theme-store.spec.ts`.
+
+## Step 3: its own address
+
+**The setting.** `NEXT_PUBLIC_THEMES_HOST` (`themes.kaizenaflow.com`), read when building as the store domain is (P7), through
+`themesHost()` in `src/lib/theme-host.ts`. Without it nothing changes: the theme store stays at `/themes`. The host itself is set up outside
+the code (`docs/kaizena-flow-switchover.md` 1.4).
+
+**Routing** (`themeHostRoutes()`, in `next.config.ts` before the stores' rules): on the host, `/` serves the list, a one-part address of a
+theme's shape serves that theme (`/themes/{slug}`), and `/sitemap.xml` and `/robots.txt` are the host's own (`themeStoreSitemap()`,
+`themeStoreRobots()`); an address of more than one part goes to the same address on Kaizena Flow's site, and a one-part address that is no
+theme (the header's `/pricing`, `/sign-up`) is sent there by the theme's page. On Kaizena Flow's own host, `/themes` and `/themes/{slug}` move
+to the host for good (308); `/themes/{slug}/try` stays, as only that host sees the admin's sign-in. A store's own `/themes` is untouched.
+
+**Never a store's host.** The host may be a name under the store domain (`themes.{domain}` when stores are under `kaizenaflow.com`):
+`storeHostRoutes()` leaves its label out of the stores' host pattern, `storeOfHost()` returns no store for it, and `themes` is a reserved store
+address (`stores_slug_not_reserved`, `RESERVED_STORE_SLUGS`; no store had it).
+
+**Links.** In the theme store, `themeStorePath()` (a path on whichever host serves it), `themeStoreUrl()` (canonical addresses, the sitemap,
+structured data) and `platformHref()` (sign-up, the try route and the previews, full addresses while the host is set). Kaizena Flow's own
+sitemap leaves the theme store to the host's, as a sitemap lists only its own host's addresses.
+
+**Built.** `src/lib/theme-host.ts`, the host's sitemap and robots routes, `storeHostRoutes()`'s `themesHost`, `storeOfHost()`, the reserved
+address (migration `reserve_themes_slug`); held by `src/lib/store-hosts.test.ts` (routing as Next.js matches it, with the host under the store
+domain and apart from it), the PGlite reserved-address test and `e2e/theme-host.spec.ts` in CI's `hosts` job, which sets the host to
+`themes.localhost:3000` under the store domain `localhost:3000`.
+
+**Not in step 3.** The header's home link on the host leads to the list, not to Kaizena Flow's front page; Open Graph pictures per theme
+and more than one picture per theme are still to come.

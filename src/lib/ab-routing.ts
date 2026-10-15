@@ -1,5 +1,6 @@
 import { withSiteVersions, testToken, type TargetKind } from "./ab-site";
 import { dataCookieName, decodeAssignments, OUTSIDE } from "./experiments";
+import { isThemesHost } from "./theme-host";
 
 /**
  * Where an enrolled visitor's request for a tested page goes (D148): the proxy asks this for requests that carry the
@@ -54,6 +55,8 @@ export function storeOfHost(host: string, domain: string | null, customHosts: Re
     if (primary === bare || hosts.includes(bare)) return slug;
   }
   if (!domain) return null;
+  // The theme store's own host is never a store's, whatever its name (docs/theme-phase-3.md step 3).
+  if (isThemesHost(host)) return null;
   const root = domain.toLowerCase().replace(/:\d+$/, "");
   const match = new RegExp(`^([a-z0-9-]+)\\.${root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`).exec(bare);
   return match && match[1] !== "www" ? match[1] : null;

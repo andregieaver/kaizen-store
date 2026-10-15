@@ -4,6 +4,7 @@ import type { OfferedDesign } from "@/lib/design-presets";
 
 import { DesignPreviewLink } from "./design-cards";
 import { Card } from "@/components/admin/ui";
+import { themeStoreUrl } from "@/lib/theme-host";
 
 /** A design profile offered to a store, with where its preview is. */
 export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean };
@@ -34,7 +35,7 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back. Add one to your themes to preview and customise it first; visitors see nothing until you switch. <a href="/themes" target="_blank" rel="noopener" className="underline underline-offset-2">See every theme in the theme store<span className="sr-only"> (opens in a new window)</span></a>.</>} className="flex flex-col gap-4" compact>
+    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back. Add one to your themes to preview and customise it first; visitors see nothing until you switch. <a href={themeStoreUrl()} target="_blank" rel="noopener" className="underline underline-offset-2">See every theme in the theme store<span className="sr-only"> (opens in a new window)</span></a>.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">

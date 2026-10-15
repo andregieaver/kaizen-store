@@ -2,6 +2,7 @@ import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
 import { whatsNew } from "./theme-update";
+import { themeStorePath } from "./theme-host";
 
 /**
  * The theme store (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): a theme's listing and what the list and a theme's page say.
@@ -134,7 +135,7 @@ export function themeFilterHref(filter: ThemeFilter, change: Partial<ThemeFilter
   if (next.style) query.set("style", next.style);
   if (next.feature) query.set("feature", next.feature);
   const text = query.toString();
-  return `/themes${text ? `?${text}` : ""}`;
+  return themeStorePath(text ? `?${text}` : "");
 }
 
 /** The cards a filter keeps, in the platform's order. A theme listed for no kind of store suits any. */

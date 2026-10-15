@@ -33,13 +33,17 @@ export function storeHostRoutes(
   domain: string | null,
   platformUrl: string,
   customHosts: StoreHosts = {},
+  themesHost: string | null = null,
 ): { redirects: HostRedirect[]; rewrites: HostRewrite[] } {
   if (!domain) return { redirects: [], rewrites: [] };
   const [hostname, port] = domain.split(":");
   const host = escape(hostname);
   const scheme = /^localhost$/.test(hostname) ? "http" : "https";
   const origin = (name: string) => `${scheme}://${name}${port ? `:${port}` : ""}`;
-  const storeHost: Match = { type: "host", value: `(?<store>[a-z0-9-]+)\\.${host}` };
+  // The theme store's host may be a name under the store domain (`themes.{domain}`, docs/theme-phase-3.md step 3): it is never a store's.
+  const themesLabel = themesHost?.replace(/:\d+$/, "").endsWith(`.${hostname}`) ? themesHost.replace(/:\d+$/, "").slice(0, -hostname.length - 1) : null;
+  const notThemes = themesLabel && /^[a-z0-9-]+$/.test(themesLabel) ? `(?!${escape(themesLabel)}\\.)` : "";
+  const storeHost: Match = { type: "host", value: `(?<store>${notThemes}[a-z0-9-]+)\\.${host}` };
   const exactly = (name: string): Match => ({ type: "host", value: escape(name) });
 
   // Stores with a primary domain of their own: every other address of theirs leads there.

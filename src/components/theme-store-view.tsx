@@ -9,6 +9,7 @@ import {
   type ThemeFilter,
   type ThemeStoreCard,
 } from "@/lib/theme-store";
+import { themeStorePath } from "@/lib/theme-host";
 
 /**
  * The theme store's list (`docs/theme-phase-3.md` step 1): filters as plain links (kind of store, style, what it includes), so it works
@@ -42,7 +43,7 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
       )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h2 className="text-lg font-semibold">
-          <Link href={`/themes/${card.slug}`} className="after:absolute after:inset-0 hover:underline">
+          <Link href={themeStorePath(card.slug)} className="after:absolute after:inset-0 hover:underline">
             {card.title}
           </Link>
         </h2>

@@ -133,6 +133,8 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       NEXT_PUBLIC_STORE_DOMAIN: localhost:3000
+      # The theme store on its own host, a name under the store domain (docs/theme-phase-3.md step 3).
+      NEXT_PUBLIC_THEMES_HOST: themes.localhost:3000
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -145,7 +147,7 @@ jobs:
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts
+      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
 

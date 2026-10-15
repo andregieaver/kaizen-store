@@ -6,6 +6,7 @@ import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { LEGACY_WORK_REDIRECTS } from "./src/lib/work-paths";
 import { storeHostRoutes } from "./src/lib/store-hosts";
+import { themeHostRoutes, themesHost } from "./src/lib/theme-host";
 import { readStoreHosts } from "./src/lib/store-hosts-build";
 
 const CHROMIUM_FILES = [
@@ -54,14 +55,16 @@ export default async function config(phase: string): Promise<NextConfig> {
   // read when building, and built into the deployment's routing and its code together.
   const building = phase === PHASE_PRODUCTION_BUILD || phase === PHASE_DEVELOPMENT_SERVER;
   const hosts = storeDomain() && building ? await readStoreHosts() : storeHosts();
-  const routes = storeHostRoutes(storeDomain(), siteUrl(), hosts);
+  const routes = storeHostRoutes(storeDomain(), siteUrl(), hosts, themesHost());
+  // The theme store on its own host (docs/theme-phase-3.md step 3): before the stores' rules, which leave its host alone.
+  const themes = themeHostRoutes(themesHost(), siteUrl());
   return {
     ...nextConfig,
     ...(building ? { env: { NEXT_PUBLIC_STORE_HOSTS: JSON.stringify(hosts) } } : {}),
     // A strict Content-Security-Policy on the cart, checkout and order of every store, on both shapes of address (wave 1, 1e, docs/pci.md).
     headers: async () => payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
-    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...routes.redirects],
-    rewrites: async () => ({ beforeFiles: routes.rewrites, afterFiles: [], fallback: [] }),
+    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...themes.redirects, ...routes.redirects],
+    rewrites: async () => ({ beforeFiles: [...themes.rewrites, ...routes.rewrites], afterFiles: [], fallback: [] }),
   };
 }

@@ -4,12 +4,17 @@ import { Suspense } from "react";
 import { ThemeStoreList } from "@/components/theme-store-view";
 import { parseThemeFilter } from "@/lib/theme-store";
 import { themeStoreCards } from "@/server/theme-store";
+import { themeStoreUrl } from "@/lib/theme-host";
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: "Themes",
   description: "Free themes for your Kaizena Flow store: preview each on a demo store at computer and phone widths, then start with the one you like.",
-  alternates: { canonical: "/themes" },
 };
+
+export function generateMetadata(): Metadata {
+  // Its own host's address once it has one (`docs/theme-phase-3.md` step 3).
+  return { ...metadata, alternates: { canonical: themeStoreUrl() } };
+}
 
 /**
  * The theme store's list (`docs/theme-phase-3.md` step 1): every published theme, filtered by the address. The unfiltered list is

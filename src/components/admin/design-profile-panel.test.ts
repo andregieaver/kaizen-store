@@ -18,7 +18,7 @@ describe("the themes panel", () => {
     const html = draw({ install: action });
     expect(html).toContain("Add to my themes");
     expect(html).toMatch(/name="design" value="p1"/);
-    expect(html).toContain('href="/themes"');
+    expect(html).toContain('href="http://localhost:3000/themes"');
   });
 
   it("offers no adding where there is no library or the person may not change", () => {

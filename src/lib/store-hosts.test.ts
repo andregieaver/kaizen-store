@@ -3,7 +3,9 @@ import { matchHas, prepareDestination } from "next/dist/shared/lib/router/utils/
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { marketPath, storeBase, storeDomain, storeHome, storeHref, storeOrigin, storeSiteUrl } from "./paths";
+import { storeOfHost } from "./ab-routing";
 import { storeHostRoutes, type HostRedirect, type HostRewrite } from "./store-hosts";
+import { platformHref, themeHostRoutes, themeStorePath, themeStoreUrl, themesHost } from "./theme-host";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -136,5 +138,69 @@ describe("stores on their own hosts (P7)", () => {
     expect(storeOrigin("kari")).toBe("http://butikk.example.no:3000");
     const local = storeHostRoutes("localhost:3000", "http://localhost:3000", hosts);
     expect(route(local, "kari.localhost:3000", "/no")).toEqual({ redirect: "http://butikk.example.no:3000/no" });
+  });
+});
+
+describe("the theme store on its own host (docs/theme-phase-3.md step 3)", () => {
+  const both = (domain: string | null, themes: string | null) => {
+    const s = storeHostRoutes(domain, "https://kaizenaflow.com", {}, themes);
+    const t = themeHostRoutes(themes, "https://kaizenaflow.com");
+    return { redirects: [...t.redirects, ...s.redirects], rewrites: [...t.rewrites, ...s.rewrites] };
+  };
+
+  it("changes nothing until the host is set", () => {
+    expect(themeHostRoutes(null, "https://kaizenaflow.com")).toEqual({ redirects: [], rewrites: [] });
+    expect(themeStorePath()).toBe("/themes");
+    expect(themeStorePath("calm")).toBe("/themes/calm");
+    expect(themeStorePath("?kind=food")).toBe("/themes?kind=food");
+    expect(themeStoreUrl("calm")).toBe("http://localhost:3000/themes/calm");
+    expect(platformHref("/sign-up")).toBe("/sign-up");
+  });
+
+  it("serves the list and each theme at the host's root, its own files, and Kaizena Flow's other addresses on Kaizena Flow", () => {
+    const routes = both("kaizenstore.site", "themes.kaizenaflow.com");
+    expect(route(routes, "themes.kaizenaflow.com", "/")).toEqual({ rewrite: "/themes" });
+    expect(route(routes, "themes.kaizenaflow.com", "/calm")).toEqual({ rewrite: "/themes/calm" });
+    expect(route(routes, "themes.kaizenaflow.com", "/sitemap.xml")).toEqual({ rewrite: "/themes/sitemap.xml" });
+    expect(route(routes, "themes.kaizenaflow.com", "/robots.txt")).toEqual({ rewrite: "/themes/robots.txt" });
+    expect(route(routes, "themes.kaizenaflow.com", "/admin/sign-in")).toEqual({ redirect: "https://kaizenaflow.com/admin/sign-in" });
+    expect(route(routes, "themes.kaizenaflow.com", "/calm/try")).toEqual({ redirect: "https://kaizenaflow.com/calm/try" });
+    // Next.js's files, the API and `public` are served on every host.
+    expect(route(routes, "themes.kaizenaflow.com", "/_next/static/x.js")).toEqual({});
+    expect(route(routes, "themes.kaizenaflow.com", "/api/fonts/css/inter")).toEqual({});
+  });
+
+  it("moves Kaizena Flow's own addresses of the theme store there, but keeps the try route", () => {
+    const routes = both("kaizenstore.site", "themes.kaizenaflow.com");
+    expect(route(routes, "kaizenaflow.com", "/themes")).toEqual({ redirect: "https://themes.kaizenaflow.com/" });
+    expect(route(routes, "kaizenaflow.com", "/themes/calm")).toEqual({ redirect: "https://themes.kaizenaflow.com/calm" });
+    expect(route(routes, "kaizenaflow.com", "/themes/calm/try")).toEqual({});
+    // A store is untouched.
+    expect(route(routes, "demo.kaizenstore.site", "/themes")).toEqual({ rewrite: "/s/demo/themes" });
+  });
+
+  it("is never a store's host, even as a name under the store domain", () => {
+    const routes = both("localhost:3000", "themes.localhost:3000");
+    expect(route(routes, "themes.localhost", "/calm")).toEqual({ rewrite: "/themes/calm" });
+    expect(route(routes, "themes.localhost", "/")).toEqual({ rewrite: "/themes" });
+    expect(route(routes, "demo.localhost", "/no")).toEqual({ rewrite: "/s/demo/no" });
+    expect(route(routes, "themesx.localhost", "/")).toEqual({ rewrite: "/s/themesx" });
+    vi.stubEnv("NEXT_PUBLIC_THEMES_HOST", "themes.localhost:3000");
+    expect(storeOfHost("themes.localhost:3000", "localhost:3000", {})).toBeNull();
+    expect(storeOfHost("demo.localhost:3000", "localhost:3000", {})).toBe("demo");
+  });
+
+  it("links within the host from its root, and to Kaizena Flow in full", () => {
+    vi.stubEnv("NEXT_PUBLIC_THEMES_HOST", "Themes.KaizenaFlow.com");
+    vi.stubEnv("SITE_URL", "https://kaizenaflow.com");
+    expect(themesHost()).toBe("themes.kaizenaflow.com");
+    expect(themeStorePath()).toBe("/");
+    expect(themeStorePath("calm")).toBe("/calm");
+    expect(themeStorePath("?kind=food")).toBe("/?kind=food");
+    expect(themeStoreUrl()).toBe("https://themes.kaizenaflow.com/");
+    expect(themeStoreUrl("calm")).toBe("https://themes.kaizenaflow.com/calm");
+    expect(platformHref("/sign-up?theme=x")).toBe("https://kaizenaflow.com/sign-up?theme=x");
+    vi.stubEnv("NEXT_PUBLIC_THEMES_HOST", "themes kaizenaflow.com");
+    expect(() => themesHost()).toThrow(/NEXT_PUBLIC_THEMES_HOST/);
   });
 });

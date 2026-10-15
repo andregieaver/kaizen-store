@@ -141,5 +141,7 @@ export const RESERVED_STORE_SLUGS: readonly string[] = [
   "status",
   "stores",
   "support",
+  // The theme store's own host, `themes.{domain}` (docs/theme-phase-3.md step 3).
+  "themes",
   "www",
 ];

@@ -631,7 +631,7 @@ export const stores = commerce.table(
     // Names the platform needs for its own routes and subdomains.
     check(
       "stores_slug_not_reserved",
-      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'www')`,
+      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'www')`,
     ),
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     check("stores_starter_not_template", sql`not (${t.starter} and ${t.isTemplate})`),
