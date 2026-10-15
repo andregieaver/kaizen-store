@@ -12,6 +12,7 @@ import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, te
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import type { StoreRoute } from "@/lib/store-parts";
+import type { ThemeLayers } from "@/lib/section-styles";
 import { marketIn } from "./shop";
 import { summarize } from "@/lib/seo";
 import { featureOn } from "@/lib/store-features";
@@ -64,6 +65,11 @@ export type GridPlace = {
    * inside a part's display hole (D179 phase 4), so the page around stays prerendered.
    */
   query?: Promise<Record<string, string | string[] | undefined>>;
+  /**
+   * The theme laid under the rows in place of the owner's live one (D244): another installed theme in its preview, and a store's own header,
+   * footer and product layout, which are drawn with the store they belong to at hand (`themeLayersOf(store.theme.settings)`).
+   */
+  theme?: ThemeLayers;
 };
 
 /** Where a filterable grid reads its choices, and the address they go to. */

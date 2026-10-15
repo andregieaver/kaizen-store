@@ -14,6 +14,7 @@ import { t } from "@/lib/i18n";
 import { pageFonts } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
+import { themeLayersOf } from "@/lib/section-styles";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { getAccount } from "@/server/auth";
 import { campaignNotices } from "@/server/campaign-notices";
@@ -117,7 +118,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
           <main className="flex flex-col">
             {front ? (
               <div className="store-page">
-                <PageArticle content={front.content} place={{ pageId: front.id, owner: store.id, market: market.slug }} inAdmin />
+                <PageArticle content={front.content} place={{ pageId: front.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }} inAdmin />
               </div>
             ) : (
               <div className="mx-auto w-full max-w-(--content-width) px-4 py-8">

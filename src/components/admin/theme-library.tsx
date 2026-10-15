@@ -1,6 +1,6 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
 
 /** An installed theme as the library shows it (`ThemeInstall` in `src/server/theme-installs.ts`). */
 export type LibraryInstall = { id: string; title: string; version: number | null; live: boolean; installedAt: string; switchedAt: string | null };
@@ -14,8 +14,11 @@ export function ThemeLibrary({
   installs,
   switchTo,
   remove,
+  base,
 }: {
   installs: LibraryInstall[];
+  /** The Design settings page's address, under which each theme's page and preview are (D244); none: no links. */
+  base?: string;
   /** Null for someone who may only look. */
   switchTo: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
   remove: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
@@ -46,39 +49,50 @@ export function ThemeLibrary({
               }
             />
             {install.live ? (
-              <Chip signal="positive" dot>
-                Live
-              </Chip>
+              <RowActions>
+                <Chip signal="positive" dot>
+                  Live
+                </Chip>
+                {base && (
+                  <ButtonLink href={`${base}/themes/${install.id}/preview`} target="_blank">
+                    Preview<span className="sr-only"> {install.title}</span>
+                  </ButtonLink>
+                )}
+              </RowActions>
             ) : (
-              (switchTo || remove) && (
-                <RowActions>
-                  {switchTo && (
-                    <ActionForm action={switchTo}>
-                      <input type="hidden" name="install" value={install.id} />
-                      <SubmitButton variant="secondary">
-                        Switch to<span className="sr-only"> {install.title}</span>
-                      </SubmitButton>
-                    </ActionForm>
-                  )}
-                  {remove && (
-                    <details>
-                      <summary className="flex min-h-10 cursor-pointer items-center rounded-pill px-3 text-sm underline-offset-2 hover:underline">
-                        Remove<span className="sr-only"> {install.title}</span>…
-                      </summary>
-                      <div className="mt-2 flex max-w-xs flex-col gap-2 text-sm">
-                        <p>
-                          Removing {install.title} takes it out of your library. The header, footer and product layout pages it used stay in
-                          your pages.
-                        </p>
-                        <ActionForm action={remove}>
-                          <input type="hidden" name="install" value={install.id} />
-                          <SubmitButton variant="secondary">Remove {install.title}</SubmitButton>
-                        </ActionForm>
-                      </div>
-                    </details>
-                  )}
-                </RowActions>
-              )
+              <RowActions>
+                {base && (
+                  <ButtonLink href={`${base}/themes/${install.id}`}>
+                    {switchTo ? "Customise" : "Open"}
+                    <span className="sr-only"> {install.title}</span>
+                  </ButtonLink>
+                )}
+                {switchTo && (
+                  <ActionForm action={switchTo}>
+                    <input type="hidden" name="install" value={install.id} />
+                    <SubmitButton variant="secondary">
+                      Switch to<span className="sr-only"> {install.title}</span>
+                    </SubmitButton>
+                  </ActionForm>
+                )}
+                {remove && (
+                  <details>
+                    <summary className="flex min-h-10 cursor-pointer items-center rounded-pill px-3 text-sm underline-offset-2 hover:underline">
+                      Remove<span className="sr-only"> {install.title}</span>…
+                    </summary>
+                    <div className="mt-2 flex max-w-xs flex-col gap-2 text-sm">
+                      <p>
+                        Removing {install.title} takes it out of your library. The header, footer and product layout pages it used stay in
+                        your pages.
+                      </p>
+                      <ActionForm action={remove}>
+                        <input type="hidden" name="install" value={install.id} />
+                        <SubmitButton variant="secondary">Remove {install.title}</SubmitButton>
+                      </ActionForm>
+                    </div>
+                  </details>
+                )}
+              </RowActions>
             )}
           </ListRow>
         ))}

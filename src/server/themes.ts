@@ -53,12 +53,11 @@ export async function listSavedThemes(storeId: string): Promise<SavedTheme[]> {
   });
 }
 
-/** Puts a theme on the storefront: a template's, a saved one's or the owner's own settings. */
-export async function saveStoreTheme(
-  account: Account,
-  storeId: string,
-  input: unknown,
-): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+/**
+ * A store's theme as it may be kept (D60): checked by its schema, its fonts installed, and a saved theme it names kept only while it is the
+ * store's own. Shared by the live theme's save and an installed theme's (D244), so both keep exactly the same.
+ */
+export async function checkStoreTheme(storeId: string, input: unknown): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
   const parsed = storeThemeInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
   const fontProblems = await readyFonts(parsed.data.settings);
@@ -71,6 +70,18 @@ export async function saveStoreTheme(
     `);
     if (!own) theme.savedId = null;
   }
+  return { ok: true, theme };
+}
+
+/** Puts a theme on the storefront: a template's, a saved one's or the owner's own settings. */
+export async function saveStoreTheme(
+  account: Account,
+  storeId: string,
+  input: unknown,
+): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const checked = await checkStoreTheme(storeId, input);
+  if (!checked.ok) return checked;
+  const { theme } = checked;
   await db().execute(sql`update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.theme_updated", { base: theme.base, savedId: theme.savedId });
   return { ok: true, theme };

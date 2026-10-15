@@ -680,6 +680,9 @@ const PAGES: readonly AdminPage[] = [
   store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and design profiles, a whole look (theme, header, footer, product page and CSS) to apply and put back.", {
     keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
+  store("design.theme", "/settings/design/themes/[install]", "Customise theme", "Store", "One installed theme that is not live: its preview on the store's own pages, what switching to it changes (layouts, section styles, settings that stay the owner's own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the store switches.", {
+    keywords: ["preview theme", "try a theme", "what changes", "customise theme", "installed theme"],
+  }),
   store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizena Flow plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
     keywords: ["close store", "delete store", "archive store", "shut down", "stop selling", "reopen store", "suspend"],

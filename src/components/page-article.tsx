@@ -130,7 +130,8 @@ export function PageRowView(props: {
 }
 
 async function ThemedRowView({ row, ...rest }: Parameters<typeof PageRowView>[0]) {
-  const layers = await themeLayersFor(rest.place.owner);
+  // Another theme's, where the place brings one (a preview of an installed theme, D244, or a layout drawn with its store at hand).
+  const layers = rest.place.theme ?? (await themeLayersFor(rest.place.owner));
   const [themed] = themedRows([row], layers.elements, layers.sections);
   return <RowView row={themed} {...rest} />;
 }

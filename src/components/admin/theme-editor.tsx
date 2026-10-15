@@ -286,6 +286,7 @@ export function ThemeEditor({
   saved: initialSaved,
   actions,
   logos,
+  installed,
 }: {
   storeName: string;
   current: StoreTheme;
@@ -293,7 +294,12 @@ export function ThemeEditor({
   actions: ThemeActions;
   /** Whether the store has a logo, and one for dark backgrounds (D60). */
   logos: { logo: boolean; dark: boolean };
+  /** The name of an installed theme that is not live (D244): Save keeps the settings in it, and visitors see them only once it is switched to. */
+  installed?: string;
 }) {
+  const words = installed
+    ? { saved: `Saved in “${installed}”. Visitors see it once you switch to this theme.`, toSave: `Save to keep it in “${installed}”.`, inUse: "In this theme", unsaved: " · not saved yet", same: " · saved", intro: `Start from a built-in theme or one of your own. Nothing changes until you save, and visitors see “${installed}” only once you switch to it.` }
+    : { saved: "Saved. The store shows this theme now.", toSave: "Save to show it on the store.", inUse: "On the store", unsaved: " · not on the store yet", same: " · on the store", intro: "Start from a built-in theme or one of your own. Edit changes nothing on the store until you save." };
   const [theme, setTheme] = useState<StoreTheme>(current);
   const [live, setLive] = useState<StoreTheme>(current);
   const [saved, setSaved] = useState(initialSaved);
@@ -343,7 +349,7 @@ export function ThemeEditor({
       if (result.ok) {
         setTheme(result.theme);
         setLive(result.theme);
-        setMessage({ tone: "ok", text: ["Saved. The store shows this theme now."] });
+        setMessage({ tone: "ok", text: [words.saved] });
       } else setMessage({ tone: "error", text: result.problems });
     });
 
@@ -359,7 +365,7 @@ export function ThemeEditor({
       setNaming(null);
       setMessage({
         tone: "ok",
-        text: [`Saved as “${result.theme.name}”. ${unpublished || live.savedId !== result.theme.id ? "Save to show it on the store." : ""}`.trim()],
+        text: [`Saved as “${result.theme.name}”. ${unpublished || live.savedId !== result.theme.id ? words.toSave : ""}`.trim()],
       });
     });
 
@@ -388,7 +394,7 @@ export function ThemeEditor({
         </div>
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">
-            {name} {inUse && <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-xs font-normal">On the store</span>}
+            {name} {inUse && <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-xs font-normal">{words.inUse}</span>}
           </h3>
           <p className="text-xs text-muted">{description || [fonts.heading, fonts.body].filter(Boolean).join(" and ") || "System fonts"}</p>
         </div>
@@ -406,7 +412,7 @@ export function ThemeEditor({
     <div className="flex flex-col gap-6">
       <Section title="Themes">
         <p className="text-sm text-muted">
-          Start from a built-in theme or one of your own. Edit changes nothing on the store until you save.
+          {words.intro}
         </p>
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {THEME_TEMPLATE_KEYS.map((key) =>
@@ -436,7 +442,7 @@ export function ThemeEditor({
             <p className="mr-auto text-sm" aria-live="polite">
               Editing <strong>{sourceName}</strong>
               {changedFromSource ? " · changed" : ""}
-              {unpublished ? " · not on the store yet" : " · on the store"}
+              {unpublished ? words.unsaved : words.same}
             </p>
             <button type="button" disabled={pending || !unpublished || widthsProblem !== null} onClick={publish} className={`${button} bg-foreground text-background`}>
               Save

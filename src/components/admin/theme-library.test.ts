@@ -29,4 +29,14 @@ describe("the theme library (D241)", () => {
     expect(html).not.toContain("Remove");
     expect(html).toContain("Custom");
   });
+
+  it("links each theme to its page and the live one to its preview (D244)", () => {
+    const html = draw({ base: "/admin/shop/settings/design" });
+    expect(html).toContain('href="/admin/shop/settings/design/themes/b"');
+    expect(html).toContain("Customise");
+    expect(html).toContain('href="/admin/shop/settings/design/themes/a/preview"');
+    // Someone who may only look opens it rather than customising it.
+    expect(draw({ base: "/admin/shop/settings/design", switchTo: null, remove: null })).toContain("Open");
+  });
 });
+

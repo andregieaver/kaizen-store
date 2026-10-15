@@ -60,3 +60,13 @@ export function sectionElements(
   }
   return out;
 }
+
+/** What a theme lays under a page's rows: its elements and section styles (D182, D242). */
+export type ThemeLayers = { elements: ThemeElements | undefined; sections: SectionStyles | undefined };
+
+/** A theme's layers, from its settings. */
+export const themeLayersOf = (settings: { elements?: ThemeElements; sectionStyles?: SectionStyles }): ThemeLayers => ({
+  elements: settings.elements,
+  sections: settings.sectionStyles,
+});
+

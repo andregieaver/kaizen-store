@@ -7,7 +7,7 @@ and the look follows. Built in steps, each pushed on its own; this file says wha
 |---|---|---|
 | 1. Section styles | `ThemeSettings.sectionStyles`, `PageRow.sectionStyle`, the core names, layering, the Theme tab and the row's choice | a row naming a style looks as the live theme says, a theme without it gives its Plain, and pages that name none look as before |
 | 2. The page migration for real | `detachThemeValues()` run per store with the page's content before kept, undo, report | a store's pages look the same after (parity test) and follow the theme from then on |
-| 3. Try and preview | customising a theme that is not live, a preview link on the store's own site, *What changes* | an owner sees their own pages in another installed theme without visitors seeing anything |
+| 3. Try and preview | customising a theme that is not live, a preview of the store's own pages in it, *What changes* | an owner sees their own pages in another installed theme without visitors seeing anything |
 | 4. Updates | owner's changes kept apart from the version, follow updates, *What's new* | a new version reaches installs that follow, with the owner's changes laid over it again |
 | 5. Launch themes and `themeCheck()` | the checks of `docs/theme-store.md` 7 and 3 to 5 Kaizena themes | every launch theme passes, and the switch e2e (every content field the same before and after) passes on each |
 
@@ -60,4 +60,40 @@ while it is still what the run left: a page changed since keeps the change, and 
 `ThemeFollow` (`src/components/admin/theme-follow.tsx`) on Design settings; held by `src/server/theme-detach.int.test.ts` (drawn the same before
 and after, undo, a page changed since, a page a put-away theme keeps), `src/lib/theme-detach.test.ts` and the rules' test in
 `src/db/commerce.test.ts`.
+
+## Step 3: try and preview
+
+**Customise.** Each installed theme that is not live has a page, `/admin/{store}/settings/design/themes/{install}` (*Customise* in the theme
+library; *Open* for someone who may only look): the same theme editor as the live theme's, saved into the install
+(`saveInstallLook()`, checked by `checkStoreTheme()` as the live theme's save is), its own CSS (`cssProblem()`), and its header, footer and
+product page, which are pages of the store with *Edit* links. The live theme is still edited on Design settings; its page address goes there.
+Visitors see nothing of an install until the store switches to it. Audited `store.theme_customised`.
+
+**Preview.** `/admin/{store}/settings/design/themes/{install}/preview` draws one of the store's published pages or articles (a list of them
+above it), or one of its products, with the install's settings, section styles, header, footer, product page and CSS in place of the live
+ones, without writing anything (`installPreview()`, `previewPageContent()`). The plan's 4.5 put the preview on the storefront (`?theme=` with a
+signed token, served like the A/B tests' versions); it is served from the admin instead, in the `(print)` group (no admin frame, the session
+checked, `website:read`), read per request, `noindex`, no cookie, its content inert: no visitor and no cached page of the site can ever be
+handed it, and nothing on the storefront's proxy or caches had to change. What it gives up: the store's own domain and moving around the
+site by its links (the list of pages above it stands in).
+
+**Rows in another theme.** `GridPlace.theme` carries the layers to lay under the rows in place of the owner's live ones
+(`PageRowView` reads it before `themeLayersFor()`); the preview passes the install's, and a store's own header, footer and product layout
+pass the store's they are drawn with (`themeLayersOf(store.theme.settings)`, the same as before on the live site). The design-profile
+preview (D176) now draws its front page's rows in the profile's theme too, where they took the store's live one.
+
+**What changes.** `whatChanges()` (`src/lib/theme-changes.ts`, pure) over the live look, the install's and the store's pages and articles as
+visitors see them (`whatChangesFor()`): the layouts that change, by title or as the standard one; each section style the pages name, how
+many pages, and whether the other theme has it (else its Plain, else its site-wide elements); the settings that are the owner's own against
+the other theme and stay; the settings that only repeat the live theme and so keep today's look (with a pointer to *Let pages follow the
+theme*); the fonts that come in; and where owner CSS is involved. Sentences in code from facts; nothing about colours or taste, which the
+preview shows.
+
+**Built (D244).** `src/lib/theme-changes.ts`, `src/server/theme-preview.ts`, `installLook()` and `saveInstallLook()` in
+`src/server/theme-installs.ts`, `checkStoreTheme()` in `src/server/themes.ts`, the theme page and its actions, the preview page,
+`ThemeChanges`, the library's links and the theme editor's `installed` wording; held by `src/lib/theme-changes.test.ts`,
+`src/server/theme-preview.int.test.ts`, `theme-changes.test.ts` and `theme-library.test.ts` (views) and `e2e/signed-in/themes.spec.ts`.
+
+**Not in step 3.** The page builder's canvas still draws a non-live theme's header, footer or product layout in the live theme; *Add this
+theme's pages as drafts* (4.5) waits for themes with demo pages (step 5).
 

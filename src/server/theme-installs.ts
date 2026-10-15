@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
 import { audit } from "./auth";
+import { checkStoreTheme } from "./themes";
 
 /**
  * The themes installed in a store (theme store phase 1, D241, `docs/theme-phase-1.md`): several, one live. The live install's look is the
@@ -243,6 +244,75 @@ export async function removeInstall(storeId: string, installId: string, accountI
     target: { type: "theme_install", id: installId },
   });
   return { ok: true, title: String(row.title) };
+}
+
+/** One installed theme with its look: a live one's is the store's columns, any other's the look it keeps (D244). */
+export type InstallWithLook = Omit<ThemeInstall, "installedAt" | "switchedAt"> & { look: InstalledLook };
+
+export async function installLook(storeId: string, installId: string): Promise<InstallWithLook | null> {
+  if (!isUuid(storeId) || !isUuid(installId)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select i.id, i.title, i.preset_id, i.live, i.look, v.number as version,
+      s.theme, s.custom_css, s.header_id, s.footer_id, s.product_layout_id
+    from commerce.store_theme_installs i
+    join commerce.stores s on s.id = i.store_id
+    left join commerce.design_preset_versions v on v.id = i.version_id
+    where i.id = ${installId}::uuid and i.store_id = ${storeId}::uuid
+  `);
+  if (!row) return null;
+  const kept = (row.look && typeof row.look === "object" ? row.look : {}) as Row;
+  const look = row.live
+    ? lookOf(row)
+    : lookOf({ theme: kept.theme, custom_css: kept.css, header_id: kept.headerId, footer_id: kept.footerId, product_layout_id: kept.productLayoutId });
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    presetId: row.preset_id ? String(row.preset_id) : null,
+    version: row.version === null || row.version === undefined ? null : Number(row.version),
+    live: row.live === true,
+    look,
+  };
+}
+
+/**
+ * Changes the look an installed theme that is not live keeps (D244, `docs/theme-phase-2.md` step 3): its theme settings (checked as the live
+ * theme's are, `checkStoreTheme()`) or its own CSS (`cssProblem()`). Visitors see nothing of it until the owner switches to it; the live theme
+ * is edited where it always was. Audited `store.theme_customised`.
+ */
+export async function saveInstallLook(
+  storeId: string,
+  installId: string,
+  accountId: string,
+  change: { theme: unknown } | { css: string },
+): Promise<InstallResult<{ theme?: unknown; css?: string }>> {
+  if (!isUuid(storeId) || !isUuid(installId) || !isUuid(accountId)) return refuse(UNKNOWN);
+  const refusal = await lookChangeRefusal(storeId, accountId);
+  if (refusal) return refuse(refusal);
+  let patch: Record<string, unknown>;
+  if ("theme" in change) {
+    const checked = await checkStoreTheme(storeId, change.theme);
+    if (!checked.ok) return checked;
+    patch = { theme: checked.theme };
+  } else {
+    const css = typeof change.css === "string" ? change.css : "";
+    const problem = cssProblem(css);
+    if (problem) return refuse(problem);
+    patch = { css };
+  }
+  const [row] = await db().execute<Row>(sql`
+    update commerce.store_theme_installs set look = coalesce(look, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb
+    where id = ${installId}::uuid and store_id = ${storeId}::uuid and not live
+    returning title
+  `);
+  if (!row) {
+    const [exists] = await db().execute<Row>(sql`select live from commerce.store_theme_installs where id = ${installId}::uuid and store_id = ${storeId}::uuid`);
+    return refuse(exists ? "This theme is live: change it in Design settings, where its changes reach visitors at once." : UNKNOWN);
+  }
+  await audit(accountId, storeId, "store.theme_customised", { install: installId, title: String(row.title), changed: Object.keys(patch) }, {
+    area: "website",
+    target: { type: "theme_install", id: installId },
+  });
+  return { ok: true, ...patch };
 }
 
 /** Thrown inside a transaction for a refusal the person reads; the callers in `design-presets.ts` share it. */

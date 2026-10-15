@@ -51,6 +51,7 @@ import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
 import { featureOn, type FeatureSource } from "@/lib/store-features";
+import { themeLayersOf } from "@/lib/section-styles";
 
 /**
  * The parts of a product's page (D79), each drawn where a product layout
@@ -879,7 +880,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
   return (
     <PageArticle
       content={{ ...content, title: product.title }}
-      place={{ pageId: null, owner: store.id, market: market.slug, product: product.id }}
+      place={{ pageId: null, owner: store.id, market: market.slug, product: product.id, theme: themeLayersOf(store.theme.settings) }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
         block.type === "product" && productPartShows(block, product, ctx.campaigns, store) ? <ProductPartView block={block} ctx={ctx} /> : null

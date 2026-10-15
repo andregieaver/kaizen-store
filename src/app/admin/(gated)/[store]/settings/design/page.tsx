@@ -53,6 +53,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
       )}
       <ThemeLibrary
         installs={installs}
+        base={`/admin/${store.slug}/settings/design`}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
       />

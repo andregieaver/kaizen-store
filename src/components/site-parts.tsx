@@ -10,6 +10,7 @@ import { localizePage } from "@/lib/page-translation";
 import { partFeatureOn } from "@/lib/part-features";
 import { marketPath, marketHome } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
+import { themeLayersOf } from "@/lib/section-styles";
 import type { GridPlace } from "@/server/content-grid";
 import { bindStoreFields } from "@/server/field-binding";
 import type { PlatformChrome } from "@/server/platform-navigation";
@@ -300,7 +301,7 @@ export async function StoreSiteHeader({
         <SiteRows
           content={content}
           ctx={{ kind: "store", store, market, place: "header", withdrawal }}
-          place={{ pageId: layout.id, owner: store.id, market: market.slug }}
+          place={{ pageId: layout.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }}
         />
       </header>
     </HidingHeader>
@@ -322,7 +323,7 @@ export async function StoreSiteFooter({ store, market, layout, withdrawal = true
       <SiteRows
         content={content}
         ctx={{ kind: "store", store, market, place: "footer", withdrawal }}
-        place={{ pageId: layout.id, owner: store.id, market: market.slug }}
+        place={{ pageId: layout.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }}
       />
     </footer>
   );
