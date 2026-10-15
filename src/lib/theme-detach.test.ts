@@ -4,6 +4,7 @@ import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 import { canonicalJson } from "./lifecycle";
 import type { PageBlock, PageRow } from "./page-content";
 import { partCss } from "./part-css";
+import type { SectionStyles } from "./section-styles";
 import { detachThemeValues } from "./theme-detach";
 import { themedRows, type ThemeElements } from "./theme-elements";
 
@@ -79,7 +80,7 @@ describe("detachThemeValues()", () => {
   });
 
   it("measures a row naming a section style against that style (D242, D243)", () => {
-    const sections = { hero: { h3: { typography: { text: { size: { value: 4, unit: "rem" } } } } } };
+    const sections: SectionStyles = { hero: { h3: { typography: { text: { size: { value: 4, unit: "rem" } } } } } };
     // 4rem is what the hero style gives a row naming it, not what the site gives.
     const big = heading({ level: 3, typography: { text: { size: { value: 4, unit: "rem" } } } });
     const named = detachThemeValues([rowOf([big], { sectionStyle: "hero" })], elements, sections);
