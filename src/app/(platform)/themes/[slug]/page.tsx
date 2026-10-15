@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { JsonLdScript } from "@/components/json-ld";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
-import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd } from "@/lib/theme-store";
+import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeTryLink } from "@/lib/theme-store";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 /** Every theme's page is prerendered; one published later is drawn on its first visit. */
@@ -57,6 +57,10 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           <Link href={`/sign-up?theme=${theme.id}`} className="button-primary inline-flex min-h-11 items-center rounded-button px-5 font-medium">
             Start with this theme
           </Link>
+          {/* A route that knows who is signed in, then the admin (another root layout): a plain link (`docs/theme-phase-3.md` step 2). */}
+          <a href={themeTryLink(theme.slug)} className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
+            Try it in your store
+          </a>
           <a href={preview} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
             Open the preview<span className="sr-only"> of {theme.title} (opens in a new window)</span>
           </a>

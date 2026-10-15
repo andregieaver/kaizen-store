@@ -176,3 +176,9 @@ export function themeJsonLd(theme: { title: string; summary: string; pictureUrl:
     publisher: { "@type": "Organization", name: publisher },
   };
 }
+
+/** The owner's page that installs a theme in a store they choose, without making it live (step 2). */
+export const themeTryPath = (slug: string) => `/admin/account/themes/try/${slug}`;
+
+/** What *Try it in your store* links to: a route that sends the person there, or to sign in and back (the theme's page is cached). */
+export const themeTryLink = (slug: string) => `/themes/${slug}/try`;

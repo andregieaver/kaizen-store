@@ -143,7 +143,10 @@ const ROW_SELECT = sql`
   select d.id, d.title, d.summary, d.description, d.picture_url, d.published, d.position, d.snapshot_at, d.snapshot,
          d.source_store_id, s.name as source_name, s.slug as source_slug, d.draft, d.workspace_store_id, w.slug as workspace_slug,
          d.workspace_key, d.published_at, d.archived_at, d.slug, d.listing,
-         (select count(distinct u.store_id)::int from commerce.design_preset_uses u where u.preset_id = d.id) as stores_using,
+         (select count(distinct x.store_id)::int from (
+            select u.store_id from commerce.design_preset_uses u where u.preset_id = d.id
+            union select i.store_id from commerce.store_theme_installs i where i.preset_id = d.id
+          ) x) as stores_using,
          (select count(*)::int from commerce.access_requests r where r.design_preset_id = d.id) as requests,
          coalesce((select array_agg(st.title order by st.position) from commerce.store_starters st where st.recommended_design = d.id), '{}') as recommended_by
   from commerce.design_presets d
@@ -940,6 +943,30 @@ async function placeSnapshot(
  * refreshes `designTags()`.
  */
 export async function applyDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}): Promise<ApplyResult> {
+  const done = await placeDesign(storeId, presetId, accountId, deps, true);
+  if (!done.ok) return done;
+  return { ok: true, useId: done.useId ?? "", installId: done.installId, previous: done.previous ?? "", notes: done.notes };
+}
+
+/**
+ * Installs a theme in a store's theme library without making it live (`docs/theme-phase-3.md` step 2, *Add to my themes* and *Try it in
+ * your store*): the same checks, fonts, pictures and new layout pages as applying, kept in the install's `look` (D241), never the store's
+ * columns, so visitors see nothing until the store switches to it. The caller refreshes `designTags()` (its pages list changed).
+ */
+export async function installDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
+  const done = await placeDesign(storeId, presetId, accountId, deps, false);
+  if (!done.ok) return done;
+  return { ok: true, installId: done.installId, title: done.title, notes: done.notes };
+}
+
+/** Applying (`live`) or only installing: the one body behind both. */
+async function placeDesign(
+  storeId: string,
+  presetId: string,
+  accountId: string,
+  deps: ApplyDeps,
+  live: boolean,
+): Promise<DesignResult<{ useId: string | null; installId: string; previous: string | null; title: string; notes: string[] }>> {
   if (!isUuid(storeId) || !isUuid(presetId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const facts = await actorFacts(storeId, accountId);
   if (!facts) return refuse("That store no longer exists.");
@@ -963,7 +990,7 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
   if (!ready.ok) return ready;
   const { pages, siteCss, notes } = ready;
 
-  let applied: { useId: string; installId: string; previous: { id: string; title: string }; pageIds: Record<string, string | null> };
+  let applied: { useId: string | null; installId: string; previous: { id: string; title: string } | null; pageIds: Record<string, string | null> };
   try {
     applied = await db().transaction(async (tx) => {
       const [store] = await tx.execute<Row>(sql`
@@ -980,7 +1007,8 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
       // The look before stays installed in the store's theme library, with every change made to it (D241).
       const [{ n }] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.store_theme_installs where store_id = ${storeId}::uuid`);
       if (Number(n) >= INSTALLS_MAX) throw new Refused(INSTALLS_FULL);
-      const before = await putAwayLive(tx, storeId);
+      // Only applying puts the live theme away; an install that is not live leaves the store as it is.
+      const before = live ? await putAwayLive(tx, storeId) : null;
       // New pages, never over the store's own.
       const pageIds: Record<string, string | null> = { header: null, footer: null, productLayout: null };
       for (const kind of DESIGN_LAYOUT_KINDS) {
@@ -1007,6 +1035,19 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
           productLayout: pageIds.productLayout && pages.productLayout ? { id: pageIds.productLayout, hash: fingerprint(pages.productLayout) } : null,
         },
       };
+      const theme = { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings };
+      if (!live) {
+        // Kept in the library with its look (D241): its settings, CSS and the pages just made for it.
+        const look = { theme, css: siteCss, headerId: pageIds.header, footerId: pageIds.footer, productLayoutId: pageIds.productLayout };
+        const [kept] = await tx.execute<Row>(sql`
+          insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by, placed)
+          values (${storeId}::uuid, ${presetId}::uuid,
+            (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
+            ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${accountId}::uuid, ${JSON.stringify(placed)}::jsonb)
+          returning id
+        `);
+        return { useId: null, installId: String(kept.id), previous: null, pageIds };
+      }
       const [install] = await tx.execute<Row>(sql`
         insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, live, installed_by, switched_at, placed)
         values (${storeId}::uuid, ${presetId}::uuid,
@@ -1014,7 +1055,6 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
           ${title.slice(0, 80)}, true, ${accountId}::uuid, now(), ${JSON.stringify(placed)}::jsonb)
         returning id
       `);
-      const theme = { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings };
       await tx.execute(sql`
         update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb, custom_css = ${siteCss},
           header_id = ${pageIds.header}::uuid, footer_id = ${pageIds.footer}::uuid, product_layout_id = ${pageIds.productLayout}::uuid
@@ -1022,7 +1062,7 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
       `);
       const [use] = await tx.execute<Row>(sql`
         insert into commerce.design_preset_uses (store_id, preset_id, previous, applied_by, install_id, previous_install_id)
-        values (${storeId}::uuid, ${presetId}::uuid, ${JSON.stringify(previous)}::jsonb, ${accountId}::uuid, ${String(install.id)}::uuid, ${before.id}::uuid)
+        values (${storeId}::uuid, ${presetId}::uuid, ${JSON.stringify(previous)}::jsonb, ${accountId}::uuid, ${String(install.id)}::uuid, ${before?.id ?? null}::uuid)
         returning id
       `);
       return { useId: String(use.id), installId: String(install.id), previous: before, pageIds };
@@ -1030,7 +1070,17 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
   } catch (error) {
     if (error instanceof Refused || error instanceof InstallRefused) return refuse(error.message);
     console.error("[design-presets] applying failed", error);
-    return refuse("The design profile could not be applied. Nothing was changed; try again.");
+    return refuse(live ? "The design profile could not be applied. Nothing was changed; try again." : "The theme could not be added. Nothing was changed; try again.");
+  }
+  if (!live) {
+    await audit(
+      accountId,
+      storeId,
+      "store.theme_installed",
+      { preset: presetId, title, install: applied.installId, pages: applied.pageIds, media: ready.copies, ...(platformAdmin && !facts.member && { byPlatform: true }) },
+      { area: "website", target: { type: "design_preset", id: presetId } },
+    );
+    return { ok: true, useId: null, installId: applied.installId, previous: null, title, notes };
   }
   await audit(
     accountId,
@@ -1040,7 +1090,7 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
       preset: presetId,
       title,
       install: applied.installId,
-      previousInstall: applied.previous.id,
+      previousInstall: applied.previous?.id ?? null,
       pages: applied.pageIds,
       media: ready.copies,
       ...(ready.leftOut > 0 && { mediaLeftOut: ready.leftOut }),
@@ -1048,7 +1098,7 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
     },
     { area: "website", target: { type: "design_preset", id: presetId } },
   );
-  return { ok: true, useId: applied.useId, installId: applied.installId, previous: applied.previous.title, notes };
+  return { ok: true, useId: applied.useId, installId: applied.installId, previous: applied.previous?.title ?? null, title, notes };
 }
 
 class Refused extends Error {}

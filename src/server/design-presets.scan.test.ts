@@ -47,8 +47,10 @@ describe("design profiles go through the template's cleaning (D176)", () => {
     for (const call of ["layoutForStore(", "pageInput.safeParse(", "pageRulesProblem(", "mapSnapshotMedia(", "leftoverStorageUrls(", "cssProblem(", "copyToLibrary("]) {
       expect(place, call).toContain(call);
     }
-    const apply = body(server, "applyDesignPreset");
+    // Applying and installing without going live (`docs/theme-phase-3.md` step 2) are one body, placeDesign().
+    const apply = body(server, "placeDesign");
     for (const call of ["parseDesignSnapshot(", "placeSnapshot("]) expect(apply, call).toContain(call);
+    for (const fn of ["applyDesignPreset", "installDesignPreset"]) expect(body(server, fn), fn).toContain("placeDesign(");
     expect(body(server, "writeWorkspaceLook")).toContain("placeSnapshot(");
   });
 

@@ -9,7 +9,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { installPreview, whatChangesFor } from "@/server/theme-preview";
 import { listSavedThemes } from "@/server/themes";
 
-import { deleteSavedThemeAction, installStoreFontAction, saveSavedThemeAction } from "../../actions";
+import { deleteSavedThemeAction, installStoreFontAction, saveSavedThemeAction, switchThemeAction } from "../../actions";
 import { saveInstallCssAction, saveInstallThemeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customise theme" };
@@ -19,8 +19,9 @@ export const metadata: Metadata = { title: "Customise theme" };
  * store's own pages, what switching changes, its settings (the same editor as the live theme's, saved into the install) and its own CSS.
  * Visitors see none of it until the owner switches. The live theme is edited on Design settings, so its address goes there.
  */
-export default async function CustomiseThemePage({ params }: PageProps<"/admin/[store]/settings/design/themes/[install]">) {
+export default async function CustomiseThemePage({ params, searchParams }: PageProps<"/admin/[store]/settings/design/themes/[install]">) {
   const { store: slug, install: installId } = await params;
+  const added = (await searchParams).added === "1";
   const member = await requirePermission(slug, "website:read");
   const { store } = member;
   const preview = await installPreview(store.id, installId);
@@ -51,6 +52,20 @@ export default async function CustomiseThemePage({ params }: PageProps<"/admin/[
           </ButtonLink>
         }
       />
+      {added && (
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
+          “{install.title}” is in your theme library, not live: visitors see nothing of it until you switch. Preview it on your own pages,
+          change it here if you like, then switch when it is ready.
+        </p>
+      )}
+      {canChange && (
+        <Card title="Switch to it" description="Makes this theme live at once. Your live theme stays in your library with every change you made to it, so you can switch back." compact>
+          <ActionForm action={switchThemeAction.bind(null, store.slug)}>
+            <input type="hidden" name="install" value={install.id} />
+            <SubmitButton>Switch to “{install.title}”</SubmitButton>
+          </ActionForm>
+        </Card>
+      )}
       {changes && <ThemeChanges live={changes.live} target={changes.target} changes={changes.changes} />}
       <Card title="Its layouts" description="The header, footer and product page this theme uses. They are pages of your store: editing one changes it in this theme only, unless your live theme uses it too." compact>
         <List label="Layouts">

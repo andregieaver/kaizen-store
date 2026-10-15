@@ -1,13 +1,14 @@
 "use server";
 
 import { refresh, updateTag } from "next/cache";
+import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { designChoice } from "@/lib/design-presets";
 import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
-import { applyDesignPreset, designTags, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
+import { applyDesignPreset, designTags, installDesignPreset, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
 import { detachDryRun, runDetach, undoDetach } from "@/server/theme-detach";
 import { removeInstall, setFollowsUpdates, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
@@ -196,4 +197,19 @@ export async function followUpdatesAction(storeSlug: string, _state: FormState, 
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [follows ? `${result.title} will update by itself.` : `${result.title} waits for you to update it.`] };
+}
+
+/**
+ * Adds a theme to the store's library without making it live (`docs/theme-phase-3.md` step 2), then opens its own page (D244) to preview
+ * and customise it. Visitors see nothing until the store switches to it.
+ */
+export async function installThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const presetId = designChoice(formData.get("design"));
+  if (!presetId) return { status: "error", messages: ["Choose a theme."] };
+  const result = await installDesignPreset(member.store.id, presetId, member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  redirect(`/admin/${member.store.slug}/settings/design/themes/${result.installId}?added=1`);
 }

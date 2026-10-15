@@ -779,6 +779,9 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
   }),
+  account("account.themes.try", "/account/themes/try/[theme]", "Try a theme in your store", "Where *Try it in your store* on a theme's page in the theme store lands: each store where you may change the website, with a button that adds the theme to its theme library without making it live, then opens it there to preview and customise.", {
+    keywords: ["theme store", "try theme", "install theme", "add theme"],
+  }),
   account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),

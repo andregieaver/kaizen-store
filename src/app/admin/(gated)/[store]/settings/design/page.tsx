@@ -16,6 +16,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   applyDesignAction,
+  installThemeAction,
   countThemeFollowAction,
   followUpdatesAction,
   deleteSavedThemeAction,
@@ -82,6 +83,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))}
         latest={latest}
         apply={canChange ? applyDesignAction.bind(null, store.slug) : null}
+        install={canChange ? installThemeAction.bind(null, store.slug) : null}
         restore={canChange ? restoreDesignAction.bind(null, store.slug) : null}
         canChange={canChange}
       />

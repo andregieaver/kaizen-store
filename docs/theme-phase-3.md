@@ -52,3 +52,24 @@ PGlite test of the address rules and `e2e/theme-store.spec.ts`.
 **Not in step 1.** The list in a browser test with themes in it (the list is cached from the build, and a theme seeded before the build would
 change the sign-up page every other test reads); more than one picture per theme; a link to the theme store from Kaizena Flow's own menus,
 which are the platform admin's to add.
+
+## Step 2: try it in your store
+
+**Installing without going live.** `installDesignPreset()` (`src/server/design-presets.ts`) and `applyDesignPreset()` are one body,
+`placeDesign(…, live)`: the same refusals, fonts, picture copies, page checks and new layout pages, and the install's `placed` (D245). Not
+live, the look goes into the new `store_theme_installs` row's `look` and the store's columns are not touched, so visitors see nothing; no
+`design_preset_uses` row is written (there is no look to put back) and the audit is `store.theme_installed`. A theme with an install counts
+as used (`stores_using` counts installs too), so it cannot be deleted while a store holds it.
+
+**From the theme store.** A theme's page links *Try it in your store* to `/themes/{slug}/try` (`themeTryLink()`), a route that knows who is signed
+in (the theme's page is cached and cannot): it sends them to `/admin/account/themes/try/{slug}` (`themeTryPath()`), someone held at the
+second step to finish it, and anyone else to sign in, each with `next` back to the page. It lists their stores where they hold
+`website:write`, says which already have the theme (`storesWithTheme()`), and adds it with the store's own `installThemeAction`, which asks
+the permission again and opens the install's page (D244) with `?added=1`: a note that visitors see nothing yet, and *Switch to it*.
+
+**From the admin.** Design settings' theme cards offer *Add to my themes* beside *Apply* (the panel links to the theme store).
+
+**Built.** `installDesignPreset()`, `storesWithTheme()`, `installThemeAction`, the try page, the install page's note and switch card; held by
+`src/server/theme-store.int.test.ts` (not live, columns unchanged, counted as used, an outsider refused), the scan test (both go through
+`placeDesign()`), `e2e/signed-in/theme-try.spec.ts` (owner adds from the theme store, a Read-only member is offered no store, signed out
+goes to sign in) and the Try link in `e2e/theme-store.spec.ts`.

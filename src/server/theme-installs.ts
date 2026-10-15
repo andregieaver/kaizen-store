@@ -20,6 +20,16 @@ import { checkStoreTheme } from "./themes";
 type Row = Record<string, unknown>;
 type Tx = Pick<ReturnType<typeof db>, "execute">;
 
+/** Which of these stores already have a theme installed, for *Try it in your store* (`docs/theme-phase-3.md` step 2). */
+export async function storesWithTheme(presetId: string, storeSlugs: readonly string[]): Promise<Set<string>> {
+  if (storeSlugs.length === 0) return new Set();
+  const rows = await db().execute<Row>(sql`
+    select distinct s.slug from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
+    where i.preset_id = ${presetId}::uuid and s.slug = any(${`{${storeSlugs.map((slug) => JSON.stringify(slug)).join(",")}}`}::text[])
+  `);
+  return new Set(rows.map((row) => String(row.slug)));
+}
+
 /** The look an install keeps while it is not live: the store's look columns as they were. */
 export type InstalledLook = { theme: unknown; css: string; headerId: string | null; footerId: string | null; productLayoutId: string | null };
 

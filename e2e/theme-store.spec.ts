@@ -43,6 +43,7 @@ test("a theme's page shows what it includes, its previews and its changelog, and
   await expect(page.getByRole("heading", { level: 1, name: "E2E Fjord" })).toBeVisible();
   await expect(page.getByText("Cool and clear.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "What it includes" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Try it in your store" })).toHaveAttribute("href", `/themes/${SLUG}/try`);
   await expect(page.getByText("Light and dark", { exact: true })).toBeVisible();
   await expect(page.getByText("The first version.")).toBeVisible();
 

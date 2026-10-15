@@ -17,6 +17,7 @@ export function DesignProfilePanel({
   designs,
   latest,
   apply,
+  install,
   restore,
   canChange,
   closedNote,
@@ -25,13 +26,15 @@ export function DesignProfilePanel({
   /** The latest profile applied whose look from before can be put back. */
   latest: { presetTitle: string; appliedAt: string; savedTheme: string | null; previousInstall?: string | null } | null;
   apply: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
+  /** Adds a theme to the store's library without making it live (`docs/theme-phase-3.md` step 2); left out where there is no library. */
+  install?: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
   restore: (() => Promise<FormState>) | null;
   canChange: boolean;
   /** Why nothing can be changed, when it cannot. */
   closedNote?: string;
 }) {
   return (
-    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back.</>} className="flex flex-col gap-4" compact>
+    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back. Add one to your themes to preview and customise it first; visitors see nothing until you switch. <a href="/themes" target="_blank" rel="noopener" className="underline underline-offset-2">See every theme in the theme store<span className="sr-only"> (opens in a new window)</span></a>.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
@@ -66,8 +69,16 @@ export function DesignProfilePanel({
                   {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
                 </h3>
                 {design.summary && <p>{design.summary}</p>}
+                {canChange && install && (
+                  <ActionForm action={install} className="mt-auto">
+                    <input type="hidden" name="design" value={design.id} />
+                    <SubmitButton variant="secondary">
+                      Add to my themes<span className="sr-only"> ({design.title})</span>
+                    </SubmitButton>
+                  </ActionForm>
+                )}
                 {canChange && apply && (
-                  <details className="mt-auto">
+                  <details className={install ? undefined : "mt-auto"}>
                     <summary className="flex min-h-10 cursor-pointer items-center font-medium underline-offset-2 hover:underline">
                       Apply<span className="sr-only"> {design.title}</span>…
                     </summary>

@@ -11,6 +11,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const { syncLaunchThemes } = await import("./launch-themes");
 const designs = await import("./design-presets");
 const store = await import("./theme-store");
+const installs = await import("./theme-installs");
 
 /**
  * The theme store's data (`docs/theme-phase-3.md` step 1): launch themes listed at their key, an admin's listing saved at once and refused
@@ -62,5 +63,39 @@ describe("the theme store's data", () => {
     // Unpublished: gone again.
     expect((await designs.unpublishDesign(admin, made.id)).ok).toBe(true);
     expect(await store.themeStorePage(slug)).toBeNull();
+  });
+});
+
+describe("trying a theme in a store (step 2)", () => {
+  it("adds it to the store's themes without going live, so visitors see nothing, and counts the store as using it", async () => {
+    const email = `trier-${run}@example.com`;
+    const slug = `trier-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Owner', ${slug}) returning id`);
+    const [{ id: storeId }] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, ${slug}, null) as id`);
+    const [{ id: ownerId }] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = lower(${email})`);
+    const columns = sql`select theme, custom_css, header_id, footer_id, product_layout_id from commerce.stores where id = ${String(storeId)}::uuid`;
+    const before = (await db().execute<Row>(columns))[0];
+    const hearth = await store.themeStorePage("hearth");
+    if (!hearth) throw new Error("Hearth is not in the store");
+    expect(await installs.storesWithTheme(hearth.id, [slug])).toEqual(new Set());
+
+    const added = await designs.installDesignPreset(String(storeId), hearth.id, String(ownerId), deps);
+    if (!added.ok) throw new Error(added.problems.join(" "));
+    expect(added.title).toBe("Hearth");
+    // The store's look columns, which every page reads, are as they were; the new install is not live and keeps its look in its row.
+    expect((await db().execute<Row>(columns))[0]).toEqual(before);
+    const list = await installs.listInstalls(String(storeId));
+    expect(list.find((install) => install.id === added.installId)?.live).toBe(false);
+    expect(list.filter((install) => install.live)).toHaveLength(1);
+    expect(await installs.storesWithTheme(hearth.id, [slug, `nobody-${run}`])).toEqual(new Set([slug]));
+    const [{ uses }] = await db().execute<Row>(sql`select count(*)::int as uses from commerce.design_preset_uses where store_id = ${String(storeId)}::uuid`);
+    expect(uses).toBe(0);
+    const row = (await designs.listDesigns()).find((design) => design.id === hearth.id);
+    expect(row?.storesUsing).toBeGreaterThanOrEqual(1);
+
+    // Someone who does not work in the store cannot add one.
+    const [outsider] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`outsider-${run}@example.com`}, 'Out') returning id`);
+    const other = await designs.installDesignPreset(String(storeId), hearth.id, String(outsider.id), deps);
+    expect(other.ok).toBe(false);
   });
 });
