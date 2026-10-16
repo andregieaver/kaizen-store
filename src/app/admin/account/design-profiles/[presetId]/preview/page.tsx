@@ -134,7 +134,8 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
           {header ? <StoreSiteHeader store={store} market={market} notice={null} layout={header} /> : <StoreHeader store={store} market={market} notice={null} />}
           <main className="flex flex-col">
             {front ? (
-              <div className="store-page">
+              // `data-shot`: the parts the theme store's photographs measure (`docs/theme-showcase-phase-2.md`, `theme-shoot.ts`).
+              <div className="store-page" data-shot="front">
                 <PageArticle content={front.content} place={{ pageId: front.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }} inAdmin />
               </div>
             ) : (
@@ -148,7 +149,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
               </div>
             )}
             {product && (
-              <section aria-label={product.title} className="mx-auto w-full max-w-(--content-width) border-t border-border px-4 py-8">
+              <section aria-label={product.title} data-shot="product" className="mx-auto w-full max-w-(--content-width) border-t border-border px-4 py-8">
                 <ProductLayoutView layout={productLayout} ctx={{ store, market, product, m, campaigns: notices }} inAdmin />
               </section>
             )}

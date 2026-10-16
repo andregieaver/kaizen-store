@@ -4,9 +4,12 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
-import { LAUNCH_THEMES, launchShot, launchShotFor } from "./launch-themes";
+import { LAUNCH_SHOTS, LAUNCH_THEMES, launchShot, launchShotFor } from "./launch-themes";
+import type { ShotFile } from "./theme-shots";
 import {
+  cardPicture,
   filterThemes,
+  madeScreens,
   parseListing,
   parseThemeFilter,
   readListing,
@@ -17,6 +20,7 @@ import {
   themeChangelog,
   themeFeatures,
   themeFilterHref,
+  sharePicture,
   themeJsonLd,
   type ThemeStoreCard,
 } from "./theme-store";
@@ -31,6 +35,8 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   summary: "",
   pictureUrl: null,
   shotUrl: null,
+  madeCard: null,
+  madeShare: null,
   presets: [],
   looks: [{ key: null, name: id, showcase: null }],
   listing: { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} },
@@ -136,22 +142,53 @@ describe("structured data", () => {
   });
 });
 
-describe("a launch theme's card picture", () => {
-  it("is a photograph of its current version, in the public files every host serves", () => {
+describe("a launch theme's card picture by hand (the fallback until its looks are photographed, docs/theme-showcase-phase-2.md)", () => {
+  it("is a photograph of its newest version photographed, not past its own, in the public files every host serves", () => {
     for (const theme of LAUNCH_THEMES) {
       const shot = launchShot(theme);
-      expect(shot).toBe(`/demo/themes/${theme.key}-v${theme.version}.webp`);
-      // Raising a theme's version asks for a new photograph of it (its public preview, embedded, at 1280 by 960, made 800 by 600).
+      expect(LAUNCH_SHOTS[theme.key], `${theme.key} has a photograph by hand`).toBeGreaterThanOrEqual(1);
+      expect(shot).toBe(`/demo/themes/${theme.key}-v${Math.min(theme.version, LAUNCH_SHOTS[theme.key])}.webp`);
       const file = path.join(process.cwd(), "public", shot);
       expect(existsSync(file), `${shot} is missing: photograph the theme's preview again`).toBe(true);
       expect(readFileSync(file).subarray(8, 12).toString("latin1")).toBe("WEBP");
     }
   });
 
+  it("needs no new photograph when a version is raised: the newest one stands in", () => {
+    const theme = { ...LAUNCH_THEMES[0], version: LAUNCH_SHOTS[LAUNCH_THEMES[0].key] + 3 };
+    expect(launchShot(theme)).toBe(`/demo/themes/${theme.key}-v${LAUNCH_SHOTS[theme.key]}.webp`);
+  });
+
   it("is found by the platform theme's launch key, and a theme from anywhere else has none", () => {
     expect(launchShotFor(LAUNCH_THEMES[0].key)).toBe(launchShot(LAUNCH_THEMES[0]));
     expect(launchShotFor("not-a-launch-theme")).toBeNull();
     expect(launchShotFor(null)).toBeNull();
+  });
+});
+
+describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", () => {
+  const file = (name: string, width = 1440, height = 900): ShotFile => ({ path: `platform/theme-shots/${name}`, url: `https://x.test/${name}`, width, height, bytes: 1 });
+
+  it("cards and shares its own picture first, then what its photograph made, then (a card only) a launch photograph", () => {
+    expect(cardPicture({ pictureUrl: "/own.webp", madeCard: "/made.webp", shotUrl: "/launch.webp" })).toBe("/own.webp");
+    expect(cardPicture({ pictureUrl: null, madeCard: "/made.webp", shotUrl: "/launch.webp" })).toBe("/made.webp");
+    expect(cardPicture({ pictureUrl: null, madeCard: null, shotUrl: "/launch.webp" })).toBe("/launch.webp");
+    expect(cardPicture({ pictureUrl: null, madeCard: null, shotUrl: null })).toBeNull();
+    expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg" })).toBe("/share.jpg");
+    expect(sharePicture({ pictureUrl: "/own.webp", madeShare: "/share.jpg" })).toBe("/own.webp");
+  });
+
+  it("without pictures of its own, shows each look's first screens: computers, then phones, each named for its look and store", () => {
+    const looks = [
+      { key: null, name: "Calm", showcase: null, shots: { computer: { screen: file("own-c") }, phone: { screen: file("own-p", 780, 1688) }, version: 2 } },
+      { key: "sand", name: "Sand", showcase: { pack: "beauty" as const, trade: "Beauty", line: "Dune, a demo skin care store", starterId: "s" }, shots: { computer: { screen: file("sand-c") }, phone: null, version: 2 } },
+      { key: "ink", name: "Ink", showcase: null, shots: null },
+    ];
+    expect(madeScreens({ title: "Calm", looks }).map((s) => [s.url, s.alt, s.kind])).toEqual([
+      ["https://x.test/own-c", "Calm on a computer", "computer"],
+      ["https://x.test/sand-c", "Calm, Sand on a computer, on Dune, a demo skin care store", "computer"],
+      ["https://x.test/own-p", "Calm on a phone", "phone"],
+    ]);
   });
 });
 

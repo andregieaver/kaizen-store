@@ -28,6 +28,7 @@ import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 import { audit, type Account } from "./auth";
 import { setFeatures } from "./store-features";
 import { getStore, templateStoreSlug } from "./stores";
+import { askForThemeShots } from "./theme-shots";
 
 /**
  * Store templates (D175, `docs/store-templates.md`): the platform's starting points for new stores. Each is a real store marked
@@ -308,6 +309,8 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
   await audit(admin.id, done.storeId, "platform.starter_published", { starter: id, copy: done.copyId, copySlug: done.copySlug }, {
     target: { type: "store_starter", id },
   });
+  // A content pack published again is a new store to show themes on: their pictures there are asked for (`docs/theme-showcase-phase-2.md`).
+  await askForThemeShots();
   return { ok: true, copySlug: done.copySlug, notes };
 }
 

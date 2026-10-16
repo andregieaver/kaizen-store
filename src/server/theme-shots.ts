@@ -1,0 +1,325 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+
+import { db, readDb } from "@/db/client";
+import { designPreviewPath, parseDesignSnapshot } from "@/lib/design-presets";
+import { variationsOf } from "@/lib/design-variations";
+import { lookProblem } from "@/lib/replicate-look";
+import type { Shot } from "@/lib/theme-shoot";
+import { readListing, themeLooks } from "@/lib/theme-store";
+import {
+  SHOT_TRIES,
+  missingShots,
+  readShotPictures,
+  shotFolder,
+  shotKey,
+  shotPaths,
+  supersededShots,
+  wantedShots,
+  type LookShots,
+  type ShotKind,
+  type ShotPictures,
+  type ShotTheme,
+  type StoredShot,
+  type WantedShot,
+} from "@/lib/theme-shots";
+
+import { audit, type Account } from "./auth";
+import { removeStoredFiles, uploadBytes } from "./media";
+import { publishedPacks } from "./store-starters";
+import { shotFiles } from "./theme-shot-files";
+
+/**
+ * The photographs of published themes' looks (`docs/theme-showcase-phase-2.md` step 1): what is wanted and queued, each unit claimed and
+ * taken by the job (`/api/cron/theme-shots`, whose runner brings the browser: nothing here loads Chromium), the sets no longer wanted
+ * pruned with their files, and the reads of the theme store and the platform's admin.
+ */
+
+type Row = Record<string, unknown>;
+
+/** How long a unit is held by the run that took it: past this, another run may take it again. */
+const CLAIM = "3 minutes";
+/** Sets no longer wanted are kept this long, as cached pages still name their files. */
+const KEEP_SUPERSEDED = "7 days";
+
+/** Every published, unarchived theme with a readable snapshot and a version, each look with the store template its listing shows it on. */
+async function publishedThemes(): Promise<ShotTheme[]> {
+  const [rows, packs] = await Promise.all([
+    readDb().execute<Row>(sql`
+      select p.id, p.title, p.listing, p.snapshot,
+             (select max(v.number) from commerce.design_preset_versions v where v.preset_id = p.id) as version
+        from commerce.design_presets p
+       where p.published and p.archived_at is null
+    `),
+    publishedPacks(),
+  ]);
+  return rows.flatMap((row) => {
+    const snapshot = parseDesignSnapshot(row.snapshot);
+    const version = Number(row.version);
+    if (!snapshot || !Number.isInteger(version) || version < 1) return [];
+    const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
+    const looks = themeLooks(String(row.title), presets, readListing(row.listing), packs).map((look) => ({ variation: look.key, starterId: look.showcase?.starterId ?? null }));
+    return [{ id: String(row.id), version, looks }];
+  });
+}
+
+/** The store each showcase draws: a published template's frozen copy (as the public preview), and the Standard store's for null. */
+async function showcaseStores(): Promise<(starterId: string | null) => string | null> {
+  const [starters, template] = await Promise.all([
+    readDb().execute<Row>(sql`
+      select st.id, s.id as store_id from commerce.store_starters st
+        join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+       where st.published and st.archived_at is null
+    `),
+    readDb().execute<Row>(sql`select id from commerce.stores where is_template limit 1`),
+  ]);
+  const byStarter = new Map(starters.map((row) => [String(row.id), String(row.store_id)]));
+  const standard = template[0] ? String(template[0].id) : null;
+  return (starterId) => (starterId === null ? standard : (byStarter.get(starterId) ?? null));
+}
+
+/** What should be photographed now. */
+export async function wantedNow(): Promise<WantedShot[]> {
+  const [themes, storeOf] = await Promise.all([publishedThemes(), showcaseStores()]);
+  return wantedShots(themes, storeOf);
+}
+
+const storedOf = (row: Row): StoredShot => ({
+  id: String(row.id),
+  presetId: String(row.preset_id),
+  version: Number(row.version),
+  variation: row.variation ? String(row.variation) : null,
+  starterId: row.starter_id ? String(row.starter_id) : null,
+  showcaseStoreId: String(row.showcase_store_id),
+  kind: String(row.kind) as ShotKind,
+  status: String(row.status) as StoredShot["status"],
+});
+
+/**
+ * Brings the queue in line with what is wanted (`wanted`, else worked out now): units wanted and missing are added, units no longer wanted
+ * set aside (`supersededShots()`), and a unit whose last try's claim ran out on its last try is `failed`. Returns what is wanted.
+ */
+export async function queueThemeShots(wanted?: WantedShot[]): Promise<WantedShot[]> {
+  const want = wanted ?? (await wantedNow());
+  const stored = (await db().execute<Row>(sql`
+    select id, preset_id, version, variation, starter_id, showcase_store_id, kind, status from commerce.theme_shots where status <> 'superseded'
+  `)).map(storedOf);
+  const missing = missingShots(stored, want);
+  for (const shot of missing) {
+    // A unit set aside and wanted again (a theme published again without a new version) comes back: done if its pictures are still kept.
+    await db().execute(sql`
+      insert into commerce.theme_shots as t (preset_id, version, variation, starter_id, showcase_store_id, kind)
+      values (${shot.presetId}::uuid, ${shot.version}, ${shot.variation}, ${shot.starterId}::uuid, ${shot.showcaseStoreId}::uuid, ${shot.kind})
+      on conflict on constraint theme_shots_unit do update
+        set status = case when t.pictures is not null and t.finished_at is not null then 'done' else 'waiting' end,
+            superseded_at = null, tries = 0, problem = null, claimed_until = null
+        where t.status = 'superseded'
+    `);
+  }
+  const aside = supersededShots(stored, want);
+  if (aside.length > 0) {
+    await db().execute(sql`
+      update commerce.theme_shots set status = 'superseded', superseded_at = now(), claimed_until = null
+       where id = any(${`{${aside.join(",")}}`}::uuid[]) and status <> 'superseded'
+    `);
+  }
+  await db().execute(sql`
+    update commerce.theme_shots set status = 'failed', claimed_until = null,
+           problem = coalesce(problem, 'The look did not finish being photographed in time.')
+     where status = 'running' and claimed_until < now() and tries >= ${SHOT_TRIES}
+  `);
+  return want;
+}
+
+/** A unit as the job takes it. */
+export type ClaimedShot = StoredShot & { tries: number };
+
+/** Takes the oldest unit waiting (or one whose run stopped), for this run alone; null when there is none. */
+export async function claimThemeShot(): Promise<ClaimedShot | null> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.theme_shots s set status = 'running', tries = s.tries + 1, claimed_until = now() + ${CLAIM}::interval
+     where s.id = (
+       select id from commerce.theme_shots
+        where (status = 'waiting' or (status = 'running' and claimed_until < now())) and tries < ${SHOT_TRIES}
+        order by created_at, id
+        for update skip locked
+        limit 1
+     )
+    returning s.id, s.preset_id, s.version, s.variation, s.starter_id, s.showcase_store_id, s.kind, s.status, s.tries
+  `);
+  return row ? { ...storedOf(row), tries: Number(row.tries) } : null;
+}
+
+/** Where the browser looks for a unit's look: the public preview of the published look on its showcase, alone. */
+export const shotPreviewUrl = (origin: string, shot: Pick<WantedShot, "presetId" | "starterId" | "variation">): string =>
+  `${origin}${designPreviewPath(shot.presetId, shot.starterId, false, false, true, shot.variation)}`;
+
+/** What taking a unit needs from outside: the photographer (a browser) and the bucket. Injected, so tests need neither. */
+export type ShotDeps = {
+  photograph: (url: string, kind: ShotKind) => Promise<Shot>;
+  upload?: (path: string, bytes: Uint8Array, contentType: string) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
+  remove?: (paths: string[]) => Promise<boolean>;
+};
+
+const upload = (deps: ShotDeps) => deps.upload ?? ((path: string, bytes: Uint8Array, type: string) => uploadBytes("product-media", path, bytes, type));
+const remove = (deps: ShotDeps) => deps.remove ?? ((paths: string[]) => removeStoredFiles("product-media", paths));
+
+/**
+ * Photographs a claimed unit, if it is still wanted (otherwise it is set aside), makes its pictures, stores them, and only then marks it
+ * done. A failure is kept as a plain sentence and the unit waits for its next try (or is `failed` after its last). Returns what became of it.
+ */
+export async function takeThemeShot(shot: ClaimedShot, wanted: readonly WantedShot[], origin: string, deps: ShotDeps): Promise<"done" | "superseded" | "waiting" | "failed"> {
+  if (!wanted.some((w) => shotKey(w) === shotKey(shot))) {
+    await db().execute(sql`update commerce.theme_shots set status = 'superseded', superseded_at = now(), claimed_until = null where id = ${shot.id}::uuid`);
+    return "superseded";
+  }
+  const stored: string[] = [];
+  try {
+    const taken = await deps.photograph(shotPreviewUrl(origin, shot), shot.kind);
+    const files = await shotFiles(shot.kind, taken);
+    const pictures: ShotPictures = {};
+    for (const file of files) {
+      const path = `${shotFolder(shot.presetId, shot.id)}/${shot.kind}-${file.kind}.${file.extension}`;
+      const put = await upload(deps)(path, file.bytes, file.contentType);
+      if (!put.ok) throw new Error(put.problem);
+      stored.push(path);
+      pictures[file.kind] = { path, url: put.url, width: file.width, height: file.height, bytes: file.bytes.length };
+    }
+    const [done] = await db().execute<Row>(sql`
+      update commerce.theme_shots set status = 'done', pictures = ${JSON.stringify(pictures)}::jsonb, parts = ${JSON.stringify(taken.parts)}::jsonb,
+             finished_at = now(), claimed_until = null, problem = null
+       where id = ${shot.id}::uuid and status = 'running'
+      returning id
+    `);
+    // Set aside while it was being photographed: its files are not kept.
+    if (!done) {
+      await remove(deps)(stored);
+      return "superseded";
+    }
+    // The look's older sets are no longer what it shows: set aside now, pruned with their files a week later.
+    await db().execute(sql`
+      update commerce.theme_shots set status = 'superseded', superseded_at = now(), claimed_until = null
+       where preset_id = ${shot.presetId}::uuid and variation is not distinct from ${shot.variation} and kind = ${shot.kind}
+         and status = 'done' and id <> ${shot.id}::uuid and (version < ${shot.version} or showcase_store_id <> ${shot.showcaseStoreId}::uuid)
+    `);
+    return "done";
+  } catch (error) {
+    if (stored.length > 0) await remove(deps)(stored).catch(() => false);
+    const problem = lookProblem(error).slice(0, 500);
+    const last = shot.tries >= SHOT_TRIES;
+    await db().execute(sql`
+      update commerce.theme_shots set status = ${last ? "failed" : "waiting"}, problem = ${problem}, claimed_until = null
+       where id = ${shot.id}::uuid and status = 'running'
+    `);
+    return last ? "failed" : "waiting";
+  }
+}
+
+/** Removes the files and rows of units set aside more than a week ago. Returns how many went. */
+export async function pruneThemeShots(deps: Pick<ShotDeps, "remove"> = {}): Promise<number> {
+  const rows = await db().execute<Row>(sql`
+    select id, pictures from commerce.theme_shots where status = 'superseded' and superseded_at < now() - ${KEEP_SUPERSEDED}::interval
+    order by superseded_at limit 200
+  `);
+  if (rows.length === 0) return 0;
+  const paths = rows.flatMap((row) => shotPaths(readShotPictures(row.pictures)));
+  // A file that cannot be removed now stays with its row, to be tried again on the next run.
+  if (paths.length > 0 && !(await remove(deps as ShotDeps)(paths))) return 0;
+  await db().execute(sql`delete from commerce.theme_shots where id = any(${`{${rows.map((r) => String(r.id)).join(",")}}`}::uuid[])`);
+  return rows.length;
+}
+
+/** How long a unit's look may take, browser and all: a run starts another only while it has this much time left. */
+export const SHOT_MS = 45_000;
+
+/**
+ * One run of the job: the queue brought in line, then units taken one after another until `deadline` (a time in milliseconds) leaves too
+ * little time for another, then the old sets pruned. Returns how many units were done, for the route to refresh the theme store.
+ */
+export async function runThemeShots(origin: string, deadline: number, deps: ShotDeps, now: () => number = Date.now): Promise<{ done: number; taken: number }> {
+  const wanted = await queueThemeShots();
+  let done = 0;
+  let taken = 0;
+  while (now() + SHOT_MS < deadline) {
+    const shot = await claimThemeShot();
+    if (!shot) break;
+    taken++;
+    if ((await takeThemeShot(shot, wanted, origin, deps)) === "done") done++;
+  }
+  await pruneThemeShots(deps).catch((error) => console.error("[theme-shots] prune failed:", error));
+  return { done, taken };
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------------------------
+ * Reads
+ * ---------------------------------------------------------------------------------------------------------------------------------------- */
+
+/** A look's key in the reads: the theme and the preset (empty for its own look). */
+export const lookOf = (presetId: string, variation: string | null): string => `${presetId}|${variation ?? ""}`;
+
+/** The latest done set of each look of these themes, at each width: what the theme store shows. */
+export async function themeShotsFor(presetIds: readonly string[]): Promise<Map<string, LookShots>> {
+  const out = new Map<string, LookShots>();
+  if (presetIds.length === 0) return out;
+  const rows = await readDb().execute<Row>(sql`
+    select distinct on (preset_id, coalesce(variation, ''), kind) preset_id, variation, kind, version, pictures
+      from commerce.theme_shots
+     where status = 'done' and preset_id = any(${`{${presetIds.join(",")}}`}::uuid[])
+     order by preset_id, coalesce(variation, ''), kind, finished_at desc
+  `);
+  for (const row of rows) {
+    const key = lookOf(String(row.preset_id), row.variation ? String(row.variation) : null);
+    const look = out.get(key) ?? { computer: null, phone: null, version: null };
+    const kind = String(row.kind);
+    if (kind === "computer" || kind === "phone") look[kind] = readShotPictures(row.pictures);
+    look.version = Math.max(look.version ?? 0, Number(row.version));
+    out.set(key, look);
+  }
+  return out;
+}
+
+/** A unit as the platform's admin sees it on a theme's page. */
+export type ShotStatus = {
+  variation: string | null;
+  kind: ShotKind;
+  version: number;
+  status: StoredShot["status"];
+  problem: string | null;
+  finishedAt: string | null;
+  pictures: ShotPictures;
+};
+
+/** A theme's units not set aside, newest first per look and width: what is made, being made, or could not be made. */
+export async function themeShotStatus(presetId: string): Promise<ShotStatus[]> {
+  const rows = await readDb().execute<Row>(sql`
+    select distinct on (coalesce(variation, ''), kind) variation, kind, version, status, problem, finished_at, pictures
+      from commerce.theme_shots where preset_id = ${presetId}::uuid and status <> 'superseded'
+     order by coalesce(variation, ''), kind, version desc, created_at desc
+  `);
+  return rows.map((row) => ({
+    variation: row.variation ? String(row.variation) : null,
+    kind: String(row.kind) as ShotKind,
+    version: Number(row.version),
+    status: String(row.status) as StoredShot["status"],
+    problem: row.problem ? String(row.problem) : null,
+    finishedAt: row.finished_at ? new Date(String(row.finished_at)).toISOString() : null,
+    pictures: readShotPictures(row.pictures),
+  }));
+}
+
+/** *Try again* on a theme's pictures that could not be made: their tries start over. Platform admins only. */
+export async function retryThemeShots(admin: Account, presetId: string): Promise<number> {
+  if (!admin.platformAdmin) return 0;
+  const rows = await db().execute<Row>(sql`
+    update commerce.theme_shots set status = 'waiting', tries = 0, problem = null, claimed_until = null
+     where preset_id = ${presetId}::uuid and status = 'failed' returning id
+  `);
+  if (rows.length > 0) await audit(admin.id, null, "platform.theme_shots_retried", { preset: presetId, units: rows.length }, { target: { type: "design_preset", id: presetId } });
+  return rows.length;
+}
+
+/** Asks for pictures now (after a publish or a change of where a look is shown), so the admin sees them waiting; never fails its caller. */
+export async function askForThemeShots(): Promise<void> {
+  await queueThemeShots().catch((error) => console.error("[theme-shots] queue failed:", error));
+}

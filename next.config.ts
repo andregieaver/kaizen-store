@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
     // Playwright also reads browsers.json and package.json at run time. The globs name
     // pnpm's own folders: a file under a linked folder would turn the link into a folder.
     "/api/cron/cookie-scan": CHROMIUM_FILES,
+    // The photographs of published themes' looks (`docs/theme-showcase-phase-2.md` step 1, `src/server/theme-shot-runner.ts`).
+    "/api/cron/theme-shots": CHROMIUM_FILES,
     // A glob, not the route's name: `[store]` would be read as a set of characters, and the route group
     // `(gated)` is part of the path Turbopack matches. Checked in the build's `.nft.json` for this route.
     "/admin/**/replicate/**/tick": CHROMIUM_FILES,

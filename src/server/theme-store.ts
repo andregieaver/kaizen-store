@@ -18,9 +18,11 @@ import {
   type ThemeStoreCard,
   type ThemeVersion,
 } from "@/lib/theme-store";
+import type { LookShots } from "@/lib/theme-shots";
 
 import { DESIGNS_TAG } from "./design-presets";
 import { STARTERS_TAG, publishedPacks } from "./store-starters";
+import { lookOf, themeShotsFor } from "./theme-shots";
 
 /**
  * The theme store's reads (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): published, unarchived themes that have an
@@ -30,18 +32,24 @@ import { STARTERS_TAG, publishedPacks } from "./store-starters";
 
 type Row = Record<string, unknown>;
 
-const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, string>): ThemeStoreCard => {
+const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, string>, shots: ReadonlyMap<string, LookShots>): ThemeStoreCard => {
   const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
   const listing = readListing(row.listing);
+  const id = String(row.id);
+  // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), the theme's own look's computer giving the card and the share image.
+  const looks = themeLooks(String(row.title), presets, listing, packs).map((look) => ({ ...look, shots: shots.get(lookOf(id, look.key)) ?? null }));
+  const own = looks[0]?.shots?.computer ?? null;
   return {
-    id: String(row.id),
+    id,
     slug: String(row.slug),
     title: String(row.title),
     summary: String(row.summary ?? ""),
     pictureUrl: row.picture_url ? String(row.picture_url) : null,
     shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
+    madeCard: own?.card?.url ?? null,
+    madeShare: own?.share?.url ?? null,
     presets,
-    looks: themeLooks(String(row.title), presets, listing, packs),
+    looks,
     listing,
     features: themeFeatures(snapshot),
     swatch: swatchOf(snapshot),
@@ -59,9 +67,10 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
     where published and archived_at is null and slug is not null
     order by position, lower(title), id
   `);
+  const shots = await themeShotsFor(rows.map((row) => String(row.id)));
   return rows.flatMap((row) => {
     const snapshot = parseDesignSnapshot(row.snapshot);
-    return snapshot ? [cardOf(row, snapshot, packs)] : [];
+    return snapshot ? [cardOf(row, snapshot, packs, shots)] : [];
   });
 }
 
@@ -94,7 +103,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   });
   const latest = versions.at(-1) ?? null;
   return {
-    ...cardOf(row, snapshot, await publishedPacks()),
+    ...cardOf(row, snapshot, await publishedPacks(), await themeShotsFor([String(row.id)])),
     description: String(row.description ?? ""),
     sectionStyles: themeSectionStyles(snapshot),
     changelog: themeChangelog(versions),

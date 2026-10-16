@@ -980,6 +980,54 @@ export const designVariations = commerce.table(
 );
 
 /**
+ * The photographs of a theme's looks (`docs/theme-showcase-phase-2.md` step 1): one unit of work per look of a version, the store it is
+ * shown on and a width (`kind`; `highlights` are composed from a look's two, step 2), and what it made (`pictures`, by kind of picture; `parts`,
+ * the page's measured boxes). Wanted units are inserted by `queueThemeShots()` and taken by the job (`/api/cron/theme-shots`); a unit no longer
+ * wanted (a newer version, a showcase published again) is `superseded`, and its files and row go a week later (`pruneThemeShots()`).
+ * `showcase_store_id` names the store photographed, never an owner (so no `store_id`, outside `COPY_RULES`); the starter and the store are a
+ * record of what was drawn, not references, so a unit outlives a template taken away and is pruned as not wanted.
+ */
+export const themeShots = commerce.table(
+  "theme_shots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    /** The preset's key (`design_variations.key`); null for the theme's own look. */
+    variation: text("variation"),
+    /** The showcase's store template (`store_starters.id`); null for the Standard store. */
+    starterId: uuid("starter_id"),
+    showcaseStoreId: uuid("showcase_store_id").notNull(),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("waiting"),
+    tries: smallint("tries").notNull().default(0),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    problem: text("problem"),
+    pictures: jsonb("pictures"),
+    parts: jsonb("parts"),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("theme_shots_unit").on(t.presetId, t.version, t.variation, t.showcaseStoreId, t.kind).nullsNotDistinct(),
+    index("theme_shots_queue_idx").on(t.createdAt).where(sql`${t.status} in ('waiting', 'running')`),
+    check("theme_shots_version", sql`${t.version} >= 1`),
+    check("theme_shots_variation", sql`${t.variation} is null or ${t.variation} ~ '^[a-z0-9][a-z0-9-]{0,39}$'`),
+    check("theme_shots_kind", sql`${t.kind} in ('computer', 'phone', 'highlights')`),
+    check("theme_shots_status", sql`${t.status} in ('waiting', 'running', 'done', 'failed', 'superseded')`),
+    check("theme_shots_tries", sql`${t.tries} between 0 and 20`),
+    check("theme_shots_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+    check("theme_shots_pictures", sql`${t.pictures} is null or (jsonb_typeof(${t.pictures}) = 'object' and octet_length(${t.pictures}::text) <= 20000)`),
+    check("theme_shots_parts", sql`${t.parts} is null or (jsonb_typeof(${t.parts}) = 'object' and octet_length(${t.parts}::text) <= 200000)`),
+    check("theme_shots_done", sql`${t.status} <> 'done' or (${t.pictures} is not null and ${t.finishedAt} is not null)`),
+    check("theme_shots_superseded", sql`(${t.status} = 'superseded') = (${t.supersededAt} is not null)`),
+  ],
+);
+
+/**
  * Kaizena Flow's own installed themes (phase 4 of `docs/theme-store.md`, `docs/theme-phase-4.md`): as a store's (`store_theme_installs`), one
  * live, whose look is `platform_settings`' columns (`theme`, `fonts`, `custom_css`, `header_id`, `footer_id`), so `look` is null for it; an
  * install that is not live keeps its look in `look` (`PlatformLook`: the theme as stored, the fonts, the CSS and the chosen layouts' page ids).

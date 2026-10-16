@@ -59,6 +59,7 @@ import { pagesTag } from "./pages";
 import { STARTERS_TAG, publishedPacks } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
+import { askForThemeShots, lookOf, themeShotsFor } from "./theme-shots";
 import { parseSiteFonts } from "@/lib/fonts-schema";
 
 import { platformTheme } from "./platform-navigation";
@@ -148,12 +149,15 @@ export async function designChoices(): Promise<{ cards: DesignCard[]; recommende
   ]);
   const ids = new Set(offered.map((d) => d.id));
   const listingOf = new Map(listings.map((row) => [String(row.id), readListing(row.listing)]));
+  // A theme without a picture of its own shows the card made from its own look's photograph (`docs/theme-showcase-phase-2.md` step 1).
+  const shots = await themeShotsFor(offered.map((d) => d.id));
   // Each look with the content pack's template it is shown on (`docs/theme-showcase-phase-1.md` steps 3 and 4), previewed there.
   const card = (d: OfferedDesign): DesignCard => {
     const looks = themeLooks(d.title, d.presets ?? [], listingOf.get(d.id) ?? { pack: null, presetPacks: {} }, packs);
     const starterOf = (key: string | null) => looks.find((look) => look.key === key)?.showcase?.starterId ?? null;
     return {
       ...d,
+      pictureUrl: d.pictureUrl ?? shots.get(lookOf(d.id, null))?.computer?.card?.url ?? null,
       previewHref: designPreviewPath(d.id, starterOf(null)),
       starterId: starterOf(null),
       looks: looks.flatMap((look) =>
@@ -783,6 +787,8 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
     return refuse(designProblem(error));
   }
   await audit(admin.id, design.workspaceStoreId, "platform.design_preset_published", { preset: id, snapshot: snapshot !== null }, { target: { type: "design_preset", id } });
+  // Its looks are photographed in the background (`docs/theme-showcase-phase-2.md` step 1); asking now shows them waiting at once.
+  await askForThemeShots();
   return { ok: true, notes };
 }
 
@@ -2194,5 +2200,7 @@ export async function saveThemeListing(admin: Account, id: string, slug: string,
   } catch (error) {
     return refuse(designProblem(error));
   }
+  // Where a look is shown may have changed: its pictures on the new showcase are asked for.
+  await askForThemeShots();
   return { ok: true };
 }

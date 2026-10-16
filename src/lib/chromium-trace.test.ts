@@ -13,6 +13,7 @@ const config = fs.readFileSync(path.join(root, "next.config.ts"), "utf8");
 /** The route files that start a browser, directly or through the replicator's engine. */
 const ROUTES: Record<string, string> = {
   "/api/cron/cookie-scan": "src/app/api/cron/cookie-scan/route.ts",
+  "/api/cron/theme-shots": "src/app/api/cron/theme-shots/route.ts",
   // A glob: `[store]` would be a set of characters, and the route group is part of the path that is matched.
   "/admin/**/replicate/**/tick": "src/app/admin/(gated)/[store]/pages/ai/replicate/[jobId]/tick/route.ts",
 };

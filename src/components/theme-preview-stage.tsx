@@ -18,7 +18,14 @@ export type StageLook = {
   tryHref: string;
   /** Sign-up with this look chosen, and the store template of its demo store (`docs/theme-showcase-phase-1.md` step 4). */
   startHref: string;
+  /** Its photographed first screens (`docs/theme-showcase-phase-2.md` step 1), shown in each frame while the live preview loads. */
+  computerPoster?: string | null;
+  phonePoster?: string | null;
 };
+
+/** A frame's photograph behind it, at the frame's width from the top: the live preview, once drawn, covers it. */
+const poster = (url: string | null | undefined) =>
+  url ? { backgroundImage: `url(${JSON.stringify(url)})`, backgroundSize: "100% auto", backgroundPosition: "top", backgroundRepeat: "no-repeat" } : undefined;
 
 /**
  * A theme's previews on its page in the theme store (`docs/theme-showcase-phase-1.md` steps 1 and 3): a demo store at computer and phone
@@ -75,10 +82,10 @@ export function ThemePreviewStage({ title, looks }: { title: string; looks: Stag
         </div>
       )}
       <div className="flex flex-col items-start gap-6 lg:flex-row">
-        <div className="w-full overflow-hidden rounded-lg border border-border lg:flex-1">
+        <div className="w-full overflow-hidden rounded-lg border border-border lg:flex-1" style={poster(look.computerPoster)}>
           <iframe src={look.frameHref} title={`${name} on a computer`} loading="lazy" className="h-[640px] w-full" />
         </div>
-        <div className="mx-auto w-[390px] max-w-full shrink-0 overflow-hidden rounded-[2rem] border-8 border-foreground">
+        <div className="mx-auto w-[390px] max-w-full shrink-0 overflow-hidden rounded-[2rem] border-8 border-foreground" style={poster(look.phonePoster)}>
           <iframe src={look.frameHref} title={`${name} on a phone`} loading="lazy" className="h-[640px] w-full" />
         </div>
       </div>

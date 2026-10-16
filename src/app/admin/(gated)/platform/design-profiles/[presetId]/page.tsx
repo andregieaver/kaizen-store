@@ -4,6 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
+import { ThemeShotsPanel } from "@/components/admin/theme-shots-panel";
 import { CONTENT_PACKS } from "@/lib/content-packs";
 import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
@@ -12,9 +13,10 @@ import { STORE_KINDS, THEME_PICTURES_MAX, THEME_STYLES, suggestedSlug } from "@/
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listVariations } from "@/server/design-variations";
 import { listStarters } from "@/server/store-starters";
+import { themeShotStatus } from "@/server/theme-shots";
 
 import { uploadPlatformImageAction } from "../../actions";
-import { copyStoreLookAction, saveDesignDraftAction, saveThemeListingAction } from "../actions";
+import { copyStoreLookAction, retryThemeShotsAction, saveDesignDraftAction, saveThemeListingAction } from "../actions";
 import { designPage } from "./data";
 import { DesignShell } from "./shell";
 
@@ -31,12 +33,13 @@ const KIND_WORDS = { template: "the demo template", starter: "store template", s
  */
 export default async function DesignProfilePage({ params, searchParams }: PageProps<"/admin/platform/design-profiles/[presetId]">) {
   const { admin, design, facts } = await designPage((await params).presetId);
-  const [query, starters, sources, checks, presets] = await Promise.all([
+  const [query, starters, sources, checks, presets, shots] = await Promise.all([
     searchParams,
     listStarters(),
     snapshotSources(admin),
     designChecks(design),
     listVariations(admin, design.id),
+    themeShotStatus(design.id),
   ]);
   const shown = shownDesignDetails(design);
   const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
@@ -69,6 +72,13 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
       </section>
 
       <ThemeChecks result={checks} />
+
+      <ThemeShotsPanel
+        looks={[{ key: null, name: shown.title }, ...presets.map((p) => ({ key: p.key, name: p.name }))]}
+        shots={shots}
+        published={design.published}
+        retry={retryThemeShotsAction.bind(null, design.id)}
+      />
 
       <ActionForm action={saveDesignDraftAction.bind(null, design.id)} className="flex max-w-3xl flex-col gap-4">
         <h2 className="text-title text-ink">Details</h2>

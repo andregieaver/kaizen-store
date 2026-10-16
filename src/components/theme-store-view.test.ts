@@ -14,6 +14,8 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   summary: `About ${id}.`,
   pictureUrl: null,
   shotUrl: null,
+  madeCard: null,
+  madeShare: null,
   presets: [],
   looks: [{ key: null, name: id.toUpperCase(), showcase: null }],
   listing: { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} },
@@ -60,6 +62,15 @@ describe("the theme store's list", () => {
     expect(html.match(/<img /g)?.length).toBe(2);
     // The theme without either is drawn from its colours.
     expect(html).toMatch(/<div aria-hidden="true"[^>]*><span[^>]*>PLAIN<\/span>/);
+  });
+
+  it("prefers the card made from its own look's photograph to the launch photograph, and the admin's picture to both (docs/theme-showcase-phase-2.md)", () => {
+    const made = "https://x.supabase.co/storage/v1/object/public/product-media/platform/theme-shots/t/u/computer-card.webp";
+    const html = draw([card("calm", { madeCard: made, shotUrl: "/demo/themes/calm-v2.webp" }), card("fjord", { pictureUrl: "/own.webp", madeCard: made })]);
+    expect(html).toContain(`src="${made}"`);
+    expect(html).not.toContain("calm-v2.webp");
+    expect(html).toContain('src="/own.webp"');
+    expect(html.match(new RegExp(made.replaceAll(".", "\\."), "g"))?.length).toBe(1);
   });
 
   it("names the trades a theme's looks are shown on, and nothing while none is", () => {

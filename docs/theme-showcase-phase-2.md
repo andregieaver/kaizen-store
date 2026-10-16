@@ -106,6 +106,15 @@ through an injected photographer and storage, pruned after a week), `src/server/
 a made-up photograph), the theme store view tests (the card's and the page's choice of picture), and `e2e/theme-shots.spec.ts` (the job's
 photographer against a running preview: both widths, parts measured, nothing blank).
 
+**Built (D264).** As above: `commerce.theme_shots` (migration `theme_shots`, with the minute's schedule `kaizen-theme-shots`),
+`src/lib/theme-shots.ts`, `src/lib/theme-shoot.ts` (it also refuses a page that did not draw the theme: a preview that is not there
+streams its not-found page with a 200), `src/server/theme-shot-files.ts`, `src/server/theme-shots.ts`, `src/server/theme-shot-runner.ts`
+and `/api/cron/theme-shots`; the preview marks its parts (`data-shot`); the readers (`cardPicture()`, `sharePicture()`, `madeScreens()`,
+the stage's posters, `designChoices()`); the *Pictures* panel (`ThemeShotsPanel`) with *Try again*. Held by the tests named above and
+`e2e/signed-in/theme-shots.spec.ts`. *Deviations:* `pruneThemeShots()` runs at the end of each run of the shots' job rather than in the
+five-minute job (it needs nothing else, and so the five-minute job is untouched); a look's older sets are set aside the moment a newer one
+is made, not at the next run; a launch theme's photograph by hand is the newest one in `LAUNCH_SHOTS`, not one per version.
+
 ## Step 2: highlights
 
 **Pictures.** Made from the theme's own look's latest set, once both its widths are done (a unit of kind `highlights` in `theme_shots`,

@@ -28,6 +28,7 @@ import { parseListing } from "@/lib/theme-store";
 import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
+import { retryThemeShots } from "@/server/theme-shots";
 
 /** The design profile form's fields, as the server reads them. */
 const detailsOf = (formData: FormData) =>
@@ -212,4 +213,14 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
   updateTag(DESIGNS_TAG);
   refresh();
   return { status: "ok", messages: ["Saved. The theme store shows it at once while the theme is published."] };
+}
+
+/** *Try again* on a theme's photographs that could not be made (`docs/theme-showcase-phase-2.md` step 1): the job takes them again. */
+export async function retryThemeShotsAction(presetId: string, _state: FormState): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const count = await retryThemeShots(admin, presetId);
+  refresh();
+  return count > 0
+    ? { status: "ok", messages: [`${count === 1 ? "It is" : `All ${count} are`} waiting again; the pictures are made within a few minutes.`] }
+    : { status: "ok", messages: ["Nothing was waiting to be tried again."] };
 }

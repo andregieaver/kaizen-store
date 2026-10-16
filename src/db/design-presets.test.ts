@@ -307,3 +307,49 @@ describe("a theme's presets (docs/theme-showcase-phase-1.md)", () => {
     await refused("update commerce.platform_theme_installs set variation = null where id = $1", [platform], /platform_theme_installs.variation/);
   });
 });
+
+describe("a theme's photographs (docs/theme-showcase-phase-2.md step 1)", () => {
+  const insert = (presetId: string, extra: Record<string, unknown> = {}) => {
+    const row = { version: 1, variation: null, showcase_store_id: store, kind: "computer", ...extra };
+    const keys = ["preset_id", ...Object.keys(row)];
+    return db.query(
+      `insert into commerce.theme_shots (${keys.join(", ")}) values (${keys.map((_, i) => `$${i + 1}`).join(", ")}) returning id`,
+      [presetId, ...Object.values(row)],
+    );
+  };
+
+  it("is one unit for a look of a version, on a store, at a width: the theme's own look (no preset) counts once too", async () => {
+    const id = await preset();
+    await insert(id);
+    await refused("insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind) values ($1, 1, $2, 'computer')", [id, store], /theme_shots_unit/);
+    await insert(id, { kind: "phone" });
+    await insert(id, { variation: "sand" });
+    await refused("insert into commerce.theme_shots (preset_id, version, variation, showcase_store_id, kind) values ($1, 1, 'sand', $2, 'computer')", [id, store], /theme_shots_unit/);
+    await insert(id, { version: 2 });
+  });
+
+  it("holds only known widths, statuses and a preset's key", async () => {
+    const id = await preset();
+    await refused("insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind) values ($1, 1, $2, 'tablet')", [id, store], /theme_shots_kind/);
+    await refused("insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status) values ($1, 1, $2, 'phone', 'lost')", [id, store], /theme_shots_status/);
+    await refused("insert into commerce.theme_shots (preset_id, version, variation, showcase_store_id, kind) values ($1, 1, 'Not a key', $2, 'phone')", [id, store], /theme_shots_variation/);
+    await refused("insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind) values ($1, 0, $2, 'phone')", [id, store], /theme_shots_version/);
+  });
+
+  it("is done only with its pictures and the time they were made, and set aside only with the time it was", async () => {
+    const id = await preset();
+    const { rows } = await insert(id);
+    const unit = (rows[0] as { id: string }).id;
+    await refused("update commerce.theme_shots set status = 'done' where id = $1", [unit], /theme_shots_done/);
+    await db.query("update commerce.theme_shots set status = 'done', pictures = '{}'::jsonb, finished_at = now() where id = $1", [unit]);
+    await refused("update commerce.theme_shots set status = 'superseded' where id = $1", [unit], /theme_shots_superseded/);
+    await db.query("update commerce.theme_shots set status = 'superseded', superseded_at = now() where id = $1", [unit]);
+  });
+
+  it("goes with its theme", async () => {
+    const id = await preset();
+    await insert(id);
+    await db.query("delete from commerce.design_presets where id = $1", [id]);
+    expect(await one<{ n: number }>("select count(*)::int as n from commerce.theme_shots where preset_id = $1", [id])).toEqual({ n: 0 });
+  });
+});

@@ -5,6 +5,7 @@ import { whatsNew } from "./theme-update";
 import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, contentPack, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
+import type { LookShots } from "./theme-shots";
 
 /**
  * The theme store (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): a theme's listing and what the list and a theme's page say.
@@ -140,7 +141,13 @@ export const themeSectionStyles = (snapshot: DesignSnapshot): string[] => Object
 export type Showcase = { pack: PackKey; trade: string; line: string; starterId: string };
 
 /** A look of a theme (its own, `key` null, or a preset) and the demo store it is shown on; null: the Standard store. */
-export type ThemeLook = { key: string | null; name: string; showcase: Showcase | null };
+export type ThemeLook = {
+  key: string | null;
+  name: string;
+  showcase: Showcase | null;
+  /** Its photographs on its showcase (`docs/theme-showcase-phase-2.md` step 1), where made: the latest set at each width. */
+  shots?: LookShots | null;
+};
 
 /**
  * A theme's looks, its own first, each with the content pack its listing names when that pack's store template is published (`packs`: pack
@@ -166,8 +173,11 @@ export type ThemeStoreCard = {
   title: string;
   summary: string;
   pictureUrl: string | null;
-  /** A launch theme's photograph on the demo store (`launchShot()`), shown on its card where the admin gave no picture. */
+  /** A launch theme's photograph on the demo store (`launchShot()`): the card's last resort before its colours, until one is made. */
   shotUrl: string | null;
+  /** The card and the share image made from its own look's photographs (`docs/theme-showcase-phase-2.md` step 1), where made. */
+  madeCard: string | null;
+  madeShare: string | null;
   /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`), in order. */
   presets: { key: string; name: string }[];
   /** Its own look and its presets, each with the demo store it is shown on (`themeLooks()`). */
@@ -177,6 +187,30 @@ export type ThemeStoreCard = {
   /** For a card without a picture: the light colours and the heading font. */
   swatch: { background: string; surface: string; text: string; accent: string; accentText: string; heading: string | null };
 };
+
+/**
+ * The picture a theme's card shows (`docs/theme-showcase-phase-2.md`): the theme's own, else the card made from its own look's photograph,
+ * else a launch theme's photograph in the code; null: its colours (`Swatch`).
+ */
+export const cardPicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeCard" | "shotUrl">): string | null => card.pictureUrl ?? card.madeCard ?? card.shotUrl;
+
+/** The share image of a theme's page: its own picture, else the one made from its photograph; null: the one drawn from its colours. */
+export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShare">): string | null => card.pictureUrl ?? card.madeShare;
+
+/**
+ * The pictures a theme's page shows when it has none of its own: each look's first screen at a computer's width, then at a phone's, where
+ * made, each named for its look.
+ */
+export function madeScreens(card: Pick<ThemeStoreCard, "title" | "looks">): { url: string; alt: string; width: number; height: number; kind: "computer" | "phone" }[] {
+  return (["computer", "phone"] as const).flatMap((kind) =>
+    card.looks.flatMap((look) => {
+      const screen = look.shots?.[kind]?.screen;
+      if (!screen) return [];
+      const name = look.key === null ? card.title : `${card.title}, ${look.name}`;
+      return [{ url: screen.url, alt: `${name} on a ${kind}${look.showcase ? `, on ${look.showcase.line}` : ""}`, width: screen.width, height: screen.height, kind }];
+    }),
+  );
+}
 
 export const swatchOf = (snapshot: DesignSnapshot): ThemeStoreCard["swatch"] => {
   const light = snapshot.theme.settings.light;

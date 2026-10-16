@@ -4,6 +4,7 @@ import {
   STORE_KINDS,
   THEME_FEATURES,
   THEME_STYLES,
+  cardPicture,
   filterThemes,
   showcaseTrades,
   themeFilterHref,
@@ -44,9 +45,9 @@ function Swatch({ card }: { card: ThemeStoreCard }) {
   );
 }
 
-/** A theme's card: the admin's picture, else a photograph of it on the demo store, else its colours (a theme with neither). */
+/** A theme's card: the admin's picture, else a photograph of it on its demo store (`cardPicture()`), else its colours. */
 export function ThemeCard({ card }: { card: ThemeStoreCard }) {
-  const picture = card.pictureUrl ?? card.shotUrl;
+  const picture = cardPicture(card);
   // The trades its looks are shown on (`docs/theme-showcase-phase-1.md` step 3), only those whose demo store is published.
   const trades = showcaseTrades(card.looks);
   return (

@@ -6,7 +6,7 @@ import { JsonLdScript } from "@/components/json-ld";
 import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
-import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeStartLink, themeTryLink } from "@/lib/theme-store";
+import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, madeScreens, sharePicture, themeJsonLd, themeStartLink, themeTryLink } from "@/lib/theme-store";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
 import { platformHref, themeStorePath, themeStoreUrl, themesHost } from "@/lib/theme-host";
 
@@ -24,8 +24,9 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]">):
     title: `${theme.title} theme`,
     description,
     alternates: { canonical: themeStoreUrl(theme.slug) },
-    // Its own picture, else one drawn from its colours (`/themes/{slug}/og.png`, on Kaizena Flow's host, by full address).
-    openGraph: { title: `${theme.title} theme`, description, images: [{ url: theme.pictureUrl ?? `${siteUrl()}/themes/${theme.slug}/og.png`, alt: "" }] },
+    // Its own picture, else the one made from its photograph (`docs/theme-showcase-phase-2.md`), else one drawn from its colours
+    // (`/themes/{slug}/og.png`, on Kaizena Flow's host, by full address).
+    openGraph: { title: `${theme.title} theme`, description, images: [{ url: sharePicture(theme) ?? `${siteUrl()}/themes/${theme.slug}/og.png`, alt: "" }] },
   };
 }
 
@@ -57,13 +58,18 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
       previewHref: platformHref(designPreviewPath(theme.id, starter, false, false, false, look.key)),
       tryHref: platformHref(themeTryLink(theme.slug, look.key)),
       startHref: platformHref(themeStartLink(theme.id, look.key)),
+      computerPoster: look.shots?.computer?.screen?.url ?? null,
+      phonePoster: look.shots?.phone?.screen?.url ?? null,
     };
   });
+  // Its own pictures; else its looks' photographed first screens (`docs/theme-showcase-phase-2.md` step 1), where made.
+  const own = [theme.pictureUrl, ...theme.listing.pictures].filter((url): url is string => Boolean(url));
+  const screens = own.length > 0 ? [] : madeScreens(theme);
   const preview = looks[0].previewHref;
   const url = themeStoreUrl(theme.slug);
   return (
     <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10">
-      <JsonLdScript data={themeJsonLd(theme, url, "Kaizena Flow")} />
+      <JsonLdScript data={themeJsonLd({ ...theme, pictureUrl: sharePicture(theme) }, url, "Kaizena Flow")} />
       <nav aria-label="Breadcrumb" className="text-sm">
         <Link href={themeStorePath()} className="underline underline-offset-2">
           Themes
@@ -92,16 +98,39 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
         </div>
       </div>
 
-      {(theme.pictureUrl || theme.listing.pictures.length > 0) && (
+      {own.length > 0 && (
         <section aria-labelledby="pictures" className="flex flex-col gap-3">
           <h2 id="pictures" className="sr-only">
             Pictures
           </h2>
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[theme.pictureUrl, ...theme.listing.pictures].filter((url): url is string => Boolean(url)).map((url, index) => (
+            {own.map((url, index) => (
               <li key={url}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- the theme's own pictures, from Kaizena Flow's media library */}
                 <img src={url} alt={`${theme.title}, picture ${index + 1}`} loading={index < 3 ? "eager" : "lazy"} className="aspect-video w-full rounded-lg border border-border object-cover" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {screens.length > 0 && (
+        <section aria-labelledby="pictures" className="flex flex-col gap-3">
+          <h2 id="pictures" className="sr-only">
+            Pictures
+          </h2>
+          {/* Photographs of its looks on their demo stores, made when the theme was published: computers first, then phones. */}
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" data-made-screens="">
+            {screens.map((screen, index) => (
+              <li key={screen.url} className={screen.kind === "computer" ? "col-span-2" : ""}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- made pictures, in Kaizena Flow's own bucket */}
+                <img
+                  src={screen.url}
+                  alt={screen.alt}
+                  width={screen.width}
+                  height={screen.height}
+                  loading={index < 2 ? "eager" : "lazy"}
+                  className={`w-full rounded-lg border border-border object-cover object-top ${screen.kind === "computer" ? "aspect-[16/10]" : "aspect-[390/844]"}`}
+                />
               </li>
             ))}
           </ul>
