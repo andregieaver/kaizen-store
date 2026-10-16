@@ -322,7 +322,8 @@ test("an icon list shows its lines after their icons, a line with an address as 
   await page.goto(address);
   const lines = page.locator("main li").filter({ has: page.locator("svg") });
   await expect(lines).toHaveCount(2);
-  await expect(page.getByRole("link", { name: "Fri frakt over 500 kr" })).toHaveAttribute("href", "/levering");
+  // A path written in a store's page is the store's own (D267): drawn under the store's address, not Kaizena Flow's `/levering`.
+  await expect(page.getByRole("link", { name: "Fri frakt over 500 kr" })).toHaveAttribute("href", address.replace(/\/[^/]+$/, "/levering"));
   await expect(page.getByText("30 dagers retur")).toBeVisible();
   await expect(lines.first().locator("svg")).toHaveAttribute("aria-hidden", "true");
 });
