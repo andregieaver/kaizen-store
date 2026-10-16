@@ -10,6 +10,9 @@ import { SHOT_HEIGHT_MAX } from "./replicate-capture";
 export const SHOT_KINDS = ["computer", "phone"] as const;
 export type ShotKind = (typeof SHOT_KINDS)[number];
 
+/** A unit of work: a width photographed, or the theme's highlights composed from its own look's two (step 2). */
+export type UnitKind = ShotKind | "highlights";
+
 /** Each width's screen: its size in CSS pixels and how many pixels a CSS pixel is in its first-screen photograph. */
 export const SHOT_SCREENS: Record<ShotKind, { width: number; height: number; scale: number }> = {
   computer: { width: 1440, height: 900, scale: 1 },
@@ -23,12 +26,16 @@ export const SHOT_LENGTH_MAX = SHOT_HEIGHT_MAX;
 export const CARD_SIZE = { width: 800, height: 600 } as const;
 export const SHARE_SIZE = { width: 1200, height: 630 } as const;
 
-/** The kinds of picture a unit makes: the page at full length and its first screen at both widths, a card and a share image from a computer. */
-export const SHOT_PICTURES = ["full", "screen", "card", "share"] as const;
+/**
+ * The kinds of picture a unit makes: the page at full length and its first screen at both widths; from a computer a card, a share image and
+ * the product part at twice the pixels (`detail`, when the page has one); the three highlights from a `highlights` unit.
+ */
+export const SHOT_PICTURES = ["full", "screen", "card", "share", "detail", "devices", "collage", "closeup"] as const;
 export type ShotPictureKind = (typeof SHOT_PICTURES)[number];
 
-/** Which pictures a width makes. */
-export const picturesOf = (kind: ShotKind): readonly ShotPictureKind[] => (kind === "computer" ? SHOT_PICTURES : ["full", "screen"]);
+/** Which pictures a unit makes (`detail` only where the page has a product). */
+export const picturesOf = (kind: UnitKind): readonly ShotPictureKind[] =>
+  kind === "computer" ? ["full", "screen", "card", "share", "detail"] : kind === "phone" ? ["full", "screen"] : ["devices", "collage", "closeup"];
 
 /** One stored picture. */
 export type ShotFile = { path: string; url: string; width: number; height: number; bytes: number };
@@ -99,8 +106,8 @@ export function readShotPictures(value: unknown): ShotPictures {
 /** Every stored file of a unit, to remove with it. */
 export const shotPaths = (pictures: ShotPictures): string[] => Object.values(pictures).flatMap((file) => (file ? [file.path] : []));
 
-/** One unit of work: a look of a theme's version, on the store it is shown on, at one width. */
-export type WantedShot = { presetId: string; version: number; variation: string | null; starterId: string | null; showcaseStoreId: string; kind: ShotKind };
+/** One unit of work: a look of a theme's version, on the store it is shown on, at one width (or its highlights). */
+export type WantedShot = { presetId: string; version: number; variation: string | null; starterId: string | null; showcaseStoreId: string; kind: UnitKind };
 
 /** A unit's identity (the table's unique key). */
 export const shotKey = (shot: Pick<WantedShot, "presetId" | "version" | "variation" | "showcaseStoreId" | "kind">): string =>
@@ -114,14 +121,16 @@ export type ShotTheme = { id: string; version: number; looks: { variation: strin
 
 /**
  * Every unit that should exist now: each look of each theme at its latest version, on the store its showcase draws (`storeOf`: a store
- * template's published copy, or the Standard store's for null; a showcase whose store cannot be found is left out), at both widths.
+ * template's published copy, or the Standard store's for null; a showcase whose store cannot be found is left out), at both widths; and the
+ * theme's highlights from its own look (step 2), composed once that look's two are made.
  */
 export function wantedShots(themes: readonly ShotTheme[], storeOf: (starterId: string | null) => string | null): WantedShot[] {
   return themes.flatMap((theme) =>
     theme.looks.flatMap((look) => {
       const showcaseStoreId = storeOf(look.starterId);
       if (!showcaseStoreId) return [];
-      return SHOT_KINDS.map((kind) => ({ presetId: theme.id, version: theme.version, variation: look.variation, starterId: look.starterId, showcaseStoreId, kind }));
+      const kinds: UnitKind[] = look.variation === null ? [...SHOT_KINDS, "highlights"] : [...SHOT_KINDS];
+      return kinds.map((kind) => ({ presetId: theme.id, version: theme.version, variation: look.variation, starterId: look.starterId, showcaseStoreId, kind }));
     }),
   );
 }
@@ -156,5 +165,5 @@ export const missingShots = (stored: readonly Pick<StoredShot, "presetId" | "ver
 /** How many tries a unit gets before it is `failed`. */
 export const SHOT_TRIES = 3;
 
-/** A look's pictures as the theme store reads them: its latest done set at each width. */
-export type LookShots = { computer: ShotPictures | null; phone: ShotPictures | null; version: number | null };
+/** A look's pictures as the theme store reads them: its latest done set at each width, and (its own look's) highlights. */
+export type LookShots = { computer: ShotPictures | null; phone: ShotPictures | null; highlights?: ShotPictures | null; version: number | null };

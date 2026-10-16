@@ -132,7 +132,16 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Black and white with soft greys, system fonts and pill buttons. Generous space between sections lets products and pictures speak. Follows the visitor's light or dark mode.",
     notes: "Three presets: Sand, warm beige with Lora headings; Ink, always dark with a blue accent; Sage, soft green-grey.",
-    listing: { kinds: [], styles: ["minimal"], pack: "fashion" },
+    listing: {
+      kinds: [],
+      styles: ["minimal"],
+      pack: "fashion",
+      highlights: {
+        devices: { title: "Calm on every screen", text: "The same quiet layout on a computer and a phone, with the menu folded away on small screens." },
+        collage: { title: "Room to breathe", text: "Generous spacing and clear type let products and stories take the lead." },
+        closeup: { title: "Product pages kept simple", text: "Price, choices and the button to add to the cart sit together, with the details below." },
+      },
+    },
     snapshot: theme(
       "minimal",
       { corners: { cards: "medium", fields: "small" } },
@@ -183,7 +192,16 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Cream paper and terracotta, Playfair Display headings over Lora, softly rounded bordered cards and a centred logo. Quotes are set large in the heading font.",
     notes: "Two presets: Olive, warm white and olive green; Blush, rose and plum.",
-    listing: { kinds: ["food", "home", "crafts"], styles: ["warm", "classic"], pack: "food" },
+    listing: {
+      kinds: ["food", "home", "crafts"],
+      styles: ["warm", "classic"],
+      pack: "food",
+      highlights: {
+        devices: { title: "Warm on any screen", text: "Hearth's warm colours and friendly type carry from a computer to a phone." },
+        collage: { title: "Made for stories", text: "Sections for your story, your range and your place, in Hearth's warm palette." },
+        closeup: { title: "Products with character", text: "Large pictures and clear prices give each product room on its page." },
+      },
+    },
     snapshot: theme(
       "warm",
       {},
@@ -222,7 +240,16 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures. Sections sit close together.",
     notes: "Two presets: Volt, always dark with an electric yellow-green; Cobalt, a strong blue with headings as written.",
-    listing: { kinds: ["fashion", "digital"], styles: ["bold"], pack: "fashion" },
+    listing: {
+      kinds: ["fashion", "digital"],
+      styles: ["bold"],
+      pack: "fashion",
+      highlights: {
+        devices: { title: "Bold on every screen", text: "Strong type and high contrast hold together on a computer and a phone." },
+        collage: { title: "Sections that stand out", text: "Strong headings and clear blocks mark each part of the page." },
+        closeup: { title: "A clear way to buy", text: "A large title, the price and the button to add to the cart, side by side." },
+      },
+    },
     snapshot: theme(
       "bold",
       {},
@@ -260,7 +287,16 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A blue-grey palette with a deep sea-blue accent, Inter throughout, rounded buttons and raised product cards. Light by day and dark by night, as the visitor's device says.",
     notes: "Two presets: Mist, pale lilac and violet with Playfair Display headings; Pine, a deep forest green.",
-    listing: { kinds: ["home", "beauty", "services"], styles: ["minimal", "natural"], pack: "home" },
+    listing: {
+      kinds: ["home", "beauty", "services"],
+      styles: ["minimal", "natural"],
+      pack: "home",
+      highlights: {
+        devices: { title: "Clear on any screen", text: "Fjord's cool colours and open layout read well on a computer and a phone." },
+        collage: { title: "Calm, open sections", text: "Light backgrounds and soft lines let the pictures speak first." },
+        closeup: { title: "Details at a glance", text: "Pictures, price and choices laid out plainly on every product page." },
+      },
+    },
     snapshot: theme(
       "minimal",
       {

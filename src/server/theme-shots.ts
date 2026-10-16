@@ -7,10 +7,11 @@ import { designPreviewPath, parseDesignSnapshot } from "@/lib/design-presets";
 import { variationsOf } from "@/lib/design-variations";
 import { lookProblem } from "@/lib/replicate-look";
 import type { Shot } from "@/lib/theme-shoot";
-import { readListing, themeLooks } from "@/lib/theme-store";
+import { readListing, swatchOf, themeLooks } from "@/lib/theme-store";
 import {
   SHOT_TRIES,
   missingShots,
+  readShotParts,
   readShotPictures,
   shotFolder,
   shotKey,
@@ -19,16 +20,19 @@ import {
   wantedShots,
   type LookShots,
   type ShotKind,
+  type ShotParts,
   type ShotPictures,
   type ShotTheme,
   type StoredShot,
+  type UnitKind,
   type WantedShot,
 } from "@/lib/theme-shots";
 
 import { audit, type Account } from "./auth";
 import { removeStoredFiles, uploadBytes } from "./media";
 import { publishedPacks } from "./store-starters";
-import { shotFiles } from "./theme-shot-files";
+import { composeHighlights } from "./theme-highlights";
+import { shotFiles, type MadeFile } from "./theme-shot-files";
 
 /**
  * The photographs of published themes' looks (`docs/theme-showcase-phase-2.md` step 1): what is wanted and queued, each unit claimed and
@@ -92,7 +96,7 @@ const storedOf = (row: Row): StoredShot => ({
   variation: row.variation ? String(row.variation) : null,
   starterId: row.starter_id ? String(row.starter_id) : null,
   showcaseStoreId: String(row.showcase_store_id),
-  kind: String(row.kind) as ShotKind,
+  kind: String(row.kind) as UnitKind,
   status: String(row.status) as StoredShot["status"],
 });
 
@@ -135,14 +139,23 @@ export async function queueThemeShots(wanted?: WantedShot[]): Promise<WantedShot
 /** A unit as the job takes it. */
 export type ClaimedShot = StoredShot & { tries: number };
 
+/** Which units a run may take: every theme's (the job), or only these themes' (a test sharing its database with others). */
+export type ShotScope = { presetIds?: readonly string[] };
+
 /** Takes the oldest unit waiting (or one whose run stopped), for this run alone; null when there is none. */
-export async function claimThemeShot(): Promise<ClaimedShot | null> {
+export async function claimThemeShot(scope: ShotScope = {}): Promise<ClaimedShot | null> {
+  const only = scope.presetIds ? sql`and t.preset_id = any(${`{${scope.presetIds.join(",")}}`}::uuid[])` : sql``;
   const [row] = await db().execute<Row>(sql`
     update commerce.theme_shots s set status = 'running', tries = s.tries + 1, claimed_until = now() + ${CLAIM}::interval
      where s.id = (
-       select id from commerce.theme_shots
-        where (status = 'waiting' or (status = 'running' and claimed_until < now())) and tries < ${SHOT_TRIES}
-        order by created_at, id
+       select t.id from commerce.theme_shots t
+        where (t.status = 'waiting' or (t.status = 'running' and t.claimed_until < now())) and t.tries < ${SHOT_TRIES} ${only}
+          -- Highlights are composed from the look's two photographs: only once both are made.
+          and (t.kind <> 'highlights' or (
+            select count(*) from commerce.theme_shots x
+             where x.preset_id = t.preset_id and x.version = t.version and x.variation is not distinct from t.variation
+               and x.showcase_store_id = t.showcase_store_id and x.kind in ('computer', 'phone') and x.status = 'done') = 2)
+        order by t.created_at, t.id
         for update skip locked
         limit 1
      )
@@ -155,12 +168,57 @@ export async function claimThemeShot(): Promise<ClaimedShot | null> {
 export const shotPreviewUrl = (origin: string, shot: Pick<WantedShot, "presetId" | "starterId" | "variation">): string =>
   `${origin}${designPreviewPath(shot.presetId, shot.starterId, false, false, true, shot.variation)}`;
 
-/** What taking a unit needs from outside: the photographer (a browser) and the bucket. Injected, so tests need neither. */
+/** What taking a unit needs from outside: the photographer (a browser), the bucket, and reading a stored file back. Injected, so tests need none. */
 export type ShotDeps = {
   photograph: (url: string, kind: ShotKind) => Promise<Shot>;
   upload?: (path: string, bytes: Uint8Array, contentType: string) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
   remove?: (paths: string[]) => Promise<boolean>;
+  /** A stored picture's bytes, by its public address (the highlights read the look's photographs back). */
+  fetchFile?: (url: string) => Promise<Buffer>;
 };
+
+const fetchFile = (deps: ShotDeps) =>
+  deps.fetchFile ??
+  (async (url: string) => {
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) throw new Error("A photograph of the look could not be read back.");
+    return Buffer.from(await response.arrayBuffer());
+  });
+
+/** What a unit made, ready to store: from a width's photograph (`shotFiles()`), or the highlights composed from the look's two. */
+async function madeFiles(shot: ClaimedShot, origin: string, deps: ShotDeps): Promise<{ files: MadeFile[]; parts: ShotParts | null }> {
+  if (shot.kind !== "highlights") {
+    const taken = await deps.photograph(shotPreviewUrl(origin, shot), shot.kind);
+    return { files: await shotFiles(shot.kind, taken), parts: taken.parts };
+  }
+  const rows = await db().execute<Row>(sql`
+    select kind, pictures, parts from commerce.theme_shots
+     where preset_id = ${shot.presetId}::uuid and version = ${shot.version} and variation is not distinct from ${shot.variation}
+       and showcase_store_id = ${shot.showcaseStoreId}::uuid and kind in ('computer', 'phone') and status = 'done'
+  `);
+  const of = (kind: ShotKind) => rows.find((row) => row.kind === kind);
+  const computer = readShotPictures(of("computer")?.pictures);
+  const phone = readShotPictures(of("phone")?.pictures);
+  if (!computer.full || !computer.screen || !phone.full || !phone.screen) throw new Error("The look's photographs are not all made yet.");
+  const [theme] = await db().execute<Row>(sql`select snapshot from commerce.design_presets where id = ${shot.presetId}::uuid`);
+  const snapshot = theme ? parseDesignSnapshot(theme.snapshot) : null;
+  if (!snapshot) throw new Error("The theme's published look could not be read.");
+  const read = fetchFile(deps);
+  const highlights = await composeHighlights({
+    computerFull: await read(computer.full.url),
+    computerScreen: await read(computer.screen.url),
+    detail: computer.detail ? await read(computer.detail.url) : null,
+    phoneFull: await read(phone.full.url),
+    phoneScreen: await read(phone.screen.url),
+    parts: readShotParts(of("computer")?.parts),
+    phoneParts: readShotParts(of("phone")?.parts),
+    palette: swatchOf(snapshot),
+  });
+  return {
+    files: highlights.map((h) => ({ kind: h.kind, bytes: h.bytes, contentType: "image/webp" as const, extension: "webp" as const, width: h.width, height: h.height })),
+    parts: null,
+  };
+}
 
 const upload = (deps: ShotDeps) => deps.upload ?? ((path: string, bytes: Uint8Array, type: string) => uploadBytes("product-media", path, bytes, type));
 const remove = (deps: ShotDeps) => deps.remove ?? ((paths: string[]) => removeStoredFiles("product-media", paths));
@@ -176,8 +234,7 @@ export async function takeThemeShot(shot: ClaimedShot, wanted: readonly WantedSh
   }
   const stored: string[] = [];
   try {
-    const taken = await deps.photograph(shotPreviewUrl(origin, shot), shot.kind);
-    const files = await shotFiles(shot.kind, taken);
+    const { files, parts } = await madeFiles(shot, origin, deps);
     const pictures: ShotPictures = {};
     for (const file of files) {
       const path = `${shotFolder(shot.presetId, shot.id)}/${shot.kind}-${file.kind}.${file.extension}`;
@@ -187,7 +244,7 @@ export async function takeThemeShot(shot: ClaimedShot, wanted: readonly WantedSh
       pictures[file.kind] = { path, url: put.url, width: file.width, height: file.height, bytes: file.bytes.length };
     }
     const [done] = await db().execute<Row>(sql`
-      update commerce.theme_shots set status = 'done', pictures = ${JSON.stringify(pictures)}::jsonb, parts = ${JSON.stringify(taken.parts)}::jsonb,
+      update commerce.theme_shots set status = 'done', pictures = ${JSON.stringify(pictures)}::jsonb, parts = ${parts ? JSON.stringify(parts) : null}::jsonb,
              finished_at = now(), claimed_until = null, problem = null
        where id = ${shot.id}::uuid and status = 'running'
       returning id
@@ -237,12 +294,12 @@ export const SHOT_MS = 45_000;
  * One run of the job: the queue brought in line, then units taken one after another until `deadline` (a time in milliseconds) leaves too
  * little time for another, then the old sets pruned. Returns how many units were done, for the route to refresh the theme store.
  */
-export async function runThemeShots(origin: string, deadline: number, deps: ShotDeps, now: () => number = Date.now): Promise<{ done: number; taken: number }> {
+export async function runThemeShots(origin: string, deadline: number, deps: ShotDeps, scope: ShotScope = {}, now: () => number = Date.now): Promise<{ done: number; taken: number }> {
   const wanted = await queueThemeShots();
   let done = 0;
   let taken = 0;
   while (now() + SHOT_MS < deadline) {
-    const shot = await claimThemeShot();
+    const shot = await claimThemeShot(scope);
     if (!shot) break;
     taken++;
     if ((await takeThemeShot(shot, wanted, origin, deps)) === "done") done++;
@@ -272,7 +329,7 @@ export async function themeShotsFor(presetIds: readonly string[]): Promise<Map<s
     const key = lookOf(String(row.preset_id), row.variation ? String(row.variation) : null);
     const look = out.get(key) ?? { computer: null, phone: null, version: null };
     const kind = String(row.kind);
-    if (kind === "computer" || kind === "phone") look[kind] = readShotPictures(row.pictures);
+    if (kind === "computer" || kind === "phone" || kind === "highlights") look[kind] = readShotPictures(row.pictures);
     look.version = Math.max(look.version ?? 0, Number(row.version));
     out.set(key, look);
   }
@@ -282,7 +339,7 @@ export async function themeShotsFor(presetIds: readonly string[]): Promise<Map<s
 /** A unit as the platform's admin sees it on a theme's page. */
 export type ShotStatus = {
   variation: string | null;
-  kind: ShotKind;
+  kind: UnitKind;
   version: number;
   status: StoredShot["status"];
   problem: string | null;
@@ -299,7 +356,7 @@ export async function themeShotStatus(presetId: string): Promise<ShotStatus[]> {
   `);
   return rows.map((row) => ({
     variation: row.variation ? String(row.variation) : null,
-    kind: String(row.kind) as ShotKind,
+    kind: String(row.kind) as UnitKind,
     version: Number(row.version),
     status: String(row.status) as StoredShot["status"],
     problem: row.problem ? String(row.problem) : null,

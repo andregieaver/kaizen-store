@@ -14,17 +14,26 @@ import { testDb } from "./db";
  */
 
 let id = "";
+const SLUG = `e2e-shots-${Date.now().toString(36)}`;
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ baseURL }) => {
   const sql = testDb();
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
+    // With the words of one highlight written (`docs/theme-showcase-phase-2.md` step 2).
+    const listing = { kinds: [], styles: [], pictures: [], highlights: { devices: { title: "On every screen", text: "A computer and two phones." } } };
     const [row] = await sql`
-      insert into commerce.design_presets (title, summary, snapshot, published, published_at)
-      values ('E2E Shots', 'Photographed by the test.', ${sql.json(snapshot as never)}, true, now())
+      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug, listing)
+      values ('E2E Shots', 'Photographed by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json(listing)})
       returning id`;
     id = String(row.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${id}, 1, ${sql.json(snapshot as never)})`;
+    // Its highlights as the job leaves them, drawn from a public picture of the site's own.
+    const [standard] = await sql`select id from commerce.stores where is_template limit 1`;
+    const file = (kind: string) => ({ path: `platform/theme-shots/${id}/u/highlights-${kind}.webp`, url: `${baseURL}/demo/themes/calm-v2.webp`, width: 1600, height: 1000, bytes: 1 });
+    await sql`
+      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, pictures, finished_at)
+      values (${id}, 1, ${String(standard.id)}, 'highlights', 'done', ${sql.json({ devices: file("devices"), collage: file("collage"), closeup: file("closeup") })}, now())`;
   } finally {
     await sql.end();
   }
@@ -33,7 +42,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   const sql = testDb();
   try {
-    await sql`update commerce.design_presets set published = false where id = ${id}`;
+    await sql`update commerce.design_presets set published = false, slug = null where id = ${id}`;
   } finally {
     await sql.end();
   }
@@ -76,4 +85,16 @@ test("refuses a preview that is not there (it streams its not-found page with a 
   await expect(shootLook(browser as unknown as Browser, `${baseURL}${designPreviewPath("00000000-0000-4000-8000-000000000000", null, false, false, true)}`, "computer")).rejects.toThrow(
     /did not show the theme/,
   );
+});
+
+test("a theme's page shows its highlights, each with its words where written", async ({ page }) => {
+  await page.goto(`/themes/${SLUG}`);
+  const highlights = page.getByRole("region", { name: "Highlights" });
+  await expect(highlights).toBeVisible();
+  await expect(highlights.getByRole("img")).toHaveCount(3);
+  await expect(highlights.getByRole("img", { name: "E2E Shots: on a computer and two phones" })).toBeVisible();
+  await expect(highlights.getByText("On every screen")).toBeVisible();
+  await expect(highlights.getByText("A computer and two phones.")).toBeVisible();
+  // One without words shows its picture, named for what it shows.
+  await expect(highlights.getByRole("img", { name: "E2E Shots: the product page up close" })).toBeVisible();
 });

@@ -2171,12 +2171,17 @@ export async function checkedDesign(snapshot: unknown): Promise<ThemeCheckResult
 export async function markLaunchTheme(presetId: string, key: string, version: number | null, listing?: Omit<ThemeListing, "pictures">): Promise<void> {
   // A launch theme's address in the theme store is its key, and its kinds, styles and the packs its looks are shown on the code's
   // (`docs/theme-phase-3.md`, `docs/theme-showcase-phase-1.md` step 3); the pictures beside its main one are the platform admin's and kept.
-  const given = listing ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles, pack: listing.pack, presetPacks: listing.presetPacks }) : null;
+  // Its highlights' words (`docs/theme-showcase-phase-2.md` step 2) are the code's where it has them, else the admin's, kept.
+  const given = listing
+    ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles, pack: listing.pack, presetPacks: listing.presetPacks, ...(listing.highlights ? { highlights: listing.highlights } : {}) })
+    : null;
   await db().execute(sql`
     update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version),
       slug = coalesce(slug, ${key}),
       listing = case when ${given}::jsonb is null then listing
-        else ${given}::jsonb || jsonb_build_object('pictures', coalesce(listing -> 'pictures', '[]'::jsonb)) end
+        else ${given}::jsonb || jsonb_build_object('pictures', coalesce(listing -> 'pictures', '[]'::jsonb))
+          || case when ${given}::jsonb ? 'highlights' or listing -> 'highlights' is null then '{}'::jsonb
+               else jsonb_build_object('highlights', listing -> 'highlights') end end
     where id = ${presetId}::uuid
   `);
 }

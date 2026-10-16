@@ -8,8 +8,11 @@ import { SHOT_LENGTH_MAX, SHOT_SCREENS, type ShotKind, type ShotParts } from "./
  * `looking()` with a browser of its own (D150's rule).
  */
 
-/** What one look at one width gives: the page at full length (one pixel per CSS pixel), its first screen (at the width's scale) and its parts. */
-export type Shot = { full: Buffer; screen: Buffer; parts: ShotParts };
+/**
+ * What one look at one width gives: the page at full length (one pixel per CSS pixel), its first screen (at the width's scale), its parts,
+ * and from a computer the product part at twice the pixels (`detail`, for the close-up highlight; null where there is none).
+ */
+export type Shot = { full: Buffer; screen: Buffer; parts: ShotParts; detail?: Buffer | null };
 
 /** How long the page is given to open, and its pictures and fonts to arrive. */
 const OPEN_MS = 30_000;
@@ -63,6 +66,28 @@ function measure(max: number): ShotParts {
   };
 }
 
+/**
+ * The product part photographed at twice the pixels, for the close-up highlight: Chromium's own capture of the part's box at a scale of 2
+ * (`Page.captureScreenshot` with `clip.scale`), which draws it again at that resolution. Null when the page has none or it cannot be taken;
+ * the close-up then cuts it from the page.
+ */
+async function closeUp(page: Page): Promise<Buffer | null> {
+  try {
+    const box = await page.evaluate(() => {
+      const part = document.querySelector('[data-shot="product"]');
+      if (!part) return null;
+      const rect = part.getBoundingClientRect();
+      return { x: rect.left + window.scrollX, y: rect.top + window.scrollY, width: rect.width, height: rect.height };
+    });
+    if (!box || box.width < 10 || box.height < 10) return null;
+    const cdp = await page.context().newCDPSession(page);
+    const shot = await cdp.send("Page.captureScreenshot", { format: "png", clip: { ...box, scale: 2 }, captureBeyondViewport: true });
+    return Buffer.from(shot.data, "base64");
+  } catch {
+    return null;
+  }
+}
+
 /** Opens `url` at the width of `kind`, waits for it, and photographs it. The browser itself is closed by whoever opened it. */
 export async function shootLook(browser: Browser, url: string, kind: ShotKind): Promise<Shot> {
   const screen = SHOT_SCREENS[kind];
@@ -94,7 +119,7 @@ export async function shootLook(browser: Browser, url: string, kind: ShotKind): 
       animations: "disabled",
     });
     const first = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: screen.width, height: Math.min(screen.height, parts.length) }, scale: "device", animations: "disabled" });
-    return { full, screen: first, parts };
+    return { full, screen: first, parts, detail: kind === "computer" ? await closeUp(page) : null };
   } finally {
     await context.close().catch(() => {});
   }

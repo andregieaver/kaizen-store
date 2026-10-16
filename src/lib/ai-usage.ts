@@ -30,6 +30,7 @@ export const AI_FEATURES = {
   media: "Media library",
   page_studio: "Page studio",
   content_pack: "Content pack pictures",
+  theme_highlights: "Theme highlight words",
   page_motion: "Page motion",
   page_replica: "Page replication",
   page_translation: "Page translation",

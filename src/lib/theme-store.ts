@@ -5,6 +5,7 @@ import { whatsNew } from "./theme-update";
 import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, contentPack, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
+import { readHighlightWords, type HighlightWords, type ThemeHighlight } from "./theme-highlights";
 import type { LookShots } from "./theme-shots";
 
 /**
@@ -51,7 +52,15 @@ export type ThemeFeature = keyof typeof THEME_FEATURES;
  * the content pack each of its looks is shown on (`docs/theme-showcase-phase-1.md` step 3): `pack` for the theme's own look, `presetPacks`
  * for its presets by key. A look with no pack, or whose pack's store template is not published, is shown on the Standard store.
  */
-export type ThemeListing = { kinds: StoreKind[]; styles: ThemeStyle[]; pictures: string[]; pack: PackKey | null; presetPacks: Record<string, PackKey> };
+export type ThemeListing = {
+  kinds: StoreKind[];
+  styles: ThemeStyle[];
+  pictures: string[];
+  pack: PackKey | null;
+  presetPacks: Record<string, PackKey>;
+  /** Its highlights' words (`docs/theme-showcase-phase-2.md` step 2), only when some are written. */
+  highlights?: HighlightWords;
+};
 
 /** A preset's key, as `VARIATION_KEY` (here without zod's module). */
 const PRESET_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -80,6 +89,7 @@ export function readListing(value: unknown): ThemeListing {
   const styles = new Set(listOf(raw.styles).filter((s) => isKey(THEME_STYLES, s)));
   const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
   const presets = raw.presetPacks && typeof raw.presetPacks === "object" && !Array.isArray(raw.presetPacks) ? (raw.presetPacks as Record<string, unknown>) : {};
+  const highlights = readHighlightWords(raw.highlights);
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
@@ -90,6 +100,7 @@ export function readListing(value: unknown): ThemeListing {
         .filter((entry): entry is [string, PackKey] => PRESET_KEY.test(entry[0]) && isPack(entry[1]))
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
     ),
+    ...(Object.keys(highlights).length > 0 ? { highlights } : {}),
   };
 }
 
@@ -103,6 +114,8 @@ export function parseListing(form: {
   pack?: unknown;
   /** Each preset's pack, by key ("" for the Standard store). */
   presetPacks?: Record<string, unknown>;
+  /** The highlights' words, by kind (`readHighlightWords()`). */
+  highlights?: unknown;
 }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
   const slug = typeof form.slug === "string" ? form.slug.trim().toLowerCase() : "";
   const problems: string[] = [];
@@ -112,7 +125,7 @@ export function parseListing(form: {
   if (pictures.some((value) => !isThemePicture(value))) problems.push("A picture's address is one on this site (/…) or an https:// address.");
   if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks }) };
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks, highlights: form.highlights }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */
@@ -178,6 +191,8 @@ export type ThemeStoreCard = {
   /** The card and the share image made from its own look's photographs (`docs/theme-showcase-phase-2.md` step 1), where made. */
   madeCard: string | null;
   madeShare: string | null;
+  /** Its highlights with their words (step 2), where made; empty until then. */
+  highlights?: ThemeHighlight[];
   /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`), in order. */
   presets: { key: string; name: string }[];
   /** Its own look and its presets, each with the demo store it is shown on (`themeLooks()`). */

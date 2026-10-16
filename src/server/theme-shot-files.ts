@@ -46,7 +46,7 @@ async function cut(source: Buffer, size: { width: number; height: number }, rati
 }
 
 /** Every picture a width makes from its photographs. */
-export async function shotFiles(kind: ShotKind, shot: Pick<Shot, "full" | "screen">): Promise<MadeFile[]> {
+export async function shotFiles(kind: ShotKind, shot: Pick<Shot, "full" | "screen" | "detail">): Promise<MadeFile[]> {
   const out: MadeFile[] = [];
   const add = async (picture: ShotPictureKind, source: Buffer, encode: Encode, qualities: readonly number[], type: MadeFile["contentType"]) => {
     const made = await fitted(source, encode, qualities);
@@ -58,6 +58,8 @@ export async function shotFiles(kind: ShotKind, shot: Pick<Shot, "full" | "scree
     // From the page, not its first screen: a card is taller (4:3) than a computer's screen.
     await add("card", await cut(shot.full, CARD_SIZE, CARD_SIZE.width / CARD_SIZE.height), webp, [84, 74], "image/webp");
     await add("share", await cut(shot.full, SHARE_SIZE, SHARE_SIZE.width / SHARE_SIZE.height), jpeg, [85, 75], "image/jpeg");
+    // The product part at twice the pixels, which the close-up highlight is drawn from (step 2).
+    if (shot.detail) await add("detail", shot.detail, webp, [86, 76], "image/webp");
   }
   return out;
 }

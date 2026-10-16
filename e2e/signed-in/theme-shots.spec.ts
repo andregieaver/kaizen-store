@@ -19,8 +19,8 @@ test.beforeAll(async ({ baseURL }) => {
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
     const [theme] = await sql`
-      insert into commerce.design_presets (title, summary, snapshot, published, published_at)
-      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now()) returning id`;
+      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug)
+      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now(), ${`e2e-pictured-${Date.now().toString(36)}`}) returning id`;
     presetId = String(theme.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${presetId}, 1, ${sql.json(snapshot as never)})`;
     const [standard] = await sql`select id from commerce.stores where is_template limit 1`;
@@ -46,7 +46,7 @@ test.beforeAll(async ({ baseURL }) => {
 test.afterAll(async () => {
   const sql = testDb();
   try {
-    await sql`update commerce.design_presets set published = false where id = ${presetId}`;
+    await sql`update commerce.design_presets set published = false, slug = null where id = ${presetId}`;
   } finally {
     await sql.end();
   }
@@ -71,4 +71,26 @@ test("a theme's page shows its photographs, says why one could not be made, and 
   } finally {
     await sql.end();
   }
+});
+
+test("a theme's highlight words are written on its page and saved with its listing; Suggest words says when no model is set", async ({ page }) => {
+  await page.goto(`/admin/platform/design-profiles/${presetId}`);
+  const words = page.getByRole("group", { name: "Highlights" });
+  const devices = words.locator('[data-highlight-words="devices"]');
+  await devices.getByLabel("Title").fill("On every screen");
+  await devices.getByLabel("Line").fill("A computer and two phones.");
+  // The test site has no text model: the button says so, and the words typed stay.
+  await words.getByRole("button", { name: "Suggest words" }).click();
+  await expect(words.getByText(/No text model is set/)).toBeVisible();
+  await expect(devices.getByLabel("Title")).toHaveValue("On every screen");
+  await page.getByRole("button", { name: "Save the listing" }).click();
+  await expect.poll(async () => {
+    const sql = testDb();
+    try {
+      const [row] = await sql`select listing -> 'highlights' as highlights from commerce.design_presets where id = ${presetId}`;
+      return row?.highlights;
+    } finally {
+      await sql.end();
+    }
+  }).toEqual({ devices: { title: "On every screen", text: "A computer and two phones." } });
 });

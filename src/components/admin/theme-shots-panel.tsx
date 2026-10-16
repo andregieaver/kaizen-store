@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
+import { HIGHLIGHT_KINDS, HIGHLIGHT_NAMES } from "@/lib/theme-highlights";
 import type { ShotKind } from "@/lib/theme-shots";
 import type { ShotStatus } from "@/server/theme-shots";
 
@@ -25,6 +26,7 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "nume
  */
 export function ThemeShotsPanel({ looks, shots, published, retry }: { looks: ShotLook[]; shots: ShotStatus[]; published: boolean; retry: (state: FormState) => Promise<FormState> }) {
   const of = (key: string | null, kind: ShotKind) => shots.find((shot) => shot.variation === key && shot.kind === kind) ?? null;
+  const highlights = shots.find((shot) => shot.variation === null && shot.kind === "highlights") ?? null;
   const failed = shots.filter((shot) => shot.status === "failed").length;
   const waiting = shots.filter((shot) => shot.status === "waiting" || shot.status === "running").length;
   return (
@@ -77,6 +79,25 @@ export function ThemeShotsPanel({ looks, shots, published, retry }: { looks: Sho
           </li>
         ))}
       </ul>
+      {/* The three highlights, composed from the theme's own look once its two photographs are made (step 2). */}
+      <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4" data-theme-highlights="">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-body-strong text-ink">Highlights</p>
+          {highlights ? <Chip signal={STATUS[highlights.status].signal}>{STATUS[highlights.status].words}</Chip> : <Chip>{published ? "Made after the photographs" : "Not made yet"}</Chip>}
+        </div>
+        {highlights?.status === "done" && (
+          <div className="flex flex-wrap gap-4">
+            {HIGHLIGHT_KINDS.map((kind) => {
+              const picture = highlights.pictures[kind];
+              return picture ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a made picture in Kaizena Flow's own bucket
+                <img key={kind} src={picture.url} alt={HIGHLIGHT_NAMES[kind]} width={picture.width} height={picture.height} loading="lazy" className="aspect-[8/5] w-52 rounded-panel border border-line object-cover" />
+              ) : null;
+            })}
+          </div>
+        )}
+        {highlights?.status === "failed" && highlights.problem && <p className="text-caption text-danger-text">{highlights.problem}</p>}
+      </div>
       {failed > 0 && (
         <ActionForm action={retry} className="mt-4 flex flex-wrap items-center gap-3">
           <SubmitButton>Try again</SubmitButton>

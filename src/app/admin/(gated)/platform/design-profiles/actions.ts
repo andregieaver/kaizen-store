@@ -29,6 +29,7 @@ import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
 import { retryThemeShots } from "@/server/theme-shots";
+import { suggestHighlightWords, type HighlightSuggestion } from "@/server/theme-highlight-words";
 
 /** The design profile form's fields, as the server reads them. */
 const detailsOf = (formData: FormData) =>
@@ -199,6 +200,12 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
   const admin = await requirePlatformAdmin();
   // Each look's demo store (`docs/theme-showcase-phase-1.md` step 3): `pack` for the theme's own, `pack:{key}` for each preset.
   const presetPacks = Object.fromEntries([...formData.entries()].filter(([name]) => name.startsWith("pack:")).map(([name, value]) => [name.slice(5), value]));
+  // The highlights' words (`docs/theme-showcase-phase-2.md` step 2): `highlight:{kind}:title` and `highlight:{kind}:text`.
+  const highlights: Record<string, Record<string, unknown>> = {};
+  for (const [name, value] of formData.entries()) {
+    const [prefix, kind, field] = name.split(":");
+    if (prefix === "highlight" && kind && (field === "title" || field === "text")) (highlights[kind] ??= {})[field] = value;
+  }
   const parsed = parseListing({
     slug: formData.get("slug"),
     kinds: formData.getAll("kinds"),
@@ -206,6 +213,7 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
     pictures: formData.getAll("pictures"),
     pack: formData.get("pack"),
     presetPacks,
+    highlights,
   });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
   const result = await saveThemeListing(admin, presetId, parsed.slug, parsed.listing);
@@ -223,4 +231,10 @@ export async function retryThemeShotsAction(presetId: string, _state: FormState)
   return count > 0
     ? { status: "ok", messages: [`${count === 1 ? "It is" : `All ${count} are`} waiting again; the pictures are made within a few minutes.`] }
     : { status: "ok", messages: ["Nothing was waiting to be tried again."] };
+}
+
+/** *Suggest words* for a theme's highlights: the text model's suggestion, put in the fields unsaved (`suggestHighlightWords()`). */
+export async function suggestHighlightWordsAction(presetId: string): Promise<HighlightSuggestion> {
+  const admin = await requirePlatformAdmin();
+  return suggestHighlightWords(admin, presetId);
 }

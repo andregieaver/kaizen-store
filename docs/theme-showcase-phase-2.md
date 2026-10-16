@@ -121,7 +121,7 @@ is made, not at the next run; a launch theme's photograph by hand is the newest 
 taken by the same job; no browser is needed but for the close-up, photographed with the computer unit), on a backdrop in the theme's own
 light colours:
 
-* **Devices** (`trio`): the computer's first screen in a drawn computer frame, two phones beside it: the phone's first screen and the phone
+* **Devices** (`devices`): the computer's first screen in a drawn computer frame, two phones beside it: the phone's first screen and the phone
   at its product.
 * **Collage** (`collage`): the computer's page cut at its measured rows, three or four sections laid out in two staggered columns.
 * **Close-up** (`closeup`): the product grid or the product's buy part at twice the pixels.
@@ -138,6 +138,18 @@ themes' words are written by hand in `LAUNCH_THEMES` and written by `launchListi
 
 **Tests.** Composition from made-up shots (sizes, each part placed inside the picture), the words' limits and the claims filter, the
 suggestion through a stand-in model, the page's view test.
+
+**Built (D265).** `src/lib/theme-highlights.ts` (kinds, words, `collageSections()`, `collageLayout()`, `closeupPlace()`,
+`phoneDetailTop()`, `themeHighlights()`), `src/server/theme-highlights.ts` (`composeHighlights()`), the `highlights` unit in the shots' job
+(claimed only once the look's computer and phone are made; it reads their files back from the bucket), `ThemeListing.highlights`,
+`src/server/theme-highlight-words.ts` (`suggestHighlightWords()`, `checkedSuggestion()`), `HighlightWordsFields` in the listing form, the
+*Highlights* row of the *Pictures* panel and the theme page's section; the launch themes' words in `LAUNCH_THEMES`. Held by
+`src/lib/theme-highlights.test.ts`, `src/server/theme-highlights.test.ts`, the shots' integration test (composed after the photographs,
+read back from the bucket, the words on the card), the panel's view test, `e2e/theme-shots.spec.ts` (the page's section) and
+`e2e/signed-in/theme-shots.spec.ts` (words saved; *Suggest words* without a model). *Deviations:* the close-up's source is photographed by the
+computer's unit as `detail` (Chromium's capture of the product part at a clip scale of 2: a device scale set on the page did not change
+Playwright's screenshot); the words are saved with the listing, at once, as the listing is; the claims filter is about products, so the
+suggestion also refuses superlatives and promises (`best`, `perfect`, `guaranteed` and the like); a short collage is centred.
 
 ## Step 3: swapping
 

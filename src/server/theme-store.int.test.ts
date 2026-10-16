@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { LAUNCH_THEMES } from "@/lib/launch-themes";
 
 import type { Account } from "./auth";
 
@@ -44,6 +45,8 @@ describe("the theme store's data", () => {
       pictures: [],
       pack: "food",
       presetPacks: { blush: "beauty", olive: "home" },
+      // Its highlights' words are the code's (`docs/theme-showcase-phase-2.md` step 2).
+      highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
     });
     expect(calm?.features).toContain("dark");
   });
@@ -68,6 +71,7 @@ describe("the theme store's data", () => {
       pictures: ["/media/hearth-1.webp"],
       pack: "food",
       presetPacks: { blush: "beauty", olive: "home" },
+      highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
     });
   });
 

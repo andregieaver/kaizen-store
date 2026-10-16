@@ -32,8 +32,9 @@ let theme: string;
 let standard: string;
 let photos: Record<ShotKind, { full: Buffer; screen: Buffer }>;
 
-/** The bucket, kept in memory: what was uploaded and what was removed. */
-const bucket = { stored: new Map<string, number>(), removed: [] as string[] };
+/** The bucket, kept in memory: what was uploaded (its bytes, by path) and what was removed. */
+const bucket = { stored: new Map<string, Buffer>(), removed: [] as string[] };
+const PUBLIC = "https://x.supabase.co/storage/v1/object/public/product-media/";
 const looked: string[] = [];
 let failFor: string | null = null;
 const shotDeps: import("./theme-shots").ShotDeps = {
@@ -43,8 +44,13 @@ const shotDeps: import("./theme-shots").ShotDeps = {
     return { ...photos[kind], parts: { length: 3000, header: { top: 0, height: 100 }, rows: [{ top: 100, height: 800 }], product: null, footer: null } };
   },
   upload: async (path, bytes) => {
-    bucket.stored.set(path, bytes.length);
-    return { ok: true, url: `https://x.supabase.co/storage/v1/object/public/product-media/${path}` };
+    bucket.stored.set(path, Buffer.from(bytes));
+    return { ok: true, url: `${PUBLIC}${path}` };
+  },
+  fetchFile: async (url) => {
+    const bytes = bucket.stored.get(url.slice(PUBLIC.length));
+    if (!bytes) throw new Error(`Not stored: ${url}`);
+    return bytes;
   },
   remove: async (paths) => {
     bucket.removed.push(...paths);
@@ -56,8 +62,8 @@ const shotDeps: import("./theme-shots").ShotDeps = {
 const mine = async () =>
   db().execute<Row>(sql`select id, version, variation, starter_id, showcase_store_id, kind, status, tries, problem, pictures from commerce.theme_shots where preset_id = ${theme}::uuid order by version, kind`);
 
-/** Runs the job until nothing is left to take (other tests' themes included: the photographer and bucket are this test's own). */
-const runJob = () => shots.runThemeShots(ORIGIN, Date.now() + shots.SHOT_MS + 120_000, shotDeps);
+/** Runs the job until nothing of this theme is left to take (other tests' themes share the database and are left alone). */
+const runJob = () => shots.runThemeShots(ORIGIN, Date.now() + shots.SHOT_MS + 120_000, shotDeps, { presetIds: [theme] });
 
 async function publish(): Promise<void> {
   const result = await designs.publishDesign(admin, theme);
@@ -89,6 +95,8 @@ describe("a theme's photographs", () => {
     const rows = await mine();
     expect(rows.map((r) => [r.version, r.variation, r.starter_id, r.showcase_store_id, r.kind, r.status])).toEqual([
       [1, null, null, standard, "computer", "waiting"],
+      // Its highlights (`docs/theme-showcase-phase-2.md` step 2), composed once both photographs are made.
+      [1, null, null, standard, "highlights", "waiting"],
       [1, null, null, standard, "phone", "waiting"],
     ]);
   });
@@ -98,14 +106,19 @@ describe("a theme's photographs", () => {
     expect(looked).toContain(`computer ${ORIGIN}/admin/account/design-profiles/${theme}/preview?embed=1`);
     expect(looked).toContain(`phone ${ORIGIN}/admin/account/design-profiles/${theme}/preview?embed=1`);
     const rows = await mine();
-    expect(rows.map((r) => r.status)).toEqual(["done", "done"]);
+    expect(rows.map((r) => r.status)).toEqual(["done", "done", "done"]);
     const computer = readShotPictures(rows[0].pictures);
     expect(Object.keys(computer).sort()).toEqual(["card", "full", "screen", "share"]);
     expect(computer.card).toMatchObject({ width: 800, height: 600 });
     expect(computer.share).toMatchObject({ width: 1200, height: 630 });
     expect(computer.card?.path).toBe(`platform/theme-shots/${theme}/${String(rows[0].id)}/computer-card.webp`);
     expect(bucket.stored.has(computer.share!.path)).toBe(true);
-    expect(Object.keys(readShotPictures(rows[1].pictures)).sort()).toEqual(["full", "screen"]);
+    expect(Object.keys(readShotPictures(rows[2].pictures)).sort()).toEqual(["full", "screen"]);
+    // The highlights, drawn from the photographs read back from the bucket.
+    const highlights = readShotPictures(rows[1].pictures);
+    expect(Object.keys(highlights).sort()).toEqual(["closeup", "collage", "devices"]);
+    expect(highlights.devices).toMatchObject({ width: 1600, height: 1000 });
+    expect(highlights.devices?.path).toBe(`platform/theme-shots/${theme}/${String(rows[1].id)}/highlights-devices.webp`);
   });
 
   it("are what the theme store shows: the made card on its card and the share image on its page", async () => {
@@ -114,6 +127,23 @@ describe("a theme's photographs", () => {
     expect(card.madeShare).toMatch(/computer-share\.jpg$/);
     expect(card.looks[0].shots?.phone?.screen?.width).toBe(780);
     expect(card.looks[0].shots?.version).toBe(1);
+    // Its highlights, in order, without words until a person writes them, then with them.
+    expect(card.highlights?.map((h) => [h.kind, h.title])).toEqual([
+      ["devices", null],
+      ["collage", null],
+      ["closeup", null],
+    ]);
+    const listed = await designs.saveThemeListing(admin, theme, `shotline-${run}`, {
+      kinds: [],
+      styles: [],
+      pictures: [],
+      pack: null,
+      presetPacks: {},
+      highlights: { devices: { title: "On every screen", text: "A computer and two phones." } },
+    });
+    expect(listed.ok).toBe(true);
+    const again = (await themeStoreCards()).find((c) => c.id === theme)!;
+    expect(again.highlights?.[0]).toMatchObject({ kind: "devices", title: "On every screen", text: "A computer and two phones.", alt: `Shotline ${run}: on a computer and two phones` });
   });
 
   it("are asked for again for a new version, and the older set stays shown until the new one is made, then is set aside", async () => {
@@ -125,6 +155,8 @@ describe("a theme's photographs", () => {
     expect(rows.map((r) => [r.version, r.status])).toEqual([
       [1, "done"],
       [1, "done"],
+      [1, "done"],
+      [2, "waiting"],
       [2, "waiting"],
       [2, "waiting"],
     ]);
@@ -134,6 +166,8 @@ describe("a theme's photographs", () => {
     expect(rows.map((r) => [r.version, r.status])).toEqual([
       [1, "superseded"],
       [1, "superseded"],
+      [1, "superseded"],
+      [2, "done"],
       [2, "done"],
       [2, "done"],
     ]);
@@ -159,11 +193,13 @@ describe("a theme's photographs", () => {
     failFor = theme;
     await runJob();
     let rows = (await mine()).filter((r) => r.version === 3);
-    expect(rows.map((r) => [r.status, r.problem])).toEqual([
-      ["failed", "The preview answered 500."],
-      ["failed", "The preview answered 500."],
+    // The highlights wait for photographs that never came.
+    expect(rows.map((r) => [r.kind, r.status, r.problem])).toEqual([
+      ["computer", "failed", "The preview answered 500."],
+      ["highlights", "waiting", null],
+      ["phone", "failed", "The preview answered 500."],
     ]);
-    expect(rows.every((r) => Number(r.tries) === 3)).toBe(true);
+    expect(rows.filter((r) => r.kind !== "highlights").every((r) => Number(r.tries) === 3)).toBe(true);
     // Version 2's pictures are still what the theme store shows.
     expect((await shots.themeShotsFor([theme])).get(shots.lookOf(theme, null))?.version).toBe(2);
     expect(await shots.retryThemeShots({ ...admin, platformAdmin: false }, theme)).toBe(0);
@@ -171,7 +207,7 @@ describe("a theme's photographs", () => {
     failFor = null;
     await runJob();
     rows = (await mine()).filter((r) => r.version === 3);
-    expect(rows.map((r) => r.status)).toEqual(["done", "done"]);
+    expect(rows.map((r) => r.status)).toEqual(["done", "done", "done"]);
     const audited = await db().execute<Row>(sql`select 1 from commerce.audit_log where action = 'platform.theme_shots_retried' and account_id = ${admin.id}::uuid`);
     expect(audited).toHaveLength(1);
   });
@@ -179,9 +215,9 @@ describe("a theme's photographs", () => {
   it("come back as made when a set aside unit is wanted again before it is pruned", async () => {
     await designs.unpublishDesign(admin, theme);
     await shots.queueThemeShots();
-    expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["superseded", "superseded"]);
+    expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["superseded", "superseded", "superseded"]);
     await publish();
-    expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["done", "done"]);
+    expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["done", "done", "done"]);
   });
 
   it("are pruned with their files a week after they were set aside", async () => {

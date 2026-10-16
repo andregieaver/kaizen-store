@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { HighlightWordsFields } from "@/components/admin/highlight-words-fields";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
@@ -16,7 +17,7 @@ import { listStarters } from "@/server/store-starters";
 import { themeShotStatus } from "@/server/theme-shots";
 
 import { uploadPlatformImageAction } from "../../actions";
-import { copyStoreLookAction, retryThemeShotsAction, saveDesignDraftAction, saveThemeListingAction } from "../actions";
+import { copyStoreLookAction, retryThemeShotsAction, saveDesignDraftAction, saveThemeListingAction, suggestHighlightWordsAction } from "../actions";
 import { designPage } from "./data";
 import { DesignShell } from "./shell";
 
@@ -146,6 +147,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
             </div>
           </fieldset>
           <ThemePicturesField initial={design.listing.pictures} upload={uploadPlatformImageAction} max={THEME_PICTURES_MAX} />
+          <HighlightWordsFields initial={design.listing.highlights} suggest={suggestHighlightWordsAction.bind(null, design.id)} />
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="mb-1 font-medium">Shown on</legend>
             <p className="text-muted">

@@ -33,12 +33,12 @@ const theme = (version: number, looks: ShotTheme["looks"] = [{ variation: null, 
 const stored = (shot: WantedShot, status: StoredShot["status"], id = shotKey(shot)): StoredShot => ({ ...shot, id, status });
 
 describe("what is photographed", () => {
-  it("is each look of a theme's latest version, on the store its showcase draws, at a computer's and a phone's width", () => {
+  it("is each look of a theme's latest version, on the store its showcase draws, at a computer's and a phone's width, and the theme's highlights from its own look", () => {
     const wanted = wantedShots([theme(3)], storeOf);
-    expect(wanted).toHaveLength(4);
     expect(wanted.map((w) => [w.variation, w.showcaseStoreId, w.kind, w.version])).toEqual([
       [null, FASHION_COPY, "computer", 3],
       [null, FASHION_COPY, "phone", 3],
+      [null, FASHION_COPY, "highlights", 3],
       ["sand", STANDARD, "computer", 3],
       ["sand", STANDARD, "phone", 3],
     ]);
@@ -69,9 +69,10 @@ describe("what is set aside", () => {
   });
 
   it("sets aside a done set whose look is not wanted at all: a preset taken out, a theme no longer published", () => {
-    const sand = stored(v3[2], "done");
-    expect(supersededShots([sand], wantedShots([theme(4, [{ variation: null, starterId: FASHION }])], storeOf))).toEqual([shotKey(v3[2])]);
-    expect(supersededShots([sand], [])).toEqual([shotKey(v3[2])]);
+    const sandShot = v3.find((w) => w.variation === "sand" && w.kind === "computer")!;
+    const sand = stored(sandShot, "done");
+    expect(supersededShots([sand], wantedShots([theme(4, [{ variation: null, starterId: FASHION }])], storeOf))).toEqual([shotKey(sandShot)]);
+    expect(supersededShots([sand], [])).toEqual([shotKey(sandShot)]);
   });
 
   it("never touches what is wanted or already set aside", () => {
@@ -86,9 +87,10 @@ describe("the pictures cut from a photograph", () => {
     expect(topCrop(1440, 500, CARD_SIZE.width / CARD_SIZE.height)).toEqual({ left: 0, top: 0, width: 1440, height: 500 });
   });
 
-  it("are a card and a share image only from a computer", () => {
-    expect(picturesOf("computer")).toEqual(["full", "screen", "card", "share"]);
+  it("are a card, a share image and a close photograph of the product only from a computer, and the three highlights from their unit", () => {
+    expect(picturesOf("computer")).toEqual(["full", "screen", "card", "share", "detail"]);
     expect(picturesOf("phone")).toEqual(["full", "screen"]);
+    expect(picturesOf("highlights")).toEqual(["devices", "collage", "closeup"]);
   });
 
   it("are kept under the platform's own folder, per theme and unit", () => {

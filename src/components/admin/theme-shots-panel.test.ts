@@ -45,6 +45,23 @@ describe("the Pictures panel", () => {
     expect(html).toContain("One picture could not be made after three tries.");
   });
 
+  it("shows the three highlights once composed, and that they follow the photographs before", () => {
+    const highlights: ShotStatus = {
+      variation: null,
+      kind: "highlights",
+      version: 3,
+      status: "done",
+      problem: null,
+      finishedAt: "2026-10-16T12:00:00.000Z",
+      pictures: { devices: file("d.webp", 1600, 1000), collage: file("g.webp", 1600, 1000), closeup: file("u.webp", 1600, 1000) },
+    };
+    const made = draw([shot(null, "computer", "done"), shot(null, "phone", "done"), highlights]);
+    expect(made).toContain('alt="On a computer and two phones"');
+    expect(made).toContain('src="https://x.test/g.webp"');
+    expect(made).toContain('alt="The product page up close"');
+    expect(draw([shot(null, "computer", "running")])).toContain("Made after the photographs");
+  });
+
   it("before the theme is published, says its looks are photographed once it is", () => {
     const html = draw([], false);
     expect(html).toContain("once the theme is published");

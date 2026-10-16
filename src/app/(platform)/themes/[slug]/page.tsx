@@ -65,6 +65,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
   // Its own pictures; else its looks' photographed first screens (`docs/theme-showcase-phase-2.md` step 1), where made.
   const own = [theme.pictureUrl, ...theme.listing.pictures].filter((url): url is string => Boolean(url));
   const screens = own.length > 0 ? [] : madeScreens(theme);
+  const highlights = theme.highlights ?? [];
   const preview = looks[0].previewHref;
   const url = themeStoreUrl(theme.slug);
   return (
@@ -144,6 +145,31 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
         <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
         <ThemePreviewStage title={theme.title} looks={looks} />
       </section>
+
+      {/* Pictures composed from its photographs, with words a person wrote or accepted (`docs/theme-showcase-phase-2.md` step 2). */}
+      {highlights.length > 0 && (
+        <section aria-labelledby="highlights" className="flex flex-col gap-6">
+          <h2 id="highlights" className="text-xl font-semibold">
+            Highlights
+          </h2>
+          <ul className="grid gap-8 md:grid-cols-3" data-highlights="">
+            {highlights.map((highlight) => (
+              <li key={highlight.kind}>
+                <figure className="flex flex-col gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- made pictures, in Kaizena Flow's own bucket */}
+                  <img src={highlight.url} alt={highlight.alt} width={highlight.width} height={highlight.height} loading="lazy" className="w-full rounded-lg" />
+                  {highlight.title && (
+                    <figcaption className="flex flex-col gap-1">
+                      <span className="font-medium">{highlight.title}</span>
+                      {highlight.text && <span className="text-sm text-muted">{highlight.text}</span>}
+                    </figcaption>
+                  )}
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-10 md:grid-cols-2">
         <section aria-labelledby="about" className="flex flex-col gap-3">
