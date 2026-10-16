@@ -1133,6 +1133,7 @@ stand-in is the only fake, and only it is told it is one.
 
 ## Conventions
 
+- Every screen a person uses serves two people (Homer and Lisa: System 1 and System 2). The default view is for Homer: simple, intuitive and distraction free, one clear main action, sensible defaults chosen for him, words for what he gets rather than settings, and nothing to understand before pressing the obvious button. Lisa's depth (every setting, per screen size, own CSS, versions, what changes, undo) is one deliberate step away (Customise, Advanced) and never in Homer's way. A new screen passes when Homer can finish without reading anything and Lisa can still reach every setting.
 - The platform's name is Kaizena Flow (D240) in every string a person or an assistant reads, and its domain `kaizenaflow.com`; `Kaizen` stays in code names, cookie names, the webhook headers and Kaizen Life (another product). `src/lib/brand.scan.test.ts` fails on the old name or an old domain in any string.
 - Environment variables are validated in `src/lib/env.ts` when used, not at
   import, so builds and tests run without secrets.
