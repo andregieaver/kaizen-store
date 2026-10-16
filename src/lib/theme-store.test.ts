@@ -10,9 +10,11 @@ import {
   cardPicture,
   filterThemes,
   madeScreens,
+  OWN_SLOTS,
   parseListing,
   parseThemeFilter,
   readListing,
+  readOwnPictures,
   showcasePack,
   showcaseTrades,
   themeLooks,
@@ -166,6 +168,25 @@ describe("a launch theme's card picture by hand (the fallback until its looks ar
   });
 });
 
+describe("the admin's own pictures in place of made ones (docs/theme-showcase-phase-2.md step 3)", () => {
+  it("keeps known slots with an address on this site or https, and only when some are set", () => {
+    expect(readOwnPictures({ share: "/media/s.jpg", devices: "https://cdn.test/d.png", collage: "javascript:alert(1)", closeup: "http://x.test/c.png", card: "/media/c.webp" })).toEqual({
+      share: "/media/s.jpg",
+      devices: "https://cdn.test/d.png",
+    });
+    expect(readOwnPictures(["/media/s.jpg"])).toEqual({});
+    expect(readOwnPictures(null)).toEqual({});
+    expect(readListing({ own: { collage: "/media/g.webp" } }).own).toEqual({ collage: "/media/g.webp" });
+    expect(readListing({ own: {} })).not.toHaveProperty("own");
+    expect([...OWN_SLOTS]).toEqual(["share", "devices", "collage", "closeup"]);
+  });
+
+  it("are kept by the listing form, which never sets them itself", () => {
+    expect(parseListing({ slug: "calm", own: { share: "/media/s.jpg" } })).toMatchObject({ ok: true, listing: { own: { share: "/media/s.jpg" } } });
+    expect(parseListing({ slug: "calm" })).toEqual({ ok: true, slug: "calm", listing: { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} } });
+  });
+});
+
 describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", () => {
   const file = (name: string, width = 1440, height = 900): ShotFile => ({ path: `platform/theme-shots/${name}`, url: `https://x.test/${name}`, width, height, bytes: 1 });
 
@@ -176,6 +197,12 @@ describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", (
     expect(cardPicture({ pictureUrl: null, madeCard: null, shotUrl: null })).toBeNull();
     expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg" })).toBe("/share.jpg");
     expect(sharePicture({ pictureUrl: "/own.webp", madeShare: "/share.jpg" })).toBe("/own.webp");
+  });
+
+  it("shares the admin's own share image before anything else (step 3)", () => {
+    const listing = readListing({ own: { share: "/media/share.jpg" } });
+    expect(sharePicture({ pictureUrl: "/own.webp", madeShare: "/share.jpg", listing })).toBe("/media/share.jpg");
+    expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg", listing: readListing({}) })).toBe("/share.jpg");
   });
 
   it("without pictures of its own, shows each look's first screens: computers, then phones, each named for its look and store", () => {

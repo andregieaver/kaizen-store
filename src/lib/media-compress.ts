@@ -11,8 +11,8 @@
 /** Places a file's use is drawn only on the site's own pages (`MediaUse.source`). */
 export const PAGE_SOURCES = ["page", "menu", "saved", "theme"] as const;
 
-/** Places whose pictures leave the site: emails, feeds, social previews, models. */
-export const SENT_SOURCES = ["product", "seo", "chat", "navigation"] as const;
+/** Places whose pictures leave the site: emails, feeds, social previews (a theme's share image among them), models. */
+export const SENT_SOURCES = ["product", "seo", "chat", "navigation", "theme_listing"] as const;
 
 export type CompressCandidate = {
   kind: "image" | "video";

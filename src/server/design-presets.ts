@@ -45,7 +45,7 @@ import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
 import { withCoreStyles } from "@/lib/launch-themes";
-import { THEME_SLUG, readListing, themeLooks, type ThemeListing } from "@/lib/theme-store";
+import { OWN_SLOTS, THEME_SLUG, isThemePicture, readListing, themeLooks, type OwnSlot, type ThemeListing } from "@/lib/theme-store";
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
 
@@ -2181,9 +2181,38 @@ export async function markLaunchTheme(presetId: string, key: string, version: nu
       listing = case when ${given}::jsonb is null then listing
         else ${given}::jsonb || jsonb_build_object('pictures', coalesce(listing -> 'pictures', '[]'::jsonb))
           || case when ${given}::jsonb ? 'highlights' or listing -> 'highlights' is null then '{}'::jsonb
-               else jsonb_build_object('highlights', listing -> 'highlights') end end
+               else jsonb_build_object('highlights', listing -> 'highlights') end
+          -- The admin's own pictures in place of made ones (\`docs/theme-showcase-phase-2.md\` step 3) are theirs, kept.
+          || case when listing -> 'own' is null then '{}'::jsonb else jsonb_build_object('own', listing -> 'own') end end
     where id = ${presetId}::uuid
   `);
+}
+
+/**
+ * Puts a platform admin's own picture in place of a made one (`docs/theme-showcase-phase-2.md` step 3), or with null takes it away so the
+ * made one shows again: the share image or a highlight (`OWN_SLOTS`), an address on this site or https (as a theme's other pictures).
+ * Saved at once, as the listing is; audited `platform.theme_picture_replaced` and `platform.theme_picture_restored`.
+ */
+export async function saveThemeOwnPicture(admin: Account, id: string, slot: OwnSlot, url: string | null): Promise<DesignResult> {
+  if (!admin.platformAdmin || !isUuid(id) || !(OWN_SLOTS as readonly string[]).includes(slot)) return refuse(UNKNOWN);
+  const address = url?.trim() || null;
+  if (address && !isThemePicture(address)) return refuse("A picture's address is one on this site (/…) or an https:// address.");
+  const rows = await db().execute<Row>(sql`
+    update commerce.design_presets set
+      listing = case
+        when ${address}::text is null then
+          case when coalesce(listing -> 'own', '{}'::jsonb) - ${slot} = '{}'::jsonb then coalesce(listing, '{}'::jsonb) - 'own'
+               else jsonb_set(listing, '{own}', (listing -> 'own') - ${slot}) end
+        else coalesce(listing, '{}'::jsonb) || jsonb_build_object('own', coalesce(listing -> 'own', '{}'::jsonb) || jsonb_build_object(${slot}::text, ${address}::text))
+      end,
+      updated_by = ${admin.id}::uuid
+    where id = ${id}::uuid returning workspace_store_id
+  `);
+  if (rows.length === 0) return refuse(UNKNOWN);
+  await audit(admin.id, rows[0].workspace_store_id ? String(rows[0].workspace_store_id) : null, address ? "platform.theme_picture_replaced" : "platform.theme_picture_restored", { preset: id, slot }, {
+    target: { type: "design_preset", id },
+  });
+  return { ok: true };
 }
 
 /**
@@ -2197,7 +2226,11 @@ export async function saveThemeListing(admin: Account, id: string, slug: string,
   if (taken) return refuse("Another theme has that address. Choose another.");
   try {
     const rows = await db().execute<Row>(sql`
-      update commerce.design_presets set slug = ${slug}, listing = ${JSON.stringify(readListing(listing))}::jsonb, updated_by = ${admin.id}::uuid
+      update commerce.design_presets set slug = ${slug},
+        -- The admin's own pictures in place of made ones are set on their own (\`saveThemeOwnPicture()\`): a listing without them keeps them.
+        listing = ${JSON.stringify(readListing(listing))}::jsonb
+          || case when ${JSON.stringify(readListing(listing))}::jsonb ? 'own' or listing -> 'own' is null then '{}'::jsonb else jsonb_build_object('own', listing -> 'own') end,
+        updated_by = ${admin.id}::uuid
       where id = ${id}::uuid returning workspace_store_id
     `);
     if (rows.length === 0) return refuse(UNKNOWN);

@@ -60,7 +60,34 @@ export type ThemeListing = {
   presetPacks: Record<string, PackKey>;
   /** Its highlights' words (`docs/theme-showcase-phase-2.md` step 2), only when some are written. */
   highlights?: HighlightWords;
+  /** The platform admin's own pictures in place of made ones (step 3), by slot, only when some are set. */
+  own?: OwnPictures;
 };
+
+/**
+ * The made pictures a platform admin may replace with their own (`docs/theme-showcase-phase-2.md` step 3): the share image and each
+ * highlight. The card's own picture is the theme's main picture (`design_presets.picture_url`), set with its details.
+ */
+export const OWN_SLOTS = ["share", "devices", "collage", "closeup"] as const;
+export type OwnSlot = (typeof OWN_SLOTS)[number];
+export type OwnPictures = Partial<Record<OwnSlot, string>>;
+export const OWN_SLOT_NAMES: Record<OwnSlot, string> = {
+  share: "Share image",
+  devices: "Highlight: on a computer and two phones",
+  collage: "Highlight: the page, section by section",
+  closeup: "Highlight: the product page up close",
+};
+
+/** A listing's own pictures: known slots with a picture's address only. */
+export function readOwnPictures(value: unknown): OwnPictures {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: OwnPictures = {};
+  for (const slot of OWN_SLOTS) {
+    const url = (value as Record<string, unknown>)[slot];
+    if (isThemePicture(url)) out[slot] = url;
+  }
+  return out;
+}
 
 /** A preset's key, as `VARIATION_KEY` (here without zod's module). */
 const PRESET_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -90,6 +117,7 @@ export function readListing(value: unknown): ThemeListing {
   const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
   const presets = raw.presetPacks && typeof raw.presetPacks === "object" && !Array.isArray(raw.presetPacks) ? (raw.presetPacks as Record<string, unknown>) : {};
   const highlights = readHighlightWords(raw.highlights);
+  const own = readOwnPictures(raw.own);
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
@@ -101,6 +129,7 @@ export function readListing(value: unknown): ThemeListing {
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
     ),
     ...(Object.keys(highlights).length > 0 ? { highlights } : {}),
+    ...(Object.keys(own).length > 0 ? { own } : {}),
   };
 }
 
@@ -116,6 +145,8 @@ export function parseListing(form: {
   presetPacks?: Record<string, unknown>;
   /** The highlights' words, by kind (`readHighlightWords()`). */
   highlights?: unknown;
+  /** The own pictures the listing already has, kept as they are. */
+  own?: unknown;
 }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
   const slug = typeof form.slug === "string" ? form.slug.trim().toLowerCase() : "";
   const problems: string[] = [];
@@ -125,7 +156,8 @@ export function parseListing(form: {
   if (pictures.some((value) => !isThemePicture(value))) problems.push("A picture's address is one on this site (/…) or an https:// address.");
   if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks, highlights: form.highlights }) };
+  // The admin's own pictures in place of made ones are saved on their own (`saveThemeOwnPicture()`), so the listing form keeps them.
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks, highlights: form.highlights, own: form.own }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */
@@ -209,8 +241,12 @@ export type ThemeStoreCard = {
  */
 export const cardPicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeCard" | "shotUrl">): string | null => card.pictureUrl ?? card.madeCard ?? card.shotUrl;
 
-/** The share image of a theme's page: its own picture, else the one made from its photograph; null: the one drawn from its colours. */
-export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShare">): string | null => card.pictureUrl ?? card.madeShare;
+/**
+ * The share image of a theme's page: the admin's own share image (step 3), else its main picture, else the one made from its photograph;
+ * null: the one drawn from its colours.
+ */
+export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShare"> & { listing?: Pick<ThemeListing, "own"> }): string | null =>
+  card.listing?.own?.share ?? card.pictureUrl ?? card.madeShare;
 
 /**
  * The pictures a theme's page shows when it has none of its own: each look's first screen at a computer's width, then at a phone's, where

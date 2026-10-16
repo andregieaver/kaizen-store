@@ -49,7 +49,7 @@ const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, s
     shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
     madeCard: own?.card?.url ?? null,
     madeShare: own?.share?.url ?? null,
-    highlights: themeHighlights(String(row.title), looks[0]?.shots?.highlights, listing.highlights),
+    highlights: themeHighlights(String(row.title), looks[0]?.shots?.highlights, listing.highlights, listing.own),
     presets,
     looks,
     listing,

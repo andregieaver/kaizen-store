@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { LAUNCH_THEMES } from "@/lib/launch-themes";
+import { sharePicture } from "@/lib/theme-store";
 
 import type { Account } from "./auth";
 
@@ -13,6 +14,7 @@ const { syncLaunchThemes } = await import("./launch-themes");
 const designs = await import("./design-presets");
 const store = await import("./theme-store");
 const installs = await import("./theme-installs");
+const { mediaUses } = await import("./media-library");
 
 /**
  * The theme store's data (`docs/theme-phase-3.md` step 1): launch themes listed at their key, an admin's listing saved at once and refused
@@ -122,5 +124,70 @@ describe("trying a theme in a store (step 2)", () => {
     const [outsider] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`outsider-${run}@example.com`}, 'Out') returning id`);
     const other = await designs.installDesignPreset(String(storeId), hearth.id, String(outsider.id), deps);
     expect(other.ok).toBe(false);
+  });
+});
+
+describe("pictures in place of made ones (docs/theme-showcase-phase-2.md step 3)", () => {
+  it("puts the admin's own picture in a made one's place and back, audited, kept by the listing form and the launch sync", async () => {
+    const signal = await store.themeStorePage("signal");
+    if (!signal) throw new Error("Signal is not in the store");
+    const [kept] = await db().execute<Row>(sql`select picture_url, listing from commerce.design_presets where id = ${signal.id}::uuid`);
+    try {
+      const share = `/media/signal-share-${run}.jpg`;
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "share", share)).toEqual({ ok: true });
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "devices", "https://cdn.test/devices.webp")).toEqual({ ok: true });
+      let card = (await store.themeStoreCards()).find((c) => c.slug === "signal")!;
+      expect(card.listing.own).toEqual({ share, devices: "https://cdn.test/devices.webp" });
+      expect(sharePicture(card)).toBe(share);
+      expect(card.highlights?.find((h) => h.kind === "devices")?.url).toBe("https://cdn.test/devices.webp");
+
+      // Refused: an address that is neither this site's nor https, a slot that is not one, someone who is not a platform admin.
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "collage", "http://x.test/a.png")).toMatchObject({ ok: false });
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "card" as never, share)).toMatchObject({ ok: false });
+      expect(await designs.saveThemeOwnPicture({ ...admin, platformAdmin: false }, signal.id, "collage", share)).toMatchObject({ ok: false });
+
+      // The listing form never sends them, and they stay; a new version of the launch theme keeps them and its main picture.
+      expect(await designs.saveThemeListing(admin, signal.id, "signal", { kinds: ["digital"], styles: [], pictures: [], pack: null, presetPacks: {} })).toEqual({ ok: true });
+      await db().execute(sql`update commerce.design_presets set picture_url = ${`/media/signal-main-${run}.webp`}, launch_version = launch_version - 1 where id = ${signal.id}::uuid`);
+      const synced = await syncLaunchThemes(admin, deps);
+      expect(synced.problems).toEqual([]);
+      expect(synced.updated).toContain("Signal");
+      const [after] = await db().execute<Row>(sql`select picture_url, listing -> 'own' as own from commerce.design_presets where id = ${signal.id}::uuid`);
+      expect(after.picture_url).toBe(`/media/signal-main-${run}.webp`);
+      expect(after.own).toEqual({ share, devices: "https://cdn.test/devices.webp" });
+
+      // Taken away one by one: the made one shows again, and with none left the listing has no own pictures at all.
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "share", null)).toEqual({ ok: true });
+      card = (await store.themeStoreCards()).find((c) => c.slug === "signal")!;
+      expect(card.listing.own).toEqual({ devices: "https://cdn.test/devices.webp" });
+      expect(sharePicture(card)).toBe(`/media/signal-main-${run}.webp`);
+      expect(await designs.saveThemeOwnPicture(admin, signal.id, "devices", null)).toEqual({ ok: true });
+      const [cleared] = await db().execute<Row>(sql`select listing ? 'own' as has from commerce.design_presets where id = ${signal.id}::uuid`);
+      expect(cleared.has).toBe(false);
+
+      const audited = await db().execute<Row>(sql`
+        select action, details ->> 'slot' as slot from commerce.audit_log
+        where action like 'platform.theme_picture_%' and account_id = ${admin.id}::uuid and details ->> 'preset' = ${signal.id} order by id`);
+      expect(audited.map((row) => [row.action, row.slot])).toEqual([
+        ["platform.theme_picture_replaced", "share"],
+        ["platform.theme_picture_replaced", "devices"],
+        ["platform.theme_picture_restored", "share"],
+        ["platform.theme_picture_restored", "devices"],
+      ]);
+    } finally {
+      await db().execute(sql`update commerce.design_presets set picture_url = ${kept.picture_url as string | null}, listing = ${JSON.stringify(kept.listing)}::jsonb where id = ${signal.id}::uuid`);
+    }
+  });
+
+  it("counts a theme's own picture as a use of Kaizena Flow's library file, so it is not deleted or moved unseen", async () => {
+    const made = await designs.createDesign(admin, { details: { title: `Pictured ${run}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const url = `https://example.supabase.co/storage/v1/object/public/product-media/platform/own-${run}.webp`;
+    const [file] = await db().execute<Row>(sql`
+      insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, width, height)
+      values (null, 'image', ${url}, 'product-media', ${`platform/own-${run}.webp`}, 'own.webp', 'image/webp', 1000, 1600, 1000) returning id`);
+    expect(await designs.saveThemeOwnPicture(admin, made.id, "collage", url)).toEqual({ ok: true });
+    const uses = (await mediaUses({ storeId: null, storeSlug: null }, [String(file.id)])).get(String(file.id))!;
+    expect(uses).toContainEqual(expect.objectContaining({ label: `Theme: Pictured ${run}`, href: `/admin/platform/design-profiles/${made.id}`, source: "theme_listing" }));
   });
 });

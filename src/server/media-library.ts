@@ -40,7 +40,7 @@ export type MediaUse = {
   label: string;
   href: string | null;
   siteUrl?: string | null;
-  /** What kind of place it is (`product`, `page`, `menu`, `saved`, `chat`, `navigation`, `seo`, `theme`), for Compress (D213). */
+  /** What kind of place it is (`product`, `page`, `menu`, `saved`, `chat`, `navigation`, `seo`, `theme`, `theme_listing`), for Compress (D213). */
   source?: string;
 };
 
@@ -320,6 +320,10 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     select m.id, 'theme', null, null, null, null, null from m join commerce.platform_settings k on true where ${found(sql`coalesce(k.theme::text, '')`)}
     union all
     select m.id, 'theme', null, null, null, null, null from m join commerce.platform_theme_installs i on i.look is not null where ${found(sql`i.look::text`)}
+    union all
+    -- A theme's main picture, its further pictures and the pictures put in place of made ones (\`docs/theme-showcase-phase-2.md\` step 3).
+    select m.id, 'theme_listing', d.id::text, d.title, null, null, null from m join commerce.design_presets d on d.archived_at is null
+      where ${found(sql`coalesce(d.picture_url, '') || ' ' || coalesce(d.listing::text, '') || ' ' || coalesce(d.draft::text, '')`)}
     `
     }
   `);
@@ -409,6 +413,8 @@ function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
       return { label: "Search and sharing picture", href: store ? `${base}/settings/seo` : `${base}/seo` };
     case "theme":
       return { label: "Design", href: `${base}/settings/design` };
+    case "theme_listing":
+      return { label: `Theme: ${label || "Untitled"}`, href: `/admin/platform/design-profiles/${row.ref_id}` };
     default:
       return { label: row.source, href: null };
   }

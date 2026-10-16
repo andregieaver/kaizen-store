@@ -248,7 +248,8 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
 /**
  * Whether something that is not moved names any of the addresses, so the original stays where it is: terms a shopper accepted
  * (a terms page's pictures are in their snapshot, which never changes), and for Kaizen's library a store template's or design
- * profile's picture. Invoices and credit notes hold no picture.
+ * profile's picture (its main one, its listing's further pictures and its own in place of made ones, in its draft too). Invoices and
+ * credit notes hold no picture.
  */
 async function namedInRecords(storeId: string | null, addresses: (string | null)[]): Promise<boolean> {
   const list = addresses.filter((address): address is string => Boolean(address));
@@ -262,7 +263,7 @@ async function namedInRecords(storeId: string | null, addresses: (string | null)
       `
       : sql`
         select exists (select 1 from commerce.store_starters where ${any(sql`picture_url`)})
-          or exists (select 1 from commerce.design_presets where ${any(sql`picture_url`)} or ${any(sql`snapshot`)}) as named
+          or exists (select 1 from commerce.design_presets where ${any(sql`picture_url`)} or ${any(sql`snapshot`)} or ${any(sql`listing`)} or ${any(sql`draft`)}) as named
       `,
   );
   return row?.named === true;

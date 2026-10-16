@@ -69,6 +69,16 @@ describe("what the theme page shows", () => {
     ]);
     expect(themeHighlights("Calm", null)).toEqual([]);
   });
+
+  it("shows the admin's own picture in a highlight's place, made or not, with its words (step 3)", () => {
+    const shown = themeHighlights("Calm", { devices: file("d"), closeup: file("c") }, { collage: { title: "Room", text: "" } }, { devices: "/media/mine.webp", collage: "/media/g.webp" });
+    expect(shown.map((h) => [h.kind, h.url, h.width, h.height, h.title])).toEqual([
+      ["devices", "/media/mine.webp", HIGHLIGHT_SIZE.width, HIGHLIGHT_SIZE.height, null],
+      ["collage", "/media/g.webp", HIGHLIGHT_SIZE.width, HIGHLIGHT_SIZE.height, "Room"],
+      ["closeup", "https://x.test/c", 1600, 1000, null],
+    ]);
+    expect(themeHighlights("Calm", null, {}, { closeup: "/media/u.webp" }).map((h) => h.kind)).toEqual(["closeup"]);
+  });
 });
 
 describe("the highlights' layout", () => {

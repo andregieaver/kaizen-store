@@ -142,13 +142,17 @@ export const backdropColours = (palette: { surface: string; accent: string }): {
 /** A highlight as the theme page shows it: its picture and its words (a title and a line, or none), and its alt text. */
 export type ThemeHighlight = { kind: HighlightKind; url: string; width: number; height: number; alt: string; title: string | null; text: string | null };
 
-/** A theme's highlights in their order, those made, each with its words where written. */
-export function themeHighlights(theme: string, pictures: ShotPictures | null | undefined, words: HighlightWords = {}): ThemeHighlight[] {
-  if (!pictures) return [];
+/**
+ * A theme's highlights in their order, each with its words where written: the platform admin's own picture where they put one in its place
+ * (`own`, step 3), else the one made, else none.
+ */
+export function themeHighlights(theme: string, pictures: ShotPictures | null | undefined, words: HighlightWords = {}, own: Partial<Record<HighlightKind, string>> = {}): ThemeHighlight[] {
   return HIGHLIGHT_KINDS.flatMap((kind) => {
-    const file = pictures[kind];
-    if (!file) return [];
+    const made = pictures?.[kind];
+    const url = own[kind] ?? made?.url;
+    if (!url) return [];
     const line = words[kind];
-    return [{ kind, url: file.url, width: file.width, height: file.height, alt: highlightAlt(theme, kind), title: line?.title ?? null, text: line?.text || null }];
+    const size = own[kind] ? HIGHLIGHT_SIZE : { width: made!.width, height: made!.height };
+    return [{ kind, url, width: size.width, height: size.height, alt: highlightAlt(theme, kind), title: line?.title ?? null, text: line?.text || null }];
   });
 }

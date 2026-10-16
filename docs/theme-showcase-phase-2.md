@@ -163,6 +163,19 @@ replacements as uses of the library's files. Audited `platform.theme_picture_rep
 **Tests.** The listing's slots (unknown slots and foreign addresses dropped), the readers' choice (own over made over fallback), a launch
 sync keeping them, `mediaUses()`.
 
+**Built (D266).** `OWN_SLOTS` (`share`, `devices`, `collage`, `closeup`), `readOwnPictures()` and `ThemeListing.own` in
+`src/lib/theme-store.ts`; `sharePicture()` and `themeHighlights()` take the own picture first (a highlight with one shows even before it is
+made); `saveThemeOwnPicture()` in `src/server/design-presets.ts` (one slot at a time, saved at once, audited), kept by `saveThemeListing()`
+and `markLaunchTheme()`; `syncLaunchThemes()` keeps a launch theme's main picture; the *Use your own pictures* section of the *Pictures*
+panel (a picture field per slot, open while one is set); `mediaUses()` lists a theme's pictures as `theme_listing` uses of Kaizena Flow's
+library files (a share image leaves the site, so Compress keeps the original and never makes it AVIF), and Compress's record check reads a
+theme's listing and draft too. Held by `src/lib/theme-store.test.ts`, `src/lib/theme-highlights.test.ts`, `src/lib/media-compress.test.ts`,
+the panel's view test, `src/server/theme-store.int.test.ts` (set and taken away, refusals, audit, kept by the listing form and a launch
+sync, the library's use) and `e2e/signed-in/theme-shots.spec.ts` (a share image put in and taken away, the theme page's `og:image`).
+*Deviations:* the card is the main picture and the first screens are the listing's further pictures, as they were (both already the
+theme's own, so they are not slots); a picture's address is any a theme's other pictures may have (this site or https,
+`isThemePicture()`), uploaded to the library from the field or pasted; *Remove the picture* and Save put the made one back.
+
 ## Later: scrolling loops
 
 A few seconds of a page scrolling, silent. On Kaizena Flow's own pages this needs no video: phase 3 moves the full-length shot in its

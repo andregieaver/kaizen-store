@@ -36,6 +36,6 @@ describe("what Compress does with a library file (D213)", () => {
   it("keeps the original in storage where the file left the site", () => {
     expect(keepsOriginal([{ source: "page" }, { source: "menu" }])).toBe(false);
     expect(keepsOriginal([])).toBe(false);
-    for (const source of ["product", "seo", "chat", "navigation"]) expect(keepsOriginal([{ source }])).toBe(true);
+    for (const source of ["product", "seo", "chat", "navigation", "theme_listing"]) expect(keepsOriginal([{ source }])).toBe(true);
   });
 });

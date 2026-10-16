@@ -37,7 +37,11 @@ export async function launchThemeStates(): Promise<{ key: string; title: string;
   });
 }
 
-const details = (theme: LaunchTheme) => ({ title: theme.title, summary: theme.summary, description: theme.description, pictureUrl: null });
+/**
+ * A launch theme's details as the code writes them; its main picture is the platform admin's (`docs/theme-showcase-phase-2.md` step 3:
+ * their own in place of the made card), so a new version keeps the one it has.
+ */
+const details = (theme: LaunchTheme, pictureUrl: string | null) => ({ title: theme.title, summary: theme.summary, description: theme.description, pictureUrl });
 
 /** Writes a launch theme's look and details into its profile and publishes it; records the version only once it is published. */
 async function publishLaunch(admin: Account, presetId: string, theme: LaunchTheme, first: boolean, deps: ApplyDeps): Promise<string | null> {
@@ -46,7 +50,8 @@ async function publishLaunch(admin: Account, presetId: string, theme: LaunchThem
   // Its presets (`docs/theme-showcase-phase-1.md` step 3), each the theme's look with its changes, into the draft Publish reads.
   const presets = await writeLaunchVariations(admin, presetId, theme.presets.map((preset) => launchVariation(theme, preset)), deps);
   if (!presets.ok) return presets.problems.join(" ");
-  const saved = await saveDesignDraft(admin, presetId, details(theme));
+  const [kept] = await db().execute<Row>(sql`select picture_url from commerce.design_presets where id = ${presetId}::uuid`);
+  const saved = await saveDesignDraft(admin, presetId, details(theme, kept?.picture_url ? String(kept.picture_url) : null));
   if (!saved.ok) return saved.problems.join(" ");
   const published = await publishDesign(admin, presetId, first ? null : theme.notes);
   if (!published.ok) return published.problems.join(" ");
@@ -72,7 +77,7 @@ export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Pr
     let presetId = row ? String(row.id) : null;
     const first = !row || row.launch_version == null;
     if (!presetId) {
-      const made = await createDesign(admin, { details: details(theme), origin: { kind: "scratch" } }, deps);
+      const made = await createDesign(admin, { details: details(theme, null), origin: { kind: "scratch" } }, deps);
       if (!made.ok) {
         result.problems.push(`${theme.title}: ${made.problems.join(" ")}`);
         continue;

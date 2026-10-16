@@ -1,6 +1,9 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
+import { StarterPictureField } from "@/components/admin/starter-picture-field";
+import type { Upload } from "@/components/admin/image-upload";
 import { HIGHLIGHT_KINDS, HIGHLIGHT_NAMES } from "@/lib/theme-highlights";
+import { OWN_SLOTS, OWN_SLOT_NAMES, type OwnPictures, type OwnSlot } from "@/lib/theme-store";
 import type { ShotKind } from "@/lib/theme-shots";
 import type { ShotStatus } from "@/server/theme-shots";
 
@@ -24,11 +27,29 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "nume
  * shows and of which version, or that it is being made, or why it could not be; *Try again* for those that could not. Homer has nothing to do
  * here (publishing is enough); Lisa sees every unit.
  */
-export function ThemeShotsPanel({ looks, shots, published, retry }: { looks: ShotLook[]; shots: ShotStatus[]; published: boolean; retry: (state: FormState) => Promise<FormState> }) {
+export function ThemeShotsPanel({
+  looks,
+  shots,
+  published,
+  retry,
+  own = {},
+  ownAction,
+  upload,
+}: {
+  looks: ShotLook[];
+  shots: ShotStatus[];
+  published: boolean;
+  retry: (state: FormState) => Promise<FormState>;
+  /** The admin's own pictures in place of made ones (step 3), and the action that sets or clears one, bound to the theme. */
+  own?: OwnPictures;
+  ownAction?: (slot: OwnSlot, state: FormState, formData: FormData) => Promise<FormState>;
+  upload?: Upload;
+}) {
   const of = (key: string | null, kind: ShotKind) => shots.find((shot) => shot.variation === key && shot.kind === kind) ?? null;
   const highlights = shots.find((shot) => shot.variation === null && shot.kind === "highlights") ?? null;
   const failed = shots.filter((shot) => shot.status === "failed").length;
   const waiting = shots.filter((shot) => shot.status === "waiting" || shot.status === "running").length;
+  const inUse = OWN_SLOTS.filter((slot) => own[slot]).length;
   return (
     <Card
       title="Pictures"
@@ -98,6 +119,36 @@ export function ThemeShotsPanel({ looks, shots, published, retry }: { looks: Sho
         )}
         {highlights?.status === "failed" && highlights.problem && <p className="text-caption text-danger-text">{highlights.problem}</p>}
       </div>
+      {/* Lisa's step: any made picture the theme store shows can be replaced with the admin's own, and put back (step 3). */}
+      {ownAction && upload && (
+        // Never opened from the props: a value that changed after a save would close it under the person.
+        <details className="mt-4 border-t border-line pt-4" data-own-pictures="">
+          <summary className="cursor-pointer text-body-strong text-ink">
+            Use your own pictures
+            {inUse > 0 && <span className="ml-2 text-caption text-muted">{inUse === 1 ? "1 in use" : `${inUse} in use`}</span>}
+          </summary>
+          <p className="mt-2 text-caption text-muted">
+            Put your own picture in place of a made one; remove it to show the made one again. The card&apos;s own picture is the main picture under Details.
+          </p>
+          <ul className="mt-3 flex flex-col gap-4">
+            {OWN_SLOTS.map((slot) => {
+              const made = slot === "share" ? of(null, "computer")?.pictures.share : highlights?.pictures[slot];
+              return (
+                <li key={slot} className="flex flex-col gap-2" data-own-slot={slot}>
+                  <p className="text-body-strong text-ink">{OWN_SLOT_NAMES[slot]}</p>
+                  <p className="text-caption text-muted">{own[slot] ? "Your own picture shows in place of the made one." : made ? "The made picture shows." : "Nothing made yet."}</p>
+                  <ActionForm action={ownAction.bind(null, slot)} className="flex flex-col gap-2">
+                    <StarterPictureField initial={own[slot] ?? null} upload={upload} />
+                    <div>
+                      <SubmitButton variant="secondary">Save</SubmitButton>
+                    </div>
+                  </ActionForm>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
       {failed > 0 && (
         <ActionForm action={retry} className="mt-4 flex flex-wrap items-center gap-3">
           <SubmitButton>Try again</SubmitButton>

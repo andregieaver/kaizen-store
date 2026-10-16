@@ -62,6 +62,29 @@ describe("the Pictures panel", () => {
     expect(draw([shot(null, "computer", "running")])).toContain("Made after the photographs");
   });
 
+  it("lets the admin put their own picture in place of each made one, and says which shows (step 3)", () => {
+    const own = async () => ({ status: "idle" as const, messages: [] });
+    const upload = async () => ({ ok: true as const, url: "/media/x.webp" });
+    const computer = shot(null, "computer", "done", { pictures: { card: file("card.webp", 800, 600), share: file("share.jpg", 1200, 630) } });
+    const html = renderToStaticMarkup(
+      createElement(ThemeShotsPanel, { looks: [{ key: null, name: "Calm" }], shots: [computer], published: true, retry, own: { collage: "/media/mine.webp" }, ownAction: own, upload }),
+    ).replaceAll("<!-- -->", "");
+    expect(html).toContain("Use your own pictures");
+    // Closed, saying how many are in use (opened from the props, a save would close it under the person).
+    expect(html).not.toMatch(/<details[^>]*open=""/);
+    expect(html).toContain("1 in use");
+    for (const slot of ["share", "devices", "collage", "closeup"]) expect(html).toContain(`data-own-slot="${slot}"`);
+    expect(html).toContain("Share image");
+    expect(html).toContain('value="/media/mine.webp"');
+    expect(html).toContain("Your own picture shows in place of the made one.");
+    expect(html).toContain("The made picture shows.");
+    expect(html).toContain("Nothing made yet.");
+    // Without the action the section is not drawn; with none set it says nothing is in use.
+    expect(draw([computer])).not.toContain("Use your own pictures");
+    const none = renderToStaticMarkup(createElement(ThemeShotsPanel, { looks: [], shots: [], published: true, retry, ownAction: own, upload }));
+    expect(none).not.toContain("in use");
+  });
+
   it("before the theme is published, says its looks are photographed once it is", () => {
     const html = draw([], false);
     expect(html).toContain("once the theme is published");

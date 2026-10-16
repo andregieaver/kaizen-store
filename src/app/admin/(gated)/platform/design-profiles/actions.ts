@@ -22,9 +22,10 @@ import {
   restoreDesignLook,
   saveDesignDraft,
   saveThemeListing,
+  saveThemeOwnPicture,
   unpublishDesign,
 } from "@/server/design-presets";
-import { parseListing } from "@/lib/theme-store";
+import { parseListing, type OwnSlot } from "@/lib/theme-store";
 import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
@@ -237,4 +238,15 @@ export async function retryThemeShotsAction(presetId: string, _state: FormState)
 export async function suggestHighlightWordsAction(presetId: string): Promise<HighlightSuggestion> {
   const admin = await requirePlatformAdmin();
   return suggestHighlightWords(admin, presetId);
+}
+
+/** A platform admin's own picture in place of a made one, or none to show the made one again (`saveThemeOwnPicture()`). */
+export async function saveThemeOwnPictureAction(presetId: string, slot: OwnSlot, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const url = String(formData.get("pictureUrl") ?? "").trim() || null;
+  const result = await saveThemeOwnPicture(admin, presetId, slot, url);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(DESIGNS_TAG);
+  refresh();
+  return { status: "ok", messages: [url ? "Saved: the theme store shows your picture in its place." : "Saved: the made picture shows again."] };
 }

@@ -17,7 +17,14 @@ import { listStarters } from "@/server/store-starters";
 import { themeShotStatus } from "@/server/theme-shots";
 
 import { uploadPlatformImageAction } from "../../actions";
-import { copyStoreLookAction, retryThemeShotsAction, saveDesignDraftAction, saveThemeListingAction, suggestHighlightWordsAction } from "../actions";
+import {
+  copyStoreLookAction,
+  retryThemeShotsAction,
+  saveDesignDraftAction,
+  saveThemeListingAction,
+  saveThemeOwnPictureAction,
+  suggestHighlightWordsAction,
+} from "../actions";
 import { designPage } from "./data";
 import { DesignShell } from "./shell";
 
@@ -79,6 +86,9 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
         shots={shots}
         published={design.published}
         retry={retryThemeShotsAction.bind(null, design.id)}
+        own={design.listing.own}
+        ownAction={saveThemeOwnPictureAction.bind(null, design.id)}
+        upload={uploadPlatformImageAction}
       />
 
       <ActionForm action={saveDesignDraftAction.bind(null, design.id)} className="flex max-w-3xl flex-col gap-4">
