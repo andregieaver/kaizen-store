@@ -15,7 +15,8 @@ let id = "";
 test.beforeAll(async () => {
   const sql = testDb();
   try {
-    const snapshot = LAUNCH_THEMES[3].snapshot;
+    // With one preset besides its own look (docs/theme-showcase-phase-1.md): Hearth's settings over Fjord.
+    const snapshot = { ...LAUNCH_THEMES[3].snapshot, v: 2, variations: [{ key: "coast", name: "Coast", theme: LAUNCH_THEMES[1].snapshot.theme }] };
     const [row] = await sql`
       insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing)
       values ('E2E Fjord', 'Cool and clear.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ kinds: ["home"], styles: ["natural"], pictures: ["/demo/mug.svg"] })})
@@ -62,6 +63,12 @@ test("a theme's page shows what it includes, its previews and its changelog, and
   // The preview at both widths: the public preview, inert and not for search engines.
   const phone = page.frameLocator('iframe[title="E2E Fjord on a phone"]');
   await expect(phone.locator("[data-theme-preview], main").first()).toBeVisible();
+  // Its presets: choosing one shows it in both frames and offers to try it.
+  await expect(page.getByText("2 presets: ready-made designs of E2E Fjord")).toBeVisible();
+  await page.getByRole("list", { name: "Presets" }).getByRole("link", { name: "Coast" }).click();
+  await expect(page.locator('iframe[title="E2E Fjord · Coast on a phone"]')).toHaveAttribute("src", /preset=coast/);
+  await expect(page.getByRole("link", { name: "Try E2E Fjord · Coast in your store" })).toHaveAttribute("href", `/themes/${SLUG}/try?preset=coast`);
+  expect((await page.request.get(`/admin/account/design-profiles/${id}/preview?preset=coast`)).status()).toBe(200);
   const previewResponse = await page.request.get(`/admin/account/design-profiles/${id}/preview`);
   expect(previewResponse.status()).toBe(200);
   expect(await previewResponse.text()).toMatch(/noindex/);

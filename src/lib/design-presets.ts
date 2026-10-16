@@ -105,34 +105,74 @@ export type DesignLayout = {
 };
 
 export const DESIGN_SNAPSHOT_VERSION = 1;
+/** A snapshot that carries the theme's presets (`docs/theme-showcase-phase-1.md`) is version 2; one without them stays version 1. */
+export const DESIGN_SNAPSHOT_WITH_PRESETS = 2;
+
+/** A preset's key (`design_variations.key`): fixed once made, in its address and in the installs made from it. */
+export const VARIATION_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
+/** Presets besides the theme's own look (six in all). */
+export const VARIATIONS_MAX = 5;
+export const VARIATION_NAME_MAX = 40;
+
+const themeLookSchema = z.object({ base: z.enum(THEME_TEMPLATE_KEYS), settings: themeSettingsSchema });
 
 /**
- * A design profile's snapshot (`design_presets.snapshot`), version 1: the theme (template and settings, D60: colours, fonts, headings,
- * buttons, corners, layout, product cards, the store's light or dark mode and the visitor's switch), the header, footer and standard product
- * layout (null: the standard one, which applying chooses too), and the site's CSS (D100). Unknown keys are dropped when it is read, so a
- * snapshot can never carry anything else into a store.
+ * One of a theme's presets as a version keeps it (*Presets* in the interface, variations in code): a whole look over the theme (the D60
+ * template and every setting); the theme's header, footer, product layout and CSS are shared by its presets.
  */
-export const designSnapshotSchema = z.object({
-  v: z.literal(DESIGN_SNAPSHOT_VERSION),
-  theme: z.object({ base: z.enum(THEME_TEMPLATE_KEYS), settings: themeSettingsSchema }),
-  header: designLayoutSchema.nullable(),
-  footer: designLayoutSchema.nullable(),
-  productLayout: designLayoutSchema.nullable(),
-  css,
+export const designVariationSchema = z.object({
+  key: z.string().regex(VARIATION_KEY),
+  name: z.string().trim().min(1).max(VARIATION_NAME_MAX),
+  theme: themeLookSchema,
 });
+export type DesignVariation = { key: string; name: string; theme: { base: ThemeTemplate; settings: ThemeSettings } };
+
+/**
+ * A design profile's snapshot (`design_presets.snapshot`): the theme (template and settings, D60: colours, fonts, headings, buttons, corners,
+ * layout, product cards, the store's light or dark mode and the visitor's switch), the header, footer and standard product layout (null: the
+ * standard one, which applying chooses too), and the site's CSS (D100); version 2 adds the theme's presets (`variations`, at most
+ * `VARIATIONS_MAX`, keys unique). Unknown keys are dropped when it is read, so a snapshot can never carry anything else into a store.
+ */
+export const designSnapshotSchema = z
+  .object({
+    v: z.union([z.literal(DESIGN_SNAPSHOT_VERSION), z.literal(DESIGN_SNAPSHOT_WITH_PRESETS)]),
+    theme: themeLookSchema,
+    header: designLayoutSchema.nullable(),
+    footer: designLayoutSchema.nullable(),
+    productLayout: designLayoutSchema.nullable(),
+    css,
+    variations: z.array(designVariationSchema).max(VARIATIONS_MAX).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const keys = (value.variations ?? []).map((v) => v.key);
+    if (new Set(keys).size !== keys.length) ctx.addIssue({ code: "custom", message: "Two presets have the same key." });
+  });
 export type DesignSnapshot = {
-  v: typeof DESIGN_SNAPSHOT_VERSION;
+  v: typeof DESIGN_SNAPSHOT_VERSION | typeof DESIGN_SNAPSHOT_WITH_PRESETS;
   theme: { base: ThemeTemplate; settings: ThemeSettings };
   header: DesignLayout | null;
   footer: DesignLayout | null;
   productLayout: DesignLayout | null;
   css: string;
+  /** The theme's presets besides its own look (version 2); absent or empty: none. */
+  variations?: DesignVariation[];
 };
 
-/** A stored snapshot, or null when it cannot be read (then it is neither offered nor applied). */
+/** A stored snapshot, or null when it cannot be read (then it is neither offered nor applied). A version 1 snapshot has no presets. */
 export function parseDesignSnapshot(value: unknown): DesignSnapshot | null {
   const parsed = designSnapshotSchema.safeParse(value);
-  return parsed.success ? (parsed.data as DesignSnapshot) : null;
+  if (!parsed.success) return null;
+  const snapshot = parsed.data as DesignSnapshot;
+  return snapshotAsStored(snapshot.v === DESIGN_SNAPSHOT_VERSION ? { ...snapshot, variations: [] } : snapshot);
+}
+
+/**
+ * A snapshot as it is stored: version 2 with its presets, version 1 without (so a theme with no presets keeps the same stored snapshot as
+ * before presets existed, and republishing it adds no version).
+ */
+export function snapshotAsStored(snapshot: DesignSnapshot): DesignSnapshot {
+  const { variations, ...look } = snapshot;
+  return variations?.length ? { ...look, v: DESIGN_SNAPSHOT_WITH_PRESETS, variations } : { ...look, v: DESIGN_SNAPSHOT_VERSION };
 }
 
 // ---------------------------------------------------------------------------
@@ -332,7 +372,15 @@ export function parseDesignDetails(form: {
 export const designChoice = (value: unknown): string | null => starterChoice(value);
 
 /** A design profile as owners and the sign-up form see it. */
-export type OfferedDesign = { id: string; title: string; summary: string; description: string; pictureUrl: string | null };
+export type OfferedDesign = {
+  id: string;
+  title: string;
+  summary: string;
+  description: string;
+  pictureUrl: string | null;
+  /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`); absent or empty: none. */
+  presets?: { key: string; name: string }[];
+};
 
 /**
  * A design profile as the platform admin sees it. Its `OfferedDesign` fields are the **published** details (what stores see); `draft` is
@@ -386,6 +434,7 @@ export type DesignOrigin = { kind: "store"; storeId: string } | { kind: "scratch
 export const DESIGN_TABS = [
   { key: "details", label: "Details", segment: "" },
   { key: "theme", label: "Theme", segment: "/theme" },
+  { key: "presets", label: "Presets", segment: "/presets" },
   { key: "header", label: "Header", segment: "/header" },
   { key: "footer", label: "Footer", segment: "/footer" },
   { key: "productLayout", label: "Product page", segment: "/product-layout" },
@@ -420,9 +469,11 @@ export function keepDesignCard(): DesignCard {
  * The address of a design profile's preview: on a store template's front page and one product (the Standard store's when none); with
  * `admin` unpublished ones too, and with `draft` the look in its workspace as last saved (D177).
  */
-export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false, embed = false): string {
+export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false, embed = false, variation: string | null = null): string {
   const query = new URLSearchParams();
   if (starterId) query.set("starter", starterId);
+  // One of the theme's presets (`docs/theme-showcase-phase-1.md`), by its key; none: the theme's own look.
+  if (variation) query.set("preset", variation);
   if (admin) query.set("as", "admin");
   // The look in the profile's workspace, not yet published (D177): for platform admins only.
   if (admin && draft) query.set("draft", "1");

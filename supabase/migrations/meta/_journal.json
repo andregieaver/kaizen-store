@@ -2465,6 +2465,20 @@
       "when": 1792134283283,
       "tag": "20261016070443_demo_home_page",
       "breakpoints": true
+    },
+    {
+      "idx": 352,
+      "version": "7",
+      "when": 1792138118644,
+      "tag": "20261016080838_theme_variations",
+      "breakpoints": true
+    },
+    {
+      "idx": 353,
+      "version": "7",
+      "when": 1792138155251,
+      "tag": "20261016080915_theme_variations_rules",
+      "breakpoints": true
     }
   ]
 }

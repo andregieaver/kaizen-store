@@ -116,6 +116,8 @@ export type ThemeStoreCard = {
   pictureUrl: string | null;
   /** A launch theme's photograph on the demo store (`launchShot()`), shown on its card where the admin gave no picture. */
   shotUrl: string | null;
+  /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`), in order. */
+  presets: { key: string; name: string }[];
   listing: ThemeListing;
   features: ThemeFeature[];
   /** For a card without a picture: the light colours and the heading font. */
@@ -194,7 +196,8 @@ export function themeJsonLd(theme: { title: string; summary: string; pictureUrl:
 }
 
 /** The owner's page that installs a theme in a store they choose, without making it live (step 2). */
-export const themeTryPath = (slug: string) => `/admin/account/themes/try/${slug}`;
+export const themeTryPath = (slug: string, preset: string | null = null) =>
+  `/admin/account/themes/try/${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;
 
 /** What *Try it in your store* links to: a route that sends the person there, or to sign in and back (the theme's page is cached). */
-export const themeTryLink = (slug: string) => `/themes/${slug}/try`;
+export const themeTryLink = (slug: string, preset: string | null = null) => `/themes/${slug}/try${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;

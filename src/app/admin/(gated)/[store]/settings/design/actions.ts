@@ -9,6 +9,7 @@ import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, installDesignPreset, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
+import { presetChoice } from "@/lib/design-variations";
 import { detachDryRun, runDetach, undoDetach } from "@/server/theme-detach";
 import { removeInstall, setFollowsUpdates, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
@@ -92,7 +93,7 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const presetId = designChoice(formData.get("design"));
   if (!presetId) return { status: "error", messages: ["Choose a design profile."] };
-  const result = await applyDesignPreset(member.store.id, presetId, member.account.id);
+  const result = await applyDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
@@ -208,7 +209,7 @@ export async function installThemeAction(storeSlug: string, _state: FormState, f
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const presetId = designChoice(formData.get("design"));
   if (!presetId) return { status: "error", messages: ["Choose a theme."] };
-  const result = await installDesignPreset(member.store.id, presetId, member.account.id);
+  const result = await installDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
   redirect(`/admin/${member.store.slug}/settings/design/themes/${result.installId}?added=1`);

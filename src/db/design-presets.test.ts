@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase } from "./testing";
 
 /**
- * Design profiles (D176, D177, docs/design-profiles.md): the rules the database holds. A profile carries a snapshot of version 1 within its
- * size, is deleted only while unused (else archived, never published while archived) and is no template's recommendation after; its
+ * Design profiles (D176, D177, docs/design-profiles.md): the rules the database holds. A profile carries a snapshot of version 1 or 2 within
+ * its size, is deleted only while unused (else archived, never published while archived) and is no template's recommendation after; its
  * workspace is a hidden store of its own, fixed once set; a use of one is history (never deleted, only marked restored, once); a store
  * template may recommend one, and an access request may carry one.
  */
@@ -49,8 +49,10 @@ describe("design profiles (D176)", () => {
     expect(new Date(after.updated_at).getTime()).toBeGreaterThanOrEqual(new Date(before.updated_at).getTime());
   });
 
-  it("hold a snapshot of version 1 only, as an object, and keep their details within their limits", async () => {
-    await refused("insert into commerce.design_presets (title, snapshot) values ('x', '{\"v\":2}'::jsonb)", [], /design_presets_snapshot/);
+  it("hold a snapshot of version 1 or 2 only, as an object, and keep their details within their limits", async () => {
+    await refused("insert into commerce.design_presets (title, snapshot) values ('x', '{\"v\":3}'::jsonb)", [], /design_presets_snapshot/);
+    // Version 2 carries the theme's presets (docs/theme-showcase-phase-1.md).
+    await db.query("insert into commerce.design_presets (title, snapshot) values ('x', $1::jsonb)", [SNAPSHOT.replace('"v":1', '"v":2')]);
     await refused("insert into commerce.design_presets (title, snapshot) values ('x', '[1]'::jsonb)", [], /design_presets_snapshot/);
     await refused(
       "insert into commerce.design_presets (title, snapshot) values ('x', jsonb_build_object('v', '1', 'css', repeat('a', 2000001)))",
@@ -243,5 +245,50 @@ describe("a theme's versions (D241)", () => {
     await refused("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 0, $2::jsonb)", [presetId, SNAPSHOT], /design_preset_versions_number/);
     await db.query("delete from commerce.design_presets where id = $1", [presetId]);
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.design_preset_versions where preset_id = $1", [presetId])).n).toBe(0);
+  });
+});
+
+describe("a theme's presets (docs/theme-showcase-phase-1.md)", () => {
+  const THEME = JSON.stringify({ base: "minimal", settings: {} });
+  const LOOK = JSON.stringify({ theme: {}, headerId: null, footerId: null, productLayoutId: null, css: "" });
+
+  it("keep their theme and key, at most five besides the theme's own look, and go with their theme", async () => {
+    const presetId = await preset("With presets");
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'coast', 'Coast', $2::jsonb) returning id",
+      [presetId, THEME],
+    );
+    await db.query("update commerce.design_variations set name = 'Coastline', position = 2 where id = $1", [id]);
+    await refused("update commerce.design_variations set key = 'shore' where id = $1", [id], /design_variations.fixed/);
+    await refused("update commerce.design_variations set preset_id = $2 where id = $1", [id, await preset("Other")], /design_variations.fixed/);
+    await refused("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'coast', 'Again', $2::jsonb)", [presetId, THEME], /design_variations_key_idx|duplicate/);
+    await refused("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'Bad Key', 'Bad', $2::jsonb)", [presetId, THEME], /design_variations_key/);
+    await refused("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'blank', '  ', $2::jsonb)", [presetId, THEME], /design_variations_name/);
+    await refused("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'list', 'List', '[1]'::jsonb)", [presetId], /design_variations_theme/);
+    for (const key of ["two", "three", "four", "five"]) {
+      await db.query("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, $2, $2, $3::jsonb)", [presetId, key, THEME]);
+    }
+    await refused("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'six', 'Six', $2::jsonb)", [presetId, THEME], /design_variations.limit/);
+    await db.query("delete from commerce.design_variations where id = $1", [id]);
+    await db.query("insert into commerce.design_variations (preset_id, key, name, theme) values ($1, 'six', 'Six', $2::jsonb)", [presetId, THEME]);
+    await db.query("delete from commerce.design_presets where id = $1", [presetId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.design_variations where preset_id = $1", [presetId])).n).toBe(0);
+  });
+
+  it("are kept by an install for good", async () => {
+    const { id: storeId } = await one<{ id: string }>("insert into commerce.stores (slug, name) values ('variation-installs', 'V') returning id");
+    const presetId = await preset("Installed with a preset");
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, title, look, variation) values ($1, $2, 'Coast', $3::jsonb, 'coast') returning id",
+      [storeId, presetId, LOOK],
+    );
+    await refused("update commerce.store_theme_installs set variation = 'shore' where id = $1", [id], /store_theme_installs.variation/);
+    await refused("update commerce.store_theme_installs set variation = null where id = $1", [id], /store_theme_installs.variation/);
+    const { id: platform } = await one<{ id: string }>(
+      "insert into commerce.platform_theme_installs (preset_id, title, look, variation) values ($1, 'Coast', $2::jsonb, 'coast') returning id",
+      [presetId, LOOK],
+    );
+    await refused("update commerce.platform_theme_installs set variation = 'shore' where id = $1", [platform], /platform_theme_installs.variation/);
+    await refused("update commerce.platform_theme_installs set variation = null where id = $1", [platform], /platform_theme_installs.variation/);
   });
 });

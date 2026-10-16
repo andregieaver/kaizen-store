@@ -720,8 +720,8 @@ export const storeStarters = commerce.table(
 /**
  * Design profiles (D176, docs/design-profiles.md): a frozen snapshot of a store's look, never its content, that the platform's admins
  * make from a store and any store can apply (`applyDesignPreset()`, the one writer). `snapshot` is `DesignSnapshot` in
- * `src/lib/design-presets.ts` (versioned, `v` 1): the theme's settings, the chosen header, footer and standard product layout as rows,
- * and the site's CSS, cleaned of everything that points into the store it came from. Not store-owned (no `store_id`: the source is only
+ * `src/lib/design-presets.ts` (versioned, `v` 1, or 2 with its presets, `variations`): the theme's settings, the chosen header, footer
+ * and standard product layout as rows, and the site's CSS, cleaned of everything that points into the store it came from. Not store-owned (no `store_id`: the source is only
  * informational), so it is outside `COPY_RULES` and never copied with a store. Deleted only while unused (D177: no use, no access request;
  * a recommendation is cleared), else archived: the rules are in the `design_presets_rules` migrations. Edited in its workspace store (D177)
  * and published from it. Called "design presets" in code, never "template", "starter" or "theme" alone (D125, D175, D60).
@@ -802,7 +802,7 @@ export const designPresets = commerce.table(
     ),
     check(
       "design_presets_snapshot",
-      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' = '1' and octet_length(${t.snapshot}::text) <= 2000000`,
+      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' in ('1', '2') and octet_length(${t.snapshot}::text) <= 2000000`,
     ),
   ],
 );
@@ -872,8 +872,41 @@ export const designPresetVersions = commerce.table(
     check("design_preset_versions_number", sql`${t.number} >= 1`),
     check(
       "design_preset_versions_snapshot",
-      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' = '1' and octet_length(${t.snapshot}::text) <= 2000000`,
+      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' in ('1', '2') and octet_length(${t.snapshot}::text) <= 2000000`,
     ),
+  ],
+);
+
+/**
+ * A theme's presets as drafted (`docs/theme-showcase-phase-1.md` step 1; *Presets* in the interface, variations in code, as `design_presets`
+ * are themes): each a whole look over the theme (`theme`: the D60 template and settings) with a fixed `key` and a `name`, at most
+ * `VARIATIONS_MAX` a theme, the key fixed (`design_variations_rules()`). Publish copies them into the version's snapshot
+ * (`DesignSnapshot.variations`), which is what stores, previews and the theme store read. Deleted with its theme; no store, so outside
+ * `COPY_RULES`.
+ */
+export const designVariations = commerce.table(
+  "design_variations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    theme: jsonb("theme").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("design_variations_key_idx").on(t.presetId, t.key),
+    index("design_variations_created_by_idx").on(t.createdBy),
+    index("design_variations_updated_by_idx").on(t.updatedBy),
+    check("design_variations_key", sql`${t.key} ~ '^[a-z0-9][a-z0-9-]{0,39}$'`),
+    check("design_variations_name", sql`length(btrim(${t.name})) between 1 and 40`),
+    check("design_variations_theme", sql`jsonb_typeof(${t.theme}) = 'object' and octet_length(${t.theme}::text) <= 300000`),
   ],
 );
 
@@ -901,6 +934,11 @@ export const platformThemeInstalls = commerce.table(
     placed: jsonb("placed"),
     /** Whether a new version of its theme reaches it by itself (D253, as `store_theme_installs.follows_updates`); on until switched off. */
     followsUpdates: boolean("follows_updates").notNull().default(true),
+    /**
+     * The theme's preset it was added with (`docs/theme-showcase-phase-1.md`, its key); null: the theme's own look. Fixed like the theme, also
+     * while a later version has no such preset (the install then has the theme's own look until a version brings it back).
+     */
+    variation: text("variation"),
   },
   (t) => [
     uniqueIndex("platform_theme_installs_live_idx").on(t.live).where(sql`${t.live}`),
@@ -980,6 +1018,11 @@ export const storeThemeInstalls = commerce.table(
      * layout page with its fingerprint, so an update can tell the owner's changes from the theme's. Null for installs from before.
      */
     placed: jsonb("placed"),
+    /**
+     * The theme's preset it was added with (`docs/theme-showcase-phase-1.md`, its key); null: the theme's own look. Fixed like the theme, also
+     * while a later version has no such preset (the install then has the theme's own look until a version brings it back).
+     */
+    variation: text("variation"),
   },
   (t) => [
     uniqueIndex("store_theme_installs_live_idx").on(t.storeId).where(sql`${t.live}`),

@@ -54,6 +54,7 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
         <p className="mt-auto text-sm">
           <span className="font-medium">Free</span>
           {card.listing.styles.length > 0 && <span className="text-muted"> · {card.listing.styles.map((s) => THEME_STYLES[s]).join(", ")}</span>}
+          {card.presets.length > 0 && <span className="text-muted"> · {card.presets.length + 1} presets</span>}
         </p>
       </div>
     </li>

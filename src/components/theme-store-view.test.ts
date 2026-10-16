@@ -14,6 +14,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   summary: `About ${id}.`,
   pictureUrl: null,
   shotUrl: null,
+  presets: [],
   listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#ffffff", surface: "#eeeeee", text: "#111111", accent: "#222222", accentText: "#ffffff", heading: "Lora" },
@@ -58,6 +59,11 @@ describe("the theme store's list", () => {
     expect(html.match(/<img /g)?.length).toBe(2);
     // The theme without either is drawn from its colours.
     expect(html).toMatch(/<div aria-hidden="true"[^>]*><span[^>]*>PLAIN<\/span>/);
+  });
+
+  it("says how many presets a theme has, its own look counted", () => {
+    expect(draw([card("calm", { presets: [{ key: "coast", name: "Coast" }] })])).toContain("· 2 presets");
+    expect(draw([card("calm")])).not.toContain("presets");
   });
 
   it("says when nothing matches, and when there is nothing yet", () => {

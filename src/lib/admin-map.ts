@@ -836,6 +836,11 @@ const PAGES: readonly AdminPage[] = [
   platform("design-profile.theme", "/design-profiles/[presetId]/theme", "Design profile theme", "Platform", "A design profile's theme: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the profile's draft.", {
     keywords: ["colours", "fonts", "buttons", "corners", "dark mode"],
   }),
+  platform("design-profile.presets", "/design-profiles/[presetId]/presets", "Theme presets", "Platform", "A theme's presets: its own look and up to five ready-made designs over it for different kinds of stores (colours, fonts, buttons, section styles), added, renamed, ordered, removed and previewed; part of the theme's draft until it is published.", {
+    tasks: ["Add a preset to a theme", "Preview a theme's preset"],
+    keywords: ["preset", "variation", "style", "design for a trade"],
+  }),
+  platform("design-profile.preset", "/design-profiles/[presetId]/presets/[key]", "Theme preset", "Platform", "One of a theme's presets: its name and its look in the theme editor, saved into the theme's draft."),
   platform("design-profile.header", "/design-profiles/[presetId]/header", "Design profile header", "Platform", "A design profile's header: the standard one, or its own built in the page builder; saved as the profile's draft."),
   platform("design-profile.footer", "/design-profiles/[presetId]/footer", "Design profile footer", "Platform", "A design profile's footer: the standard one, or its own built in the page builder; saved as the profile's draft."),
   platform("design-profile.product-layout", "/design-profiles/[presetId]/product-layout", "Design profile product page", "Platform", "A design profile's product page layout: the standard one, or its own built in the page builder; saved as the profile's draft."),

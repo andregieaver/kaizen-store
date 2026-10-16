@@ -9,6 +9,24 @@ import { themeStoreUrl } from "@/lib/theme-host";
 /** A design profile offered to a store, with where its preview is. */
 export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean };
 
+/** One card: a theme's own look or one of its presets (`docs/theme-showcase-phase-1.md`), each added or applied on its own. */
+type PanelLook = PanelDesign & { preset: { key: string; name: string } | null };
+
+/** A preview address for one of the theme's presets (`preset={key}`), kept relative as the page gave it. */
+function presetHref(href: string, key: string): string {
+  const url = new URL(href, "http://x");
+  url.searchParams.set("preset", key);
+  return `${url.pathname}${url.search}`;
+}
+
+/** The cards: each theme's own look, then each of its presets as a look of its own (*Calm · Coast*). */
+export function panelLooks(designs: PanelDesign[]): PanelLook[] {
+  return designs.flatMap((design) => [
+    { ...design, preset: null },
+    ...(design.presets ?? []).map((preset) => ({ ...design, preset, previewHref: presetHref(design.previewHref, preset.key) })),
+  ]);
+}
+
 /**
  * The design profiles (D176) a store can apply, on its Design settings and on its page in the platform: a card for each (picture, title,
  * summary, Preview in a new window) and an Apply that first says exactly what changes and that the look from before is kept; and, after a
@@ -58,51 +76,56 @@ export function DesignProfilePanel({
         <p className="text-sm text-muted">No themes are offered yet.</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {designs.map((design) => (
-            <li key={design.id} className="flex flex-col overflow-hidden rounded-panel border border-line">
-              <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
-                {design.pictureUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
-                  <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
-                )}
-                <h3 className="text-body-strong text-ink">
-                  {design.title}
-                  {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
-                </h3>
-                {design.summary && <p>{design.summary}</p>}
-                {canChange && install && (
-                  <ActionForm action={install} className="mt-auto">
-                    <input type="hidden" name="design" value={design.id} />
-                    <SubmitButton variant="secondary">
-                      Add to my themes<span className="sr-only"> ({design.title})</span>
-                    </SubmitButton>
-                  </ActionForm>
-                )}
-                {canChange && apply && (
-                  <details className={install ? undefined : "mt-auto"}>
-                    <summary className="flex min-h-10 cursor-pointer items-center font-medium underline-offset-2 hover:underline">
-                      Apply<span className="sr-only"> {design.title}</span>…
-                    </summary>
-                    <div className="mt-2 flex flex-col gap-2">
-                      <p>Applying {design.title}:</p>
-                      <ul className="list-disc pl-5">
-                        <li>installs it and makes it live: colours, fonts, buttons, corners, product cards, light and dark;</li>
-                        <li>adds its header, footer and product page layout as new pages and uses them (yours stay, unchosen);</li>
-                        <li>replaces the store&apos;s custom CSS;</li>
-                        <li>keeps your products, pages, menus, logo, name and business details as they are.</li>
-                      </ul>
-                      <p>Your look now stays in your theme library with every change you made to it, and you can switch back to it at any time.</p>
-                      <ActionForm action={apply}>
-                        <input type="hidden" name="design" value={design.id} />
-                        <SubmitButton>Apply {design.title}</SubmitButton>
-                      </ActionForm>
-                    </div>
-                  </details>
-                )}
-              </div>
-              <DesignPreviewLink href={design.previewHref} title={design.title} />
-            </li>
-          ))}
+          {panelLooks(designs).map((design) => {
+            const name = design.preset ? `${design.title} · ${design.preset.name}` : design.title;
+            return (
+              <li key={`${design.id}:${design.preset?.key ?? ""}`} className="flex flex-col overflow-hidden rounded-panel border border-line">
+                <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
+                  {design.pictureUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
+                    <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
+                  )}
+                  <h3 className="text-body-strong text-ink">
+                    {name}
+                    {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
+                  </h3>
+                  {design.preset ? <p>A preset of {design.title}: its own colours, fonts and buttons.</p> : design.summary && <p>{design.summary}</p>}
+                  {canChange && install && (
+                    <ActionForm action={install} className="mt-auto">
+                      <input type="hidden" name="design" value={design.id} />
+                      {design.preset && <input type="hidden" name="preset" value={design.preset.key} />}
+                      <SubmitButton variant="secondary">
+                        Add to my themes<span className="sr-only"> ({name})</span>
+                      </SubmitButton>
+                    </ActionForm>
+                  )}
+                  {canChange && apply && (
+                    <details className={install ? undefined : "mt-auto"}>
+                      <summary className="flex min-h-10 cursor-pointer items-center font-medium underline-offset-2 hover:underline">
+                        Apply<span className="sr-only"> {name}</span>…
+                      </summary>
+                      <div className="mt-2 flex flex-col gap-2">
+                        <p>Applying {name}:</p>
+                        <ul className="list-disc pl-5">
+                          <li>installs it and makes it live: colours, fonts, buttons, corners, product cards, light and dark;</li>
+                          <li>adds its header, footer and product page layout as new pages and uses them (yours stay, unchosen);</li>
+                          <li>replaces the store&apos;s custom CSS;</li>
+                          <li>keeps your products, pages, menus, logo, name and business details as they are.</li>
+                        </ul>
+                        <p>Your look now stays in your theme library with every change you made to it, and you can switch back to it at any time.</p>
+                        <ActionForm action={apply}>
+                          <input type="hidden" name="design" value={design.id} />
+                          {design.preset && <input type="hidden" name="preset" value={design.preset.key} />}
+                          <SubmitButton>Apply {name}</SubmitButton>
+                        </ActionForm>
+                      </div>
+                    </details>
+                  )}
+                </div>
+                <DesignPreviewLink href={design.previewHref} title={name} />
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>

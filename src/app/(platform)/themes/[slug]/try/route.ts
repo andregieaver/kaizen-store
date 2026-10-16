@@ -1,5 +1,6 @@
 import { connection, NextResponse } from "next/server";
 
+import { presetChoice } from "@/lib/design-variations";
 import { THEME_SLUG, themeTryPath } from "@/lib/theme-store";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 
@@ -14,7 +15,8 @@ export async function GET(request: Request, { params }: RouteContext<"/themes/[s
   await connection();
   const { slug } = await params;
   if (!THEME_SLUG.test(slug)) return new Response("Not found", { status: 404, headers: HEADERS });
-  const target = themeTryPath(slug);
+  // The preset chosen on the theme's page (`docs/theme-showcase-phase-1.md`), in its shape; the page checks the theme has it.
+  const target = themeTryPath(slug, presetChoice(new URL(request.url).searchParams.get("preset")));
   let destination = target;
   if (!(await getAccount())) {
     const held = await getAssurance();

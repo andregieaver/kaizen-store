@@ -21,6 +21,16 @@ describe("the themes panel", () => {
     expect(html).toContain('href="http://localhost:3000/themes"');
   });
 
+  it("offers each of a theme's presets as a look of its own, previewed and added by its key (docs/theme-showcase-phase-1.md)", () => {
+    const html = draw({ install: action, designs: [{ ...design, presets: [{ key: "coast", name: "Coast" }] }] }).replaceAll("<!-- -->", "");
+    expect(html).toContain("Hearth · Coast");
+    expect(html).toMatch(/name="preset" value="coast"/);
+    expect(html).toContain('href="/preview?preset=coast"');
+    // The theme's own look stays first, with no preset sent.
+    expect(html.indexOf(">Hearth<")).toBeLessThan(html.indexOf("Hearth · Coast"));
+    expect(html.match(/name="preset"/g)?.length).toBe(2);
+  });
+
   it("offers no adding where there is no library or the person may not change", () => {
     expect(draw({})).not.toContain("Add to my themes");
     expect(draw({ install: action, canChange: false })).not.toContain("Add to my themes");

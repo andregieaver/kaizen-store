@@ -55,7 +55,9 @@ describe("design profiles go through the template's cleaning (D176)", () => {
   });
 
   it("publishes a profile's workspace through the same snapshot, cleaned as ever (D177)", () => {
-    expect(body(server, "publishDesign")).toContain("takeSnapshot(");
+    // The workspace's look with its drafted presets (docs/theme-showcase-phase-1.md), taken as ever.
+    expect(body(server, "publishDesign")).toContain("draftedSnapshot(");
+    expect(body(server, "draftedSnapshot")).toContain("takeSnapshot(");
     expect(body(server, "createDesign")).toContain("takeSnapshot(");
   });
 

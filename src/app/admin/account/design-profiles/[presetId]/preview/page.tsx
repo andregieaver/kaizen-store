@@ -47,15 +47,17 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
   const { presetId } = await params;
   const query = await searchParams;
   const starterId = typeof query.starter === "string" && query.starter ? query.starter : null;
+  // One of the theme's presets (`docs/theme-showcase-phase-1.md`), by its key: a key the theme does not have is not found.
+  const variation = typeof query.preset === "string" && query.preset ? query.preset : null;
   let preview;
   if (query.as === "admin") {
     // Only here is the visitor read: a platform admin may look at what is not published yet.
     const account = await getAccount();
     if (!account?.platformAdmin) notFound();
     // `draft`: the look in the profile's workspace as last saved, before it is published (D177).
-    preview = await adminDesignPreview(presetId, starterId, query.draft === "1");
+    preview = await adminDesignPreview(presetId, starterId, query.draft === "1", variation);
   } else {
-    preview = await publicDesignPreview(presetId, starterId);
+    preview = await publicDesignPreview(presetId, starterId, variation);
   }
   if (!preview) notFound();
   const base = await getStore(preview.storeSlug);
@@ -102,6 +104,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
         <p role="status" className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background">
           <span className="font-medium">
             Preview of the design profile {preview.title}
+            {preview.presetName ? `, its ${preview.presetName} preset` : ""}
             {preview.draft ? " as drafted, not published yet" : ""}: nothing is saved or changed
           </span>
           <span>On {preview.starterTitle ?? "the Standard store"}: its front page, then one of its products.</span>
@@ -109,7 +112,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
       ) : (
         !embedded && (
           <p role="status" className="sticky top-0 z-50 bg-foreground px-4 py-2 text-center text-xs text-background">
-            A preview of the {preview.title} theme on a demo store. Nothing here can be pressed.
+            A preview of the {preview.title} theme{preview.presetName ? ` (${preview.presetName})` : ""} on a demo store. Nothing here can be pressed.
           </p>
         )
       )}

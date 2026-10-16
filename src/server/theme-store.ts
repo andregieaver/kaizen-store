@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
+import { variationsOf } from "@/lib/design-variations";
 import { launchShotFor } from "@/lib/launch-themes";
 import {
   readListing,
@@ -34,6 +35,7 @@ const cardOf = (row: Row, snapshot: DesignSnapshot): ThemeStoreCard => ({
   summary: String(row.summary ?? ""),
   pictureUrl: row.picture_url ? String(row.picture_url) : null,
   shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
+  presets: variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name })),
   listing: readListing(row.listing),
   features: themeFeatures(snapshot),
   swatch: swatchOf(snapshot),

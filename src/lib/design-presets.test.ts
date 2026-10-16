@@ -87,12 +87,14 @@ describe("what a design profile holds (D176)", () => {
     for (const brand of ["logo", "favicon", "navigation", "legalName", "\"name\""]) expect(keys).not.toContain(brand);
   });
 
-  it("reads a snapshot of version 1 only, and drops anything else it is given", () => {
+  it("reads a snapshot of version 1 or 2 only, and drops anything else it is given", () => {
     const snapshot = snapshotOf();
     const extra = parseDesignSnapshot({ ...snapshot, navigation: { logo: { url: "https://x/logo.png" } }, name: "Nordic Spa" });
     expect(extra).not.toBeNull();
     expect(Object.keys(extra!).sort()).toEqual(["css", "footer", "header", "productLayout", "theme", "v"]);
-    expect(parseDesignSnapshot({ ...snapshot, v: 2 })).toBeNull();
+    // Version 2 carries the theme's presets (docs/theme-showcase-phase-1.md); one without any is read as version 1.
+    expect(parseDesignSnapshot({ ...snapshot, v: 2 })?.v).toBe(1);
+    expect(parseDesignSnapshot({ ...snapshot, v: 3 })).toBeNull();
     expect(designSnapshotSchema.safeParse({ ...snapshot, css: "body { background: url(javascript:alert(1)) }" }).success).toBe(false);
   });
 
@@ -222,6 +224,7 @@ describe("a design profile's draft and its own pages (D177)", () => {
     expect(DESIGN_TABS.map((t) => designTabHref("p1", t.key))).toEqual([
       "/admin/platform/design-profiles/p1",
       "/admin/platform/design-profiles/p1/theme",
+      "/admin/platform/design-profiles/p1/presets",
       "/admin/platform/design-profiles/p1/header",
       "/admin/platform/design-profiles/p1/footer",
       "/admin/platform/design-profiles/p1/product-layout",

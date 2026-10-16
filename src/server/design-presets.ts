@@ -24,6 +24,7 @@ import {
   snapshotFonts,
   snapshotLayout,
   snapshotStorageUrls,
+  snapshotAsStored,
   DESIGN_SNAPSHOT_VERSION,
   type DesignCard,
   type DesignDetails,
@@ -34,6 +35,7 @@ import {
   type OfferedDesign,
   type SnapshotNotes,
 } from "@/lib/design-presets";
+import { installedLook, presetLine, publishedVariations, variationSnapshot, variationsOf, type DraftVariation } from "@/lib/design-variations";
 import { pageInput, parsePageContent, type PageContent } from "@/lib/page-content";
 import { copyRow } from "@/lib/page-rows";
 import { storeOrigins } from "@/lib/paths";
@@ -80,6 +82,7 @@ const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 const refuse = (message: string): { ok: false; problems: string[] } => ({ ok: false, problems: [message] });
 const UNKNOWN = "Unknown design profile.";
 const NOT_OFFERED = "That design profile is not offered any more. Choose another.";
+const NO_PRESET = "This theme has no such preset any more. Choose another.";
 const KEPT = "This store is kept by the platform (a store template's published copy or a design profile's workspace): its look is not changed here.";
 
 function describe(error: unknown): string {
@@ -116,7 +119,12 @@ export async function listOfferedDesigns(): Promise<OfferedDesign[]> {
     select id, title, summary, description, picture_url, snapshot from commerce.design_presets
     where published and archived_at is null order by position, lower(title), id
   `);
-  return rows.filter((row) => parseDesignSnapshot(row.snapshot) !== null).map(toOffered);
+  return rows.flatMap((row) => {
+    const snapshot = parseDesignSnapshot(row.snapshot);
+    if (!snapshot) return [];
+    const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
+    return [{ ...toOffered(row), ...(presets.length > 0 && { presets }) }];
+  });
 }
 
 /**
@@ -212,8 +220,35 @@ export const shownDesignDetails = (design: DesignRow): DesignDetails =>
 export async function designChanged(design: DesignRow): Promise<boolean> {
   if (design.draft) return true;
   if (!design.workspaceStoreId || !design.workspaceKey) return false;
-  const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+  const taken = await draftedSnapshot(design);
   return taken.ok ? snapshotKey(taken.snapshot) !== design.workspaceKey : false;
+}
+
+/**
+ * A theme's presets as drafted (`commerce.design_variations`, `docs/theme-showcase-phase-1.md`), in order: what its *Presets* tab edits and
+ * what Publish writes into the version.
+ */
+export async function draftVariations(presetId: string): Promise<DraftVariation[]> {
+  if (!isUuid(presetId)) return [];
+  const rows = await db().execute<Row>(sql`
+    select id, key, name, position, theme from commerce.design_variations where preset_id = ${presetId}::uuid order by position, key
+  `);
+  return rows.map((row) => {
+    const theme = parseStoreTheme(row.theme);
+    return { id: String(row.id), key: String(row.key), name: String(row.name), position: Number(row.position), theme: { base: theme.base, settings: theme.settings } };
+  });
+}
+
+/**
+ * What Publish would publish (D177 and the presets): the look in the theme's workspace as last saved, with its presets as drafted, in the form
+ * it is stored (version 2 only when it has presets, so a theme without them keeps its key and versions as before).
+ */
+async function draftedSnapshot(design: Pick<DesignRow, "id" | "workspaceStoreId">): Promise<DesignResult<{ snapshot: DesignSnapshot; notes: string[] }>> {
+  if (!design.workspaceStoreId) return refuse("This design profile has no workspace yet.");
+  const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+  if (!taken.ok) return taken;
+  const variations = publishedVariations(await draftVariations(design.id));
+  return { ok: true, snapshot: snapshotAsStored({ ...taken.snapshot, variations }), notes: taken.notes };
 }
 
 /** Facts for the state and the buttons (`src/lib/lifecycle.ts`). */
@@ -674,7 +709,7 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
   let snapshot: DesignSnapshot | null = null;
   const notes: string[] = [];
   if (design.workspaceStoreId) {
-    const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+    const taken = await draftedSnapshot(design);
     if (!taken.ok) return taken;
     snapshot = taken.snapshot;
     notes.push(...taken.notes);
@@ -695,8 +730,8 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
       return refuse(`This version no longer has the core section ${removed.length === 1 ? "style" : "styles"} ${removed.join(", ")}, which every version keeps. Put ${removed.length === 1 ? "it" : "them"} back in the theme's Theme tab first.`);
     }
   }
-  // Every version passes the theme checks (D246, `docs/theme-store.md` 7): a blocking finding refuses it, warnings are said.
-  const checked = await checkedSnapshot(snapshot ?? (await storedSnapshot(id)));
+  // Every version passes the theme checks (D246, `docs/theme-store.md` 7), each of its presets too: a blocking finding refuses it, warnings are said.
+  const checked = await checkedDesign(snapshot ?? (await storedSnapshot(id)));
   if (checked.blocking > 0) {
     const lines = blockingLines(checked);
     return refuse(`It does not pass the theme checks yet (${lines.length} to fix): ${lines.slice(0, 5).join(" ")}${lines.length > 5 ? " …and more, listed on its Details tab." : ""}`);
@@ -953,8 +988,8 @@ async function placeSnapshot(
  * own pages) and chosen, and the site's CSS is set. Never the store's name, logos, business details, menus, pages or products. The caller
  * refreshes `designTags()`.
  */
-export async function applyDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}): Promise<ApplyResult> {
-  const done = await placeDesign(storeId, presetId, accountId, deps, true);
+export async function applyDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}, variation: string | null = null): Promise<ApplyResult> {
+  const done = await placeDesign(storeId, presetId, accountId, deps, true, variation);
   if (!done.ok) return done;
   return { ok: true, useId: done.useId ?? "", installId: done.installId, previous: done.previous ?? "", notes: done.notes };
 }
@@ -964,8 +999,14 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
  * your store*): the same checks, fonts, pictures and new layout pages as applying, kept in the install's `look` (D241), never the store's
  * columns, so visitors see nothing until the store switches to it. The caller refreshes `designTags()` (its pages list changed).
  */
-export async function installDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
-  const done = await placeDesign(storeId, presetId, accountId, deps, false);
+export async function installDesignPreset(
+  storeId: string,
+  presetId: string,
+  accountId: string,
+  deps: ApplyDeps = {},
+  variation: string | null = null,
+): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
+  const done = await placeDesign(storeId, presetId, accountId, deps, false, variation);
   if (!done.ok) return done;
   return { ok: true, installId: done.installId, title: done.title, notes: done.notes };
 }
@@ -977,6 +1018,7 @@ async function placeDesign(
   accountId: string,
   deps: ApplyDeps,
   live: boolean,
+  variation: string | null = null,
 ): Promise<DesignResult<{ useId: string | null; installId: string; previous: string | null; title: string; notes: string[] }>> {
   if (!isUuid(storeId) || !isUuid(presetId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const facts = await actorFacts(storeId, accountId);
@@ -992,9 +1034,12 @@ async function placeDesign(
   `);
   if (!preset) return refuse(UNKNOWN);
   if (preset.archived_at || (!preset.published && !(platformAdmin && facts.starter))) return refuse(NOT_OFFERED);
-  const snapshot = parseDesignSnapshot(preset.snapshot);
-  if (!snapshot) return refuse("This design profile can no longer be read.");
-  const title = String(preset.title);
+  const whole = parseDesignSnapshot(preset.snapshot);
+  if (!whole) return refuse("This design profile can no longer be read.");
+  // One of its presets (`docs/theme-showcase-phase-1.md`): the theme with the preset's settings, the install named after both.
+  const snapshot = variationSnapshot(whole, variation);
+  if (!snapshot) return refuse(NO_PRESET);
+  const title = installTitle(String(preset.title), whole, variation);
   if ((await installCount(storeId)) >= INSTALLS_MAX) return refuse(INSTALLS_FULL);
 
   const ready = await placeSnapshot(storeId, snapshot, { sourceId: preset.source_store_id ? String(preset.source_store_id) : null, accountId, title, menus: facts, deps });
@@ -1051,19 +1096,19 @@ async function placeDesign(
         // Kept in the library with its look (D241): its settings, CSS and the pages just made for it.
         const look = { theme, css: siteCss, headerId: pageIds.header, footerId: pageIds.footer, productLayoutId: pageIds.productLayout };
         const [kept] = await tx.execute<Row>(sql`
-          insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by, placed)
+          insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by, placed, variation)
           values (${storeId}::uuid, ${presetId}::uuid,
             (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
-            ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${accountId}::uuid, ${JSON.stringify(placed)}::jsonb)
+            ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${accountId}::uuid, ${JSON.stringify(placed)}::jsonb, ${variation})
           returning id
         `);
         return { useId: null, installId: String(kept.id), previous: null, pageIds };
       }
       const [install] = await tx.execute<Row>(sql`
-        insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, live, installed_by, switched_at, placed)
+        insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, live, installed_by, switched_at, placed, variation)
         values (${storeId}::uuid, ${presetId}::uuid,
           (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
-          ${title.slice(0, 80)}, true, ${accountId}::uuid, now(), ${JSON.stringify(placed)}::jsonb)
+          ${title.slice(0, 80)}, true, ${accountId}::uuid, now(), ${JSON.stringify(placed)}::jsonb, ${variation})
         returning id
       `);
       await tx.execute(sql`
@@ -1088,7 +1133,7 @@ async function placeDesign(
       accountId,
       storeId,
       "store.theme_installed",
-      { preset: presetId, title, install: applied.installId, pages: applied.pageIds, media: ready.copies, ...(platformAdmin && !facts.member && { byPlatform: true }) },
+      { preset: presetId, title, install: applied.installId, ...(variation && { variation }), pages: applied.pageIds, media: ready.copies, ...(platformAdmin && !facts.member && { byPlatform: true }) },
       { area: "website", target: { type: "design_preset", id: presetId } },
     );
     return { ok: true, useId: null, installId: applied.installId, previous: null, title, notes };
@@ -1099,6 +1144,7 @@ async function placeDesign(
     "store.design_preset_applied",
     {
       preset: presetId,
+      ...(variation && { variation }),
       title,
       install: applied.installId,
       previousInstall: applied.previous?.id ?? null,
@@ -1119,7 +1165,12 @@ async function placeDesign(
  * become new published pages of Kaizena Flow's and the install keeps its look (`PlatformLook`), so the site is unchanged until a platform
  * admin switches (`switchPlatformInstall()`). The caller refreshes `PAGES_TAG`.
  */
-export async function installPresetOnPlatform(admin: Account, presetId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
+export async function installPresetOnPlatform(
+  admin: Account,
+  presetId: string,
+  deps: ApplyDeps = {},
+  variation: string | null = null,
+): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
   if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
   if (!isUuid(presetId)) return refuse(UNKNOWN);
   const [preset] = await db().execute<Row>(sql`
@@ -1127,9 +1178,11 @@ export async function installPresetOnPlatform(admin: Account, presetId: string, 
   `);
   if (!preset) return refuse(UNKNOWN);
   if (preset.archived_at || !preset.published) return refuse(NOT_OFFERED);
-  const snapshot = parseDesignSnapshot(preset.snapshot);
-  if (!snapshot) return refuse("This design profile can no longer be read.");
-  const title = String(preset.title);
+  const whole = parseDesignSnapshot(preset.snapshot);
+  if (!whole) return refuse("This design profile can no longer be read.");
+  const snapshot = variationSnapshot(whole, variation);
+  if (!snapshot) return refuse(NO_PRESET);
+  const title = installTitle(String(preset.title), whole, variation);
   if ((await platformInstallCount()) >= PLATFORM_INSTALLS_MAX) return refuse(`Kaizena Flow's site has ${PLATFORM_INSTALLS_MAX} themes installed. Remove one first.`);
   const [menus] = await db().execute<Row>(sql`select header_menu_id, footer_menu_id from commerce.platform_settings`);
 
@@ -1174,10 +1227,10 @@ export async function installPresetOnPlatform(admin: Account, presetId: string, 
         footerId: pageIds.footer,
       };
       const [kept] = await tx.execute<Row>(sql`
-        insert into commerce.platform_theme_installs (preset_id, version_id, title, look, live, installed_by, placed)
+        insert into commerce.platform_theme_installs (preset_id, version_id, title, look, live, installed_by, placed, variation)
         values (${presetId}::uuid,
           (select v.id from commerce.design_preset_versions v where v.preset_id = ${presetId}::uuid order by v.number desc limit 1),
-          ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${admin.id}::uuid, ${JSON.stringify(placed)}::jsonb)
+          ${title.slice(0, 80)}, ${JSON.stringify(look)}::jsonb, false, ${admin.id}::uuid, ${JSON.stringify(placed)}::jsonb, ${variation})
         returning id
       `);
       return { installId: String(kept.id), pageIds };
@@ -1187,13 +1240,19 @@ export async function installPresetOnPlatform(admin: Account, presetId: string, 
     console.error("[design-presets] adding to Kaizena Flow failed", error);
     return refuse("The theme could not be added. Nothing was changed; try again.");
   }
-  await audit(admin.id, null, "platform.theme_installed", { preset: presetId, title, install: made.installId, pages: made.pageIds, media: ready.copies }, {
+  await audit(admin.id, null, "platform.theme_installed", { preset: presetId, ...(variation && { variation }), title, install: made.installId, pages: made.pageIds, media: ready.copies }, {
     target: { type: "design_preset", id: presetId },
   });
   return { ok: true, installId: made.installId, title, notes };
 }
 
 class Refused extends Error {}
+
+/** An install's name: the theme's, and the preset's after it when it was added with one (`Calm · Coast`). */
+function installTitle(themeTitle: string, snapshot: DesignSnapshot, variation: string | null): string {
+  const name = variation ? variationsOf(snapshot).find((v) => v.key === variation)?.name : undefined;
+  return (name ? `${themeTitle} · ${name}` : themeTitle).slice(0, 80);
+}
 
 /** The store's latest use of a design profile, for its design settings: what was applied, when, and where the look before it is kept. */
 export async function latestDesignUse(storeId: string): Promise<{
@@ -1306,19 +1365,25 @@ export type DesignPreview = {
   fonts: string[];
   /** The look in the profile's workspace, not yet published (D177, admins only). */
   draft: boolean;
+  /** The preset drawn (`docs/theme-showcase-phase-1.md`), by its name; null: the theme's own look. */
+  presetName: string | null;
 };
 
-async function readPreview(presetId: string, starterId: string | null, admin: boolean, draft = false): Promise<DesignPreview | null> {
+async function readPreview(presetId: string, starterId: string | null, admin: boolean, draft = false, variation: string | null = null): Promise<DesignPreview | null> {
   if (!isUuid(presetId) || (starterId !== null && !isUuid(starterId))) return null;
   const [preset] = await readDb().execute<Row>(sql`
     select id, title, draft, snapshot, workspace_store_id from commerce.design_presets
     where id = ${presetId}::uuid and (${admin} or (published and archived_at is null))
   `);
   if (!preset) return null;
-  // A draft (D177, admins only) is the look in the profile's workspace as last saved, with its draft title.
-  const taken = draft && preset.workspace_store_id ? await takeSnapshot(String(preset.workspace_store_id), { drafts: true }) : null;
-  const snapshot = taken ? (taken.ok ? taken.snapshot : null) : parseDesignSnapshot(preset.snapshot);
+  // A draft (D177, admins only) is the look in the profile's workspace as last saved, with its drafted presets and draft title.
+  const taken = draft && preset.workspace_store_id ? await draftedSnapshot({ id: String(preset.id), workspaceStoreId: String(preset.workspace_store_id) }) : null;
+  const whole = taken ? (taken.ok ? taken.snapshot : null) : parseDesignSnapshot(preset.snapshot);
+  if (!whole) return null;
+  // One of its presets (`preset={key}`): the theme with the preset's settings; a key the version does not have is not found.
+  const snapshot = variationSnapshot(whole, variation);
   if (!snapshot) return null;
+  const presetName = variation ? (variationsOf(whole).find((v) => v.key === variation)?.name ?? null) : null;
   const title = draft ? (readDesignDraft(preset.draft)?.title ?? String(preset.title)) : String(preset.title);
   // Owners see a store template as published: its frozen copy (D177). An admin sees its working store, as it is now.
   const [store] = starterId
@@ -1334,26 +1399,26 @@ async function readPreview(presetId: string, starterId: string | null, admin: bo
     ? []
     : await readDb().execute<Row>(sql`select family from commerce.fonts where family in (${sql.join(wanted.map((f) => sql`${f}`), sql`, `)})`);
   const fonts = wanted.filter((family) => installed.some((row) => row.family === family));
-  return { id: String(preset.id), title, snapshot, storeSlug: String(store.slug), starterTitle: store.title ? String(store.title) : null, fonts, draft: taken !== null };
+  return { id: String(preset.id), title, snapshot, storeSlug: String(store.slug), starterTitle: store.title ? String(store.title) : null, fonts, draft: taken !== null, presetName };
 }
 
 /**
  * A published profile on a published store template (or the default template), for the public preview: cached per profile and template
  * under `DESIGNS_TAG` and `STARTERS_TAG`, null for anything unpublished or archived. Reads nothing of the visitor.
  */
-export async function publicDesignPreview(presetId: string, starterId: string | null): Promise<DesignPreview | null> {
+export async function publicDesignPreview(presetId: string, starterId: string | null, variation: string | null = null): Promise<DesignPreview | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  return readPreview(presetId, starterId, false);
+  return readPreview(presetId, starterId, false, false, variation);
 }
 
 /**
  * The same for a platform admin (the caller checked): unpublished and archived profiles and templates too, and with `draft` the look in the
  * profile's workspace as last saved (D177). Never cached.
  */
-export async function adminDesignPreview(presetId: string, starterId: string | null, draft = false): Promise<DesignPreview | null> {
-  return readPreview(presetId, starterId, true, draft);
+export async function adminDesignPreview(presetId: string, starterId: string | null, draft = false, variation: string | null = null): Promise<DesignPreview | null> {
+  return readPreview(presetId, starterId, true, draft, variation);
 }
 
 /** Every published store template, for the preview's chooser and the platform's pages. */
@@ -1432,7 +1497,7 @@ async function updateActor(storeId: string, install: Row): Promise<string | null
 export async function updateThemeInstall(storeId: string, installId: string, accountId: string | null, deps: ApplyDeps = {}): Promise<UpdateResult> {
   if (!isUuid(storeId) || !isUuid(installId) || (accountId !== null && !isUuid(accountId))) return refuse(UNKNOWN);
   const [install] = await db().execute<Row>(sql`
-    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, cur.number as current_number, cur.snapshot as current_snapshot
+    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, i.variation, cur.number as current_number, cur.snapshot as current_snapshot
     from commerce.store_theme_installs i
     left join commerce.design_preset_versions cur on cur.id = i.version_id
     where i.id = ${installId}::uuid and i.store_id = ${storeId}::uuid
@@ -1451,9 +1516,14 @@ export async function updateThemeInstall(storeId: string, installId: string, acc
     order by v.number desc limit 1
   `);
   if (!latest || Number(latest.number) <= Number(install.current_number ?? 0)) return refuse("This theme is up to date.");
-  const next = parseDesignSnapshot(latest.snapshot);
-  if (!next) return refuse("The new version of this theme can no longer be read.");
-  const previous = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const nextWhole = parseDesignSnapshot(latest.snapshot);
+  if (!nextWhole) return refuse("The new version of this theme can no longer be read.");
+  // An install made from a preset follows that preset (the theme's own look while a version has none of that key).
+  const variation = install.variation ? String(install.variation) : null;
+  const previousWhole = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const next = installedLook(nextWhole, variation).snapshot;
+  const previous = previousWhole ? installedLook(previousWhole, variation).snapshot : null;
+  const presetNote = presetLine(previousWhole, nextWhole, variation);
   const actor = accountId ?? (await updateActor(storeId, install));
   if (!actor) return refuse("The store has no owner to make the update for.");
   const title = String(install.title);
@@ -1559,7 +1629,7 @@ export async function updateThemeInstall(storeId: string, installId: string, acc
     { install: installId, title, to: Number(latest.number), own: done.own, kept: done.kept.length, update: done.updateId, ...(accountId === null && { automatic: true }) },
     { area: "website", target: { type: "theme_install", id: installId } },
   );
-  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...ready.notes, ...done.notes] };
+  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...(presetNote ? [presetNote] : []), ...ready.notes, ...done.notes] };
 }
 
 /**
@@ -1620,7 +1690,7 @@ export type FollowingInstall = { installId: string; title: string; live: boolean
 export async function themeUpdates(storeId: string): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
   if (!isUuid(storeId)) return { available: [], made: [], installs: [] };
   const rows = await db().execute<Row>(sql`
-    select i.id, i.title, i.live, i.follows_updates, cur.number as current_number, cur.snapshot as current_snapshot,
+    select i.id, i.title, i.live, i.follows_updates, i.variation, cur.number as current_number, cur.snapshot as current_snapshot,
       (select jsonb_agg(jsonb_build_object('number', v.number, 'snapshot', v.snapshot, 'notes', v.notes) order by v.number)
          from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0)) as newer
     from commerce.store_theme_installs i
@@ -1756,7 +1826,7 @@ export async function updatePlatformInstall(admin: Account | null, installId: st
   if (admin !== null && !admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
   if (!isUuid(installId)) return refuse(UNKNOWN);
   const [install] = await db().execute<Row>(sql`
-    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, cur.number as current_number, cur.snapshot as current_snapshot
+    select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, i.variation, cur.number as current_number, cur.snapshot as current_snapshot
     from commerce.platform_theme_installs i
     left join commerce.design_preset_versions cur on cur.id = i.version_id
     where i.id = ${installId}::uuid
@@ -1770,9 +1840,14 @@ export async function updatePlatformInstall(admin: Account | null, installId: st
     order by v.number desc limit 1
   `);
   if (!latest || Number(latest.number) <= Number(install.current_number ?? 0)) return refuse("This theme is up to date.");
-  const next = parseDesignSnapshot(latest.snapshot);
-  if (!next) return refuse("The new version of this theme can no longer be read.");
-  const previous = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const nextWhole = parseDesignSnapshot(latest.snapshot);
+  if (!nextWhole) return refuse("The new version of this theme can no longer be read.");
+  // An install made from a preset follows that preset (the theme's own look while a version has none of that key).
+  const variation = install.variation ? String(install.variation) : null;
+  const previousWhole = install.current_snapshot ? parseDesignSnapshot(install.current_snapshot) : null;
+  const next = installedLook(nextWhole, variation).snapshot;
+  const previous = previousWhole ? installedLook(previousWhole, variation).snapshot : null;
+  const presetNote = presetLine(previousWhole, nextWhole, variation);
   const actor = admin?.id ?? (await platformUpdateActor(install));
   if (!actor) return refuse("Kaizena Flow has no admin to make the update for.");
   const title = String(install.title);
@@ -1874,7 +1949,7 @@ export async function updatePlatformInstall(admin: Account | null, installId: st
     { install: installId, title, to: Number(latest.number), own: done.own, kept: done.kept.length, update: done.updateId, ...(admin === null && { automatic: true }) },
     { target: { type: "theme_install", id: installId } },
   );
-  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...ready.notes, ...done.notes] };
+  return { ok: true, title, version: Number(latest.number), own: done.own, kept: done.kept, notes: [...(presetNote ? [presetNote] : []), ...ready.notes, ...done.notes] };
 }
 
 /**
@@ -1921,7 +1996,7 @@ export async function undoPlatformThemeUpdate(admin: Account, updateId: string):
 /** Kaizena Flow's installs with a newer version waiting (D253), with *What's new* across every version between, and its latest updates. */
 export async function platformThemeUpdates(): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
   const rows = await db().execute<Row>(sql`
-    select i.id, i.title, i.live, i.follows_updates, cur.number as current_number, cur.snapshot as current_snapshot,
+    select i.id, i.title, i.live, i.follows_updates, i.variation, cur.number as current_number, cur.snapshot as current_snapshot,
       (select jsonb_agg(jsonb_build_object('number', v.number, 'snapshot', v.snapshot, 'notes', v.notes) order by v.number)
          from commerce.design_preset_versions v where v.preset_id = i.preset_id and v.number > coalesce(cur.number, 0)) as newer
     from commerce.platform_theme_installs i
@@ -1946,12 +2021,18 @@ function updatesView(rows: Row[], made: Row[]): { available: AvailableUpdate[]; 
   const available = rows.flatMap((row): AvailableUpdate[] => {
     const newer = (Array.isArray(row.newer) ? row.newer : []) as { number: number; snapshot: unknown; notes: string | null }[];
     if (newer.length === 0) return [];
+    // An install made from a preset reads each version as that preset (the theme's own look where a version has none of it).
+    const variation = row.variation ? String(row.variation) : null;
     let previous = row.current_snapshot ? parseDesignSnapshot(row.current_snapshot) : null;
     const lines: string[] = [];
     for (const version of newer) {
       const snap = parseDesignSnapshot(version.snapshot);
       if (!snap) continue;
-      for (const line of previous ? whatsNew(previous, snap, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
+      const preset = presetLine(previous, snap, variation);
+      if (preset && !lines.includes(preset)) lines.push(preset);
+      const before = previous ? installedLook(previous, variation).snapshot : null;
+      const after = installedLook(snap, variation).snapshot;
+      for (const line of before ? whatsNew(before, after, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
       previous = snap;
     }
     return [{ installId: String(row.id), title: String(row.title), live: row.live === true, from: number(row.current_number), to: Number(newer.at(-1)!.number), followsUpdates: row.follows_updates === true, whatsNew: lines }];
@@ -2031,11 +2112,32 @@ export async function checkedSnapshot(snapshot: unknown): Promise<ThemeCheckResu
  */
 export async function designChecks(design: DesignRow): Promise<ThemeCheckResult | null> {
   if (design.workspaceStoreId) {
-    const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+    const taken = await draftedSnapshot(design);
     if (!taken.ok) return { findings: taken.problems.map((message) => ({ check: "package", blocking: true, where: "Theme", message })), blocking: taken.problems.length };
-    return checkedSnapshot(taken.snapshot);
+    return checkedDesign(taken.snapshot);
   }
-  return checkedSnapshot(await storedSnapshot(design.id));
+  return checkedDesign(await storedSnapshot(design.id));
+}
+
+/**
+ * The theme checks of a version with its presets (`docs/theme-showcase-phase-1.md`): the theme's own look, then each preset laid over it,
+ * whose findings are named by the preset; what a preset shares with the theme (its header, footer, product page and CSS) is said once.
+ */
+export async function checkedDesign(snapshot: unknown): Promise<ThemeCheckResult> {
+  const own = await checkedSnapshot(snapshot);
+  const parsed = parseDesignSnapshot(snapshot);
+  if (!parsed) return own;
+  const seen = new Set(own.findings.map((f) => `${f.check}|${f.where}|${f.message}`));
+  const findings = [...own.findings];
+  for (const variation of variationsOf(parsed)) {
+    const laid = variationSnapshot(parsed, variation.key);
+    if (!laid) continue;
+    for (const finding of (await checkedSnapshot(laid)).findings) {
+      if (seen.has(`${finding.check}|${finding.where}|${finding.message}`)) continue;
+      findings.push({ ...finding, where: `${variation.name} preset · ${finding.where}` });
+    }
+  }
+  return { findings, blocking: findings.filter((f) => f.blocking).length };
 }
 
 /**

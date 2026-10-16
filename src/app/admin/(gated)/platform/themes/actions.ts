@@ -3,6 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { presetChoice } from "@/lib/design-variations";
 import { requirePlatformAdmin } from "@/server/auth";
 import { DESIGNS_TAG, installPresetOnPlatform, undoPlatformThemeUpdate, updatePlatformInstall } from "@/server/design-presets";
 import { PAGES_TAG } from "@/server/pages";
@@ -25,7 +26,7 @@ const lines = (title: string, notes: string[], first: string) => [first.replace(
 
 export async function addPlatformThemeAction(_state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const result = await installPresetOnPlatform(admin, String(formData.get("design") ?? ""));
+  const result = await installPresetOnPlatform(admin, String(formData.get("design") ?? ""), {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
   return { status: "ok", messages: lines(result.title, result.notes, "“{title}” is in Kaizena Flow's themes, not live. Switch to it when it is ready.") };

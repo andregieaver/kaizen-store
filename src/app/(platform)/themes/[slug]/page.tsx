@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { JsonLdScript } from "@/components/json-ld";
+import { ThemePreviewStage } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
 import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeTryLink } from "@/lib/theme-store";
@@ -99,14 +100,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           Preview
         </h2>
         <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
-        <div className="flex flex-col items-start gap-6 lg:flex-row">
-          <div className="w-full overflow-hidden rounded-lg border border-border lg:flex-1">
-            <iframe src={framed} title={`${theme.title} on a computer`} loading="lazy" className="h-[640px] w-full" />
-          </div>
-          <div className="mx-auto w-[390px] max-w-full shrink-0 overflow-hidden rounded-[2rem] border-8 border-foreground">
-            <iframe src={framed} title={`${theme.title} on a phone`} loading="lazy" className="h-[640px] w-full" />
-          </div>
-        </div>
+        <ThemePreviewStage title={theme.title} presets={theme.presets} frameHref={framed} previewHref={preview} tryHref={platformHref(themeTryLink(theme.slug))} />
       </section>
 
       <div className="grid gap-10 md:grid-cols-2">

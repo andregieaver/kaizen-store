@@ -87,20 +87,28 @@ export default async function PlatformThemesPage() {
           <p className="text-sm text-muted">No theme is published yet.</p>
         ) : (
           <List label="Published themes">
-            {offered.map((design) => (
-              <ListRow key={design.id}>
-                <RowLead title={design.title} sub={installed.has(design.id) ? <Chip>Installed</Chip> : design.summary || undefined} />
-                <RowActions>
-                  <ActionForm action={addPlatformThemeAction}>
-                    <input type="hidden" name="design" value={design.id} />
-                    <SubmitButton variant="secondary">
-                      {installed.has(design.id) ? "Add another copy" : "Add"}
-                      <span className="sr-only"> ({design.title})</span>
-                    </SubmitButton>
-                  </ActionForm>
-                </RowActions>
-              </ListRow>
-            ))}
+            {/* Each theme's own look, then each of its presets (docs/theme-showcase-phase-1.md), added on its own. */}
+            {offered.flatMap((design) => [null, ...(design.presets ?? [])].map((preset) => {
+              const name = preset ? `${design.title} · ${preset.name}` : design.title;
+              return (
+                <ListRow key={`${design.id}:${preset?.key ?? ""}`}>
+                  <RowLead
+                    title={name}
+                    sub={!preset && installed.has(design.id) ? <Chip>Installed</Chip> : preset ? `A preset of ${design.title}` : design.summary || undefined}
+                  />
+                  <RowActions>
+                    <ActionForm action={addPlatformThemeAction}>
+                      <input type="hidden" name="design" value={design.id} />
+                      {preset && <input type="hidden" name="preset" value={preset.key} />}
+                      <SubmitButton variant="secondary">
+                        {!preset && installed.has(design.id) ? "Add another copy" : "Add"}
+                        <span className="sr-only"> ({name})</span>
+                      </SubmitButton>
+                    </ActionForm>
+                  </RowActions>
+                </ListRow>
+              );
+            }))}
           </List>
         )}
       </Card>

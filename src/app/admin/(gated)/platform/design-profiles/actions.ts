@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { designChoice, designTabHref, parseDesignDetails } from "@/lib/design-presets";
+import { presetChoice } from "@/lib/design-variations";
 import { requirePlatformAdmin } from "@/server/auth";
 import {
   DESIGNS_TAG,
@@ -158,7 +159,7 @@ export async function applyDesignToStoreAction(storeSlug: string, _state: FormSt
   const presetId = designChoice(formData.get("design"));
   if (!store) return { status: "error", messages: ["That store no longer exists."] };
   if (!presetId) return { status: "error", messages: ["Choose a design profile."] };
-  const result = await applyDesignPreset(store.id, presetId, admin.id);
+  const result = await applyDesignPreset(store.id, presetId, admin.id, {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(store)) updateTag(tag);
   refresh();

@@ -28,6 +28,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   summary: "",
   pictureUrl: null,
   shotUrl: null,
+  presets: [],
   listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#fff", surface: "#eee", text: "#000", accent: "#111", accentText: "#fff", heading: null },
