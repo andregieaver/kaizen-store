@@ -53,6 +53,26 @@ describe("syncLaunchThemes()", () => {
     expect(states.every((state) => state.published !== null && state.published >= state.version)).toBe(true);
   });
 
+  it("publishes each theme's presets into its version and names the pack each look is shown on (docs/theme-showcase-phase-1.md step 3)", async () => {
+    for (const theme of LAUNCH_THEMES) {
+      const row = await presetOf(theme.key);
+      const snapshot = row?.snapshot as {
+        v: number;
+        theme: { settings: { light: { accent: string } } };
+        variations?: { key: string; name: string; theme: { settings: { light: { accent: string } } } }[];
+      };
+      expect(snapshot.v, theme.title).toBe(2);
+      expect(snapshot.variations?.map((v) => [v.key, v.name])).toEqual(theme.presets.map((p) => [p.key, p.name]));
+      for (const preset of theme.presets) {
+        // A preset's own colours, else the theme's as published.
+        const accent = preset.changes.light?.accent ?? snapshot.theme.settings.light.accent;
+        expect(snapshot.variations?.find((v) => v.key === preset.key)?.theme.settings.light.accent, `${theme.title} · ${preset.name}`).toBe(accent);
+      }
+      const [listed] = await db().execute<Row>(sql`select listing from commerce.design_presets where launch_key = ${theme.key}`);
+      expect(listed.listing).toMatchObject({ pack: theme.listing.pack, presetPacks: Object.fromEntries(theme.presets.map((p) => [p.key, p.pack])) });
+    }
+  });
+
   it("changes nothing on a second press", async () => {
     const result = await syncLaunchThemes(admin, deps);
     expect(result.made).toEqual([]);

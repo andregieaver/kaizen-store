@@ -2,6 +2,7 @@ import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
 import { whatsNew } from "./theme-update";
+import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, contentPack, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
 
@@ -44,8 +45,20 @@ export const THEME_FEATURES = {
 } as const;
 export type ThemeFeature = keyof typeof THEME_FEATURES;
 
-/** A listing: the kinds of store and styles a theme is listed under, and its own pictures beside its main one (`docs/theme-phase-3.md`). */
-export type ThemeListing = { kinds: StoreKind[]; styles: ThemeStyle[]; pictures: string[] };
+/**
+ * A listing: the kinds of store and styles a theme is listed under, and its own pictures beside its main one (`docs/theme-phase-3.md`); and
+ * the content pack each of its looks is shown on (`docs/theme-showcase-phase-1.md` step 3): `pack` for the theme's own look, `presetPacks`
+ * for its presets by key. A look with no pack, or whose pack's store template is not published, is shown on the Standard store.
+ */
+export type ThemeListing = { kinds: StoreKind[]; styles: ThemeStyle[]; pictures: string[]; pack: PackKey | null; presetPacks: Record<string, PackKey> };
+
+/** A preset's key, as `VARIATION_KEY` (here without zod's module). */
+const PRESET_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const isPack = (value: unknown): value is PackKey => typeof value === "string" && (PACK_KEYS as readonly string[]).includes(value);
+
+/** The content pack a look of the theme is shown on: its own look (`null`) or a preset's, or null for the Standard store. */
+export const showcasePack = (listing: Pick<ThemeListing, "pack" | "presetPacks">, key: string | null): PackKey | null =>
+  key === null ? listing.pack : (listing.presetPacks[key] ?? null);
 
 /** At most this many pictures beside a theme's main one. */
 export const THEME_PICTURES_MAX = 6;
@@ -65,15 +78,31 @@ export function readListing(value: unknown): ThemeListing {
   const kinds = new Set(listOf(raw.kinds).filter((k) => isKey(STORE_KINDS, k)));
   const styles = new Set(listOf(raw.styles).filter((s) => isKey(THEME_STYLES, s)));
   const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
+  const presets = raw.presetPacks && typeof raw.presetPacks === "object" && !Array.isArray(raw.presetPacks) ? (raw.presetPacks as Record<string, unknown>) : {};
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
     pictures,
+    pack: isPack(raw.pack) ? raw.pack : null,
+    presetPacks: Object.fromEntries(
+      Object.entries(presets)
+        .filter((entry): entry is [string, PackKey] => PRESET_KEY.test(entry[0]) && isPack(entry[1]))
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    ),
   };
 }
 
 /** A listing from the platform admin's form, or what is wrong with it in plain words. */
-export function parseListing(form: { slug?: unknown; kinds?: unknown; styles?: unknown; pictures?: unknown }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
+export function parseListing(form: {
+  slug?: unknown;
+  kinds?: unknown;
+  styles?: unknown;
+  pictures?: unknown;
+  /** The pack the theme's own look is shown on ("" for the Standard store). */
+  pack?: unknown;
+  /** Each preset's pack, by key ("" for the Standard store). */
+  presetPacks?: Record<string, unknown>;
+}): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
   const slug = typeof form.slug === "string" ? form.slug.trim().toLowerCase() : "";
   const problems: string[] = [];
   if (!slug) problems.push("Give the theme an address in the theme store.");
@@ -82,7 +111,7 @@ export function parseListing(form: { slug?: unknown; kinds?: unknown; styles?: u
   if (pictures.some((value) => !isThemePicture(value))) problems.push("A picture's address is one on this site (/…) or an https:// address.");
   if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures }) };
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */
@@ -107,6 +136,29 @@ export function themeFeatures(snapshot: DesignSnapshot): ThemeFeature[] {
 /** The section styles a version has, by their names in the builder. */
 export const themeSectionStyles = (snapshot: DesignSnapshot): string[] => Object.keys(snapshot.theme.settings.sectionStyles ?? {}).map(sectionStyleLabel);
 
+/** The demo store a look is shown on: a content pack's published store template. */
+export type Showcase = { pack: PackKey; trade: string; line: string; starterId: string };
+
+/** A look of a theme (its own, `key` null, or a preset) and the demo store it is shown on; null: the Standard store. */
+export type ThemeLook = { key: string | null; name: string; showcase: Showcase | null };
+
+/**
+ * A theme's looks, its own first, each with the content pack its listing names when that pack's store template is published (`packs`: pack
+ * to its template's id); any other look is shown on the Standard store, as before packs (`docs/theme-showcase-phase-1.md` step 3).
+ */
+export function themeLooks(title: string, presets: { key: string; name: string }[], listing: Pick<ThemeListing, "pack" | "presetPacks">, packs: ReadonlyMap<string, string>): ThemeLook[] {
+  const showcase = (key: string | null): Showcase | null => {
+    const pack = showcasePack(listing, key);
+    const starterId = pack ? packs.get(pack) : undefined;
+    const data = pack ? contentPack(pack) : null;
+    return pack && starterId && data ? { pack, trade: PACK_TRADES[pack], line: `${data.storeName}, ${PACK_DEMO_WORDS[pack]}`, starterId } : null;
+  };
+  return [{ key: null, name: title, showcase: showcase(null) }, ...presets.map((p) => ({ key: p.key, name: p.name, showcase: showcase(p.key) }))];
+}
+
+/** The trades a theme's looks are shown on, each once, in its looks' order. */
+export const showcaseTrades = (looks: ThemeLook[]): string[] => [...new Set(looks.flatMap((look) => (look.showcase ? [look.showcase.trade] : [])))];
+
 /** A theme as the list shows it. */
 export type ThemeStoreCard = {
   id: string;
@@ -118,6 +170,8 @@ export type ThemeStoreCard = {
   shotUrl: string | null;
   /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`), in order. */
   presets: { key: string; name: string }[];
+  /** Its own look and its presets, each with the demo store it is shown on (`themeLooks()`). */
+  looks: ThemeLook[];
   listing: ThemeListing;
   features: ThemeFeature[];
   /** For a card without a picture: the light colours and the heading font. */

@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
+import { PACK_KEYS } from "@/lib/content-packs";
 import { variationsOf } from "@/lib/design-variations";
 import { launchShotFor } from "@/lib/launch-themes";
 import {
@@ -12,6 +13,7 @@ import {
   swatchOf,
   themeChangelog,
   themeFeatures,
+  themeLooks,
   themeSectionStyles,
   type ChangelogEntry,
   type ThemeStoreCard,
@@ -19,6 +21,7 @@ import {
 } from "@/lib/theme-store";
 
 import { DESIGNS_TAG } from "./design-presets";
+import { STARTERS_TAG } from "./store-starters";
 
 /**
  * The theme store's reads (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): published, unarchived themes that have an
@@ -28,24 +31,42 @@ import { DESIGNS_TAG } from "./design-presets";
 
 type Row = Record<string, unknown>;
 
-const cardOf = (row: Row, snapshot: DesignSnapshot): ThemeStoreCard => ({
-  id: String(row.id),
-  slug: String(row.slug),
-  title: String(row.title),
-  summary: String(row.summary ?? ""),
-  pictureUrl: row.picture_url ? String(row.picture_url) : null,
-  shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
-  presets: variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name })),
-  listing: readListing(row.listing),
-  features: themeFeatures(snapshot),
-  swatch: swatchOf(snapshot),
-});
+const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, string>): ThemeStoreCard => {
+  const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
+  const listing = readListing(row.listing);
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    title: String(row.title),
+    summary: String(row.summary ?? ""),
+    pictureUrl: row.picture_url ? String(row.picture_url) : null,
+    shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
+    presets,
+    looks: themeLooks(String(row.title), presets, listing, packs),
+    listing,
+    features: themeFeatures(snapshot),
+    swatch: swatchOf(snapshot),
+  };
+};
+
+/**
+ * The content packs whose store templates are published (`docs/theme-showcase-phase-1.md` step 3), pack to template: the stores a theme's
+ * looks are shown on. Read inside the cached reads below, which therefore also carry `STARTERS_TAG` (publishing a template refreshes them).
+ */
+async function publishedPacks(): Promise<Map<string, string>> {
+  const rows = await readDb().execute<Row>(sql`
+    select id, pack_key from commerce.store_starters
+    where pack_key = any(${`{${PACK_KEYS.join(",")}}`}::text[]) and published and archived_at is null
+  `);
+  return new Map(rows.map((row) => [String(row.pack_key), String(row.id)]));
+}
 
 /** Every theme in the store, as the list shows them. */
 export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   "use cache";
   cacheLife("hours");
-  cacheTag(DESIGNS_TAG);
+  cacheTag(DESIGNS_TAG, STARTERS_TAG);
+  const packs = await publishedPacks();
   const rows = await readDb().execute<Row>(sql`
     select id, slug, title, summary, picture_url, launch_key, listing, snapshot from commerce.design_presets
     where published and archived_at is null and slug is not null
@@ -53,7 +74,7 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   `);
   return rows.flatMap((row) => {
     const snapshot = parseDesignSnapshot(row.snapshot);
-    return snapshot ? [cardOf(row, snapshot)] : [];
+    return snapshot ? [cardOf(row, snapshot, packs)] : [];
   });
 }
 
@@ -70,7 +91,7 @@ export type ThemeStorePage = ThemeStoreCard & {
 export async function themeStorePage(slug: string): Promise<ThemeStorePage | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(DESIGNS_TAG);
+  cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const [row] = await readDb().execute<Row>(sql`
     select id, slug, title, summary, description, picture_url, launch_key, listing, snapshot, published_at from commerce.design_presets
     where slug = ${slug} and published and archived_at is null
@@ -86,7 +107,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   });
   const latest = versions.at(-1) ?? null;
   return {
-    ...cardOf(row, snapshot),
+    ...cardOf(row, snapshot, await publishedPacks()),
     description: String(row.description ?? ""),
     sectionStyles: themeSectionStyles(snapshot),
     changelog: themeChangelog(versions),

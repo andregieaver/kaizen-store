@@ -5,6 +5,7 @@ import {
   THEME_FEATURES,
   THEME_STYLES,
   filterThemes,
+  showcaseTrades,
   themeFilterHref,
   type ThemeFilter,
   type ThemeStoreCard,
@@ -16,6 +17,16 @@ import { themeStorePath } from "@/lib/theme-host";
  * includes), plain links in small menus, so it works without JavaScript and every filtered list has an address. Drawn in Kaizena
  * Flow's own theme. Server-drawn.
  */
+
+/** "a, b and c". */
+const listWords = (words: string[]): string => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
+
+/** "Shown on a beauty store", "Shown on an electronics store", "Shown on food and drink and home stores". */
+function shownOn(trades: string[]): string {
+  const words = trades.map((t) => t.toLowerCase());
+  if (words.length === 1) return `Shown on ${/^[aeiou]/.test(words[0]) ? "an" : "a"} ${words[0]} store`;
+  return `Shown on ${listWords(words)} stores`;
+}
 
 function Swatch({ card }: { card: ThemeStoreCard }) {
   const s = card.swatch;
@@ -36,6 +47,8 @@ function Swatch({ card }: { card: ThemeStoreCard }) {
 /** A theme's card: the admin's picture, else a photograph of it on the demo store, else its colours (a theme with neither). */
 export function ThemeCard({ card }: { card: ThemeStoreCard }) {
   const picture = card.pictureUrl ?? card.shotUrl;
+  // The trades its looks are shown on (`docs/theme-showcase-phase-1.md` step 3), only those whose demo store is published.
+  const trades = showcaseTrades(card.looks);
   return (
     <li className="relative flex flex-col overflow-hidden rounded-lg border border-border bg-background">
       {picture ? (
@@ -51,6 +64,7 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
           </Link>
         </h2>
         {card.summary && <p className="text-sm text-muted">{card.summary}</p>}
+        {trades.length > 0 && <p className="text-sm text-muted">{shownOn(trades)}</p>}
         <p className="mt-auto text-sm">
           <span className="font-medium">Free</span>
           {card.listing.styles.length > 0 && <span className="text-muted"> · {card.listing.styles.map((s) => THEME_STYLES[s]).join(", ")}</span>}

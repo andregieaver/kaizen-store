@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
-import { LAUNCH_THEMES } from "./launch-themes";
+import { PACK_KEYS } from "./content-packs";
+import { LAUNCH_THEMES, launchVariation } from "./launch-themes";
 import type { PageBlock } from "./page-content";
 import { newBlock } from "./page-rows";
 import { CORE_SECTION_STYLES } from "./section-styles";
@@ -22,6 +23,26 @@ describe("themeCheck()", () => {
       const result = themeCheck(theme.snapshot);
       expect(blockingLines(result), theme.title).toEqual([]);
     }
+  });
+
+  it("passes every launch theme's presets with nothing blocking, nor a secondary text that is hard to read (docs/theme-showcase-phase-1.md step 3)", () => {
+    for (const theme of LAUNCH_THEMES) {
+      expect(theme.presets.length, theme.title).toBeGreaterThanOrEqual(2);
+      expect(theme.presets.length, theme.title).toBeLessThanOrEqual(4);
+      for (const preset of theme.presets) {
+        const variation = launchVariation(theme, preset);
+        const result = themeCheck({ ...theme.snapshot, theme: variation.theme });
+        expect(blockingLines(result), `${theme.title} · ${preset.name}`).toEqual([]);
+        expect(result.findings.filter((f) => f.check === "contrast").map((f) => f.message), `${theme.title} · ${preset.name}`).toEqual([]);
+        expect(preset.key).toMatch(/^[a-z0-9][a-z0-9-]{0,39}$/);
+      }
+      expect(new Set(theme.presets.map((p) => p.key)).size).toBe(theme.presets.length);
+      // Each look of a theme is shown on a different store, and every pack is shown by some theme.
+      const packs = [theme.listing.pack, ...theme.presets.map((p) => p.pack)];
+      expect(new Set(packs).size, theme.title).toBe(packs.length);
+    }
+    const shown = new Set(LAUNCH_THEMES.flatMap((t) => [t.listing.pack, ...t.presets.map((p) => p.pack)]));
+    expect([...PACK_KEYS].filter((key) => !shown.has(key))).toEqual([]);
   });
 
   it("refuses a package that cannot be read", () => {

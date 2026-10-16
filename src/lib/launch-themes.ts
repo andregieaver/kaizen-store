@@ -1,4 +1,5 @@
-import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot } from "./design-presets";
+import type { PackKey } from "./content-packs";
+import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot, type DesignVariation } from "./design-presets";
 import type { SectionStyles } from "./section-styles";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
 import type { ThemeElements } from "./theme-elements";
@@ -14,6 +15,12 @@ import type { ThemeListing } from "./theme-store";
  * (`launch-themes.test.ts`).
  */
 
+/**
+ * A launch theme's preset (`docs/theme-showcase-phase-1.md` step 3): its fixed key, its name, the content pack it is shown on, and its
+ * look: the theme's own settings with these changes (colours, fonts, corners, buttons), so its elements and section styles stay the theme's.
+ */
+export type LaunchPreset = { key: string; name: string; pack: PackKey; changes: Partial<ThemeSettings> };
+
 export type LaunchTheme = {
   /** Stable for ever: how the platform's theme is found again (`design_presets.launch_key`). */
   key: string;
@@ -24,10 +31,28 @@ export type LaunchTheme = {
   description: string;
   /** *What's new* for the version (D245), null for the first. */
   notes: string | null;
-  /** Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. Its pictures are the platform admin's. */
-  listing: Omit<ThemeListing, "pictures">;
+  /**
+   * Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. Its pictures are the platform admin's; `pack`
+   * is the content pack its own look is shown on, and its presets' come from `presets`.
+   */
+  listing: Omit<ThemeListing, "pictures" | "presetPacks">;
+  /** Its own look (no presets in it: they are `presets`, laid over it by `launchSnapshot()`). */
   snapshot: DesignSnapshot;
+  presets: LaunchPreset[];
 };
+
+/** A launch preset as a theme's version holds it: the theme's own settings with the preset's changes. */
+export const launchVariation = (theme: LaunchTheme, preset: LaunchPreset): DesignVariation => ({
+  key: preset.key,
+  name: preset.name,
+  theme: { base: theme.snapshot.theme.base, settings: { ...theme.snapshot.theme.settings, ...preset.changes } },
+});
+
+/** The listing written for a launch theme: the code's kinds, styles and packs (its own look's and each preset's). */
+export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"> => ({
+  ...theme.listing,
+  presetPacks: Object.fromEntries(theme.presets.map((p) => [p.key, p.pack])),
+});
 
 /**
  * The theme's card picture in the theme store: its public preview on the demo store, photographed at a computer's width (a 4:3 crop of the
@@ -95,61 +120,141 @@ function theme(base: ThemeTemplate, changes: Partial<ThemeSettings> & { light?: 
 export const LAUNCH_THEMES: readonly LaunchTheme[] = [
   {
     key: "calm",
-    version: 1,
+    version: 2,
     title: "Calm",
     summary: "Quiet and neutral, with room to breathe.",
     description:
       "Black and white with soft greys, system fonts and pill buttons. Generous space between sections lets products and pictures speak. Follows the visitor's light or dark mode.",
-    notes: null,
-    listing: { kinds: [], styles: ["minimal"] },
+    notes: "Three presets: Sand, warm beige with Lora headings; Ink, always dark with a blue accent; Sage, soft green-grey.",
+    listing: { kinds: [], styles: ["minimal"], pack: "fashion" },
     snapshot: theme(
       "minimal",
       { corners: { cards: "medium", fields: "small" } },
       { h1: { typography: { text: { size: rem(2.75) } } }, h2: { typography: { text: { size: rem(2) } } } },
       coreStyles({ heroSize: 3.75, band: "#171717", bandText: "#fafafa", space: 56 }),
     ),
+    presets: [
+      {
+        key: "sand",
+        name: "Sand",
+        pack: "beauty",
+        changes: {
+          light: { background: "#faf7f2", surface: "#f0e9df", text: "#2a2420", muted: "#6b6058", border: "#e6ddd1", accent: "#8a5a44", accentText: "#ffffff" },
+          dark: { background: "#1a1613", surface: "#26201b", text: "#f2ebe3", muted: "#b8ab9e", border: "#3a322b", accent: "#d9a88c", accentText: "#1a1613" },
+          fonts: { heading: "Lora" },
+          corners: { cards: "large", fields: "small" },
+        },
+      },
+      {
+        key: "ink",
+        name: "Ink",
+        pack: "electronics",
+        changes: {
+          mode: "dark",
+          dark: { background: "#0d0f12", surface: "#171a1f", text: "#e8eaed", muted: "#9aa1ab", border: "#2a2f36", accent: "#4f8cff", accentText: "#0d0f12" },
+          fonts: { heading: "Inter", body: "Inter" },
+          buttons: { style: "filled", corners: "rounded" },
+          corners: { cards: "small", fields: "small" },
+        },
+      },
+      {
+        key: "sage",
+        name: "Sage",
+        pack: "home",
+        changes: {
+          light: { background: "#f6f7f4", surface: "#e9ece5", text: "#1f2620", muted: "#56605a", border: "#d9ded4", accent: "#3f5e4a", accentText: "#ffffff" },
+          dark: { background: "#121613", surface: "#1c221d", text: "#e7ece6", muted: "#a6b0a8", border: "#2c342d", accent: "#9cc4a8", accentText: "#121613" },
+          buttons: { style: "filled", corners: "rounded" },
+        },
+      },
+    ],
   },
   {
     key: "hearth",
-    version: 1,
+    version: 2,
     title: "Hearth",
     summary: "Warm and classic, for crafts, food and home.",
     description:
       "Cream paper and terracotta, Playfair Display headings over Lora, softly rounded bordered cards and a centred logo. Quotes are set large in the heading font.",
-    notes: null,
-    listing: { kinds: ["food", "home", "crafts"], styles: ["warm", "classic"] },
+    notes: "Two presets: Olive, warm white and olive green; Blush, rose and plum.",
+    listing: { kinds: ["food", "home", "crafts"], styles: ["warm", "classic"], pack: "food" },
     snapshot: theme(
       "warm",
       {},
       { h1: { typography: { text: { size: rem(2.75) } } }, h2: { typography: { text: { size: rem(2) } } }, p: { typography: { text: { lineHeight: { value: 1.7, unit: "" } } } } },
       coreStyles({ heroSize: 3.5, band: "#3a2a1f", bandText: "#fdf6ec", space: 48, quoteFamily: "Playfair Display" }),
     ),
+    presets: [
+      {
+        key: "olive",
+        name: "Olive",
+        pack: "home",
+        changes: {
+          light: { background: "#f7f5ee", surface: "#ece8da", text: "#26261c", muted: "#5f5e4c", border: "#ddd8c4", accent: "#5c6b2e", accentText: "#fffdf5" },
+          dark: { background: "#181812", surface: "#23231a", text: "#efedde", muted: "#b9b59c", border: "#3a3a2c", accent: "#b7c47a", accentText: "#181812" },
+          productCards: { image: "square", style: "bordered", align: "center" },
+        },
+      },
+      {
+        key: "blush",
+        name: "Blush",
+        pack: "beauty",
+        changes: {
+          light: { background: "#fbf5f3", surface: "#f3e6e1", text: "#2e1f1c", muted: "#6e5650", border: "#e7d4cd", accent: "#9c3d54", accentText: "#ffffff" },
+          dark: { background: "#1c1416", surface: "#2a1e21", text: "#f5e9ea", muted: "#c4a9ae", border: "#45333a", accent: "#e8a0b0", accentText: "#1c1416" },
+          buttons: { style: "filled", corners: "pill" },
+          corners: { cards: "medium", fields: "small" },
+        },
+      },
+    ],
   },
   {
     key: "signal",
-    version: 1,
+    version: 2,
     title: "Signal",
     summary: "Bold and modern, high contrast and square.",
     description:
       "A black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures. Sections sit close together.",
-    notes: null,
-    listing: { kinds: ["fashion", "digital"], styles: ["bold"] },
+    notes: "Two presets: Volt, always dark with an electric yellow-green; Cobalt, a strong blue with headings as written.",
+    listing: { kinds: ["fashion", "digital"], styles: ["bold"], pack: "fashion" },
     snapshot: theme(
       "bold",
       {},
       { h1: { typography: { text: { size: rem(3), letterSpacing: { value: 0.02, unit: "em" } } } }, h2: { typography: { text: { size: rem(2.25) } } } },
       coreStyles({ heroSize: 4.5, band: "#0a0a0a", bandText: "#ffffff", space: 40 }),
     ),
+    presets: [
+      {
+        key: "volt",
+        name: "Volt",
+        pack: "electronics",
+        changes: {
+          mode: "dark",
+          dark: { background: "#0a0a0a", surface: "#161616", text: "#f5f5f5", muted: "#a3a3a3", border: "#f5f5f5", accent: "#d4ff3a", accentText: "#0a0a0a" },
+        },
+      },
+      {
+        key: "cobalt",
+        name: "Cobalt",
+        pack: "services",
+        changes: {
+          light: { background: "#ffffff", surface: "#eef1ff", text: "#0a0a0a", muted: "#4a4f63", border: "#0a0a0a", accent: "#1f3fff", accentText: "#ffffff" },
+          dark: { background: "#0a0a12", surface: "#161a2c", text: "#f5f6ff", muted: "#a3a8c2", border: "#f5f6ff", accent: "#7d93ff", accentText: "#0a0a12" },
+          headings: { weight: "bold", case: "normal" },
+          buttons: { style: "filled", corners: "rounded" },
+        },
+      },
+    ],
   },
   {
     key: "fjord",
-    version: 1,
+    version: 2,
     title: "Fjord",
     summary: "Cool and clear, blue-grey and fresh.",
     description:
       "A blue-grey palette with a deep sea-blue accent, Inter throughout, rounded buttons and raised product cards. Light by day and dark by night, as the visitor's device says.",
-    notes: null,
-    listing: { kinds: ["home", "beauty", "services"], styles: ["minimal", "natural"] },
+    notes: "Two presets: Mist, pale lilac and violet with Playfair Display headings; Pine, a deep forest green.",
+    listing: { kinds: ["home", "beauty", "services"], styles: ["minimal", "natural"], pack: "home" },
     snapshot: theme(
       "minimal",
       {
@@ -163,5 +268,27 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       { h1: { typography: { text: { size: rem(2.75), letterSpacing: { value: -0.01, unit: "em" } } } }, h2: { typography: { text: { size: rem(2) } } } },
       coreStyles({ heroSize: 3.5, band: "#0f2a3d", bandText: "#f1f7fb", space: 48 }),
     ),
+    presets: [
+      {
+        key: "mist",
+        name: "Mist",
+        pack: "beauty",
+        changes: {
+          light: { background: "#f8f7fb", surface: "#ece9f3", text: "#1f1b2e", muted: "#575270", border: "#dcd7e8", accent: "#5b4b9a", accentText: "#ffffff" },
+          dark: { background: "#14121c", surface: "#1f1c2a", text: "#ece9f5", muted: "#aca6c4", border: "#312d42", accent: "#b5a8f0", accentText: "#14121c" },
+          fonts: { heading: "Playfair Display", body: "Inter" },
+        },
+      },
+      {
+        key: "pine",
+        name: "Pine",
+        pack: "services",
+        changes: {
+          light: { background: "#f5f8f6", surface: "#e4ece7", text: "#10221a", muted: "#46594f", border: "#cfddd5", accent: "#1d5c43", accentText: "#ffffff" },
+          dark: { background: "#0d1612", surface: "#16221c", text: "#e4efe9", muted: "#9db5a9", border: "#25362d", accent: "#7fd1ab", accentText: "#0d1612" },
+          productCards: { image: "square", style: "raised", align: "left" },
+        },
+      },
+    ],
   },
 ];

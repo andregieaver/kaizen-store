@@ -3,12 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { VARIATIONS_MAX } from "@/lib/design-presets";
+import { VARIATIONS_MAX, type DesignVariation } from "@/lib/design-presets";
 import { variationKey, variationName, type DraftVariation } from "@/lib/design-variations";
-import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import { parseStoreTheme, storeThemeInput, type StoreTheme } from "@/lib/theme";
+import { themeFontFamilies } from "@/lib/theme-elements";
 
 import { audit, type Account } from "./auth";
-import { designProblem, draftVariations, ensureWorkspace, getDesign, type DesignResult } from "./design-presets";
+import { designProblem, draftVariations, ensureWorkspace, getDesign, type ApplyDeps, type DesignResult } from "./design-presets";
+import { installFonts } from "./fonts";
 import { checkStoreTheme } from "./themes";
 
 /**
@@ -146,4 +148,45 @@ function variationProblem(error: unknown): string {
   if (text.includes("design_variations_name")) return "A preset's name is 1 to 40 characters.";
   if (text.includes("design_variations_theme")) return "That preset's look is too large to keep.";
   return designProblem(error);
+}
+
+/**
+ * A launch theme's presets written into its draft from code (D246, `docs/theme-showcase-phase-1.md` step 3, `LAUNCH_THEMES`): each by its
+ * fixed key, named and ordered as the code says, its look checked as a store's theme is and its fonts installed (`deps.installFonts` in
+ * tests); a drafted preset the code no longer has is taken out (installs of it keep the theme's own look, said in *What's new*). Publish
+ * copies them into the version as any theme's.
+ */
+export async function writeLaunchVariations(
+  admin: Account,
+  presetId: string,
+  variations: DesignVariation[],
+  deps: Pick<ApplyDeps, "installFonts"> = {},
+): Promise<DesignResult> {
+  if (!admin.platformAdmin) return refuse(NOT_YOURS);
+  if (variations.length > VARIATIONS_MAX) return refuse(`A theme has at most ${VARIATIONS_MAX + 1} presets: its own look and ${VARIATIONS_MAX} more.`);
+  const looks: { key: string; name: string; theme: string }[] = [];
+  for (const variation of variations) {
+    const parsed = storeThemeInput.safeParse({ base: variation.theme.base, savedId: null, settings: variation.theme.settings });
+    if (!parsed.success) return refuse(`${variation.name}: ${parsed.error.issues[0]?.message ?? "its look cannot be read."}`);
+    const fonts = await (deps.installFonts ?? installFonts)(themeFontFamilies(parsed.data.settings));
+    if (!fonts.ok) return refuse(`${variation.name}: ${fonts.problem}`);
+    looks.push({ key: variation.key, name: variation.name, theme: JSON.stringify({ base: parsed.data.base, settings: parsed.data.settings }) });
+  }
+  try {
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`
+        delete from commerce.design_variations where preset_id = ${presetId}::uuid and not (key = any(${`{${looks.map((l) => l.key).join(",")}}`}::text[]))
+      `);
+      for (const [index, look] of looks.entries()) {
+        await tx.execute(sql`
+          insert into commerce.design_variations (preset_id, key, name, position, theme, created_by, updated_by)
+          values (${presetId}::uuid, ${look.key}, ${look.name}, ${index + 1}, ${look.theme}::jsonb, ${admin.id}::uuid, ${admin.id}::uuid)
+          on conflict (preset_id, key) do update set name = excluded.name, position = excluded.position, theme = excluded.theme, updated_by = excluded.updated_by
+        `);
+      }
+    });
+  } catch (error) {
+    return refuse(variationProblem(error));
+  }
+  return { ok: true };
 }

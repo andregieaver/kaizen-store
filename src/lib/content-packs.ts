@@ -300,6 +300,26 @@ export const CONTENT_PACKS: readonly ContentPack[] = [
   },
 ];
 
+/** Each pack's trade in a word or two, for a theme's cards and its looks' choices (`docs/theme-showcase-phase-1.md` step 3). */
+export const PACK_TRADES: Record<PackKey, string> = {
+  fashion: "Fashion",
+  beauty: "Beauty",
+  food: "Food and drink",
+  home: "Home",
+  electronics: "Electronics",
+  services: "Services",
+};
+
+/** What a pack's store is, after its name: "Field & Fold, a demo fashion store". */
+export const PACK_DEMO_WORDS: Record<PackKey, string> = {
+  fashion: "a demo fashion store",
+  beauty: "a demo skin care store",
+  food: "a demo food and drink store",
+  home: "a demo home and interior store",
+  electronics: "a demo electronics store",
+  services: "a demo hair salon taking bookings",
+};
+
 /** A pack by its key, or null. */
 export const contentPack = (key: string): ContentPack | null => CONTENT_PACKS.find((pack) => pack.key === key) ?? null;
 

@@ -4,11 +4,13 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
+import { CONTENT_PACKS } from "@/lib/content-packs";
 import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
 import { themeStoreUrl } from "@/lib/theme-host";
 import { STORE_KINDS, THEME_PICTURES_MAX, THEME_STYLES, suggestedSlug } from "@/lib/theme-store";
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
+import { listVariations } from "@/server/design-variations";
 import { listStarters } from "@/server/store-starters";
 
 import { uploadPlatformImageAction } from "../../actions";
@@ -29,7 +31,13 @@ const KIND_WORDS = { template: "the demo template", starter: "store template", s
  */
 export default async function DesignProfilePage({ params, searchParams }: PageProps<"/admin/platform/design-profiles/[presetId]">) {
   const { admin, design, facts } = await designPage((await params).presetId);
-  const [query, starters, sources, checks] = await Promise.all([searchParams, listStarters(), snapshotSources(admin), designChecks(design)]);
+  const [query, starters, sources, checks, presets] = await Promise.all([
+    searchParams,
+    listStarters(),
+    snapshotSources(admin),
+    designChecks(design),
+    listVariations(admin, design.id),
+  ]);
   const shown = shownDesignDetails(design);
   const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
 
@@ -128,6 +136,29 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
             </div>
           </fieldset>
           <ThemePicturesField initial={design.listing.pictures} upload={uploadPlatformImageAction} max={THEME_PICTURES_MAX} />
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="mb-1 font-medium">Shown on</legend>
+            <p className="text-muted">
+              The demo store each look is previewed on in the theme store: a content pack of its trade, while that pack&apos;s store template is published, else the Standard store.
+            </p>
+            {[{ key: null as string | null, name: `${shown.title} (its own look)` }, ...presets.map((p) => ({ key: p.key as string | null, name: p.name }))].map((look) => (
+              <label key={look.key ?? ""} className="flex flex-wrap items-center gap-2">
+                <span className="min-w-40">{look.name}</span>
+                <select
+                  name={look.key ? `pack:${look.key}` : "pack"}
+                  defaultValue={(look.key ? design.listing.presetPacks[look.key] : design.listing.pack) ?? ""}
+                  className={control}
+                >
+                  <option value="">The Standard store</option>
+                  {CONTENT_PACKS.map((pack) => (
+                    <option key={pack.key} value={pack.key}>
+                      {pack.title} ({pack.storeName})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </fieldset>
           <div>
             <SubmitButton variant="secondary">Save the listing</SubmitButton>
           </div>

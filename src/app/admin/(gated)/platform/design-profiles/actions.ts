@@ -193,10 +193,19 @@ export async function syncLaunchThemesAction(): Promise<FormState> {
   return { status: "ok", messages: said };
 }
 
-/** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store and styles. Shown at once while published. */
+/** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store, styles and each look's demo store. Shown at once while published. */
 export async function saveThemeListingAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const parsed = parseListing({ slug: formData.get("slug"), kinds: formData.getAll("kinds"), styles: formData.getAll("styles"), pictures: formData.getAll("pictures") });
+  // Each look's demo store (`docs/theme-showcase-phase-1.md` step 3): `pack` for the theme's own, `pack:{key}` for each preset.
+  const presetPacks = Object.fromEntries([...formData.entries()].filter(([name]) => name.startsWith("pack:")).map(([name, value]) => [name.slice(5), value]));
+  const parsed = parseListing({
+    slug: formData.get("slug"),
+    kinds: formData.getAll("kinds"),
+    styles: formData.getAll("styles"),
+    pictures: formData.getAll("pictures"),
+    pack: formData.get("pack"),
+    presetPacks,
+  });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
   const result = await saveThemeListing(admin, presetId, parsed.slug, parsed.listing);
   if (!result.ok) return { status: "error", messages: result.problems };

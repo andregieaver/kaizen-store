@@ -8,7 +8,7 @@ each pushed on its own; this file says what each step is and, once built, what i
 |---|---|---|
 | 1. Presets (built, D256) | a theme's presets in its versions (`snapshot.variations`), edited on the theme's *Presets* tab, checked and published with the theme; previews, installs, applying and updates by preset; the theme page shows them | a platform admin adds a preset, publishes, sees it on the theme page, and an owner adds that preset to a store and gets it through updates |
 | 2. Content packs (built, D257) | six demo stores for trades (fashion, beauty, food and drink, home, electronics, services) made from data in code, kept as store templates, with AI-made pictures that can be replaced | a platform admin sets up the packs, makes their pictures and publishes them; each is a clean store of its trade |
-| 3. Showcases | a preset names its pack and its previews and card show it there; Calm, Hearth, Signal and Fjord get 2 to 4 presets each on fitting packs | each launch theme's page shows its presets, each on its own trade's store |
+| 3. Showcases (built, D258) | a preset names its pack and its previews and card show it there; Calm, Hearth, Signal and Fjord get 2 to 4 presets each on fitting packs | each launch theme's page shows its presets, each on its own trade's store |
 | 4. Starting from a preset | *Start with this theme* carries the preset; the new store is made from the preset's pack with its look, its demo content marked and removable in one press; an existing store may take a preset's home page, with undo | a person signs up from a preset and gets that store; an owner removes the demo content in one press |
 
 ## Decisions
@@ -126,3 +126,30 @@ before and done after, the copy holding the pack alone).
 
 **Built (D257).** As above. *Deviations:* the pack's products are written through `saveProduct()` rather than SQL (the price-audit scan
 holds every price to it); the pack keeps the template's `countries` so it sells where the template does.
+
+## Step 3: showcases
+
+**Where a look is shown.** A theme's listing (`design_presets.listing`, D247) names the content pack each of its looks is shown on: `pack`
+for its own look and `presetPacks` for its presets by key (`ThemeListing`, read by `readListing()`, only known packs and well-formed keys).
+It is the listing's, not the version's: where a look is shown is not how it looks, so it changes at once and needs no new version. A
+platform admin chooses it on the theme's details page (*Shown on*, one choice per look, the theme's own and each drafted preset, or the
+Standard store); a launch theme's comes from the code (`launchListing()`).
+
+**The theme store.** `themeLooks()` gives a theme's looks, its own first, each with its showcase: its pack's published, unarchived store
+template (read inside the cached theme store reads, which therefore also carry `STARTERS_TAG`), or none, which is the Standard store as
+before. The theme page's stage (`ThemePreviewStage`) takes each look with its own preview addresses (`designPreviewPath(id, starter, …,
+key)`), shows the trade under each preset's name and says under the frames which demo store it is (`PACK_DEMO_WORDS`); a card names the
+trades its looks are shown on (`showcaseTrades()`). A pack whose template is not published yet is never named: the look stays on the
+Standard store until it is.
+
+**Launch themes' presets.** `LAUNCH_THEMES` give each theme two or three presets (`LaunchPreset`: a fixed key, a name, its pack and the
+changes over the theme's own settings), each look of a theme on another pack and every pack shown by some theme: Calm (its own on fashion;
+Sand on beauty, Ink on electronics, Sage on home), Hearth (food; Olive on home, Blush on beauty), Signal (fashion; Volt on electronics,
+Cobalt on services), Fjord (home; Mist on beauty, Pine on services). `syncLaunchThemes()` writes them into the draft
+(`writeLaunchVariations()`: by key, checked as a store's theme, fonts installed, any the code dropped taken out) before Publish, as version 2
+of each with its notes. Each passes `themeCheck()` without a contrast warning (`theme-check.test.ts`), and the signed-in switch test goes
+through every preset too.
+
+**Built (D258).** As above. *Deviation:* a look's pack is kept in the listing rather than in the version (the plan said a preset names its
+pack): it is presentation, changes without a version, and needs no new snapshot field. The launch themes' photographs for version 2 are
+version 1's, their own look being unchanged; phase 2 photographs every look on its pack.

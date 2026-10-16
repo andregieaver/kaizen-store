@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { JsonLdScript } from "@/components/json-ld";
-import { ThemePreviewStage } from "@/components/theme-preview-stage";
+import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
 import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeTryLink } from "@/lib/theme-store";
@@ -43,10 +43,22 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
     if (themesHost()) redirect(`${siteUrl()}/${slug}`);
     notFound();
   }
-  // Kaizena Flow's own site serves the preview, sign-up and the try route: full addresses while the theme store has its own host.
-  const preview = platformHref(designPreviewPath(theme.id));
-  // The frames show the store alone: this page already says what it is.
-  const framed = platformHref(designPreviewPath(theme.id, null, false, false, true));
+  // Kaizena Flow's own site serves the preview, sign-up and the try route: full addresses while the theme store has its own host. Each
+  // look is previewed on the demo store of its trade where it has one (`docs/theme-showcase-phase-1.md` step 3); the frames show the store
+  // alone, since this page already says what it is.
+  const looks: StageLook[] = theme.looks.map((look) => {
+    const starter = look.showcase?.starterId ?? null;
+    return {
+      key: look.key,
+      name: look.name,
+      trade: look.showcase?.trade ?? null,
+      line: look.showcase?.line ?? null,
+      frameHref: platformHref(designPreviewPath(theme.id, starter, false, false, true, look.key)),
+      previewHref: platformHref(designPreviewPath(theme.id, starter, false, false, false, look.key)),
+      tryHref: platformHref(themeTryLink(theme.slug, look.key)),
+    };
+  });
+  const preview = looks[0].previewHref;
   const url = themeStoreUrl(theme.slug);
   return (
     <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10">
@@ -100,7 +112,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           Preview
         </h2>
         <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
-        <ThemePreviewStage title={theme.title} presets={theme.presets} frameHref={framed} previewHref={preview} tryHref={platformHref(themeTryLink(theme.slug))} />
+        <ThemePreviewStage title={theme.title} looks={looks} />
       </section>
 
       <div className="grid gap-10 md:grid-cols-2">

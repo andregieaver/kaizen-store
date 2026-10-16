@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { LAUNCH_THEMES } from "../../src/lib/launch-themes";
+import { LAUNCH_THEMES, launchVariation } from "../../src/lib/launch-themes";
 import { testDb } from "../db";
 import { OWNER } from "./accounts";
 
 /**
  * Switching theme is seamless (D246, `docs/theme-store.md` phase 2's test, `docs/theme-phase-2.md` step 5): the owner switches the store
- * through every launch theme and back from Design settings, and every content field (pages and articles, products with their texts,
+ * through every launch theme and every one of its presets and back from Design settings, and every content field (pages and articles, products with their texts,
  * variants and pictures, menus, the logo, business details and the store's own addresses) stays as it was; the storefront's words, pictures
  * and links stay the same, the theme's colours are what the site draws, and on a phone nothing runs off the screen. Each theme is installed
  * as the store would hold it (its look, not live), as installing a published theme leaves it.
@@ -20,6 +20,12 @@ const E2E_STORE = "e2e-themes";
 const design = `/admin/${E2E_STORE}/settings/design`;
 const PREFIX = "E2E launch";
 const titleOf = (title: string) => `${PREFIX} ${title}`;
+
+/** Every launch look: each theme's own and each of its presets (`docs/theme-showcase-phase-1.md` step 3), as a store would install it. */
+const LOOKS = LAUNCH_THEMES.flatMap((theme) => [
+  { title: theme.title, theme: theme.snapshot.theme, css: theme.snapshot.css },
+  ...theme.presets.map((preset) => ({ title: `${theme.title} · ${preset.name}`, theme: launchVariation(theme, preset).theme, css: theme.snapshot.css })),
+]);
 
 /** Every content field of the store, as one fingerprint per kind: what switching theme must never change. */
 async function contentOf(): Promise<Record<string, string>> {
@@ -97,12 +103,12 @@ test.beforeAll(async () => {
     await sql`delete from commerce.store_theme_installs where store_id = ${store.id} and title like ${`${PREFIX}%`} and not live`;
     // A run that stopped half-way may have left one live: it is kept, and the store's own theme is still the one to come back to.
     const left = (await sql`select title from commerce.store_theme_installs where store_id = ${store.id} and title like ${`${PREFIX}%`}`).map((row) => String(row.title));
-    for (const theme of LAUNCH_THEMES.filter((theme) => !left.includes(titleOf(theme.title)))) {
-      const look = { theme: { base: theme.snapshot.theme.base, savedId: null, settings: theme.snapshot.theme.settings }, css: theme.snapshot.css, headerId: null, footerId: null, productLayoutId: null };
-      await sql`insert into commerce.store_theme_installs (store_id, title, look, live) values (${store.id}, ${titleOf(theme.title)}, ${sql.json(look)}, false)`;
+    for (const one of LOOKS.filter((one) => !left.includes(titleOf(one.title)))) {
+      const look = { theme: { base: one.theme.base, savedId: null, settings: one.theme.settings }, css: one.css, headerId: null, footerId: null, productLayoutId: null };
+      await sql`insert into commerce.store_theme_installs (store_id, title, look, live) values (${store.id}, ${titleOf(one.title)}, ${sql.json(look)}, false)`;
     }
     // The fonts the themes name are on the platform already: nothing is fetched from Google in a test.
-    for (const family of new Set(LAUNCH_THEMES.flatMap((theme) => Object.values(theme.snapshot.theme.settings.fonts)).filter((f): f is string => Boolean(f)))) {
+    for (const family of new Set(LOOKS.flatMap((one) => Object.values(one.theme.settings.fonts)).filter((f): f is string => Boolean(f)))) {
       await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '/* e2e: no files */', 0) on conflict (family) do nothing`;
     }
     const [own] = await sql`
@@ -136,10 +142,10 @@ test.afterAll(async ({ browser }) => {
 
 async function switchTo(page: Page, title: string) {
   await page.goto(design);
-  await page.getByRole("button", { name: `Switch to ${title}` }).click();
+  await page.getByRole("button", { name: `Switch to ${title}`, exact: true }).click();
   // The store's live theme is the one pressed, and its row says so.
   await expect.poll(liveTitle, { timeout: 15_000 }).toBe(title);
-  await expect(page.getByRole("button", { name: `Switch to ${title}` })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: `Switch to ${title}`, exact: true })).toHaveCount(0);
 }
 
 async function liveTitle(): Promise<string> {
@@ -154,15 +160,15 @@ async function liveTitle(): Promise<string> {
 
 test.use({ storageState: OWNER.state });
 
-test("switches through every launch theme and back with no content changed, the look following", async ({ page }) => {
-  test.setTimeout(300_000);
+test("switches through every launch theme and preset and back with no content changed, the look following", async ({ page }) => {
+  test.setTimeout(600_000);
   const content = await contentOf();
   const front = await seen(page, storefront);
   const product = await seen(page, productPath, buyBox);
   expect(front.words.length).toBeGreaterThan(0);
   expect(product.pictures.length).toBeGreaterThan(0);
 
-  for (const theme of LAUNCH_THEMES) {
+  for (const theme of LOOKS) {
     await test.step(theme.title, async () => {
       await switchTo(page, titleOf(theme.title));
       expect(await contentOf(), `content after ${theme.title}`).toEqual(content);
@@ -171,7 +177,8 @@ test("switches through every launch theme and back with no content changed, the 
       expect(shownFront).toEqual(front);
       // The look follows: the site draws the theme's own colours.
       const styles = await page.locator("style").evaluateAll((nodes) => nodes.map((node) => node.textContent ?? "").join("\n"));
-      expect(styles).toContain(`--accent: ${theme.snapshot.theme.settings.light.accent}`);
+      const palette = theme.theme.settings.mode === "dark" ? theme.theme.settings.dark : theme.theme.settings.light;
+      expect(styles).toContain(`--accent: ${palette.accent}`);
       expect(await seen(page, productPath, buyBox)).toEqual(product);
 
       // On a phone nothing runs off the screen.

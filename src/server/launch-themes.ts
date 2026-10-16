@@ -3,10 +3,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { LAUNCH_THEMES, type LaunchTheme } from "@/lib/launch-themes";
+import { LAUNCH_THEMES, launchListing, launchVariation, type LaunchTheme } from "@/lib/launch-themes";
 
 import { audit, type Account } from "./auth";
 import { createDesign, markLaunchTheme, publishDesign, saveDesignDraft, writeDesignLook, type ApplyDeps } from "./design-presets";
+import { writeLaunchVariations } from "./design-variations";
 
 /**
  * Kaizena Flow's launch themes (D246, `src/lib/launch-themes.ts`) brought into the platform's themes on a platform admin's press: each one
@@ -42,11 +43,14 @@ const details = (theme: LaunchTheme) => ({ title: theme.title, summary: theme.su
 async function publishLaunch(admin: Account, presetId: string, theme: LaunchTheme, first: boolean, deps: ApplyDeps): Promise<string | null> {
   const written = await writeDesignLook(admin, presetId, theme.snapshot, deps);
   if (!written.ok) return written.problems.join(" ");
+  // Its presets (`docs/theme-showcase-phase-1.md` step 3), each the theme's look with its changes, into the draft Publish reads.
+  const presets = await writeLaunchVariations(admin, presetId, theme.presets.map((preset) => launchVariation(theme, preset)), deps);
+  if (!presets.ok) return presets.problems.join(" ");
   const saved = await saveDesignDraft(admin, presetId, details(theme));
   if (!saved.ok) return saved.problems.join(" ");
   const published = await publishDesign(admin, presetId, first ? null : theme.notes);
   if (!published.ok) return published.problems.join(" ");
-  await markLaunchTheme(presetId, theme.key, theme.version, theme.listing);
+  await markLaunchTheme(presetId, theme.key, theme.version, launchListing(theme));
   return null;
 }
 
@@ -61,7 +65,7 @@ export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Pr
     }
     if (row && row.launch_version != null && Number(row.launch_version) >= theme.version) {
       // Up to date; its listing in the theme store still follows the code's (`docs/theme-phase-3.md`).
-      await markLaunchTheme(String(row.id), theme.key, null, theme.listing);
+      await markLaunchTheme(String(row.id), theme.key, null, launchListing(theme));
       result.current.push(theme.title);
       continue;
     }
