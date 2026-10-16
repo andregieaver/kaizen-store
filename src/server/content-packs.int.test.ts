@@ -24,6 +24,12 @@ let admin: Account;
 let owner: Account;
 
 const list = (values: readonly string[]) => `{${values.join(",")}}`;
+/** A signature theme's art (`docs/signature-themes.md`) placed as Storage would keep it, without Storage; fonts as if installed. */
+const artUrl = (url: string) => `https://example.invalid/art-${run}${url}`;
+const deps = {
+  storeArt: async (_owner: unknown, art: { url: string; width: number; height: number; alt: string }) => ({ ...art, url: artUrl(art.url), thumbnailUrl: null }),
+  apply: { installFonts: async () => ({ ok: true as const }) },
+};
 const one = async (query: ReturnType<typeof sql>) => (await db().execute<Row>(query))[0];
 const all = (query: ReturnType<typeof sql>) => db().execute<Row>(query);
 const storeOf = async (key: string) => one(sql`
@@ -58,7 +64,7 @@ describe("setting up the content packs", () => {
   });
 
   it("makes a store template of each pack, unpublished, at its own address", async () => {
-    const result = await packs.syncContentPacks(admin);
+    const result = await packs.syncContentPacks(admin, deps);
     expect(result.problems).toEqual([]);
     expect(result.made).toEqual(CONTENT_PACKS.map((pack) => pack.title));
     for (const pack of CONTENT_PACKS) {
@@ -71,7 +77,8 @@ describe("setting up the content packs", () => {
       expect(store.published).toBe(false);
     }
     const states = await packs.contentPackStates();
-    expect(states.every((state) => state.current && !state.published && state.pictures === 0)).toBe(true);
+    // A signature theme's pack brings its art (`docs/signature-themes.md`): nothing of it is left to make.
+    for (const state of states) expect(state.current && !state.published && state.pictures === (contentPack(state.key)!.art ? state.slots : 0), state.key).toBe(true);
   }, 240_000);
 
   it("writes each one as a clean English store of its trade: its products only, in English, priced in every market, with categories", async () => {
@@ -103,7 +110,8 @@ describe("setting up the content packs", () => {
         `);
         expect(prices.map((p) => [p.market_code, Number(p.amount_minor)])).toEqual(markets.map((m) => [m.code, packPrice(product.price, String(m.code))]));
         const [media] = await all(sql`select url from commerce.product_media where product_id = ${String(row.id)}::uuid`);
-        expect(media.url).toBe(packs.PACK_PLACEHOLDER);
+        const art = pack.art?.[`product:${product.handle}`];
+        expect(media.url).toBe(art ? artUrl(art.url) : packs.PACK_PLACEHOLDER);
       }
       const categories = await all(sql`
         select slug, name from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' order by position
@@ -134,6 +142,52 @@ describe("setting up the content packs", () => {
     }
   });
 
+  it("gives a signature theme's pack its own designed pages and art, stored once, with links that are the store's", async () => {
+    const pack = contentPack("astronomy")!;
+    const store = await storeOf("astronomy");
+    expect(store.name).toBe("Far Light");
+    const kept = store.pack_pictures as Record<string, { url: string; art?: string }>;
+    expect(Object.keys(kept).sort()).toEqual(Object.keys(pack.art!).sort());
+    for (const [slot, picture] of Object.entries(pack.art!)) expect(kept[slot]).toMatchObject({ url: artUrl(picture.url), art: picture.url });
+    const home = await one(sql`select published from commerce.pages where id = ${String(store.front_page_id)}::uuid`);
+    const words = JSON.stringify(home.published);
+    // Its own design (`ContentPack.design`), not the common home page, drawing its art; its paths are the store's own.
+    expect(words).toContain("Fresh from the observatory");
+    expect(words).toContain(artUrl(pack.art!.hero.url));
+    expect(words).toContain('"href":"/products"');
+    expect(words).toContain('"href":"/category/planets"');
+    // A second sync of a newer version places nothing again: the art is kept by its address.
+    await db().execute(sql`update commerce.store_starters set pack_version = null where id = ${String(store.starter_id)}::uuid`);
+    let stored = 0;
+    const again = await packs.syncContentPacks(admin, { ...deps, storeArt: async (owner, art) => (stored++, deps.storeArt(owner, art)) });
+    expect(again.updated).toEqual([pack.title]);
+    expect(stored).toBe(0);
+  }, 120_000);
+
+  it("dresses the signature pack in its theme once both are there, recommends it, and a second press adds nothing", async () => {
+    const { syncLaunchThemes } = await import("./launch-themes");
+    const { dressSignaturePacks } = await import("./signature-themes");
+    expect((await syncLaunchThemes(admin, deps.apply)).problems).toEqual([]);
+    expect(await dressSignaturePacks(admin, deps.apply)).toEqual([]);
+    const store = await storeOf("astronomy");
+    const installs = () => all(sql`
+      select i.live, p.launch_key from commerce.store_theme_installs i left join commerce.design_presets p on p.id = i.preset_id
+      where i.store_id = ${String(store.id)}::uuid
+    `);
+    const first = await installs();
+    expect(first.filter((install) => install.live).map((install) => install.launch_key)).toEqual(["orbit"]);
+    expect(await dressSignaturePacks(admin, deps.apply)).toEqual([]);
+    expect(await installs()).toHaveLength(first.length);
+    const starter = await one(sql`
+      select ss.recommended_design, (select id from commerce.design_presets where launch_key = 'orbit') as orbit
+      from commerce.store_starters ss where ss.id = ${String(store.starter_id)}::uuid
+    `);
+    expect(String(starter.recommended_design)).toBe(String(starter.orbit));
+    const theme = await one(sql`select theme->'settings'->'dark'->>'background' as background, header_id from commerce.stores where id = ${String(store.id)}::uuid`);
+    expect(theme.background).toBe("#070816");
+    expect(theme.header_id).not.toBeNull();
+  }, 240_000);
+
   it("writes its menus: home, the shop with its categories under it, and about", async () => {
     const pack = contentPack("fashion")!;
     const store = await storeOf("fashion");
@@ -156,7 +210,7 @@ describe("setting up the content packs", () => {
   });
 
   it("does nothing to a pack whose store has the code's version, and writes it again when it is older", async () => {
-    const again = await packs.syncContentPacks(admin);
+    const again = await packs.syncContentPacks(admin, deps);
     expect(again.current).toHaveLength(CONTENT_PACKS.length);
     expect(again.made.length + again.updated.length).toBe(0);
 
@@ -167,7 +221,7 @@ describe("setting up the content packs", () => {
       where p.id = t.product_id and p.store_id = ${String(store.id)}::uuid and p.handle = ${pack.products[0].handle}
     `);
     await db().execute(sql`update commerce.store_starters set pack_version = null where id = ${String(store.starter_id)}::uuid`);
-    const updated = await packs.syncContentPacks(admin);
+    const updated = await packs.syncContentPacks(admin, deps);
     expect(updated.updated).toEqual([pack.title]);
     const title = await one(sql`
       select t.title from commerce.product_translations t join commerce.products p on p.id = t.product_id

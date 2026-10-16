@@ -43,7 +43,10 @@ beforeAll(async () => {
     from commerce.store_starters ss where ss.store_id = s.id and ss.pack_key = any(${list(PACK_KEYS)}::text[])
   `);
   await db().execute(sql`update commerce.store_starters set pack_key = pack_key || '-' || ${run} where pack_key = any(${list(PACK_KEYS)}::text[])`);
-  const synced = await packs.syncContentPacks(admin);
+  const synced = await packs.syncContentPacks(admin, {
+    storeArt: async (_owner, art) => ({ ...art, url: `https://example.invalid/art-${run}${art.url}`, thumbnailUrl: null }),
+    apply: { installFonts: async () => ({ ok: true as const }) },
+  });
   expect(synced.problems).toEqual([]);
   // Its pictures, as the picture model would make them: files in Storage, in the pack's own library.
   const pack = await one(sql`select ss.id as starter, ss.store_id from commerce.store_starters ss where ss.pack_key = 'food'`);

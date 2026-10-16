@@ -1,3 +1,7 @@
+import type { PackPicture } from "./content-pack-pages";
+import type { PackDesignKey } from "./pack-designs";
+import { ORBIT_PACK } from "./signature/orbit";
+
 /**
  * Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): a clean demo store for each of the first six trades, written here
  * as data (as `LAUNCH_THEMES` are) and set up as store templates by `syncContentPacks()`. A theme's preset is shown on its pack (step 3), and
@@ -6,7 +10,11 @@
  * from the briefs below and can be replaced. Change a pack by raising its `version`. Pure.
  */
 
-export const PACK_KEYS = ["fashion", "beauty", "food", "home", "electronics", "services"] as const;
+/**
+ * The packs: the six trades, then the demo stores signature themes bring of their own (`docs/signature-themes.md`), each written beside its
+ * theme in `src/lib/signature/`.
+ */
+export const PACK_KEYS = ["fashion", "beauty", "food", "home", "electronics", "services", "astronomy"] as const;
 export type PackKey = (typeof PACK_KEYS)[number];
 
 /** A pack's product: goods (one variant, kept in stock) or, for services, an appointment of so many minutes. */
@@ -54,6 +62,13 @@ export type ContentPack = {
   /** What the home page's large picture and the story's picture show. */
   heroPicture: string;
   storyPicture: string;
+  /**
+   * Pictures that come with the pack, by slot (`hero`, `story`, `product:{handle}`, and any its design reads): a signature theme's art, files
+   * of the site (`public/demo/themes/{theme}/`), stored in the pack store's library when it is set up and never made by the picture model.
+   */
+  art?: Readonly<Record<string, PackPicture>>;
+  /** The theme its pages are designed for (`PACK_DESIGNS`, `src/lib/pack-designs.ts`), in place of the common pages. */
+  design?: PackDesignKey;
 };
 
 /** Every picture of every pack: no words, letters, logos or faces, so nothing in it can mislead or need a licence. */
@@ -298,6 +313,7 @@ export const CONTENT_PACKS: readonly ContentPack[] = [
     heroPicture: "a bright, empty hair salon with mirrors, chairs and plants in morning light, wide shot",
     storyPicture: "a neat salon station with a mirror, brushes and a plant, close-up",
   },
+  ORBIT_PACK,
 ];
 
 /** Each pack's trade in a word or two, for a theme's cards and its looks' choices (`docs/theme-showcase-phase-1.md` step 3). */
@@ -308,6 +324,7 @@ export const PACK_TRADES: Record<PackKey, string> = {
   home: "Home",
   electronics: "Electronics",
   services: "Services",
+  astronomy: "Astronomy and space",
 };
 
 /** What a pack's store is, after its name: "Field & Fold, a demo fashion store". */
@@ -318,6 +335,7 @@ export const PACK_DEMO_WORDS: Record<PackKey, string> = {
   home: "a demo home and interior store",
   electronics: "a demo electronics store",
   services: "a demo hair salon taking bookings",
+  astronomy: "a demo shop of night sky prints",
 };
 
 /** A pack by its key, or null. */
@@ -338,8 +356,8 @@ export const packSlug = (key: PackKey): string => `pack-${key}`;
 /** A pack's pictures by slot: its home page's two, then one per product. */
 export const packSlots = (pack: ContentPack): string[] => ["hero", "story", ...pack.products.map((p) => `product:${p.handle}`)];
 
-/** How many of a pack's pictures are still to make, from what its template keeps (`store_starters.pack_pictures`). */
+/** How many of a pack's pictures are still to make, from what its template keeps (`store_starters.pack_pictures`); its own art needs none. */
 export function picturesMissing(pack: ContentPack, pictures: unknown): number {
   const kept = pictures && typeof pictures === "object" && !Array.isArray(pictures) ? (pictures as Record<string, unknown>) : {};
-  return packSlots(pack).filter((slot) => !kept[slot]).length;
+  return packSlots(pack).filter((slot) => !kept[slot] && !pack.art?.[slot]).length;
 }

@@ -1,6 +1,6 @@
 import { siteFontFamilies } from "@/lib/fonts";
 import { type SiteFonts } from "@/lib/fonts-schema";
-import { themeCss, type StoreTheme } from "@/lib/theme";
+import { STORE_THEME_SELECTOR, themeCss, type StoreTheme } from "@/lib/theme";
 
 import { breakpointsOf } from "@/lib/breakpoints";
 
@@ -22,7 +22,7 @@ function hash(text: string): string {
  * the listing, the gallery.
  */
 export function StoreThemeStyles({ store }: { store: { id: string; theme: StoreTheme; fonts: SiteFonts } }) {
-  const css = themeCss(store.theme.settings, "html[data-store-theme]");
+  const css = themeCss(store.theme.settings, STORE_THEME_SELECTOR);
   return (
     <>
       <FontLinks families={siteFontFamilies(store.fonts)} />

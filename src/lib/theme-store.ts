@@ -32,6 +32,7 @@ export const THEME_STYLES = {
   classic: "Classic",
   natural: "Natural",
   playful: "Playful",
+  artistic: "Artistic",
 } as const;
 export type ThemeStyle = keyof typeof THEME_STYLES;
 

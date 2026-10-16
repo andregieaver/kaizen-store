@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { CSSProperties, ReactNode } from "react";
+import { Suspense, type CSSProperties, type ReactNode } from "react";
 
 import { menuHoverStyle, type MenuHover } from "@/lib/menu-hover";
 import type { MegaMenu, MenuPicture } from "@/lib/navigation";
@@ -60,7 +60,11 @@ export function MenuTreeView({
   const boxed = (list: ReactNode) =>
     effect ? (
       <div className="kz-menu relative" {...effect.attrs} {...(layout === "column" && { "data-mh-col": "" })} style={effect.style as CSSProperties}>
-        <MenuGlide slide={hover?.travel === "slide"} />
+        {/* It reads the address (`usePathname()`), which a prerendered page only has in the browser: outside a boundary it would stop the
+            page prerendering. The fallback is the same still marker. */}
+        <Suspense fallback={<span className="kz-mi-ind" aria-hidden="true" />}>
+          <MenuGlide slide={hover?.travel === "slide"} />
+        </Suspense>
         {list}
       </div>
     ) : (

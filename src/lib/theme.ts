@@ -323,6 +323,13 @@ const paletteVars = (p: Palette, scheme: "light" | "dark") =>
   ].join("; ");
 
 /**
+ * Where a store's or Kaizena Flow's theme is drawn on its pages: on `<html>`. It must out-weigh globals.css's own colours for a mode
+ * (`:root[data-color-mode="dark"]`, two attribute or pseudo-class parts), or a theme that is always dark shows the default greys in place of its
+ * own background, text and borders; `html:root[…]` is one part more.
+ */
+export const STORE_THEME_SELECTOR = "html:root[data-store-theme]";
+
+/**
  * The CSS for a theme under `selector`: its colours as the variables the
  * storefront's classes read, and its sizes. The store's mode sets the
  * colours (light, dark, or each by the visitor's device); a visitor's own

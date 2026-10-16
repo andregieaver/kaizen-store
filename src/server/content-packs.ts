@@ -1,19 +1,28 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { sql } from "drizzle-orm";
+import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { packAboutPage, packHomePage, packProductsPage, type PackPicture } from "@/lib/content-pack-pages";
 import { CONTENT_PACKS, contentPack, packPicturePrompt, packPrice, packSlots, packSlug, type ContentPack, type PackProduct } from "@/lib/content-packs";
+import { PACK_DESIGNS } from "@/lib/pack-designs";
 import type { MenuEntry } from "@/lib/navigation";
 import { DEFAULT_APPOINTMENT, GENERAL_TAX_CODE, formatPriceInput, type ProductInput } from "@/lib/product-input";
+import { siteUrl } from "@/lib/site";
 
 import { AiError, aiFor, type ImageShape } from "./ai";
 import { makePicture } from "./ai-pictures";
 import { audit, type Account } from "./auth";
+import type { ApplyDeps } from "./design-presets";
+import { storePicture } from "./media-library";
 import { savePage } from "./pages";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext } from "./products";
 import { refreshTag } from "./refresh";
+import { dressSignaturePacks } from "./signature-themes";
 import { createStarter, setStarterFeatures } from "./store-starters";
 import { getStore, storeTag, type Store } from "./stores";
 
@@ -50,7 +59,59 @@ const HOURS = {
   exceptions: [],
 };
 
-type StoredPicture = PackPicture & { thumbnailUrl?: string | null };
+/** A pack's picture as its template keeps it; `art` is the address of the theme's art it was placed from. */
+type StoredPicture = PackPicture & { thumbnailUrl?: string | null; art?: string };
+
+/** How a theme's art file reaches a pack store's media library: stored there (the default), or placed as a test or a developer needs. */
+export type PackDeps = {
+  storeArt?: (owner: { storeId: string; accountId: string }, art: PackPicture) => Promise<StoredPicture>;
+  /** What dressing a signature theme's demo store in its theme reaches (`dressSignaturePacks()`). */
+  apply?: ApplyDeps;
+};
+
+/**
+ * One of a signature theme's art files (`public/demo/themes/…`) kept in a pack store's media library, so its pages and products show it as
+ * any picture of the store (copied with a new store, counted in the library's uses): read from the site's own files, or from its address
+ * where the server has no copy of them (a serverless function), with its small copy made here.
+ */
+async function storeArtPicture(owner: { storeId: string; accountId: string }, art: PackPicture): Promise<StoredPicture> {
+  if (!/^\/demo\/themes\/[a-z0-9-]+\/[a-z0-9-]+\.webp$/.test(art.url)) throw new Error(`${art.url} is not a theme's art file.`);
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(path.join(process.cwd(), "public", art.url));
+  } catch {
+    const response = await fetch(`${siteUrl()}${art.url}`);
+    if (!response.ok) throw new Error(`${art.url} could not be read (${response.status}).`);
+    bytes = Buffer.from(await response.arrayBuffer());
+  }
+  const thumbnail = await sharp(bytes).resize({ width: 480, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+  const name = path.basename(art.url);
+  const stored = await storePicture(
+    owner,
+    new File([new Uint8Array(bytes)], name, { type: "image/webp" }),
+    new File([new Uint8Array(thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
+    { fileName: name, alt: art.alt, compressed: true },
+  );
+  if (!stored.ok) throw new Error(`${art.url} could not be stored: ${stored.problem}`);
+  return { url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: art.width, height: art.height, alt: art.alt };
+}
+
+/**
+ * A pack's own art (`ContentPack.art`) in its store's library, once: each slot whose art is not placed yet is stored and recorded in
+ * `pack_pictures` with the address it came from, so a later sync reuses it and a new file name places it again.
+ */
+async function placeArt(admin: Account, row: PackRow, pack: ContentPack, deps: PackDeps): Promise<Record<string, StoredPicture>> {
+  const placed = { ...row.pictures };
+  for (const [slot, art] of Object.entries(pack.art ?? {})) {
+    if (placed[slot]?.art === art.url) continue;
+    const stored = await (deps.storeArt ?? storeArtPicture)({ storeId: row.storeId, accountId: admin.id }, art);
+    placed[slot] = { ...stored, art: art.url };
+    await db().execute(sql`
+      update commerce.store_starters set pack_pictures = pack_pictures || ${JSON.stringify({ [slot]: placed[slot] })}::jsonb where id = ${row.starterId}::uuid
+    `);
+  }
+  return placed;
+}
 type PackRow = { starterId: string; storeId: string; slug: string; version: number | null; pictures: Record<string, StoredPicture>; published: boolean; archived: boolean };
 
 const readPictures = (value: unknown): Record<string, StoredPicture> =>
@@ -116,7 +177,7 @@ export type SyncResult = { made: string[]; updated: string[]; current: string[];
  * Makes each pack's store template the first time and writes the pack into it whenever the code's version is newer than the one written. A
  * pack whose template is archived is left alone. Never throws: a pack that fails is said, the others go on.
  */
-export async function syncContentPacks(admin: Account): Promise<SyncResult> {
+export async function syncContentPacks(admin: Account, deps: PackDeps = {}): Promise<SyncResult> {
   const result: SyncResult = { made: [], updated: [], current: [], problems: [], stores: [] };
   if (!admin.platformAdmin) return { ...result, problems: ["Only Kaizena Flow's admins set up content packs."] };
   for (const pack of CONTENT_PACKS) {
@@ -142,7 +203,7 @@ export async function syncContentPacks(admin: Account): Promise<SyncResult> {
         if (!row) throw new Error("The pack's store template was made but could not be found.");
       }
       result.stores.push({ id: row.storeId, slug: row.slug });
-      await writePack(admin, row, pack);
+      await writePack(admin, row, pack, deps);
       (fresh ? result.made : result.updated).push(pack.title);
     } catch (error) {
       console.error(`[content-packs] ${pack.key} could not be set up`, error);
@@ -150,13 +211,15 @@ export async function syncContentPacks(admin: Account): Promise<SyncResult> {
     }
   }
   if (result.made.length + result.updated.length > 0) {
+    // A signature theme's demo store wears its theme once both are there (`dressSignaturePacks()`).
+    result.problems.push(...(await dressSignaturePacks(admin, deps.apply)));
     await audit(admin.id, null, "platform.content_packs_synced", { made: result.made.length, updated: result.updated.length }, {});
   }
   return result;
 }
 
 /** Writes a pack into its store template: everything the store shows, from the pack's data and the pictures made so far. */
-async function writePack(admin: Account, row: PackRow, pack: ContentPack): Promise<void> {
+async function writePack(admin: Account, row: PackRow, pack: ContentPack, deps: PackDeps): Promise<void> {
   // It sells where the default template does (several countries, each in its own currency), in one language; services book appointments.
   const features = pack.products.some((p) => p.minutes) ? ["shop", "countries", "appointments"] : ["shop", "countries"];
   const switched = await setStarterFeatures(admin, row.starterId, features, { confirmed: true });
@@ -226,8 +289,10 @@ async function writePack(admin: Account, row: PackRow, pack: ContentPack): Promi
   const store = await getStore(row.slug);
   if (!store) throw new Error("The pack's store could not be read.");
   const editor = await getEditorContext(store);
-  for (const product of pack.products) await writeProduct(store, editor, admin, pack, product, row.pictures[`product:${product.handle}`] ?? null);
-  await writePages(admin, row.storeId, pack, row.pictures);
+  // Its own art (a signature theme's, `docs/signature-themes.md`) in its library first; the rest are the pictures made so far.
+  const pictures = await placeArt(admin, row, pack, deps);
+  for (const product of pack.products) await writeProduct(store, editor, admin, pack, product, pictures[`product:${product.handle}`] ?? null);
+  await writePages(admin, row.storeId, pack, pictures);
   await db().execute(sql`update commerce.store_starters set pack_version = ${pack.version}, updated_by = ${admin.id}::uuid where id = ${row.starterId}::uuid`);
 }
 
@@ -348,7 +413,10 @@ async function writeMenus(tx: Tx, storeId: string, pack: ContentPack): Promise<v
   }
 }
 
-/** The pack's home page (its front page), its about page and its All products page, published, through the builder's save. */
+/**
+ * The pack's home page (its front page), its about page and its All products page, published, through the builder's save: the pages its
+ * theme designed for it (`PACK_DESIGNS`), else the common ones.
+ */
 async function writePages(admin: Account, storeId: string, pack: ContentPack, pictures: Record<string, StoredPicture>): Promise<void> {
   const picture = (slot: string): PackPicture | null => {
     const found = pictures[slot];
@@ -360,8 +428,9 @@ async function writePages(admin: Account, storeId: string, pack: ContentPack, pi
     if (!saved.ok) throw new Error(`Its ${slug} page could not be saved: ${saved.problems.join(" ")}`);
     return saved.id;
   };
-  const home = await save("welcome", packHomePage(pack, { hero: picture("hero"), story: picture("story") }));
-  await save("about", packAboutPage(pack, picture("story")));
+  const design = pack.design ? PACK_DESIGNS[pack.design] : null;
+  const home = await save("welcome", design ? design.home(pack, picture) : packHomePage(pack, { hero: picture("hero"), story: picture("story") }));
+  await save("about", design ? design.about(pack, picture) : packAboutPage(pack, picture("story")));
   await db().execute(sql`update commerce.stores set front_page_id = ${home}::uuid where id = ${storeId}::uuid`);
   // The All products page (D83): the template's is in its own language, so the pack writes its own.
   const [products] = await db().execute<Row>(sql`select products_page_id as id from commerce.stores where id = ${storeId}::uuid`);
@@ -386,7 +455,7 @@ export async function makeNextPackPicture(
   if (!pack || !row) return { ok: false, problems: ["Set up the content packs first."] };
   if (row.version === null || row.version < pack.version) return { ok: false, problems: [`Set up ${pack.title} again first: its store has an older version.`] };
   const slots = packSlots(pack);
-  const missing = slots.filter((slot) => !row.pictures[slot]);
+  const missing = slots.filter((slot) => !row.pictures[slot] && !pack.art?.[slot]);
   if (missing.length === 0) return { ok: true, made: null, remaining: 0, store: { id: row.storeId, slug: row.slug } };
   const slot = missing[0];
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(null, { feature: "content_pack", accountId: admin.id });

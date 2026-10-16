@@ -1,6 +1,8 @@
 import type { PackKey } from "./content-packs";
 import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot, type DesignVariation } from "./design-presets";
 import type { SectionStyles } from "./section-styles";
+import { ORBIT } from "./signature/orbit";
+import { coreStyles, rem } from "./theme-kit";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
 import type { ThemeElements } from "./theme-elements";
 import type { ThemeListing } from "./theme-store";
@@ -24,6 +26,11 @@ export type LaunchPreset = { key: string; name: string; pack: PackKey; changes: 
 export type LaunchTheme = {
   /** Stable for ever: how the platform's theme is found again (`design_presets.launch_key`). */
   key: string;
+  /**
+   * Made from scratch (`docs/signature-themes.md`): its own header, footer, product page and stylesheet, and a demo store of its own with
+   * pages designed for it, held to `signatureCheck()`.
+   */
+  signature?: true;
   /** Raised with every change here; a newer one is published as a new version. */
   version: number;
   title: string;
@@ -59,7 +66,7 @@ export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"
  * Since phase 2 (`docs/theme-showcase-phase-2.md`) every publish photographs a theme's looks itself, so these are only the card's fallback
  * until those are made (and where they cannot be, as in development and the browser tests): raising a version needs no new one.
  */
-export const LAUNCH_SHOTS: Readonly<Record<string, number>> = { calm: 2, hearth: 2, signal: 2, fjord: 2 };
+export const LAUNCH_SHOTS: Readonly<Record<string, number>> = { calm: 2, hearth: 2, signal: 2, fjord: 2, orbit: 1 };
 
 /**
  * The theme's card picture by hand: its public preview on the demo store, photographed at a computer's width (a 4:3 crop of the top, 800 by
@@ -72,37 +79,6 @@ export const launchShot = (theme: Pick<LaunchTheme, "key" | "version">): string 
 export function launchShotFor(key: string | null): string | null {
   const theme = key ? LAUNCH_THEMES.find((t) => t.key === key) : undefined;
   return theme ? launchShot(theme) : null;
-}
-
-const pad = (y: number, x = 20) => ({ padding: { top: y, right: x, bottom: y, left: x } });
-const rem = (value: number) => ({ value, unit: "rem" as const });
-
-/**
- * The core section styles, so rows naming them look as intended in every Kaizena theme: room for the hero, a quiet tint for muted that works
- * on light and dark pages alike (a see-through grey over the page), a fixed dark band for contrast with its own light text, and larger
- * italic text for quotes.
- */
-function coreStyles(look: { heroSize: number; band: string; bandText: string; space: number; quoteFamily?: string }): SectionStyles {
-  return {
-    plain: { row: { style: pad(look.space) } },
-    hero: {
-      row: { style: pad(look.space * 2) },
-      h1: { typography: { text: { size: rem(look.heroSize), lineHeight: { value: 1.1, unit: "" } } } },
-      p: { typography: { text: { size: rem(1.25) } } },
-    },
-    feature: {
-      row: { style: pad(Math.round(look.space * 1.25)) },
-      h3: { typography: { text: { size: rem(1.375) } } },
-    },
-    muted: { row: { style: pad(look.space), background: { type: "color", color: "#808080", opacity: 10 } } },
-    contrast: {
-      row: { style: pad(Math.round(look.space * 1.25)), background: { type: "color", color: look.band }, typography: { text: { color: look.bandText } } },
-    },
-    quote: {
-      row: { style: pad(look.space) },
-      p: { typography: { text: { size: rem(1.5), style: "italic", lineHeight: { value: 1.4, unit: "" }, ...(look.quoteFamily && { family: look.quoteFamily }) } } },
-    },
-  };
 }
 
 /**
@@ -333,4 +309,5 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       },
     ],
   },
+  ORBIT,
 ];

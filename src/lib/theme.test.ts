@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  STORE_THEME_SELECTOR,
   THEME_TEMPLATE_KEYS,
   contrastRatio,
   darkBehindLogo,
@@ -53,6 +57,24 @@ describe("design themes (D60)", () => {
     expect(parseStoreTheme({ base: "warm", settings: { light: { accent: "red; }" } } }).settings).toEqual(templateSettings("warm"));
     expect(parseStoreTheme({ base: "gothic" }).base).toBe("minimal");
     expect(parseStoreTheme({ savedId: "not-an-id" }).savedId).toBeNull();
+  });
+
+  it("draws a store's colours over globals.css's own, also for a theme that is always dark", () => {
+    // Specificity of a simple compound selector (no combinators): ids, then attributes, classes and pseudo-classes, then types; `:not()` and
+    // `:is()` count their argument, `:where()` nothing.
+    const weight = (selector: string): number[] => {
+      const plain = selector.replace(/:where\([^)]*\)/g, "").replace(/:(?:not|is)\(([^)]*)\)/g, "$1");
+      const ids = (plain.match(/#[\w-]+/g) ?? []).length;
+      const parts = (plain.match(/\[[^\]]*\]|\.[\w-]+|:(?!:)[\w-]+/g) ?? []).length;
+      const types = (plain.replace(/\[[^\]]*\]|\.[\w-]+|:[\w-]+|#[\w-]+/g, " ").match(/[a-z][\w-]*/gi) ?? []).length;
+      return [ids, parts, types];
+    };
+    const beats = (a: number[], b: number[]) => a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] > b[2])));
+    const globals = readFileSync(path.join(__dirname, "..", "app", "globals.css"), "utf8");
+    const rival = [...globals.matchAll(/([^{}]+)\{[^{}]*--background:/g)].map((m) => m[1].trim()).filter((sel) => sel.startsWith(":root"));
+    expect(rival.length).toBeGreaterThan(0);
+    for (const sel of rival) expect(beats(weight(STORE_THEME_SELECTOR), weight(sel)), sel).toBe(true);
+    expect(themeCss({ ...templateSettings("minimal"), mode: "dark" }, STORE_THEME_SELECTOR)).toMatch(/^html:root\[data-store-theme\] \{ color-scheme: dark;/);
   });
 
   it("turns settings into CSS variables, by the visitor's device or one colour set", () => {

@@ -11,7 +11,9 @@ import { rowWidthStyle } from "@/lib/part-css";
 import { ROW_GAP, meetsAbove, rowAbove } from "@/lib/row-join";
 import type { ThemeLayers } from "@/lib/section-styles";
 import { themedRows } from "@/lib/theme-elements";
+import { withStoreLinks } from "@/lib/store-links";
 import { themeLayersFor } from "@/server/theme-elements";
+import { storeLinkBase } from "@/server/store-links";
 import type { GridPlace } from "@/server/content-grid";
 import { placeLang } from "@/server/place-lang";
 
@@ -142,6 +144,8 @@ export function PageRowView(props: {
   // A row is drawn with its site's theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons): a store's, or
   // Kaizena Flow's own where the place has no owner (D235). A place that brings the layers (a preview of an installed theme, D244, or a
   // layout drawn with its store at hand) is drawn with them at once.
+  // A store's row is drawn with its links to the store's own paths under the market shown (`src/lib/store-links.ts`).
+  if (props.place.owner) return <StoreRowView {...props} />;
   const layers = props.place.theme;
   return layers ? <RowView {...props} {...themedPair(props.row, props.above, layers)} /> : <ThemedRowView {...props} />;
 }
@@ -149,6 +153,12 @@ export function PageRowView(props: {
 async function ThemedRowView(props: Parameters<typeof PageRowView>[0]) {
   const layers = await themeLayersFor(props.place.owner);
   return <RowView {...props} {...themedPair(props.row, props.above, layers)} />;
+}
+
+async function StoreRowView(props: Parameters<typeof PageRowView>[0]) {
+  const [layers, base] = await Promise.all([props.place.theme ?? themeLayersFor(props.place.owner), storeLinkBase(props.place.owner, props.place.market)]);
+  const row = base ? withStoreLinks(props.row, base) : props.row;
+  return <RowView {...props} {...themedPair(row, props.above, layers)} />;
 }
 
 /** A row and the row above it, as drawn with a theme's layers, so whether they meet is asked of what is drawn (a section style's background counts). */
