@@ -100,3 +100,21 @@ export function menuMoves<T extends Placed>(items: readonly T[], index: number):
     top: index === 0 ? null : moveItem(items, index, 0, 0),
   };
 }
+
+/**
+ * The menu without the items `leaves` picks: the items under one move up a level in its place, so a link the owner put under a
+ * removed one stays where it was, only less deep (removing a store's demo content, `docs/theme-showcase-phase-1.md` step 4b).
+ */
+export function withoutItems<T extends Placed>(items: readonly T[], leaves: (item: T) => boolean): T[] {
+  let list = [...items];
+  for (let i = 0; i < list.length; ) {
+    if (!leaves(list[i])) {
+      i++;
+      continue;
+    }
+    const end = subtreeEnd(list, i);
+    const lifted = list.slice(i + 1, end).map((item) => ({ ...item, depth: item.depth - 1 }));
+    list = [...list.slice(0, i), ...lifted, ...list.slice(end)];
+  }
+  return soundDepths(list);
+}

@@ -7,6 +7,7 @@ import { featuresForAnswers, targetFeatures, type OnboardingAnswers } from "@/li
 import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
+import { isDemoProduct } from "./demo-content";
 import { setFeatures, type SetFeaturesResult } from "./store-features";
 import { getPaymentSettings, type SaveResult } from "./settings";
 import type { Store, StoreDetails } from "./stores";
@@ -21,9 +22,6 @@ export { isSetupStep, SETUP_STEPS, setupStepsFor, type SetupStepId } from "@/lib
  * store's features; this entry is how the wizard knows the question was answered, read from the activity log rather than stored apart.
  */
 export const FEATURES_CHOSEN = "store.features_chosen";
-
-/** Demo products copied from the template have handles starting with `demo-`. */
-const DEMO_HANDLE = "demo-%";
 
 export type SetupProgress = {
   /** The owner answered "What will you sell?" (an entry of `FEATURES_CHOSEN` in the store's activity log). */
@@ -53,9 +51,9 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
   const [[counts], payments, [shippingRow], [planRow], [facts]] = await Promise.all([
     db().execute<Row>(sql`
       select
-        count(*) filter (where handle like ${DEMO_HANDLE} and status = 'active')::int as demo,
-        count(*) filter (where handle not like ${DEMO_HANDLE} and status <> 'archived')::int as own
-      from commerce.products where store_id = ${store.id}::uuid
+        count(*) filter (where ${isDemoProduct(sql`p`)} and p.status = 'active')::int as demo,
+        count(*) filter (where not ${isDemoProduct(sql`p`)} and p.status <> 'archived')::int as own
+      from commerce.products p where p.store_id = ${store.id}::uuid
     `),
     getPaymentSettings(store),
     db().execute<Row>(sql`
@@ -167,8 +165,8 @@ export async function setMarkets(
 /** Takes the demo products out of the store (archived, never deleted). */
 export async function archiveDemoProducts({ account, store }: Membership): Promise<number> {
   const rows = await db().execute<Row>(sql`
-    update commerce.products set status = 'archived', updated_at = now()
-    where store_id = ${store.id}::uuid and handle like ${DEMO_HANDLE} and status <> 'archived'
+    update commerce.products p set status = 'archived', updated_at = now()
+    where p.store_id = ${store.id}::uuid and ${isDemoProduct(sql`p`)} and p.status <> 'archived'
     returning handle
   `);
   await audit(account.id, store.id, "products.demo_archived", { count: rows.length });

@@ -279,3 +279,14 @@ describe("publishing, archiving and deleting a store template (D177)", () => {
     await refused("delete from commerce.store_starters where id = $1", [asked.starter], /store_starters\.requested/);
   });
 });
+
+describe("a new store's demo content (docs/theme-showcase-phase-1.md step 4b)", () => {
+  it("is marked by kind and id, once each, of products, pages and terms only", async () => {
+    const store = await createStore("demo-marks");
+    const page = "00000000-0000-4000-8000-000000000001";
+    await db.query("insert into commerce.store_demo_items (store_id, kind, ref_id) values ($1, 'page', $2)", [store, page]);
+    await db.query("insert into commerce.store_demo_items (store_id, kind, ref_id) values ($1, 'page', $2) on conflict do nothing", [store, page]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.store_demo_items where store_id = $1", [store])).n).toBe(1);
+    await refused("insert into commerce.store_demo_items (store_id, kind, ref_id) values ($1, 'order', $2)", [store, page], /store_demo_items_kind/);
+  });
+});

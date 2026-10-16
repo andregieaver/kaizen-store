@@ -3,17 +3,22 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
+import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
+import { demoTotal, demoWords } from "@/lib/demo-content";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { controlCenter } from "@/server/control-center";
+import { demoContent } from "@/server/demo-content";
 import { getSetupProgress } from "@/server/setup";
 import { platformModes } from "@/server/stripe";
+
+import { removeDemoContentAction } from "./demo-actions";
 
 type Props = PageProps<"/admin/[store]">;
 
@@ -24,7 +29,17 @@ export default async function AdminOverview({ params }: Props) {
   // A store template (D175) is never opened, so its owners are not sent to the setup wizard.
   if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
 
-  const [progress, center] = await Promise.all([getSetupProgress(store), controlCenter(account, store.slug)]);
+  const owner = memberCan(current, "owner");
+  const [progress, center, demo] = await Promise.all([
+    getSetupProgress(store),
+    controlCenter(account, store.slug),
+    // What the store template brought and the owner has not changed (`docs/theme-showcase-phase-1.md` step 4b): theirs to remove.
+    owner ? demoContent(store.id, store.localization.locales[0] ?? "en") : null,
+  ]);
+  const demoSummary =
+    demo && demoTotal(demo.counts) > 0
+      ? { words: demoWords(demo.counts), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }
+      : null;
   const figures = center.stores[0];
   const attention = figures ? attentionFor([figures]) : [];
   const sales = figures ? totalSales([figures]) : [];
@@ -119,6 +134,7 @@ export default async function AdminOverview({ params }: Props) {
           </List>
         </Card>
       )}
+      {owner && <DemoContentCard summary={demoSummary} action={removeDemoContentAction.bind(null, store.slug)} />}
       {remaining > 0 && (
         <Card title="Finish setting up" aside={`${steps.length - remaining} of ${steps.length} done`}>
           <ol className="flex flex-col gap-2 text-body">

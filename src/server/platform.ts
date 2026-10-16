@@ -9,6 +9,7 @@ import { emailSignInLink } from "@/lib/supabase/mailer";
 import { starterRefusal } from "@/lib/store-starters";
 
 import { audit, type Account } from "./auth";
+import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
 
@@ -243,6 +244,8 @@ export async function approveAccessRequest(
     !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A store template") : null;
   // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
   const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id, chosenVariation) : null;
+  // What the store template brought is its demo content, removable in one press from the store's Home (`docs/theme-showcase-phase-1.md` 4b).
+  await markNewStore(storeId);
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
   await notifyReferralOpened(storeId).catch(() => null);
 
@@ -282,6 +285,14 @@ async function applyChosenDesign(
     console.error("[platform] the design profile could not be applied", error);
     return { title: null, problem: "The design profile could not be applied." };
   }
+}
+
+/**
+ * Marks a store just made's demo content, after its design is applied, so a change the design made is not taken for the owner's. Never
+ * throwing: a store left unmarked only lacks *Remove demo content*.
+ */
+async function markNewStore(storeId: string): Promise<void> {
+  await markDemoContent(storeId).catch((error) => console.error("[platform] the demo content could not be marked", error));
 }
 
 function approvalProblem(error: unknown, slug: string): string {
@@ -376,5 +387,6 @@ export async function createStoreForOwner(
   await audit(account.id, storeId, "store.created_by_owner", { slug, name: name.trim(), starter: starterId, design: designPresetId, preset: designVariation });
   // The design profile chosen (D176), applied right after; a failure leaves the store with its template's look.
   const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id, designVariation) : null;
+  await markNewStore(storeId);
   return { ok: true, slug, storeId, design };
 }

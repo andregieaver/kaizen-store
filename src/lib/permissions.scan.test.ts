@@ -49,6 +49,7 @@ const OWNER_ONLY_EXTRA: Record<string, string> = {
   "src/app/admin/(gated)/[store]/customers/export/file/route.ts": "the customer file holds shoppers' personal data: only the owner may export it (wave 2, D165, 2.4)",
   "src/app/admin/(gated)/[store]/customers/export/[jobId]/tick/route.ts": "the step of a customer export's job page: the owner's, like the file",
   "src/app/admin/(gated)/[store]/support/settings/actions.ts": "how long support transcripts are kept is the owner's alone (D216, docs/support.md 4.5); the rest of the settings are `support:write`, in the same action",
+  "src/app/admin/(gated)/[store]/demo-actions.ts": "removing a new store's demo content archives products and deletes pages, categories and tags across areas in one press: the owner's (docs/theme-showcase-phase-1.md step 4b), on Home, which every member may open",
   "src/app/admin/(gated)/[store]/inventory/locations/actions.ts": "deactivating a stock location takes its stock off sale and reactivating puts it back: only the owner does either (wave 3, D172, 2.3); adding, renaming and ranking are `products:write`, in the same file",
 };
 

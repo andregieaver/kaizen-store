@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dropDepth, menuMoves, moveItem, subtreeEnd } from "./menu-structure";
+import { dropDepth, menuMoves, moveItem, subtreeEnd, withoutItems } from "./menu-structure";
 import { menuTree, soundDepths } from "./navigation";
 
 /** A menu written as "name:depth". */
@@ -61,5 +61,21 @@ describe("menu structure (D85)", () => {
       ["B", []],
       ["C", ["C1"]],
     ]);
+  });
+});
+
+describe("taking items out of a menu (docs/theme-showcase-phase-1.md step 4b)", () => {
+  const items = menu("A:0", "A1:1", "A2:1", "A2a:2", "B:0", "C:0", "C1:1");
+  const named = (...names: string[]) => (item: { name: string }) => names.includes(item.name);
+
+  it("lifts the items under a removed one into its place, a level up", () => {
+    expect(show(withoutItems(items, named("A")))).toEqual(["A1:0", "A2:0", "A2a:1", "B:0", "C:0", "C1:1"]);
+    expect(show(withoutItems(items, named("A2")))).toEqual(["A:0", "A1:1", "A2a:1", "B:0", "C:0", "C1:1"]);
+  });
+
+  it("takes out several, one inside another, and keeps the rest as it was", () => {
+    expect(show(withoutItems(items, named("A", "A2", "C1")))).toEqual(["A1:0", "A2a:0", "B:0", "C:0"]);
+    expect(show(withoutItems(items, named()))).toEqual(show(items));
+    expect(withoutItems(items, () => true)).toEqual([]);
   });
 });

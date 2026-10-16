@@ -29,6 +29,8 @@ const READERS = [
   "src/server/page-duplicate.ts",
   // The media library's Compress (D213): moves a library file's address inside the values that hold it, staff only; reads none.
   "src/server/media-compress.ts",
+  // A new store's demo content (`docs/theme-showcase-phase-1.md` step 4b): only whether a value was written after the mark, never a value.
+  "src/server/demo-content.ts",
 ];
 
 /**

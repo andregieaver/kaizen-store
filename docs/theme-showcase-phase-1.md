@@ -168,3 +168,17 @@ template is published (`data-starter`, from `designChoices()`). The theme page's
 store starts as the store the person saw; without JavaScript they choose themselves. The admin's approval offers each preset too.
 Approval and *Create a store* apply the theme with its preset (`applyChosenDesign()`); a preset its published version no longer has gives
 way to the theme's own look.
+
+**4b. Demo content, removable in one press (D260).** When a store is made for an owner (approval, *Create a store*), after its design is
+applied, `markDemoContent()` marks what its store template brought (`commerce.store_demo_items`: kind `product`, `page` or `term` and the
+id, with the time): every product not archived, every page and article but the All products page and the pages chosen for a role, and every
+category and tag. The store's Home shows owners a card while anything marked is unchanged: a sentence of what it holds (*6 products, 2 pages
+and 3 categories*) and *Remove demo content*, with the list one step away (*What it removes*, and what the owner changed, which stays).
+`removeDemoContent()` does it in one transaction: products are archived (never deleted, so orders keep them), pages and articles deleted
+(the front page among them: the store's standard front page shows), then categories and tags no product left on sale and no page left holds
+(their subcategories move up), and the menus lose their links to all of it, the links under one moving up a level in its place
+(`withoutItems()`). An item the owner changed since its mark (its `updated_at`, or a custom field written after), a page now chosen for a
+role or as the All products page, a page in an A/B test, and a category or tag still in use stay, and the answer names each with its reason
+(`removalWords()`); then every mark is forgotten, as what stayed is the owner's. One audit entry (`store.demo_removed`) with the counts. The
+setup wizard's *Remove the N demo products* counts and archives marked, unchanged products too (`isDemoProduct()`), so a content pack's
+products (handles of their trade, not `demo-…`) are demo there as well. Stores made before step 4b have no marks and no card.

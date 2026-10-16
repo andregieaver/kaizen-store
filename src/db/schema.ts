@@ -663,6 +663,27 @@ export const stores = commerce.table(
  * while no store and no access request came from it (D177), else archived; the rules are in the `store_starters_rules` migrations (only a
  * starter store, store fixed, delete only unused). Classified `never` in `COPY_RULES`.
  */
+/**
+ * What a new store came with from its store template (`docs/theme-showcase-phase-1.md` step 4b): its products, its own pages and articles
+ * and its product categories and tags, each marked when the store was made (`markDemoContent()`), so *Remove demo content* takes out what
+ * the owner has not changed since (`updated_at` after `marked_at` is theirs). A row goes when its thing is removed or becomes the owner's.
+ */
+export const storeDemoItems = commerce.table(
+  "store_demo_items",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references((): AnyPgColumn => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    refId: uuid("ref_id").notNull(),
+    markedAt: timestamp("marked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.kind, t.refId] }),
+    check("store_demo_items_kind", sql`${t.kind} in ('product', 'page', 'term')`),
+  ],
+);
+
 export const storeStarters = commerce.table(
   "store_starters",
   {

@@ -275,6 +275,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   saved_parts: "A saved page part's name and content.",
   design_presets: "A design profile's title, description and snapshot of a store's look (D176), its draft details and its workspace store's id (D177): theme settings, header, footer and layout rows, CSS; never a person's data.",
   design_preset_versions: "A theme's published versions (D241): the snapshot of a look and the platform admin who published it; never a person's data.",
+  store_demo_items: "Which products, pages and terms a new store came with from its template (docs/theme-showcase-phase-1.md step 4b): ids and a time, never a person's data.",
   design_variations: "A theme's presets as drafted (docs/theme-showcase-phase-1.md): a name, a key and theme settings, and the platform admin who changed them; never a person's data.",
   theme_install_updates: "A store's theme look before and after an update to a new version (D245), for its undo: theme settings, CSS and layout page ids; never a shopper's data.",
   page_theme_detaches: "A page's content before and after the theme migration (D243), for its undo: the page's own rows, as `pages` holds them; never a shopper's data.",
