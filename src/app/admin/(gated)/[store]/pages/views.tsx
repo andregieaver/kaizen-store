@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { DemoHomePages } from "@/components/admin/demo-home-pages";
 import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
@@ -14,7 +15,8 @@ import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-ro
 import { featureOn, requirementMet } from "@/lib/store-features";
 import { shopPartFeature } from "@/lib/store-parts";
 import type { Term } from "@/lib/taxonomy";
-import { requirePageTypeAccess } from "@/server/permissions";
+import { latestHomeTake, homePageOffers } from "@/server/home-takes";
+import { memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
@@ -36,6 +38,7 @@ import {
 } from "./actions";
 import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
+import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 import { PageDrawing } from "./drawing";
 
 /**
@@ -138,6 +141,16 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           storeSlug={store.slug}
           current={store.frontPageId}
           pages={pages.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
+        />
+      )}
+      {/* A demo store's home page as the front page, and the store's own put back (docs/theme-showcase-phase-1.md step 4c). */}
+      {type === "page" && memberCan(gated, "website:write") && (
+        <DemoHomePages
+          offers={await homePageOffers()}
+          take={await latestHomeTake(store.id)}
+          editBase={base}
+          use={useDemoHomeAction.bind(null, store.slug)}
+          undo={undoDemoHomeAction.bind(null, store.slug)}
         />
       )}
       {/* A website (D178 step 5: the online shop off) has no All products page; one chosen keeps its place for when the shop is on. */}

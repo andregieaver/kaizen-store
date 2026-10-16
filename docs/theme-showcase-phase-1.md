@@ -182,3 +182,18 @@ role or as the All products page, a page in an A/B test, and a category or tag s
 (`removalWords()`); then every mark is forgotten, as what stayed is the owner's. One audit entry (`store.demo_removed`) with the counts. The
 setup wizard's *Remove the N demo products* counts and archives marked, unchanged products too (`isDemoProduct()`), so a content pack's
 products (handles of their trade, not `demo-…`) are demo there as well. Stores made before step 4b have no marks and no card.
+
+**4c. A demo store's home page for an existing store (D261).** The store's Pages list has *Home pages from the demo stores* for those who
+may change the website (`website:write`): each published content pack whose store has a published front page (`homePageOffers()`), with
+*Look at it* (its store, in a new window) and *Use this home page*. The press (`takePackHome()`) copies the pack's home page from its
+published store template as a template is copied (D125): `sanitizeTemplate()` takes out what points into the demo store, its pictures are
+copied into the store's media library (looked up in the pack's own library, where they were made; one that cannot be copied is left out and
+said), and the page is checked as the builder checks a save (`pageInput`, `pageRulesProblem()`, no other store's file left). Then, in one
+transaction, it is a new published page *Home page* and the store's front page, and `commerce.store_home_takes` keeps the pack and the front
+page before (null: the store's products). Its rows name core section styles, so it follows the store's own theme; its words and pictures are
+the demo store's until the owner changes them, which the card says before the press. While a take stands, the card says what the store
+opens with now and before, with *Put in your own words* (the page in the builder) and *Put back your front page* (`undoHomeTake()`): that
+front page again, unless the owner chose another since (then it stays), and the copy deleted unless the owner changed it, chose it for a
+place of its own or put it in an A/B test (then it stays, and the answer says why). Each take is put back once; taking another keeps the one
+before as its front page before, so putting back walks back one step at a time. The front page of a running A/B test is held in place
+(D148), so the press says to stop the test first. Audited `store.front_page_from_pack` and `store.front_page_put_back`.

@@ -658,14 +658,8 @@ export const stores = commerce.table(
 );
 
 /**
- * Store templates (D175, docs/store-templates.md): the description of a store marked `starter`, what owners and the sign-up form are
- * offered once `published` (D177: from its frozen copy, `published_store_id`), in `position` order. One per starter store; deleted only
- * while no store and no access request came from it (D177), else archived; the rules are in the `store_starters_rules` migrations (only a
- * starter store, store fixed, delete only unused). Classified `never` in `COPY_RULES`.
- */
-/**
  * What a new store came with from its store template (`docs/theme-showcase-phase-1.md` step 4b): its products, its own pages and articles
- * and its product categories and tags, each marked when the store was made (`markDemoContent()`), so *Remove demo content* takes out what
+ * and its categories and tags, each marked when the store was made (`markDemoContent()`), so *Remove demo content* takes out what
  * the owner has not changed since (`updated_at` after `marked_at` is theirs). A row goes when its thing is removed or becomes the owner's.
  */
 export const storeDemoItems = commerce.table(
@@ -684,6 +678,40 @@ export const storeDemoItems = commerce.table(
   ],
 );
 
+/**
+ * A demo store's home page an existing store took as its front page (`docs/theme-showcase-phase-1.md` step 4c): the copy made, the content
+ * pack it came from and the front page the store had before, so *Put back your front page* can undo it. Written only by
+ * `src/server/home-takes.ts`; `undone_at` is set once.
+ */
+export const storeHomeTakes = commerce.table(
+  "store_home_takes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references((): AnyPgColumn => stores.id, { onDelete: "cascade" }),
+    pack: text("pack").notNull(),
+    pageId: uuid("page_id").references((): AnyPgColumn => pages.id, { onDelete: "set null" }),
+    previousFrontPageId: uuid("previous_front_page_id").references((): AnyPgColumn => pages.id, { onDelete: "set null" }),
+    takenBy: uuid("taken_by").references((): AnyPgColumn => accounts.id, { onDelete: "set null" }),
+    takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("store_home_takes_store_idx").on(t.storeId, t.takenAt),
+    index("store_home_takes_page_idx").on(t.pageId),
+    index("store_home_takes_previous_idx").on(t.previousFrontPageId),
+    index("store_home_takes_taken_by_idx").on(t.takenBy),
+    check("store_home_takes_pack", sql`${t.pack} ~ '^[a-z0-9][a-z0-9-]{0,39}$'`),
+  ],
+);
+
+/**
+ * Store templates (D175, docs/store-templates.md): the description of a store marked `starter`, what owners and the sign-up form are
+ * offered once `published` (D177: from its frozen copy, `published_store_id`), in `position` order. One per starter store; deleted only
+ * while no store and no access request came from it (D177), else archived; the rules are in the `store_starters_rules` migrations (only a
+ * starter store, store fixed, delete only unused). Classified `never` in `COPY_RULES`.
+ */
 export const storeStarters = commerce.table(
   "store_starters",
   {
