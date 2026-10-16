@@ -73,7 +73,8 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
     );
   };
   const Toggle = named ? PanelLeftClose : PanelLeftOpen;
-  const toggleLabel = named ? "Hide the sections' names" : "Show the sections' names";
+  // Named for what it does to the sidebar: a name with "name" in it would answer every search for a Name field.
+  const toggleLabel = named ? "Narrow the sidebar" : "Widen the sidebar";
   return (
     <div
       data-admin-rail
@@ -97,7 +98,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
         >
           <Toggle aria-hidden className="size-5 shrink-0" />
           <span aria-hidden className="hidden text-caption [[data-rail=names]_&]:inline">
-            Hide names
+            Narrow
           </span>
         </button>
       )}

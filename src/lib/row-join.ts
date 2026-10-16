@@ -12,11 +12,18 @@ import { valueAt } from "./responsive";
 export const ROW_GAP = "2rem";
 
 /**
+ * The class of a row the page replicator placed by measuring (D150): its margins were worked out with the page's room between rows
+ * (`ROW_GAP` of `replicate-build.ts`), so it keeps it, and copies made before rows met look as they did.
+ */
+export const MEASURED_ROW_CLASS = "rp";
+
+/**
  * Whether a row draws a box at every screen size: a background (of any kind) or a border. A modal is not in the page's flow, and a
  * row shown only at some sizes or to some visitors may be left out where the row next to it is drawn, so neither meets another.
  */
 export function drawsBox(row: PageRow): boolean {
   if (row.modal) return false;
+  if (row.className?.split(/\s+/).includes(MEASURED_ROW_CLASS)) return false;
   if ((row.visibility?.hideAt?.length ?? 0) > 0) return false;
   if (row.visibility?.show !== undefined && row.visibility.show !== "always") return false;
   return SIZES.every((size) => Boolean(valueAt(row, "background", size)) || Boolean(valueAt(row, "border", size)));

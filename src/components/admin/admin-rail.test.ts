@@ -50,7 +50,7 @@ describe("the rail", () => {
 
   it("has a button at its foot that shows the sections' names beside their icons, and none where it is narrowed for a tool (D262)", () => {
     const out = rail();
-    expect(out).toContain('aria-label="Show the sections&#x27; names"');
+    expect(out).toContain('aria-label="Widen the sidebar"');
     // Each name is there for the wider rail, hidden until the browser's choice on <html> shows it.
     expect(out).toMatch(/<span aria-hidden="true" class="hidden [^"]*\[\[data-rail=names\]_&amp;\]:inline">Orders<\/span>/);
     const narrow = renderToStaticMarkup(h(AdminRail, { items: tabs, home: { href: "/admin", label: "Home" }, label: "Main sections", collapseOn: "^/admin/s/orders" }));

@@ -176,10 +176,11 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </section>
         );
       }
-      // A product of one variant has nothing to choose: no Variants heading or box, only its stock, price and Add to cart.
+      // A product of one variant has nothing to choose: no Variants heading or box, only its stock, price and Add to cart, in a
+      // region named for the product (named for its button, a screen reader would say "Add to cart" twice).
       if (product.variants.length === 1) {
         return (
-          <section aria-label={m.addToCart} className={forBusiness}>
+          <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
               <VariantsWithStock store={store} product={product} market={market} m={m} />

@@ -128,7 +128,10 @@ export type BuildOutput = {
   grids: GridReport;
 };
 
-/** The page's own gap between rows (`gap-8` of `PageArticle`): a row's margin is what it needs beyond it, so down to this much less. */
+/**
+ * The page's own gap between rows (`gap-8` of `PageArticle`): a row's margin is what it needs beyond it, so down to this much less. The
+ * copy's rows (class `rp`, `MEASURED_ROW_CLASS`) always keep it: rows that both draw a box otherwise meet (D262).
+ */
 export const ROW_GAP = 32;
 
 export const SHARED_CSS =

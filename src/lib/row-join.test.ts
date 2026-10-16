@@ -30,6 +30,12 @@ describe("rows that meet", () => {
     expect(drawsBox(row({ background: grey, visibility: { show: "always" } }))).toBe(true);
   });
 
+  it("leaves rows the page replicator placed with the page's room, which their measured margins count on", () => {
+    expect(drawsBox(row({ background: grey, className: "rp" }))).toBe(false);
+    expect(drawsBox(row({ background: grey, className: "hero rp" }))).toBe(false);
+    expect(drawsBox(row({ background: grey, className: "rpx" }))).toBe(true);
+  });
+
   it("meets only where both rows draw a box", () => {
     expect(meetsAbove(row({ background: grey }), row({ border: line }))).toBe(true);
     expect(meetsAbove(row(), row({ background: grey }))).toBe(false);

@@ -238,7 +238,9 @@ test("a shopper subscribes from the product page and sees the terms in the cart"
   const options = page.getByRole("group", { name: "Kjøpsalternativ" });
   await expect(options.getByRole("radio", { name: "Engangskjøp" })).toBeChecked();
   await options.getByRole("radio", { name: /Hver måned/ }).check();
-  const variants = page.getByRole("region", { name: "Varianter" });
+  // A product of one variant: its buying has no Variants heading, and is named for the product.
+  const variants = page.getByRole("region", { name: "Demo: Kaffe" });
+  await expect(page.getByRole("heading", { name: "Varianter" })).toHaveCount(0);
   await expect(variants.getByText("180,00").filter({ visible: true })).toBeVisible();
 
   await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
