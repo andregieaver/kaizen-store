@@ -183,6 +183,38 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // In local storage, not a cookie: set in Kaizen's admin by someone signed in who shows the rail's names (D262).
+    name: "kaizen_admin_rail",
+    pattern: /^kaizen_admin_rail$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    staff: true,
+    purpose: {
+      en: "In Kaizena Flow's admin: remembers that you chose to see the sections' names beside their icons.",
+      nb: "I Kaizena Flows administrasjon: husker at du valgte å se navnene på seksjonene ved siden av ikonene.",
+      sv: "I Kaizena Flows administration: kommer ihåg att du valde att se avsnittens namn bredvid ikonerna.",
+      da: "I Kaizena Flows administration: husker, at du valgte at se afsnittenes navne ved siden af ikonerne.",
+    },
+  },
+  {
+    // In local storage, not a cookie: set in the admin's page builder by someone signed in who folds a sidebar or drags its edge (D125, D262).
+    name: "kaizen_admin_builder_…",
+    pattern: /^kaizen_admin_builder_(left|right)(_width)?$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    staff: true,
+    purpose: {
+      en: "In Kaizena Flow's page builder: remembers whether you folded a sidebar away and how wide you made it.",
+      nb: "I Kaizena Flows sidebygger: husker om du skjulte et sidepanel og hvor bredt du gjorde det.",
+      sv: "I Kaizena Flows sidbyggare: kommer ihåg om du fällde ihop en sidopanel och hur bred du gjorde den.",
+      da: "I Kaizena Flows sidebygger: husker, om du foldede et sidepanel sammen, og hvor bredt du gjorde det.",
+    },
+  },
+  {
     // In the tab's session storage, not a cookie: only once a visitor writes to the chat agent (D81).
     name: "kaizen_chat",
     pattern: /^kaizen_chat$/,

@@ -5,6 +5,7 @@ import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeAttributes, themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
+import { ROW_GAP, meetsAbove } from "@/lib/row-join";
 import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { CORE_SECTION_LABELS, SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
@@ -82,7 +83,7 @@ import { MenuGlide } from "@/components/menu-glide";
 import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
-import { FoldButton, Rail, RailHeader, RailTabsHeader, railColumns, useFolded } from "./builder-rails";
+import { FoldButton, Rail, RailHeader, RailResizer, RailTabsHeader, railTemplate, useFolded, useRailWidth, type RailSide } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
@@ -131,6 +132,7 @@ import {
   COLUMN_SHARE_MAX,
   ROW_HEIGHT_VH,
   SHADOWS,
+  shadowOpacityOf,
   SPACING_MAX,
   blockFonts,
   pageFonts,
@@ -697,6 +699,9 @@ export function PageBuilder({
   // The sidebars can be folded away; each is kept per browser.
   const [leftFolded, setLeftFolded] = useFolded("left");
   const [rightFolded, setRightFolded] = useFolded("right");
+  // How wide each open sidebar was dragged to (D262); null is its usual share.
+  const [leftWidth, setLeftWidth] = useRailWidth("left");
+  const [rightWidth, setRightWidth] = useRailWidth("right");
   const panelId = useId();
   // The canvas plays the parts' motion only while asked to (D128); each switch on plays every entrance again.
   const [motionOn, setMotionOn] = useState(false);
@@ -1096,7 +1101,11 @@ export function PageBuilder({
         }}
       >
         {/* On a computer the three columns each scroll on their own, between the admin's header and the editor's bar (`useStandaloneColumns`). */}
-        <div ref={columnsRef} className={`grid items-start gap-6 lg:h-(--builder-h) lg:items-stretch ${railColumns(leftFolded, rightFolded)}`}>
+        <div
+          ref={columnsRef}
+          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
+          style={{ "--builder-cols": railTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
+        >
           {leftFolded && <Rail side="left" label="building blocks" controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
             <TranslateNote
@@ -1148,6 +1157,14 @@ export function PageBuilder({
             blocksFull={blocksFull}
           />
           )}
+          <RailResizer
+            side="left"
+            label="building blocks"
+            folded={leftFolded}
+            width={leftWidth}
+            onWidth={setLeftWidth}
+            measure={() => measureRails(columnsRef.current, panelId, "left")}
+          />
 
           {/* Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas. */}
           <div className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE}`}>
@@ -1215,6 +1232,14 @@ export function PageBuilder({
           </div>
           </div>
 
+          <RailResizer
+            side="right"
+            label="settings"
+            folded={rightFolded}
+            width={rightWidth}
+            onWidth={setRightWidth}
+            measure={() => measureRails(columnsRef.current, panelId, "right")}
+          />
           {rightFolded && (
             <Rail side="right" label="settings" controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
           )}
@@ -2275,6 +2300,7 @@ function Canvas({
                 row={row}
                 name={`Row ${index + 1}`}
                 first={index === 0}
+                meets={meetsAbove(rows[index - 1], row)}
                 line={target?.id === row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
                 dragging={dragging}
                 target={target}
@@ -2305,6 +2331,22 @@ function Canvas({
 /** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
 /** A column of the builder that scrolls on its own on a computer, never handing its scroll on to the page. */
 const STANDALONE = "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain";
+
+/**
+ * What dragging a sidebar's edge needs to know (D262): its width now, the other side's (folded or open), and the room the three
+ * columns share (the builder's width less the two gaps between them). Null where the columns are not side by side.
+ */
+function measureRails(columns: HTMLElement | null, panelId: string, side: RailSide): { own: number; other: number; total: number } | null {
+  if (!columns) return null;
+  const widthOf = (which: RailSide) => {
+    const open = document.getElementById(`${panelId}-${which}`);
+    if (open && !open.hidden) return open.getBoundingClientRect().width;
+    // Folded: its narrow rail, the column before or after the canvas.
+    return 44;
+  };
+  const gap = parseFloat(getComputedStyle(columns).fontSize) * 1.5;
+  return { own: widthOf(side), other: widthOf(side === "left" ? "right" : "left"), total: columns.getBoundingClientRect().width - 2 * gap };
+}
 
 /**
  * Fits the builder's columns between where they start and the editor's bar at the foot of the screen (`data-editor-bar`), as
@@ -2515,6 +2557,7 @@ function RowItem({
   row,
   name,
   first,
+  meets,
   line,
   dragging,
   target,
@@ -2524,6 +2567,8 @@ function RowItem({
   name: string;
   /** The page's first row, which motion treats gently (D128). */
   first: boolean;
+  /** It meets the row above it, as on the site (D262): both draw a box, so the room between them is taken back. */
+  meets: boolean;
   line: "before" | "after" | null;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -2571,7 +2616,8 @@ function RowItem({
       {...markAttributes(row)}
       tabIndex={0}
       aria-label={`${name}, ${rowLayoutLabel(row)}`}
-      style={{ ...frame.style, transform: CSS.Translate.toString(transform), transition }}
+      // Meeting the row above (D262): its band's own -1rem and the list's room between rows taken back.
+      style={{ ...frame.style, ...(meets && { marginTop: `calc(-1rem - ${ROW_GAP})` }), transform: CSS.Translate.toString(transform), transition }}
       // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
       className={`${frame.className} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
     >
@@ -5462,7 +5508,7 @@ function FrameFields({
   /** Whose, when a dialog has two sets, such as a content grid's tiles. */
   what?: string;
   /** What is shown: the part's own, or at a size its values there (`viewAt()`). */
-  value: Pick<PartBase, "border" | "radius" | "shadow">;
+  value: Pick<PartBase, "border" | "radius" | "shadow" | "shadowOpacity">;
   onChange: (patch: Partial<PartBase>) => void;
   /** A part's frame differs by screen size (D179): the part, for where each value comes from, and how to give one back. */
   sized?: { part: PartBase; onPatch: (patch: Partial<PartBase>) => void };
@@ -5470,7 +5516,7 @@ function FrameFields({
   const { size } = useSizeEdit();
   const border = value.border;
   const name = (label: string) => (what ? `${what} ${label.toLowerCase()}` : label);
-  const mark = (field: "border" | "radius" | "shadow", label: string) =>
+  const mark = (field: "border" | "radius" | "shadow" | "shadowOpacity", label: string) =>
     sized ? { mark: <SizeMark part={sized.part} field={field} label={label} onPatch={sized.onPatch} />, muted: inheritedClass(sizeSource(sized.part, size, field), size) } : {};
   const atSize = Boolean(sized) && size !== "xl";
   return (
@@ -5521,8 +5567,46 @@ function FrameFields({
           ...(Object.keys(SHADOWS) as Shadow[]).map((shadow) => ({ value: shadow, label: SHADOWS[shadow].label })),
         ]}
         value={value.shadow ?? "none"}
-        onChange={(shadow) => onChange({ shadow: shadow === "none" ? undefined : shadow })}
+        // A shadow's opacity is of that shadow (D262): another shadow, or none, starts from its own again.
+        onChange={(shadow) => onChange({ shadow: shadow === "none" ? undefined : shadow, shadowOpacity: undefined })}
       />
+      {value.shadow && <ShadowOpacityField shadow={value.shadow} value={value.shadowOpacity} label={name("Shadow opacity")} {...mark("shadowOpacity", "Shadow opacity")} onChange={(shadowOpacity) => onChange({ shadowOpacity })} />}
+    </div>
+  );
+}
+
+/** How dark a shadow is (D262): a slider from none to solid, at the shadow's own opacity until it is moved, with a way back to it. */
+function ShadowOpacityField({
+  shadow,
+  value,
+  label,
+  mark,
+  muted = "",
+  onChange,
+}: {
+  shadow: Shadow;
+  value: number | undefined;
+  label: string;
+  mark?: ReactNode;
+  muted?: string;
+  onChange: (value: number | undefined) => void;
+}) {
+  const own = shadowOpacityOf(shadow);
+  const shown = value ?? own;
+  return (
+    <div className={`flex flex-col gap-1 ${muted}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-sm font-medium">
+          {label} <span className="font-normal text-muted">({shown}%)</span>
+        </span>
+        {mark}
+      </div>
+      <PixelRange value={shown} min={0} max={100} unit="%" label={label} onChange={onChange} className="max-w-64" />
+      {value !== undefined && value !== own && (
+        <button type="button" onClick={() => onChange(undefined)} className="self-start text-xs text-muted underline underline-offset-2">
+          Back to the shadow&apos;s own ({own}%)
+        </button>
+      )}
     </div>
   );
 }

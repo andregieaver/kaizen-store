@@ -6,6 +6,9 @@ import { newPageContent, type PageColumn, type PageContent, type PageRow } from 
 
 import { PageArticle } from "./page-article";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const PLACE = { pageId: null, owner: null, theme: { elements: undefined, sections: undefined } };
+
 vi.mock("server-only", () => ({}));
 
 /** A row of several lines of columns, as the site draws it (D187). */
@@ -17,7 +20,7 @@ const para = (id: string, words: string) => ({
 });
 const col = (id: string, words: string): PageColumn => ({ id, blocks: [para(`${id}-b`, words)] });
 const page = (row: PageRow): PageContent => ({ ...newPageContent(), title: "Page", rows: [row] });
-const draw = (row: PageRow) => renderToString(createElement(PageArticle, { content: page(row) }));
+const draw = (row: PageRow) => renderToString(createElement(PageArticle, { content: page(row), place: PLACE }));
 
 describe("a row of lines on the site", () => {
   const two: PageRow = {
@@ -43,5 +46,20 @@ describe("a row of lines on the site", () => {
     const out = draw(one);
     expect(out).toMatch(/<div class="[^"]*-g[^"]*"><div[^>]*class="kz-a /);
     expect(out).not.toMatch(/<div class="[^"]*-g[^"]*"><div><div/);
+  });
+});
+
+/** Rows that meet (D262): two rows next to each other that both draw a box take back the page's room between them. */
+describe("rows with boxes next to each other on the site", () => {
+  const grey = { type: "color" as const, color: "#eeeeee" };
+  const boxed = (id: string, extra: Partial<PageRow> = {}): PageRow => ({ id, type: "row", layout: "1", columns: [col(`${id}c`, id)], background: grey, ...extra });
+  const drawAll = (...rows: PageRow[]) => renderToString(createElement(PageArticle, { content: { ...page(rows[0]), rows }, place: PLACE }));
+  const MEETS = "margin-top:calc(2rem * -1)";
+
+  it("meet where both draw a box, and keep the room where one does not", () => {
+    const out = drawAll(boxed("one"), boxed("two"), { ...boxed("three"), background: undefined }, boxed("four"));
+    expect(out.split(MEETS)).toHaveLength(2);
+    expect(out.indexOf(MEETS)).toBeLessThan(out.indexOf(">two<"));
+    expect(out.indexOf(MEETS)).toBeGreaterThan(out.indexOf(">one<"));
   });
 });

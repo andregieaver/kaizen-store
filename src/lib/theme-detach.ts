@@ -30,7 +30,7 @@ function themableSettings(part: Part, isRow: boolean): Path[] {
     for (const key of TYPOGRAPHY_KEYS) add([...prefix, "typography", "text", key]);
     add([...prefix, "style", "margin"]);
     add([...prefix, "style", "padding"]);
-    for (const key of ["border", "radius", "shadow", "contentMax", ...(isRow ? ["background"] : [])]) add([...prefix, key]);
+    for (const key of ["border", "radius", "shadow", "shadowOpacity", "contentMax", ...(isRow ? ["background"] : [])]) add([...prefix, key]);
   };
   box([]);
   for (const size of SMALLER_SIZES) box(["at", size]);

@@ -91,8 +91,9 @@ export function DesignCards({
                   {card.looks.map((look) => {
                     const value = designLookValue(card.id, look.key);
                     return (
-                      <span key={look.key} className="flex flex-wrap items-center gap-x-2">
-                        <label className="flex cursor-pointer items-center gap-2">
+                      // Each at least 32 px high, so the radios are far enough apart to press (WCAG 2.5.8).
+                      <span key={look.key} className="flex min-h-8 flex-wrap items-center gap-x-2">
+                        <label className="flex min-h-8 cursor-pointer items-center gap-2">
                           <input type="radio" name={name} value={value} defaultChecked={value === chosen} data-starter={look.starterId ?? undefined} />
                           <span>
                             {look.name}

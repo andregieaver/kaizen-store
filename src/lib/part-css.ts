@@ -2,7 +2,7 @@ import { SIZES, SMALLER_SIZES, breakpointQueries, sizeRuns, sizesQuery, type Bre
 import {
   ROW_LAYOUTS,
   ROW_PADDING,
-  SHADOWS,
+  shadowCss,
   columnLines,
   imageDisplaySize,
   rowLayouts,
@@ -81,7 +81,7 @@ function spacingDecl(spacing: Spacing, dropMargin = false): Decl {
 }
 
 /** A border, rounded corners and a shadow as declarations (as `frameStyle()`). */
-function frameDecl(border: Border | null | undefined, radius: number | undefined, shadow: PartBase["shadow"] | null): Decl {
+function frameDecl(border: Border | null | undefined, radius: number | undefined, shadow: PartBase["shadow"] | null, shadowOpacity?: number): Decl {
   const out: Decl = {};
   if (border) {
     out["border-style"] = border.style;
@@ -89,11 +89,12 @@ function frameDecl(border: Border | null | undefined, radius: number | undefined
     for (const side of SIDES) out[`border-${side}-width`] = `${border.width[side]}px`;
   }
   if (radius) out["border-radius"] = `${radius}px`;
-  if (shadow) out["box-shadow"] = SHADOWS[shadow].css;
+  if (shadow) out["box-shadow"] = shadowCss(shadow, shadowOpacity);
   return out;
 }
 
-const frameAt = (part: PartBase, size: Size): Decl => frameDecl(valueAt(part, "border", size), valueAt(part, "radius", size), valueAt(part, "shadow", size));
+const frameAt = (part: PartBase, size: Size): Decl =>
+  frameDecl(valueAt(part, "border", size), valueAt(part, "radius", size), valueAt(part, "shadow", size), valueAt(part, "shadowOpacity", size));
 
 /** A row's or column's colour, see-through with an opacity, and what is behind it blurred (D86), at a size. */
 function colorDecl(part: PageRow | PageColumn, size: Size): Decl {

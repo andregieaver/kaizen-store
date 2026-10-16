@@ -8,6 +8,9 @@ import { newPageContent, type PageBlock, type PageContent } from "@/lib/page-con
 
 import { PageArticle } from "./page-article";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const PLACE = { pageId: null, owner: null, theme: { elements: undefined, sections: undefined } };
+
 // The page's server-only sections are imported but not drawn here.
 vi.mock("server-only", () => ({}));
 
@@ -52,7 +55,7 @@ const blocks: PageBlock[] = [
 
 describe("a page with bound blocks", () => {
   it("draws the fields' values, and each block's own content only where it keeps it", () => {
-    const html = renderToString(createElement(PageArticle, { content: bindPage(page(...blocks), groups) }));
+    const html = renderToString(createElement(PageArticle, { content: bindPage(page(...blocks), groups), place: PLACE }));
     expect(html).toContain("Oak table");
     expect(html).not.toContain("Own heading");
     expect(html).toContain("https://cdn.example.com/oak.webp");
@@ -64,7 +67,7 @@ describe("a page with bound blocks", () => {
   });
 
   it("with no fields read, draws only what keeps its own content", () => {
-    const html = renderToString(createElement(PageArticle, { content: page(...blocks) }));
+    const html = renderToString(createElement(PageArticle, { content: page(...blocks), place: PLACE }));
     expect(html).toContain("Kept heading");
     expect(html).not.toContain("Own heading");
     expect(html).not.toContain("Dropped heading");
@@ -72,7 +75,7 @@ describe("a page with bound blocks", () => {
   });
 
   it("shows the blocks' own content in a preview", () => {
-    const html = renderToString(createElement(PageArticle, { content: page(...blocks), inAdmin: true }));
+    const html = renderToString(createElement(PageArticle, { content: page(...blocks), place: PLACE, inAdmin: true }));
     expect(html).toContain("Own heading");
     expect(html).toContain("Dropped heading");
   });

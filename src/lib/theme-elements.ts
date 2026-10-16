@@ -104,7 +104,7 @@ export const hasThemeElements = (elements: ThemeElements | undefined): elements 
 // Laying the theme under a part
 // ---------------------------------------------------------------------------
 
-type Layered = Pick<PartBase, "style" | "border" | "radius" | "shadow" | "at" | "typography"> & { background?: unknown; contentMax?: number };
+type Layered = Pick<PartBase, "style" | "border" | "radius" | "shadow" | "shadowOpacity" | "at" | "typography"> & { background?: unknown; contentMax?: number };
 
 /** What a part (or an element) says at one size, every setting walked up from the size. */
 type Resolved = {
@@ -113,6 +113,7 @@ type Resolved = {
   border?: Border | null;
   radius?: number;
   shadow?: Shadow | null;
+  shadowOpacity?: number;
   background?: unknown;
   contentMax?: number | null;
   text: TypographyOverride;
@@ -129,6 +130,7 @@ function resolvedAt(part: Layered, size: Size): Resolved {
     border: valueAt(part, "border", size),
     radius: valueAt(part, "radius", size),
     shadow: valueAt(part, "shadow", size),
+    shadowOpacity: valueAt(part, "shadowOpacity", size),
     background: valueAt(part as { at?: SizeOverrides; background?: ColorBackground }, "background", size) ?? (size === "xl" ? part.background : undefined),
     contentMax: valueAt(part, "contentMax", size),
     text: typographyAt(part, "text", size),
@@ -174,13 +176,15 @@ export function layerUnder<P extends object>(part: P, element: ThemeElement | un
       border: pick(mine.border, given.border),
       radius: pick(mine.radius, given.radius),
       shadow: pick(mine.shadow, given.shadow),
+      // A shadow's opacity goes with the shadow it is of (D262): the part's own with its own shadow, else the theme's.
+      shadowOpacity: mine.shadow !== undefined ? mine.shadowOpacity : given.shadowOpacity,
       background: pick(mine.background, given.background),
       contentMax: pick(mine.contentMax, given.contentMax),
     };
     const settings: Record<string, unknown> = {};
     const style: Spacing = { ...(resolved.margin && { margin: resolved.margin }), ...(resolved.padding && { padding: resolved.padding }) };
     if (Object.keys(style).length > 0) settings.style = style;
-    for (const key of ["border", "radius", "shadow", "contentMax"] as const) if (resolved[key] !== undefined) settings[key] = resolved[key];
+    for (const key of ["border", "radius", "shadow", "shadowOpacity", "contentMax"] as const) if (resolved[key] !== undefined) settings[key] = resolved[key];
     if (Object.keys(text).length > 0) settings.typography = { text };
     if (size === "xl") {
       Object.assign(out, settings);
@@ -199,7 +203,7 @@ export function layerUnder<P extends object>(part: P, element: ThemeElement | un
   const merged: Partial<Record<SmallerSize, PartSizeSettings>> = {};
   for (const size of SMALLER_SIZES) {
     const rest: Record<string, unknown> = { ...(kept?.[size] ?? {}) };
-    for (const key of ["style", "border", "radius", "shadow", "contentMax", "background"]) delete rest[key];
+    for (const key of ["style", "border", "radius", "shadow", "shadowOpacity", "contentMax", "background"]) delete rest[key];
     const typography = { ...((rest.typography as Record<string, unknown> | undefined) ?? {}) };
     delete typography.text;
     const resolved = at[size] as Record<string, unknown> | undefined;
@@ -256,9 +260,31 @@ function themedBlock(block: PageBlock, elements: ThemeElements, above: readonly 
     return Object.keys(inner).length > 0 ? ({ ...block, themeInner: inner } as ThemedBlock) : block;
   }
   if (!element) return block;
-  // A dual button's frame is not the buttons' own: only its text takes the theme.
-  const given: ThemeElement = block.type === "dualButton" ? { ...(element.typography && { typography: element.typography }), ...(element.at && { at: textOnly(element.at) }) } : element;
+  // A dual button's frame is not the buttons' own: only its text takes the theme. A button shaped Pill or Square has corners of its own,
+  // which win over the theme's radius as any setting of its own does.
+  const given: ThemeElement =
+    block.type === "dualButton"
+      ? { ...(element.typography && { typography: element.typography }), ...(element.at && { at: textOnly(element.at) }) }
+      : block.type === "button" && block.shape
+        ? withoutRadius(element)
+        : element;
   return layerUnder(block, given, (size) => typographyKeysSet(above, size));
+}
+
+/** An element without its corner radius at any size. */
+function withoutRadius(element: ThemeElement): ThemeElement {
+  const { radius, at, ...rest } = element;
+  void radius;
+  if (!at) return rest;
+  const sized: SizeOverrides = {};
+  for (const size of SMALLER_SIZES) {
+    const settings = at[size];
+    if (!settings) continue;
+    const { radius: sizeRadius, ...others } = settings;
+    void sizeRadius;
+    if (Object.keys(others).length > 0) sized[size] = others;
+  }
+  return Object.keys(sized).length > 0 ? { ...rest, at: sized } : rest;
 }
 
 /** An element's overrides with only their typography. */
@@ -338,7 +364,7 @@ export function elementAsPart(key: ThemeElementKey, element: ThemeElement | unde
  */
 export function elementFromPart(part: Record<string, unknown>): ThemeElement | undefined {
   // A row's widths are the row element's alone (D190).
-  const keys = ["style", "border", "radius", "shadow", "background", "at", "typography", ...(part.type === "row" ? ["width", "contentWidth"] : [])];
+  const keys = ["style", "border", "radius", "shadow", "shadowOpacity", "background", "at", "typography", ...(part.type === "row" ? ["width", "contentWidth"] : [])];
   const kept = Object.fromEntries(keys.flatMap((key) => (part[key] === undefined ? [] : [[key, part[key]]])));
   return Object.keys(kept).length > 0 ? (kept as ThemeElement) : undefined;
 }

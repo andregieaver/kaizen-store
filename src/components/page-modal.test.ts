@@ -11,6 +11,9 @@ import type { RowModal } from "@/lib/page-modal";
 import { ModalRow, PageRowView, pageRoomClass } from "./page-article";
 import { PageModal } from "./page-modal";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const NO_THEME = { elements: undefined, sections: undefined };
+
 // The page's server-only sections are imported but not drawn here; the place's language is the store's Norwegian.
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/place-lang", () => ({ placeLang: async () => "nb" }));
@@ -116,7 +119,7 @@ describe("a modal row on a page", () => {
         radius: 16,
         shadow: "lg",
       }),
-      place: { pageId: "p", owner: null },
+      place: { pageId: "p", owner: null, theme: NO_THEME },
       inAdmin: false,
     });
     const out = renderToString(element).replace(/<!-- -->/g, "");
@@ -151,7 +154,7 @@ describe("a modal row on a page", () => {
 
   it("leaves an ordinary row as it was", () => {
     const out = renderToString(
-      createElement(PageRowView, { row: row("a", "Plain row"), place: { pageId: "p", owner: null } }),
+      createElement(PageRowView, { row: row("a", "Plain row"), place: { pageId: "p", owner: null, theme: NO_THEME } }),
     );
     expect(out).toContain("Plain row");
     expect(out).not.toContain("<dialog");

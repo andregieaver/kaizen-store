@@ -85,6 +85,7 @@ export const SIZE_KEYS = [
   "border",
   "radius",
   "shadow",
+  "shadowOpacity",
   "background",
   "backdropBlur",
   "stack",

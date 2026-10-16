@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { PageBuilder } from "./page-builder";
-import { RAIL_KEYS, Rail, isFolded, railColumns } from "./builder-rails";
+import { CANVAS_MIN, RAIL_KEYS, RAIL_WIDTH, RAIL_WIDTH_KEYS, Rail, RailResizer, draggedWidth, isFolded, railTemplate, railWidthOf } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
 import { SHARING_NOTE, SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
@@ -243,10 +243,44 @@ describe("the sidebars' rails", () => {
   });
 
   it("give the canvas the room a folded sidebar frees", () => {
-    expect(railColumns(false, false)).toBe("lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]");
-    expect(railColumns(true, false)).toBe("lg:grid-cols-[2.75rem_minmax(0,2fr)_minmax(0,1fr)]");
-    expect(railColumns(false, true)).toBe("lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_2.75rem]");
-    expect(railColumns(true, true)).toBe("lg:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem]");
+    const open = { folded: false, width: null };
+    const folded = { folded: true, width: null };
+    expect(railTemplate(open, open)).toBe("minmax(0,1fr) 1.5rem minmax(0,2fr) 1.5rem minmax(0,1fr)");
+    expect(railTemplate(folded, open)).toBe("2.75rem 1.5rem minmax(0,2fr) 1.5rem minmax(0,1fr)");
+    expect(railTemplate(open, folded)).toBe("minmax(0,1fr) 1.5rem minmax(0,2fr) 1.5rem 2.75rem");
+    // Folded, the width it was dragged to waits for it to open again.
+    expect(railTemplate({ folded: true, width: 400 }, folded)).toBe("2.75rem 1.5rem minmax(0,2fr) 1.5rem 2.75rem");
+  });
+
+  it("are as wide as they were dragged, within their limits, leaving the canvas its room (D262)", () => {
+    expect(railTemplate({ folded: false, width: 420 }, { folded: false, width: 300 })).toBe("420px 1.5rem minmax(0,2fr) 1.5rem 300px");
+    const room = { total: 1600, other: 360 };
+    // The left edge moves with the pointer; the right sidebar grows as its edge moves left.
+    expect(draggedWidth(360, 100, "left", room)).toBe(460);
+    expect(draggedWidth(360, 100, "right", room)).toBe(260);
+    expect(draggedWidth(360, -500, "left", room)).toBe(RAIL_WIDTH.min);
+    expect(draggedWidth(360, 2000, "left", room)).toBe(RAIL_WIDTH.max);
+    // In a narrow window the canvas keeps its room first.
+    expect(draggedWidth(360, 400, "left", { total: 1100, other: 300 })).toBe(1100 - 300 - CANVAS_MIN);
+    expect(draggedWidth(360, 400, "left", { total: 800, other: 300 })).toBeNull();
+    // What is kept is read back within the limits; anything else is the usual share.
+    expect(railWidthOf("400")).toBe(400);
+    expect(railWidthOf("9999")).toBe(RAIL_WIDTH.max);
+    expect(railWidthOf("wide")).toBeNull();
+    expect(railWidthOf(null)).toBeNull();
+    expect(RAIL_WIDTH_KEYS.left).not.toBe(RAIL_WIDTH_KEYS.right);
+  });
+
+  it("have an edge to drag that says what it does, and none while folded", () => {
+    const edge = renderToString(createElement(RailResizer, { side: "left", label: "building blocks", folded: false, width: 400, onWidth: () => {}, measure: () => null }));
+    expect(edge).toContain('role="separator"');
+    expect(edge).toContain('aria-label="Width of the building blocks"');
+    expect(edge).toContain('aria-valuenow="400"');
+    expect(edge).toContain('tabindex="0"');
+    const usual = renderToString(createElement(RailResizer, { side: "right", label: "settings", folded: false, width: null, onWidth: () => {}, measure: () => null }));
+    expect(usual).toContain('aria-valuetext="Usual width"');
+    const folded = renderToString(createElement(RailResizer, { side: "left", label: "building blocks", folded: true, width: 400, onWidth: () => {}, measure: () => null }));
+    expect(folded).not.toContain("separator");
   });
 
   it("are kept apart per side, and only a stored 'folded' folds", () => {
@@ -320,7 +354,10 @@ describe("the builder's sidebars", () => {
     expect(out).toContain('title="Hide building blocks"');
     expect(out.match(/aria-expanded="true"/g)).toHaveLength(2);
     expect(out).not.toContain('aria-label="Show ');
-    expect(out).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]");
+    expect(out).toContain("--builder-cols:minmax(0,1fr) 1.5rem minmax(0,2fr) 1.5rem minmax(0,1fr)");
+    // Each open sidebar's edge by the canvas can be dragged (D262).
+    expect(out).toContain('aria-label="Width of the building blocks"');
+    expect(out).toContain('aria-label="Width of the settings"');
     expect(out).toContain("Page title");
   });
 

@@ -176,6 +176,17 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </section>
         );
       }
+      // A product of one variant has nothing to choose: no Variants heading or box, only its stock, price and Add to cart.
+      if (product.variants.length === 1) {
+        return (
+          <section aria-label={m.addToCart} className={forBusiness}>
+            <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
+              <MemberNotice store={store} m={m} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} />
+            </Suspense>
+          </section>
+        );
+      }
       return (
         <section aria-labelledby={headingId} className={forBusiness}>
           <h2 id={headingId} className="mb-2 font-medium">
@@ -715,7 +726,8 @@ async function VariantsWithStock({
             const digital = variant.delivery === "digital";
             return {
               id: variant.id,
-              label: optionLabel(m, variant.options) || product.title,
+              // A product's only variant is named by its options alone: without any, it is the product, whose title the page shows.
+              label: optionLabel(m, variant.options) || (product.variants.length > 1 ? product.title : ""),
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
               note: digital ? m.instantDownload : stockNote(availability.get(variant.id), m),
               available: available(variant),

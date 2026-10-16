@@ -150,6 +150,18 @@ describe("the theme under a page's rows", () => {
     expect(typographyAt(themedDual as never, "text", "xl").weight).toBe(700);
   });
 
+  it("keeps a Pill or Square button's own corners over the theme's radius, at every size, and its text still themed", () => {
+    const sized: ThemeElements = { button: { ...elements.button, at: { sm: { radius: 4, typography: { text: { weight: 600 } } } } } };
+    for (const shape of ["pill", "square"] as const) {
+      const button = { id: "b", type: "button", label: "Go", href: "/x", shape } as PageBlock;
+      const [themed] = themedRows([rowOf([button])], sized)[0].columns[0].blocks as (PageBlock & { radius?: number; at?: Record<string, { radius?: number }> })[];
+      expect(themed.radius).toBeUndefined();
+      expect(themed.at?.sm?.radius).toBeUndefined();
+      expect(typographyAt(themed as never, "text", "xl").weight).toBe(700);
+      expect(typographyAt(themed as never, "text", "sm").weight).toBe(600);
+    }
+  });
+
   it("changes nothing where the theme says nothing, and never changes the rows given", () => {
     const rows = [rowOf([heading()])];
     expect(themedRows(rows, undefined)).toBe(rows);

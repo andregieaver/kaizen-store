@@ -47,6 +47,35 @@ describe("the rail", () => {
     path.current = "/admin/s/settings/tax";
     expect(rail()).toContain('aria-label="Settings" aria-current="page"');
   });
+
+  it("has a button at its foot that shows the sections' names beside their icons, and none where it is narrowed for a tool (D262)", () => {
+    const out = rail();
+    expect(out).toContain('aria-label="Show the sections&#x27; names"');
+    // Each name is there for the wider rail, hidden until the browser's choice on <html> shows it.
+    expect(out).toMatch(/<span aria-hidden="true" class="hidden [^"]*\[\[data-rail=names\]_&amp;\]:inline">Orders<\/span>/);
+    const narrow = renderToStaticMarkup(h(AdminRail, { items: tabs, home: { href: "/admin", label: "Home" }, label: "Main sections", collapseOn: "^/admin/s/orders" }));
+    expect(narrow).not.toContain("names");
+  });
+
+  it("is set on <html> before the page is drawn, from the browser's choice, and kept by the button", async () => {
+    const { RAIL_NAMES_KEY, railNamesScript, setRailNames } = await import("@/lib/admin-rail");
+    const attributes = new Map<string, string>();
+    const stored = new Map<string, string>();
+    const root = { setAttribute: (k: string, v: string) => attributes.set(k, v), removeAttribute: (k: string) => attributes.delete(k), getAttribute: (k: string) => attributes.get(k) ?? null };
+    const storage = { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => stored.set(k, v), removeItem: (k: string) => stored.delete(k) };
+    new Function("document", "localStorage", railNamesScript())({ documentElement: root }, storage);
+    expect(attributes.has("data-rail")).toBe(false);
+    stored.set(RAIL_NAMES_KEY, "names");
+    new Function("document", "localStorage", railNamesScript())({ documentElement: root }, storage);
+    expect(attributes.get("data-rail")).toBe("names");
+    vi.stubGlobal("document", { documentElement: root });
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("window", { dispatchEvent: () => true });
+    setRailNames(false);
+    expect(attributes.has("data-rail")).toBe(false);
+    expect(stored.has(RAIL_NAMES_KEY)).toBe(false);
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("the frame in each layout", () => {

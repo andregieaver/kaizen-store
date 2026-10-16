@@ -60,8 +60,8 @@ export type OfferedVariant = {
 
 /**
  * A product's variants to buy: one dropdown with each variant's picture,
- * stock and price, then the chosen one's price and Add to cart. A single
- * variant is shown as it is.
+ * stock and price, then the chosen one's price and Add to cart, in a box.
+ * A single variant is shown as it is, with no box: there is nothing to choose.
  */
 export function VariantPurchase({
   variants,
@@ -86,7 +86,7 @@ export function VariantPurchase({
   if (!variant) return null;
   const several = variants.length > 1;
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+    <div className={several ? "flex flex-col gap-3 rounded-lg border border-border p-3" : "flex flex-col gap-3"}>
       {several && (
         <Dropdown
           label={labels.chooseVariant}

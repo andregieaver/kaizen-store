@@ -5,8 +5,9 @@ import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * The builder's two sidebars can be folded away to leave the canvas more room (D125): a slim rail with a button to open
- * one again. Each side's choice is kept in this browser, and only there; both start open, and the page works the same
- * where storage is blocked (the choice then lasts until the page is left).
+ * one again; and an open one can be made wider or narrower by dragging its edge by the canvas (D262). Each side's choices
+ * are kept in this browser, and only there; both start open at their usual width, and the page works the same where
+ * storage is blocked (the choice then lasts until the page is left).
  */
 
 export type RailSide = "left" | "right";
@@ -16,31 +17,46 @@ export const RAIL_KEYS: Record<RailSide, string> = {
   right: "kaizen_admin_builder_right",
 };
 
+/** Where an open sidebar's width is kept, in pixels; none is its usual share of the room. */
+export const RAIL_WIDTH_KEYS: Record<RailSide, string> = {
+  left: "kaizen_admin_builder_left_width",
+  right: "kaizen_admin_builder_right_width",
+};
+
+/** How narrow and how wide a sidebar can be dragged, in pixels; the canvas keeps at least `CANVAS_MIN`. */
+export const RAIL_WIDTH = { min: 240, max: 720 } as const;
+export const CANVAS_MIN = 400;
+
 /** The stored word for a folded sidebar; anything else, or nothing, is open. */
 export const FOLDED = "folded";
 
 const listeners = new Set<() => void>();
-/** This page's own memory of the choices, for where storage is missing; a `storage` event from another tab clears it. */
-const memory: Partial<Record<RailSide, boolean>> = {};
+/** This page's own memory of the choices by key, for where storage is missing; a `storage` event from another tab clears it. */
+const memory = new Map<string, string | null>();
 
 /** Whether a stored value means folded. */
 export const isFolded = (value: string | null): boolean => value === FOLDED;
 
-function readFolded(side: RailSide): boolean {
-  const known = memory[side];
-  if (known !== undefined) return known;
+/** A stored width as a width a sidebar can have, or null (its usual share). */
+export function railWidthOf(value: string | null): number | null {
+  const width = Math.round(Number(value));
+  return value !== null && value !== "" && Number.isFinite(width) ? Math.min(Math.max(width, RAIL_WIDTH.min), RAIL_WIDTH.max) : null;
+}
+
+function readStored(key: string): string | null {
+  if (memory.has(key)) return memory.get(key)!;
   try {
-    return isFolded(window.localStorage.getItem(RAIL_KEYS[side]));
+    return window.localStorage.getItem(key);
   } catch {
-    return false;
+    return null;
   }
 }
 
-function writeFolded(side: RailSide, folded: boolean): void {
-  memory[side] = folded;
+function writeStored(key: string, value: string | null): void {
+  memory.set(key, value);
   try {
-    if (folded) window.localStorage.setItem(RAIL_KEYS[side], FOLDED);
-    else window.localStorage.removeItem(RAIL_KEYS[side]);
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
   } catch {
     /* kept for this page only */
   }
@@ -50,8 +66,8 @@ function writeFolded(side: RailSide, folded: boolean): void {
 function subscribe(changed: () => void): () => void {
   const onStorage = (event: StorageEvent) => {
     // Another tab chose: what it stored is the truth again.
-    for (const side of ["left", "right"] as const)
-      if (event.key === null || event.key === RAIL_KEYS[side]) delete memory[side];
+    if (event.key === null) memory.clear();
+    else memory.delete(event.key);
     changed();
   };
   listeners.add(changed);
@@ -69,11 +85,22 @@ function subscribe(changed: () => void): () => void {
 export function useFolded(side: RailSide): [boolean, (folded: boolean) => void] {
   const folded = useSyncExternalStore(
     subscribe,
-    () => readFolded(side),
+    () => isFolded(readStored(RAIL_KEYS[side])),
     () => false,
   );
-  const set = useCallback((next: boolean) => writeFolded(side, next), [side]);
+  const set = useCallback((next: boolean) => writeStored(RAIL_KEYS[side], next ? FOLDED : null), [side]);
   return [folded, set];
+}
+
+/** An open sidebar's width in pixels (null: its usual share), and a way to change it; null again goes back to the usual. */
+export function useRailWidth(side: RailSide): [number | null, (width: number | null) => void] {
+  const width = useSyncExternalStore(
+    subscribe,
+    () => railWidthOf(readStored(RAIL_WIDTH_KEYS[side])),
+    () => null,
+  );
+  const set = useCallback((next: number | null) => writeStored(RAIL_WIDTH_KEYS[side], next === null ? null : String(railWidthOf(String(next)))), [side]);
+  return [width, set];
 }
 
 const ICONS = {
@@ -169,15 +196,107 @@ export function RailHeader({
   );
 }
 
+/** The room between a sidebar and the canvas, which is also where its edge is dragged (`RailResizer`). */
+export const RAIL_GAP = "1.5rem";
+
 /**
- * The columns of the builder for what is folded. Written out in full so Tailwind finds them: the side that is folded is a
- * narrow column, and the canvas keeps its share of what is left (twice the open sidebar's).
+ * The builder's columns on a computer (`grid-template-columns`): each sidebar, folded to a narrow column, at the width it was
+ * dragged to, or at its usual share (the canvas has twice an open sidebar's); the canvas takes the rest; between them the room
+ * where their edges are dragged.
  */
-export function railColumns(leftFolded: boolean, rightFolded: boolean): string {
-  if (leftFolded && rightFolded) return "lg:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem]";
-  if (leftFolded) return "lg:grid-cols-[2.75rem_minmax(0,2fr)_minmax(0,1fr)]";
-  if (rightFolded) return "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_2.75rem]";
-  return "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]";
+export function railTemplate(left: { folded: boolean; width: number | null }, right: { folded: boolean; width: number | null }): string {
+  const side = ({ folded, width }: { folded: boolean; width: number | null }) => (folded ? "2.75rem" : width !== null ? `${width}px` : "minmax(0,1fr)");
+  return `${side(left)} ${RAIL_GAP} minmax(0,2fr) ${RAIL_GAP} ${side(right)}`;
+}
+
+/** The width a sidebar is dragged to: within its limits, and leaving the canvas its room. */
+export function draggedWidth(start: number, moved: number, side: RailSide, room: { total: number; other: number }): number | null {
+  const wanted = start + (side === "left" ? moved : -moved);
+  const most = Math.min(RAIL_WIDTH.max, room.total - room.other - CANVAS_MIN);
+  if (most < RAIL_WIDTH.min) return null;
+  return Math.round(Math.min(Math.max(wanted, RAIL_WIDTH.min), most));
+}
+
+/**
+ * The edge between an open sidebar and the canvas (D262): dragged with the pointer, or moved with the arrow keys, to make the
+ * sidebar wider or narrower; a double press, Enter or Home gives it back its usual share. On a phone, where the sidebars stack,
+ * it is not there. Folded, the room stays and nothing can be dragged.
+ */
+export function RailResizer({
+  side,
+  label,
+  folded,
+  width,
+  onWidth,
+  measure,
+}: {
+  side: RailSide;
+  label: string;
+  folded: boolean;
+  width: number | null;
+  onWidth: (width: number | null) => void;
+  /** The sidebar's width now, the other's, and the whole room, as drawn. */
+  measure: () => { own: number; other: number; total: number } | null;
+}) {
+  // The room between the sidebar and the canvas; its half by the sidebar is what is dragged (the canvas reaches into the other half for its rows' tools).
+  if (folded) return <div aria-hidden className="hidden lg:block" />;
+  const step = (by: number) => {
+    const room = measure();
+    if (!room) return;
+    const next = draggedWidth(width ?? room.own, by, side, room);
+    if (next !== null) onWidth(next);
+  };
+  return (
+    <div className={`hidden lg:flex ${side === "left" ? "justify-start" : "justify-end"}`}>
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={`Width of the ${label}`}
+      aria-valuenow={width ?? undefined}
+      aria-valuemin={RAIL_WIDTH.min}
+      aria-valuemax={RAIL_WIDTH.max}
+      aria-valuetext={width === null ? "Usual width" : `${width} pixels`}
+      tabIndex={0}
+      title={`Drag to make the ${label} wider or narrower. Double-click for the usual width.`}
+      onPointerDown={(event) => {
+        const room = measure();
+        if (!room || event.button !== 0) return;
+        event.preventDefault();
+        const target = event.currentTarget;
+        target.setPointerCapture(event.pointerId);
+        const startX = event.clientX;
+        const startWidth = room.own;
+        const move = (moving: PointerEvent) => {
+          const next = draggedWidth(startWidth, moving.clientX - startX, side, room);
+          if (next !== null) onWidth(next);
+        };
+        const end = () => {
+          target.removeEventListener("pointermove", move);
+          target.removeEventListener("pointerup", end);
+          target.removeEventListener("pointercancel", end);
+        };
+        target.addEventListener("pointermove", move);
+        target.addEventListener("pointerup", end);
+        target.addEventListener("pointercancel", end);
+      }}
+      onDoubleClick={() => onWidth(null)}
+      onKeyDown={(event) => {
+        const by = event.shiftKey ? 64 : 16;
+        if (event.key === "ArrowLeft") step(side === "left" ? -by : by);
+        else if (event.key === "ArrowRight") step(side === "left" ? by : -by);
+        else if (event.key === "Enter" || event.key === "Home") onWidth(null);
+        else return;
+        event.preventDefault();
+      }}
+      className="group relative z-10 flex w-3 cursor-col-resize touch-none justify-center rounded-pill outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      <span
+        aria-hidden
+        className="my-auto h-16 w-1 rounded-pill bg-line transition-colors group-hover:bg-brand group-focus-visible:bg-brand group-active:bg-brand"
+      />
+    </div>
+    </div>
+  );
 }
 
 /**

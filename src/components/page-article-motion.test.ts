@@ -9,6 +9,9 @@ import { ModalRow, PageArticle } from "./page-article";
 import { MotionRuntime } from "./motion-runtime";
 import { MotionSupport } from "./motion-support";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const NO_THEME = { elements: undefined, sections: undefined };
+
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/place-lang", () => ({ placeLang: async () => "nb" }));
 
@@ -38,7 +41,7 @@ const row = (id: string, columns: PageColumn[], extra: Partial<PageRow> = {}): P
 });
 const page = (...rows: PageRow[]): PageContent => ({ ...newPageContent(), title: "Motion", slug: "motion", rows });
 const draw = (content: PageContent) =>
-  renderToString(createElement(PageArticle, { content, place: { pageId: "p", owner: null }, inAdmin: true })).replace(
+  renderToString(createElement(PageArticle, { content, place: { pageId: "p", owner: null, theme: NO_THEME }, inAdmin: true })).replace(
     /<!-- -->/g,
     "",
   );
@@ -57,7 +60,7 @@ function find(node: ReactNode, type: unknown, into: ReactElement[] = []): ReactE
   return into;
 }
 const needs = (content: PageContent) => {
-  const tree = PageArticle({ content, place: { pageId: "p", owner: null } });
+  const tree = PageArticle({ content, place: { pageId: "p", owner: null, theme: NO_THEME } });
   const [support] = find(tree, MotionSupport);
   return (support.props as { needs: { js: boolean; view: boolean; any: boolean } }).needs;
 };
@@ -98,7 +101,7 @@ describe("a page with motion on the server", () => {
     expect(out).not.toContain("data-fx");
     expect(out).not.toContain("<noscript");
     expect(needs(plain)).toEqual({ js: false, view: false, any: false });
-    expect(find(PageArticle({ content: plain, place: { pageId: "p", owner: null } }), MotionRuntime)).toHaveLength(0);
+    expect(find(PageArticle({ content: plain, place: { pageId: "p", owner: null, theme: NO_THEME } }), MotionRuntime)).toHaveLength(0);
   });
 
   it("carries a no-script fallback when something waits for a waypoint, and clips its sides", () => {
@@ -119,7 +122,7 @@ describe("a page with motion on the server", () => {
       row("r1", [column("c1", [heading("h1", "Hi", fadeUp)])], { motion: { hover: { effect: "glow" } } }),
     );
     expect(needs(css)).toEqual({ js: false, view: false, any: true });
-    expect(find(PageArticle({ content: css, place: { pageId: "p", owner: null } }), MotionRuntime)).toHaveLength(0);
+    expect(find(PageArticle({ content: css, place: { pageId: "p", owner: null, theme: NO_THEME } }), MotionRuntime)).toHaveLength(0);
   });
 
   it("gives a staggered row's columns the row's entrance and their number, and holds the row itself still", () => {
@@ -163,7 +166,7 @@ describe("a page with motion on the server", () => {
     const modal = row("m", [column("mc", [heading("mh", "Offer", fadeUp)])], {
       modal: { key: "offer", triggers: { button: true }, frequency: "always", size: "md" },
     });
-    const element = await ModalRow({ row: modal, place: { pageId: "p", owner: null }, inAdmin: false });
+    const element = await ModalRow({ row: modal, place: { pageId: "p", owner: null, theme: NO_THEME }, inAdmin: false });
     const out = renderToString(element).replace(/<!-- -->/g, "");
     expect(out).toContain("Offer");
     expect(out).toMatch(/data-fx-enter="fade-up"[^>]*data-fx-trigger="view"/);

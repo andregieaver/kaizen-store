@@ -372,6 +372,21 @@ export const SHADOWS = {
 } as const;
 export type Shadow = keyof typeof SHADOWS;
 
+/** A shadow's opacity as a slider shows it, in per cent: its darkest layer's (D262). */
+export const shadowOpacityOf = (shadow: Shadow): number => Math.round(Math.max(...shadowAlphas(SHADOWS[shadow].css)) * 100);
+const shadowAlphas = (css: string) => [...css.matchAll(/\/ ([\d.]+)\)/g)].map((match) => Number(match[1]));
+
+/**
+ * A shadow's CSS (D49), at an opacity of its own where one is set (D262): its darkest layer at that opacity, the others in the same
+ * proportion, so a shadow can be fainter or darker than it comes.
+ */
+export function shadowCss(shadow: Shadow, opacity?: number | null): string {
+  const css = SHADOWS[shadow].css;
+  if (opacity === undefined || opacity === null) return css;
+  const darkest = Math.max(...shadowAlphas(css));
+  return css.replace(/\/ ([\d.]+)\)/g, (_, alpha: string) => `/ ${Math.round(((Number(alpha) / darkest) * opacity) / 100 * 1000) / 1000})`);
+}
+
 /**
  * What every row, column and block can have (D47–D49): margin and padding,
  * a border, rounded corners and a shadow, and an id and classes of its own
@@ -384,6 +399,8 @@ export type PartBase = {
   /** Corner radius in pixels. */
   radius?: number;
   shadow?: Shadow;
+  /** The shadow's opacity in per cent (D262, `shadowCss()`): the shadow's own unless set. */
+  shadowOpacity?: number;
   htmlId?: string;
   className?: string;
   /** Entrance, hover and scroll effects (D128, `src/lib/motion.ts`). */
@@ -424,6 +441,7 @@ export type PartSizeSettings = {
   border?: Border | null;
   radius?: number;
   shadow?: Shadow | null;
+  shadowOpacity?: number;
   background?: ColorBackground | null;
   backdropBlur?: number | null;
   /** A row's columns (or a dual button's two) one under another. */
@@ -707,6 +725,7 @@ export type GridTile = {
   border?: Border;
   radius?: number;
   shadow?: Shadow;
+  shadowOpacity?: number;
 };
 
 /** Custom grid items (D155): the most one grid holds, beyond `ITEMS_MAX` because a copied grid can be large; still one block. */
@@ -1993,7 +2012,7 @@ export function blockText(block: PageBlock): string {
 const panelText = (items: PanelItem[]) => items.map((item) => `${inlinePlain(item.title)} ${richTextPlain(item.body)}`.trim()).join(" ");
 
 /** CSS for a part's border, rounded corners and shadow (D49); nothing for what it does not have. */
-export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow">): Record<string, string> {
+export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow" | "shadowOpacity">): Record<string, string> {
   const css: Record<string, string> = {};
   if (part.border) {
     css.borderStyle = part.border.style;
@@ -2003,7 +2022,7 @@ export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow">)
     }
   }
   if (part.radius) css.borderRadius = `${part.radius}px`;
-  if (part.shadow) css.boxShadow = SHADOWS[part.shadow].css;
+  if (part.shadow) css.boxShadow = shadowCss(part.shadow, part.shadowOpacity);
   return css;
 }
 
@@ -2298,6 +2317,7 @@ const radiusSchema = z
   .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
   .optional();
 const shadowSchema = z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional();
+const shadowOpacitySchema = z.number().int("A shadow's opacity is whole per cents.").min(0).max(100, "A shadow's opacity is 0 to 100%.").optional();
 const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
 /** How much what is behind a part is blurred (D86), with no background or a colour. */
 const backdropBlur = z.number().int().min(1).max(BACKDROP_BLUR_MAX).optional();
@@ -2331,6 +2351,7 @@ const sizeSettings = z.object({
   border: borderSchema.or(z.null()),
   radius: radiusSchema,
   shadow: shadowSchema.or(z.null()),
+  shadowOpacity: shadowOpacitySchema,
   background: colorBackground.nullable().optional(),
   backdropBlur: backdropBlur.or(z.null()),
   stack: z.boolean().optional(),
@@ -2380,6 +2401,7 @@ export type ThemeElement = {
   border?: Border;
   radius?: number;
   shadow?: Shadow;
+  shadowOpacity?: number;
   /** A row's colour behind it. */
   background?: ColorBackground;
   /** A row's width (D190): the content's (the default) or the whole screen's, as `PageRow.width`; a row's own choice wins. */
@@ -2397,6 +2419,7 @@ export const themeElementSchema = z
     border: borderSchema,
     radius: radiusSchema,
     shadow: shadowSchema,
+    shadowOpacity: shadowOpacitySchema,
     background: colorBackground.optional(),
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
@@ -2414,6 +2437,7 @@ const partBase = {
   border: borderSchema,
   radius: radiusSchema,
   shadow: shadowSchema,
+  shadowOpacity: shadowOpacitySchema,
   at: sizeOverrides,
   visibility,
   typography: typographyGroupsSchema,
@@ -2679,6 +2703,7 @@ const contentGridBlock = z
       border: partBase.border,
       radius: partBase.radius,
       shadow: partBase.shadow,
+      shadowOpacity: partBase.shadowOpacity,
     })
     .optional(),
   gap: z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space between tiles at ${GRID_GAP_MAX} pixels or less.`),

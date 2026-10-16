@@ -25,6 +25,9 @@ import { PageArticle } from "./page-article";
 import { SHAPES } from "./page-block";
 import { blockBox } from "./page-parts";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const PLACE = { pageId: null, owner: null, theme: { elements: undefined, sections: undefined } };
+
 // The page's server-only sections are imported but not drawn here.
 vi.mock("server-only", () => ({}));
 
@@ -48,7 +51,7 @@ const rowOf = (id: string, ...blocks: PageBlock[]): PageRow => ({
   columns: [{ id: `${id}c`, blocks }],
 });
 const page = (...rows: PageRow[]): PageContent => ({ ...newPageContent(), title: "Page", rows });
-const draw = (content: PageContent) => renderToString(createElement(PageArticle, { content }));
+const draw = (content: PageContent) => renderToString(createElement(PageArticle, { content, place: PLACE }));
 /** One picture block, alone on the page's first row. */
 const drawOne = (block: PageBlock) => draw(page(rowOf("r1", block)));
 

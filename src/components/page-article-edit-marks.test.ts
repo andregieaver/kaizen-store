@@ -6,6 +6,9 @@ import { newPageContent, type PageBlock, type PageContent, type PageRow } from "
 
 import { ModalRow, PageArticle } from "./page-article";
 
+// Drawn without a site's theme: what is tested here is the page's own (D182 lays a theme under it on the site).
+const NO_THEME = { elements: undefined, sections: undefined };
+
 // The page's server-only sections are imported but not drawn here; the place's language is the store's Norwegian.
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/place-lang", () => ({ placeLang: async () => "nb" }));
@@ -29,7 +32,7 @@ const draw = (content: PageContent, over: { pageId?: string | null; preview?: bo
   renderToString(
     createElement(PageArticle, {
       content,
-      place: { pageId: over.pageId === undefined ? PAGE : over.pageId, owner: null },
+      place: { pageId: over.pageId === undefined ? PAGE : over.pageId, owner: null, theme: NO_THEME },
       inAdmin: over.preview ?? false,
       editable: over.editable ?? true,
     }),
@@ -71,7 +74,7 @@ describe("a page on the live site", () => {
 
   it("marks nothing in a modal: its words are the modal's own, opened by a trigger", async () => {
     const inModal = row("m", [heading("mh", "In a window"), para("mt", "Words")], { modal: { key: "offer", triggers: { button: true }, frequency: "always", size: "md" } });
-    const html = renderToString(await ModalRow({ row: inModal, place: { pageId: PAGE, owner: null }, inAdmin: false }));
+    const html = renderToString(await ModalRow({ row: inModal, place: { pageId: PAGE, owner: null, theme: NO_THEME }, inAdmin: false }));
     expect(html).toContain("In a window");
     expect(html).not.toMatch(/data-kz-edit/);
   });

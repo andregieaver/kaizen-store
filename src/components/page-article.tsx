@@ -8,6 +8,8 @@ import { t } from "@/lib/i18n";
 import { blockTarget, motionNeeds, partFx } from "@/lib/motion-attrs";
 import { flowRows } from "@/lib/page-modal";
 import { rowWidthStyle } from "@/lib/part-css";
+import { ROW_GAP, meetsAbove, rowAbove } from "@/lib/row-join";
+import type { ThemeLayers } from "@/lib/section-styles";
 import { themedRows } from "@/lib/theme-elements";
 import { themeLayersFor } from "@/server/theme-elements";
 import type { GridPlace } from "@/server/content-grid";
@@ -84,8 +86,18 @@ export function PageArticle({
       {/* The page's own CSS (D100), for the whole page. */}
       {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
-      {rows.map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} first={row === first} editable={editable} />
+      {rows.map((row, index) => (
+        <PageRowView
+          key={row.id}
+          row={row}
+          // The row drawn above it in the page's flow (a modal's row is not), which it meets when both draw a box (D262).
+          above={rowAbove(rows, index)}
+          place={place}
+          renderBlock={renderBlock}
+          inAdmin={inAdmin}
+          first={row === first}
+          editable={editable}
+        />
       ))}
       <MotionSupport needs={motion} />
     </article>
@@ -114,6 +126,8 @@ const seenByAll = (part: { visibility?: { show?: unknown } }) => part.visibility
  */
 export function PageRowView(props: {
   row: PageRow;
+  /** The row drawn above it in a page's flow: where both draw a box, they meet with no room between them (D262, `meetsAbove()`). */
+  above?: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
   /** A preview in the admin: a modal there does not open by itself. */
@@ -125,19 +139,27 @@ export function PageRowView(props: {
   /** Its headings and texts are marked for the staff's "Edit text" (D192): `PageArticle`'s. */
   editable?: boolean;
 }) {
-  // A store's row is drawn with its theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons).
-  return props.place.owner ? <ThemedRowView {...props} /> : <RowView {...props} />;
+  // A row is drawn with its site's theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons): a store's, or
+  // Kaizena Flow's own where the place has no owner (D235). A place that brings the layers (a preview of an installed theme, D244, or a
+  // layout drawn with its store at hand) is drawn with them at once.
+  const layers = props.place.theme;
+  return layers ? <RowView {...props} {...themedPair(props.row, props.above, layers)} /> : <ThemedRowView {...props} />;
 }
 
-async function ThemedRowView({ row, ...rest }: Parameters<typeof PageRowView>[0]) {
-  // Another theme's, where the place brings one (a preview of an installed theme, D244, or a layout drawn with its store at hand).
-  const layers = rest.place.theme ?? (await themeLayersFor(rest.place.owner));
-  const [themed] = themedRows([row], layers.elements, layers.sections);
-  return <RowView row={themed} {...rest} />;
+async function ThemedRowView(props: Parameters<typeof PageRowView>[0]) {
+  const layers = await themeLayersFor(props.place.owner);
+  return <RowView {...props} {...themedPair(props.row, props.above, layers)} />;
+}
+
+/** A row and the row above it, as drawn with a theme's layers, so whether they meet is asked of what is drawn (a section style's background counts). */
+function themedPair(row: PageRow, above: PageRow | undefined, layers: ThemeLayers): { row: PageRow; above: PageRow | undefined } {
+  const [themed, themedAbove] = themedRows(above ? [row, above] : [row], layers.elements, layers.sections);
+  return { row: themed, above: themedAbove };
 }
 
 function RowView({
   row,
+  above,
   place,
   renderBlock,
   inAdmin = false,
@@ -154,7 +176,16 @@ function RowView({
         {row.modal ? (
           <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
         ) : (
-          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} eager={first && !late} preview={inAdmin} editable={editable} />
+          <RowMarkup
+            row={row}
+            place={place}
+            renderBlock={renderBlock}
+            first={first}
+            eager={first && !late}
+            preview={inAdmin}
+            editable={editable}
+            meets={meetsAbove(above, row)}
+          />
         )}
       </VisiblePart>
     </>
@@ -203,6 +234,7 @@ function RowMarkup({
   eager = false,
   preview = false,
   editable = false,
+  meets = false,
 }: {
   row: PageRow;
   place: GridPlace;
@@ -215,6 +247,8 @@ function RowMarkup({
   preview?: boolean;
   /** Mark its headings and texts for the staff's "Edit text" (D192). */
   editable?: boolean;
+  /** It meets the row above it (D262): the page's room between rows is taken back. */
+  meets?: boolean;
 }) {
   const box = rowBox(row, "site", inPanel);
   const grid = rowGrid(row);
@@ -288,7 +322,10 @@ function RowMarkup({
     );
   };
   return (
-    <div className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}>
+    <div
+      className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}
+      style={meets ? { marginTop: `calc(${ROW_GAP} * -1)` } : undefined}
+    >
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
         <FontLinks families={partFonts(row)} />
         <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
