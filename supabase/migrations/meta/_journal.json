@@ -2451,6 +2451,13 @@
       "when": 1792111516580,
       "tag": "20261016004516_launch_theme_addresses",
       "breakpoints": true
+    },
+    {
+      "idx": 350,
+      "version": "7",
+      "when": 1792129922932,
+      "tag": "20261016055202_platform_title_rename",
+      "breakpoints": true
     }
   ]
 }
