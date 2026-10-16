@@ -41,7 +41,9 @@ switch is still open: links last an hour). The magic-link and password-reset ema
 * **Slack app**: the OAuth redirect `https://kaizenaflow.com/api/integrations/slack/callback`, and the app's name.
 * **Kaizen Life**: its OAuth client's redirect for "Sign in with Kaizen Life" (`/auth/callback?via=kaizen-life`) and the store MCP server's
   address it uses (`/api/mcp`), on the new domain.
-* **The external scheduler** that calls the cron routes (`/api/cron/*` with `CRON_SECRET`): point it at the new domain.
+* **The scheduler** that calls the cron routes (`/api/cron/*` with `CRON_SECRET`) is Supabase's `pg_cron`, set in migrations. The redirect of
+  the old domain drops the Authorization header, so every scheduled call was refused (401) after the switch; migration `cron_host`
+  (16 October 2026) points every job at `https://kaizenaflow.com`, and new jobs name it.
 * **Search engines**: add `kaizenaflow.com` to Google Search Console and submit its sitemap; the old domain's 308s carry the rest.
 
 ## 6. In the admin (by a platform admin)
