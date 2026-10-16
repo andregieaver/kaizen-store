@@ -29,6 +29,20 @@ export type LaunchTheme = {
   snapshot: DesignSnapshot;
 };
 
+/**
+ * The theme's card picture in the theme store: its public preview on the demo store, photographed at a computer's width (a 4:3 crop of the
+ * top, 800 by 600 WebP) for each version, in `public/demo/themes/`, which every host serves. A version without its picture fails
+ * `theme-store.test.ts`, so a theme changed here is photographed again before it ships (the theme showcase plan's quick fixes; phase 1 makes
+ * these on every publish).
+ */
+export const launchShot = (theme: Pick<LaunchTheme, "key" | "version">): string => `/demo/themes/${theme.key}-v${theme.version}.webp`;
+
+/** The card picture of the launch theme a platform theme was made from (`design_presets.launch_key`), or null. */
+export function launchShotFor(key: string | null): string | null {
+  const theme = key ? LAUNCH_THEMES.find((t) => t.key === key) : undefined;
+  return theme ? launchShot(theme) : null;
+}
+
 const pad = (y: number, x = 20) => ({ padding: { top: y, right: x, bottom: y, left: x } });
 const rem = (value: number) => ({ value, unit: "rem" as const });
 

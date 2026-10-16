@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
+import { launchShotFor } from "@/lib/launch-themes";
 import {
   readListing,
   swatchOf,
@@ -32,6 +33,7 @@ const cardOf = (row: Row, snapshot: DesignSnapshot): ThemeStoreCard => ({
   title: String(row.title),
   summary: String(row.summary ?? ""),
   pictureUrl: row.picture_url ? String(row.picture_url) : null,
+  shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
   listing: readListing(row.listing),
   features: themeFeatures(snapshot),
   swatch: swatchOf(snapshot),
@@ -43,7 +45,7 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   cacheLife("hours");
   cacheTag(DESIGNS_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select id, slug, title, summary, picture_url, listing, snapshot from commerce.design_presets
+    select id, slug, title, summary, picture_url, launch_key, listing, snapshot from commerce.design_presets
     where published and archived_at is null and slug is not null
     order by position, lower(title), id
   `);
@@ -68,7 +70,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   cacheLife("hours");
   cacheTag(DESIGNS_TAG);
   const [row] = await readDb().execute<Row>(sql`
-    select id, slug, title, summary, description, picture_url, listing, snapshot, published_at from commerce.design_presets
+    select id, slug, title, summary, description, picture_url, launch_key, listing, snapshot, published_at from commerce.design_presets
     where slug = ${slug} and published and archived_at is null
   `);
   const snapshot = row ? parseDesignSnapshot(row.snapshot) : null;

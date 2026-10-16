@@ -33,12 +33,14 @@ function Swatch({ card }: { card: ThemeStoreCard }) {
   );
 }
 
+/** A theme's card: the admin's picture, else a photograph of it on the demo store, else its colours (a theme with neither). */
 export function ThemeCard({ card }: { card: ThemeStoreCard }) {
+  const picture = card.pictureUrl ?? card.shotUrl;
   return (
     <li className="relative flex flex-col overflow-hidden rounded-lg border border-border bg-background">
-      {card.pictureUrl ? (
+      {picture ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.pictureUrl} alt="" className="aspect-[4/3] w-full object-cover" loading="lazy" />
+        <img src={picture} alt="" width={800} height={600} className="aspect-[4/3] w-full border-b border-border object-cover object-top" loading="lazy" />
       ) : (
         <Swatch card={card} />
       )}

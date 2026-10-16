@@ -1,7 +1,10 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
-import { LAUNCH_THEMES } from "./launch-themes";
+import { LAUNCH_THEMES, launchShot, launchShotFor } from "./launch-themes";
 import {
   filterThemes,
   parseListing,
@@ -24,6 +27,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   title: id,
   summary: "",
   pictureUrl: null,
+  shotUrl: null,
   listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#fff", surface: "#eee", text: "#000", accent: "#111", accentText: "#fff", heading: null },
@@ -115,5 +119,24 @@ describe("structured data", () => {
     const data = themeJsonLd({ title: "Calm", summary: "Quiet.", pictureUrl: null }, "https://kaizenaflow.com/themes/calm", "Kaizena Flow");
     expect(data).toMatchObject({ "@type": "CreativeWork", name: "Calm", isAccessibleForFree: true });
     expect(JSON.stringify(data)).not.toMatch(/price|offers/i);
+  });
+});
+
+describe("a launch theme's card picture", () => {
+  it("is a photograph of its current version, in the public files every host serves", () => {
+    for (const theme of LAUNCH_THEMES) {
+      const shot = launchShot(theme);
+      expect(shot).toBe(`/demo/themes/${theme.key}-v${theme.version}.webp`);
+      // Raising a theme's version asks for a new photograph of it (its public preview, embedded, at 1280 by 960, made 800 by 600).
+      const file = path.join(process.cwd(), "public", shot);
+      expect(existsSync(file), `${shot} is missing: photograph the theme's preview again`).toBe(true);
+      expect(readFileSync(file).subarray(8, 12).toString("latin1")).toBe("WEBP");
+    }
+  });
+
+  it("is found by the platform theme's launch key, and a theme from anywhere else has none", () => {
+    expect(launchShotFor(LAUNCH_THEMES[0].key)).toBe(launchShot(LAUNCH_THEMES[0]));
+    expect(launchShotFor("not-a-launch-theme")).toBeNull();
+    expect(launchShotFor(null)).toBeNull();
   });
 });

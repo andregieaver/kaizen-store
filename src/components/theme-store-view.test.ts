@@ -13,6 +13,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   title: id.toUpperCase(),
   summary: `About ${id}.`,
   pictureUrl: null,
+  shotUrl: null,
   listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#ffffff", surface: "#eeeeee", text: "#111111", accent: "#222222", accentText: "#ffffff", heading: "Lora" },
@@ -47,6 +48,16 @@ describe("the theme store's list", () => {
     // The closed menu says what is chosen, and the bar clears every filter at once.
     expect(chosen).toMatch(/<summary[^>]*>[^]*?Style[^]*?Bold[^]*?<\/summary>/);
     expect(chosen).toMatch(/<a [^>]*href="\/themes"[^>]*>Clear filters<\/a>/);
+  });
+
+  it("pictures each card by the admin's picture, else its photograph, else its colours", () => {
+    const html = draw([card("calm", { pictureUrl: "/own.webp", shotUrl: "/demo/themes/calm-v1.webp" }), card("fjord", { shotUrl: "/demo/themes/fjord-v1.webp" }), card("plain")]);
+    expect(html).toContain('src="/own.webp"');
+    expect(html).not.toContain("calm-v1.webp");
+    expect(html).toContain('src="/demo/themes/fjord-v1.webp"');
+    expect(html.match(/<img /g)?.length).toBe(2);
+    // The theme without either is drawn from its colours.
+    expect(html).toMatch(/<div aria-hidden="true"[^>]*><span[^>]*>PLAIN<\/span>/);
   });
 
   it("says when nothing matches, and when there is nothing yet", () => {

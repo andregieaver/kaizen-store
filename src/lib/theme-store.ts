@@ -114,6 +114,8 @@ export type ThemeStoreCard = {
   title: string;
   summary: string;
   pictureUrl: string | null;
+  /** A launch theme's photograph on the demo store (`launchShot()`), shown on its card where the admin gave no picture. */
+  shotUrl: string | null;
   listing: ThemeListing;
   features: ThemeFeature[];
   /** For a card without a picture: the light colours and the heading font. */
