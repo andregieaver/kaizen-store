@@ -90,9 +90,10 @@ beforeAll(async () => {
   stranger = await account(`stranger-${run}@example.com`, "Ola");
   // The fonts the profile and the templates' themes name are on Kaizen already: nothing is fetched from Google in a test
   // (a theme saved with the bold template installs its Archivo and Inter, which once failed CI when Google Fonts did not answer).
+  // Each with a stylesheet: one kept empty is not installed, and would be fetched again.
   for (const family of ["Playfair Display", "Lora", ...Object.values(templateSettings("bold").fonts), ...Object.values(templateSettings("minimal").fonts)].filter((family): family is string => Boolean(family))) {
     await db().execute(sql`
-      insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'serif', '', 0)
+      insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'serif', '/* test: no files */', 0)
       on conflict (family) do nothing
     `);
   }

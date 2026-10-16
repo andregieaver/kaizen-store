@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import rows from "./fonts/google-fonts.json";
-import { catalogFont, fontClass, fontSlug, fontStack, installedStyles, type CatalogRow } from "./fonts";
+import { catalogFont, fontClass, fontSlug, fontStack, FONT_FAMILY, FONT_SLUG, installedStyles, type CatalogRow } from "./fonts";
 import { parseSiteFonts } from "./fonts-schema";
 
 describe("Google Fonts (D59)", () => {
@@ -18,6 +18,16 @@ describe("Google Fonts (D59)", () => {
     expect(fontSlug("Open Sans")).toBe("open-sans");
     expect(fontClass("Playfair Display SC")).toBe("kf-playfair-display-sc");
     expect(fontStack("Lora", "serif")).toMatch(/^"Lora", ui-serif, .*serif$/);
+  });
+
+  it("gives every family name an address the stylesheet route answers, and nothing else one", () => {
+    // The route answers each with a stylesheet, empty when none is installed, so a streamed boundary never waits on a failure.
+    for (const [family] of rows as CatalogRow[]) expect(FONT_SLUG.test(fontSlug(family))).toBe(true);
+    for (const family of ["A", "Noto Sans JP ", "x".repeat(100), "Two  Spaces"]) {
+      expect(FONT_FAMILY.test(family)).toBe(true);
+      expect(FONT_SLUG.test(fontSlug(family))).toBe(true);
+    }
+    for (const slug of ["", "-lato", "Lato", "lato;color:red", "../lato", "x".repeat(101)]) expect(FONT_SLUG.test(slug)).toBe(false);
   });
 
   it("installs the builder's weights a family has, or its nearest to normal", () => {
