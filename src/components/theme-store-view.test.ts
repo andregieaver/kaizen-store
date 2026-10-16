@@ -6,7 +6,7 @@ import type { ThemeFilter, ThemeStoreCard } from "@/lib/theme-store";
 
 import { ThemeStoreList } from "./theme-store-view";
 
-/** The theme store's list (`docs/theme-phase-3.md` step 1): filters as links, a card per theme, free. */
+/** The theme store's list (`docs/theme-phase-3.md` step 1): a card per theme, free, under one bar of filters that are links. */
 const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard => ({
   id,
   slug: id,
@@ -25,7 +25,7 @@ describe("the theme store's list", () => {
   it("links each theme to its page, says it is free, and counts them", () => {
     const html = draw([card("calm", { listing: { kinds: [], styles: ["minimal"], pictures: [] } }), card("fjord")]);
     expect(html).toContain('href="/themes/calm"');
-    expect(html).toContain("2 themes, all free.");
+    expect(html).toContain("2 themes, all free");
     expect(html).toContain("Free");
     expect(html).toContain("Minimal");
   });
@@ -37,6 +37,16 @@ describe("the theme store's list", () => {
     const chosen = html.match(/<a [^>]*href="\/themes\?kind=food"[^>]*>/)?.[0] ?? "";
     expect(chosen).toContain('aria-current="page"');
     expect(html).toContain('href="/themes?kind=food&amp;style=bold"');
+  });
+
+  it("puts the filters in one bar of small menus that name the choice, with a way to clear them once one is chosen", () => {
+    const plain = draw([card("calm")]);
+    expect(plain.match(/<details/g)?.length).toBe(3);
+    expect(plain).not.toContain("Clear filters");
+    const chosen = draw([card("calm", { listing: { kinds: [], styles: ["bold"], pictures: [] } })], { ...none, style: "bold" });
+    // The closed menu says what is chosen, and the bar clears every filter at once.
+    expect(chosen).toMatch(/<summary[^>]*>[^]*?Style[^]*?Bold[^]*?<\/summary>/);
+    expect(chosen).toMatch(/<a [^>]*href="\/themes"[^>]*>Clear filters<\/a>/);
   });
 
   it("says when nothing matches, and when there is nothing yet", () => {

@@ -63,12 +63,16 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
   if (!base || !market) notFound();
 
   const { snapshot } = preview;
-  // The store as it would look with the profile applied: its own name, logos, menus and products, the profile's look.
+  const admin = query.as === "admin";
+  const embedded = !admin && query.embed === "1";
+  // The store as it would look with the profile applied: its own name, logos, menus and products, the profile's look. Shown as a
+  // store for consumers, so a store selling to both draws no Private / Business switch over a look that is about the theme.
   const store: Store = {
     ...base,
     theme: { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings },
     fonts: snapshot.theme.settings.fonts,
     customCss: snapshot.css,
+    ...(base.audience === "both" ? { audience: "consumers" as const, businessPopup: false } : {}),
   };
   const menus = { header: base.headerMenuId, footer: base.footerMenuId };
   const layout = (kind: DesignLayoutKind) => {
@@ -92,13 +96,23 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
 
   return (
     <div className="flex min-h-screen flex-col">
-      <p role="status" className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background">
-        <span className="font-medium">
-          Preview of the design profile {preview.title}
-          {preview.draft ? " as drafted, not published yet" : ""}: nothing is saved or changed
-        </span>
-        <span>On {preview.starterTitle ?? "the Standard store"}: its front page, then one of its products.</span>
-      </p>
+      {/* Platform admins are told what they look at; a visitor sees one quiet line; a frame on the theme store's page, which says it
+          already, shows the store alone. */}
+      {admin ? (
+        <p role="status" className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background">
+          <span className="font-medium">
+            Preview of the design profile {preview.title}
+            {preview.draft ? " as drafted, not published yet" : ""}: nothing is saved or changed
+          </span>
+          <span>On {preview.starterTitle ?? "the Standard store"}: its front page, then one of its products.</span>
+        </p>
+      ) : (
+        !embedded && (
+          <p role="status" className="sticky top-0 z-50 bg-foreground px-4 py-2 text-center text-xs text-background">
+            A preview of the {preview.title} theme on a demo store. Nothing here can be pressed.
+          </p>
+        )
+      )}
       {/* Nothing in the preview can be clicked, focused or submitted. */}
       <div
         inert

@@ -17,7 +17,8 @@ async function arrange(): Promise<{ published: string; hidden: string; starter: 
     const [request] = await sql`
       insert into commerce.access_requests (email, name, store_name) values (${`designs-${run}@example.com`}, 'Platform', 'Spa') returning id`;
     const [{ id: store }] = await sql`select commerce.approve_access_request(${request.id}, ${`designs-${run}`}, 'Spa', null) as id`;
-    await sql`update commerce.stores set starter = true where id = ${store}`;
+    // It sells to private and business buyers, so its own pages draw the Private / Business switch; the preview must not.
+    await sql`update commerce.stores set starter = true, audience = 'both', features = array(select distinct unnest(features || array['shop', 'business'])) where id = ${store}`;
     const [{ id: starter }] = await sql`
       insert into commerce.store_starters (store_id, title, category, published) values (${store}, 'Spa', 'appointments', true) returning id`;
     const settings = {
@@ -51,7 +52,7 @@ test("a published design profile's preview shows its look on a store template, k
   const { published, starter } = await arrange();
   await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.getByRole("status").filter({ hasText: "nothing is saved or changed" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Nothing here can be pressed" })).toBeVisible();
   const canvas = page.locator("[data-design-preview]");
   await expect(canvas).toHaveCSS("background-color", "rgb(253, 246, 227)");
   await expect(canvas).toHaveCSS("font-family", /Lora/);
@@ -60,6 +61,12 @@ test("a published design profile's preview shows its look on a store template, k
   await expect(canvas.locator(".product-card").first()).toBeVisible();
   // Nothing in it can be used.
   await expect(canvas).toHaveAttribute("inert", "");
+  // A store selling to both kinds of buyer shows no Private / Business switch over a look that is about the theme.
+  await expect(page.locator("[data-buyer-choice]")).toHaveCount(0);
+  // In the theme store's frames, the store alone, with no line above it.
+  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}&embed=1`);
+  await expect(page.locator("[data-design-preview]")).toBeVisible();
+  await expect(page.getByText("Nothing here can be pressed")).toHaveCount(0);
 });
 
 test("an unpublished design profile has no public preview", async ({ page }) => {
@@ -68,7 +75,7 @@ test("an unpublished design profile has no public preview", async ({ page }) => 
   for (const query of [`?starter=${starter}`, `?starter=${starter}&as=admin`]) {
     await page.goto(`/admin/account/design-profiles/${hidden}/preview${query}`);
     await expect(page.locator("[data-design-preview]")).toHaveCount(0);
-    await expect(page.getByText("nothing is saved or changed")).toHaveCount(0);
+    await expect(page.getByText("Nothing here can be pressed")).toHaveCount(0);
     await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
   }
 });

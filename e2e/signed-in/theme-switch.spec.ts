@@ -103,7 +103,7 @@ test.beforeAll(async () => {
     }
     // The fonts the themes name are on the platform already: nothing is fetched from Google in a test.
     for (const family of new Set(LAUNCH_THEMES.flatMap((theme) => Object.values(theme.snapshot.theme.settings.fonts)).filter((f): f is string => Boolean(f)))) {
-      await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '', 0) on conflict (family) do nothing`;
+      await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '/* e2e: no files */', 0) on conflict (family) do nothing`;
     }
     const [own] = await sql`
       select title from commerce.store_theme_installs where store_id = ${store.id} and title not like ${`${PREFIX}%`}

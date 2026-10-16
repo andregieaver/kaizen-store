@@ -78,7 +78,14 @@ test("an address that is no theme is not found, and the list's filters are links
   await page.goto("/themes");
   await expect(page.getByRole("heading", { level: 1, name: "Themes" })).toBeVisible();
   const filters = page.getByRole("navigation", { name: "Filter themes" });
+  // One bar of small menus: open Style, choose Bold; the menu closes and names it, and the bar can clear it.
+  await filters.getByText("Style", { exact: true }).click();
   await filters.getByRole("link", { name: "Bold" }).click();
   await expect(page).toHaveURL(/\/themes\?style=bold$/);
+  await expect(filters.locator("summary").filter({ hasText: "Style" })).toContainText("Bold");
+  await expect(filters.getByRole("link", { name: "Bold" })).toBeHidden();
+  await filters.getByText("Style", { exact: true }).click();
   await expect(filters.getByRole("link", { name: "Bold" })).toHaveAttribute("aria-current", "page");
+  await filters.getByRole("link", { name: "Clear filters" }).click();
+  await expect(page).toHaveURL(/\/themes$/);
 });

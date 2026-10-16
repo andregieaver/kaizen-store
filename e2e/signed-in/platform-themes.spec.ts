@@ -74,7 +74,7 @@ test.beforeAll(async ({ browser }) => {
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${presetId}, 1, ${sql.json(snapshot)})`;
     // The theme's fonts are on the platform already: nothing is fetched from Google in a test.
     for (const family of Object.values(LAUNCH.snapshot.theme.settings.fonts).filter((f): f is string => Boolean(f))) {
-      await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '', 0) on conflict (family) do nothing`;
+      await sql`insert into commerce.fonts (family, slug, category, css, bytes) values (${family}, ${family.toLowerCase().replace(/\s+/g, "-")}, 'sans-serif', '/* e2e: no files */', 0) on conflict (family) do nothing`;
     }
   } finally {
     await sql.end();

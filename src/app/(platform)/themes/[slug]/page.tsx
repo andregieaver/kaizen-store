@@ -44,6 +44,8 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
   }
   // Kaizena Flow's own site serves the preview, sign-up and the try route: full addresses while the theme store has its own host.
   const preview = platformHref(designPreviewPath(theme.id));
+  // The frames show the store alone: this page already says what it is.
+  const framed = platformHref(designPreviewPath(theme.id, null, false, false, true));
   const url = themeStoreUrl(theme.slug);
   return (
     <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10">
@@ -99,10 +101,10 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
         <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
         <div className="flex flex-col items-start gap-6 lg:flex-row">
           <div className="w-full overflow-hidden rounded-lg border border-border lg:flex-1">
-            <iframe src={preview} title={`${theme.title} on a computer`} loading="lazy" className="h-[640px] w-full" />
+            <iframe src={framed} title={`${theme.title} on a computer`} loading="lazy" className="h-[640px] w-full" />
           </div>
           <div className="mx-auto w-[390px] max-w-full shrink-0 overflow-hidden rounded-[2rem] border-8 border-foreground">
-            <iframe src={preview} title={`${theme.title} on a phone`} loading="lazy" className="h-[640px] w-full" />
+            <iframe src={framed} title={`${theme.title} on a phone`} loading="lazy" className="h-[640px] w-full" />
           </div>
         </div>
       </section>

@@ -203,6 +203,8 @@ describe("details, choices and cards", () => {
     // The draft (D177) is the platform admin's only.
     expect(designPreviewPath("p1", null, true, true)).toBe("/admin/account/design-profiles/p1/preview?as=admin&draft=1");
     expect(designPreviewPath("p1", null, false, true)).toBe("/admin/account/design-profiles/p1/preview");
+    // In the theme store's frames, the store alone.
+    expect(designPreviewPath("p1", null, false, false, true)).toBe("/admin/account/design-profiles/p1/preview?embed=1");
   });
 });
 

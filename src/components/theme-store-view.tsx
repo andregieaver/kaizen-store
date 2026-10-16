@@ -12,8 +12,9 @@ import {
 import { themeStorePath } from "@/lib/theme-host";
 
 /**
- * The theme store's list (`docs/theme-phase-3.md` step 1): filters as plain links (kind of store, style, what it includes), so it works
- * without JavaScript and every filtered list has an address; then a card per theme. Drawn in Kaizena Flow's own theme. Server-drawn.
+ * The theme store's list (`docs/theme-phase-3.md` step 1): a card per theme under one bar of filters (kind of store, style, what it
+ * includes), plain links in small menus, so it works without JavaScript and every filtered list has an address. Drawn in Kaizena
+ * Flow's own theme. Server-drawn.
  */
 
 function Swatch({ card }: { card: ThemeStoreCard }) {
@@ -57,43 +58,63 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
   );
 }
 
-function FilterRow<K extends string>({ label, options, chosen, href }: { label: string; options: Record<K, string>; chosen: K | null; href: (key: K | null) => string }) {
+/**
+ * One filter as a small menu in the bar: closed it names the choice, open it lists the others as links (no JavaScript needed). The
+ * menus share a name, so opening one closes the others, and each is keyed by its choice, so choosing closes it.
+ */
+function FilterMenu<K extends string>({ label, options, chosen, href }: { label: string; options: Record<K, string>; chosen: K | null; href: (key: K | null) => string }) {
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">{label}</h2>
-      <ul className="flex flex-wrap gap-2">
+    <details key={chosen ?? "any"} name="theme-filter" className="group relative">
+      <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-border px-4 text-sm marker:hidden [&::-webkit-details-marker]:hidden">
+        <span className="text-muted">{label}</span>
+        <span className="font-medium">{chosen ? options[chosen] : "Any"}</span>
+        <svg aria-hidden="true" viewBox="0 0 12 12" className="size-3 transition-transform group-open:rotate-180">
+          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </summary>
+      <ul className="absolute left-0 top-full z-20 mt-2 flex min-w-56 flex-col rounded-lg border border-border bg-background p-1 shadow-lg">
         {([null, ...Object.keys(options)] as (K | null)[]).map((key) => (
           <li key={key ?? "all"}>
             <Link
               href={href(key)}
               aria-current={chosen === key ? "page" : undefined}
-              className="inline-flex min-h-10 items-center rounded-full border border-border px-3 text-sm aria-[current=page]:bg-foreground aria-[current=page]:text-background"
+              className="flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-foreground/5 aria-[current=page]:font-medium"
             >
               {key ? options[key] : "Any"}
             </Link>
           </li>
         ))}
       </ul>
-    </div>
+    </details>
   );
 }
 
+/**
+ * The themes first, the filters as one bar above them: three small menus, the count and a way to clear them (the theme showcase plan's
+ * quick fixes). Every filtered list keeps its own address.
+ */
 export function ThemeStoreList({ cards, filter }: { cards: ThemeStoreCard[]; filter: ThemeFilter }) {
   const shown = filterThemes(cards, filter);
+  const filtered = Boolean(filter.kind || filter.style || filter.feature);
   return (
-    <div className="flex flex-col gap-8">
-      <nav aria-label="Filter themes" className="flex flex-col gap-4">
-        <FilterRow label="Kind of store" options={STORE_KINDS} chosen={filter.kind} href={(kind) => themeFilterHref(filter, { kind })} />
-        <FilterRow label="Style" options={THEME_STYLES} chosen={filter.style} href={(style) => themeFilterHref(filter, { style })} />
-        <FilterRow label="Includes" options={THEME_FEATURES} chosen={filter.feature} href={(feature) => themeFilterHref(filter, { feature })} />
+    <div className="flex flex-col gap-6">
+      <nav aria-label="Filter themes" className="flex flex-wrap items-center gap-2">
+        <FilterMenu label="Store" options={STORE_KINDS} chosen={filter.kind} href={(kind) => themeFilterHref(filter, { kind })} />
+        <FilterMenu label="Style" options={THEME_STYLES} chosen={filter.style} href={(style) => themeFilterHref(filter, { style })} />
+        <FilterMenu label="Includes" options={THEME_FEATURES} chosen={filter.feature} href={(feature) => themeFilterHref(filter, { feature })} />
+        {filtered && (
+          <Link href={themeFilterHref(filter, { kind: null, style: null, feature: null })} className="inline-flex min-h-10 items-center px-2 text-sm underline underline-offset-2">
+            Clear filters
+          </Link>
+        )}
+        <p role="status" className="ml-auto text-sm text-muted">
+          {shown.length === 0
+            ? cards.length === 0
+              ? "No themes yet."
+              : "No theme matches all of these."
+            : `${shown.length} ${shown.length === 1 ? "theme" : "themes"}, all free`}
+        </p>
       </nav>
-      <p role="status" className="text-sm text-muted">
-        {shown.length === 0
-          ? cards.length === 0
-            ? "No themes yet."
-            : "No theme matches all of these. Take a filter away."
-          : `${shown.length} ${shown.length === 1 ? "theme" : "themes"}, all free.`}
-      </p>
       {shown.length > 0 && (
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((card) => (

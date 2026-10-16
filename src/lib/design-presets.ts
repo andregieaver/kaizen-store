@@ -420,12 +420,14 @@ export function keepDesignCard(): DesignCard {
  * The address of a design profile's preview: on a store template's front page and one product (the Standard store's when none); with
  * `admin` unpublished ones too, and with `draft` the look in its workspace as last saved (D177).
  */
-export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false): string {
+export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false, embed = false): string {
   const query = new URLSearchParams();
   if (starterId) query.set("starter", starterId);
   if (admin) query.set("as", "admin");
   // The look in the profile's workspace, not yet published (D177): for platform admins only.
   if (admin && draft) query.set("draft", "1");
+  // In a frame on the theme store's page, which says what it is: the store alone, no line above it.
+  if (embed) query.set("embed", "1");
   const search = query.toString();
   return `/admin/account/design-profiles/${presetId}/preview${search ? `?${search}` : ""}`;
 }
