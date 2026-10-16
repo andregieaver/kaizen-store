@@ -4,25 +4,31 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
+import { PackPictures } from "@/components/admin/pack-pictures";
 import { PreviewLink } from "@/components/admin/preview-link";
 import { listFilterOf } from "@/lib/lifecycle";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS, type StarterRow } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
+import { contentPackStates, type PackState } from "@/server/content-packs";
 import { listStarters, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 
 import {
   archiveStarterAction,
   createStarterAction,
   deleteStarterAction,
+  makePackPictureAction,
   moveStarterAction,
   openStarterAdminAction,
   publishStarterAction,
   restoreStarterAction,
+  syncContentPacksAction,
   unpublishStarterAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Store templates" };
+/** Setting up the content packs and making a picture each take a while (`docs/theme-showcase-phase-1.md` step 2). */
+export const maxDuration = 300;
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -39,7 +45,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
   await requirePlatformAdmin();
   const query = await searchParams;
   const filter = listFilterOf(query.show);
-  const starters = await listStarters(filter);
+  const [starters, packs] = await Promise.all([listStarters(filter), filter === "current" ? contentPackStates() : Promise.resolve([])]);
   const published = starters.filter((s) => s.published).length;
 
   return (
@@ -73,6 +79,8 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
             ? "No store templates yet."
             : `${starters.length} ${starters.length === 1 ? "store template" : "store templates"}, ${published} published.`}
       </p>
+
+      {filter === "current" && <ContentPacks packs={packs} />}
 
       {starters.length > 0 && (
         <ol className="flex flex-col gap-3">
@@ -210,5 +218,53 @@ function StarterItem({ starter, first, last, archived }: { starter: StarterRow; 
         </div>
       </div>
     </li>
+  );
+}
+
+/** What a content pack's row says about it, in one short phrase. */
+function packStatus(pack: PackState): { words: string; signal: "positive" | "warning" | "neutral" } {
+  if (!pack.starterId) return { words: "Not set up", signal: "neutral" };
+  if (pack.archived) return { words: "Archived", signal: "neutral" };
+  if (!pack.current) return { words: "Newer version to set up", signal: "warning" };
+  if (pack.pictures < pack.slots) return { words: "Pictures to make", signal: "warning" };
+  return pack.published ? { words: "Published", signal: "positive" } : { words: "Ready to publish", signal: "positive" };
+}
+
+/**
+ * Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): demo stores for six trades, written in code. One press sets them up
+ * (or brings them up to date); each then needs its pictures, made one at a time, and is published below like any store template.
+ */
+function ContentPacks({ packs }: { packs: PackState[] }) {
+  const toSetUp = packs.filter((pack) => !pack.archived && (!pack.starterId || !pack.current)).length;
+  const fresh = packs.every((pack) => !pack.starterId);
+  return (
+    <Card
+      title="Content packs"
+      description="Demo stores for six trades, written by Kaizena Flow in English: each is a store template with its trade's products, pages and menus. Set them up, make their pictures, then publish each one below like any store template."
+      aside={
+        toSetUp > 0 ? (
+          <ActionForm action={syncContentPacksAction}>
+            <SubmitButton>{fresh ? "Set up the content packs" : "Bring them up to date"}</SubmitButton>
+          </ActionForm>
+        ) : undefined
+      }
+    >
+      <List label="Content packs">
+        {packs.map((pack) => {
+          const status = packStatus(pack);
+          return (
+            <ListRow key={pack.key}>
+              <RowLead title={pack.title} sub={pack.slug ? `${pack.storeName} · /s/${pack.slug}` : pack.storeName} />
+              <Chip signal={status.signal} dot>{status.words}</Chip>
+              <RowActions>
+                {pack.starterId && pack.current && !pack.archived && (
+                  <PackPictures title={pack.title} made={pack.pictures} total={pack.slots} action={makePackPictureAction.bind(null, pack.key)} />
+                )}
+              </RowActions>
+            </ListRow>
+          );
+        })}
+      </List>
+    </Card>
   );
 }

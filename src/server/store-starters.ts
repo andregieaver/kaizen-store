@@ -22,6 +22,7 @@ import {
   type StarterRow,
 } from "@/lib/store-starters";
 
+import { contentPack, picturesMissing } from "@/lib/content-packs";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
 import { audit, type Account } from "./auth";
@@ -258,7 +259,7 @@ export async function saveStarterDraft(admin: Account, id: string, details: Star
 /**
  * Publishes a store template (D177): its draft details become what owners read, and its working store is frozen into a hidden copy
  * (`commerce.freeze_starter()`, `clone_store()` underneath) that new stores are made from and owners preview; the copy it replaces is closed.
- * One transaction: a failure publishes nothing. Refused while archived.
+ * One transaction: a failure publishes nothing. Refused while archived, and for a content pack whose pictures are not all made.
  */
 export async function publishStarter(admin: Account, id: string): Promise<StarterResult<{ copySlug: string; notes: string[] }>> {
   if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
@@ -266,9 +267,15 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
   let done: { storeId: string; copyId: string; copySlug: string };
   try {
     done = await db().transaction(async (tx) => {
-      const [row] = await tx.execute<Row>(sql`select store_id, draft, archived_at from commerce.store_starters where id = ${id}::uuid for update`);
+      const [row] = await tx.execute<Row>(sql`
+        select store_id, draft, archived_at, pack_key, pack_pictures from commerce.store_starters where id = ${id}::uuid for update
+      `);
       if (!row) throw new Refused("Unknown store template.");
       if (row.archived_at) throw new Refused("This store template is archived. Restore it before publishing it.");
+      // A content pack (`docs/theme-showcase-phase-1.md` step 2) is published only once all its pictures are made.
+      const pack = row.pack_key ? contentPack(String(row.pack_key)) : null;
+      const missing = pack ? picturesMissing(pack, row.pack_pictures) : 0;
+      if (missing > 0) throw new Refused(`Make this content pack's pictures first: ${missing} still to make, on the Store templates page.`);
       const draft = readStarterDraft(row.draft);
       if (draft) {
         let recommended = draft.recommendedDesign ?? null;

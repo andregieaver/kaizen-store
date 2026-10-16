@@ -97,6 +97,18 @@ describe("a store template's own rules (D175)", () => {
     await refused("update commerce.store_starters set picture_url = '//evil.example/x.png' where id = $1", [starter], /store_starters_picture_url/);
     await db.query("update commerce.store_starters set picture_url = '/media/spa.webp', summary = 'Spa' where id = $1", [starter]);
   });
+
+  it("is one content pack's at most, with a version only when it is a pack's and its pictures an object (docs/theme-showcase-phase-1.md step 2)", async () => {
+    const { starter } = await createStarter("pack-one");
+    const { starter: other } = await createStarter("pack-two");
+    await refused("update commerce.store_starters set pack_version = 1 where id = $1", [starter], /store_starters_pack/);
+    await db.query("update commerce.store_starters set pack_key = 'fashion', pack_version = 1 where id = $1", [starter]);
+    await refused("update commerce.store_starters set pack_key = 'fashion' where id = $1", [other], /store_starters_pack_key_idx|duplicate/);
+    await refused("update commerce.store_starters set pack_version = 0 where id = $1", [starter], /store_starters_pack/);
+    await refused(`update commerce.store_starters set pack_pictures = '["hero"]' where id = $1`, [starter], /store_starters_pack_pictures/);
+    await db.query(`update commerce.store_starters set pack_pictures = pack_pictures || '{"hero":{"url":"/x.webp"}}' where id = $1`, [starter]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.store_starters where pack_key is null and pack_pictures = '{}'::jsonb and id = $1", [other])).n).toBe(1);
+  });
 });
 
 describe("what a new store is copied from", () => {

@@ -64,7 +64,7 @@ export const CONTENT_PACKS: readonly ContentPack[] = [
     key: "fashion",
     version: 1,
     title: "Fashion store",
-    summary: "Clothes and accessories: a lookbook front page, collections and products with sizes.",
+    summary: "Clothes and accessories: a lookbook front page, collections and products.",
     description: "A demo clothing store with shirts, knitwear, trousers and accessories, sorted into collections. Replace the products and pictures with your own.",
     category: "retail",
     storeName: "Field & Fold",
@@ -314,3 +314,12 @@ export function packPrice(price: number, market: string): number {
 
 /** The store addresses the packs' templates take (`pack-fashion` …), never a store's own. */
 export const packSlug = (key: PackKey): string => `pack-${key}`;
+
+/** A pack's pictures by slot: its home page's two, then one per product. */
+export const packSlots = (pack: ContentPack): string[] => ["hero", "story", ...pack.products.map((p) => `product:${p.handle}`)];
+
+/** How many of a pack's pictures are still to make, from what its template keeps (`store_starters.pack_pictures`). */
+export function picturesMissing(pack: ContentPack, pictures: unknown): number {
+  const kept = pictures && typeof pictures === "object" && !Array.isArray(pictures) ? (pictures as Record<string, unknown>) : {};
+  return packSlots(pack).filter((slot) => !kept[slot]).length;
+}

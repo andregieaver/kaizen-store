@@ -29,6 +29,7 @@ export const AI_FEATURES = {
   knowledge: "Chat knowledge",
   media: "Media library",
   page_studio: "Page studio",
+  content_pack: "Content pack pictures",
   page_motion: "Page motion",
   page_replica: "Page replication",
   page_translation: "Page translation",

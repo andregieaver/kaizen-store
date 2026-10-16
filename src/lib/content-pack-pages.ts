@@ -107,7 +107,7 @@ export function packHomePage(pack: ContentPack, pictures: { hero: PackPicture | 
       { id: id(), blocks: [heading(id(), pack.storyTitle, 2), richText(id(), [pack.story])] },
     ],
   };
-  return { ...newPageContent(), title: "Home", slug: "home", rows: [hero, products, points, story] as unknown as PageContent["rows"] };
+  return { ...newPageContent(), title: "Home", slug: "welcome", rows: [hero, products, points, story] as unknown as PageContent["rows"] };
 }
 
 /** The pack's about page: who the store is, and that it is a demo to replace. */
@@ -133,4 +133,43 @@ export function packAboutPage(pack: ContentPack, picture: PackPicture | null, id
       : []),
   ];
   return { ...newPageContent(), title: "About us", slug: "about", rows: rows as unknown as PageContent["rows"] };
+}
+
+/** The pack's All products page (D83): a heading and every product, with the listing's filters. */
+export function packProductsPage(pack: ContentPack, id: Ids = uuid): PageContent {
+  const title = isServices(pack) ? "All services" : "All products";
+  const rows = [
+    {
+      id: id(),
+      type: "row",
+      layout: "1",
+      sectionStyle: "plain",
+      columns: [
+        {
+          id: id(),
+          blocks: [
+            heading(id(), title, 1),
+            {
+              id: id(),
+              type: "contentGrid",
+              source: { type: "products" },
+              categories: [],
+              tags: [],
+              sort: "oldest",
+              limit: 48,
+              filters: true,
+              columns: { mobile: 2, tablet: 3, desktop: 4 },
+              show: { image: true, heading: true, excerpt: false, price: true, button: false },
+              buttonLabel: "",
+              emptyText: "",
+              headingLevel: 3,
+              excerptLines: 3,
+              gap: 24,
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  return { ...newPageContent(), title, slug: "all-products", rows: rows as unknown as PageContent["rows"] };
 }

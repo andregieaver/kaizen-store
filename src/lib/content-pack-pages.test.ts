@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { packAboutPage, packHomePage } from "./content-pack-pages";
+import { packAboutPage, packHomePage, packProductsPage } from "./content-pack-pages";
 import { CONTENT_PACKS } from "./content-packs";
 import { pageInput } from "./page-content";
 
@@ -17,6 +17,7 @@ describe("a content pack's pages", () => {
       }
       expect(pageInput.safeParse(packAboutPage(pack, picture)).success, `${pack.key} about`).toBe(true);
       expect(pageInput.safeParse(packAboutPage(pack, null)).success, `${pack.key} about without a picture`).toBe(true);
+      expect(pageInput.safeParse(packProductsPage(pack)).success, `${pack.key} all products`).toBe(true);
     }
   });
 
@@ -35,5 +36,12 @@ describe("a content pack's pages", () => {
   it("call a store of services' grid its services", () => {
     const services = CONTENT_PACKS.find((p) => p.key === "services")!;
     expect(JSON.stringify(packHomePage(services, { hero: null, story: null }))).toContain("See the services");
+    expect(packProductsPage(services).title).toBe("All services");
+    expect(packProductsPage(CONTENT_PACKS[0]).title).toBe("All products");
+  });
+
+  it("keep the home page off the address a store's own home takes (D181), and list every product with filters on All products", () => {
+    expect(packHomePage(CONTENT_PACKS[0], { hero: null, story: null }).slug).toBe("welcome");
+    expect(JSON.stringify(packProductsPage(CONTENT_PACKS[0]))).toContain('"filters":true');
   });
 });

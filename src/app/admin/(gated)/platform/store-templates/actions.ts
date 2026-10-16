@@ -4,9 +4,12 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
+import type { PackPictureResult } from "@/components/admin/pack-pictures";
 import { suggestSlug } from "@/lib/slug";
 import { parseStarterDetails } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
+import { catalogTag } from "@/server/catalog";
+import { makeNextPackPicture, syncContentPacks } from "@/server/content-packs";
 import { DESIGNS_TAG } from "@/server/design-presets";
 import {
   STARTERS_TAG,
@@ -21,6 +24,9 @@ import {
   setStarterFeatures,
   unpublishStarter,
 } from "@/server/store-starters";
+import { pagesTag } from "@/server/pages";
+import { storeTag } from "@/server/stores";
+import { termsTag } from "@/server/taxonomy";
 
 /** The store template form's fields, as the server reads them; the recommended design profile only where the form has the field. */
 const detailsOf = (formData: FormData) =>
@@ -156,4 +162,41 @@ export async function setStarterFeaturesAction(starterId: string, _state: FormSt
   }
   refresh();
   return { status: "ok", messages: ["Saved. New stores get these features once you publish the template again."] };
+}
+
+/** Every store a content pack's work wrote: its admin, catalogue, pages and terms are read again. */
+function packStoresChanged(stores: { id: string; slug: string }[]) {
+  for (const store of stores) {
+    updateTag(storeTag(store.slug));
+    updateTag(catalogTag(store.id));
+    updateTag(pagesTag(store.id));
+    updateTag(termsTag({ storeId: store.id, contentType: "product" }));
+  }
+}
+
+/**
+ * Sets up the content packs (`docs/theme-showcase-phase-1.md` step 2): each pack's store template made the first time and written again
+ * when the code has a newer version. Unpublished until the admin publishes each.
+ */
+export async function syncContentPacksAction(): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const result = await syncContentPacks(admin);
+  packStoresChanged(result.stores);
+  refresh();
+  const said = [
+    result.made.length > 0 && `Set up: ${result.made.join(", ")}.`,
+    result.updated.length > 0 && `Brought up to date: ${result.updated.join(", ")}.`,
+    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "Every content pack is up to date.",
+  ].filter((line): line is string => typeof line === "string");
+  if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
+  return { status: "ok", messages: said };
+}
+
+/** Makes the next picture a content pack lacks (one a request; the page asks again while some remain). */
+export async function makePackPictureAction(key: string): Promise<PackPictureResult> {
+  const admin = await requirePlatformAdmin();
+  const result = await makeNextPackPicture(admin, key);
+  if (!result.ok) return result;
+  if (result.made) packStoresChanged([result.store]);
+  return { ok: true, remaining: result.remaining };
 }

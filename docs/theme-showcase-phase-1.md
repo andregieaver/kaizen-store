@@ -6,8 +6,8 @@ each pushed on its own; this file says what each step is and, once built, what i
 
 | Step | Builds | Done when |
 |---|---|---|
-| 1. Presets | a theme's presets in its versions (`snapshot.variations`), edited on the theme's *Presets* tab, checked and published with the theme; previews, installs, applying and updates by preset; the theme page shows them | a platform admin adds a preset, publishes, sees it on the theme page, and an owner adds that preset to a store and gets it through updates |
-| 2. Content packs | six demo stores for trades (fashion, beauty, food and drink, home, electronics, services) made from data in code, kept as store templates, with AI-made pictures that can be replaced | a platform admin sets up the packs, makes their pictures and publishes them; each is a clean store of its trade |
+| 1. Presets (built, D256) | a theme's presets in its versions (`snapshot.variations`), edited on the theme's *Presets* tab, checked and published with the theme; previews, installs, applying and updates by preset; the theme page shows them | a platform admin adds a preset, publishes, sees it on the theme page, and an owner adds that preset to a store and gets it through updates |
+| 2. Content packs (built, D257) | six demo stores for trades (fashion, beauty, food and drink, home, electronics, services) made from data in code, kept as store templates, with AI-made pictures that can be replaced | a platform admin sets up the packs, makes their pictures and publishes them; each is a clean store of its trade |
 | 3. Showcases | a preset names its pack and its previews and card show it there; Calm, Hearth, Signal and Fjord get 2 to 4 presets each on fitting packs | each launch theme's page shows its presets, each on its own trade's store |
 | 4. Starting from a preset | *Start with this theme* carries the preset; the new store is made from the preset's pack with its look, its demo content marked and removable in one press; an existing store may take a preset's home page, with undo | a person signs up from a preset and gets that store; an owner removes the demo content in one press |
 
@@ -88,3 +88,41 @@ try page and `ThemePreviewStage` on the theme page. Held by `src/lib/design-vari
 *Deviation:* an install keeps its preset's key for good, also while a version has no such preset (the plan let it fall to none); undoing an
 update then needs nothing extra, and a version that brings the preset back brings the install back to it.
 
+
+## Step 2: content packs
+
+**Data.** `CONTENT_PACKS` (`src/lib/content-packs.ts`, pure, as `LAUNCH_THEMES` are): six packs, one a trade (`fashion`, `beauty`, `food`,
+`home`, `electronics`, `services`), each a `version`, its store template's card (title, summary, description, category), the demo store's
+name, its home page's words (headline, tagline, three points, a story), its about page, its categories and six to eight products (a fixed
+handle, words, a price in Norway's kroner, a category, a weight for goods or minutes for an appointment, and what its picture shows), and the
+art direction its pictures share. Everything is hand-written English free of claims (`findClaims()`). Prices: the same number in Sweden's
+kronor, about two thirds in Denmark's, ending in 9 (`packPrice()`). `store_starters.pack_key` (unique), `pack_version` and `pack_pictures`
+(the pictures made, by slot) mark a store template as a pack's.
+
+**Setting up** (`syncContentPacks()`, `src/server/content-packs.ts`, platform admins, from *Content packs* on the Store templates page): a
+pack without a template gets one (`createStarter()` from the default template, at `/s/pack-{key}`), and one whose template has an older
+version is written again; an archived one is left alone. Writing a pack: features `shop` and `countries` (and `appointments` for services),
+English as its only language (`stores.locales`, every market's `default_locale`), the template's products archived (so no copy carries them,
+`clone_store()` skips archived ones) and its other pages, staff and product terms gone, the pack's categories, its products through the
+product editor's own save (`saveProduct()`: checks, prices through `set_price` with the price entry, stock 40 as an opening movement, the
+maker and EU responsible person the template has; a picture already on a product stays), its menus (Home, Shop or Services with the
+categories under it, About), and its pages through the builder's save, published: its home page (`packHomePage()`, the front page), its
+about page and its own All products page (`packProductsPage()`), in the core section styles so each theme and preset draws them its own way.
+A pack is the code's: writing it again replaces its pages, words, prices and menus (not its pictures).
+
+**Pictures** (`makeNextPackPicture()`): the next slot without a picture (the home page's hero, its story, then each product, `packSlots()`),
+made by Kaizena Flow's picture model (`aiFor(null, { feature: "content_pack" })`; no picture model is said, never worked around) from the
+pack's brief (`packPicturePrompt()`, no words, logos or faces), kept in the pack store's media library by `makePicture()`, placed (a
+product's through the editor's save; the pages written again) and only then recorded in `pack_pictures`. One a request: the page's *Make
+the pictures* asks again while some remain, can be stopped, and what is made stays. Until then a product shows `PACK_PLACEHOLDER`.
+
+**Publishing** is the store template's own Publish, refused while a pack has pictures to make (`picturesMissing()`).
+
+**Tests.** `src/lib/content-packs.test.ts` (six packs, words free of claims, whole small stores, briefs, prices),
+`src/lib/content-pack-pages.test.ts` (the pages pass `pageInput`, pictures where made), `src/server/content-packs.int.test.ts` (each pack a
+clean English store of its trade with its products, prices in every market, categories, pages, menus and staff; nothing done to a current
+pack, a pack written again when older; pictures one a request until none is missing, refused without a picture model; Publish refused
+before and done after, the copy holding the pack alone).
+
+**Built (D257).** As above. *Deviations:* the pack's products are written through `saveProduct()` rather than SQL (the price-audit scan
+holds every price to it); the pack keeps the template's `countries` so it sells where the template does.

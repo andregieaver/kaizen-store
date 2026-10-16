@@ -688,6 +688,14 @@ export const storeStarters = commerce.table(
     /** Archived (D177): hidden from every list but the platform's Archived filter, never published while archived; Restore takes it back. */
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     archivedBy: uuid("archived_by").references(() => accounts.id),
+    /**
+     * One of Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2, `CONTENT_PACKS` in `src/lib/content-packs.ts`): its key,
+     * so `syncContentPacks()` finds it again, the version of the code's definition last written into its store (null until then), and the
+     * pictures made for it so far by slot (`hero`, `story`, `product:{handle}`: `{ url, width, height, alt }`). Null for a template an admin made.
+     */
+    packKey: text("pack_key"),
+    packVersion: integer("pack_version"),
+    packPictures: jsonb("pack_pictures").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -695,6 +703,9 @@ export const storeStarters = commerce.table(
   },
   (t) => [
     uniqueIndex("store_starters_store_idx").on(t.storeId),
+    uniqueIndex("store_starters_pack_key_idx").on(t.packKey),
+    check("store_starters_pack", sql`${t.packVersion} is null or (${t.packKey} is not null and ${t.packVersion} > 0)`),
+    check("store_starters_pack_pictures", sql`jsonb_typeof(${t.packPictures}) = 'object'`),
     index("store_starters_recommended_design_idx").on(t.recommendedDesign),
     index("store_starters_published_store_idx").on(t.publishedStoreId),
     index("store_starters_archived_by_idx").on(t.archivedBy),
