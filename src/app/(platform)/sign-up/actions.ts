@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
-import { designChoice } from "@/lib/design-presets";
+import { designLookChoice } from "@/lib/design-presets";
 import { starterChoice } from "@/lib/store-starters";
 import { createAccessRequest } from "@/server/platform";
 
@@ -40,12 +40,15 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
   try {
-    // The store template (D175) and design profile (D176) chosen: each kept only when it is a published one, checked inside.
+    // The store template (D175), design profile (D176) and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen: each kept only
+    // when it is a published one, checked inside.
+    const look = designLookChoice(formData.get("design"));
     await createAccessRequest({
       ...parsed.data,
       referralCode,
       starterId: starterChoice(formData.get("starter")),
-      designPresetId: designChoice(formData.get("design")),
+      designPresetId: look?.id ?? null,
+      designVariation: look?.variation ?? null,
     });
   } catch {
     return { status: "error", messages: ["Your request could not be saved. Please try again."] };

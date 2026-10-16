@@ -7,6 +7,8 @@ import {
   LOOK_FIELDS,
   beforeThemeName,
   designChoice,
+  designLookChoice,
+  designLookValue,
   designPageSlug,
   designPreviewPath,
   designRefusal,
@@ -196,6 +198,16 @@ describe("details, choices and cards", () => {
     expect(designChoice("0F8FAD5B-D9CB-469F-A165-70867728950E")).toBe("0f8fad5b-d9cb-469f-a165-70867728950e");
     expect(designChoice("")).toBeNull();
     expect(designChoice("nordic")).toBeNull();
+  });
+
+  it("takes a theme and one of its presets from a form, and refuses anything else (docs/theme-showcase-phase-1.md step 4)", () => {
+    const id = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    expect(designLookChoice(id)).toEqual({ id, variation: null });
+    expect(designLookChoice(`${id}:sand`)).toEqual({ id, variation: "sand" });
+    expect(designLookChoice(designLookValue(id, "olive-2"))).toEqual({ id, variation: "olive-2" });
+    expect(designLookValue(id, null)).toBe(id);
+    for (const bad of ["", "nordic", `${id}:`, `${id}:Bad Key`, `${id}:a:b`, `nordic:sand`, 7]) expect(designLookChoice(bad), String(bad)).toBeNull();
+    expect(designChoice(`${id}:sand`)).toBe(id);
   });
 
   it("offers keeping the template's own design first, with no preview of its own", () => {

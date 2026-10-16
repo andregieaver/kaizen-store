@@ -6,7 +6,7 @@ import { JsonLdScript } from "@/components/json-ld";
 import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
-import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeTryLink } from "@/lib/theme-store";
+import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, themeJsonLd, themeStartLink, themeTryLink } from "@/lib/theme-store";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
 import { platformHref, themeStorePath, themeStoreUrl, themesHost } from "@/lib/theme-host";
 
@@ -56,6 +56,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
       frameHref: platformHref(designPreviewPath(theme.id, starter, false, false, true, look.key)),
       previewHref: platformHref(designPreviewPath(theme.id, starter, false, false, false, look.key)),
       tryHref: platformHref(themeTryLink(theme.slug, look.key)),
+      startHref: platformHref(themeStartLink(theme.id, look.key)),
     };
   });
   const preview = looks[0].previewHref;
@@ -78,7 +79,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <a href={platformHref(`/sign-up?theme=${theme.id}`)} className="button-primary inline-flex min-h-11 items-center rounded-button px-5 font-medium">
+          <a href={platformHref(themeStartLink(theme.id))} className="button-primary inline-flex min-h-11 items-center rounded-button px-5 font-medium">
             Start with this theme
           </a>
           {/* A route that knows who is signed in, then the admin (another root layout): a plain link (`docs/theme-phase-3.md` step 2). */}

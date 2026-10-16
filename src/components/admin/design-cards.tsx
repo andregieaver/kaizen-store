@@ -1,4 +1,4 @@
-import type { DesignCard } from "@/lib/design-presets";
+import { designLookValue, type DesignCard } from "@/lib/design-presets";
 
 import { DesignChoiceSync } from "./design-choice-sync";
 
@@ -26,8 +26,10 @@ export function DesignPreviewLink({ href, title, className }: { href: string; ti
 
 /**
  * The choice of design profile (D176) for a new store, as radio cards after the store template's: "Keep the template's own design" first,
- * then each published profile with its picture, summary and a Preview opening in a new window. Used on `/admin/stores` and `/sign-up`;
- * the form sends `name`, a profile's id or "" to keep the template's look, and the server checks it again. With `recommended`, choosing a
+ * then each published profile with its picture, summary and a Preview opening in a new window, and its presets as choices under it
+ * (`docs/theme-showcase-phase-1.md` step 4). Used on `/admin/stores` and `/sign-up`; the form sends `name`: a profile's id, `{id}:{key}`
+ * for a preset, or "" to keep the template's look, and the server checks it again. Each choice carries the store template its look is
+ * shown on (`data-starter`), which *Start with this theme* chooses too (`ThemeFromAddress`). With `recommended`, choosing a
  * store template in the same form chooses the profile it recommends (`DesignChoiceSync`). Plain markup otherwise: it works without
  * JavaScript.
  */
@@ -46,7 +48,9 @@ export function DesignCards({
   hint?: string;
   recommended?: Record<string, string>;
 }) {
-  const chosen = cards.some((card) => card.id === selected) ? selected : "";
+  // A theme's own look (`{id}`) or one of its presets (`{id}:{key}`, `docs/theme-showcase-phase-1.md` step 4).
+  const values = cards.flatMap((card) => [card.id, ...(card.looks ?? []).map((look) => designLookValue(card.id, look.key))]);
+  const chosen = values.includes(selected) ? selected : "";
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">{legend}</legend>
@@ -66,13 +70,45 @@ export function DesignCards({
                   <img src={card.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
                 )}
                 <span className="flex items-start gap-2">
-                  <input id={inputId} type="radio" name={name} value={card.id} defaultChecked={card.id === chosen} className="mt-1" />
+                  <input
+                    id={inputId}
+                    type="radio"
+                    name={name}
+                    value={card.id}
+                    defaultChecked={card.id === chosen}
+                    data-starter={card.starterId ?? undefined}
+                    className="mt-1"
+                  />
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="font-medium">{card.title}</span>
                     {card.summary && <span className="font-normal">{card.summary}</span>}
                   </span>
                 </span>
               </label>
+              {card.looks && card.looks.length > 0 && (
+                <fieldset className="flex flex-col gap-1 px-3 pb-3 text-sm">
+                  <legend className="mb-1 text-muted">Or one of its presets</legend>
+                  {card.looks.map((look) => {
+                    const value = designLookValue(card.id, look.key);
+                    return (
+                      <span key={look.key} className="flex flex-wrap items-center gap-x-2">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input type="radio" name={name} value={value} defaultChecked={value === chosen} data-starter={look.starterId ?? undefined} />
+                          <span>
+                            {look.name}
+                            {look.trade && <span className="text-muted"> · {look.trade}</span>}
+                          </span>
+                        </label>
+                        <DesignPreviewLink
+                          href={look.previewHref}
+                          title={`${card.title} · ${look.name}`}
+                          className="text-muted underline-offset-2 hover:underline"
+                        />
+                      </span>
+                    );
+                  })}
+                </fieldset>
+              )}
               {card.description && (
                 <details className="px-3 pb-3 text-sm">
                   <summary className="cursor-pointer text-muted">

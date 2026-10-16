@@ -78,6 +78,21 @@ describe("design profiles (D176)", () => {
       [],
       /foreign key/,
     );
+    // With one of its presets (`docs/theme-showcase-phase-1.md` step 4): a key only beside a profile, and only a key's shape.
+    await db.query(
+      "insert into commerce.access_requests (email, name, store_name, design_preset_id, design_variation) values ('liv@example.com', 'Liv', 'Liv', $1, 'sand')",
+      [id],
+    );
+    await refused(
+      "insert into commerce.access_requests (email, name, store_name, design_variation) values ('per@example.com', 'Per', 'Per', 'sand')",
+      [],
+      /access_requests_design_variation/,
+    );
+    await refused(
+      "insert into commerce.access_requests (email, name, store_name, design_preset_id, design_variation) values ('mia@example.com', 'Mia', 'Mia', $1, 'Bad Key')",
+      [id],
+      /access_requests_design_variation/,
+    );
   });
 });
 

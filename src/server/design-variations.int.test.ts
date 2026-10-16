@@ -147,3 +147,58 @@ describe("a theme's presets", () => {
     expect((await one(sql`select variation from commerce.store_theme_installs where id = ${applied.installId}::uuid`)).variation).toBe("coast");
   });
 });
+
+describe("starting a store from a preset (docs/theme-showcase-phase-1.md step 4)", () => {
+  const platform = async () => import("./platform");
+  const liveInstall = async (storeId: string) =>
+    one(sql`select variation, title, (look is null) as columns from commerce.store_theme_installs where store_id = ${storeId}::uuid and live`);
+  const requestOf = async (email: string) => one(sql`select id, design_preset_id, design_variation from commerce.access_requests where lower(email) = lower(${email})`);
+
+  beforeAll(async () => {
+    expect((await variations.addVariation(admin, theme, "Harbour")).ok).toBe(true);
+    expect((await variations.saveVariationTheme(admin, theme, "harbour", look("#7a3b12"))).ok).toBe(true);
+    await publish();
+  });
+
+  it("keeps the preset with a request only when the theme's published version has it", async () => {
+    const { createAccessRequest } = await platform();
+    await createAccessRequest({ name: "Ada", email: `ada-${run}@example.com`, storeName: "Ada", message: "", designPresetId: theme, designVariation: "harbour" });
+    expect(await requestOf(`ada-${run}@example.com`)).toMatchObject({ design_preset_id: theme, design_variation: "harbour" });
+    await createAccessRequest({ name: "Bo", email: `bo-${run}@example.com`, storeName: "Bo", message: "", designPresetId: theme, designVariation: "nowhere" });
+    expect(await requestOf(`bo-${run}@example.com`)).toMatchObject({ design_preset_id: theme, design_variation: null });
+    // A preset without its theme is never kept (the database refuses it too).
+    await createAccessRequest({ name: "Cy", email: `cy-${run}@example.com`, storeName: "Cy", message: "", designPresetId: null, designVariation: "harbour" });
+    expect(await requestOf(`cy-${run}@example.com`)).toMatchObject({ design_preset_id: null, design_variation: null });
+  });
+
+  it("applies the requester's preset when the request is approved, and the admin's when they change it", async () => {
+    const { approveAccessRequest } = await platform();
+    const ada = await requestOf(`ada-${run}@example.com`);
+    const approved = await approveAccessRequest(admin, String(ada.id), `ada-${run}`, "Ada", "https://example.com");
+    if (!approved.ok) throw new Error(approved.problems.join(" "));
+    expect(approved.design).toMatchObject({ title: `Fjordline ${run} · Harbour`, problem: null });
+    expect(await liveInstall(approved.storeId)).toMatchObject({ variation: "harbour" });
+    const accent = await one(sql`select theme -> 'settings' -> 'light' ->> 'accent' as accent from commerce.stores where id = ${approved.storeId}::uuid`);
+    expect(accent.accent).toBe("#7a3b12");
+
+    // Bo asked for the theme's own look; the admin chooses the preset instead.
+    const bo = await requestOf(`bo-${run}@example.com`);
+    const changed = await approveAccessRequest(admin, String(bo.id), `bo-${run}`, "Bo", "https://example.com", undefined, theme, "harbour");
+    if (!changed.ok) throw new Error(changed.problems.join(" "));
+    expect(await liveInstall(changed.storeId)).toMatchObject({ variation: "harbour" });
+  });
+
+  it("applies a preset an owner chooses for a new store, and the theme's own look for one the version no longer has", async () => {
+    const { createStoreForOwner } = await platform();
+    const account = { id: owner, email: `presets-owner-${run}@example.com`, name: "Owner", platformAdmin: false } as Account;
+    const made = await createStoreForOwner(account, "Second", `presets-second-${run}`, null, theme, "harbour");
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect(made.design).toMatchObject({ title: `Fjordline ${run} · Harbour`, problem: null });
+    expect(await liveInstall(made.storeId)).toMatchObject({ variation: "harbour" });
+
+    const gone = await createStoreForOwner(account, "Third", `presets-third-${run}`, null, theme, "nowhere");
+    if (!gone.ok) throw new Error(gone.problems.join(" "));
+    expect(gone.design).toMatchObject({ title: `Fjordline ${run}`, problem: null });
+    expect(await liveInstall(gone.storeId)).toMatchObject({ variation: null });
+  });
+});

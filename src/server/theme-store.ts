@@ -5,7 +5,6 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
-import { PACK_KEYS } from "@/lib/content-packs";
 import { variationsOf } from "@/lib/design-variations";
 import { launchShotFor } from "@/lib/launch-themes";
 import {
@@ -21,7 +20,7 @@ import {
 } from "@/lib/theme-store";
 
 import { DESIGNS_TAG } from "./design-presets";
-import { STARTERS_TAG } from "./store-starters";
+import { STARTERS_TAG, publishedPacks } from "./store-starters";
 
 /**
  * The theme store's reads (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): published, unarchived themes that have an
@@ -48,18 +47,6 @@ const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, s
     swatch: swatchOf(snapshot),
   };
 };
-
-/**
- * The content packs whose store templates are published (`docs/theme-showcase-phase-1.md` step 3), pack to template: the stores a theme's
- * looks are shown on. Read inside the cached reads below, which therefore also carry `STARTERS_TAG` (publishing a template refreshes them).
- */
-async function publishedPacks(): Promise<Map<string, string>> {
-  const rows = await readDb().execute<Row>(sql`
-    select id, pack_key from commerce.store_starters
-    where pack_key = any(${`{${PACK_KEYS.join(",")}}`}::text[]) and published and archived_at is null
-  `);
-  return new Map(rows.map((row) => [String(row.pack_key), String(row.id)]));
-}
 
 /** Every theme in the store, as the list shows them. */
 export async function themeStoreCards(): Promise<ThemeStoreCard[]> {

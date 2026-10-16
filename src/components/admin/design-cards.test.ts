@@ -88,3 +88,30 @@ describe("the design profiles on a store's Design settings (D176)", () => {
     expect(reader).toContain("Preview");
   });
 });
+
+describe("a theme's presets among the design cards (docs/theme-showcase-phase-1.md step 4)", () => {
+  const withLooks: DesignCard = {
+    ...calm,
+    starterId: "11111111-1111-4111-8111-111111111111",
+    looks: [
+      { key: "sand", name: "Sand", trade: "Beauty", starterId: "22222222-2222-4222-8222-222222222222", previewHref: `${calm.previewHref}?preset=sand` },
+      { key: "ink", name: "Ink", trade: null, starterId: null, previewHref: `${calm.previewHref}?preset=ink` },
+    ],
+  };
+
+  it("offers each preset as its own choice under its theme, with its trade, its preview and the template it starts from", () => {
+    const html = renderToString(createElement(DesignCards, { cards: [keepDesignCard(), withLooks] }));
+    expect(html).toContain("Or one of its presets");
+    expect(html).toContain(`value="${calm.id}:sand"`);
+    expect(html).toContain(`value="${calm.id}:ink"`);
+    expect(html).toContain("Beauty");
+    expect(html).toContain('data-starter="22222222-2222-4222-8222-222222222222"');
+    expect(html).toContain('data-starter="11111111-1111-4111-8111-111111111111"');
+    expect(links(html).some((link) => link.includes("preset=sand"))).toBe(true);
+  });
+
+  it("starts on a preset that was chosen, and on keeping the look for one it does not have", () => {
+    expect(checked(renderToString(createElement(DesignCards, { cards: [keepDesignCard(), withLooks], selected: `${calm.id}:sand` })), `${calm.id}:sand`)).toBe(true);
+    expect(checked(renderToString(createElement(DesignCards, { cards: [keepDesignCard(), withLooks], selected: `${calm.id}:gone` })), "")).toBe(true);
+  });
+});

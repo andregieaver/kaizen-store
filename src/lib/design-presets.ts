@@ -369,7 +369,24 @@ export function parseDesignDetails(form: {
  * What a form's choice of design profile is: a profile's id, or null to keep the store template's own look. Anything else is null too, and
  * the server checks the id again (published, or refused), so a value never chooses something that is not offered.
  */
-export const designChoice = (value: unknown): string | null => starterChoice(value);
+export const designChoice = (value: unknown): string | null => designLookChoice(value)?.id ?? null;
+
+/** A theme and one of its looks as a form's value: `{id}` for its own look, `{id}:{key}` for a preset (`docs/theme-showcase-phase-1.md` step 4). */
+export const designLookValue = (id: string, variation: string | null): string => (variation ? `${id}:${variation}` : id);
+
+/**
+ * What a form's choice of a theme's look is: the theme's id and its preset's key (null for its own look), or null to keep the store
+ * template's own look. A malformed value is null; the server checks the theme (published) and the key (in its published version) again.
+ */
+export function designLookChoice(value: unknown): { id: string; variation: string | null } | null {
+  if (typeof value !== "string") return null;
+  const [rawId, rawKey, ...rest] = value.trim().split(":");
+  const id = starterChoice(rawId);
+  if (!id || rest.length > 0) return null;
+  if (rawKey === undefined) return { id, variation: null };
+  const key = rawKey.trim().toLowerCase();
+  return VARIATION_KEY.test(key) ? { id, variation: key } : null;
+}
 
 /** A design profile as owners and the sign-up form see it. */
 export type OfferedDesign = {
@@ -451,7 +468,17 @@ export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description"
   id: string;
   /** The preview, opened in a new window; null for the card that keeps the look. */
   previewHref: string | null;
+  /**
+   * The content pack's store template its own look is shown on, when that template is published (`docs/theme-showcase-phase-1.md` step
+   * 3): what *Start with this theme* chooses as the store template too (step 4).
+   */
+  starterId?: string | null;
+  /** Its presets (step 4), each its own choice under the card. */
+  looks?: DesignLookCard[];
 };
+
+/** A theme's preset as a choice under its card: its key and name, the trade it is shown on and that pack's template, and its preview. */
+export type DesignLookCard = { key: string; name: string; trade: string | null; starterId: string | null; previewHref: string };
 
 /** The first card at creation and sign-up: the store template's own design, chosen unless the template recommends a profile. */
 export function keepDesignCard(): DesignCard {

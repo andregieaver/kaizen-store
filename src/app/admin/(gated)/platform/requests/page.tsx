@@ -2,10 +2,11 @@ import { storeBase, storeHref } from "@/lib/paths";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { Fragment } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
-import type { OfferedDesign } from "@/lib/design-presets";
+import { designLookValue, type OfferedDesign } from "@/lib/design-presets";
 import { STARTER_CATEGORY_LABELS, type OfferedStarter } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
@@ -153,12 +154,22 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
         </label>
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
           Design profile
-          <select name="design" defaultValue={designGone ? "" : (request.designPresetId ?? "")} className={control}>
+          <select
+            name="design"
+            defaultValue={designGone || !request.designPresetId ? "" : designLookValue(request.designPresetId, request.designVariation)}
+            className={control}
+          >
             <option value="">Keep the template&apos;s own design</option>
             {designs.map((design) => (
-              <option key={design.id} value={design.id}>
-                {design.title}
-              </option>
+              <Fragment key={design.id}>
+                <option value={design.id}>{design.title}</option>
+                {/* Its presets (`docs/theme-showcase-phase-1.md` step 4). */}
+                {(design.presets ?? []).map((preset) => (
+                  <option key={preset.key} value={designLookValue(design.id, preset.key)}>
+                    {design.title} · {preset.name}
+                  </option>
+                ))}
+              </Fragment>
             ))}
           </select>
           <span className="font-normal text-muted">

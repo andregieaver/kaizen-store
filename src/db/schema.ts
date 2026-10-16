@@ -450,9 +450,18 @@ export const accessRequests = commerce.table(
      * may change it before approving, and it is applied right after the store is made. Null: the store template's own look.
      */
     designPresetId: uuid("design_preset_id").references((): AnyPgColumn => designPresets.id),
+    /**
+     * The design profile's preset the requester chose (`docs/theme-showcase-phase-1.md` step 4), by its key, kept only when the profile's
+     * published version has it; applied with the profile. Null: the profile's own look.
+     */
+    designVariation: text("design_variation"),
     createdAt: createdAt(),
   },
   (t) => [
+    check(
+      "access_requests_design_variation",
+      sql`${t.designVariation} is null or (${t.designPresetId} is not null and ${t.designVariation} ~ '^[a-z0-9][a-z0-9-]{0,39}$')`,
+    ),
     uniqueIndex("access_requests_pending_email_idx")
       .on(sql`lower(${t.email})`)
       .where(sql`${t.status} = 'pending'`),

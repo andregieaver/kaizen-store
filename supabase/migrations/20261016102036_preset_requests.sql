@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "design_variation" text;--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_design_variation" CHECK ("commerce"."access_requests"."design_variation" is null or ("commerce"."access_requests"."design_preset_id" is not null and "commerce"."access_requests"."design_variation" ~ '^[a-z0-9][a-z0-9-]{0,39}$'));

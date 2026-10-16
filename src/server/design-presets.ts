@@ -45,7 +45,7 @@ import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
 import { withCoreStyles } from "@/lib/launch-themes";
-import { THEME_SLUG, readListing, type ThemeListing } from "@/lib/theme-store";
+import { THEME_SLUG, readListing, themeLooks, type ThemeListing } from "@/lib/theme-store";
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
 
@@ -56,7 +56,7 @@ import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { pageRulesProblem } from "./page-rules";
 import { pagesTag } from "./pages";
-import { STARTERS_TAG } from "./store-starters";
+import { STARTERS_TAG, publishedPacks } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
 import { parseSiteFonts } from "@/lib/fonts-schema";
@@ -136,17 +136,35 @@ export async function designChoices(): Promise<{ cards: DesignCard[]; recommende
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  const [offered, rows] = await Promise.all([
+  const [offered, rows, listings, packs] = await Promise.all([
     listOfferedDesigns(),
     readDb().execute<Row>(sql`
       select st.id, st.recommended_design from commerce.store_starters st
       join commerce.design_presets d on d.id = st.recommended_design and d.published and d.archived_at is null
       where st.published and st.archived_at is null
     `),
+    readDb().execute<Row>(sql`select id, listing from commerce.design_presets where published and archived_at is null`),
+    publishedPacks(),
   ]);
   const ids = new Set(offered.map((d) => d.id));
+  const listingOf = new Map(listings.map((row) => [String(row.id), readListing(row.listing)]));
+  // Each look with the content pack's template it is shown on (`docs/theme-showcase-phase-1.md` steps 3 and 4), previewed there.
+  const card = (d: OfferedDesign): DesignCard => {
+    const looks = themeLooks(d.title, d.presets ?? [], listingOf.get(d.id) ?? { pack: null, presetPacks: {} }, packs);
+    const starterOf = (key: string | null) => looks.find((look) => look.key === key)?.showcase?.starterId ?? null;
+    return {
+      ...d,
+      previewHref: designPreviewPath(d.id, starterOf(null)),
+      starterId: starterOf(null),
+      looks: looks.flatMap((look) =>
+        look.key === null
+          ? []
+          : [{ key: look.key, name: look.name, trade: look.showcase?.trade ?? null, starterId: look.showcase?.starterId ?? null, previewHref: designPreviewPath(d.id, starterOf(look.key), false, false, false, look.key) }],
+      ),
+    };
+  };
   return {
-    cards: [keepDesignCard(), ...offered.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))],
+    cards: [keepDesignCard(), ...offered.map(card)],
     recommended: Object.fromEntries(rows.filter((r) => ids.has(String(r.recommended_design))).map((r) => [String(r.id), String(r.recommended_design)])),
   };
 }

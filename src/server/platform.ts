@@ -25,7 +25,15 @@ export type AccessRequestInput = {
   starterId?: string | null;
   /** The design profile chosen (D176): a published profile's id, else nothing (the template's own look). */
   designPresetId?: string | null;
+  /** One of its presets (`docs/theme-showcase-phase-1.md` step 4), by key; kept only when its published version has it. */
+  designVariation?: string | null;
 };
+
+/** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
+const publishedVariation = (presetId: unknown, key: string | null | undefined) => sql`(
+  select v ->> 'key' from commerce.design_presets d, jsonb_array_elements(coalesce(d.snapshot -> 'variations', '[]'::jsonb)) v
+  where d.id = ${presetId ?? null}::uuid and d.published and v ->> 'key' = ${key ?? null} limit 1
+)`;
 
 /**
  * Records a request to join the beta. A second request from an email that
@@ -40,10 +48,11 @@ export type AccessRequestInput = {
 export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
   await db().execute(sql`
-    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id)
+    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published),
-      (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published))
+      (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
+      ${publishedVariation(input.designPresetId, input.designVariation)})
     on conflict ((lower(email))) where status = 'pending' do nothing
   `);
 }
@@ -66,6 +75,8 @@ export type AccessRequest = {
   /** The design profile the requester chose (D176), or null for the template's own look. */
   designPresetId: string | null;
   designTitle: string | null;
+  /** The profile's preset chosen with it (`docs/theme-showcase-phase-1.md` step 4), by key; null for its own look. */
+  designVariation: string | null;
 };
 
 /** Pending requests first (oldest first), then the 20 latest decisions. */
@@ -107,6 +118,7 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
     starterTitle: row.starter_title ? String(row.starter_title) : null,
     designPresetId: row.design_preset_id ? String(row.design_preset_id) : null,
     designTitle: row.design_title ? String(row.design_title) : null,
+    designVariation: row.design_variation ? String(row.design_variation) : null,
   }));
 }
 
@@ -161,6 +173,8 @@ export async function approveAccessRequest(
   starterId?: string | null,
   /** The design profile to apply after (D176): an id, null for the template's own look, or left out to keep the requester's choice. */
   designPresetId?: string | null,
+  /** With a design profile the admin chose: its preset's key (`docs/theme-showcase-phase-1.md` step 4), null for its own look. */
+  designVariation: string | null = null,
 ): Promise<ApproveResult> {
   const problem = slugProblem(slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
@@ -182,6 +196,7 @@ export async function approveAccessRequest(
   let email: string;
   let storeId: string;
   let chosenDesign: string | null;
+  let chosenVariation: string | null;
   try {
     const row = await db().transaction(async (tx) => {
       if (starterId !== undefined) {
@@ -193,9 +208,11 @@ export async function approveAccessRequest(
         `);
       }
       if (designPresetId !== undefined) {
+        // The profile and its preset together (a preset the published version lacks is dropped, as at sign-up).
         await tx.execute(sql`
-          update commerce.access_requests set design_preset_id = ${designPresetId}::uuid
-           where id = ${requestId}::uuid and status = 'pending' and design_preset_id is distinct from ${designPresetId}::uuid
+          update commerce.access_requests
+             set design_preset_id = ${designPresetId}::uuid, design_variation = ${publishedVariation(designPresetId, designVariation)}
+           where id = ${requestId}::uuid and status = 'pending'
         `);
       }
       const [approved] = await tx.execute<Row>(sql`
@@ -203,13 +220,15 @@ export async function approveAccessRequest(
           ${requestId}::uuid, ${slug}, ${storeName.trim()}, ${admin.id}::uuid
         ) as store_id,
         (select email from commerce.access_requests where id = ${requestId}::uuid) as email,
-        (select design_preset_id from commerce.access_requests where id = ${requestId}::uuid) as design_preset_id
+        (select design_preset_id from commerce.access_requests where id = ${requestId}::uuid) as design_preset_id,
+        (select design_variation from commerce.access_requests where id = ${requestId}::uuid) as design_variation
       `);
       return approved;
     });
     email = String(row.email);
     storeId = String(row.store_id);
     chosenDesign = row.design_preset_id ? String(row.design_preset_id) : null;
+    chosenVariation = row.design_variation ? String(row.design_variation) : null;
   } catch (error) {
     return { ok: false, problems: [approvalProblem(error, slug)] };
   }
@@ -223,7 +242,7 @@ export async function approveAccessRequest(
   const starterFellBack =
     !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A store template") : null;
   // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
-  const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id) : null;
+  const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id, chosenVariation) : null;
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
   await notifyReferralOpened(storeId).catch(() => null);
 
@@ -238,12 +257,27 @@ export async function approveAccessRequest(
   };
 }
 
-/** Applies the design profile chosen for a store just made (D176), never throwing: the store stays whatever happens. */
-async function applyChosenDesign(storeId: string, presetId: string, accountId: string): Promise<{ title: string | null; problem: string | null }> {
+/**
+ * Applies the design profile chosen for a store just made (D176), with its preset (`docs/theme-showcase-phase-1.md` step 4), never
+ * throwing: the store stays whatever happens. A preset its published version no longer has gives way to the profile's own look.
+ */
+async function applyChosenDesign(
+  storeId: string,
+  presetId: string,
+  accountId: string,
+  variation: string | null = null,
+): Promise<{ title: string | null; problem: string | null }> {
   try {
-    const [preset] = await db().execute<Row>(sql`select title from commerce.design_presets where id = ${presetId}::uuid`);
-    const result = await applyDesignPreset(storeId, presetId, accountId);
-    return { title: preset ? String(preset.title) : null, problem: result.ok ? null : result.problems.join(" ") };
+    const [preset] = await db().execute<Row>(sql`
+      select title, ${publishedVariation(presetId, variation)} as variation, (
+        select v ->> 'name' from jsonb_array_elements(coalesce(snapshot -> 'variations', '[]'::jsonb)) v where v ->> 'key' = ${variation} limit 1
+      ) as variation_name
+      from commerce.design_presets where id = ${presetId}::uuid
+    `);
+    const kept = preset?.variation ? String(preset.variation) : null;
+    const result = await applyDesignPreset(storeId, presetId, accountId, {}, kept);
+    const title = preset ? (kept && preset.variation_name ? `${String(preset.title)} · ${String(preset.variation_name)}` : String(preset.title)) : null;
+    return { title, problem: result.ok ? null : result.problems.join(" ") };
   } catch (error) {
     console.error("[platform] the design profile could not be applied", error);
     return { title: null, problem: "The design profile could not be applied." };
@@ -303,6 +337,8 @@ export async function createStoreForOwner(
   starterId: string | null = null,
   /** The design profile to apply once the store is made (D176): a published profile's id, or null for the template's own look. */
   designPresetId: string | null = null,
+  /** Its preset (`docs/theme-showcase-phase-1.md` step 4), by key; null for its own look. */
+  designVariation: string | null = null,
 ): Promise<CreateStoreResult> {
   const problems: string[] = [];
   if (!name.trim()) problems.push("Enter a store name.");
@@ -337,8 +373,8 @@ export async function createStoreForOwner(
   }
   const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
   const storeId = String(store.id);
-  await audit(account.id, storeId, "store.created_by_owner", { slug, name: name.trim(), starter: starterId, design: designPresetId });
+  await audit(account.id, storeId, "store.created_by_owner", { slug, name: name.trim(), starter: starterId, design: designPresetId, preset: designVariation });
   // The design profile chosen (D176), applied right after; a failure leaves the store with its template's look.
-  const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id) : null;
+  const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id, designVariation) : null;
   return { ok: true, slug, storeId, design };
 }

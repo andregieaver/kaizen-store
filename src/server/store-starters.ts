@@ -22,7 +22,7 @@ import {
   type StarterRow,
 } from "@/lib/store-starters";
 
-import { contentPack, picturesMissing } from "@/lib/content-packs";
+import { PACK_KEYS, contentPack, picturesMissing } from "@/lib/content-packs";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
 import { audit, type Account } from "./auth";
@@ -312,6 +312,19 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
 }
 
 class Refused extends Error {}
+
+/**
+ * The content packs whose store templates are published and not archived (`docs/theme-showcase-phase-1.md` step 3), pack key to template
+ * id: the stores a theme's looks are shown on, and what starting from a look starts from (step 4). A cached read that calls this carries
+ * `STARTERS_TAG` (publishing a template refreshes it).
+ */
+export async function publishedPacks(): Promise<Map<string, string>> {
+  const rows = await readDb().execute<Row>(sql`
+    select id, pack_key from commerce.store_starters
+    where pack_key = any(${`{${PACK_KEYS.join(",")}}`}::text[]) and published and archived_at is null
+  `);
+  return new Map(rows.map((row) => [String(row.pack_key), String(row.id)]));
+}
 
 /** Stops offering a store template at once (D177): stores made from it keep what they got; pending sign-ups that chose it get the Standard store. */
 export async function unpublishStarter(admin: Account, id: string): Promise<StarterResult<{ pendingRequests: number }>> {

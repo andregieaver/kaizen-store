@@ -10,7 +10,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { PLAN_INTERVALS, percentToBps } from "@/lib/plans";
 import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
-import { designChoice } from "@/lib/design-presets";
+import { designLookChoice } from "@/lib/design-presets";
 import { starterChoice } from "@/lib/store-starters";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
@@ -71,6 +71,8 @@ export async function decideAction(
   }
 
   const site = await origin();
+  // A theme's own look or one of its presets (`docs/theme-showcase-phase-1.md` step 4).
+  const look = formData.has("design") ? designLookChoice(formData.get("design")) : undefined;
   const result = await approveAccessRequest(
     admin,
     id.data,
@@ -80,7 +82,8 @@ export async function decideAction(
     // The store template (D175) as the admin left it on the request; a form without the field keeps the requester's.
     formData.has("starter") ? starterChoice(formData.get("starter")) : undefined,
     // The design profile (D176) likewise.
-    formData.has("design") ? designChoice(formData.get("design")) : undefined,
+    look === undefined ? undefined : (look?.id ?? null),
+    look?.variation ?? null,
   );
   if (!result.ok) return { status: "error", messages: result.problems };
   // A design profile applied changed the new store's look (its storefront was never cached yet, but its admin may be).

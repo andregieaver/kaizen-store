@@ -16,6 +16,8 @@ export type StageLook = {
   previewHref: string;
   /** *Try it in your store* with this look. */
   tryHref: string;
+  /** Sign-up with this look chosen, and the store template of its demo store (`docs/theme-showcase-phase-1.md` step 4). */
+  startHref: string;
 };
 
 /**
@@ -59,6 +61,9 @@ export function ThemePreviewStage({ title, looks }: { title: string; looks: Stag
           </ul>
           {look.key && (
             <p className="flex flex-wrap gap-3 text-sm">
+              <a href={look.startHref} className="underline underline-offset-2">
+                Start a store with {name}
+              </a>
               <a href={look.tryHref} className="underline underline-offset-2">
                 Try {name} in your store
               </a>

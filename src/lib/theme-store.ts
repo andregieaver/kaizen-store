@@ -253,5 +253,9 @@ export function themeJsonLd(theme: { title: string; summary: string; pictureUrl:
 export const themeTryPath = (slug: string, preset: string | null = null) =>
   `/admin/account/themes/try/${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;
 
+/** *Start with this theme*: sign-up with the theme, or one of its presets, chosen (`ThemeFromAddress`, `docs/theme-showcase-phase-1.md` step 4). */
+export const themeStartLink = (id: string, preset: string | null = null) =>
+  `/sign-up?theme=${encodeURIComponent(id)}${preset ? `&preset=${encodeURIComponent(preset)}` : ""}`;
+
 /** What *Try it in your store* links to: a route that sends the person there, or to sign in and back (the theme's page is cached). */
 export const themeTryLink = (slug: string, preset: string | null = null) => `/themes/${slug}/try${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;

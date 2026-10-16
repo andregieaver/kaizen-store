@@ -153,3 +153,18 @@ through every preset too.
 **Built (D258).** As above. *Deviation:* a look's pack is kept in the listing rather than in the version (the plan said a preset names its
 pack): it is presentation, changes without a version, and needs no new snapshot field. The launch themes' photographs for version 2 are
 version 1's, their own look being unchanged; phase 2 photographs every look on its pack.
+
+## Step 4: starting from a preset
+
+Built in three parts, each pushed on its own.
+
+**4a. A new store starts from a preset (D259).** A request keeps the theme's preset beside the theme (`access_requests.design_variation`,
+kept only when the theme's published version has that key, `publishedVariation()` in `src/server/platform.ts`; the database refuses a key
+without a theme or of another shape). A form's design choice is one value, `{id}` for a theme's own look or `{id}:{key}` for a preset
+(`designLookValue()`, read only by `designLookChoice()`). The design cards at sign-up and *Create a store* offer each preset under its theme
+(*Or one of its presets*, with its trade and its preview on its pack), and each look carries the store template of its pack where that
+template is published (`data-starter`, from `designChoices()`). The theme page's stage links each look to sign-up (*Start a store with …*,
+`themeStartLink()`: `/sign-up?theme={id}&preset={key}`), and `ThemeFromAddress` chooses that look and its pack's template there, so the new
+store starts as the store the person saw; without JavaScript they choose themselves. The admin's approval offers each preset too.
+Approval and *Create a store* apply the theme with its preset (`applyChosenDesign()`); a preset its published version no longer has gives
+way to the theme's own look.
