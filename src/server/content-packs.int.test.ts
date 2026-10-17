@@ -138,7 +138,7 @@ describe("setting up the content packs", () => {
       const home = pages.find((p) => p.slug === "welcome")!;
       expect(String(store.front_page_id)).toBe(String(home.id));
       expect(String(store.products_page_id)).toBe(String(pages.find((p) => p.slug === "all-products")!.id));
-      const content = parsePageContent(home.published);
+      const content = parsePageContent(home.published)!;
       // The headline as a heading says it, its inline emphasis aside (a designed page may set a word in italics).
       const headings = content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks)).flatMap((block) => (block.type === "heading" ? [inlinePlain(block.text)] : []));
       expect(headings, pack.key).toContain(pack.headline);
