@@ -53,9 +53,9 @@ export function pictureFileName(alt: string): string {
 export async function makePicture(
   connection: AiConnection,
   owner: { storeId: string | null; accountId: string },
-  request: { prompt: string; alt: string; shape: ImageShape },
+  request: { prompt: string; alt: string; shape: ImageShape; quality?: "high" },
 ): Promise<{ ok: true; picture: MadePicture } | { ok: false; problem: string }> {
-  const { bytes } = await generateImage(connection, request.prompt, { shape: request.shape });
+  const { bytes } = await generateImage(connection, request.prompt, { shape: request.shape, ...(request.quality && { quality: request.quality }) });
   let shrunk: Awaited<ReturnType<typeof shrinkPicture>>;
   try {
     shrunk = await shrinkPicture(bytes);

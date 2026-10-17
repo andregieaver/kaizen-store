@@ -286,6 +286,9 @@ describe("AI providers (D73)", () => {
       url: "https://api.openai.com/v1/images/generations",
       body: { model: "picture-model-1", prompt: "A shop full of plants", n: 1, size: "1024x1536" },
     });
+    // A store template's pictures ask for the model's best whatever the settings say (D270).
+    await ai.generateImage(connection, "A moon jar", { shape: "square", quality: "high" });
+    expect(calls[1].body).toEqual({ model: "picture-model-1", prompt: "A moon jar", n: 1, size: "1024x1024", quality: "high" });
 
     // A better model from another provider: a new name and its own key, no change in code.
     const other = { provider: "openai", apiKey: "", textModel: "gpt-5-mini", minSimilarity: "0.5", enabled: true, imageProvider: "custom", imageModel: "better-pictures-2", imageQuality: "high" };

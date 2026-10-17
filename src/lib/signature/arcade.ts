@@ -7,7 +7,7 @@ import { newPageContent, type PageContent, type PageRow } from "../page-content"
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
 
-import { button, heading, image, paragraph, phonesHidden, photo, product, productGrid, site, text, uuid, type Look } from "./kit";
+import { button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
 /**
  * Arcade, a signature theme (`docs/signature-themes.md` step 3): an arcade at night, made from scratch. Near-black violet pages with faint
@@ -37,6 +37,18 @@ const SIGNS = [
   ["cassette", "Cassette", "A cassette tape with both reels, in violet and pink, for the music corner.", 1790, "retro", "A neon cassette tape sign: a violet outline with a pink window and two pink reels"],
   ["cherries", "Cherries", "Two cherries on their stems with a leaf, straight from the fruit machine.", 1390, "retro", "A neon sign of two pink cherries on lime stems with a lime leaf, mounted on a dark brick wall"],
 ] as const;
+
+/** What each sign's product photograph shows (D270). */
+const SIGN_SHOTS: Record<(typeof SIGNS)[number][0], string> = {
+  lightning: "a jagged lightning bolt in electric yellow",
+  crescent: "a thin crescent moon in cool cyan",
+  palm: "a palm tree with lime fronds and an orange trunk",
+  heart: "a full heart in hot pink, bent as one continuous line",
+  star: "a yellow star with three pink trails streaking behind it",
+  joystick: "an arcade joystick: a pink ball on a cyan stick above a cyan base with two pink buttons",
+  cassette: "a cassette tape: a violet outline with a pink window and two pink reels",
+  cherries: "two pink cherries on lime stems with a lime leaf",
+};
 
 export const ARCADE_PACK: ContentPack = {
   key: "neon",
@@ -75,7 +87,8 @@ export const ARCADE_PACK: ContentPack = {
     picture: `A ${title.toLowerCase()} neon sign glowing on a dark brick wall`,
     grams: 2600,
   })),
-  look: "Glowing neon signs on dark brick walls at night, synthwave grids and setting suns in hot pink, cyan, violet and yellow.",
+  look:
+    "Shot at night by a professional product photographer for a neon sign maker's catalogue, on a full-frame camera with a 50 mm lens at f/2.8 and ISO 800 on a tripod. The signs are the main light: real LED neon flex tubes with a soft bloom and a natural fall-off of coloured light on their surroundings, clear acrylic backing boards, small metal stand-offs and a thin black cable. Dark painted brick walls, deep violet and teal shadows, saturated pink, cyan, lime and yellow light and a little haze.",
   heroPicture: "A synthwave night with a grid floor, a striped setting sun and a city skyline",
   storyPicture: "Glowing neon tubes on a dark workbench",
   art: {
@@ -86,6 +99,48 @@ export const ARCADE_PACK: ContentPack = {
     "tile:night": art("tile-night", 1200, 900, "Three neon signs on a dark brick wall: a palm tree, a crescent moon and a lightning bolt"),
     "tile:love": art("tile-love", 1200, 900, "Two neon signs on a dark brick wall: a pink heart and a yellow shooting star with pink trails"),
     ...Object.fromEntries(SIGNS.map(([handle, , , , , alt]) => [`product:${handle}`, art(`sign-${handle}`, 1200, 1200, alt)])),
+  },
+  photos: {
+    hero: shot(
+      "landscape",
+      "A narrow city alley at night after rain, neon signs glowing on its brick walls and reflected in the wet ground",
+      "A narrow city alley at night just after rain, for a website's opening picture: wet asphalt reflecting pink and cyan light, and a few glowing neon signs shaped like a heart, a palm tree and a crescent moon on dark brick walls in the right half of the frame. The left half of the frame is dark and quiet, with room for a headline.",
+    ),
+    story: shot(
+      "landscape",
+      "A neon maker's workbench at night with a pink heart half bent and a cyan wave in a clamp",
+      "A neon maker's workbench at night: a pink LED neon heart half bent into shape, a cyan neon wave held upright in a clamp, coils of unlit neon flex, cutters and a sheet of clear acrylic, lit mostly by the glowing tubes, with a pegboard of tools softly out of focus behind. No people.",
+    ),
+    wall: shot(
+      "landscape",
+      "A dark brick wall at night with a pink neon heart, a yellow lightning bolt and a cyan crescent moon",
+      "A long, dark brick wall at night with three neon signs: a pink heart at the far left with a small yellow lightning bolt beside it, and a cyan crescent moon at the far right. The middle of the wall stays dark and empty, lit only by their spill.",
+    ),
+    "tile:retro": shot(
+      "landscape",
+      "Three neon signs on a dark brick wall: a joystick, a cassette tape and cherries",
+      "Three neon signs on a dark brick wall: an arcade joystick in cyan and pink, a cassette tape in violet and pink, and two pink cherries on lime stems.",
+    ),
+    "tile:night": shot(
+      "landscape",
+      "Three neon signs on a dark brick wall: a palm tree, a crescent moon and a lightning bolt",
+      "Three neon signs on a dark brick wall: a palm tree with lime fronds and an orange trunk, a cyan crescent moon and a yellow lightning bolt.",
+    ),
+    "tile:love": shot(
+      "landscape",
+      "Two neon signs on a dark brick wall: a pink heart and a yellow shooting star",
+      "Two neon signs on a dark brick wall: a large pink heart and a yellow shooting star with pink trails.",
+    ),
+    ...Object.fromEntries(
+      SIGNS.map(([handle, , , , , alt]) => [
+        `product:${handle}`,
+        shot(
+          "square",
+          alt,
+          `A product photograph for an online shop: a single LED neon sign shaped like ${SIGN_SHOTS[handle]}, mounted on a clear acrylic backer with four metal stand-offs on a dark painted brick wall, centred and photographed straight on. The sign is the only light; its glow falls softly on the bricks, and a thin cable runs down from it.`,
+        ),
+      ]),
+    ),
   },
   design: "arcade",
 };
@@ -425,7 +480,7 @@ h1, h2, h3 { text-wrap: balance; }
 .arcade-collections { gap: 22px; }
 .arcade-tile { border: 1px solid var(--arcade-line); border-radius: 18px; padding: 12px 12px 20px; background: var(--arcade-panel); transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease; }
 .arcade-tile:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 0 0 1px var(--arcade-glow), 0 0 32px color-mix(in srgb, var(--accent) 30%, transparent); }
-.arcade-tile-image img { border-radius: 10px; }
+.arcade-tile-image img { aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
 .arcade-tile.arcade-tile { row-gap: .6rem; }
 .arcade-tile-name { margin-top: .9rem; padding-inline: 4px; text-shadow: 0 0 14px var(--arcade-glow); }
 .arcade-tile-line { padding-inline: 4px; }

@@ -1,4 +1,5 @@
 import type { PackPicture } from "../content-pack-pages";
+import type { PackPhoto } from "../content-packs";
 import { rem, lines, em } from "../theme-kit";
 
 /**
@@ -104,6 +105,9 @@ export const site = (id: string, part: string, extra: Record<string, unknown> = 
 
 /** A product page part, by its fixed id. */
 export const product = (id: string, part: string, extra: Record<string, unknown> = {}) => ({ id, type: "product", part, ...extra });
+
+/** A photograph the picture model makes for a pack's slot (D270): its shape, its alt text and the photographer's brief. */
+export const shot = (shape: PackPhoto["shape"], alt: string, brief: string): PackPhoto => ({ brief, shape, alt });
 
 /** Hidden on phones (Small). */
 export const phonesHidden = { visibility: { hideAt: ["sm"] } };

@@ -788,11 +788,10 @@ const IMAGE_MAX_BYTES = 20 * 1024 * 1024;
  * name in the settings, so a better one needs no change here; a size or
  * quality it does not take is left out and remembered.
  */
-export async function generateImage(
-  connection: AiConnection,
-  prompt: string,
-  options: { shape?: ImageShape; timeoutMs?: number } = {},
-): Promise<{ bytes: Uint8Array }> {
+/** How a picture is asked for: its shape, how long to wait, and a quality that overrides the settings' own (a showcase's pictures ask for `high`). */
+export type ImageOptions = { shape?: ImageShape; timeoutMs?: number; quality?: "high" };
+
+export async function generateImage(connection: AiConnection, prompt: string, options: ImageOptions = {}): Promise<{ bytes: Uint8Array }> {
   const image = connection.image;
   if (!image) throw new AiError("No picture model is set.");
   return metered(connection, { kind: "image", provider: image.provider, model: image.model }, async () => {
@@ -801,12 +800,13 @@ export async function generateImage(
   });
 }
 
-async function generateImageOnce(image: ImageConnection, prompt: string, options: { shape?: ImageShape; timeoutMs?: number }): Promise<{ bytes: Uint8Array; usage: unknown }> {
+async function generateImageOnce(image: ImageConnection, prompt: string, options: ImageOptions): Promise<{ bytes: Uint8Array; usage: unknown }> {
   const model = `${image.apiUrl}|${image.model}`;
   const refused = refusedImageOptions.get(model) ?? new Set<string>();
+  const quality = options.quality ?? image.quality;
   const extra: Record<string, unknown> = {
     size: IMAGE_SIZES[options.shape ?? "landscape"],
-    ...(image.quality ? { quality: image.quality } : {}),
+    ...(quality ? { quality } : {}),
   };
   for (const name of refused) delete extra[name];
   let json: Row | null = null;

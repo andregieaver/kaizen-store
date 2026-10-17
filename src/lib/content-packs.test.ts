@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { findClaims } from "./claims";
-import { CONTENT_PACKS, PACK_KEYS, PICTURE_RULES, contentPack, packPicturePrompt, packPrice, packSlug } from "./content-packs";
+import { CONTENT_PACKS, PACK_KEYS, PICTURE_RULES, REAL_PHOTO, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, picturesMissing, slotMissing } from "./content-packs";
 
 /** Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): demo stores per trade, as data. */
 
@@ -58,6 +58,44 @@ describe("the content packs", () => {
     expect(prompt).toContain(pack.heroPicture);
     expect(prompt).toContain(pack.look);
     expect(prompt).toContain(PICTURE_RULES);
+  });
+
+  it("photograph a signature theme's demo store from a brief for every picture its pages and products read (D270)", () => {
+    for (const pack of CONTENT_PACKS.filter((p) => p.art)) {
+      const slots = packSlots(pack);
+      // Every slot is briefed, its art standing in until the photograph is made; the hero first and the products last.
+      expect(Object.keys(pack.photos ?? {}).sort(), pack.key).toEqual([...slots].sort());
+      expect(Object.keys(pack.art ?? {}).sort(), pack.key).toEqual([...slots].sort());
+      expect(slots[0]).toBe("hero");
+      expect(slots.slice(-pack.products.length)).toEqual(pack.products.map((p) => `product:${p.handle}`));
+      for (const [slot, photo] of Object.entries(pack.photos ?? {})) {
+        const prompt = packPhotoPrompt(pack, photo);
+        expect(prompt, slot).toContain(photo.brief);
+        expect(prompt).toContain(pack.look);
+        expect(prompt).toContain(REAL_PHOTO);
+        expect(prompt).toContain(PICTURE_RULES);
+        expect(prompt.length, `${pack.key} ${slot}`).toBeLessThanOrEqual(4000);
+        for (const words of [photo.brief, photo.alt]) expect(findClaims(words), words).toEqual([]);
+      }
+    }
+  });
+
+  it("count a briefed slot as missing until its photograph is made: placed art only stands in", () => {
+    const pack = contentPack("ceramics")!;
+    const art = { url: "https://x.test/hero.webp", width: 1, height: 1, alt: "", art: "/demo/themes/atelier/hero.webp" };
+    const made = { url: "https://x.test/made.webp", width: 1, height: 1, alt: "" };
+    expect(slotMissing(pack, "hero", undefined)).toBe(true);
+    expect(slotMissing(pack, "hero", art)).toBe(true);
+    expect(slotMissing(pack, "hero", made)).toBe(false);
+    const all = Object.fromEntries(packSlots(pack).map((slot) => [slot, art]));
+    expect(picturesMissing(pack, all)).toBe(packSlots(pack).length);
+    expect(picturesMissing(pack, { ...all, hero: made })).toBe(packSlots(pack).length - 1);
+    expect(picturesMissing(pack, Object.fromEntries(packSlots(pack).map((slot) => [slot, made])))).toBe(0);
+    // A pack without briefs still counts only what is neither made nor brought.
+    const plain = contentPack("fashion")!;
+    expect(slotMissing(plain, "hero", undefined)).toBe(true);
+    expect(slotMissing(plain, "hero", made)).toBe(false);
+    expect(picturesMissing(plain, {})).toBe(packSlots(plain).length);
   });
 
   it("price Sweden as Norway in its own currency and Denmark at about two thirds, in minor units", () => {

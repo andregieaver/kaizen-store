@@ -70,9 +70,18 @@ export type ContentPack = {
    * of the site (`public/demo/themes/{theme}/`), stored in the pack store's library when it is set up and never made by the picture model.
    */
   art?: Readonly<Record<string, PackPicture>>;
+  /**
+   * Photographs Kaizena Flow's picture model makes for the pack, by slot, each from a photographer's brief (`look` is the shoot's direction,
+   * D270): a signature theme's demo store looks photographed, not drawn. The slot's art stands in until its photograph is made, and the
+   * pack is published only once every one is (`picturesMissing()`).
+   */
+  photos?: Readonly<Record<string, PackPhoto>>;
   /** The theme its pages are designed for (`PACK_DESIGNS`, `src/lib/pack-designs.ts`), in place of the common pages. */
   design?: PackDesignKey;
 };
+
+/** One photograph a pack asks the picture model for: what is in it and how it is framed, as a photographer's brief, its shape and its alt text. */
+export type PackPhoto = { brief: string; shape: "landscape" | "portrait" | "square"; alt: string };
 
 /** Every picture of every pack: no words, letters, logos or faces, so nothing in it can mislead or need a licence. */
 export const PICTURE_RULES = "No text, letters, numbers, logos, labels or watermarks anywhere in the picture. No recognisable faces.";
@@ -356,6 +365,12 @@ export const contentPack = (key: string): ContentPack | null => CONTENT_PACKS.fi
 /** The prompt for one of a pack's pictures: what it shows, in the pack's look, by the rules every pack picture keeps. */
 export const packPicturePrompt = (pack: ContentPack, subject: string): string => `${subject}. ${pack.look} ${PICTURE_RULES}`;
 
+/** What every photograph of a pack is, said to the model in so many words. */
+export const REAL_PHOTO = "A real photograph, not a 3D render, illustration, painting or digital art.";
+
+/** The prompt for one of a pack's photographs: the slot's brief, the shoot's direction (`look`), and the rules every pack picture keeps. */
+export const packPhotoPrompt = (pack: ContentPack, photo: PackPhoto): string => `${photo.brief} ${pack.look} ${REAL_PHOTO} ${PICTURE_RULES}`;
+
 /** A price in Norway's kroner as the minor units a market's price is set in: the same number in Sweden, about two thirds in Denmark. */
 export function packPrice(price: number, market: string): number {
   if (market === "DK") return Math.max(9, Math.round((price * 0.68) / 10) * 10 - 1) * 100;
@@ -365,11 +380,25 @@ export function packPrice(price: number, market: string): number {
 /** The store addresses the packs' templates take (`pack-fashion` …), never a store's own. */
 export const packSlug = (key: PackKey): string => `pack-${key}`;
 
-/** A pack's pictures by slot: its home page's two, then one per product. */
-export const packSlots = (pack: ContentPack): string[] => ["hero", "story", ...pack.products.map((p) => `product:${p.handle}`)];
+/** A pack's pictures by slot: its home page's two, the other photographs its designed pages read, then one per product. */
+export function packSlots(pack: ContentPack): string[] {
+  const products = pack.products.map((p) => `product:${p.handle}`);
+  const own = Object.keys(pack.photos ?? {}).filter((slot) => slot !== "hero" && slot !== "story" && !products.includes(slot));
+  return ["hero", "story", ...own, ...products];
+}
 
-/** How many of a pack's pictures are still to make, from what its template keeps (`store_starters.pack_pictures`); its own art needs none. */
+/**
+ * Whether a slot still needs its picture made, from what the template keeps for it: a photograph not made yet (art placed there only
+ * stands in, and is kept with the address it came from), or a picture neither made nor brought as art.
+ */
+export function slotMissing(pack: ContentPack, slot: string, kept: unknown): boolean {
+  const held = kept && typeof kept === "object" ? (kept as { art?: unknown }) : null;
+  if (pack.photos?.[slot]) return !held || typeof held.art === "string";
+  return !held && !pack.art?.[slot];
+}
+
+/** How many of a pack's pictures are still to make, from what its template keeps (`store_starters.pack_pictures`); art needs none unless a photograph is to replace it. */
 export function picturesMissing(pack: ContentPack, pictures: unknown): number {
   const kept = pictures && typeof pictures === "object" && !Array.isArray(pictures) ? (pictures as Record<string, unknown>) : {};
-  return packSlots(pack).filter((slot) => !kept[slot] && !pack.art?.[slot]).length;
+  return packSlots(pack).filter((slot) => slotMissing(pack, slot, kept[slot])).length;
 }

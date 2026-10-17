@@ -7,7 +7,7 @@ import { newPageContent, type PageContent, type PageRow } from "../page-content"
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
 
-import { EYEBROW, heading, iconList, image, paragraph, phonesHidden, photo, product, productGrid, site, text, uuid, type Look } from "./kit";
+import { EYEBROW, heading, iconList, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
 /**
  * Botanica, a signature theme (`docs/signature-themes.md` step 3): a plant shop drawn on paper, made from scratch. Warm cream pages with a
@@ -36,6 +36,18 @@ const PLANTS = [
   ["fern", "Bird's-nest fern", "A rosette of wavy fronds that loves a steamy bathroom or a shady shelf.", 299, "trailing", 1800, "A bird's-nest fern with wavy fronds in a sage bowl"],
   ["string-of-pearls", "String of pearls", "Trailing strands of small round beads that spill over the edge of a shelf.", 279, "trailing", 900, "A string of pearls in a terracotta bowl on a small oak stand, its strands hanging down"],
 ] as const;
+
+/** What each plant's product photograph shows (D270). */
+const PLANT_SHOTS: Record<(typeof PLANTS)[number][0], string> = {
+  monstera: "a monstera with large split leaves in a cream glazed ceramic pot",
+  "fiddle-fig": "a fiddle-leaf fig with violin-shaped leaves on a woody stem in a raw terracotta pot",
+  "bird-of-paradise": "a bird of paradise with long paddle-shaped leaves on tall stalks in a woven seagrass basket",
+  "snake-plant": "a snake plant with upright, banded leaves edged in yellow in a sage glazed pot",
+  "zz-plant": "a ZZ plant with arching stems of glossy oval leaflets in a cream glazed pot",
+  pilea: "a Chinese money plant with round, coin-shaped leaves on thin stalks in a small woven seagrass basket",
+  fern: "a bird's-nest fern with wavy, glossy fronds in a sage glazed bowl",
+  "string-of-pearls": "a string of pearls in a terracotta bowl on a small oak plant stand, its beaded strands hanging down",
+};
 
 export const BOTANICA_PACK: ContentPack = {
   key: "plants",
@@ -74,8 +86,9 @@ export const BOTANICA_PACK: ContentPack = {
     picture: `A ${title.toLowerCase()} in its pot on cream paper`,
     grams,
   })),
-  look: "Gouache and cut-paper illustrations of house plants in terracotta and cream pots on warm cream paper.",
-  heroPicture: "A lush arrangement of potted plants and big leaves on cream paper",
+  look:
+    "Shot by a professional interior and product photographer for a plant shop's catalogue, on a full-frame camera with a 50 mm lens at f/5.6 and ISO 200. Soft natural daylight from a large window at the left and gentle shadows; a warm off-white plaster wall and a light oak floor or bench; healthy, glossy leaves with natural imperfections; pots in cream glaze, sage glaze and raw terracotta, and woven seagrass baskets. True-to-life greens, an airy, calm editorial look and fine grain.",
+  heroPicture: "A lush arrangement of potted plants and big leaves against a warm plaster wall",
   storyPicture: "An arched glasshouse window full of plants",
   art: {
     hero: art("hero", 2560, 1440, "Potted plants on a low oak bench against cream paper: a monstera, a pilea, a snake plant and a string of pearls, a bird of paradise behind"),
@@ -85,6 +98,48 @@ export const BOTANICA_PACK: ContentPack = {
     "tile:easy-care": art("tile-easy-care", 1200, 1500, "A snake plant, a ZZ plant and a Chinese money plant on a light oak floor"),
     "tile:trailing": art("tile-trailing", 1200, 1500, "Two pots of string of pearls on an oak shelf above a bird's-nest fern"),
     ...Object.fromEntries(PLANTS.map(([handle, , , , , , alt]) => [`product:${handle}`, art(`plant-${handle}`, 1200, 1600, alt)])),
+  },
+  photos: {
+    hero: shot(
+      "landscape",
+      "Potted plants on a low oak bench against a warm plaster wall in soft window light",
+      "Potted plants on a low oak bench against a warm off-white plaster wall in soft window light: a monstera in a cream pot, a Chinese money plant, a snake plant and a trailing string of pearls, with a bird of paradise in a woven basket behind, all in the right half of the frame. The left half is calm, empty plaster wall with room for a headline.",
+    ),
+    story: shot(
+      "landscape",
+      "An arched glasshouse window in warm light with potted plants on an oak bench in front of it",
+      "An arched glasshouse window glowing with warm afternoon light, potted plants on an oak bench in front of it: a snake plant, a Chinese money plant and a fern in terracotta and sage pots, with a monstera and a palm growing to either side.",
+    ),
+    leaves: shot(
+      "landscape",
+      "A dense wall of overlapping monstera, palm, fern and bird of paradise leaves in deep greens",
+      "A dense wall of overlapping tropical leaves filling the whole frame: monstera, palm, fern and bird of paradise leaves in deep greens, darker toward the back, soft light catching their edges.",
+    ),
+    "tile:big-leaves": shot(
+      "portrait",
+      "A fiddle-leaf fig, a bird of paradise and a monstera on a light oak floor",
+      "A fiddle-leaf fig in a raw terracotta pot, a bird of paradise in a woven seagrass basket and a monstera in a cream glazed pot standing together on a light oak floor against a warm plaster wall.",
+    ),
+    "tile:easy-care": shot(
+      "portrait",
+      "A snake plant, a ZZ plant and a Chinese money plant on a light oak floor",
+      "A snake plant in a sage glazed pot, a ZZ plant in a cream glazed pot and a Chinese money plant in a raw terracotta pot, grouped on a light oak floor against a warm plaster wall.",
+    ),
+    "tile:trailing": shot(
+      "portrait",
+      "Two pots of string of pearls on an oak shelf above a bird's-nest fern",
+      "Two terracotta pots of string of pearls on an oak wall shelf, their beaded strands hanging down, above a bird's-nest fern in a cream glazed pot on a light oak floor.",
+    ),
+    ...Object.fromEntries(
+      PLANTS.map(([handle, , , , , , alt]) => [
+        `product:${handle}`,
+        shot(
+          "portrait",
+          alt,
+          `A product photograph for an online shop: ${PLANT_SHOTS[handle]}, standing alone in the middle of a light oak floor against a warm off-white plaster wall, the whole plant and pot in frame with even space around it, photographed at the height of the pot's rim.`,
+        ),
+      ]),
+    ),
   },
   design: "botanica",
 };
@@ -429,7 +484,7 @@ h1 em, h2 em { font-style: italic; color: var(--accent); }
 .botanica-hero { position: relative; }
 .botanica-hero::after { content: ""; position: absolute; left: -30px; bottom: -40px; width: 260px; height: 260px; background: url(/demo/themes/botanica/sprig.webp) center / contain no-repeat; pointer-events: none; transform-origin: 20% 90%; animation: botanica-sway 9s ease-in-out infinite; opacity: .85; }
 @media (max-width: 767px) { .botanica-hero::after { width: 160px; height: 160px; left: auto; right: -20px; bottom: -30px; } }
-.botanica-arch img { border-radius: 999px 999px 28px 28px; }
+.botanica-arch img { aspect-ratio: 4 / 5; object-fit: cover; border-radius: 999px 999px 28px 28px; }
 .botanica-blob img { border-radius: 58% 42% 46% 54% / 52% 44% 56% 48%; }
 
 .product-card { text-align: center; transition: transform var(--kz-hover-dur, .35s) ease; }

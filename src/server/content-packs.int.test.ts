@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { CONTENT_PACKS, PACK_KEYS, contentPack, packPrice, packSlots, packSlug } from "@/lib/content-packs";
+import { CONTENT_PACKS, PACK_KEYS, REAL_PHOTO, contentPack, packPrice, packSlots, packSlug } from "@/lib/content-packs";
 import { inlinePlain } from "@/lib/inline-text";
 import { parsePageContent } from "@/lib/page-content";
 
@@ -78,8 +78,8 @@ describe("setting up the content packs", () => {
       expect(store.published).toBe(false);
     }
     const states = await packs.contentPackStates();
-    // A signature theme's pack brings its art (`docs/signature-themes.md`): nothing of it is left to make.
-    for (const state of states) expect(state.current && !state.published && state.pictures === (contentPack(state.key)!.art ? state.slots : 0), state.key).toBe(true);
+    // Nothing is made yet: a signature theme's art only stands in until its photographs are made (D270).
+    for (const state of states) expect(state.current && !state.published && state.pictures === 0, state.key).toBe(true);
   }, 240_000);
 
   it("writes each one as a clean English store of its trade: its products only, in English, priced in every market, with categories", async () => {
@@ -285,6 +285,44 @@ describe("a pack's pictures", () => {
     const states = await packs.contentPackStates();
     expect(states.find((s) => s.key === "beauty")).toMatchObject({ pictures: slots.length, slots: slots.length });
   }, 120_000);
+
+  it("photograph a signature theme's demo store from its briefs at the model's best, in place of its art, which a later sync never puts back", async () => {
+    const pack = contentPack("ceramics")!;
+    const slots = packSlots(pack);
+    const before = await storeOf("ceramics");
+    expect(await publishStarter(admin, String(before.starter_id))).toMatchObject({ ok: false });
+    const requests: { prompt: string; shape: string; quality?: string }[] = [];
+    const shoot = (async (c: unknown, o: unknown, request: { prompt: string; shape: string; quality?: string }) => {
+      requests.push(request);
+      return (make as (c: unknown, o: unknown, r: unknown) => Promise<unknown>)(c, o, request);
+    }) as never;
+    let remaining = slots.length;
+    while (remaining > 0) {
+      const next = await packs.makeNextPackPicture(admin, "ceramics", { connection, make: shoot });
+      if (!next.ok) throw new Error(next.problems.join(" "));
+      remaining = next.remaining;
+    }
+    expect(requests).toHaveLength(slots.length);
+    expect(requests[0]).toMatchObject({ shape: "landscape", quality: "high" });
+    expect(requests[0].prompt).toContain(pack.photos!.hero.brief);
+    expect(requests.at(-1)).toMatchObject({ shape: "portrait" });
+    for (const request of requests) expect(request.prompt).toContain(REAL_PHOTO);
+    const store = await storeOf("ceramics");
+    const kept = store.pack_pictures as Record<string, { url: string; art?: string }>;
+    for (const slot of slots) expect(kept[slot]?.art, slot).toBeUndefined();
+    // The designed home page shows the photographs, no longer the art.
+    const home = await one(sql`select published from commerce.pages where id = ${String(store.front_page_id)}::uuid`);
+    expect(JSON.stringify(home.published)).toContain(kept.hero.url);
+    expect(JSON.stringify(home.published)).not.toContain(artUrl(pack.art!.hero.url));
+    // A later sync of a newer version keeps them: no art is stored again or put back.
+    await db().execute(sql`update commerce.store_starters set pack_version = null where id = ${String(store.starter_id)}::uuid`);
+    let stored = 0;
+    await packs.syncContentPacks(admin, { ...deps, storeArt: async (owner, art) => (stored++, deps.storeArt(owner, art)) });
+    expect(stored).toBe(0);
+    expect((await storeOf("ceramics")).pack_pictures).toEqual(kept);
+    const states = await packs.contentPackStates();
+    expect(states.find((s) => s.key === "ceramics")).toMatchObject({ pictures: slots.length, slots: slots.length });
+  }, 240_000);
 
   it("let the pack be published, and its copy holds the pack alone, in English", async () => {
     const store = await storeOf("beauty");

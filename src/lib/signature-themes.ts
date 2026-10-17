@@ -14,7 +14,8 @@ import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
  * `themeCheck()`'s. Pure: the caller says which art files exist.
  *
  * Unique: its own header, footer, product page and stylesheet, and a demo store (content pack) whose home and about pages are designed for
- * it (`ContentPack.design`), with art for every picture, kept in `public/demo/themes/{key}/`.
+ * it (`ContentPack.design`), with a photographer's brief for every picture (made by the picture model, D270) and art standing in for each
+ * until it is made, kept in `public/demo/themes/{key}/`.
  * Converting: the header always offers search and the cart; the product page's first row holds the title, the price, the gallery and the
  * buy part (so price, choice and *Add to cart* are on the first screen); the footer shows what the law asks of a store's footer (business
  * details, cookies, withdrawal at every size); and no word anywhere, the theme's, its listing's, its pack's or its pages', makes a claim
@@ -48,6 +49,7 @@ export function signatureWords(theme: LaunchTheme, pack: ContentPack | null): st
     words.push(...pack.points.flatMap((point) => [point.title, point.text]), ...pack.categories.map((category) => category.name));
     words.push(...pack.products.flatMap((product) => [product.title, product.description]));
     words.push(...Object.values(pack.art ?? {}).map((art) => art.alt));
+    words.push(...Object.values(pack.photos ?? {}).flatMap((photo) => (photo ? [photo.brief, photo.alt] : [])), pack.look);
     const design = pack.design ? PACK_DESIGNS[pack.design] : null;
     if (design) {
       const picture = (slot: string) => pack.art?.[slot] ?? null;
@@ -98,6 +100,9 @@ export function signatureCheck(theme: LaunchTheme, options: { artExists: (url: s
     if (!pack.design || !PACK_DESIGNS[pack.design]) problems.push(`Its demo store, ${pack.storeName}, has no pages designed for it.`);
     const art = pack.art ?? {};
     for (const slot of packSlots(pack)) if (!art[slot]) problems.push(`Its demo store has no art for ${slot}.`);
+    // Every picture of it is photographed (D270): a brief for each, the art standing in until the photograph is made.
+    for (const slot of Object.keys(art)) if (!pack.photos?.[slot]?.brief.trim()) problems.push(`Its demo store has no photographer's brief for ${slot}.`);
+    for (const [slot, photo] of Object.entries(pack.photos ?? {})) if (photo && !photo.alt.trim()) problems.push(`Its photograph for ${slot} has no alt text.`);
     const folder = `/demo/themes/${theme.key}/`;
     for (const [slot, picture] of Object.entries(art)) {
       if (!picture.url.startsWith(folder) || !picture.url.endsWith(".webp")) problems.push(`Its art for ${slot} is not a WebP in ${folder}.`);

@@ -8,7 +8,7 @@ import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { packAboutPage, packHomePage, packProductsPage, type PackPicture } from "@/lib/content-pack-pages";
-import { CONTENT_PACKS, contentPack, packPicturePrompt, packPrice, packSlots, packSlug, type ContentPack, type PackProduct } from "@/lib/content-packs";
+import { CONTENT_PACKS, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, slotMissing, type ContentPack, type PackProduct } from "@/lib/content-packs";
 import { PACK_DESIGNS } from "@/lib/pack-designs";
 import type { MenuEntry } from "@/lib/navigation";
 import { DEFAULT_APPOINTMENT, GENERAL_TAX_CODE, formatPriceInput, type ProductInput } from "@/lib/product-input";
@@ -103,7 +103,8 @@ async function storeArtPicture(owner: { storeId: string; accountId: string }, ar
 async function placeArt(admin: Account, row: PackRow, pack: ContentPack, deps: PackDeps): Promise<Record<string, StoredPicture>> {
   const placed = { ...row.pictures };
   for (const [slot, art] of Object.entries(pack.art ?? {})) {
-    if (placed[slot]?.art === art.url) continue;
+    // Placed already, or a photograph made for the slot (D270), which its art never replaces.
+    if (placed[slot]?.art === art.url || (placed[slot] && !placed[slot].art)) continue;
     const stored = await (deps.storeArt ?? storeArtPicture)({ storeId: row.storeId, accountId: admin.id }, art);
     placed[slot] = { ...stored, art: art.url };
     await db().execute(sql`
@@ -163,7 +164,7 @@ export async function contentPackStates(): Promise<PackState[]> {
         current: row !== null && row.version !== null && row.version >= pack.version,
         published: row?.published ?? false,
         archived: row?.archived ?? false,
-        pictures: row ? slots.filter((slot) => row.pictures[slot]).length : 0,
+        pictures: row ? slots.filter((slot) => !slotMissing(pack, slot, row.pictures[slot])).length : 0,
         slots: slots.length,
       };
     }),
@@ -440,9 +441,10 @@ async function writePages(admin: Account, storeId: string, pack: ContentPack, pi
 }
 
 /**
- * Makes the next picture a pack lacks, in its slots' order (its hero, its story, then each product), with Kaizena Flow's picture model, and
- * puts it where it belongs: a product's picture and its variant's, or the home and about pages (published again). One a request: the page
- * calls again while some remain.
+ * Makes the next picture a pack lacks, in its slots' order (its hero, its story, its designed pages' other photographs, then each product),
+ * with Kaizena Flow's picture model, and puts it where it belongs: a product's picture and its variant's, or the home and about pages
+ * (published again). A signature theme's pack has each made as a photograph from its brief, in place of the art that stood in (D270). One a
+ * request: the page calls again while some remain.
  */
 export async function makeNextPackPicture(
   admin: Account,
@@ -455,7 +457,7 @@ export async function makeNextPackPicture(
   if (!pack || !row) return { ok: false, problems: ["Set up the content packs first."] };
   if (row.version === null || row.version < pack.version) return { ok: false, problems: [`Set up ${pack.title} again first: its store has an older version.`] };
   const slots = packSlots(pack);
-  const missing = slots.filter((slot) => !row.pictures[slot] && !pack.art?.[slot]);
+  const missing = slots.filter((slot) => slotMissing(pack, slot, row.pictures[slot]));
   if (missing.length === 0) return { ok: true, made: null, remaining: 0, store: { id: row.storeId, slug: row.slug } };
   const slot = missing[0];
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(null, { feature: "content_pack", accountId: admin.id });
@@ -463,12 +465,16 @@ export async function makeNextPackPicture(
     return { ok: false, problems: ["Kaizena Flow's AI settings have no picture model. Choose one in the platform's AI settings first."] };
   }
   const product = slot.startsWith("product:") ? pack.products.find((p) => `product:${p.handle}` === slot) : undefined;
+  // A photograph from its brief (D270), else the pack's own picture of the slot.
+  const photo = pack.photos?.[slot];
   const subject = slot === "hero" ? pack.heroPicture : slot === "story" ? pack.storyPicture : (product?.picture ?? pack.heroPicture);
-  const shape: ImageShape = product ? "square" : "landscape";
-  const alt = product ? product.title : slot === "hero" ? `${pack.storeName}: ${pack.headline}` : `${pack.storeName}: ${pack.storyTitle}`;
+  const shape: ImageShape = photo?.shape ?? (product ? "square" : "landscape");
+  const alt = photo?.alt ?? (product ? product.title : slot === "hero" ? `${pack.storeName}: ${pack.headline}` : `${pack.storeName}: ${pack.storyTitle}`);
+  const prompt = photo ? packPhotoPrompt(pack, photo) : packPicturePrompt(pack, subject);
   let made: Awaited<ReturnType<typeof makePicture>>;
   try {
-    made = await (deps.make ?? makePicture)(connection, { storeId: row.storeId, accountId: admin.id }, { prompt: packPicturePrompt(pack, subject), alt, shape });
+    // A store template's pictures are its showcase: always asked for at the model's best.
+    made = await (deps.make ?? makePicture)(connection, { storeId: row.storeId, accountId: admin.id }, { prompt, alt, shape, quality: "high" });
   } catch (error) {
     return { ok: false, problems: [error instanceof AiError ? error.message : "The picture could not be made. Try again."] };
   }

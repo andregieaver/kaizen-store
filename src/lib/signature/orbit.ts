@@ -7,7 +7,7 @@ import { newPageContent, type PageContent, type PageRow } from "../page-content"
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
 
-import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, site, text, twoButtons, uuid, type Look } from "./kit";
+import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, twoButtons, uuid, type Look } from "./kit";
 
 /**
  * Orbit, the first signature theme (`docs/signature-themes.md` step 2): a theme for the night sky, made from scratch. Deep blue-black pages
@@ -34,6 +34,18 @@ const PRINTS = [
   ["sky-chart", "Northern sky chart", "The brightest stars of the northern sky joined into their figures, in gold lines on midnight blue.", 890, "charts"],
   ["moon-phases", "A month of the Moon", "Eight phases set in a circle around a full moon, from new moon back to new moon.", 690, "charts"],
 ] as const;
+
+/** What each print's product photograph shows (D270). */
+const PRINT_SHOTS: Record<(typeof PRINTS)[number][0], string> = {
+  saturn: "Saturn near its equinox, its rings in fine pale-gold lines on a deep night-blue ground",
+  jupiter: "Jupiter's banded disc with its four largest moons set out in a row beside it, on a deep night-blue ground",
+  "pale-blue-dot": "Earth as one tiny pale blue point of light in a soft band of sunlight across a dark ground",
+  eclipse: "a total solar eclipse: the Sun's pearly corona around the black disc of the Moon, with one bright bead of light at its edge",
+  "orion-nebula": "the Orion nebula, a glowing cloud of gas and young stars in rose, violet and gold",
+  andromeda: "the Andromeda galaxy, its spiral arms tilted toward the viewer around a bright glowing core",
+  "sky-chart": "a chart of the northern sky's brightest stars joined into their figures in fine gold lines on midnight blue, with no lettering",
+  "moon-phases": "eight phases of the Moon set in a circle around a full moon on a dark ground",
+};
 
 export const ORBIT_PACK: ContentPack = {
   key: "astronomy",
@@ -72,8 +84,9 @@ export const ORBIT_PACK: ContentPack = {
     picture: `A framed print of ${title.toLowerCase()} on a dark gallery wall`,
     grams: 1800,
   })),
-  look: "Deep space art prints in midnight blue, violet and starlight gold, framed with an ivory mat on a dark gallery wall.",
-  heroPicture: "A deep field of stars and violet nebulae with a planet's sunrise at the lower right",
+  look:
+    "Shot by a professional photographer for a shop of framed night-sky prints. Night skies are long-exposure astrophotographs taken on a full-frame camera with a fast wide lens on a tracking mount: deep blue-black skies, natural star colours and real Milky Way detail, never fantasy colours. Prints are photographed as products: a thin black frame with a wide ivory mount behind clear glass, hanging on a dark charcoal plaster wall, lit from above by one warm gallery spotlight, with subtle real reflections on the glass, taken straight on with a 50 mm lens at f/5.6.",
+  heroPicture: "The Milky Way rising over a dark mountain ridge",
   storyPicture: "Star trails turning over an observatory on a hill",
   art: {
     hero: art("hero", 2560, 1440, "A planet's sunrise under violet nebulae"),
@@ -83,6 +96,48 @@ export const ORBIT_PACK: ContentPack = {
     "tile:deep-sky": art("tile-deep-sky", 1200, 900, "A nebula in rose and violet"),
     "tile:charts": art("tile-charts", 1200, 900, "A star chart in gold on midnight blue"),
     ...Object.fromEntries(PRINTS.map(([handle, title]) => [`product:${handle}`, art(`print-${handle}`, 1200, 1600, `${title}, framed`)])),
+  },
+  photos: {
+    hero: shot(
+      "landscape",
+      "The Milky Way rising over a dark mountain ridge",
+      "A long-exposure night photograph of the Milky Way rising over a dark mountain ridge, for a website's opening picture: the bright galactic core in the right half of the frame and a faint blue glow of twilight along the horizon. The left half of the sky is dark and calm, with room for a headline.",
+    ),
+    story: shot(
+      "landscape",
+      "Star trails circling over a small domed observatory on a hill",
+      "Star trails circling the celestial pole over a small domed observatory on a hill, a dim red light in its open doorway, a long exposure on a clear night.",
+    ),
+    sky: shot(
+      "landscape",
+      "A night sky full of stars over a still lake that mirrors them",
+      "A wide night sky full of stars over a still lake that mirrors them, a faint arch of the Milky Way across the top. The middle of the frame is dark and calm.",
+    ),
+    "tile:planets": shot(
+      "landscape",
+      "Framed prints of Saturn and Jupiter on a dark gallery wall",
+      "Two framed prints hanging side by side on a dark charcoal plaster wall under warm gallery spotlights: Saturn with its rings in pale gold on a night-blue ground, and Jupiter with its four largest moons in a row. The frames hang in the upper half of the picture, with dark wall below them.",
+    ),
+    "tile:deep-sky": shot(
+      "landscape",
+      "Framed prints of the Orion nebula and the Andromeda galaxy on a dark gallery wall",
+      "Two framed prints hanging side by side on a dark charcoal plaster wall under warm gallery spotlights: the Orion nebula glowing in rose and violet, and the Andromeda galaxy with its spiral arms around a bright core. The frames hang in the upper half of the picture, with dark wall below them.",
+    ),
+    "tile:charts": shot(
+      "landscape",
+      "Framed prints of a star chart and the Moon's phases on a dark gallery wall",
+      "Two framed prints hanging side by side on a dark charcoal plaster wall under warm gallery spotlights: a chart of the northern sky's brightest stars joined in fine gold lines on midnight blue, with no lettering, and eight phases of the Moon set in a circle. The frames hang in the upper half of the picture, with dark wall below them.",
+    ),
+    ...Object.fromEntries(
+      PRINTS.map(([handle, title]) => [
+        `product:${handle}`,
+        shot(
+          "portrait",
+          `${title}, framed`,
+          `A product photograph for an online shop: a framed art print of ${PRINT_SHOTS[handle]}, in a thin black frame with a wide ivory mount behind clear glass, hanging alone in the middle of a dark charcoal plaster wall, lit from above by one warm gallery spotlight, photographed straight on with the whole frame in view and even space around it.`,
+        ),
+      ]),
+    ),
   },
   design: "orbit",
 };

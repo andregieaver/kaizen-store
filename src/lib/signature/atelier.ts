@@ -7,7 +7,7 @@ import { newPageContent, type PageContent, type PageRow } from "../page-content"
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
 
-import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, site, text, uuid, type Look } from "./kit";
+import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
 /**
  * Atelier, a signature theme (`docs/signature-themes.md` step 3): quiet luxury in the manner of a ceramics studio's lookbook, made from
@@ -36,6 +36,18 @@ const PIECES = [
   ["pitcher", "Pitcher", "A pitcher with a pulled spout and a strap handle, glazed in ochre.", 790, "objects", 1100, "An ochre pitcher with a spout and handle"],
   ["candle-holders", "Candle holders, pair", "Two low candle holders in charcoal glaze for dinner candles.", 450, "objects", 800, "Two low charcoal candle holders with cream candles"],
 ] as const;
+
+/** What each piece's product photograph shows (D270). */
+const PIECE_SHOTS: Record<(typeof PIECES)[number][0], string> = {
+  "tall-vase": "a tall, slender stoneware vase in matte chalk-white glaze with a little iron speckle and a darker rim",
+  "moon-jar": "a large round moon jar in warm white glaze with a soft horizontal seam at its middle and a small unglazed foot",
+  "bud-vases": "three small stoneware bud vases in sage, ochre and chalk-white glazes, grouped close together",
+  "ridge-bowl": "a stoneware bowl with vertical ridges carved into its raw terracotta outside, glazed cream inside, seen slightly from above",
+  "serving-dish": "a wide, shallow stoneware serving dish in charcoal glaze with a pale rim, seen slightly from above",
+  cups: "two handleless stoneware cups, one in sage glaze and one in chalk white, with unglazed feet",
+  pitcher: "an ochre-glazed stoneware pitcher with a pulled spout and a strap handle",
+  "candle-holders": "two low stoneware candle holders in charcoal glaze, each holding an unlit cream dinner candle",
+};
 
 export const ATELIER_PACK: ContentPack = {
   key: "ceramics",
@@ -74,7 +86,8 @@ export const ATELIER_PACK: ContentPack = {
     picture: `${title} in stoneware on a plinth against a plaster wall`,
     grams,
   })),
-  look: "Hand-thrown stoneware still lifes on warm plaster walls in soft window light: chalk, clay, sage, ochre and charcoal glazes.",
+  look:
+    "Shot by a professional still-life photographer for a ceramics studio's catalogue, on a medium-format digital camera with a 120 mm macro lens at f/8 and ISO 100 on a tripod. Soft daylight from a tall window at the left, a white bounce card at the right and gentle natural shadows. A warm off-white limewashed plaster wall and pale travertine surfaces; a muted, earthy palette of chalk white, sage, ochre, charcoal and terracotta; true-to-life colour with a subtle warm film grade and fine grain. Real glaze texture with iron speckles, drips and the small irregularities of hand-thrown work. A calm, minimal composition with generous space.",
   heroPicture: "Three stoneware vessels on a low plinth in window light against a plaster wall",
   storyPicture: "Shelves of drying pots in a ceramics studio",
   art: {
@@ -85,6 +98,48 @@ export const ATELIER_PACK: ContentPack = {
     "tile:tableware": art("tile-tableware", 1200, 1500, "A ridged bowl, a shallow dish and two cups"),
     "tile:objects": art("tile-objects", 1200, 1500, "A pitcher and two candle holders"),
     ...Object.fromEntries(PIECES.map(([handle, , , , , , alt]) => [`product:${handle}`, art(`piece-${handle}`, 1200, 1600, alt)])),
+  },
+  photos: {
+    hero: shot(
+      "landscape",
+      "A tall white vase, a round moon jar and a low charcoal bowl on a travertine plinth in window light",
+      "A wide still life for a website's opening picture: a tall slender stoneware vase in chalk-white glaze, a large round moon jar in warm white and a small low bowl in charcoal glaze stand together on a long, pale travertine plinth in the right half of the frame. The soft shadow of window bars falls diagonally across the plaster wall. The left half of the frame is calm, empty plaster wall with room for a headline.",
+    ),
+    story: shot(
+      "landscape",
+      "Oak shelves of drying pots in a small pottery studio, a potter's wheel in the foreground",
+      "Inside a small pottery studio in an old wooden boathouse: plain oak shelves on a plaster wall lined with drying pots in raw terracotta, pale bisque and grey clay among a few glazed pieces, and a potter's wheel holding a damp clay cylinder softly out of focus in the foreground, in daylight from a window. No people.",
+    ),
+    detail: shot(
+      "landscape",
+      "A close-up of a speckled cream glaze dripping over raw terracotta clay",
+      "An extreme macro close-up of a speckled cream glaze breaking over raw terracotta stoneware at the foot of a pot: thick glossy drips frozen at the edge, tiny pinholes and iron speckles, a shallow depth of field and even soft light. The texture fills the whole frame, with no background.",
+    ),
+    "tile:vases": shot(
+      "portrait",
+      "A tall vase, a moon jar and three bud vases on a travertine plinth",
+      "A group on a pale travertine plinth: a tall chalk-white vase, a round moon jar in warm white and three small bud vases in sage, ochre and chalk glazes, with the soft diagonal shadow of a window on the plaster wall above.",
+    ),
+    "tile:tableware": shot(
+      "portrait",
+      "A ridged terracotta bowl, a charcoal serving dish and two cups on a travertine plinth",
+      "Tableware on a pale travertine plinth: a bowl with carved vertical ridges in raw terracotta, glazed cream inside; a wide, shallow charcoal-glazed dish with a pale rim holding a chalk-white cup; and a sage handleless cup beside them.",
+    ),
+    "tile:objects": shot(
+      "portrait",
+      "An ochre pitcher and two charcoal candle holders on a travertine plinth",
+      "An ochre-glazed pitcher with a pulled spout and a strap handle beside a pair of low charcoal-glazed candle holders holding unlit cream dinner candles, on a pale travertine plinth, with a window's soft shadow on the wall.",
+    ),
+    ...Object.fromEntries(
+      PIECES.map(([handle, , , , , , alt]) => [
+        `product:${handle}`,
+        shot(
+          "portrait",
+          alt,
+          `A product photograph for an online shop: ${PIECE_SHOTS[handle]}, standing alone in the middle of a small, pale travertine plinth against a warm off-white plaster wall, photographed straight on at the height of the piece, the whole piece in frame with even space around it.`,
+        ),
+      ]),
+    ),
   },
   design: "atelier",
 };
@@ -507,7 +562,7 @@ h1 em, h2 em { font-style: italic; font-weight: 300; }
 
 .atelier-tile { display: flex; flex-direction: column; gap: .5rem; }
 .atelier-tile-image { overflow: hidden; }
-.atelier-tile-image img { transition: transform 1.4s cubic-bezier(.2,.7,.2,1); }
+.atelier-tile-image img { aspect-ratio: 4 / 5; object-fit: cover; transition: transform 1.4s cubic-bezier(.2,.7,.2,1); }
 .atelier-tile:hover .atelier-tile-image img { transform: scale(1.04); }
 .atelier-tile-name { margin-top: 1rem; }
 .atelier-tile-line.atelier-tile-line .rich-text p { color: var(--muted); margin: 0; }

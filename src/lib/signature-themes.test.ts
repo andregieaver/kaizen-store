@@ -53,6 +53,15 @@ describe("signature themes", () => {
     expect(signatureCheck(orbit, { artExists: () => false }).join(" ")).toContain("is missing: run node scripts/theme-art.mjs orbit");
     const boasting = { ...orbit, summary: "The best price in the galaxy, only today!" };
     expect(signatureCheck(boasting, { artExists }).join(" ")).toContain("makes a claim the filter stops");
+    // Every picture of its demo store is photographed from a brief (D270); the pack is the code's, so it is changed and put back here.
+    const pack = contentPack("astronomy")!;
+    const photos = pack.photos;
+    try {
+      Object.assign(pack, { photos: { ...photos, hero: undefined } });
+      expect(signatureCheck(orbit, { artExists })).toContain("Its demo store has no photographer's brief for hero.");
+    } finally {
+      Object.assign(pack, { photos });
+    }
     const notSignature = { ...orbit, signature: undefined };
     expect(signatureCheck(notSignature, { artExists })).toEqual(["Orbit is not marked as a signature theme."]);
   });

@@ -89,6 +89,24 @@ withdrawal period (facts beside the button, for conversion), and art motifs as b
 * **A fix for everyone**: a row taller than its content (`height`) with its columns in the middle or at the bottom now places them there
   (`rowGrid()`); before, they stayed at the top.
 
+## Photographs (D270)
+
+The owner found the drawn pictures fake and asked for pictures that look shot by a professional product photographer, made by the
+platform's picture model. Every picture a signature pack's pages and products read now has a photographer's brief (`ContentPack.photos`),
+and the pack's `look` is the shoot's direction, so a store's pictures look like one shoot:
+
+* **Atelier**: a still-life photographer's catalogue, medium format, a 120 mm macro lens at f/8, window light from the left, limewashed
+  plaster and travertine, an earthy palette and a warm film grade.
+* **Arcade**: a night shoot with the signs as the only light, a 50 mm lens at f/2.8, real LED neon flex on acrylic with stand-offs and
+  cables, dark painted brick, a little haze.
+* **Botanica**: an interior and product shoot, a 50 mm lens at f/5.6, daylight from a window, warm plaster and light oak, pots in glaze,
+  terracotta and seagrass.
+* **Orbit**: long-exposure astrophotographs for the skies, and framed prints photographed on a dark gallery wall under one warm spotlight.
+
+Heroes and bands say where the words sit, so their briefs keep that part of the frame calm. The photographs are made with *Make the
+pictures* on the Store templates page, one a request at the model's highest quality, and a pack is published only once all are made. The
+drawn art stands in until then and stays as the themes' textures.
+
 ## Decided: the model never writes CSS (17 October 2026)
 
 The owner chose the recommendation ("Let's go with your recommendations"). Hand-made themes (steps 2 and 3) use CSS freely, written and
@@ -100,4 +118,5 @@ the ones proposed: Atelier, Arcade and Botanica.
 ## What production needs from a person
 
 Signature themes reach production as the launch themes and packs do: a platform admin presses *Sync launch themes* and *Sync content
-packs* (`/admin/platform/design-profiles`, `/admin/platform/store-templates`) after a deploy that changes them; bundled art needs no picture model.
+packs* (`/admin/platform/design-profiles`, `/admin/platform/store-templates`) after a deploy that changes them, then *Make the pictures* on
+each signature pack (D270: its photographs, made by the platform's picture model), looks at them, and publishes the store templates.
