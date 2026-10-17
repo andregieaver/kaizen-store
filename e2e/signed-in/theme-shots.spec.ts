@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { LAUNCH_THEMES } from "../../src/lib/launch-themes";
-import { testDb } from "../db";
+import { demoStoreOf, testDb } from "../db";
 import { ADMIN } from "./accounts";
 
 /**
@@ -13,32 +13,34 @@ import { ADMIN } from "./accounts";
 test.use({ storageState: ADMIN.state });
 
 let presetId = "";
+let demo: Awaited<ReturnType<typeof demoStoreOf>>;
 const SLUG = `e2e-pictured-${Date.now().toString(36)}`;
 
 test.beforeAll(async ({ baseURL }) => {
+  // Its own look on a demo store, as the theme store shows only those (D274).
+  demo = await demoStoreOf("plants");
   const sql = testDb();
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
     const [theme] = await sql`
-      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug)
-      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}) returning id`;
+      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug, listing)
+      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ pack: "plants" })}) returning id`;
     presetId = String(theme.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${presetId}, 1, ${sql.json(snapshot as never)})`;
-    const [standard] = await sql`select id from commerce.stores where is_template limit 1`;
     const file = (name: string, width: number, height: number) => ({
       path: `platform/theme-shots/${presetId}/u/${name}`,
-      url: `${baseURL}/demo/themes/calm-v2.webp`,
+      url: `${baseURL}/demo/themes/orbit/hero.webp`,
       width,
       height,
       bytes: 1000,
     });
     const pictures = { card: file("computer-card.webp", 800, 600), screen: file("computer-screen.webp", 1440, 900), share: file("computer-share.jpg", 1200, 630) };
     await sql`
-      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, pictures, finished_at)
-      values (${presetId}, 1, ${String(standard.id)}, 'computer', 'done', ${sql.json(pictures)}, now())`;
+      insert into commerce.theme_shots (preset_id, version, starter_id, showcase_store_id, kind, status, pictures, finished_at)
+      values (${presetId}, 1, ${demo.starter}, ${demo.store}, 'computer', 'done', ${sql.json(pictures)}, now())`;
     await sql`
-      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, tries, problem)
-      values (${presetId}, 1, ${String(standard.id)}, 'phone', 'failed', 3, 'The preview answered 500.')`;
+      insert into commerce.theme_shots (preset_id, version, starter_id, showcase_store_id, kind, status, tries, problem)
+      values (${presetId}, 1, ${demo.starter}, ${demo.store}, 'phone', 'failed', 3, 'The preview answered 500.')`;
   } finally {
     await sql.end();
   }
@@ -51,6 +53,7 @@ test.afterAll(async () => {
   } finally {
     await sql.end();
   }
+  await demo.putAway();
 });
 
 test("a theme's page shows its photographs, says why one could not be made, and tries it again", async ({ page }) => {
@@ -98,7 +101,7 @@ test("a theme's highlight words are written on its page and saved with its listi
 
 test("the admin puts their own share image in place of the made one, the theme's page shares it, and taking it away shows the made one", async ({ page, baseURL }) => {
   // An address on this site, as a picture from Kaizena Flow's library would be.
-  const own = "/demo/themes/hearth-v2.webp";
+  const own = "/demo/themes/orbit/milkyway.webp";
   const ownShare = () =>
     expect.poll(async () => {
       const sql = testDb();
@@ -129,5 +132,5 @@ test("the admin puts their own share image in place of the made one, the theme's
   await expect(kept.getByText("The made picture shows.")).toBeVisible();
   await ownShare().toBeNull();
   await page.goto(`/themes/${SLUG}`);
-  await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute("content", `${baseURL}/demo/themes/calm-v2.webp`);
+  await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute("content", `${baseURL}/demo/themes/orbit/hero.webp`);
 });

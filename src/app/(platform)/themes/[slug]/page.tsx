@@ -6,7 +6,7 @@ import { JsonLdScript } from "@/components/json-ld";
 import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
-import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, madeScreens, sharePicture, themeJsonLd, themeStartLink, themeTryLink } from "@/lib/theme-store";
+import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, madeScreens, sharePicture, shownLooks, themeJsonLd, themeStartLink, themeTryLink } from "@/lib/theme-store";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
 import { platformHref, themeStorePath, themeStoreUrl, themesHost } from "@/lib/theme-host";
 
@@ -45,9 +45,9 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
     notFound();
   }
   // Kaizena Flow's own site serves the preview, sign-up and the try route: full addresses while the theme store has its own host. Each
-  // look is previewed on the demo store of its trade where it has one (`docs/theme-showcase-phase-1.md` step 3); the frames show the store
-  // alone, since this page already says what it is.
-  const looks: StageLook[] = theme.looks.map((look) => {
+  // look is previewed on its demo store (`docs/theme-showcase-phase-1.md` step 3), and only a look whose demo store is published is shown
+  // at all (D274: never the Standard store); the frames show the store alone, since this page already says what it is.
+  const looks: StageLook[] = shownLooks(theme.looks).map((look) => {
     const starter = look.showcase?.starterId ?? null;
     return {
       key: look.key,
@@ -66,7 +66,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
   const own = [theme.pictureUrl, ...theme.listing.pictures].filter((url): url is string => Boolean(url));
   const screens = own.length > 0 ? [] : madeScreens(theme);
   const highlights = theme.highlights ?? [];
-  const preview = looks[0].previewHref;
+  const preview = looks[0]?.previewHref ?? null;
   const url = themeStoreUrl(theme.slug);
   return (
     <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10">
@@ -93,9 +93,11 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           <a href={platformHref(themeTryLink(theme.slug))} className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
             Try it in your store
           </a>
-          <a href={preview} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
-            Open the preview<span className="sr-only"> of {theme.title} (opens in a new window)</span>
-          </a>
+          {preview && (
+            <a href={preview} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-button border border-border px-5 font-medium">
+              Open the preview<span className="sr-only"> of {theme.title} (opens in a new window)</span>
+            </a>
+          )}
         </div>
       </div>
 
@@ -138,13 +140,15 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
         </section>
       )}
 
-      <section aria-labelledby="preview" className="flex flex-col gap-3">
-        <h2 id="preview" className="text-xl font-semibold">
-          Preview
-        </h2>
-        <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
-        <ThemePreviewStage title={theme.title} looks={looks} />
-      </section>
+      {looks.length > 0 && (
+        <section aria-labelledby="preview" className="flex flex-col gap-3">
+          <h2 id="preview" className="text-xl font-semibold">
+            Preview
+          </h2>
+          <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
+          <ThemePreviewStage title={theme.title} looks={looks} />
+        </section>
+      )}
 
       {/* Pictures composed from its photographs, with words a person wrote or accepted (`docs/theme-showcase-phase-2.md` step 2). */}
       {highlights.length > 0 && (

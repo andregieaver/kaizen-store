@@ -71,3 +71,38 @@ export async function testStore(name: string, features: string[] = []): Promise<
     await sql.end();
   }
 }
+
+/**
+ * A published demo store of a content pack (D257), as the platform keeps one: a copy of the template (its catalogue and markets), marked as
+ * a store template and published under the pack's key. The theme store shows only looks on one (D274), so a test's theme names `key` in its
+ * listing. A demo store of that key the test did not make is set aside first, its store's address too; give each spec file a key of its
+ * own, as they run side by side. `putAway()` unpublishes it and frees the key after.
+ */
+export async function demoStoreOf(key: string): Promise<{ starter: string; store: string; putAway: () => Promise<void> }> {
+  const run = Date.now().toString(36);
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.stores s set slug = left(s.slug, 20) || '-' || ${run}
+        from commerce.store_starters ss where ss.store_id = s.id and ss.pack_key = ${key}`;
+    await sql`update commerce.store_starters set published = false, pack_key = pack_key || '-' || ${run} where pack_key = ${key}`;
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`demo-${key}-${run}@example.com`}, 'Platform', 'Demo') returning id`;
+    const [{ id: store }] = await sql`select commerce.approve_access_request(${request.id}, ${`demo-${key}-${run}`}, 'Demo', null) as id`;
+    await sql`update commerce.stores set starter = true where id = ${store}`;
+    const [{ id: starter }] = await sql`
+      insert into commerce.store_starters (store_id, title, category, pack_key, pack_version, published)
+      values (${store}, ${`Demo ${key}`}, 'retail', ${key}, 1, true) returning id`;
+    const putAway = async () => {
+      const db = testDb();
+      try {
+        await db`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${starter}`;
+      } finally {
+        await db.end();
+      }
+    };
+    return { starter: String(starter), store: String(store), putAway };
+  } finally {
+    await sql.end();
+  }
+}

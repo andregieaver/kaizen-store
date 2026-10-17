@@ -16,8 +16,9 @@ Short silent loops of a page scrolling are left for later (see *Later*): they ne
 
 * **A photograph is of the published look on its showcase, through the public preview.** The browser opens
   `designPreviewPath(theme, starter, { embed: true, variation })`: the theme's published version, the look's own showcase (D258,
-  `themeLooks()`: its pack's published store template, else the Standard store), drawn alone (`embed=1`: no banner). Never a draft, never a
-  store's own site, never a page a visitor could not open. What is photographed is therefore what the theme store shows live.
+  `themeLooks()`: its pack's published store template), drawn alone (`embed=1`: no banner). Never a draft, never a store's own site, never
+  a page a visitor could not open, and never the Standard store (D274: a look with no published demo store waits for one). What is
+  photographed is therefore what the theme store shows live.
 * **Made in the background, never in Publish's request.** Publish and every change of where a look is shown only ask for pictures; a job
   takes them, one look at one width per unit of work, each unit in a browser of its own with a time limit (`looking()`, `launchBrowser()`,
   D150's rule: one browser per look). A unit is small enough that a run of the job does several within its limit.
@@ -92,8 +93,7 @@ than seven days ago.
   image: its own picture, else the made share image, else the drawn card (`themeShareCard()`). Its structured data names the same picture.
 * The stage (`ThemePreviewStage`): each look's frame shows its first screen while the live preview loads.
 * The design cards at sign-up and *Create a store* (`DesignCards`): a look's made card where it has no own picture.
-* A launch photograph is now only a fallback: `launchShotFor()` gives the newest photograph in `public/demo/themes/` at or below the theme's
-  version, and raising a version no longer needs a new one.
+* A launch photograph was a fallback until D274 removed them: they were taken on the Standard store, which the theme store no longer shows.
 
 **Platform admin.** The theme's details page has *Pictures*: each look's two widths with what they show, the time they were made and of
 which version, or *Being made* (and how many wait), or *Could not be made* with the reason and *Try again* (resets the tries).
@@ -113,7 +113,8 @@ and `/api/cron/theme-shots`; the preview marks its parts (`data-shot`); the read
 the stage's posters, `designChoices()`); the *Pictures* panel (`ThemeShotsPanel`) with *Try again*. Held by the tests named above and
 `e2e/signed-in/theme-shots.spec.ts`. *Deviations:* `pruneThemeShots()` runs at the end of each run of the shots' job rather than in the
 five-minute job (it needs nothing else, and so the five-minute job is untouched); a look's older sets are set aside the moment a newer one
-is made, not at the next run; a launch theme's photograph by hand is the newest one in `LAUNCH_SHOTS`, not one per version.
+is made, not at the next run; a launch theme's photograph by hand was the newest one in `LAUNCH_SHOTS`, not one per version (removed by
+D274).
 
 ## Step 2: highlights
 

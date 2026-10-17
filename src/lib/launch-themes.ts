@@ -68,26 +68,6 @@ export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"
 });
 
 /**
- * The newest version of each launch theme photographed by hand, in `public/demo/themes/` (the theme showcase plan's quick fixes, D255).
- * Since phase 2 (`docs/theme-showcase-phase-2.md`) every publish photographs a theme's looks itself, so these are only the card's fallback
- * until those are made (and where they cannot be, as in development and the browser tests): raising a version needs no new one.
- */
-export const LAUNCH_SHOTS: Readonly<Record<string, number>> = { calm: 2, hearth: 2, signal: 2, fjord: 2, orbit: 1, atelier: 1, arcade: 1, botanica: 1 };
-
-/**
- * The theme's card picture by hand: its public preview on the demo store, photographed at a computer's width (a 4:3 crop of the top, 800 by
- * 600 WebP), at the newest version photographed and not past the theme's own.
- */
-export const launchShot = (theme: Pick<LaunchTheme, "key" | "version">): string =>
-  `/demo/themes/${theme.key}-v${Math.min(theme.version, LAUNCH_SHOTS[theme.key] ?? theme.version)}.webp`;
-
-/** The card picture of the launch theme a platform theme was made from (`design_presets.launch_key`), or null. */
-export function launchShotFor(key: string | null): string | null {
-  const theme = key ? LAUNCH_THEMES.find((t) => t.key === key) : undefined;
-  return theme ? launchShot(theme) : null;
-}
-
-/**
  * The core section styles a theme made from a store, or from scratch, starts with where it has none (D246): neutral, legible in light and
  * dark alike, so it passes the checks until the admin makes them its own in the Theme tab.
  */

@@ -10,12 +10,19 @@ Each is done by a person in the service's own dashboard; none is in the reposito
 2. **Keep the WordPress API on the old domain.** Connected WordPress sites call the address they saved (`https://kaizenstore.cloud/api/wordpress/v1/…`,
    including POSTs for the cart). Either leave `kaizenstore.cloud` serving the deployment rather than redirecting until those sites are reconnected,
    or check that the redirect is a 308 (which keeps the method and body) and that WordPress follows it for POST.
-3. **Stores' own addresses**, if stores are on subdomains (`NEXT_PUBLIC_STORE_DOMAIN`): add `*.kaizenaflow.com` as a wildcard domain, set
-   `NEXT_PUBLIC_STORE_DOMAIN=kaizenaflow.com` (and `NEXT_PUBLIC_STORE_HOSTS` if used), and redirect `*.{old domain}` to the same store on the new one.
-   This changes every store's address: do it at a quiet time, and tell owners.
-4. **The theme store's own host** (`docs/theme-phase-3.md` step 3): add `themes.kaizenaflow.com` to the project (a CNAME to Vercel, or covered by
-   the wildcard of step 3 when stores are under `kaizenaflow.com`) and set `NEXT_PUBLIC_THEMES_HOST=themes.kaizenaflow.com`. Until it is set, the theme
-   store stays at `https://kaizenaflow.com/themes`; once it is, those addresses move there (308) and the next deploy routes the host.
+3. **Stores' own addresses stay on a domain of their own** (P7): never `kaizenaflow.com`. A store's pages, and code its owner adds to them,
+   must be a different site from the admin, so they can neither read its session cookies nor send requests the browser would sign in. Keep
+   `NEXT_PUBLIC_STORE_DOMAIN=kaizenstore.site` (and `NEXT_PUBLIC_STORE_HOSTS` if used). Moving stores to a branded store domain later
+   (for example `kaizenaflow.shop`) means: buy it, put it on Vercel's name servers, add it and `*.{it}` to the project (Vercel issues the
+   wildcard certificate only then), set `NEXT_PUBLIC_STORE_DOMAIN` to it, redeploy, and redirect `*.kaizenstore.site` to the same store
+   there. This changes every store's address: do it at a quiet time, and tell owners.
+   *What went wrong on 17 October 2026:* production had `NEXT_PUBLIC_STORE_DOMAIN=kaizenaflow.com`, so every `/s/{store}` moved to
+   `{store}.kaizenaflow.com`, which has no DNS record (its name servers are the registrar's, with no wildcard): every storefront, the demo
+   stores' previews included, was unreachable. Setting it back to `kaizenstore.site` and redeploying restores them.
+4. **The theme store's own host** (`docs/theme-phase-3.md` step 3): add `themes.kaizenaflow.com` to the project (a CNAME to Vercel) and set
+   `NEXT_PUBLIC_THEMES_HOST=themes.kaizenaflow.com`. Until it is set, the theme store stays at `https://kaizenaflow.com/themes`; once it is,
+   those addresses move there (308) and the next deploy routes the host. It is Kaizena Flow's, never a store's: the demo stores' previews
+   are stores, so they stay on the store domain.
 5. **Environment variables** (Production): `SITE_URL=https://kaizenaflow.com`; `EMAIL_FROM` to an address on the new domain once step 2.1 is done.
    Then redeploy (CI's *redeploy* workflow input, or a push).
 

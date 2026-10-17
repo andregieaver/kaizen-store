@@ -89,8 +89,8 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
         description={
           <>
             Each look is shown on a demo store in the theme store, and a new store started from that look begins as a copy of it: its products,
-            pages and menus, which the owner removes in one press. A demo store that is not published yet gives the Standard store. Saved at
-            once, not as a draft.
+            pages and menus, which the owner removes in one press. A look whose demo store is not published yet is left out of the theme store,
+            and new stores started from it get the Standard store. Saved at once, not as a draft.
           </>
         }
       >
@@ -124,6 +124,11 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
                     {pack.published ? "Its demo store" : "Set it up"}
                     <span className="sr-only"> for {look.name}</span>
                   </Link>
+                )}
+                {!pack?.published && (
+                  <span className="basis-full text-caption text-muted">
+                    {pack ? "Not in the theme store until its demo store is published." : "Not in the theme store: choose a demo store."}
+                  </span>
                 )}
               </div>
             );

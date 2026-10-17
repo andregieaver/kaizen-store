@@ -16,7 +16,8 @@ const { themeStoreCards } = await import("./theme-store");
 
 /**
  * The photographs of a theme's looks (`docs/theme-showcase-phase-2.md` step 1): asked for by Publish, taken by the job through an injected
- * photographer and bucket, read by the theme store, set aside when a newer version is made, tried again, and pruned with their files.
+ * photographer and bucket, read by the theme store, set aside when a newer version is made, tried again, and pruned with their files. A look
+ * is photographed only on a published demo store, never on the Standard store (D274).
  */
 
 type Row = Record<string, unknown>;
@@ -30,6 +31,8 @@ const deps = {
 let admin: Account;
 let theme: string;
 let standard: string;
+/** The theme's own look's demo store: a published content pack's store template (D257) and its store. */
+let demo: { starter: string; store: string };
 let photos: Record<ShotKind, { full: Buffer; screen: Buffer }>;
 
 /** The bucket, kept in memory: what was uploaded (its bytes, by path) and what was removed. */
@@ -77,34 +80,47 @@ beforeAll(async () => {
   const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`shots-${run}@example.com`}, 'Admin', true) returning id, email`);
   admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true } as Account;
   standard = String((await db().execute<Row>(sql`select id from commerce.stores where is_template limit 1`))[0].id);
+  // A published demo store of the food pack, as Kaizena Flow keeps them; one this test did not make is set aside, its store's address too.
+  await db().execute(sql`
+    update commerce.stores s set slug = left(s.slug, 20) || '-' || ${run}
+    from commerce.store_starters ss where ss.store_id = s.id and ss.pack_key = 'food'
+  `);
+  await db().execute(sql`update commerce.store_starters set pack_key = pack_key || '-' || ${run} where pack_key = 'food'`);
+  const [store] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, starter) values (${`shots-demo-${run}`}, 'Shots demo', true) returning id`);
+  const [starter] = await db().execute<Row>(sql`
+    insert into commerce.store_starters (store_id, title, category, pack_key, pack_version, published)
+    values (${String(store.id)}::uuid, 'Food', 'retail', 'food', 1, true) returning id
+  `);
+  demo = { starter: String(starter.id), store: String(store.id) };
   const made = await designs.createDesign(admin, { details: { title: `Shotline ${run}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
   if (!made.ok) throw new Error(made.problems.join(" "));
   theme = made.id;
-  const listed = await designs.saveThemeListing(admin, theme, `shotline-${run}`, { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} });
+  const listed = await designs.saveThemeListing(admin, theme, `shotline-${run}`, { kinds: [], styles: [], pictures: [], pack: "food", presetPacks: {} });
   if (!listed.ok) throw new Error(listed.problems.join(" "));
 });
 
 afterAll(async () => {
+  await db().execute(sql`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${demo.starter}::uuid`);
   await closeDb();
 });
 
 describe("a theme's photographs", () => {
-  it("are asked for when it is published: its own look on the Standard store, at both widths, of the version just made", async () => {
+  it("are asked for when it is published: its own look on its demo store, at both widths, of the version just made", async () => {
     expect(await mine()).toEqual([]);
     await publish();
     const rows = await mine();
     expect(rows.map((r) => [r.version, r.variation, r.starter_id, r.showcase_store_id, r.kind, r.status])).toEqual([
-      [1, null, null, standard, "computer", "waiting"],
+      [1, null, demo.starter, demo.store, "computer", "waiting"],
       // Its highlights (`docs/theme-showcase-phase-2.md` step 2), composed once both photographs are made.
-      [1, null, null, standard, "highlights", "waiting"],
-      [1, null, null, standard, "phone", "waiting"],
+      [1, null, demo.starter, demo.store, "highlights", "waiting"],
+      [1, null, demo.starter, demo.store, "phone", "waiting"],
     ]);
   });
 
   it("are taken by the job from the public preview, cut and stored, and only then marked made", async () => {
     await runJob();
-    expect(looked).toContain(`computer ${ORIGIN}/admin/account/themes/${theme}/preview?embed=1`);
-    expect(looked).toContain(`phone ${ORIGIN}/admin/account/themes/${theme}/preview?embed=1`);
+    expect(looked).toContain(`computer ${ORIGIN}/admin/account/themes/${theme}/preview?starter=${demo.starter}&embed=1`);
+    expect(looked).toContain(`phone ${ORIGIN}/admin/account/themes/${theme}/preview?starter=${demo.starter}&embed=1`);
     const rows = await mine();
     expect(rows.map((r) => r.status)).toEqual(["done", "done", "done"]);
     const computer = readShotPictures(rows[0].pictures);
@@ -137,7 +153,7 @@ describe("a theme's photographs", () => {
       kinds: [],
       styles: [],
       pictures: [],
-      pack: null,
+      pack: "food",
       presetPacks: {},
       highlights: { devices: { title: "On every screen", text: "A computer and two phones." } },
     });
@@ -177,9 +193,9 @@ describe("a theme's photographs", () => {
   it("set aside a unit no longer wanted when it is taken, rather than photograph it", async () => {
     const [row] = await db().execute<Row>(sql`
       insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, tries, claimed_until)
-      values (${theme}::uuid, 99, ${standard}::uuid, 'computer', 'running', 1, now() + interval '3 minutes') returning id
+      values (${theme}::uuid, 99, ${demo.store}::uuid, 'computer', 'running', 1, now() + interval '3 minutes') returning id
     `);
-    const unit = { id: String(row.id), presetId: theme, version: 99, variation: null, starterId: null, showcaseStoreId: standard, kind: "computer" as const, status: "running" as const, tries: 1 };
+    const unit = { id: String(row.id), presetId: theme, version: 99, variation: null, starterId: demo.starter, showcaseStoreId: demo.store, kind: "computer" as const, status: "running" as const, tries: 1 };
     const count = looked.length;
     expect(await shots.takeThemeShot(unit, await shots.wantedNow(), ORIGIN, shotDeps)).toBe("superseded");
     expect(looked.length).toBe(count);
@@ -218,6 +234,32 @@ describe("a theme's photographs", () => {
     expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["superseded", "superseded", "superseded"]);
     await publish();
     expect((await mine()).filter((r) => r.version === 3).map((r) => r.status)).toEqual(["done", "done", "done"]);
+  });
+
+  it("are never wanted, nor shown, on the Standard store: a look whose demo store is not published waits for it (D274)", async () => {
+    const shown = (await shots.themeShotsFor([theme])).get(shots.lookOf(theme, null));
+    expect(shown?.version).toBe(3);
+    // A set made on the Standard store before D274 is not what the theme store shows, however new.
+    const [old] = await db().execute<Row>(sql`
+      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, tries, pictures, finished_at)
+      values (${theme}::uuid, 3, ${standard}::uuid, 'computer', 'done', 1, ${JSON.stringify(readShotPictures((await mine()).find((r) => r.version === 3 && r.kind === "computer")!.pictures)).replaceAll("computer-", "standard-")}::jsonb, now() + interval '1 minute')
+      returning id
+    `);
+    expect((await shots.themeShotsFor([theme])).get(shots.lookOf(theme, null))?.computer).toEqual(shown?.computer);
+    // Nothing is wanted on it, so the queue sets it aside.
+    expect((await shots.wantedNow()).some((w) => w.showcaseStoreId === standard)).toBe(false);
+    await shots.queueThemeShots();
+    expect((await db().execute<Row>(sql`select status from commerce.theme_shots where id = ${String(old.id)}::uuid`))[0].status).toBe("superseded");
+    // The demo store unpublished: nothing of the theme's is wanted, and its card shows no photograph.
+    await db().execute(sql`update commerce.store_starters set published = false where id = ${demo.starter}::uuid`);
+    expect((await shots.wantedNow()).some((w) => w.presetId === theme)).toBe(false);
+    const card = (await themeStoreCards()).find((c) => c.id === theme)!;
+    expect(card.looks[0].showcase).toBeNull();
+    expect(card.madeCard).toBeNull();
+    expect(card.madeShare).toBeNull();
+    await db().execute(sql`update commerce.store_starters set published = true where id = ${demo.starter}::uuid`);
+    await shots.queueThemeShots();
+    expect((await mine()).filter((r) => r.version === 3 && r.showcase_store_id === demo.store).map((r) => r.status)).toEqual(["done", "done", "done"]);
   });
 
   it("are pruned with their files a week after they were set aside", async () => {

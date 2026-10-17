@@ -42,7 +42,8 @@ Nobody chooses the content apart from the look. The server works it out from the
   making pictures, ready to publish, published), the themes that show it, *Make the pictures* (the job, D271) and *Publish* in the row.
   Store templates made by hand before D273 are listed under *Older demo stores*; no look starts from them and the admin makes no new one.
 * **A theme's page** (`/admin/platform/themes/{id}`) has a **Demo stores** card: one choice per look (its own and each preset) with
-  *Preview* there (published and draft), saved at once by `saveThemeDemoStores()`; the theme store listing's save keeps the choice.
+  *Preview* there (published and draft), saved at once by `saveThemeDemoStores()`; the theme store listing's save keeps the choice. A look
+  whose demo store is not chosen or not published is left out of the theme store (D274), and the card says so beside it.
 * **A demo store's page** (`/admin/platform/themes/demo-stores/{id}`, `demoStoreHref()`): publish (freezes its store, D177), unpublish,
   archive, restore, delete while unused, open its admin, preview it, and the features a new store starts with.
 * **Website → Design** (`/admin/platform/site-design`, `SITE_DESIGN`): Kaizena Flow's own site's installed themes, as D251 to D253 built

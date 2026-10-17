@@ -219,8 +219,6 @@ export type ThemeStoreCard = {
   title: string;
   summary: string;
   pictureUrl: string | null;
-  /** A launch theme's photograph on the demo store (`launchShot()`): the card's last resort before its colours, until one is made. */
-  shotUrl: string | null;
   /** The card and the share image made from its own look's photographs (`docs/theme-showcase-phase-2.md` step 1), where made. */
   madeCard: string | null;
   madeShare: string | null;
@@ -237,10 +235,16 @@ export type ThemeStoreCard = {
 };
 
 /**
- * The picture a theme's card shows (`docs/theme-showcase-phase-2.md`): the theme's own, else the card made from its own look's photograph,
- * else a launch theme's photograph in the code; null: its colours (`Swatch`).
+ * The picture a theme's card shows (`docs/theme-showcase-phase-2.md`): the theme's own, else the card made from the photograph of its first
+ * look on a published demo store; null: its colours (`Swatch`). Never the Standard store (D274).
  */
-export const cardPicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeCard" | "shotUrl">): string | null => card.pictureUrl ?? card.madeCard ?? card.shotUrl;
+export const cardPicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeCard">): string | null => card.pictureUrl ?? card.madeCard;
+
+/**
+ * The looks the theme store shows (D274): those on a published demo store, the theme's own first. A look on none is not drawn, photographed
+ * or previewed there until its demo store is published: the Standard store is never part of the theme store.
+ */
+export const shownLooks = <T extends Pick<ThemeLook, "showcase">>(looks: readonly T[]): T[] => looks.filter((look) => look.showcase !== null);
 
 /**
  * The share image of a theme's page: the admin's own share image (step 3), else its main picture, else the one made from its photograph;
@@ -255,7 +259,7 @@ export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShar
  */
 export function madeScreens(card: Pick<ThemeStoreCard, "title" | "looks">): { url: string; alt: string; width: number; height: number; kind: "computer" | "phone" }[] {
   return (["computer", "phone"] as const).flatMap((kind) =>
-    card.looks.flatMap((look) => {
+    shownLooks(card.looks).flatMap((look) => {
       const screen = look.shots?.[kind]?.screen;
       if (!screen) return [];
       const name = look.key === null ? card.title : `${card.title}, ${look.name}`;

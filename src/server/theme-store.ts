@@ -6,9 +6,9 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
 import { variationsOf } from "@/lib/design-variations";
-import { launchShotFor } from "@/lib/launch-themes";
 import {
   readListing,
+  shownLooks,
   swatchOf,
   themeChangelog,
   themeFeatures,
@@ -37,19 +37,19 @@ const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, s
   const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
   const listing = readListing(row.listing);
   const id = String(row.id);
-  // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), the theme's own look's computer giving the card and the share image.
-  const looks = themeLooks(String(row.title), presets, listing, packs).map((look) => ({ ...look, shots: shots.get(lookOf(id, look.key)) ?? null }));
-  const own = looks[0]?.shots?.computer ?? null;
+  // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), only of looks on a published demo store (D274): the first of those
+  // with a photograph at a computer's width gives the card and the share image, and the highlights are its own look's while it is shown.
+  const looks = themeLooks(String(row.title), presets, listing, packs).map((look) => ({ ...look, shots: look.showcase ? (shots.get(lookOf(id, look.key)) ?? null) : null }));
+  const lead = shownLooks(looks).find((look) => look.shots?.computer)?.shots?.computer ?? null;
   return {
     id,
     slug: String(row.slug),
     title: String(row.title),
     summary: String(row.summary ?? ""),
     pictureUrl: row.picture_url ? String(row.picture_url) : null,
-    shotUrl: launchShotFor(row.launch_key ? String(row.launch_key) : null),
-    madeCard: own?.card?.url ?? null,
-    madeShare: own?.share?.url ?? null,
-    highlights: themeHighlights(String(row.title), looks[0]?.shots?.highlights, listing.highlights, listing.own),
+    madeCard: lead?.card?.url ?? null,
+    madeShare: lead?.share?.url ?? null,
+    highlights: themeHighlights(String(row.title), looks[0]?.showcase ? looks[0].shots?.highlights : undefined, listing.highlights, listing.own),
     presets,
     looks,
     listing,
@@ -65,7 +65,7 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const packs = await publishedPacks();
   const rows = await readDb().execute<Row>(sql`
-    select id, slug, title, summary, picture_url, launch_key, listing, snapshot from commerce.design_presets
+    select id, slug, title, summary, picture_url, listing, snapshot from commerce.design_presets
     where published and archived_at is null and slug is not null
     order by position, lower(title), id
   `);
@@ -91,7 +91,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const [row] = await readDb().execute<Row>(sql`
-    select id, slug, title, summary, description, picture_url, launch_key, listing, snapshot, published_at from commerce.design_presets
+    select id, slug, title, summary, description, picture_url, listing, snapshot, published_at from commerce.design_presets
     where slug = ${slug} and published and archived_at is null
   `);
   const snapshot = row ? parseDesignSnapshot(row.snapshot) : null;

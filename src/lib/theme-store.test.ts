@@ -1,10 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
-import { LAUNCH_SHOTS, LAUNCH_THEMES, launchShot, launchShotFor } from "./launch-themes";
+import { LAUNCH_THEMES } from "./launch-themes";
 import type { ShotFile } from "./theme-shots";
 import {
   cardPicture,
@@ -16,6 +13,7 @@ import {
   readListing,
   readOwnPictures,
   showcasePack,
+  shownLooks,
   showcaseTrades,
   themeLooks,
   suggestedSlug,
@@ -36,7 +34,6 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   title: id,
   summary: "",
   pictureUrl: null,
-  shotUrl: null,
   madeCard: null,
   madeShare: null,
   presets: [],
@@ -144,30 +141,6 @@ describe("structured data", () => {
   });
 });
 
-describe("a launch theme's card picture by hand (the fallback until its looks are photographed, docs/theme-showcase-phase-2.md)", () => {
-  it("is a photograph of its newest version photographed, not past its own, in the public files every host serves", () => {
-    for (const theme of LAUNCH_THEMES) {
-      const shot = launchShot(theme);
-      expect(LAUNCH_SHOTS[theme.key], `${theme.key} has a photograph by hand`).toBeGreaterThanOrEqual(1);
-      expect(shot).toBe(`/demo/themes/${theme.key}-v${Math.min(theme.version, LAUNCH_SHOTS[theme.key])}.webp`);
-      const file = path.join(process.cwd(), "public", shot);
-      expect(existsSync(file), `${shot} is missing: photograph the theme's preview again`).toBe(true);
-      expect(readFileSync(file).subarray(8, 12).toString("latin1")).toBe("WEBP");
-    }
-  });
-
-  it("needs no new photograph when a version is raised: the newest one stands in", () => {
-    const theme = { ...LAUNCH_THEMES[0], version: LAUNCH_SHOTS[LAUNCH_THEMES[0].key] + 3 };
-    expect(launchShot(theme)).toBe(`/demo/themes/${theme.key}-v${LAUNCH_SHOTS[theme.key]}.webp`);
-  });
-
-  it("is found by the platform theme's launch key, and a theme from anywhere else has none", () => {
-    expect(launchShotFor(LAUNCH_THEMES[0].key)).toBe(launchShot(LAUNCH_THEMES[0]));
-    expect(launchShotFor("not-a-launch-theme")).toBeNull();
-    expect(launchShotFor(null)).toBeNull();
-  });
-});
-
 describe("the admin's own pictures in place of made ones (docs/theme-showcase-phase-2.md step 3)", () => {
   it("keeps known slots with an address on this site or https, and only when some are set", () => {
     expect(readOwnPictures({ share: "/media/s.jpg", devices: "https://cdn.test/d.png", collage: "javascript:alert(1)", closeup: "http://x.test/c.png", card: "/media/c.webp" })).toEqual({
@@ -190,11 +163,10 @@ describe("the admin's own pictures in place of made ones (docs/theme-showcase-ph
 describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", () => {
   const file = (name: string, width = 1440, height = 900): ShotFile => ({ path: `platform/theme-shots/${name}`, url: `https://x.test/${name}`, width, height, bytes: 1 });
 
-  it("cards and shares its own picture first, then what its photograph made, then (a card only) a launch photograph", () => {
-    expect(cardPicture({ pictureUrl: "/own.webp", madeCard: "/made.webp", shotUrl: "/launch.webp" })).toBe("/own.webp");
-    expect(cardPicture({ pictureUrl: null, madeCard: "/made.webp", shotUrl: "/launch.webp" })).toBe("/made.webp");
-    expect(cardPicture({ pictureUrl: null, madeCard: null, shotUrl: "/launch.webp" })).toBe("/launch.webp");
-    expect(cardPicture({ pictureUrl: null, madeCard: null, shotUrl: null })).toBeNull();
+  it("cards and shares its own picture first, then what its photograph made, else (a card) its colours, never a picture by hand (D274)", () => {
+    expect(cardPicture({ pictureUrl: "/own.webp", madeCard: "/made.webp" })).toBe("/own.webp");
+    expect(cardPicture({ pictureUrl: null, madeCard: "/made.webp" })).toBe("/made.webp");
+    expect(cardPicture({ pictureUrl: null, madeCard: null })).toBeNull();
     expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg" })).toBe("/share.jpg");
     expect(sharePicture({ pictureUrl: "/own.webp", madeShare: "/share.jpg" })).toBe("/own.webp");
   });
@@ -205,17 +177,26 @@ describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", (
     expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg", listing: readListing({}) })).toBe("/share.jpg");
   });
 
-  it("without pictures of its own, shows each look's first screens: computers, then phones, each named for its look and store", () => {
+  it("without pictures of its own, shows its shown looks' first screens: computers, then phones, each named for its look and store", () => {
+    const fashion = { pack: "fashion" as const, trade: "Fashion", line: "Field & Fold, a demo fashion store", starterId: "f" };
     const looks = [
-      { key: null, name: "Calm", showcase: null, shots: { computer: { screen: file("own-c") }, phone: { screen: file("own-p", 780, 1688) }, version: 2 } },
+      { key: null, name: "Calm", showcase: fashion, shots: { computer: { screen: file("own-c") }, phone: { screen: file("own-p", 780, 1688) }, version: 2 } },
       { key: "sand", name: "Sand", showcase: { pack: "beauty" as const, trade: "Beauty", line: "Dune, a demo skin care store", starterId: "s" }, shots: { computer: { screen: file("sand-c") }, phone: null, version: 2 } },
       { key: "ink", name: "Ink", showcase: null, shots: null },
+      // A look on no published demo store is never drawn, even with a set made before (D274: never the Standard store).
+      { key: "sage", name: "Sage", showcase: null, shots: { computer: { screen: file("sage-c") }, phone: null, version: 1 } },
     ];
     expect(madeScreens({ title: "Calm", looks }).map((s) => [s.url, s.alt, s.kind])).toEqual([
-      ["https://x.test/own-c", "Calm on a computer", "computer"],
+      ["https://x.test/own-c", "Calm on a computer, on Field & Fold, a demo fashion store", "computer"],
       ["https://x.test/sand-c", "Calm, Sand on a computer, on Dune, a demo skin care store", "computer"],
-      ["https://x.test/own-p", "Calm on a phone", "phone"],
+      ["https://x.test/own-p", "Calm on a phone, on Field & Fold, a demo fashion store", "phone"],
     ]);
+  });
+
+  it("shows only looks on a published demo store, its own first (D274)", () => {
+    const shown = { pack: "food" as const, trade: "Food and drink", line: "Harbour Pantry", starterId: "p" };
+    expect(shownLooks([{ key: null, showcase: null }, { key: "olive", showcase: shown }, { key: "blush", showcase: null }]).map((l) => l.key)).toEqual(["olive"]);
+    expect(shownLooks([{ key: null, showcase: shown }, { key: "olive", showcase: null }]).map((l) => l.key)).toEqual([null]);
   });
 });
 
@@ -231,7 +212,7 @@ describe("a theme's looks and the stores they are shown on (docs/theme-showcase-
     expect(looks.map((l) => [l.key, l.name, l.showcase?.starterId ?? null])).toEqual([
       [null, "Hearth", "starter-food"],
       ["olive", "Olive", "starter-home"],
-      // Its pack is not published: the Standard store, as before packs.
+      // Its pack is not published: shown nowhere until it is (D274), and a new store started from it gets the Standard store.
       ["blush", "Blush", null],
     ]);
     expect(looks[0].showcase).toMatchObject({ pack: "food", trade: "Food and drink", line: "Harbour Pantry, a demo food and drink store" });

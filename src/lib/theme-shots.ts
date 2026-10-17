@@ -116,13 +116,13 @@ export const shotKey = (shot: Pick<WantedShot, "presetId" | "version" | "variati
 /** A look's identity across versions and showcases: which pictures stand for the same thing on the theme store. */
 export const lookKey = (shot: Pick<WantedShot, "presetId" | "variation" | "kind">): string => [shot.presetId, shot.variation ?? "", shot.kind].join("|");
 
-/** A published theme as the queue needs it: its latest version, and each of its looks with the store template it is shown on (null: the Standard store). */
+/** A published theme as the queue needs it: its latest version, and each of its looks with the demo store it is shown on (null: none published). */
 export type ShotTheme = { id: string; version: number; looks: { variation: string | null; starterId: string | null }[] };
 
 /**
- * Every unit that should exist now: each look of each theme at its latest version, on the store its showcase draws (`storeOf`: a store
- * template's published copy, or the Standard store's for null; a showcase whose store cannot be found is left out), at both widths; and the
- * theme's highlights from its own look (step 2), composed once that look's two are made.
+ * Every unit that should exist now: each look of each theme at its latest version, on the store its showcase draws (`storeOf`: a demo
+ * store's published copy; a look on none, or whose store cannot be found, is left out, D274: never the Standard store), at both widths; and
+ * the theme's highlights from its own look (step 2), composed once that look's two are made.
  */
 export function wantedShots(themes: readonly ShotTheme[], storeOf: (starterId: string | null) => string | null): WantedShot[] {
   return themes.flatMap((theme) =>

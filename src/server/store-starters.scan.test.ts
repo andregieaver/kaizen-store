@@ -25,8 +25,6 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/content-grid.ts": "real",
   // Design profiles (D176): the Standard store a preview is drawn on, and the default template named among the stores a snapshot is taken from.
   "src/server/design-presets.ts": "template",
-  // The theme shots (docs/theme-showcase-phase-2.md): the Standard store a look without a pack is photographed on, as the preview draws it.
-  "src/server/theme-shots.ts": "template",
   "src/server/cookie-scans.ts": "real",
   "src/server/experiments.ts": "real",
   "src/server/manager-tools.ts": "real",

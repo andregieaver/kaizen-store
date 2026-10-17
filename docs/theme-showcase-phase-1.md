@@ -139,8 +139,8 @@ Standard store); a launch theme's comes from the code (`launchListing()`).
 template (read inside the cached theme store reads, which therefore also carry `STARTERS_TAG`), or none, which is the Standard store as
 before. The theme page's stage (`ThemePreviewStage`) takes each look with its own preview addresses (`designPreviewPath(id, starter, …,
 key)`), shows the trade under each preset's name and says under the frames which demo store it is (`PACK_DEMO_WORDS`); a card names the
-trades its looks are shown on (`showcaseTrades()`). A pack whose template is not published yet is never named: the look stays on the
-Standard store until it is.
+trades its looks are shown on (`showcaseTrades()`). A pack whose template is not published yet is never named: the look stayed on the
+Standard store until it was, and since D274 it is left out of the theme store (`shownLooks()`) until it is.
 
 **Launch themes' presets.** `LAUNCH_THEMES` give each theme two or three presets (`LaunchPreset`: a fixed key, a name, its pack and the
 changes over the theme's own settings), each look of a theme on another pack and every pack shown by some theme: Calm (its own on fashion;

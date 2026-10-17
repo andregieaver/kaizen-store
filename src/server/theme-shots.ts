@@ -68,19 +68,18 @@ async function publishedThemes(): Promise<ShotTheme[]> {
   });
 }
 
-/** The store each showcase draws: a published template's frozen copy (as the public preview), and the Standard store's for null. */
+/**
+ * The store each showcase draws: a published demo store's frozen copy (as the public preview). A look on no published demo store is
+ * photographed nowhere (D274): the theme store never shows the Standard store, so it waits until its demo store is published.
+ */
 async function showcaseStores(): Promise<(starterId: string | null) => string | null> {
-  const [starters, template] = await Promise.all([
-    readDb().execute<Row>(sql`
-      select st.id, s.id as store_id from commerce.store_starters st
-        join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
-       where st.published and st.archived_at is null
-    `),
-    readDb().execute<Row>(sql`select id from commerce.stores where is_template limit 1`),
-  ]);
+  const starters = await readDb().execute<Row>(sql`
+    select st.id, s.id as store_id from commerce.store_starters st
+      join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+     where st.published and st.archived_at is null
+  `);
   const byStarter = new Map(starters.map((row) => [String(row.id), String(row.store_id)]));
-  const standard = template[0] ? String(template[0].id) : null;
-  return (starterId) => (starterId === null ? standard : (byStarter.get(starterId) ?? null));
+  return (starterId) => (starterId === null ? null : (byStarter.get(starterId) ?? null));
 }
 
 /** What should be photographed now. */
@@ -315,15 +314,18 @@ export async function runThemeShots(origin: string, deadline: number, deps: Shot
 /** A look's key in the reads: the theme and the preset (empty for its own look). */
 export const lookOf = (presetId: string, variation: string | null): string => `${presetId}|${variation ?? ""}`;
 
-/** The latest done set of each look of these themes, at each width: what the theme store shows. */
+/**
+ * The latest done set of each look of these themes, at each width: what the theme store shows. Only sets taken on a demo store, never on
+ * the Standard store (D274: sets made there before are set aside by the queue, and left out here at once).
+ */
 export async function themeShotsFor(presetIds: readonly string[]): Promise<Map<string, LookShots>> {
   const out = new Map<string, LookShots>();
   if (presetIds.length === 0) return out;
   const rows = await readDb().execute<Row>(sql`
-    select distinct on (preset_id, coalesce(variation, ''), kind) preset_id, variation, kind, version, pictures
-      from commerce.theme_shots
-     where status = 'done' and preset_id = any(${`{${presetIds.join(",")}}`}::uuid[])
-     order by preset_id, coalesce(variation, ''), kind, finished_at desc
+    select distinct on (t.preset_id, coalesce(t.variation, ''), t.kind) t.preset_id, t.variation, t.kind, t.version, t.pictures
+      from commerce.theme_shots t join commerce.stores s on s.id = t.showcase_store_id and s.starter
+     where t.status = 'done' and t.preset_id = any(${`{${presetIds.join(",")}}`}::uuid[])
+     order by t.preset_id, coalesce(t.variation, ''), t.kind, t.finished_at desc
   `);
   for (const row of rows) {
     const key = lookOf(String(row.preset_id), row.variation ? String(row.variation) : null);
