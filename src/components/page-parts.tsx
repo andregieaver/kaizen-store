@@ -109,9 +109,14 @@ export function rowFrame(row: PageRow): { className: string; style: CSSPropertie
   };
 }
 
-/** The row's columns: side by side by its layout, or stacked where it stacks (Small unless set, D179; last first when reversed). */
+/**
+ * The row's columns: side by side by its layout, or stacked where it stacks (Small unless set, D179; last first when reversed).
+ * They fill the row's height when it is the screen's, or when they sit in the middle or at the bottom of a row taller than
+ * them (a `height`, D184), so the alignment has room to place them; a row as tall as its content is unchanged.
+ */
 export function rowGrid(row: PageRow): Box {
-  return { className: cx(rowGridStyle(row).className, row.fullHeight && "flex-1"), style: {} };
+  const placed = row.align === "middle" || row.align === "bottom";
+  return { className: cx(rowGridStyle(row).className, (row.fullHeight || placed) && "flex-1"), style: {} };
 }
 
 /** A column: its background, margin and padding, and where its content sits when columns are equally tall. */

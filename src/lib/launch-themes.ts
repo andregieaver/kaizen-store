@@ -1,6 +1,9 @@
 import type { PackKey } from "./content-packs";
 import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot, type DesignVariation } from "./design-presets";
 import type { SectionStyles } from "./section-styles";
+import { ARCADE } from "./signature/arcade";
+import { ATELIER } from "./signature/atelier";
+import { BOTANICA } from "./signature/botanica";
 import { ORBIT } from "./signature/orbit";
 import { coreStyles, rem } from "./theme-kit";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
@@ -66,7 +69,7 @@ export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"
  * Since phase 2 (`docs/theme-showcase-phase-2.md`) every publish photographs a theme's looks itself, so these are only the card's fallback
  * until those are made (and where they cannot be, as in development and the browser tests): raising a version needs no new one.
  */
-export const LAUNCH_SHOTS: Readonly<Record<string, number>> = { calm: 2, hearth: 2, signal: 2, fjord: 2, orbit: 1 };
+export const LAUNCH_SHOTS: Readonly<Record<string, number>> = { calm: 2, hearth: 2, signal: 2, fjord: 2, orbit: 1, atelier: 1, arcade: 1, botanica: 1 };
 
 /**
  * The theme's card picture by hand: its public preview on the demo store, photographed at a computer's width (a 4:3 crop of the top, 800 by
@@ -310,4 +313,7 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     ],
   },
   ORBIT,
+  ATELIER,
+  ARCADE,
+  BOTANICA,
 ];

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { PartBackground } from "@/components/page-parts";
+import { PartBackground, rowGrid } from "@/components/page-parts";
 
 import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 import { pageInput, type PageRow } from "./page-content";
@@ -26,6 +26,15 @@ describe("a row's height in per cent of the screen's", () => {
     expect(partStyleAt(css, classes, WIDTHS.md)["min-height"]).toBeUndefined();
     const plain = rowOf();
     expect(partStyleAt(partCss([plain], "site", DEFAULT_BREAKPOINTS), rowStyle(plain).className.split(" "), WIDTHS.xl)["min-height"]).toBeUndefined();
+  });
+
+  it("lets its columns fill it when they sit in the middle or at the bottom, so the alignment has room", () => {
+    const grows = (extra: Partial<PageRow>) => rowGrid(rowOf(extra)).className.split(" ").includes("flex-1");
+    expect(grows({ height: 60, align: "middle" })).toBe(true);
+    expect(grows({ height: 60, align: "bottom" })).toBe(true);
+    expect(grows({ height: 60, align: "top" })).toBe(false);
+    expect(grows({ height: 60 })).toBe(false);
+    expect(grows({ fullHeight: true })).toBe(true);
   });
 
   it("is checked when a page is saved, with the fixed background", () => {

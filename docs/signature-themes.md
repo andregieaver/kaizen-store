@@ -71,12 +71,31 @@ withdrawal period (facts beside the button, for conversion), and art motifs as b
 * **Dressing**: `dressSignaturePacks()` puts Orbit on Far Light and makes it the template's recommended look, so the store template's own
   preview, its cards and the stores made from it are Orbit.
 
-## Open question for the owner
+## Built (step 3, D269)
 
-The agreed studio guardrails (`docs/theme-showcase.md`) say the model never writes CSS. Hand-made themes (steps 2 and 3) use CSS freely,
-reviewed in code. For step 5 the recommendation is to keep the rule: the model composes from the hand-made library and the art recipes, and
-code writes every line of CSS. The alternative is model-written CSS through a strict checker (declarations from a closed list, selectors only
-on the theme's own classes), shown to the admin before publishing. Decided before step 5 starts.
+* **Atelier** (`src/lib/signature/atelier.ts`): quiet editorial luxury. Cormorant Garamond over Jost on warm paper with a grain, a header of
+  two quiet rows (search and the menu button, the logo in the middle, account and cart; the menu under it), small-capital square buttons, a
+  hero still life, collection tiles that zoom slowly, a glaze band, roman numerals for the making, a buy box that stays in view. Its store
+  *Ostra Studio* (pack `ceramics`) sells eight stoneware pieces in three collections. Presets: *Linen* (home pack) and *Noir* (dark,
+  fashion pack).
+* **Arcade** (`src/lib/signature/arcade.ts`): neon and retro games. Tilt Neon headings that glow over Space Grotesk on a dark screen with
+  scan lines, pixel labels in Silkscreen, "Level 1 to 3" for the collections, a blinking cursor, sign cards like screens. Its store *Neon
+  Alley* (pack `neon`) sells eight neon signs. Presets: *Vapor* (beauty pack) and *Terminal* (electronics pack).
+* **Botanica** (`src/lib/signature/botanica.ts`): organic, plants and paper. Fraunces over DM Sans, a floating pill header, arched and
+  leaf-shaped pictures, a sprig that sways (still for reduced motion), care notes with icons, rounded cards. Its store *Fernhouse* (pack
+  `plants`) sells eight house plants. Presets: *Terracotta* (food pack) and *Night garden* (dark, services pack).
+* **Shared blocks**: the four themes write their rows with `src/lib/signature/kit.ts` (text, headings, buttons, pictures, grids, icon lists,
+  site and product parts), so a page reads as the builder would have saved it.
+* **A fix for everyone**: a row taller than its content (`height`) with its columns in the middle or at the bottom now places them there
+  (`rowGrid()`); before, they stayed at the top.
+
+## Decided: the model never writes CSS (17 October 2026)
+
+The owner chose the recommendation ("Let's go with your recommendations"). Hand-made themes (steps 2 and 3) use CSS freely, written and
+reviewed in code. In step 5 the platform AI composes a theme from the hand-made library (headers, heroes, sections, product pages, motifs,
+art recipes) and fills in its words and colours, and code writes every line of CSS from those choices; the model never writes a
+declaration, a selector or a value. The alternative (model-written CSS through a strict checker) is not built. The three worlds of step 3 are
+the ones proposed: Atelier, Arcade and Botanica.
 
 ## What production needs from a person
 

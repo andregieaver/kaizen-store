@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { CONTENT_PACKS, PACK_KEYS, contentPack, packPrice, packSlots, packSlug } from "@/lib/content-packs";
+import { inlinePlain } from "@/lib/inline-text";
 import { parsePageContent } from "@/lib/page-content";
 
 import type { Account } from "./auth";
@@ -138,7 +139,9 @@ describe("setting up the content packs", () => {
       expect(String(store.front_page_id)).toBe(String(home.id));
       expect(String(store.products_page_id)).toBe(String(pages.find((p) => p.slug === "all-products")!.id));
       const content = parsePageContent(home.published);
-      expect(JSON.stringify(content)).toContain(pack.headline);
+      // The headline as a heading says it, its inline emphasis aside (a designed page may set a word in italics).
+      const headings = content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks)).flatMap((block) => (block.type === "heading" ? [inlinePlain(block.text)] : []));
+      expect(headings, pack.key).toContain(pack.headline);
     }
   });
 

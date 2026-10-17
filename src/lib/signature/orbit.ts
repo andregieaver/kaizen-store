@@ -7,6 +7,8 @@ import { newPageContent, type PageContent, type PageRow } from "../page-content"
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
 
+import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, site, text, twoButtons, uuid, type Look } from "./kit";
+
 /**
  * Orbit, the first signature theme (`docs/signature-themes.md` step 2): a theme for the night sky, made from scratch. Deep blue-black pages
  * under a field of stars that drifts and twinkles (still for reduced motion), starlight gold for the one thing to press, Unbounded's wide
@@ -89,64 +91,8 @@ export const ORBIT_PACK: ContentPack = {
 // The demo store's pages
 // ---------------------------------------------------------------------------------------------------------------------------------------
 
-const uuid = () => globalThis.crypto.randomUUID();
-const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "text", text }] });
-type Look = Record<string, unknown>;
-const text = (texts: string[], className?: string, look?: Look) => ({
-  id: uuid(),
-  type: "richText",
-  doc: { type: "doc", content: texts.map(paragraph) },
-  ...(className && { className }),
-  ...(look && { typography: { text: look } }),
-});
-const heading = (words: string, level: number, className?: string, look?: Look) => ({
-  id: uuid(),
-  type: "heading",
-  text: words,
-  level,
-  ...(className && { className }),
-  ...(look && { typography: { text: look } }),
-});
-/** The small line in capitals over a heading, in the accent colour (the stylesheet's, so each preset has its own). */
-const EYEBROW: Look = { size: rem(0.75), lineHeight: lines(1.4), letterSpacing: em(0.3), transform: "uppercase", weight: 600 };
 const LEAD: Look = { size: rem(1.15), lineHeight: lines(1.6) };
 const eyebrow = (words: string) => text([words], "orbit-eyebrow", EYEBROW);
-const button = (label: string, href: string, variant: "filled" | "outline" | "text" = "filled", extra: Record<string, unknown> = {}) => ({
-  id: uuid(),
-  type: "button",
-  label,
-  href,
-  variant,
-  shape: "pill",
-  ...extra,
-});
-const image = (picture: PackPicture | null, className?: string) => ({
-  id: uuid(),
-  type: "image",
-  image: picture ? { ...picture } : null,
-  caption: "",
-  href: "",
-  ...(className && { className }),
-});
-const photo = (picture: PackPicture | null, overlay = 35) =>
-  picture ? { type: "image", image: { url: picture.url, width: picture.width, height: picture.height }, overlay: { color: "#05060f", opacity: overlay } } : undefined;
-const productGrid = (limit: number, extra: Record<string, unknown> = {}) => ({
-  id: uuid(),
-  type: "contentGrid",
-  source: { type: "products" },
-  categories: [],
-  tags: [],
-  sort: "oldest",
-  limit,
-  columns: { mobile: 2, tablet: 2, desktop: 4 },
-  show: { image: true, heading: true, excerpt: false, price: true, button: false },
-  buttonLabel: "",
-  emptyText: "",
-  headingLevel: 3,
-  excerptLines: 3,
-  gap: 28,
-  ...extra,
-});
 
 /** Far Light's home page: the hero over the planet's sunrise, new prints, the three collections, how they are made, the story, and a last call. */
 export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
@@ -168,7 +114,7 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
           eyebrow("Prints of the night sky"),
           heading(pack.headline, 1, "orbit-display", { weight: 300 }),
           text([pack.tagline], "orbit-lead", LEAD),
-          { id: uuid(), type: "dualButton", first: { label: "Shop the prints", href: "/products", variant: "filled" }, second: { label: "Our story", href: "#story", variant: "outline" }, size: "lg", shape: "pill", gap: 14 },
+          twoButtons(["Shop the prints", "/products"], ["Our story", "#story"]),
         ],
       },
     ],
@@ -290,10 +236,6 @@ export function orbitAboutPage(pack: ContentPack, picture: PackPictureOf): PageC
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // The theme
 // ---------------------------------------------------------------------------------------------------------------------------------------
-
-const site = (id: string, part: string, extra: Record<string, unknown> = {}) => ({ id, type: "site", part, ...extra });
-const product = (id: string, part: string, extra: Record<string, unknown> = {}) => ({ id, type: "product", part, ...extra });
-const phonesHidden = { visibility: { hideAt: ["sm"] } };
 
 const header: DesignLayout = {
   css: "",

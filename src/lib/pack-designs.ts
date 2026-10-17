@@ -1,6 +1,9 @@
 import type { PackPicture } from "./content-pack-pages";
 import type { ContentPack } from "./content-packs";
 import type { PageContent } from "./page-content";
+import { arcadeAboutPage, arcadeHomePage } from "./signature/arcade";
+import { atelierAboutPage, atelierHomePage } from "./signature/atelier";
+import { botanicaAboutPage, botanicaHomePage } from "./signature/botanica";
 import { orbitAboutPage, orbitHomePage } from "./signature/orbit";
 
 /**
@@ -19,6 +22,9 @@ export type PackDesign = {
 
 export const PACK_DESIGNS = {
   orbit: { home: orbitHomePage, about: orbitAboutPage },
+  atelier: { home: atelierHomePage, about: atelierAboutPage },
+  arcade: { home: arcadeHomePage, about: arcadeAboutPage },
+  botanica: { home: botanicaHomePage, about: botanicaAboutPage },
 } as const satisfies Record<string, PackDesign>;
 
 export type PackDesignKey = keyof typeof PACK_DESIGNS;
