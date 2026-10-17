@@ -16,24 +16,27 @@ import { siteUrl } from "@/lib/site";
 
 import { AiError, aiFor, type ImageShape } from "./ai";
 import { makePicture } from "./ai-pictures";
-import { audit, type Account } from "./auth";
+import { activeAccount, audit, type Account } from "./auth";
+import { catalogTag } from "./catalog";
 import type { ApplyDeps } from "./design-presets";
 import { storePicture } from "./media-library";
-import { savePage } from "./pages";
+import { pagesTag, savePage } from "./pages";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext } from "./products";
 import { refreshTag } from "./refresh";
 import { dressSignaturePacks } from "./signature-themes";
 import { createStarter, setStarterFeatures } from "./store-starters";
 import { getStore, storeTag, type Store } from "./stores";
+import { termsTag } from "./taxonomy";
 
 /**
  * Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): `CONTENT_PACKS` written into store templates of their own (D175),
  * one per trade, each a clean English store of that trade only. `syncContentPacks()` makes a pack's template the first time (copied from the
  * default template as every template is) and writes the pack into it whenever the code's version is newer: the store's name, language,
  * features and menus, the pack's categories, products (the template's own demo products archived, so no copy carries them), home and about
- * pages; nothing else of the template's demo stays. Pictures come after, one per request (`makeNextPackPicture()`, Kaizena Flow's picture
- * model, feature `content_pack`), into the pack store's media library; until a product has its picture it shows `PACK_PLACEHOLDER`, and a pack
- * is published only once every picture is made (`picturesMissing()`, checked by `publishStarter()`). Platform admins only.
+ * pages; nothing else of the template's demo stays. Pictures come after, one at a time (`makeNextPackPicture()`, Kaizena Flow's picture
+ * model, feature `content_pack`), made by a job once asked for (`askForPackPictures()`, `runPackPictures()`, D271), into the pack store's
+ * media library; until a product has its picture it shows `PACK_PLACEHOLDER`, and a pack is published only once every picture is made
+ * (`picturesMissing()`, checked by `publishStarter()`). Platform admins only.
  */
 
 type Row = Record<string, unknown>;
@@ -113,14 +116,26 @@ async function placeArt(admin: Account, row: PackRow, pack: ContentPack, deps: P
   }
   return placed;
 }
-type PackRow = { starterId: string; storeId: string; slug: string; version: number | null; pictures: Record<string, StoredPicture>; published: boolean; archived: boolean };
+type PackRow = {
+  starterId: string;
+  storeId: string;
+  slug: string;
+  version: number | null;
+  pictures: Record<string, StoredPicture>;
+  published: boolean;
+  archived: boolean;
+  /** Its pictures are asked for (D271): the job makes them. */
+  asked: boolean;
+  /** Why the last try failed, while it is the last word on them. */
+  problem: string | null;
+};
 
 const readPictures = (value: unknown): Record<string, StoredPicture> =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, StoredPicture>) : {};
 
 async function packRow(key: string): Promise<PackRow | null> {
   const [row] = await db().execute<Row>(sql`
-    select ss.id, ss.store_id, ss.pack_version, ss.pack_pictures, ss.published, ss.archived_at, s.slug
+    select ss.id, ss.store_id, ss.pack_version, ss.pack_pictures, ss.published, ss.archived_at, s.slug, ss.pictures_wanted_at, ss.picture_problem
     from commerce.store_starters ss join commerce.stores s on s.id = ss.store_id
     where ss.pack_key = ${key}
   `);
@@ -133,6 +148,8 @@ async function packRow(key: string): Promise<PackRow | null> {
     pictures: readPictures(row.pack_pictures),
     published: row.published === true,
     archived: row.archived_at !== null,
+    asked: row.pictures_wanted_at !== null,
+    problem: typeof row.picture_problem === "string" ? row.picture_problem : null,
   };
 }
 
@@ -148,6 +165,9 @@ export type PackState = {
   archived: boolean;
   pictures: number;
   slots: number;
+  /** Its pictures are being made by the job (D271). */
+  asked: boolean;
+  problem: string | null;
 };
 
 export async function contentPackStates(): Promise<PackState[]> {
@@ -166,6 +186,8 @@ export async function contentPackStates(): Promise<PackState[]> {
         archived: row?.archived ?? false,
         pictures: row ? slots.filter((slot) => !slotMissing(pack, slot, row.pictures[slot])).length : 0,
         slots: slots.length,
+        asked: row?.asked ?? false,
+        problem: row?.problem ?? null,
       };
     }),
   );
@@ -493,4 +515,138 @@ export async function makeNextPackPicture(
   `);
   await audit(admin.id, row.storeId, "platform.content_pack_picture", { pack: pack.key, slot }, {});
   return { ok: true, made: slot, remaining: missing.length - 1, store: { id: row.storeId, slug: row.slug } };
+}
+
+/** The pack stores whose pictures changed, refreshed where their pages and products are drawn. */
+export function refreshPackStores(stores: { id: string; slug: string }[]): void {
+  for (const store of stores) {
+    refreshTag(storeTag(store.slug));
+    refreshTag(catalogTag(store.id));
+    refreshTag(pagesTag(store.id));
+    refreshTag(termsTag({ storeId: store.id, contentType: "product" }));
+  }
+}
+
+/** Tries in a row that may fail before the job stops making a pack's pictures and says why. */
+export const PICTURE_TRIES = 3;
+/** Packs whose pictures are made at the same time: one picture of each at a time, so two runs never make the same slot. */
+const PICTURES_AT_ONCE = 2;
+
+/**
+ * *Make the pictures* (D271): asks the job to make the pictures the packs named still lack, in the person's name, and forgets earlier
+ * failures. A pack already asked for keeps its place in the queue. The page no longer waits for each picture, so the person may leave it.
+ */
+export async function askForPackPictures(admin: Account, keys: string[]): Promise<{ ok: true; asked: string[] } | { ok: false; problems: string[] }> {
+  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  const asked: string[] = [];
+  for (const key of keys) {
+    const pack = contentPack(key);
+    const row = pack ? await packRow(pack.key) : null;
+    if (!pack || !row || row.archived || row.version === null || row.version < pack.version) continue;
+    if (!packSlots(pack).some((slot) => slotMissing(pack, slot, row.pictures[slot]))) continue;
+    await db().execute(sql`
+      update commerce.store_starters
+      set pictures_wanted_by = ${admin.id}::uuid, pictures_wanted_at = coalesce(pictures_wanted_at, now()), picture_failures = 0, picture_problem = null
+      where id = ${row.starterId}::uuid
+    `);
+    asked.push(pack.title);
+  }
+  if (asked.length === 0) return { ok: false, problems: ["There are no pictures to make. Set up the content packs first, or bring them up to date."] };
+  return { ok: true, asked };
+}
+
+/** *Stop*: the job makes no more of the pack's pictures; one being made is finished and kept. */
+export async function stopPackPictures(admin: Account, key: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  await db().execute(sql`update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null where pack_key = ${key}`);
+  return { ok: true };
+}
+
+/**
+ * Takes the pack asked for first that no run holds, while fewer than `PICTURES_AT_ONCE` are held (under a lock, so two runs never count
+ * the same free place), and holds it for a little longer than the picture model's limit and the placing after it.
+ */
+async function claimPack(): Promise<{ starterId: string; key: string; wantedBy: string } | null> {
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('kaizen-pack-pictures'))`);
+    const [row] = await tx.execute<Row>(sql`
+      update commerce.store_starters set picture_claimed_until = now() + interval '4 minutes'
+      where id = (
+        select id from commerce.store_starters
+        where pictures_wanted_at is not null and (picture_claimed_until is null or picture_claimed_until < now())
+          and (select count(*) from commerce.store_starters held where held.picture_claimed_until > now()) < ${PICTURES_AT_ONCE}
+        order by pictures_wanted_at, id
+        limit 1
+      )
+      returning id, pack_key, pictures_wanted_by
+    `);
+    return row ? { starterId: String(row.id), key: String(row.pack_key), wantedBy: String(row.pictures_wanted_by) } : null;
+  });
+}
+
+/**
+ * The job (D271, `/api/cron/pack-pictures` every minute, and at once after *Make the pictures*): makes the pictures packs are asked for,
+ * one per pack at a time through `makeNextPackPicture()` in the name of the admin who asked (who must still be one), starting none after
+ * `until`. A pack stops being asked for when none is missing, or after `PICTURE_TRIES` failures in a row, keeping the last reason for the
+ * page. Never throws.
+ */
+export async function runPackPictures(
+  until: number,
+  deps: Parameters<typeof makeNextPackPicture>[2] = {},
+): Promise<{ made: number; failed: number; stores: { id: string; slug: string }[] }> {
+  const result = { made: 0, failed: 0, stores: [] as { id: string; slug: string }[] };
+  while (Date.now() < until) {
+    let claimed: Awaited<ReturnType<typeof claimPack>>;
+    try {
+      claimed = await claimPack();
+    } catch (error) {
+      console.error("[pack-pictures] no pack could be taken:", error);
+      break;
+    }
+    if (!claimed) break;
+    let outcome: Awaited<ReturnType<typeof makeNextPackPicture>>;
+    try {
+      const admin = await activeAccount(claimed.wantedBy);
+      outcome = admin?.platformAdmin
+        ? await makeNextPackPicture(admin, claimed.key, deps)
+        : { ok: false, problems: ["The admin who asked for these pictures is no longer one of Kaizena Flow's admins. Ask again."] };
+    } catch (error) {
+      console.error("[pack-pictures] a picture could not be made:", error);
+      outcome = { ok: false, problems: ["The picture could not be made."] };
+    }
+    try {
+      if (outcome.ok) {
+        // Stop pressed meanwhile has already cleared the wish, and the picture made is kept.
+        const done = outcome.remaining === 0;
+        const store = outcome.store;
+        await db().execute(sql`
+          update commerce.store_starters
+          set picture_claimed_until = null, picture_failures = 0, picture_problem = null,
+            pictures_wanted_by = case when ${done}::boolean then null else pictures_wanted_by end,
+            pictures_wanted_at = case when ${done}::boolean then null else pictures_wanted_at end
+          where id = ${claimed.starterId}::uuid
+        `);
+        if (outcome.made) {
+          result.made += 1;
+          if (!result.stores.some((one) => one.id === store.id)) result.stores.push(store);
+        }
+      } else {
+        result.failed += 1;
+        const problem = outcome.problems.join(" ").slice(0, 500);
+        // Held a little longer, so the next try waits out what may pass (a busy picture model) instead of following at once.
+        await db().execute(sql`
+          update commerce.store_starters
+          set picture_claimed_until = now() + interval '2 minutes', picture_failures = least(picture_failures + 1, 20), picture_problem = ${problem},
+            pictures_wanted_by = case when picture_failures + 1 >= ${PICTURE_TRIES} then null else pictures_wanted_by end,
+            pictures_wanted_at = case when picture_failures + 1 >= ${PICTURE_TRIES} then null else pictures_wanted_at end
+          where id = ${claimed.starterId}::uuid
+        `);
+      }
+    } catch (error) {
+      // The hold runs out by itself, and the pack is taken again then.
+      console.error("[pack-pictures] the outcome could not be kept:", error);
+      break;
+    }
+  }
+  return result;
 }

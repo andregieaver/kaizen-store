@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
-import { PackPictures } from "@/components/admin/pack-pictures";
+import { AllPackPictures, PackPictures, PackPicturesWatch } from "@/components/admin/pack-pictures";
 import { PreviewLink } from "@/components/admin/preview-link";
 import { listFilterOf } from "@/lib/lifecycle";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS, type StarterRow } from "@/lib/store-starters";
@@ -17,7 +17,8 @@ import {
   archiveStarterAction,
   createStarterAction,
   deleteStarterAction,
-  makePackPictureAction,
+  askPackPicturesAction,
+  stopPackPicturesAction,
   moveStarterAction,
   openStarterAdminAction,
   publishStarterAction,
@@ -226,7 +227,7 @@ function packStatus(pack: PackState): { words: string; signal: "positive" | "war
   if (!pack.starterId) return { words: "Not set up", signal: "neutral" };
   if (pack.archived) return { words: "Archived", signal: "neutral" };
   if (!pack.current) return { words: "Newer version to set up", signal: "warning" };
-  if (pack.pictures < pack.slots) return { words: "Pictures to make", signal: "warning" };
+  if (pack.pictures < pack.slots) return pack.asked ? { words: "Making pictures", signal: "neutral" } : { words: "Pictures to make", signal: "warning" };
   return pack.published ? { words: "Published", signal: "positive" } : { words: "Ready to publish", signal: "positive" };
 }
 
@@ -237,18 +238,24 @@ function packStatus(pack: PackState): { words: string; signal: "positive" | "war
 function ContentPacks({ packs }: { packs: PackState[] }) {
   const toSetUp = packs.filter((pack) => !pack.archived && (!pack.starterId || !pack.current)).length;
   const fresh = packs.every((pack) => !pack.starterId);
+  // Packs whose pictures can be asked for: set up, current, not archived, some missing and not asked for already.
+  const ready = (pack: PackState) => pack.starterId !== null && pack.current && !pack.archived;
+  const toAsk = packs.filter((pack) => ready(pack) && pack.pictures < pack.slots && !pack.asked).map((pack) => pack.key);
   return (
     <Card
       title="Content packs"
-      description="Demo stores for six trades, written by Kaizena Flow in English: each is a store template with its trade's products, pages and menus. Set them up, make their pictures, then publish each one below like any store template."
+      description="Demo stores by trade, written by Kaizena Flow in English: each is a store template with its trade's products, pages and menus. Set them up, make their pictures (Kaizena Flow makes them one at a time, so you can leave the page), then publish each one below like any store template."
       aside={
         toSetUp > 0 ? (
           <ActionForm action={syncContentPacksAction}>
             <SubmitButton>{fresh ? "Set up the content packs" : "Bring them up to date"}</SubmitButton>
           </ActionForm>
+        ) : toAsk.length > 1 ? (
+          <AllPackPictures ask={askPackPicturesAction.bind(null, toAsk)} />
         ) : undefined
       }
     >
+      <PackPicturesWatch active={packs.some((pack) => ready(pack) && pack.asked && pack.pictures < pack.slots)} />
       <List label="Content packs">
         {packs.map((pack) => {
           const status = packStatus(pack);
@@ -257,8 +264,16 @@ function ContentPacks({ packs }: { packs: PackState[] }) {
               <RowLead title={pack.title} sub={pack.slug ? `${pack.storeName} · /s/${pack.slug}` : pack.storeName} />
               <Chip signal={status.signal} dot>{status.words}</Chip>
               <RowActions>
-                {pack.starterId && pack.current && !pack.archived && (
-                  <PackPictures title={pack.title} made={pack.pictures} total={pack.slots} action={makePackPictureAction.bind(null, pack.key)} />
+                {ready(pack) && (
+                  <PackPictures
+                    title={pack.title}
+                    made={pack.pictures}
+                    total={pack.slots}
+                    asked={pack.asked}
+                    problem={pack.problem}
+                    ask={askPackPicturesAction.bind(null, [pack.key])}
+                    stop={stopPackPicturesAction.bind(null, pack.key)}
+                  />
                 )}
               </RowActions>
             </ListRow>

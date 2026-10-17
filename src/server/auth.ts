@@ -329,6 +329,18 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
 });
 
 /**
+ * An account by its id while it is active, or null: for work a person asked for that a job does later in their name (D271), which asks
+ * again what the account may do each time, as the person's own request would.
+ */
+export async function activeAccount(accountId: string): Promise<Account | null> {
+  const [person] = await db().execute<Row>(sql`
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme from commerce.accounts
+    where id = ${accountId}::uuid and disabled_at is null
+  `);
+  return person ? toAccount(person) : null;
+}
+
+/**
  * The membership of the account an editing pass names (D193), or null: the same row a session's would be, read for an account that the
  * admin vouched for a little while ago instead of one signed in now (`src/lib/edit-grant.ts`). It is the pass's own check each time
  * it is used: an account that is disabled, a member whose access has ended or was taken away, is no one. What the second step stood at

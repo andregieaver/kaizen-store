@@ -109,6 +109,19 @@ describe("a store template's own rules (D175)", () => {
     await db.query(`update commerce.store_starters set pack_pictures = pack_pictures || '{"hero":{"url":"/x.webp"}}' where id = $1`, [starter]);
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.store_starters where pack_key is null and pack_pictures = '{}'::jsonb and id = $1", [other])).n).toBe(1);
   });
+
+  it("asks for a pack's pictures in a person's name and at a time together, for a pack only, and keeps the failures in bounds (D271)", async () => {
+    const { starter } = await createStarter("pack-wish");
+    const { starter: plain } = await createStarter("not-a-pack");
+    await db.query("update commerce.store_starters set pack_key = 'beauty', pack_version = 1 where id = $1", [starter]);
+    await refused("update commerce.store_starters set pictures_wanted_by = $2 where id = $1", [starter, owner], /store_starters_pictures_wanted/);
+    await refused("update commerce.store_starters set pictures_wanted_at = now() where id = $1", [starter], /store_starters_pictures_wanted/);
+    await refused("update commerce.store_starters set pictures_wanted_by = $2, pictures_wanted_at = now() where id = $1", [plain, owner], /store_starters_pictures_wanted/);
+    await refused("update commerce.store_starters set picture_failures = 21 where id = $1", [starter], /store_starters_picture_failures/);
+    await refused("update commerce.store_starters set picture_problem = repeat('x', 501) where id = $1", [starter], /store_starters_picture_problem/);
+    await db.query("update commerce.store_starters set pictures_wanted_by = $2, pictures_wanted_at = now(), picture_failures = 3, picture_problem = 'Busy.' where id = $1", [starter, owner]);
+    await db.query("update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null where id = $1", [starter]);
+  });
 });
 
 describe("what a new store is copied from", () => {

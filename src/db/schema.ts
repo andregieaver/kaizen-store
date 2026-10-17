@@ -754,6 +754,17 @@ export const storeStarters = commerce.table(
     packKey: text("pack_key"),
     packVersion: integer("pack_version"),
     packPictures: jsonb("pack_pictures").notNull().default({}),
+    /**
+     * *Make the pictures* (D271): the platform admin who asked for the pack's pictures, and when. The job (`runPackPictures()`) makes them
+     * one at a time in that person's name until none is missing, Stop is pressed or three tries in a row fail. Null: not asked.
+     */
+    picturesWantedBy: uuid("pictures_wanted_by").references(() => accounts.id),
+    picturesWantedAt: timestamp("pictures_wanted_at", { withTimezone: true }),
+    /** A run is making one of the pack's pictures until then; a run that died gives it back when the time passes. */
+    pictureClaimedUntil: timestamp("picture_claimed_until", { withTimezone: true }),
+    /** Tries in a row that failed, and why the last one did (shown on the Store templates page). */
+    pictureFailures: smallint("picture_failures").notNull().default(0),
+    pictureProblem: text("picture_problem"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -764,6 +775,10 @@ export const storeStarters = commerce.table(
     uniqueIndex("store_starters_pack_key_idx").on(t.packKey),
     check("store_starters_pack", sql`${t.packVersion} is null or (${t.packKey} is not null and ${t.packVersion} > 0)`),
     check("store_starters_pack_pictures", sql`jsonb_typeof(${t.packPictures}) = 'object'`),
+    check("store_starters_pictures_wanted", sql`(${t.picturesWantedBy} is null) = (${t.picturesWantedAt} is null) and (${t.picturesWantedAt} is null or ${t.packKey} is not null)`),
+    check("store_starters_picture_failures", sql`${t.pictureFailures} between 0 and 20`),
+    check("store_starters_picture_problem", sql`${t.pictureProblem} is null or length(${t.pictureProblem}) <= 500`),
+    index("store_starters_pictures_wanted_by_idx").on(t.picturesWantedBy),
     index("store_starters_recommended_design_idx").on(t.recommendedDesign),
     index("store_starters_published_store_idx").on(t.publishedStoreId),
     index("store_starters_archived_by_idx").on(t.archivedBy),

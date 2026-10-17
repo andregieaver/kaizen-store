@@ -336,3 +336,88 @@ describe("a pack's pictures", () => {
     expect(others.n).toBe(0);
   }, 120_000);
 });
+
+describe("the picture job (D271)", () => {
+  const connection = { image: { provider: "openai", apiUrl: "https://example.invalid", apiKey: "x", model: "picture", quality: null } } as never;
+  let made = 0;
+  const make = (async () => {
+    made++;
+    return { ok: true, picture: { url: `https://example.invalid/job-${run}-${made}.webp`, thumbnailUrl: null, width: 1536, height: 1024 } };
+  }) as never;
+  const refuse = (async () => ({ ok: false, problem: "The picture model is busy." })) as never;
+  const soon = () => Date.now() + 60_000;
+  const wish = async (key: string) =>
+    one(sql`select pictures_wanted_by, pictures_wanted_at, picture_claimed_until, picture_failures, picture_problem from commerce.store_starters where pack_key = ${key}`);
+
+  beforeAll(async () => {
+    // Packs set aside from an earlier run of this test are asked for by no one.
+    await db().execute(sql`
+      update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null, picture_claimed_until = null
+      where pack_key is not null and pack_key <> all(${list(PACK_KEYS)}::text[])
+    `);
+  });
+
+  it("is asked for by Kaizena Flow's admins only, for packs that lack pictures", async () => {
+    expect(await packs.askForPackPictures(owner, ["fashion"])).toMatchObject({ ok: false });
+    expect((await wish("fashion")).pictures_wanted_at).toBeNull();
+    // Beauty has every picture: nothing to ask for.
+    expect(await packs.askForPackPictures(admin, ["beauty"])).toMatchObject({ ok: false });
+    expect(await packs.askForPackPictures(admin, ["fashion", "beauty"])).toEqual({ ok: true, asked: [contentPack("fashion")!.title] });
+    expect(await wish("fashion")).toMatchObject({ pictures_wanted_by: admin.id, picture_failures: 0, picture_problem: null });
+    expect((await packs.contentPackStates()).find((s) => s.key === "fashion")).toMatchObject({ asked: true, problem: null });
+  });
+
+  it("makes the pictures asked for in the asker's name until none is missing, then forgets the wish", async () => {
+    const slots = packSlots(contentPack("fashion")!);
+    const result = await packs.runPackPictures(soon(), { connection, make });
+    expect(result).toMatchObject({ made: slots.length, failed: 0 });
+    expect(result.stores.map((store) => store.slug)).toEqual([packSlug("fashion")]);
+    expect(await wish("fashion")).toMatchObject({ pictures_wanted_by: null, pictures_wanted_at: null, picture_claimed_until: null });
+    expect((await packs.contentPackStates()).find((s) => s.key === "fashion")).toMatchObject({ pictures: slots.length, asked: false });
+    // Nothing is asked for: a run makes nothing.
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0, failed: 0 });
+  }, 120_000);
+
+  it("waits a little after a failure, stops after three in a row with the reason, and starts over when asked again", async () => {
+    expect(await packs.askForPackPictures(admin, ["food"])).toMatchObject({ ok: true });
+    // One try a run: the failed pack is held a while before the next.
+    expect(await packs.runPackPictures(soon(), { connection, make: refuse })).toMatchObject({ made: 0, failed: 1 });
+    const held = await wish("food");
+    expect(held).toMatchObject({ picture_failures: 1, picture_problem: "The picture model is busy." });
+    expect(held.pictures_wanted_at).not.toBeNull();
+    expect(new Date(String(held.picture_claimed_until)).getTime()).toBeGreaterThan(Date.now());
+    for (let tries = 2; tries <= packs.PICTURE_TRIES; tries++) {
+      await db().execute(sql`update commerce.store_starters set picture_claimed_until = null where pack_key = 'food'`);
+      expect(await packs.runPackPictures(soon(), { connection, make: refuse })).toMatchObject({ failed: 1 });
+    }
+    expect(await wish("food")).toMatchObject({ pictures_wanted_at: null, picture_failures: packs.PICTURE_TRIES, picture_problem: "The picture model is busy." });
+    expect((await packs.contentPackStates()).find((s) => s.key === "food")).toMatchObject({ asked: false, problem: "The picture model is busy." });
+    expect(await packs.askForPackPictures(admin, ["food"])).toMatchObject({ ok: true });
+    expect(await wish("food")).toMatchObject({ picture_failures: 0, picture_problem: null });
+  });
+
+  it("makes two packs' pictures at a time at most, and Stop ends a pack's", async () => {
+    expect(await packs.askForPackPictures(admin, ["home", "electronics"])).toMatchObject({ ok: true });
+    // Two packs are held by other runs: this one takes none.
+    await db().execute(sql`update commerce.store_starters set picture_claimed_until = null where pack_key = 'food'`);
+    await db().execute(sql`update commerce.store_starters set picture_claimed_until = now() + interval '1 minute' where pack_key in ('home', 'electronics')`);
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0, failed: 0 });
+    await db().execute(sql`update commerce.store_starters set picture_claimed_until = null where pack_key in ('home', 'electronics')`);
+    expect(await packs.stopPackPictures(owner, "food")).toMatchObject({ ok: false });
+    for (const key of ["food", "home", "electronics"]) expect(await packs.stopPackPictures(admin, key)).toEqual({ ok: true });
+    expect((await wish("food")).pictures_wanted_at).toBeNull();
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0 });
+  });
+
+  it("stops for an admin who is no longer one, and says so", async () => {
+    const [former] = await db().execute<Row>(sql`
+      insert into commerce.accounts (email, name, platform_admin) values (${`packs-former-${run}@example.com`}, 'Former', true) returning id, email
+    `);
+    const formerAdmin = { id: String(former.id), email: String(former.email), name: "Former", platformAdmin: true };
+    expect(await packs.askForPackPictures(formerAdmin, ["home"])).toMatchObject({ ok: true });
+    await db().execute(sql`update commerce.accounts set platform_admin = false where id = ${formerAdmin.id}::uuid`);
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0, failed: 1 });
+    expect(String((await wish("home")).picture_problem)).toMatch(/no longer one of Kaizena Flow's admins/);
+    await packs.stopPackPictures(admin, "home");
+  });
+});
