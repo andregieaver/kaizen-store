@@ -6,6 +6,7 @@ import type { PackPictureOf } from "../pack-designs";
 import { newPageContent, type PageContent, type PageRow } from "../page-content";
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
+import type { ThemeSection, ThemeSections } from "../theme-sections";
 
 import { EYEBROW, heading, iconList, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
@@ -157,8 +158,77 @@ const COLLECTIONS: [slug: string, name: string, line: string][] = [
 ];
 const STEP_ICONS = ["sprout", "book", "package"];
 
-/** Fernhouse's home page: the arch beside the words, the plants, three collections, how to care, how they come, and a leafy band to end on. */
-export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+/** What Botanica's designed home page says: its demo store's words, or any store's when one of its sections is placed (D272). */
+type BotanicaWords = {
+  hero: { eyebrow: string; heading: string; lead: string; first: [string, string]; second: [string, string] };
+  plants: { eyebrow: string; heading: string };
+  collections: { picture: string; href: string; name: string; line: string }[];
+  care: { eyebrow: string; heading: string; lines: [icon: string, words: string][] };
+  points: { title: string; text: string }[];
+  finale: { heading: string; lead: string; button: string };
+};
+
+/** Fernhouse's own words. */
+const fernhouseWords = (pack: ContentPack): BotanicaWords => ({
+  hero: {
+    eyebrow: "A plant shop and glasshouse",
+    heading: "Bring the <em>outside</em> in",
+    lead: pack.tagline,
+    first: ["Shop plants", "/products"],
+    second: ["Plant care", "#care"],
+  },
+  plants: { eyebrow: "Our plants", heading: "Ready for a <em>new home</em>" },
+  collections: COLLECTIONS.map(([slug, name, line]) => ({ picture: `tile:${slug}`, href: `/category/${slug}`, name, line })),
+  care: {
+    eyebrow: "Plant care",
+    heading: "Care, <em>simply</em>",
+    lines: [
+      ["sun", "Bright light, out of the midday sun"],
+      ["droplet", "Water when the top of the soil is dry"],
+      ["leaf", "Wipe the leaves clean now and then"],
+      ["sprout", "Feed a little in spring and summer"],
+    ],
+  },
+  points: pack.points,
+  finale: { heading: "Every room <em>deserves</em> a plant", lead: "Eight plants in three collections, potted and ready to go.", button: "Shop all plants" },
+});
+
+/** The words a section brings to any store: what to write there, never Fernhouse's. */
+const SECTION_WORDS: BotanicaWords = {
+  hero: {
+    eyebrow: "Welcome",
+    heading: "Your headline, <em>grown</em> here",
+    lead: "One or two sentences about what you sell and who it is for.",
+    first: ["Shop now", "/products"],
+    second: ["Learn more", "#care"],
+  },
+  plants: { eyebrow: "Just in", heading: "Our <em>newest</em> products" },
+  collections: COLLECTIONS.map(([slug], i) => ({
+    picture: `tile:${slug}`,
+    href: "/products",
+    name: ["First collection", "Second collection", "Third collection"][i],
+    line: "A line about what it holds",
+  })),
+  care: {
+    eyebrow: "Good to know",
+    heading: "Four <em>simple</em> points",
+    lines: [
+      ["sun", "A first point, in a few words"],
+      ["droplet", "A second point, in a few words"],
+      ["leaf", "A third point, in a few words"],
+      ["sprout", "A fourth point, in a few words"],
+    ],
+  },
+  points: [
+    { title: "The first step", text: "A sentence about how it starts." },
+    { title: "The second step", text: "A sentence about what happens next." },
+    { title: "The last step", text: "A sentence about what the customer gets." },
+  ],
+  finale: { heading: "Your <em>last</em> call", lead: "A sentence that invites a visitor to look around.", button: "Shop now" },
+};
+
+/** Botanica's designed rows: the arch beside the words, the products, three collections, four points, three steps, and a leafy band to end on. */
+function botanicaSections(words: BotanicaWords, picture: PackPictureOf): ThemeSection[] {
   const hero = {
     id: uuid(),
     type: "row",
@@ -172,14 +242,14 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
         width: 54,
         className: "botanica-hero-copy",
         blocks: [
-          eyebrow("A plant shop and glasshouse"),
-          heading("Bring the <em>outside</em> in", 1),
-          text([pack.tagline], "botanica-lead", LEAD),
+          eyebrow(words.hero.eyebrow),
+          heading(words.hero.heading, 1),
+          text([words.hero.lead], "botanica-lead", LEAD),
           {
             id: uuid(),
             type: "dualButton",
-            first: { label: "Shop plants", href: "/products", variant: "filled" },
-            second: { label: "Plant care", href: "#care", variant: "outline" },
+            first: { label: words.hero.first[0], href: words.hero.first[1], variant: "filled" },
+            second: { label: words.hero.second[0], href: words.hero.second[1], variant: "outline" },
             size: "lg",
             shape: "pill",
             gap: 12,
@@ -199,15 +269,15 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
       {
         id: uuid(),
         typography: { text: { align: "center" } },
-        blocks: [eyebrow("Our plants"), heading("Ready for a <em>new home</em>", 2), productGrid(8, { gap: 28 })],
+        blocks: [eyebrow(words.plants.eyebrow), heading(words.plants.heading, 2), productGrid(8, { gap: 28 })],
       },
     ],
   };
-  const tile = ([slug, name, line]: [string, string, string]) => ({
+  const tile = (item: BotanicaWords["collections"][number]) => ({
     id: uuid(),
     className: "botanica-tile",
-    link: { href: `/category/${slug}`, label: name },
-    blocks: [image(picture(`tile:${slug}`), "botanica-arch"), heading(name, 3, "botanica-tile-name"), text([line], "botanica-tile-line")],
+    link: { href: item.href, label: item.name },
+    blocks: [image(picture(item.picture), "botanica-arch"), heading(item.name, 3, "botanica-tile-name"), text([item.line], "botanica-tile-line")],
   });
   const collections = {
     id: uuid(),
@@ -217,7 +287,7 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
     className: "botanica-section botanica-collections",
     style: { padding: { top: 0, right: 20, bottom: 96, left: 20 } },
     at: { sm: { style: { padding: { top: 0, right: 18, bottom: 64, left: 18 } } } },
-    columns: COLLECTIONS.map(tile),
+    columns: words.collections.map(tile),
   };
   const care = {
     id: uuid(),
@@ -233,19 +303,7 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
         id: uuid(),
         width: 54,
         className: "botanica-care-copy",
-        blocks: [
-          eyebrow("Plant care"),
-          heading("Care, <em>simply</em>", 2),
-          iconList(
-            [
-              ["sun", "Bright light, out of the midday sun"],
-              ["droplet", "Water when the top of the soil is dry"],
-              ["leaf", "Wipe the leaves clean now and then"],
-              ["sprout", "Feed a little in spring and summer"],
-            ],
-            { className: "botanica-care-list" },
-          ),
-        ],
+        blocks: [eyebrow(words.care.eyebrow), heading(words.care.heading, 2), iconList(words.care.lines, { className: "botanica-care-list" })],
       },
     ],
   };
@@ -255,7 +313,7 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
     layout: "3",
     sectionStyle: "feature",
     className: "botanica-section botanica-steps",
-    columns: pack.points.map((point, i) => ({
+    columns: words.points.map((point, i) => ({
       id: uuid(),
       className: "botanica-step",
       blocks: [iconList([[STEP_ICONS[i] ?? "leaf", point.title]], { className: "botanica-step-title" }), text([point.text])],
@@ -276,15 +334,37 @@ export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): Pag
         id: uuid(),
         typography: { text: { align: "center", color: "#f4efe3" } },
         blocks: [
-          heading("Every room <em>deserves</em> a plant", 2, undefined, { color: "#f4efe3", size: rem(3.5) }),
-          text(["Eight plants in three collections, potted and ready to go."], "botanica-lead botanica-on-dark", LEAD),
-          { id: uuid(), type: "button", label: "Shop all plants", href: "/products", variant: "filled", shape: "pill", align: "center", size: "lg" },
+          heading(words.finale.heading, 2, undefined, { color: "#f4efe3", size: rem(3.5) }),
+          text([words.finale.lead], "botanica-lead botanica-on-dark", LEAD),
+          { id: uuid(), type: "button", label: words.finale.button, href: "/products", variant: "filled", shape: "pill", align: "center", size: "lg" },
         ],
       },
     ],
   };
-  return { ...newPageContent(), title: "Home", slug: "welcome", rows: [hero, plants, collections, care, steps, last] as unknown as PageRow[] };
+  const section = (key: string, name: string, description: string, thumb: string | null, row: unknown): ThemeSection => ({
+    key,
+    name,
+    description,
+    thumb,
+    row: row as PageRow,
+  });
+  return [
+    section("hero", "Arch hero", "Your headline beside an arched picture, with two buttons", "tile:big-leaves", hero),
+    section("products", "Newest products", "Your newest products in four columns", null, plants),
+    section("collections", "Three collections", "Three arched pictures, each with a name and a line", "tile:easy-care", collections),
+    section("points", "Four points", "A rounded picture beside four short points with icons", "story", care),
+    section("steps", "Three steps", "Three short points in rounded cards", null, steps),
+    section("finale", "Leafy band", "A heading, a line and a button over a picture as wide as the screen", "leaves", last),
+  ];
 }
+
+/** Fernhouse's home page: Botanica's sections in its own words. */
+export function botanicaHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+  return { ...newPageContent(), title: "Home", slug: "welcome", rows: botanicaSections(fernhouseWords(pack), picture).map((section) => section.row) };
+}
+
+/** Botanica's sections as an owner places them (D272): its rows in words for any store. */
+export const BOTANICA_SECTIONS: ThemeSections = (picture) => botanicaSections(SECTION_WORDS, picture);
 
 /** Fernhouse's about page: its name over the leafy hero, then their words beside the glasshouse. */
 export function botanicaAboutPage(pack: ContentPack, picture: PackPictureOf): PageContent {
@@ -577,6 +657,7 @@ export const BOTANICA: LaunchTheme = {
     },
   },
   snapshot: { v: DESIGN_SNAPSHOT_VERSION, theme: { base: "minimal", settings }, header, footer, productLayout, css: CSS },
+  sections: BOTANICA_SECTIONS,
   presets: [
     {
       key: "terracotta",

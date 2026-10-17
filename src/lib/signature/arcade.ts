@@ -6,6 +6,7 @@ import type { PackPictureOf } from "../pack-designs";
 import { newPageContent, type PageContent, type PageRow } from "../page-content";
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
+import type { ThemeSection, ThemeSections } from "../theme-sections";
 
 import { button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
@@ -160,8 +161,53 @@ const COLLECTIONS: [slug: string, name: string, line: string][] = [
   ["love", "Hearts and stars", "A heart and a star with a trail"],
 ];
 
-/** Neon Alley's home page: the synthwave hero, new signs, three collections, the levels, the workshop and a wall of signs to end on. */
-export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+/** What Arcade's designed home page says: its demo store's words, or any store's when one of its sections is placed (D272). */
+type ArcadeWords = {
+  hero: { label: string; heading: string; lead: string; first: [string, string]; second: [string, string] };
+  fresh: { label: string; heading: string; more: string };
+  collections: { picture: string; href: string; name: string; line: string }[];
+  points: { title: string; text: string }[];
+  story: { label: string; title: string; text: string; button: [string, string] };
+  finale: { label: string; heading: string; lead: string; button: string };
+};
+
+/** Neon Alley's own words. */
+const neonAlleyWords = (pack: ContentPack): ArcadeWords => ({
+  hero: { label: "Press start", heading: pack.headline, lead: pack.tagline, first: ["Shop the signs", "/products"], second: ["How they are made", "#workshop"] },
+  fresh: { label: "New in the workshop", heading: "Fresh off the bench", more: "See all eight signs" },
+  collections: COLLECTIONS.map(([slug, name, line]) => ({ picture: `tile:${slug}`, href: `/category/${slug}`, name, line })),
+  points: pack.points,
+  story: { label: "The workshop", title: pack.storyTitle, text: pack.story, button: [`About ${pack.storeName}`, "/about"] },
+  finale: { label: "Game on", heading: "Keep the lights on", lead: "Eight signs in three collections, each one bent by hand.", button: "Browse all signs" },
+});
+
+/** The words a section brings to any store: what to write there, never Neon Alley's. */
+const SECTION_WORDS: ArcadeWords = {
+  hero: {
+    label: "Press start",
+    heading: "Your headline, lit up",
+    lead: "One or two sentences about what you sell and who it is for.",
+    first: ["Shop now", "/products"],
+    second: ["Our story", "#workshop"],
+  },
+  fresh: { label: "Just in", heading: "Our newest products", more: "See them all" },
+  collections: COLLECTIONS.map(([slug], i) => ({
+    picture: `tile:${slug}`,
+    href: "/products",
+    name: ["First collection", "Second collection", "Third collection"][i],
+    line: "A line about what it holds",
+  })),
+  points: [
+    { title: "The first step", text: "A sentence about how it starts." },
+    { title: "The second step", text: "A sentence about what happens next." },
+    { title: "The last step", text: "A sentence about what the customer gets." },
+  ],
+  story: { label: "Our story", title: "How it began", text: "Tell how you started, where you work and who makes what you sell.", button: ["Shop now", "/products"] },
+  finale: { label: "Game on", heading: "Your last call", lead: "A sentence that invites a visitor to look around.", button: "Shop now" },
+};
+
+/** Arcade's designed rows: the synthwave hero, new products, three collections, the levels, the workshop and a wall of signs to end on. */
+function arcadeSections(words: ArcadeWords, picture: PackPictureOf): ThemeSection[] {
   const hero = {
     id: uuid(),
     type: "row",
@@ -177,14 +223,14 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
         id: uuid(),
         className: "arcade-hero-copy",
         blocks: [
-          label("Press start"),
-          heading(pack.headline, 1, "arcade-glow"),
-          text([pack.tagline], "arcade-lead", LEAD),
+          label(words.hero.label),
+          heading(words.hero.heading, 1, "arcade-glow"),
+          text([words.hero.lead], "arcade-lead", LEAD),
           {
             id: uuid(),
             type: "dualButton",
-            first: { label: "Shop the signs", href: "/products", variant: "filled" },
-            second: { label: "How they are made", href: "#workshop", variant: "outline" },
+            first: { label: words.hero.first[0], href: words.hero.first[1], variant: "filled" },
+            second: { label: words.hero.second[0], href: words.hero.second[1], variant: "outline" },
             size: "lg",
             ...rounded,
             gap: 14,
@@ -203,19 +249,19 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
       {
         id: uuid(),
         blocks: [
-          label("New in the workshop"),
-          heading("Fresh off the bench", 2, "arcade-glow arcade-cyan"),
+          label(words.fresh.label),
+          heading(words.fresh.heading, 2, "arcade-glow arcade-cyan"),
           productGrid(4, { gap: 24 }),
-          button("See all eight signs", "/products", "outline", { ...rounded, align: "center", className: "arcade-more" }),
+          button(words.fresh.more, "/products", "outline", { ...rounded, align: "center", className: "arcade-more" }),
         ],
       },
     ],
   };
-  const tile = ([slug, name, line]: [string, string, string]) => ({
+  const tile = (item: ArcadeWords["collections"][number]) => ({
     id: uuid(),
     className: "arcade-tile",
-    link: { href: `/category/${slug}`, label: name },
-    blocks: [image(picture(`tile:${slug}`), "arcade-tile-image"), heading(name, 3, "arcade-tile-name"), text([line], "arcade-tile-line")],
+    link: { href: item.href, label: item.name },
+    blocks: [image(picture(item.picture), "arcade-tile-image"), heading(item.name, 3, "arcade-tile-name"), text([item.line], "arcade-tile-line")],
   });
   const collections = {
     id: uuid(),
@@ -225,7 +271,7 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
     className: "arcade-section arcade-collections",
     style: { padding: { top: 0, right: 20, bottom: 88, left: 20 } },
     at: { sm: { style: { padding: { top: 0, right: 18, bottom: 56, left: 18 } } } },
-    columns: COLLECTIONS.map(tile),
+    columns: words.collections.map(tile),
   };
   const levels = {
     id: uuid(),
@@ -233,7 +279,7 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
     layout: "3",
     sectionStyle: "feature",
     className: "arcade-section arcade-levels",
-    columns: pack.points.map((point, i) => ({
+    columns: words.points.map((point, i) => ({
       id: uuid(),
       className: "arcade-level",
       blocks: [label(`Level ${i + 1}`, "arcade-level-label"), heading(point.title, 3), text([point.text])],
@@ -248,7 +294,15 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
     align: "middle",
     className: "arcade-section arcade-story",
     columns: [
-      { id: uuid(), blocks: [label("The workshop"), heading(pack.storyTitle, 2, "arcade-glow"), text([pack.story]), button(`About ${pack.storeName}`, "/about", "outline", rounded)] },
+      {
+        id: uuid(),
+        blocks: [
+          label(words.story.label),
+          heading(words.story.title, 2, "arcade-glow"),
+          text([words.story.text]),
+          button(words.story.button[0], words.story.button[1], "outline", rounded),
+        ],
+      },
       { id: uuid(), blocks: [image(picture("story"), "arcade-screen")] },
     ],
   };
@@ -267,16 +321,38 @@ export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageC
         id: uuid(),
         typography: { text: { align: "center" } },
         blocks: [
-          label("Game on"),
-          heading("Keep the lights on", 2, "arcade-glow", { family: NEON, size: rem(4) }),
-          text(["Eight signs in three collections, each one bent by hand."], "arcade-lead", LEAD),
-          button("Browse all signs", "/products", "filled", { ...rounded, align: "center", size: "lg" }),
+          label(words.finale.label),
+          heading(words.finale.heading, 2, "arcade-glow", { family: NEON, size: rem(4) }),
+          text([words.finale.lead], "arcade-lead", LEAD),
+          button(words.finale.button, "/products", "filled", { ...rounded, align: "center", size: "lg" }),
         ],
       },
     ],
   };
-  return { ...newPageContent(), title: "Home", slug: "welcome", rows: [hero, fresh, collections, levels, story, last] as unknown as PageRow[] };
+  const section = (key: string, name: string, description: string, thumb: string | null, row: unknown): ThemeSection => ({
+    key,
+    name,
+    description,
+    thumb,
+    row: row as PageRow,
+  });
+  return [
+    section("hero", "Neon hero", "A night picture with a glowing headline, a line and two buttons", "hero", hero),
+    section("fresh", "Newest products", "Your newest products in four columns", null, fresh),
+    section("collections", "Three collections", "Three lit pictures, each with a name and a line", "tile:retro", collections),
+    section("levels", "Three levels", "Three numbered points in dashed frames", null, levels),
+    section("story", "Story", "Your story beside a glowing picture", "story", story),
+    section("finale", "Wall of signs", "A big glowing heading and a button over a picture", "wall", last),
+  ];
 }
+
+/** Neon Alley's home page: Arcade's sections in its own words. */
+export function arcadeHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+  return { ...newPageContent(), title: "Home", slug: "welcome", rows: arcadeSections(neonAlleyWords(pack), picture).map((section) => section.row) };
+}
+
+/** Arcade's sections as an owner places them (D272): its rows in words for any store. */
+export const ARCADE_SECTIONS: ThemeSections = (picture) => arcadeSections(SECTION_WORDS, picture);
 
 /** Neon Alley's about page: who they are over the wall of signs, then their words beside the workbench. */
 export function arcadeAboutPage(pack: ContentPack, picture: PackPictureOf): PageContent {
@@ -561,6 +637,7 @@ export const ARCADE: LaunchTheme = {
     },
   },
   snapshot: { v: DESIGN_SNAPSHOT_VERSION, theme: { base: "minimal", settings }, header, footer, productLayout, css: CSS },
+  sections: ARCADE_SECTIONS,
   presets: [
     {
       key: "vapor",

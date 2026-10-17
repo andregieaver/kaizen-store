@@ -6,6 +6,7 @@ import type { PackPictureOf } from "../pack-designs";
 import { newPageContent, type PageContent, type PageRow } from "../page-content";
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
+import type { ThemeSection, ThemeSections } from "../theme-sections";
 
 import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, twoButtons, uuid, type Look } from "./kit";
 
@@ -149,8 +150,60 @@ export const ORBIT_PACK: ContentPack = {
 const LEAD: Look = { size: rem(1.15), lineHeight: lines(1.6) };
 const eyebrow = (words: string) => text([words], "orbit-eyebrow", EYEBROW);
 
-/** Far Light's home page: the hero over the planet's sunrise, new prints, the three collections, how they are made, the story, and a last call. */
-export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+/** What Orbit's designed home page says: its demo store's words, or any store's when one of its sections is placed (D272). */
+type OrbitWords = {
+  hero: { eyebrow: string; heading: string; lead: string; first: [string, string]; second: [string, string] };
+  fresh: { eyebrow: string; heading: string; more: string };
+  collections: { picture: string; href: string; name: string; line: string }[];
+  points: { title: string; text: string }[];
+  story: { eyebrow: string; title: string; text: string; button: [string, string] };
+  finale: { heading: string; lead: string; button: string };
+};
+
+/** The three collections' pictures, by slug. */
+const TILES = ["planets", "deep-sky", "charts"] as const;
+
+/** Far Light's own words. */
+const farLightWords = (pack: ContentPack): OrbitWords => ({
+  hero: { eyebrow: "Prints of the night sky", heading: pack.headline, lead: pack.tagline, first: ["Shop the prints", "/products"], second: ["Our story", "#story"] },
+  fresh: { eyebrow: "New in the studio", heading: "Fresh from the observatory", more: "See all eight prints" },
+  collections: [
+    { picture: "tile:planets", href: "/category/planets", name: "Planets and Moon", line: "Saturn, Jupiter, our Moon and the Sun in eclipse" },
+    { picture: "tile:deep-sky", href: "/category/deep-sky", name: "Deep sky", line: "Nebulae and galaxies far beyond the planets" },
+    { picture: "tile:charts", href: "/category/charts", name: "Charts", line: "The figures of the stars and the Moon's month" },
+  ],
+  points: pack.points,
+  story: { eyebrow: "Our story", title: pack.storyTitle, text: pack.story, button: [`About ${pack.storeName}`, "/about"] },
+  finale: { heading: "Find your own sky", lead: "Eight prints in three collections, framed and ready to hang.", button: "Browse all prints" },
+});
+
+/** The words a section brings to any store: what to write there, never Far Light's. */
+const SECTION_WORDS: OrbitWords = {
+  hero: {
+    eyebrow: "Welcome",
+    heading: "Your headline, among the stars",
+    lead: "One or two sentences about what you sell and who it is for.",
+    first: ["Shop now", "/products"],
+    second: ["Our story", "#story"],
+  },
+  fresh: { eyebrow: "Just in", heading: "Our newest products", more: "See them all" },
+  collections: TILES.map((slug, i) => ({
+    picture: `tile:${slug}`,
+    href: "/products",
+    name: ["First collection", "Second collection", "Third collection"][i],
+    line: "A line about what it holds",
+  })),
+  points: [
+    { title: "The first step", text: "A sentence about how it starts." },
+    { title: "The second step", text: "A sentence about what happens next." },
+    { title: "The last step", text: "A sentence about what the customer gets." },
+  ],
+  story: { eyebrow: "Our story", title: "How it began", text: "Tell how you started, where you work and who makes what you sell.", button: ["Shop now", "/products"] },
+  finale: { heading: "Your last call", lead: "A sentence that invites a visitor to look around.", button: "Shop now" },
+};
+
+/** Orbit's designed rows: the hero over the sky, new products, three collections, three steps, the story, and a last call. */
+function orbitSections(words: OrbitWords, picture: PackPictureOf): ThemeSection[] {
   const hero = {
     id: uuid(),
     type: "row",
@@ -166,10 +219,10 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
         id: uuid(),
         className: "orbit-hero-copy",
         blocks: [
-          eyebrow("Prints of the night sky"),
-          heading(pack.headline, 1, "orbit-display", { weight: 300 }),
-          text([pack.tagline], "orbit-lead", LEAD),
-          twoButtons(["Shop the prints", "/products"], ["Our story", "#story"]),
+          eyebrow(words.hero.eyebrow),
+          heading(words.hero.heading, 1, "orbit-display", { weight: 300 }),
+          text([words.hero.lead], "orbit-lead", LEAD),
+          twoButtons(words.hero.first, words.hero.second),
         ],
       },
     ],
@@ -185,20 +238,20 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
       {
         id: uuid(),
         blocks: [
-          eyebrow("New in the studio"),
-          heading("Fresh from the observatory", 2),
+          eyebrow(words.fresh.eyebrow),
+          heading(words.fresh.heading, 2),
           productGrid(4),
-          button("See all eight prints", "/products", "text", { align: "center", className: "orbit-more" }),
+          button(words.fresh.more, "/products", "text", { align: "center", className: "orbit-more" }),
         ],
       },
     ],
   };
-  const tile = (slug: string, name: string, line: string) => ({
+  const tile = (item: OrbitWords["collections"][number]) => ({
     id: uuid(),
     className: "orbit-tile",
-    link: { href: `/category/${slug}`, label: name },
-    background: photo(picture(`tile:${slug}`), 30),
-    blocks: [heading(name, 3), text([line], "orbit-tile-line", { size: rem(0.95), lineHeight: lines(1.5) })],
+    link: { href: item.href, label: item.name },
+    background: photo(picture(item.picture), 30),
+    blocks: [heading(item.name, 3), text([item.line], "orbit-tile-line", { size: rem(0.95), lineHeight: lines(1.5) })],
   });
   const collections = {
     id: uuid(),
@@ -209,13 +262,9 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
     // The tiles follow the prints' "See all" at once: the section above has already given the room.
     style: { padding: { top: 0, right: 20, bottom: 80, left: 20 } },
     at: { sm: { style: { padding: { top: 0, right: 18, bottom: 56, left: 18 } } } },
-    columns: [
-      tile("planets", "Planets and Moon", "Saturn, Jupiter, our Moon and the Sun in eclipse"),
-      tile("deep-sky", "Deep sky", "Nebulae and galaxies far beyond the planets"),
-      tile("charts", "Charts", "The figures of the stars and the Moon's month"),
-    ],
+    columns: words.collections.map(tile),
   };
-  const numbered = pack.points.map((point, i) => ({
+  const numbered = words.points.map((point, i) => ({
     id: uuid(),
     className: "orbit-step",
     blocks: [text([`0${i + 1}`], "orbit-numeral", { family: "Unbounded", size: rem(4), lineHeight: lines(1), weight: 200 }), heading(point.title, 3), text([point.text])],
@@ -231,7 +280,10 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
     className: "orbit-section orbit-story",
     columns: [
       { id: uuid(), blocks: [image(picture("story"), "orbit-framed")] },
-      { id: uuid(), blocks: [eyebrow("Our story"), heading(pack.storyTitle, 2), text([pack.story]), button(`About ${pack.storeName}`, "/about", "outline")] },
+      {
+        id: uuid(),
+        blocks: [eyebrow(words.story.eyebrow), heading(words.story.title, 2), text([words.story.text]), button(words.story.button[0], words.story.button[1], "outline")],
+      },
     ],
   };
   const last = {
@@ -247,15 +299,37 @@ export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageCo
         id: uuid(),
         typography: { text: { align: "center" } },
         blocks: [
-          heading("Find your own sky", 2, "orbit-display", { weight: 300, size: rem(3.25) }),
-          text(["Eight prints in three collections, framed and ready to hang."], "orbit-lead", LEAD),
-          button("Browse all prints", "/products", "filled", { align: "center", size: "lg" }),
+          heading(words.finale.heading, 2, "orbit-display", { weight: 300, size: rem(3.25) }),
+          text([words.finale.lead], "orbit-lead", LEAD),
+          button(words.finale.button, "/products", "filled", { align: "center", size: "lg" }),
         ],
       },
     ],
   };
-  return { ...newPageContent(), title: "Home", slug: "welcome", rows: [hero, fresh, collections, steps, story, last] as unknown as PageRow[] };
+  const section = (key: string, name: string, description: string, thumb: string | null, row: unknown): ThemeSection => ({
+    key,
+    name,
+    description,
+    thumb,
+    row: row as PageRow,
+  });
+  return [
+    section("hero", "Night sky hero", "A sky as wide as the screen with your headline, a line and two buttons", "hero", hero),
+    section("fresh", "Newest products", "Your newest products in four columns", null, fresh),
+    section("collections", "Three collections", "Three glass tiles over pictures, each with a name and a line", "tile:planets", collections),
+    section("steps", "Three steps", "Three numbered points side by side", null, steps),
+    section("story", "Story", "A framed picture beside your story and a button", "story", story),
+    section("finale", "Last call", "A heading, a line and a button over the night sky", "sky", last),
+  ];
 }
+
+/** Far Light's home page: Orbit's sections in its own words. */
+export function orbitHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+  return { ...newPageContent(), title: "Home", slug: "welcome", rows: orbitSections(farLightWords(pack), picture).map((section) => section.row) };
+}
+
+/** Orbit's sections as an owner places them (D272): its rows in words for any store. */
+export const ORBIT_SECTIONS: ThemeSections = (picture) => orbitSections(SECTION_WORDS, picture);
 
 /** Far Light's about page: who they are over the Milky Way, then the story beside the star trails. */
 export function orbitAboutPage(pack: ContentPack, picture: PackPictureOf): PageContent {
@@ -535,6 +609,7 @@ export const ORBIT: LaunchTheme = {
     },
   },
   snapshot: { v: DESIGN_SNAPSHOT_VERSION, theme: { base: "minimal", settings }, header, footer, productLayout, css: CSS },
+  sections: ORBIT_SECTIONS,
   presets: [
     {
       key: "nebula",

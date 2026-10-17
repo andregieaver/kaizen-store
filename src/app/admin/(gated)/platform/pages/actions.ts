@@ -15,6 +15,8 @@ import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } f
 import { saveSiteCss } from "@/server/site-css";
 import { savePlatformThemeLibrary, savePlatformThemeTab } from "@/server/themes";
 import { listKaizenTemplates, applyKaizenTemplate } from "@/server/templates";
+import { placeThemeSection, themeSectionsFor } from "@/server/theme-sections";
+import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
 import type { TemplateItem, TemplateSource } from "@/lib/templates";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
@@ -117,6 +119,18 @@ export async function kaizenTemplatesListAction(source: TemplateSource): Promise
 export async function applyKaizenTemplateAction(id: string) {
   const admin = await requirePlatformAdmin();
   return applyKaizenTemplate(admin, String(id));
+}
+
+/** The live theme's sections for the Rows tab of Kaizena Flow's builder (D272), or null when it has none. */
+export async function platformThemeSectionsAction(): Promise<ThemeSectionsOffer> {
+  await requirePlatformAdmin();
+  return themeSectionsFor(null);
+}
+
+/** One of the live theme's sections for a Kaizena Flow page, its pictures copied into Kaizena Flow's library (D272). */
+export async function placePlatformThemeSectionAction(key: string): Promise<SectionResult> {
+  const admin = await requirePlatformAdmin();
+  return placeThemeSection(null, admin, String(key).slice(0, 60));
 }
 
 /** Kaizen's own templates are always on in its builder, and their sharing is always the marketplace's (D125, D236). */

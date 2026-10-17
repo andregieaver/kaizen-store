@@ -93,6 +93,7 @@ import { fitsPage, blockedReason, type KindFilter } from "./templates-helpers";
 import { PageTypeBadge } from "./templates-parts";
 import { TemplatePreviewDialog } from "./templates-preview";
 import { useTemplateUse, type TemplateUse } from "./templates-use";
+import { ThemeSectionsList, type ThemeSectionActions } from "./theme-sections-list";
 import { SavedLayoutDialog } from "./saved-layout-dialog";
 import { ModalBar } from "./modal-preview";
 import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
@@ -611,6 +612,7 @@ export function PageBuilder({
   fonts,
   translate = null,
   templates = null,
+  themeSections = null,
   pageType,
   motionRequest = 0,
   pageCss = "",
@@ -649,6 +651,8 @@ export function PageBuilder({
   fonts: BuilderFonts;
   /** Templates shared between stores and the marketplace (D125), for the Templates tab and the sharing of saved parts; null on Kaizen's own pages. */
   templates?: TemplateActions | null;
+  /** The live signature theme's own sections (D272), offered on the Rows tab; null where the page takes none. */
+  themeSections?: ThemeSectionActions | null;
   /** The kind of page being edited: a page layout (D127) can only be used on its own kind. */
   pageType: PageType;
   /** The page's own CSS, which a page layout may bring along (D127), and how to change it. */
@@ -1122,6 +1126,7 @@ export function PageBuilder({
             tab={tab}
             onTab={setTab}
             onAddRow={(layout) => addRow(layout)}
+            themeSections={themeSections && { actions: themeSections, onPlace: (part) => placeSaved(part, {}, true) }}
             onAddColumn={() => onRows((current) => addColumn(current, lastColumn, newId))}
             onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
             productParts={productParts}
@@ -1385,6 +1390,7 @@ function Sidebar({
   tab,
   onTab: setTab,
   onAddRow,
+  themeSections,
   onAddColumn,
   onAddBlock,
   productParts,
@@ -1416,6 +1422,8 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
+  /** The live theme's sections for the Rows tab (D272) and how a section made ready is placed; null where the page takes none. */
+  themeSections: { actions: ThemeSectionActions; onPlace: (part: SavedPart) => void } | null;
   /** Adds an empty column beside the one last pointed at, or last in the page (D187). */
   onAddColumn: () => void;
   onAddBlock: (type: BlockType, part?: ProductPart | SitePart | ShopPart) => void;
@@ -1662,6 +1670,9 @@ function Sidebar({
               <div className="grid grid-cols-2 gap-3">
                 <PaletteTile id="palette:column" data={{ kind: "palette-column" }} label="Column" preview={<LayoutPreview layout="1" />} onAdd={onAddColumn} disabled={false} />
               </div>
+              {themeSections && (
+                <ThemeSectionsList actions={themeSections.actions} shown={tab === "rows" && !hidden} onPlace={themeSections.onPlace} disabled={rowsFull} />
+              )}
             </>
           )}
           {t.key === "saved" && (

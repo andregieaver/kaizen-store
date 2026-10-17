@@ -439,6 +439,8 @@ export function PageEditor({
         saved={parts}
         onSaved={updateParts}
         templates={context.templates}
+        // A signature theme's own sections (D272), not while translating: a section is placed in the page's main language.
+        themeSections={translating ? null : (context.themeSections ?? null)}
         pageType={context.type}
         motionRequest={motionRequest}
         pageCss={content.css ?? ""}

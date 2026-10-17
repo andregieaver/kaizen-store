@@ -43,6 +43,8 @@ import {
   unpublishStorePageAction,
   updateStorePartAction,
   applyTemplateAction,
+  placeStoreThemeSectionAction,
+  storeThemeSectionsAction,
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
 import { planMotionAction } from "./motion-action";
@@ -115,6 +117,11 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       // A page with nothing but the template on it, for the builder's frame (D127).
       previewStore: store.slug,
     },
+    // A signature theme's own sections (D272), for pages and articles: what the theme designed its demo store's pages with.
+    themeSections:
+      (type === "page" || type === "article") && !variantOf
+        ? { list: bind(storeThemeSectionsAction), place: bind(placeStoreThemeSectionAction) }
+        : null,
     fields: {
       groups: fieldGroups,
       lookups,

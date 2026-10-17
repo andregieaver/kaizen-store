@@ -3,7 +3,7 @@ import { contentPack, packSlots, type ContentPack } from "./content-packs";
 import { cssProblem } from "./custom-css";
 import type { LaunchTheme } from "./launch-themes";
 import { PACK_DESIGNS } from "./pack-designs";
-import { blockText, type PageBlock, type PageRow } from "./page-content";
+import { blockText, newPageContent, pageInput, type PageBlock, type PageRow } from "./page-content";
 import { flowRows } from "./page-modal";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 
@@ -16,6 +16,7 @@ import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
  * Unique: its own header, footer, product page and stylesheet, and a demo store (content pack) whose home and about pages are designed for
  * it (`ContentPack.design`), with a photographer's brief for every picture (made by the picture model, D270) and art standing in for each
  * until it is made, kept in `public/demo/themes/{key}/`.
+ * Its sections: at least four of its designed rows, with words for any store, that an owner can place on a page of their own (D272).
  * Converting: the header always offers search and the cart; the product page's first row holds the title, the price, the gallery and the
  * buy part (so price, choice and *Add to cart* are on the first screen); the footer shows what the law asks of a store's footer (business
  * details, cookies, withdrawal at every size); and no word anywhere, the theme's, its listing's, its pack's or its pages', makes a claim
@@ -44,6 +45,8 @@ export function signatureWords(theme: LaunchTheme, pack: ContentPack | null): st
   for (const layout of [theme.snapshot.header, theme.snapshot.footer, theme.snapshot.productLayout]) {
     if (layout) words.push(...blocksOf(layout.rows).map(blockText));
   }
+  // Its sections (D272) bring their words to other stores' pages.
+  if (theme.sections) words.push(...theme.sections(() => null).flatMap((section) => [section.name, section.description, ...blocksOf([section.row]).map(blockText)]));
   if (pack) {
     words.push(pack.title, pack.summary, pack.description, pack.storeName, pack.headline, pack.tagline, pack.storyTitle, pack.story, ...pack.about);
     words.push(...pack.points.flatMap((point) => [point.title, point.text]), ...pack.categories.map((category) => category.name));
@@ -111,6 +114,15 @@ export function signatureCheck(theme: LaunchTheme, options: { artExists: (url: s
     }
     const others = theme.presets.filter((preset) => preset.pack === theme.listing.pack);
     if (others.length > 0) problems.push("A preset is shown on the theme's own demo store; each look needs a store of its own.");
+  }
+
+  // Its sections (D272): its designed rows an owner can place on a page of their own, each one a row a page's check accepts.
+  const sections = theme.sections?.(() => null) ?? [];
+  if (sections.length < 4) problems.push("It offers fewer than four sections of its own for owners' pages.");
+  if (new Set(sections.map((section) => section.key)).size !== sections.length) problems.push("Two of its sections share a key.");
+  for (const section of sections) {
+    const checked = pageInput.safeParse({ ...newPageContent(), title: section.name, slug: "section", rows: [section.row] });
+    if (!checked.success) problems.push(`Its section ${section.name} is not a row a page can hold: ${checked.error.issues[0]?.message ?? "unknown"}`);
   }
 
   for (const word of signatureWords(theme, pack)) {

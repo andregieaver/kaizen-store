@@ -13,6 +13,7 @@ import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { TemplateActions } from "@/lib/templates";
+import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
 import type { VisibilityChoices } from "@/lib/visibility";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
@@ -107,6 +108,12 @@ export type PageOwnerContext = {
   } | null;
   /** Templates shared between stores and the marketplace (D125); null on Kaizen's own pages. */
   templates: TemplateActions | null;
+  /**
+   * The live theme's own sections (D272), offered on the Rows tab while a signature theme is live: listed when the builder opens and placed
+   * as a template is (its pictures copied into the owner's library). Null where no page of this kind takes them (headers, footers, product
+   * layouts, test versions).
+   */
+  themeSections?: { list: () => Promise<ThemeSectionsOffer>; place: (key: string) => Promise<SectionResult> } | null;
   /**
    * What the page checker needs to know (wave 1, 1e): the theme's colours, so text with no colour of its own is checked against its background,
    * and the page chosen for the checkout, which may not hold what the payment policy would break. Kaizen's own pages have no theme.

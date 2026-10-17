@@ -6,6 +6,7 @@ import type { PackPictureOf } from "../pack-designs";
 import { newPageContent, type PageContent, type PageRow } from "../page-content";
 import type { ThemeSettings } from "../theme";
 import { coreStyles, em, lines, rem } from "../theme-kit";
+import type { ThemeSection, ThemeSections } from "../theme-sections";
 
 import { EYEBROW, button, heading, image, paragraph, phonesHidden, photo, product, productGrid, shot, site, text, uuid, type Look } from "./kit";
 
@@ -157,8 +158,66 @@ const COLLECTIONS: [slug: string, name: string, line: string][] = [
   ["objects", "Objects", "Pitchers and candle holders for the table"],
 ];
 
-/** Ostra Studio's home page: the still life, a statement, the collection, three collections, a glaze band, the making, the studio, a last call. */
-export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+/** What Atelier's designed home page says: its demo store's words, or any store's when one of its sections is placed (D272). */
+type AtelierWords = {
+  hero: { eyebrow: string; heading: string; lead: string; first: [string, string]; second: [string, string] };
+  statement: string;
+  collection: { eyebrow: string; heading: string; more: string };
+  collections: { picture: string; href: string; name: string; line: string }[];
+  band: { eyebrow: string; quote: string };
+  points: { title: string; text: string }[];
+  story: { eyebrow: string; title: string; text: string; button: [string, string] };
+  finale: { heading: string; lead: string; button: string };
+};
+
+/** Ostra Studio's own words. */
+const ostraWords = (pack: ContentPack): AtelierWords => ({
+  hero: {
+    eyebrow: "Stoneware, thrown by hand",
+    heading: "Made slowly, for <em>everyday</em> rituals",
+    lead: pack.tagline,
+    first: ["Shop the collection", "/products"],
+    second: ["Visit the studio", "#studio"],
+  },
+  statement:
+    "We make a small number of pieces each season, in stoneware and in glazes we mix ourselves. They are made to be handled, used and kept.",
+  collection: { eyebrow: "The collection", heading: "Pieces for the table and the shelf", more: "View all pieces" },
+  collections: COLLECTIONS.map(([slug, name, line]) => ({ picture: `tile:${slug}`, href: `/category/${slug}`, name, line })),
+  band: { eyebrow: "From the studio", quote: "The glaze decides the last part." },
+  points: pack.points,
+  story: { eyebrow: "The studio", title: pack.storyTitle, text: pack.story, button: [`About ${pack.storeName}`, "/about"] },
+  finale: { heading: "Pieces for slow mornings", lead: "Eight pieces in three collections, made in small batches.", button: "Shop the collection" },
+});
+
+/** The words a section brings to any store: what to write there, never Ostra Studio's. */
+const SECTION_WORDS: AtelierWords = {
+  hero: {
+    eyebrow: "Made by hand",
+    heading: "Say what you make in a few <em>quiet</em> words",
+    lead: "One or two sentences about what you sell and who it is for.",
+    first: ["Shop now", "/products"],
+    second: ["Our story", "#studio"],
+  },
+  statement: "Write a sentence or two about your work here: how it is made, and what it is for.",
+  collection: { eyebrow: "The collection", heading: "Our newest pieces", more: "View all" },
+  collections: COLLECTIONS.map(([slug], i) => ({
+    picture: `tile:${slug}`,
+    href: "/products",
+    name: ["First collection", "Second collection", "Third collection"][i],
+    line: "A line about what it holds",
+  })),
+  band: { eyebrow: "A note from us", quote: "A short line worth remembering." },
+  points: [
+    { title: "How it is made", text: "A sentence about how each piece is made." },
+    { title: "What it is made of", text: "A sentence about the materials you use." },
+    { title: "How it is used", text: "A sentence about where it belongs in someone's day." },
+  ],
+  story: { eyebrow: "Our story", title: "How it began", text: "Tell how you started, where you work and who makes what you sell.", button: ["Shop now", "/products"] },
+  finale: { heading: "Find something to keep", lead: "A sentence that invites a visitor to look around.", button: "Shop now" },
+};
+
+/** Atelier's designed rows: the still life, a statement, the collection, three collections, a glaze band, the making, the story, a last call. */
+function atelierSections(words: AtelierWords, picture: PackPictureOf): ThemeSection[] {
   const hero = {
     id: uuid(),
     type: "row",
@@ -174,14 +233,14 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
         id: uuid(),
         className: "atelier-hero-copy",
         blocks: [
-          eyebrow("Stoneware, thrown by hand"),
-          heading("Made slowly, for <em>everyday</em> rituals", 1),
-          text([pack.tagline], "atelier-lead", LEAD),
+          eyebrow(words.hero.eyebrow),
+          heading(words.hero.heading, 1),
+          text([words.hero.lead], "atelier-lead", LEAD),
           {
             id: uuid(),
             type: "dualButton",
-            first: { label: "Shop the collection", href: "/products", variant: "filled" },
-            second: { label: "Visit the studio", href: "#studio", variant: "outline" },
+            first: { label: words.hero.first[0], href: words.hero.first[1], variant: "filled" },
+            second: { label: words.hero.second[0], href: words.hero.second[1], variant: "outline" },
             size: "lg",
             ...square,
             gap: 12,
@@ -201,11 +260,7 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
       {
         id: uuid(),
         blocks: [
-          text(
-            ["We make a small number of pieces each season, in stoneware and in glazes we mix ourselves. They are made to be handled, used and kept."],
-            "atelier-statement-text",
-            { family: SERIF, size: rem(2), lineHeight: lines(1.35), align: "center", weight: 400 },
-          ),
+          text([words.statement], "atelier-statement-text", { family: SERIF, size: rem(2), lineHeight: lines(1.35), align: "center", weight: 400 }),
         ],
       },
     ],
@@ -224,19 +279,19 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
         id: uuid(),
         typography: { text: { align: "center" } },
         blocks: [
-          eyebrow("The collection"),
-          heading("Pieces for the table and the shelf", 2),
+          eyebrow(words.collection.eyebrow),
+          heading(words.collection.heading, 2),
           productGrid(6, { columns: { mobile: 2, tablet: 2, desktop: 3 }, gap: 40 }),
-          button("View all pieces", "/products", "outline", { ...square, align: "center", className: "atelier-more" }),
+          button(words.collection.more, "/products", "outline", { ...square, align: "center", className: "atelier-more" }),
         ],
       },
     ],
   };
-  const tile = ([slug, name, line]: [string, string, string]) => ({
+  const tile = (item: AtelierWords["collections"][number]) => ({
     id: uuid(),
     className: "atelier-tile",
-    link: { href: `/category/${slug}`, label: name },
-    blocks: [image(picture(`tile:${slug}`), "atelier-tile-image"), heading(name, 3, "atelier-tile-name"), text([line], "atelier-tile-line")],
+    link: { href: item.href, label: item.name },
+    blocks: [image(picture(item.picture), "atelier-tile-image"), heading(item.name, 3, "atelier-tile-name"), text([item.line], "atelier-tile-line")],
   });
   const collections = {
     id: uuid(),
@@ -246,7 +301,7 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
     className: "atelier-section atelier-collections",
     style: { padding: { top: 0, right: 20, bottom: 112, left: 20 } },
     at: { sm: { style: { padding: { top: 0, right: 18, bottom: 64, left: 18 } } } },
-    columns: COLLECTIONS.map(tile),
+    columns: words.collections.map(tile),
   };
   const band = {
     id: uuid(),
@@ -262,8 +317,8 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
         id: uuid(),
         typography: { text: { align: "center", color: "#f4efe7" } },
         blocks: [
-          text(["From the studio"], "atelier-band-eyebrow", { ...EYEBROW, color: "#f4efe7" }),
-          heading("The glaze decides the last part.", 2, "atelier-band-quote", { family: SERIF, style: "italic", weight: 300, size: rem(3.25), color: "#f4efe7" }),
+          text([words.band.eyebrow], "atelier-band-eyebrow", { ...EYEBROW, color: "#f4efe7" }),
+          heading(words.band.quote, 2, "atelier-band-quote", { family: SERIF, style: "italic", weight: 300, size: rem(3.25), color: "#f4efe7" }),
         ],
       },
     ],
@@ -275,7 +330,7 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
     layout: "3",
     sectionStyle: "feature",
     className: "atelier-section atelier-steps",
-    columns: pack.points.map((point, i) => ({
+    columns: words.points.map((point, i) => ({
       id: uuid(),
       className: "atelier-step",
       blocks: [
@@ -299,7 +354,7 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
         id: uuid(),
         width: 44,
         className: "atelier-story-copy",
-        blocks: [eyebrow("The studio"), heading(pack.storyTitle, 2), text([pack.story]), button(`About ${pack.storeName}`, "/about", "text")],
+        blocks: [eyebrow(words.story.eyebrow), heading(words.story.title, 2), text([words.story.text]), button(words.story.button[0], words.story.button[1], "text")],
       },
     ],
   };
@@ -314,15 +369,39 @@ export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): Page
         id: uuid(),
         typography: { text: { align: "center" } },
         blocks: [
-          heading("Pieces for slow mornings", 2),
-          text(["Eight pieces in three collections, made in small batches."], "atelier-lead", LEAD),
-          button("Shop the collection", "/products", "filled", { ...square, align: "center", size: "lg" }),
+          heading(words.finale.heading, 2),
+          text([words.finale.lead], "atelier-lead", LEAD),
+          button(words.finale.button, "/products", "filled", { ...square, align: "center", size: "lg" }),
         ],
       },
     ],
   };
-  return { ...newPageContent(), title: "Home", slug: "welcome", rows: [hero, statement, collection, collections, band, making, story, last] as unknown as PageRow[] };
+  const section = (key: string, name: string, description: string, thumb: string | null, row: unknown): ThemeSection => ({
+    key,
+    name,
+    description,
+    thumb,
+    row: row as PageRow,
+  });
+  return [
+    section("hero", "Still life", "A large picture with a headline, a line and two buttons", "hero", hero),
+    section("statement", "Statement", "A sentence or two in large type", null, statement),
+    section("collection", "Newest products", "Your newest products in three columns", null, collection),
+    section("collections", "Three collections", "Three pictures, each with a name and a line", "tile:vases", collections),
+    section("band", "Quote band", "A short line over a picture as wide as the screen", "detail", band),
+    section("steps", "Three steps", "Three numbered points side by side", null, making),
+    section("story", "Story", "A picture beside your story and a button", "story", story),
+    section("finale", "Last call", "A heading, a line and a button on a quiet band", null, last),
+  ];
 }
+
+/** Ostra Studio's home page: Atelier's sections in its own words. */
+export function atelierHomePage(pack: ContentPack, picture: PackPictureOf): PageContent {
+  return { ...newPageContent(), title: "Home", slug: "welcome", rows: atelierSections(ostraWords(pack), picture).map((section) => section.row) };
+}
+
+/** Atelier's sections as an owner places them (D272): its rows in words for any store. */
+export const ATELIER_SECTIONS: ThemeSections = (picture) => atelierSections(SECTION_WORDS, picture);
 
 /** Ostra Studio's about page: who they are over the glaze, then their words beside the studio's shelves. */
 export function atelierAboutPage(pack: ContentPack, picture: PackPictureOf): PageContent {
@@ -646,6 +725,7 @@ export const ATELIER: LaunchTheme = {
     },
   },
   snapshot: { v: DESIGN_SNAPSHOT_VERSION, theme: { base: "minimal", settings }, header, footer, productLayout, css: CSS },
+  sections: ATELIER_SECTIONS,
   presets: [
     {
       key: "linen",

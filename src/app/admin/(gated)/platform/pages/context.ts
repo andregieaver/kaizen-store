@@ -33,7 +33,9 @@ import {
   kaizenTemplateFixedAction,
   kaizenTemplatesListAction,
   applyKaizenTemplateAction,
+  placePlatformThemeSectionAction,
   platformLinkTargetsAction,
+  platformThemeSectionsAction,
   savePageAction,
   unpublishPageAction,
   updateSavedPartAction,
@@ -84,6 +86,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       setSharing: kaizenTemplateFixedAction,
       previewStore: null,
     },
+    // The live theme's own sections (D272), as in a store's builder, for Kaizena Flow's pages and articles.
+    themeSections: type === "page" || type === "article" ? { list: platformThemeSectionsAction, place: placePlatformThemeSectionAction } : null,
     // The page checker reads contrast against Kaizen's colours (wave 1, 1e); Kaizen has no checkout page.
     check: { theme: themeSetsOf(chrome.theme.settings), checkoutPageId: null },
     colours: themeSwatches(chrome.theme.settings),

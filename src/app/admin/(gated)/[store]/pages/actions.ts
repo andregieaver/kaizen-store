@@ -35,6 +35,8 @@ import { saveSiteCss } from "@/server/site-css";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { storeTag } from "@/server/stores";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
+import { placeThemeSection, themeSectionsFor } from "@/server/theme-sections";
+import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
 
 /**
  * A store's pages (D53): the same editor as Kaizen's, through these
@@ -266,6 +268,19 @@ export async function applyTemplateAction(storeSlug: string, id: string): Promis
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknownTemplate;
   return applyTemplate(member.store.id, member.account, id);
+}
+
+/** The live theme's sections for the Rows tab (D272), or null when it has none. */
+export async function storeThemeSectionsAction(storeSlug: string): Promise<ThemeSectionsOffer> {
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  return member ? themeSectionsFor(member.store.id) : null;
+}
+
+/** One of the live theme's sections for the page, its pictures copied into the store's library (D272). */
+export async function placeStoreThemeSectionAction(storeSlug: string, key: string): Promise<SectionResult> {
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problem: NO_ACCESS };
+  return placeThemeSection(member.store.id, member.account, String(key).slice(0, 60));
 }
 
 /** Who can use one of the store's saved parts as a template; owners only. */

@@ -65,4 +65,19 @@ describe("signature themes", () => {
     const notSignature = { ...orbit, signature: undefined };
     expect(signatureCheck(notSignature, { artExists })).toEqual(["Orbit is not marked as a signature theme."]);
   });
+
+  it("offer their designed rows as sections with words for any store, never their demo store's (D272)", () => {
+    for (const theme of signature) {
+      const pack = contentPack(theme.listing.pack ?? "")!;
+      const offered = theme.sections!(() => null);
+      expect(offered.length, theme.key).toBeGreaterThanOrEqual(4);
+      const words = JSON.stringify(offered.map((section) => section.row));
+      expect(words, theme.key).not.toContain(pack.storeName);
+      expect(words, theme.key).not.toContain(pack.headline);
+      // A section's links are the store's own pages, never another site's (a picture without a link has none).
+      for (const href of words.matchAll(/"href":"([^"]+)"/g)) expect(href[1], theme.key).toMatch(/^(\/|#)/);
+    }
+    // A theme with no sections of its own is refused.
+    expect(signatureCheck({ ...orbit, sections: undefined }, { artExists })).toContain("It offers fewer than four sections of its own for owners' pages.");
+  });
 });

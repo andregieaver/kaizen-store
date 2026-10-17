@@ -8,6 +8,7 @@ import { ORBIT } from "./signature/orbit";
 import { coreStyles, rem } from "./theme-kit";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
 import type { ThemeElements } from "./theme-elements";
+import type { ThemeSections } from "./theme-sections";
 import type { ThemeListing } from "./theme-store";
 
 /**
@@ -49,6 +50,8 @@ export type LaunchTheme = {
   /** Its own look (no presets in it: they are `presets`, laid over it by `launchSnapshot()`). */
   snapshot: DesignSnapshot;
   presets: LaunchPreset[];
+  /** Its designed rows as sections an owner can place on their own pages while it is live (D272), with words for any store. */
+  sections?: ThemeSections;
 };
 
 /** A launch preset as a theme's version holds it: the theme's own settings with the preset's changes. */

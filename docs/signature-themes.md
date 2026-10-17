@@ -89,6 +89,22 @@ withdrawal period (facts beside the button, for conversion), and art motifs as b
 * **A fix for everyone**: a row taller than its content (`height`) with its columns in the middle or at the bottom now places them there
   (`rowGrid()`); before, they stayed at the top.
 
+## Built (step 4, D272)
+
+A signature theme's designed rows are offered on the builder's Rows tab while it is live, under *From {theme}*: Atelier's still life,
+statement, newest products, three collections, quote band, three steps, story and last call; Arcade's, Botanica's and Orbit's in kind (at
+least four each, `signatureCheck()`). Each is a `ThemeSection` (`src/lib/theme-sections.ts`: a key, a name, a line and the slot of the
+picture its tile shows) made by the theme's own code (`LaunchTheme.sections`, `xSections(words, picture)` in each
+`src/lib/signature/{key}.ts`), the same function that writes its demo store's home page with that store's words; offered, it brings
+`SECTION_WORDS`, words for any store (what to write there, never the demo store's), and links to the store's own pages. Its pictures are the
+theme's demo store's: the photograph once made (D270), else the art placed there, else the art from the site's own files as a full address.
+`placeThemeSection()` (`src/server/theme-sections.ts`) copies them into the owner's library as using a template does, checks the row as a
+saved row, audits `store.theme_section_used` (or `platform.theme_section_used`) and hands the builder a saved row, placed as a template's
+is. Pages and articles only, in the store's builder and Kaizena Flow's own (not while translating, not for a test's version).
+
+*Deviation from the plan:* the sections are the code's, found by the live install's `launch_key`, not a snapshot version 3. A theme made by
+a person or by the platform AI (step 5) will need them in its version; that is step 5's snapshot change.
+
 ## Photographs (D270)
 
 The owner found the drawn pictures fake and asked for pictures that look shot by a professional product photographer, made by the
