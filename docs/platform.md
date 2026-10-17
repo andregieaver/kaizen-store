@@ -47,9 +47,11 @@ otherwise.
    `commerce.approve_access_request()` creates the account (or reuses one),
    copies the template with `commerce.clone_store()` and records the decision,
    in one transaction: if anything fails, nothing changes. The requester may
-   choose a store template (D175, [`store-templates.md`](store-templates.md))
-   at sign-up, which the admin may change; `commerce.starter_source()` decides
-   what is copied.
+   choose a theme and a preset at sign-up, which the admin may change; since
+   D273 ([`themes-unified.md`](themes-unified.md)) the look's demo store (a store
+   template, D175, [`store-templates.md`](store-templates.md)) is what is copied,
+   worked out by `demoStoreForLook()`, and `commerce.starter_source()` decides
+   what is copied from it.
 3. **Invitation.** The new owner is emailed a sign-in link. It lands on
    `/auth/confirm` and works in any browser (see README for the email
    template this needs).

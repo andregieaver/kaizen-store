@@ -1,6 +1,6 @@
 /**
- * The life of a store template (D175) or a design profile (D176) on the platform (D177, `docs/store-templates.md` section 4,
- * `docs/design-profiles.md` section 2): saved as a draft, published (what owners and the sign-up form see), unpublished, archived (hidden
+ * The life of a demo store (a store template in code, D175) or a theme (a design profile in code, D176) on the platform (D177, D273;
+ * `docs/store-templates.md` section 4, `docs/design-profiles.md` section 2): saved as a draft, published (what owners and the sign-up form see), unpublished, archived (hidden
  * from every list but the platform's Archived filter, restorable) and deleted while nothing used it. Pure: shared by both platform pages and
  * the tests.
  */
@@ -48,9 +48,9 @@ export type ListFilter = "current" | "archived";
 export const listFilterOf = (value: unknown): ListFilter => (value === "archived" ? "archived" : "current");
 
 /** Why something cannot be deleted, in plain words, or null when it can. */
-export function deleteBlocker(kind: "store template" | "design profile", uses: { stores: number; requests: number; platform?: boolean }): string | null {
+export function deleteBlocker(kind: "demo store" | "theme", uses: { stores: number; requests: number; platform?: boolean }): string | null {
   const parts: string[] = [];
-  if (uses.stores > 0) parts.push(`${uses.stores} ${uses.stores === 1 ? "store" : "stores"} ${kind === "store template" ? "were made from it" : "applied it"}`);
+  if (uses.stores > 0) parts.push(`${uses.stores} ${uses.stores === 1 ? "store" : "stores"} ${kind === "demo store" ? "were made from it" : "applied it"}`);
   if (uses.platform) parts.push("Kaizena Flow's own site has it installed");
   if (uses.requests > 0) parts.push(`${uses.requests} ${uses.requests === 1 ? "access request names" : "access requests name"} it`);
   if (parts.length === 0) return null;

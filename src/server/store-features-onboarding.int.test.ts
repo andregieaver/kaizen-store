@@ -187,7 +187,7 @@ describe("a website's setup (D178 step 6)", () => {
   });
 });
 
-describe("store templates choose features (D178 step 6)", () => {
+describe("demo stores choose features (D178 step 6)", () => {
   let admin: Account;
   let owner: Account;
   let starterId: string;

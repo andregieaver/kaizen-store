@@ -11,7 +11,6 @@ import { PLAN_INTERVALS, percentToBps } from "@/lib/plans";
 import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
 import { designLookChoice } from "@/lib/design-presets";
-import { starterChoice } from "@/lib/store-starters";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
 import {
@@ -27,7 +26,7 @@ import {
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
 import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
-import { designTags } from "@/server/design-presets";
+import { demoStoreForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
@@ -79,9 +78,8 @@ export async function decideAction(
     String(formData.get("slug") ?? "").trim().toLowerCase(),
     String(formData.get("storeName") ?? ""),
     site,
-    // The store template (D175) as the admin left it on the request; a form without the field keeps the requester's.
-    formData.has("starter") ? starterChoice(formData.get("starter")) : undefined,
-    // The design profile (D176) likewise.
+    // The demo store follows the theme chosen (D273); a form without the field keeps the requester's choice of both.
+    look === undefined ? undefined : await demoStoreForLook(look),
     look === undefined ? undefined : (look?.id ?? null),
     look?.variation ?? null,
   );
@@ -91,13 +89,13 @@ export async function decideAction(
   const design = !result.design
     ? ""
     : result.design.problem
-      ? ` The design profile${result.design.title ? ` ${result.design.title}` : ""} could not be applied (${result.design.problem}): the store has its template's look; apply the profile from the store's page.`
-      : ` Its design profile${result.design.title ? `, ${result.design.title},` : ""} is applied.`;
-  // What the requester chose that is no longer offered (D177): said, so the admin can change the store's template or look after.
+      ? ` The theme${result.design.title ? ` ${result.design.title}` : ""} could not be applied (${result.design.problem}): the store has the standard look; apply the theme from the store's page.`
+      : ` Its theme${result.design.title ? `, ${result.design.title},` : ""} is applied.`;
+  // What the requester chose that is no longer offered (D177): said, so the admin can change the store's look after.
   const fellBack = [
-    result.fellBack.starter && ` The store template the requester chose, ${result.fellBack.starter}, is no longer offered: the store was made from the Standard store.`,
+    result.fellBack.starter && ` The demo store the requester's theme starts with, ${result.fellBack.starter}, is no longer offered: the store was made from the Standard store.`,
     result.fellBack.design &&
-      ` The design profile the requester chose, ${result.fellBack.design}, is no longer offered: the store keeps its template's own design; apply another from the store's page.`,
+      ` The theme the requester chose, ${result.fellBack.design}, is no longer offered: the store has the standard look; apply another from the store's page.`,
   ]
     .filter(Boolean)
     .join("");

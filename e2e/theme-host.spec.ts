@@ -56,7 +56,7 @@ test("the list and a theme answer at the host's root, linking back to Kaizena Fl
   await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Themes" })).toHaveAttribute("href", "/");
   await expect(page.getByRole("link", { name: "Start with this theme" })).toHaveAttribute("href", `${baseURL}/sign-up?theme=${id}`);
   await expect(page.getByRole("link", { name: "Try it in your store" })).toHaveAttribute("href", `${baseURL}/themes/${SLUG}/try`);
-  await expect(page.locator(`iframe[title="E2E Hosted on a phone"]`)).toHaveAttribute("src", `${baseURL}/admin/account/design-profiles/${id}/preview?embed=1`);
+  await expect(page.locator(`iframe[title="E2E Hosted on a phone"]`)).toHaveAttribute("src", `${baseURL}/admin/account/themes/${id}/preview?embed=1`);
 });
 
 test("Kaizena Flow's own addresses of the theme store move there; the try route stays", async ({ page, request }) => {

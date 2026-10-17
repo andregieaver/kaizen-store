@@ -6,12 +6,10 @@ import { Fragment } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
-import { designLookValue, type OfferedDesign } from "@/lib/design-presets";
-import { STARTER_CATEGORY_LABELS, type OfferedStarter } from "@/lib/store-starters";
+import { designLookValue, type DesignCard } from "@/lib/design-presets";
 import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
-import { listOfferedDesigns } from "@/server/design-presets";
-import { listOfferedStarters } from "@/server/store-starters";
+import { designChoices } from "@/server/design-presets";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { decideAction } from "../actions";
@@ -25,7 +23,9 @@ export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const [requests, starters, designs] = await Promise.all([listAccessRequests(), listOfferedStarters(), listOfferedDesigns()]);
+  // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
+  const [requests, { cards }] = await Promise.all([listAccessRequests(), designChoices()]);
+  const designs = cards.filter((card) => card.id);
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
 
@@ -33,7 +33,7 @@ export default async function PlatformPage() {
     <>
       <PageHeader
         title="Access requests"
-        description={<>Approving creates the store as a copy of the store template chosen (the Standard store is the demo template), applies the design profile chosen, makes the requester its owner, and emails them a sign-in link.</>}
+        description={<>Approving creates the store from the theme chosen (its look and its demo store, or the Standard store), makes the requester its owner, and emails them a sign-in link.</>}
       />
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
@@ -43,7 +43,7 @@ export default async function PlatformPage() {
         {pending.length === 0 ? (
           <p className="text-sm text-muted">No requests are waiting.</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} starters={starters} designs={designs} />)
+          pending.map((request) => <PendingRequest key={request.id} request={request} designs={designs} />)
         )}
       </section>
 
@@ -57,8 +57,8 @@ export default async function PlatformPage() {
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>
                   {request.name} · {request.email} · {request.storeName}
-                  {request.starterTitle && <span className="text-muted"> · from {request.starterTitle}</span>}
-                  {request.designTitle && <span className="text-muted"> · design {request.designTitle}</span>}
+                  {request.designTitle && <span className="text-muted"> · theme {request.designTitle}</span>}
+                  {request.starterTitle && <span className="text-muted"> · demo store {request.starterTitle}</span>}
                 </span>
                 <span className="text-muted">
                   {request.status === "approved" && request.storeSlug ? (
@@ -78,10 +78,8 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request, starters, designs }: { request: AccessRequest; starters: OfferedStarter[]; designs: OfferedDesign[] }) {
-  // The template the requester chose (D175); one no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
-  const gone = request.starterId && !starters.some((s) => s.id === request.starterId);
-  // The same for the design profile (D176).
+async function PendingRequest({ request, designs }: { request: AccessRequest; designs: DesignCard[] }) {
+  // A theme the requester chose that is no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
   const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
   // Suggest a free address; the admin can still change it.
   const base = suggestSlug(request.storeName) || suggestSlug(request.name);
@@ -135,38 +133,20 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
           </label>
         </div>
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
-          Store template
-          <select name="starter" defaultValue={gone ? "" : (request.starterId ?? "")} className={control}>
-            <option value="">Standard store</option>
-            {starters.map((starter) => (
-              <option key={starter.id} value={starter.id}>
-                {starter.title} ({STARTER_CATEGORY_LABELS[starter.category]})
-              </option>
-            ))}
-          </select>
-          <span className="font-normal text-muted">
-            {gone
-              ? `The requester chose ${request.starterTitle ?? "a store template"}, which is no longer offered: the store is made from the Standard store unless you choose another.`
-              : request.starterId
-                ? "Chosen by the requester; change it if another fits better."
-                : "The requester chose none."}
-          </span>
-        </label>
-        <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
-          Design profile
+          Theme
           <select
             name="design"
             defaultValue={designGone || !request.designPresetId ? "" : designLookValue(request.designPresetId, request.designVariation)}
             className={control}
           >
-            <option value="">Keep the template&apos;s own design</option>
+            <option value="">Standard (the standard demo products)</option>
             {designs.map((design) => (
               <Fragment key={design.id}>
-                <option value={design.id}>{design.title}</option>
-                {/* Its presets (`docs/theme-showcase-phase-1.md` step 4). */}
-                {(design.presets ?? []).map((preset) => (
-                  <option key={preset.key} value={designLookValue(design.id, preset.key)}>
-                    {design.title} · {preset.name}
+                <option value={design.id}>{lookOption(design.title, design.demo)}</option>
+                {/* Its presets (`docs/theme-showcase-phase-1.md` step 4), each with the demo store it starts with (D273). */}
+                {(design.looks ?? []).map((look) => (
+                  <option key={look.key} value={designLookValue(design.id, look.key)}>
+                    {lookOption(`${design.title} · ${look.name}`, look.demo)}
                   </option>
                 ))}
               </Fragment>
@@ -174,9 +154,9 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
           </select>
           <span className="font-normal text-muted">
             {designGone
-              ? `The requester chose ${request.designTitle ?? "a design profile"}, which is no longer offered: the store keeps its template's own design unless you choose another.`
+              ? `The requester chose ${request.designTitle ?? "a theme"}, which is no longer offered: the store gets the standard look and demo products unless you choose another.`
               : request.designPresetId
-                ? "Chosen by the requester; applied right after the store is made."
+                ? "Chosen by the requester: the store starts with its look and its demo store."
                 : "The requester chose none."}
           </span>
         </label>
@@ -192,3 +172,6 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
     </article>
   );
 }
+
+/** A look as the Theme field lists it: its name and the demo store it starts a store with (D273). */
+const lookOption = (name: string, demo: string | null | undefined) => (demo ? `${name} (demo: ${demo})` : name);

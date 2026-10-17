@@ -4,6 +4,7 @@ import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants
 import { payRouteHeaders } from "./src/lib/csp";
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
+import { LEGACY_THEME_REDIRECTS } from "./src/lib/theme-admin-paths";
 import { LEGACY_WORK_REDIRECTS } from "./src/lib/work-paths";
 import { storeHostRoutes } from "./src/lib/store-hosts";
 import { themeHostRoutes, themesHost } from "./src/lib/theme-host";
@@ -66,7 +67,7 @@ export default async function config(phase: string): Promise<NextConfig> {
     // A strict Content-Security-Policy on the cart, checkout and order of every store, on both shapes of address (wave 1, 1e, docs/pci.md).
     headers: async () => payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
-    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...themes.redirects, ...routes.redirects],
+    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...routes.redirects],
     rewrites: async () => ({ beforeFiles: [...themes.rewrites, ...routes.rewrites], afterFiles: [], fallback: [] }),
   };
 }

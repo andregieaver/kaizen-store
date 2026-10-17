@@ -677,7 +677,7 @@ const PAGES: readonly AdminPage[] = [
   store("footer.new", "/footers/new", "New footer", "Store", "Starts a custom footer."),
   store("footer", "/footers/[pageId]", "Footer", "Store", "Builds a custom footer."),
   store("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Store", "Previews a custom footer."),
-  store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and design profiles, a whole look (theme, header, footer, product page and CSS) to apply and put back.", {
+  store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and the themes installed, each a whole look (theme, header, footer, product page and CSS) to switch to and back.", {
     keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
   store("design.theme", "/settings/design/themes/[install]", "Customise theme", "Store", "One installed theme that is not live: its preview on the store's own pages, what switching to it changes (layouts, section styles, settings that stay the owner's own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the store switches.", {
@@ -820,32 +820,31 @@ const PAGES: readonly AdminPage[] = [
   platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),
   platform("customer", "/customers/[accountId]", "Customer", "Platform", "One store owner: stores, plans, invoices and emails."),
   platform("stores", "/stores", "Stores", "Platform", "Every store with its plan, subscription and fee."),
-  platform("store-templates", "/store-templates", "Store templates", "Platform", "Starting points for new stores (D175, D177), each a store set up for one kind of business (appointments, retail, downloads, rentals and stays, subscriptions, services): make one, describe it, publish (keeping a copy of its store), unpublish, archive, restore or delete it, order them, open its admin to set it up and preview its storefront.", {
-    tasks: ["Make a new store template", "Publish a store template", "Preview a store template", "Edit a store template's products and pages"],
-    keywords: ["starter", "starting point", "store template", "blueprint"],
+  platform("themes", "/themes", "Themes", "Platform", "Kaizena Flow's themes (D241, D273): a whole look (theme, header, footer, product page layout and CSS, never content or brand) with up to five presets, each preset's demo store the content a new store starts with. Add and update Kaizena Flow's own themes, make one from a store or from scratch, publish, unpublish, archive, restore or delete it, order them and preview it; set up the demo stores and make their pictures. Any store applies one from its Design settings and people creating a store choose one.", {
+    tasks: ["Make a theme from a store", "Make a theme from scratch", "Publish a theme", "Preview a theme", "Archive a theme", "Set up the demo stores", "Make a demo store's pictures"],
+    keywords: ["design profile", "look", "theme preset", "style", "skin", "demo store", "store template", "content pack", "starter"],
   }),
-  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category, picture and recommended design profile, saved as a draft; publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, and delete it while nothing used it.", {
-    tasks: ["Publish a store template's changes", "Archive a store template", "Delete an unused store template"],
-    keywords: ["draft", "archive", "restore", "delete template"],
+  platform("theme", "/themes/[presetId]", "Theme", "Platform", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), the demo store each of its looks starts new stores with and is shown on, its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
+    tasks: ["Choose a theme's demo stores", "Preview a theme on its demo store"],
+    keywords: ["demo store", "showcase", "listing"],
   }),
-  platform("design-profiles", "/design-profiles", "Themes", "Platform", "Kaizena Flow's themes (design profiles in code, D241): a look kept to use again (D176, D177): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store or from scratch, edit it on its own pages, publish, unpublish, archive, restore or delete it, order them and preview it; any store applies one from its Design settings and people creating a store choose one.", {
-    tasks: ["Make a design profile from a store", "Make a design profile from scratch", "Publish a design profile", "Preview a design profile", "Archive a design profile"],
-    keywords: ["design template", "look", "theme preset", "style", "skin"],
-  }),
-  platform("design-profile", "/design-profiles/[presetId]", "Design profile", "Platform", "One design profile's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), previews of the published look and the draft on each store template, and starting its look again from a store."),
-  platform("design-profile.theme", "/design-profiles/[presetId]/theme", "Design profile theme", "Platform", "A design profile's theme: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the profile's draft.", {
+  platform("theme.settings", "/themes/[presetId]/theme", "Theme settings", "Platform", "A theme's settings: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the theme's draft.", {
     keywords: ["colours", "fonts", "buttons", "corners", "dark mode"],
   }),
-  platform("design-profile.presets", "/design-profiles/[presetId]/presets", "Theme presets", "Platform", "A theme's presets: its own look and up to five ready-made designs over it for different kinds of stores (colours, fonts, buttons, section styles), added, renamed, ordered, removed and previewed; part of the theme's draft until it is published.", {
+  platform("theme.presets", "/themes/[presetId]/presets", "Theme presets", "Platform", "A theme's presets: its own look and up to five ready-made designs over it for different kinds of stores (colours, fonts, buttons, section styles), added, renamed, ordered, removed and previewed; part of the theme's draft until it is published.", {
     tasks: ["Add a preset to a theme", "Preview a theme's preset"],
     keywords: ["preset", "variation", "style", "design for a trade"],
   }),
-  platform("design-profile.preset", "/design-profiles/[presetId]/presets/[key]", "Theme preset", "Platform", "One of a theme's presets: its name and its look in the theme editor, saved into the theme's draft."),
-  platform("design-profile.header", "/design-profiles/[presetId]/header", "Design profile header", "Platform", "A design profile's header: the standard one, or its own built in the page builder; saved as the profile's draft."),
-  platform("design-profile.footer", "/design-profiles/[presetId]/footer", "Design profile footer", "Platform", "A design profile's footer: the standard one, or its own built in the page builder; saved as the profile's draft."),
-  platform("design-profile.product-layout", "/design-profiles/[presetId]/product-layout", "Design profile product page", "Platform", "A design profile's product page layout: the standard one, or its own built in the page builder; saved as the profile's draft."),
-  platform("design-profile.css", "/design-profiles/[presetId]/css", "Design profile CSS", "Platform", "A design profile's own CSS for every page, checked when saved; part of the profile's draft."),
-  platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a design profile to it."),
+  platform("theme.preset", "/themes/[presetId]/presets/[key]", "Theme preset", "Platform", "One of a theme's presets: its name and its look in the theme editor, saved into the theme's draft."),
+  platform("theme.header", "/themes/[presetId]/header", "Theme header", "Platform", "A theme's header: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.footer", "/themes/[presetId]/footer", "Theme footer", "Platform", "A theme's footer: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.product-layout", "/themes/[presetId]/product-layout", "Theme product page", "Platform", "A theme's product page layout: the standard one, or its own built in the page builder; saved as the theme's draft."),
+  platform("theme.css", "/themes/[presetId]/css", "Theme CSS", "Platform", "A theme's own CSS for every page, checked when saved; part of the theme's draft."),
+  platform("theme.demo-store", "/themes/demo-stores/[starterId]", "Demo store", "Platform", "One demo store, the content a theme's look starts new stores with (D273): publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, delete it while nothing used it, open its admin, preview it, and choose the features a new store starts with switched on.", {
+    tasks: ["Publish a demo store", "Preview a demo store", "Edit a demo store's products and pages"],
+    keywords: ["store template", "content pack", "starter", "demo content"],
+  }),
+  platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a theme to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
@@ -887,10 +886,10 @@ const PAGES: readonly AdminPage[] = [
   platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
   platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
-  platform("site_themes", "/themes", "Themes", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
+  platform("site_themes", "/site-design", "Design", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
     keywords: ["theme", "look", "switch theme", "design", "kaizena site look"],
   }),
-  platform("site_themes.theme", "/themes/[install]", "Customise theme", "Kaizena Flow site", "One theme installed on Kaizena Flow's own site that is not live: its preview on Kaizena Flow's own pages, what switching to it changes (header, footer, section styles, settings that stay its own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the site switches.", {
+  platform("site_themes.theme", "/site-design/[install]", "Customise theme", "Kaizena Flow site", "One theme installed on Kaizena Flow's own site that is not live: its preview on Kaizena Flow's own pages, what switching to it changes (header, footer, section styles, settings that stay its own, fonts, CSS), its settings and its own CSS. Visitors see nothing of it until the site switches.", {
     keywords: ["preview theme", "try a theme", "what changes", "customise theme", "kaizena site theme"],
   }),
   platform("seo", "/seo", "Search", "Kaizena Flow site", "How search engines and AI crawlers see Kaizena Flow's site."),

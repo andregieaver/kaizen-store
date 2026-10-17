@@ -161,7 +161,7 @@ async function FeaturesStep({ member, answered }: { member: Membership; answered
       warnings={warnings}
       note={
         starter && !answered
-          ? `Your store was made from the store template ${starter}, so what it switches on is chosen. Change what you need.`
+          ? `Your store was made from the demo store ${starter}, so what it switches on is chosen. Change what you need.`
           : answered
             ? "This is what is switched on now."
             : null

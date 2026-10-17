@@ -81,7 +81,7 @@ function snapshotOf(): DesignSnapshot {
   return parsed;
 }
 
-describe("what a design profile holds (D176)", () => {
+describe("what a theme holds (D176)", () => {
   it("keeps the look and the brand apart: no column is both, and a theme holds no logo, icon or name", () => {
     expect(LOOK_FIELDS.filter((f) => (BRAND_FIELDS as readonly string[]).includes(f))).toEqual([]);
     expect(BRAND_FIELDS).toEqual(expect.arrayContaining(["name", "navigation", "header_menu_id", "footer_menu_id", "legal_name"]));
@@ -173,7 +173,7 @@ describe("applying a snapshot in another store", () => {
     const name = beforeThemeName("Nordic calm", "2026-10-07", []);
     expect(name).toBe("Before Nordic calm (2026-10-07)");
     expect(beforeThemeName("Nordic calm", "2026-10-07", [name.toUpperCase()])).toBe("Before Nordic calm (2026-10-07) 2");
-    const long = beforeThemeName("A very long design profile title that goes on and on and on", "2026-10-07", []);
+    const long = beforeThemeName("A very long theme title that goes on and on and on", "2026-10-07", []);
     expect(long.length).toBeLessThanOrEqual(60);
     expect(long.endsWith("(2026-10-07)")).toBe(true);
   });
@@ -212,17 +212,17 @@ describe("details, choices and cards", () => {
 
   it("offers keeping the template's own design first, with no preview of its own", () => {
     expect(keepDesignCard()).toMatchObject({ id: "", previewHref: null });
-    expect(designPreviewPath("p1", "s1", true)).toBe("/admin/account/design-profiles/p1/preview?starter=s1&as=admin");
-    expect(designPreviewPath("p1")).toBe("/admin/account/design-profiles/p1/preview");
+    expect(designPreviewPath("p1", "s1", true)).toBe("/admin/account/themes/p1/preview?starter=s1&as=admin");
+    expect(designPreviewPath("p1")).toBe("/admin/account/themes/p1/preview");
     // The draft (D177) is the platform admin's only.
-    expect(designPreviewPath("p1", null, true, true)).toBe("/admin/account/design-profiles/p1/preview?as=admin&draft=1");
-    expect(designPreviewPath("p1", null, false, true)).toBe("/admin/account/design-profiles/p1/preview");
+    expect(designPreviewPath("p1", null, true, true)).toBe("/admin/account/themes/p1/preview?as=admin&draft=1");
+    expect(designPreviewPath("p1", null, false, true)).toBe("/admin/account/themes/p1/preview");
     // In the theme store's frames, the store alone.
-    expect(designPreviewPath("p1", null, false, false, true)).toBe("/admin/account/design-profiles/p1/preview?embed=1");
+    expect(designPreviewPath("p1", null, false, false, true)).toBe("/admin/account/themes/p1/preview?embed=1");
   });
 });
 
-describe("a design profile's draft and its own pages (D177)", () => {
+describe("a theme's draft and its own pages (D177)", () => {
   it("reads a stored draft of the details, and compares details", () => {
     const draft = readDesignDraft({ title: "Calm", summary: "Pale", description: "", pictureUrl: null });
     expect(draft).toEqual({ title: "Calm", summary: "Pale", description: "", pictureUrl: null });
@@ -234,13 +234,13 @@ describe("a design profile's draft and its own pages (D177)", () => {
 
   it("addresses each of its tabs under the profile", () => {
     expect(DESIGN_TABS.map((t) => designTabHref("p1", t.key))).toEqual([
-      "/admin/platform/design-profiles/p1",
-      "/admin/platform/design-profiles/p1/theme",
-      "/admin/platform/design-profiles/p1/presets",
-      "/admin/platform/design-profiles/p1/header",
-      "/admin/platform/design-profiles/p1/footer",
-      "/admin/platform/design-profiles/p1/product-layout",
-      "/admin/platform/design-profiles/p1/css",
+      "/admin/platform/themes/p1",
+      "/admin/platform/themes/p1/theme",
+      "/admin/platform/themes/p1/presets",
+      "/admin/platform/themes/p1/header",
+      "/admin/platform/themes/p1/footer",
+      "/admin/platform/themes/p1/product-layout",
+      "/admin/platform/themes/p1/css",
     ]);
   });
 

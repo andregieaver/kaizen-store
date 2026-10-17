@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
-import { StarterCards } from "@/components/admin/starter-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
 import { COPY_PHASE_LABELS } from "@/lib/store-copy";
@@ -12,7 +11,6 @@ import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
-import { starterCards } from "@/server/store-starters";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { createStoreAction } from "./actions";
@@ -31,9 +29,8 @@ export default async function AllStoresPage() {
   const canDuplicate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
   // The store templates to start from (D175): the Standard store and the published ones.
-  const cards = canCreate ? await starterCards() : [];
   // The design profiles to apply after (D176): keep the template's own look first; a template may recommend one.
-  const designs = canCreate ? await designChoices() : { cards: [], recommended: {} };
+  const designs = canCreate ? await designChoices() : { cards: [] };
 
   return (
     <div className="flex flex-col gap-8">
@@ -46,7 +43,7 @@ export default async function AllStoresPage() {
       )}
 
       {canCreate && (
-        <Card title="Create a store" description="It starts as a copy of the store template you choose, with you as owner: its products and services, staff, pages, menus and settings, ready to change. You then add your business details, set up payments and choose its plan." className="flex max-w-3xl flex-col gap-3" compact>
+        <Card title="Create a store" description="Choose a theme: the store starts with its look and its demo store, with you as owner, ready to change. You then add your business details, set up payments and choose its plan." className="flex max-w-3xl flex-col gap-3" compact>
           <ActionForm action={createStoreAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
               Store name
@@ -67,13 +64,10 @@ export default async function AllStoresPage() {
                 Lowercase letters, numbers and hyphens. Leave empty to make one from the name.
               </span>
             </label>
-            <StarterCards cards={cards} hint="Preview opens a template's store in a new window, to look around before you choose." />
             {designs.cards.length > 1 && (
               <DesignCards
                 cards={designs.cards}
-                recommended={designs.recommended}
-                legend="Design profile"
-                hint="The look only: colours, fonts, header, footer and product page. Your products, pages and menus are the template's. Preview opens it in a new window."
+                hint="The store starts with the theme's look and its demo store's products and pages, which you remove in one press when yours are in. Preview opens it in a new window."
               />
             )}
             <div>

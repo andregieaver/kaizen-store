@@ -1,5 +1,10 @@
 # Store templates (D175, D177)
 
+> **Since D273 (`docs/themes-unified.md`)** these are *demo stores* in the interface: a new store starts from the demo store of the theme
+> look chosen, never from a template chosen on its own; the admin makes no new one, and the page moved to the Themes page
+> (`/admin/platform/themes`, a demo store at `/admin/platform/themes/demo-stores/{id}`). What follows is the history and the data model,
+> which are unchanged.
+
 The platform's admins prepare **store templates**: starting points for new stores, each a real store set up for one kind of
 business (a spa taking appointments, a shop selling goods, downloads, rentals and stays, subscription boxes, services). A store
 owner chooses one when creating a store, and so does a person asking for a store at `/sign-up`; the new store starts with the

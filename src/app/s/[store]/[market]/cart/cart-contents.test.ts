@@ -480,7 +480,7 @@ describe("the cart's gift box (wave 3, run 2, D173)", () => {
   });
 });
 
-describe("the cart of a store template (D175)", () => {
+describe("the cart of a demo store (D175)", () => {
   it("says the store takes no orders instead of drawing the checkout button", async () => {
     cartSummary.mockResolvedValue(summary({ checkout: { vatRate: 0.25, paymentsOn: false, starter: true, shipping: null } }));
     checkoutButton.mockClear();

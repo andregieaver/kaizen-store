@@ -24,7 +24,7 @@ vi.mock("@/server/auth", async (original) => ({
 }));
 
 const designs = await import("./design-presets");
-const actions = await import("@/app/admin/(gated)/platform/design-profiles/[presetId]/workspace-actions");
+const actions = await import("@/app/admin/(gated)/platform/themes/[presetId]/workspace-actions");
 
 type Row = Record<string, unknown>;
 const run = Date.now().toString(36);
@@ -71,7 +71,7 @@ afterAll(async () => {
 
 const payload = (title: string) => JSON.stringify({ ...defaultHeader(workspaceId), title, slug: "header-profile" });
 
-describe("the design profile editor's actions (D177)", () => {
+describe("the theme editor's actions (D177)", () => {
   it("saves the profile's chosen header as a draft only", async () => {
     const before = await one(sql`select published from commerce.pages where id = ${headerId}::uuid`);
     const saved = await actions.saveWorkspacePageAction(presetId, "header", headerId, payload("Calm header"));

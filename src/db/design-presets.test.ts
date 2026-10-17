@@ -39,7 +39,7 @@ afterAll(async () => {
   await db.close();
 });
 
-describe("design profiles (D176)", () => {
+describe("themes (D176)", () => {
   it("keep their updated time current", async () => {
     const id = await preset();
     const before = await one<{ updated_at: Date }>("select updated_at from commerce.design_presets where id = $1", [id]);
@@ -64,7 +64,7 @@ describe("design profiles (D176)", () => {
     await refused("insert into commerce.design_presets (title, snapshot, summary) values ('x', $1::jsonb, repeat('a', 201))", [SNAPSHOT], /design_presets_summary/);
   });
 
-  it("can be recommended by a store template and chosen on an access request", async () => {
+  it("can be recommended by a demo store and chosen on an access request", async () => {
     const id = await preset("Recommended");
     await db.query("update commerce.stores set starter = true where id = $1", [store]);
     const { id: starter } = await one<{ id: string }>(
@@ -96,7 +96,7 @@ describe("design profiles (D176)", () => {
   });
 });
 
-describe("a use of a design profile (D176)", () => {
+describe("a use of a theme (D176)", () => {
   async function use(): Promise<{ id: string; theme: string }> {
     const presetId = await preset("Used");
     const { id: theme } = await one<{ id: string }>(
@@ -130,13 +130,13 @@ describe("a use of a design profile (D176)", () => {
   });
 });
 
-describe("the life of a design profile (D177)", () => {
+describe("the life of a theme (D177)", () => {
   async function starterStore(slug: string): Promise<string> {
     const { id } = await one<{ id: string }>("insert into commerce.stores (slug, name, starter) values ($1, $1, true) returning id", [slug]);
     return id;
   }
 
-  it("is deleted while nothing used it, and a store template recommending it recommends none after (published and drafted)", async () => {
+  it("is deleted while nothing used it, and a demo store recommending it recommends none after (published and drafted)", async () => {
     const id = await preset("Unused");
     const template = await starterStore("rec-template");
     const { id: starter } = await one<{ id: string }>(

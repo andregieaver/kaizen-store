@@ -190,15 +190,15 @@ export function movedOrder(ids: readonly string[], id: string, direction: "up" |
 
 /** The plain words for a refusal of the database's starter rules, or null when the error is not one of them. */
 export function starterRefusal(text: string): string | null {
-  if (text.includes("store_starters.not_offered")) return "That store template is not offered any more. Choose another.";
+  if (text.includes("store_starters.not_offered")) return "That demo store is not offered any more. Choose another.";
   if (text.includes("there is no template store")) return "There is no template store to copy.";
-  if (text.includes("stores.starter_has_sales")) return "A store that has sold or has customers cannot become a store template.";
-  if (text.includes("stores.starter_fixed")) return "A store template stays a store template.";
-  if (text.includes("store_starters.not_starter")) return "Only a store made as a store template can be described as one.";
-  if (text.includes("store_starters.used")) return "Stores were made from this store template, so it cannot be deleted. Archive it instead.";
-  if (text.includes("store_starters.requested")) return "An access request chose this store template, so it cannot be deleted. Archive it instead.";
-  if (text.includes("store_starters.archived")) return "This store template is archived. Restore it before publishing it.";
-  if (text.includes("store_starters.not_open")) return "The store template's store is not open, so it cannot be published.";
-  if (text.includes("store_starters_archived_unpublished")) return "An archived store template is never published. Restore it first.";
+  if (text.includes("stores.starter_has_sales")) return "A store that has sold or has customers cannot become a demo store.";
+  if (text.includes("stores.starter_fixed")) return "A demo store stays a demo store.";
+  if (text.includes("store_starters.not_starter")) return "Only a store made as a demo store can be described as one.";
+  if (text.includes("store_starters.used")) return "Stores were made from this demo store, so it cannot be deleted. Archive it instead.";
+  if (text.includes("store_starters.requested")) return "An access request chose this demo store, so it cannot be deleted. Archive it instead.";
+  if (text.includes("store_starters.archived")) return "This demo store is archived. Restore it before publishing it.";
+  if (text.includes("store_starters.not_open")) return "The demo store is not open, so it cannot be published.";
+  if (text.includes("store_starters_archived_unpublished")) return "An archived demo store is never published. Restore it first.";
   return null;
 }

@@ -70,8 +70,8 @@ test("a theme's page shows what it includes, its previews and its changelog, and
   await expect(page.getByRole("link", { name: "Try E2E Fjord · Coast in your store" })).toHaveAttribute("href", `/themes/${SLUG}/try?preset=coast`);
   // Starting a store with the preset chooses it at sign-up (docs/theme-showcase-phase-1.md step 4).
   await expect(page.getByRole("link", { name: "Start a store with E2E Fjord · Coast" })).toHaveAttribute("href", `/sign-up?theme=${id}&preset=coast`);
-  expect((await page.request.get(`/admin/account/design-profiles/${id}/preview?preset=coast`)).status()).toBe(200);
-  const previewResponse = await page.request.get(`/admin/account/design-profiles/${id}/preview`);
+  expect((await page.request.get(`/admin/account/themes/${id}/preview?preset=coast`)).status()).toBe(200);
+  const previewResponse = await page.request.get(`/admin/account/themes/${id}/preview`);
   expect(previewResponse.status()).toBe(200);
   expect(await previewResponse.text()).toMatch(/noindex/);
 

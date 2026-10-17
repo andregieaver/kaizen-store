@@ -49,7 +49,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         </h2>
         <p className="text-sm">
           {store.starter
-            ? "This is a store template: a preview for new stores to start from, never shown to search engines."
+            ? "This is a demo store: a preview for new stores to start from, never shown to search engines."
             : !open
             ? "Your store is not opened yet. Once you finish the setup, search engines are welcome."
             : seo.hidden

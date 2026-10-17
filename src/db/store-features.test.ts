@@ -110,7 +110,7 @@ describe("new stores and copies (D178)", () => {
     expect(await state(id)).toEqual({ features: ["shop"], modules: [] });
   });
 
-  it("gives a store made from a store template the template's features", async () => {
+  it("gives a store made from a demo store the template's features", async () => {
     const { id: starter } = await one<{ id: string }>("select commerce.clone_store($1, 'features-starter', 'Spa', $2) as id", [template, owner]);
     await db.query("update commerce.stores set starter = true where id = $1", [starter]);
     await setFeatures(starter, ["shop", "appointments", "bonus", "languages"]);

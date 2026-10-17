@@ -32,7 +32,7 @@ function body(source: string, name: string): string {
   return end < 0 ? rest : rest.slice(0, end);
 }
 
-describe("design profiles go through the template's cleaning (D176)", () => {
+describe("themes go through the template's cleaning (D176)", () => {
   const lib = read("src/lib/design-presets.ts");
   const server = read("src/server/design-presets.ts");
 
@@ -62,7 +62,7 @@ describe("design profiles go through the template's cleaning (D176)", () => {
   });
 
   it("checks the platform admin and the profile's workspace in every action of the profile's editor (D177)", () => {
-    const dir = "src/app/admin/(gated)/platform/design-profiles/[presetId]";
+    const dir = "src/app/admin/(gated)/platform/themes/[presetId]";
     const actions = read(`${dir}/workspace-actions.ts`);
     const exported = [...actions.matchAll(/export async function (\w+)/g)].map((m) => m[1]);
     expect(exported.length).toBeGreaterThan(10);
@@ -80,7 +80,7 @@ describe("design profiles go through the template's cleaning (D176)", () => {
   });
 
   it("draws the preview as applying places it, never by applying it", () => {
-    const preview = read("src/app/admin/account/design-profiles/[presetId]/preview/page.tsx");
+    const preview = read("src/app/admin/account/themes/[presetId]/preview/page.tsx");
     expect(preview).toContain("layoutForStore(");
     expect(preview).not.toMatch(/import [^;]*\b(applyDesignPreset|saveStoreTheme|savePage)\b/);
   });

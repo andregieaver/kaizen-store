@@ -11,7 +11,7 @@ const draw = (made: number, asked: boolean, problem: string | null = null) =>
   renderToStaticMarkup(createElement(PackPictures, { title: "Fashion store", made, total: 10, asked, problem, ask: done, stop: done })).replaceAll("<!-- -->", "");
 
 /** *Make the pictures* on the Store templates page (D271): one press asks the job, and the page says what it is doing. */
-describe("a pack's pictures on the Store templates page", () => {
+describe("a pack's pictures on the Demo stores page", () => {
   it("offers to make them with what is made so far", () => {
     const html = draw(0, false);
     expect(html).toContain("Make the pictures");

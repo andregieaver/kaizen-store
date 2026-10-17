@@ -92,7 +92,7 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const presetId = designChoice(formData.get("design"));
-  if (!presetId) return { status: "error", messages: ["Choose a design profile."] };
+  if (!presetId) return { status: "error", messages: ["Choose a theme."] };
   const result = await applyDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);

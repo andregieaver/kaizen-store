@@ -4,13 +4,13 @@ import { ActionForm, SubmitButton, type FormState } from "./action-form";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
-/** The state of a store template or a design profile (D177), as a small badge. */
+/** The state of a theme or a demo store (D177, D273), as a small badge. */
 export function LifecycleBadge({ facts }: { facts: LifecycleFacts }) {
   return <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{LIFECYCLE_WORDS[lifecycleState(facts)]}</span>;
 }
 
 /**
- * The life of a store template or a design profile on the platform (D177): Publish (also "Publish changes"), Unpublish, Archive or
+ * The life of a theme or a demo store on the platform (D177, D273): Publish (also "Publish changes"), Unpublish, Archive or
  * Restore, and Delete while nothing used it, behind a disclosure that asks to confirm. Every button is a form of its own, so it works without
  * JavaScript; the server checks everything again.
  */
@@ -20,7 +20,7 @@ export function LifecycleButtons({
   facts,
   actions,
 }: {
-  kind: "store template" | "design profile";
+  kind: "demo store" | "theme";
   title: string;
   facts: LifecycleFacts & { used: boolean };
   actions: { publish: Action; unpublish: Action; archive: Action; restore: Action; remove: Action };
@@ -30,7 +30,7 @@ export function LifecycleButtons({
   return (
     <>
       {offered.includes("publish") &&
-        (kind === "design profile" ? (
+        (kind === "theme" ? (
           // A theme's Publish takes What's new (D245), shown to the stores that installed it when the new version reaches them.
           <details className="rounded-md border border-line px-3 py-2 text-sm">
             <summary className="cursor-pointer">
@@ -87,9 +87,9 @@ export function LifecycleButtons({
           </summary>
           <ActionForm action={actions.remove} className="mt-2 flex max-w-sm flex-col gap-2">
             <p className="text-muted">
-              {kind === "store template"
-                ? "Deleting takes the store template off the platform for good. Its store and its published copies are closed and kept, as stores always are."
-                : "Deleting takes the design profile off the platform for good. Its workspace is closed and kept, as stores always are; a store template recommending it recommends none after."}
+              {kind === "demo store"
+                ? "Deleting takes the demo store off the platform for good. Its store and its published copies are closed and kept, as stores always are."
+                : "Deleting takes the theme off the platform for good. Its workspace is closed and kept, as stores always are."}
             </p>
             <label className="flex items-start gap-2">
               <input type="checkbox" name="confirm" required className="mt-0.5 size-4" />

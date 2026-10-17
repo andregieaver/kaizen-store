@@ -5,8 +5,8 @@ import { expect, test } from "@playwright/test";
  * Signing in to an admin needs Supabase's own sign-in, which the end-to-end tests have no fixture for (the signed-in admin is checked by hand,
  * D158), so answering the question for a website and the wizard without the shop's steps are held by the integration tests
  * (`src/server/store-features-onboarding.int.test.ts`, which call the same functions the wizard's action calls), the step rules by
- * `src/lib/setup-steps.test.ts`, the form by `src/components/admin/feature-question.test.ts` and the store template cards' "Starts with"
- * by `starter-cards.test.ts` (the sign-up page's cards are cached for hours, so a template made in a test is not seen there). What this
+ * `src/lib/setup-steps.test.ts`, the form by `src/components/admin/feature-question.test.ts` and the theme cards' "Starts with" by
+ * `design-cards.test.ts` (the sign-up page's cards are cached for hours, so a theme made in a test is not seen there). What this
  * spec holds: the wizard's pages, the new ones included, give a visitor without a session nothing.
  */
 

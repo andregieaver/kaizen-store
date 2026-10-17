@@ -1,5 +1,8 @@
 # Design profiles (D176, D177)
 
+> **Since D241 and D273 (`docs/themes-unified.md`)** these are *themes* in the interface, edited at `/admin/platform/themes/{id}`, and
+> the store-template choice described below is gone: a new store starts from the chosen look's demo store. The data model is unchanged.
+
 Store templates (D175, `docs/store-templates.md`) are the grunt work of a new store: modules, settings, products, pages. **Design profiles**
 are the look only, and any store can apply one: an owner from the store's Design settings, a platform admin from the store's page in the
 platform (a store template's included), and people creating a store at `/admin/stores` or asking for one at `/sign-up`, after choosing the

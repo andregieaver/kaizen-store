@@ -461,31 +461,35 @@ export type DesignTab = (typeof DESIGN_TABS)[number]["key"];
 
 /** The address of one of a profile's own pages (D177). */
 export const designTabHref = (presetId: string, tab: DesignTab): string =>
-  `/admin/platform/design-profiles/${presetId}${DESIGN_TABS.find((t) => t.key === tab)?.segment ?? ""}`;
+  `/admin/platform/themes/${presetId}${DESIGN_TABS.find((t) => t.key === tab)?.segment ?? ""}`;
 
 /** A card to choose: a design profile, or "keep the look" (`id` empty). */
 export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description" | "pictureUrl"> & {
   id: string;
-  /** The preview, opened in a new window; null for the card that keeps the look. */
+  /** The preview, opened in a new window; null for the Standard card. */
   previewHref: string | null;
   /**
-   * The content pack's store template its own look is shown on, when that template is published (`docs/theme-showcase-phase-1.md` step
-   * 3): what *Start with this theme* chooses as the store template too (step 4).
+   * The demo store its own look starts a new store with (D273): the published store template of the content pack it is shown on
+   * (`docs/theme-showcase-phase-1.md` step 3), or null for the Standard store; and that store in a few words (`Showcase.line`).
    */
   starterId?: string | null;
+  demo?: string | null;
   /** Its presets (step 4), each its own choice under the card. */
   looks?: DesignLookCard[];
 };
 
-/** A theme's preset as a choice under its card: its key and name, the trade it is shown on and that pack's template, and its preview. */
-export type DesignLookCard = { key: string; name: string; trade: string | null; starterId: string | null; previewHref: string };
+/** A theme's preset as a choice under its card: its key and name, the trade it is shown on, the demo store it starts with, its preview. */
+export type DesignLookCard = { key: string; name: string; trade: string | null; starterId: string | null; demo?: string | null; previewHref: string };
 
-/** The first card at creation and sign-up: the store template's own design, chosen unless the template recommends a profile. */
+/**
+ * The first card at creation and sign-up (D273): no theme of its own, so the Standard store's look and its demo products of every kind.
+ * Any theme can be chosen later from Design settings.
+ */
 export function keepDesignCard(): DesignCard {
   return {
     id: "",
-    title: "Keep the template's own design",
-    summary: "The store looks as the store template you chose does. Change the design any time later.",
+    title: "Standard",
+    summary: "A simple look with a demo product of every kind. Choose a theme any time later.",
     description: "",
     pictureUrl: null,
     previewHref: null,
@@ -507,18 +511,18 @@ export function designPreviewPath(presetId: string, starterId?: string | null, a
   // In a frame on the theme store's page, which says what it is: the store alone, no line above it.
   if (embed) query.set("embed", "1");
   const search = query.toString();
-  return `/admin/account/design-profiles/${presetId}/preview${search ? `?${search}` : ""}`;
+  return `/admin/account/themes/${presetId}/preview${search ? `?${search}` : ""}`;
 }
 
 /** The plain words for a refusal of the database's design profile rules, or null when the error is not one of them. */
 export function designRefusal(text: string): string | null {
-  if (text.includes("design_presets.used")) return "A store applied this design profile, so it cannot be deleted. Archive it instead.";
-  if (text.includes("design_presets.requested")) return "An access request chose this design profile, so it cannot be deleted. Archive it instead.";
-  if (text.includes("design_presets.workspace_fixed") || text.includes("design_presets.not_workspace")) return "The design profile's workspace could not be set up. Try again.";
-  if (text.includes("design_presets_archived_unpublished")) return "An archived design profile is never published. Restore it first.";
+  if (text.includes("design_presets.used")) return "A store applied this theme, so it cannot be deleted. Archive it instead.";
+  if (text.includes("design_presets.requested")) return "An access request chose this theme, so it cannot be deleted. Archive it instead.";
+  if (text.includes("design_presets.workspace_fixed") || text.includes("design_presets.not_workspace")) return "The theme's workspace could not be set up. Try again.";
+  if (text.includes("design_presets_archived_unpublished")) return "An archived theme is never published. Restore it first.";
   if (text.includes("design_preset_uses.restored")) return "The look from before was put back already.";
-  if (text.includes("design_preset_uses.")) return "That record of a design profile cannot be changed.";
-  if (text.includes("design_presets_snapshot")) return "The store's look is too large to keep as a design profile.";
+  if (text.includes("design_preset_uses.")) return "That record of a theme cannot be changed.";
+  if (text.includes("design_presets_snapshot")) return "The store's look is too large to keep as a theme.";
   if (text.includes("design_presets_")) return "Those details do not fit. Check the lengths and the picture's address.";
   return null;
 }

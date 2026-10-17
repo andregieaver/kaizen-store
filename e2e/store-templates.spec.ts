@@ -23,11 +23,11 @@ async function starterStore(): Promise<string> {
   return slug;
 }
 
-test("a store template's storefront is a preview: a notice, noindex and no checkout", async ({ page }) => {
+test("a demo store's storefront is a preview: a notice, noindex and no checkout", async ({ page }) => {
   const slug = await starterStore();
 
   await page.goto(`/s/${slug}/no`);
-  await expect(page.getByText("Forhåndsvisning av butikkmal: denne butikken tar ikke imot bestillinger.").first()).toBeVisible();
+  await expect(page.getByText("Forhåndsvisning av demobutikk: denne butikken tar ikke imot bestillinger.").first()).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 
   await page.goto(`/s/${slug}/no/p/demo-notatbok`);
@@ -37,7 +37,7 @@ test("a store template's storefront is a preview: a notice, noindex and no check
 
   await page.goto(`/s/${slug}/no/cart`);
   const summary = page.getByRole("complementary");
-  await expect(summary).toContainText("Dette er en butikkmal som vises for gjennomgang. Den tar ikke imot bestillinger.");
+  await expect(summary).toContainText("Dette er en demobutikk som vises for gjennomgang. Den tar ikke imot bestillinger.");
   await expect(page.getByRole("button", { name: "Til kassen" })).toHaveCount(0);
 
   // The checkout needs an order waiting for payment, which a template never has: back to the cart.
@@ -45,14 +45,14 @@ test("a store template's storefront is a preview: a notice, noindex and no check
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/cart$`));
 });
 
-test("a store template is in no sitemap", async ({ request }) => {
+test("a demo store is in no sitemap", async ({ request }) => {
   const slug = await starterStore();
   const index = await (await request.get("/sitemap.xml")).text();
   expect(index).not.toContain(slug);
   expect((await request.get(`/s/${slug}/store-sitemap.xml`)).status()).toBe(404);
 });
 
-test("a store template's published copy is a preview too, and its storefront follows what was published (D177)", async ({ page }) => {
+test("a demo store's published copy is a preview too, and its storefront follows what was published (D177)", async ({ page }) => {
   const slug = await starterStore();
   const sql = testDb();
   let copy: string;
@@ -66,6 +66,6 @@ test("a store template's published copy is a preview too, and its storefront fol
   }
   expect(copy).toBe(`${slug}-v1`);
   await page.goto(`/s/${copy}/no`);
-  await expect(page.getByText("Forhåndsvisning av butikkmal: denne butikken tar ikke imot bestillinger.").first()).toBeVisible();
+  await expect(page.getByText("Forhåndsvisning av demobutikk: denne butikken tar ikke imot bestillinger.").first()).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });

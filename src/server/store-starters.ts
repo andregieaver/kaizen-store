@@ -172,7 +172,7 @@ export function starterProblem(error: unknown, slug?: string): string {
   if (known) return known;
   if (slug && text.includes("stores_slug_unique")) return `The address ${slug} is taken. Choose another.`;
   if (text.includes("store_starters_")) return "Those details do not fit. Check the lengths and the picture's address.";
-  return "The store template could not be saved. Nothing was changed; try again.";
+  return "The demo store could not be saved. Nothing was changed; try again.";
 }
 
 function describe(error: unknown): string {
@@ -194,7 +194,7 @@ export async function createStarter(
   admin: Account,
   input: { slug: string; details: StarterDetails },
 ): Promise<StarterResult<{ id: string; slug: string }>> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make store templates."] };
+  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make demo stores."] };
   const problem = slugProblem(input.slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   const [taken] = await db().execute<Row>(sql`select 1 as taken from commerce.stores where slug = ${input.slug}`);
@@ -237,11 +237,11 @@ async function recommendable(presetId: string | null | undefined): Promise<boole
  * published is no draft. The recommended design profile (D176) is one of the details.
  */
 export async function saveStarterDraft(admin: Account, id: string, details: StarterDetails): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
-  if (!starter) return { ok: false, problems: ["Unknown store template."] };
+  if (!starter) return { ok: false, problems: ["Unknown demo store."] };
   const next: StarterDetails = { ...details, recommendedDesign: details.recommendedDesign === undefined ? shownDetails(starter).recommendedDesign ?? null : details.recommendedDesign };
-  if (!(await recommendable(next.recommendedDesign))) return { ok: false, problems: ["That design profile is gone or archived. Choose another."] };
+  if (!(await recommendable(next.recommendedDesign))) return { ok: false, problems: ["That theme is gone or archived. Choose another."] };
   const published = { ...shownDetails({ ...starter, draft: null }) };
   const draft = sameStarterDetails(next, published) ? null : next;
   try {
@@ -263,7 +263,7 @@ export async function saveStarterDraft(admin: Account, id: string, details: Star
  * One transaction: a failure publishes nothing. Refused while archived, and for a content pack whose pictures are not all made.
  */
 export async function publishStarter(admin: Account, id: string): Promise<StarterResult<{ copySlug: string; notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const notes: string[] = [];
   let done: { storeId: string; copyId: string; copySlug: string };
   try {
@@ -271,12 +271,12 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
       const [row] = await tx.execute<Row>(sql`
         select store_id, draft, archived_at, pack_key, pack_pictures from commerce.store_starters where id = ${id}::uuid for update
       `);
-      if (!row) throw new Refused("Unknown store template.");
-      if (row.archived_at) throw new Refused("This store template is archived. Restore it before publishing it.");
+      if (!row) throw new Refused("Unknown demo store.");
+      if (row.archived_at) throw new Refused("This demo store is archived. Restore it before publishing it.");
       // A content pack (`docs/theme-showcase-phase-1.md` step 2) is published only once all its pictures are made.
       const pack = row.pack_key ? contentPack(String(row.pack_key)) : null;
       const missing = pack ? picturesMissing(pack, row.pack_pictures) : 0;
-      if (missing > 0) throw new Refused(`Make this content pack's pictures first: ${missing} still to make, on the Store templates page.`);
+      if (missing > 0) throw new Refused(`Make this content pack's pictures first: ${missing} still to make, under Demo stores on the Themes page.`);
       const draft = readStarterDraft(row.draft);
       if (draft) {
         let recommended = draft.recommendedDesign ?? null;
@@ -284,7 +284,7 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
           const [preset] = await tx.execute<Row>(sql`select 1 as ok from commerce.design_presets where id = ${recommended}::uuid and archived_at is null`);
           if (!preset) {
             recommended = null;
-            notes.push("Its recommended design profile is gone or archived, so it recommends none now.");
+            notes.push("Its recommended theme is gone or archived, so it recommends none now.");
           }
         }
         await tx.execute(sql`
@@ -304,7 +304,7 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
   } catch (error) {
     if (error instanceof Refused) return { ok: false, problems: [error.message] };
     console.error("[store-starters] publishing failed", error);
-    return { ok: false, problems: [starterRefusal(describe(error)) ?? "The store template could not be published. Nothing was changed; try again."] };
+    return { ok: false, problems: [starterRefusal(describe(error)) ?? "The demo store could not be published. Nothing was changed; try again."] };
   }
   await audit(admin.id, done.storeId, "platform.starter_published", { starter: id, copy: done.copyId, copySlug: done.copySlug }, {
     target: { type: "store_starter", id },
@@ -331,7 +331,7 @@ export async function publishedPacks(): Promise<Map<string, string>> {
 
 /** Stops offering a store template at once (D177): stores made from it keep what they got; pending sign-ups that chose it get the Standard store. */
 export async function unpublishStarter(admin: Account, id: string): Promise<StarterResult<{ pendingRequests: number }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set published = false, updated_by = ${admin.id}::uuid where id = ${id}::uuid and published
     returning store_id, (select count(*)::int from commerce.access_requests r where r.starter_id = ${id}::uuid and r.status = 'pending') as pending
@@ -343,7 +343,7 @@ export async function unpublishStarter(admin: Account, id: string): Promise<Star
 
 /** Archives a store template (D177): unpublished, and hidden from every list but the platform's Archived filter, until Restore. */
 export async function archiveStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set archived_at = now(), archived_by = ${admin.id}::uuid, published = false, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and archived_at is null
@@ -355,7 +355,7 @@ export async function archiveStarter(admin: Account, id: string): Promise<Starte
 
 /** Restores an archived store template (D177): back in the list as an unpublished draft. */
 export async function restoreStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set archived_at = null, archived_by = null, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and archived_at is not null
@@ -371,16 +371,16 @@ export async function restoreStarter(admin: Account, id: string): Promise<Starte
  * stay, hidden; only the template's row goes.
  */
 export async function deleteStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
-  if (!starter) return { ok: false, problems: ["Unknown store template."] };
-  const blocker = deleteBlocker("store template", { stores: starter.storesMade, requests: starter.requests });
+  if (!starter) return { ok: false, problems: ["Unknown demo store."] };
+  const blocker = deleteBlocker("demo store", { stores: starter.storesMade, requests: starter.requests });
   if (blocker) return { ok: false, problems: [blocker] };
   try {
     await db().transaction(async (tx) => {
       await tx.execute(sql`select 1 from commerce.store_starters where id = ${id}::uuid for update`);
       await tx.execute(sql`
-        update commerce.stores set status = 'closed', status_reason = 'Its store template was deleted.', status_changed_by = ${admin.id}::uuid
+        update commerce.stores set status = 'closed', status_reason = 'The demo store was deleted.', status_changed_by = ${admin.id}::uuid
          where (id = ${starter.storeId}::uuid or starter_copy_of = ${id}::uuid) and status <> 'closed'
       `);
       await tx.execute(sql`delete from commerce.store_starters where id = ${id}::uuid`);
@@ -394,7 +394,7 @@ export async function deleteStarter(admin: Account, id: string): Promise<Starter
 
 /** Moves a store template one place up or down in the order owners see; the order is written again as 1, 2, 3 … */
 export async function moveStarter(admin: Account, id: string, direction: "up" | "down"): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const moved = await db().transaction(async (tx) => {
     // One mover at a time, so two admins reordering never interleave.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.store_starters.position'))`);
@@ -418,11 +418,11 @@ export async function moveStarter(admin: Account, id: string, direction: "up" | 
  * can edit every template. Returns the store's slug.
  */
 export async function joinStarter(admin: Account, id: string): Promise<StarterResult<{ slug: string }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [starter] = await db().execute<Row>(sql`
     select s.id, s.slug from commerce.store_starters st join commerce.stores s on s.id = st.store_id where st.id = ${id}::uuid
   `);
-  if (!starter) return { ok: false, problems: ["Unknown store template."] };
+  if (!starter) return { ok: false, problems: ["Unknown demo store."] };
   const storeId = String(starter.id);
   const [joined] = await db().execute<Row>(sql`
     insert into commerce.store_members (store_id, account_id, role)
@@ -459,10 +459,10 @@ export async function setStarterFeatures(
   target: readonly string[],
   options: { confirmed?: boolean } = {},
 ): Promise<StarterResult<{ features: FeatureId[] }> | { ok: false; problems: string[]; warnings: string[]; needsConfirmation: true }> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
   const store = starter ? await getStore(starter.storeSlug) : null;
-  if (!starter || !store) return { ok: false, problems: ["Unknown store template."] };
+  if (!starter || !store) return { ok: false, problems: ["Unknown demo store."] };
   const result = await setFeatures({ account: admin, store, role: "owner" }, normaliseFeatures(target), { confirmed: options.confirmed, via: "store_template" });
   if (!result.ok) {
     return result.needsConfirmation ? { ok: false, problems: result.problems, warnings: result.warnings ?? [], needsConfirmation: true } : { ok: false, problems: result.problems };

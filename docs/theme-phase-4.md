@@ -1,5 +1,8 @@
 # Kaizena Flow's own site on themes: phase 4 of the theme store plan
 
+> **Since D273** the page described here as `/admin/platform/themes` is Website → Design at `/admin/platform/site-design` (and its install
+> pages under it); `/admin/platform/themes` is the themes themselves (`docs/themes-unified.md`).
+
 Phase 4 of `docs/theme-store.md` (section 9): Kaizena Flow's own site switches theme as a store does. Today its look is a store's shape kept
 on `platform_settings` (D235: `theme`, `fonts`, `custom_css`, `header_id`, `footer_id`), edited in Kaizena Flow's page builder's Theme tab,
 with no library of installed themes, and no theme can be applied to it. Built in steps, each pushed on its own.

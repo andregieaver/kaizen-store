@@ -103,8 +103,8 @@ describe("a theme's photographs", () => {
 
   it("are taken by the job from the public preview, cut and stored, and only then marked made", async () => {
     await runJob();
-    expect(looked).toContain(`computer ${ORIGIN}/admin/account/design-profiles/${theme}/preview?embed=1`);
-    expect(looked).toContain(`phone ${ORIGIN}/admin/account/design-profiles/${theme}/preview?embed=1`);
+    expect(looked).toContain(`computer ${ORIGIN}/admin/account/themes/${theme}/preview?embed=1`);
+    expect(looked).toContain(`phone ${ORIGIN}/admin/account/themes/${theme}/preview?embed=1`);
     const rows = await mine();
     expect(rows.map((r) => r.status)).toEqual(["done", "done", "done"]);
     const computer = readShotPictures(rows[0].pictures);

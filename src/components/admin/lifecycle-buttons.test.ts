@@ -16,10 +16,10 @@ const facts: { published: boolean; archivedAt: string | null; publishedAt: strin
   used: false,
 };
 const render = (over: Partial<typeof facts>) =>
-  renderToString(createElement(LifecycleButtons, { kind: "design profile", title: "Nordic calm", facts: { ...facts, ...over }, actions }));
+  renderToString(createElement(LifecycleButtons, { kind: "theme", title: "Nordic calm", facts: { ...facts, ...over }, actions }));
 const buttons = (html: string) => (html.match(/<button[^>]*>.*?<\/button>/g) ?? []).map((b) => b.replace(/<[^>]+>/g, ""));
 
-describe("the life of a store template or design profile on the platform (D177)", () => {
+describe("the life of a theme or a demo store on the platform (D177, D273)", () => {
   it("offers Publish, Archive and a confirmed Delete for a draft nothing used", () => {
     const html = render({});
     expect(buttons(html)).toEqual(["Publish Nordic calm", "Archive Nordic calm", "Delete for good Nordic calm"]);

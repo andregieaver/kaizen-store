@@ -70,7 +70,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("a platform admin makes a store template (D175)", () => {
+describe("a platform admin makes a demo store (D175)", () => {
   it("refuses anyone who does not run the platform", async () => {
     expect(await starters.createStarter(owner, { slug: `nope-${run}`, details: details() })).toMatchObject({ ok: false });
   });
@@ -117,7 +117,7 @@ describe("a platform admin makes a store template (D175)", () => {
   });
 });
 
-describe("the database's rules for store templates", () => {
+describe("the database's rules for demo stores", () => {
   it("keeps a starter a starter, never also the template, and refuses its orders", async () => {
     await refused(db().execute(sql`update commerce.stores set starter = false where id = ${spa.storeId}::uuid`), /stores\.starter_fixed/);
     await refused(db().execute(sql`update commerce.stores set is_template = true where id = ${spa.storeId}::uuid`), /stores_starter_not_template|stores_one_template/);
@@ -170,7 +170,7 @@ describe("setting the template up, then publishing it", () => {
   it("is refused to owners until it is published", async () => {
     expect(await createStoreForOwner(owner, "Early", `early-${run}`, spa.id)).toEqual({
       ok: false,
-      problems: ["That store template is not offered any more. Choose another."],
+      problems: ["That demo store is not offered any more. Choose another."],
     });
     expect((await one(sql`select count(*)::int as n from commerce.stores where slug = ${`early-${run}`}`)).n).toBe(0);
   });
@@ -254,7 +254,7 @@ describe("setting the template up, then publishing it", () => {
   });
 });
 
-describe("sign-up with a store template", () => {
+describe("sign-up with a demo store", () => {
   it("keeps a published template on the request, drops anything else, and approval copies it", async () => {
     await createAccessRequest({ name: "Siri", email: `siri-${run}@example.com`, storeName: "Siri Spa", message: "", starterId: spa.id });
     await createAccessRequest({ name: "Per", email: `per-${run}@example.com`, storeName: "Per", message: "", starterId: crypto.randomUUID() });
@@ -277,7 +277,7 @@ describe("sign-up with a store template", () => {
     // Chosen by the admin: refused in plain words, nothing made.
     expect(await approveAccessRequest(admin, String(ola.id), `ola-${run}`, "Ola", "https://example.com", spa.id)).toEqual({
       ok: false,
-      problems: ["That store template is not offered any more. Choose another."],
+      problems: ["That demo store is not offered any more. Choose another."],
     });
     expect((await one(sql`select status from commerce.access_requests where id = ${String(ola.id)}::uuid`)).status).toBe("pending");
     // Kept from the request: the Standard store, and the admin is told.
@@ -295,7 +295,7 @@ describe("sign-up with a store template", () => {
   });
 });
 
-describe("a store template is not a real store", () => {
+describe("a demo store is not a real store", () => {
   it("is left out of the platform's counts, store lists, customers and billing", async () => {
     const overview = await platformOverview();
     const count = await one(sql`select count(*)::int as n from commerce.stores where status <> 'closed' and not (is_template or starter)`);
@@ -325,7 +325,7 @@ describe("a store template is not a real store", () => {
     });
     expect(shopper).toBe("suppressed");
     const kept = await one(sql`select status, error, to_address from commerce.email_messages where store_id = ${spa.storeId}::uuid and kind = 'account.code' order by created_at desc limit 1`);
-    expect(kept).toMatchObject({ status: "failed", error: "suppressed: a store template does not email shoppers", to_address: "[removed]" });
+    expect(kept).toMatchObject({ status: "failed", error: "suppressed: a demo store does not email shoppers", to_address: "[removed]" });
     const staff = await sendEmail({
       storeId: spa.storeId,
       kind: "stock.low",
@@ -350,7 +350,7 @@ describe("a store template is not a real store", () => {
   });
 });
 
-describe("the life of a store template (D177)", () => {
+describe("the life of a demo store (D177)", () => {
   it("keeps saved details as a draft until it is published again; owners read the published ones", async () => {
     expect(await starters.saveStarterDraft(admin, spa.id, details({ title: "Spa, salon and sauna" }))).toEqual({ ok: true });
     expect((await starters.listOfferedStarters()).find((s) => s.id === spa.id)?.title).toBe("Spa & salon");
@@ -408,7 +408,7 @@ describe("the life of a store template (D177)", () => {
     expect((await starters.listOfferedStarters()).some((s) => s.id === shop.id)).toBe(false);
     expect((await starters.listStarters()).some((s) => s.id === shop.id)).toBe(false);
     expect((await starters.listStarters("archived")).find((s) => s.id === shop.id)).toMatchObject({ published: false });
-    expect(await starters.publishStarter(admin, shop.id)).toEqual({ ok: false, problems: ["This store template is archived. Restore it before publishing it."] });
+    expect(await starters.publishStarter(admin, shop.id)).toEqual({ ok: false, problems: ["This demo store is archived. Restore it before publishing it."] });
     expect(await createStoreForOwner(owner, "Shelved", `shelved-${run}`, shop.id)).toMatchObject({ ok: false });
     expect(await starters.restoreStarter(admin, shop.id)).toEqual({ ok: true });
     expect((await starters.getStarter(shop.id))).toMatchObject({ archivedAt: null, published: false });
@@ -421,7 +421,7 @@ describe("the life of a store template (D177)", () => {
   it("is deleted only while unused: its stores are closed and kept", async () => {
     expect(await starters.deleteStarter(admin, spa.id)).toEqual({
       ok: false,
-      problems: [expect.stringMatching(/^This store template cannot be deleted: \d+ stores were made from it and \d+ access requests name it\. Archive it instead\.$/)],
+      problems: [expect.stringMatching(/^This demo store cannot be deleted: \d+ stores were made from it and \d+ access requests name it\. Archive it instead\.$/)],
     });
     const unused = await starters.createStarter(admin, { slug: `unused-${run}`, details: details({ title: "Unused" }) });
     if (!unused.ok) throw new Error("not made");

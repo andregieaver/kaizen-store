@@ -611,8 +611,8 @@ export const nb: Messages = {
   untilCleared: "Til den slettes",
   demoNotice: "Dette er en demobutikk. Ingenting kan kjøpes ennå.",
   // A store template (D175): a preview of a starting point for new stores, never a shop.
-  starterNotice: "Forhåndsvisning av butikkmal: denne butikken tar ikke imot bestillinger.",
-  starterCheckout: "Dette er en butikkmal som vises for gjennomgang. Den tar ikke imot bestillinger.",
+  starterNotice: "Forhåndsvisning av demobutikk: denne butikken tar ikke imot bestillinger.",
+  starterCheckout: "Dette er en demobutikk som vises for gjennomgang. Den tar ikke imot bestillinger.",
   // A cart in a country the store no longer sells to (D178): it explains, and leads to the store's own country.
   cartCountryClosed: (country: string) => `Butikken selger ikke lenger til ${country}, så denne handlekurven kan ikke bestilles.`,
   cartGoHome: (home: string) => `Gå til butikken for ${home}`,

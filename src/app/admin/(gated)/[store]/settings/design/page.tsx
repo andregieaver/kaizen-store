@@ -53,7 +53,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
       />
       {designFailed && (
         <p role="alert" className="max-w-3xl rounded-panel border border-line bg-card p-4 text-sm">
-          The store is made, but the theme you chose could not be applied: it has its store template&apos;s look. Add the theme below,
+          The store is made, but the theme you chose could not be applied: it has its demo store&apos;s look. Add the theme below,
           or choose another.
         </p>
       )}

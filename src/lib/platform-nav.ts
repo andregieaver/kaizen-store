@@ -1,7 +1,7 @@
 /**
  * The platform admin's sections (D144), pure data for its layout, its hub pages and the tests that keep them in step
  * with the admin map. Each section has a tab and, where it has pages of its own, a sidebar; Home, Customers and Requests
- * have none. Stores has had one since store templates (D175).
+ * have none. Stores has had one since store templates (D175), now its themes (D273).
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
@@ -21,14 +21,13 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows."),
   item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows."),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use."),
-  item("/themes", "Themes", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back."),
+  item("/site-design", "Design", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back."),
 ];
 
-/** The Stores section (D175): every store, the store templates new stores start from, and the design profiles any store can apply (D176). */
+/** The Stores section (D175): every store, and the themes new stores start from and any store can apply (D176, D273). */
 export const STORE_ITEMS: SectionItem[] = [
   item("/stores", "All stores", "Every store with its plan, subscription and fee.", true),
-  item("/store-templates", "Store templates", "Starting points for new stores, each a store set up for one kind of business: make, describe, publish, archive, order and preview them."),
-  item("/design-profiles", "Themes", "Kaizena Flow's themes, each a whole look kept to use again (theme, header, footer, product page and CSS): make one from a store or from scratch, edit it here, publish, archive, order and preview them."),
+  item("/themes", "Themes", "Kaizena Flow's themes, each a whole look with its presets and the demo store each preset starts new stores with: make, edit, publish, archive, order and preview them, and set up the demo stores."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [

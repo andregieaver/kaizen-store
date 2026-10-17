@@ -13,6 +13,7 @@ import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
 import { storeAreas, storeTabs } from "@/lib/store-nav";
+import { DEMO_STORES_HREF } from "@/lib/theme-admin-paths";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
@@ -133,16 +134,16 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
     >
       {store.starter && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">This store is a store template.</p>
+          <p className="font-medium">This store is a demo store.</p>
           <p className="text-muted">
-            New stores made from it start with its products, services, staff, pages, menus, settings and page drafts, as they were when it was
-            last published: changes made here reach new stores when the template is published again. It takes no orders and is never shown to
-            search engines.
+            New stores that start from a theme&apos;s look shown on it start with its products, services, staff, pages, menus, settings and
+            page drafts, as they were when it was last published: changes made here reach new stores when it is published again. It takes no
+            orders and is never shown to search engines.
             {account.platformAdmin && (
               <>
                 {" "}
-                <Link href="/admin/platform/store-templates" className="font-medium underline underline-offset-2">
-                  Store templates
+                <Link href={DEMO_STORES_HREF} className="font-medium underline underline-offset-2">
+                  Demo stores
                 </Link>
               </>
             )}

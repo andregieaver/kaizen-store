@@ -223,7 +223,7 @@ export async function syncContentPacks(admin: Account, deps: PackDeps = {}): Pro
         }
         await db().execute(sql`update commerce.store_starters set pack_key = ${pack.key} where id = ${made.id}::uuid and pack_key is null`);
         row = await packRow(pack.key);
-        if (!row) throw new Error("The pack's store template was made but could not be found.");
+        if (!row) throw new Error("The pack's demo store was made but could not be found.");
       }
       result.stores.push({ id: row.storeId, slug: row.slug });
       await writePack(admin, row, pack, deps);

@@ -142,7 +142,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("a platform admin makes a design profile from a store (D176)", () => {
+describe("a platform admin makes a theme from a store (D176)", () => {
   it("refuses anyone who does not run the platform, and a store the admin does not work in", async () => {
     expect(await designs.createDesign(owner, { origin: { kind: "store", storeId: target.id }, details: details("Nope") }, deps)).toMatchObject({ ok: false });
     expect(await designs.createDesign(admin, { origin: { kind: "store", storeId: target.id }, details: details("Nope") }, deps)).toEqual({
@@ -175,11 +175,11 @@ describe("a platform admin makes a design profile from a store (D176)", () => {
   });
 });
 
-describe("applying a design profile (D176)", () => {
+describe("applying a theme (D176)", () => {
   it("is refused to an owner while the profile is unpublished", async () => {
     expect(await designs.applyDesignPreset(target.id, presetId, owner.id, deps)).toEqual({
       ok: false,
-      problems: ["That design profile is not offered any more. Choose another."],
+      problems: ["That theme is not offered any more. Choose another."],
     });
     expect(await designs.publishDesign(admin, presetId)).toMatchObject({ ok: true });
   });
@@ -265,7 +265,7 @@ describe("applying a design profile (D176)", () => {
     expect(await designs.restoreDesignLook(target.id, owner.id)).toEqual({ ok: false, problems: ["There is no look from before to put back."] });
   });
 
-  it("lets a platform admin try an unpublished profile on a store template, and on no other store", async () => {
+  it("lets a platform admin try an unpublished profile on a demo store, and on no other store", async () => {
     const draft = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Draft ${run}`) }, deps);
     const draftId = (draft as { id: string }).id;
     const starter = await starters.createStarter(admin, { slug: `tpl-${run}`, details: starterDetails() });
@@ -287,8 +287,8 @@ function starterDetails() {
   return parsed.details;
 }
 
-describe("choosing a design profile when a store is made (D176)", () => {
-  it("applies the profile chosen when an owner creates a store, after the store template's copy", async () => {
+describe("choosing a theme when a store is made (D176)", () => {
+  it("applies the profile chosen when an owner creates a store, after the demo store's copy", async () => {
     const result = await createStoreForOwner(owner, "Second", `second-${run}`, null, presetId);
     expect(result).toMatchObject({ ok: true, design: { problem: null } });
     const store = await one(sql`select id, theme from commerce.stores where slug = ${`second-${run}`}`);
@@ -300,7 +300,7 @@ describe("choosing a design profile when a store is made (D176)", () => {
     const draft = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Hidden ${run}`) }, deps);
     expect(await createStoreForOwner(owner, "Third", `third-${run}`, null, (draft as { id: string }).id)).toEqual({
       ok: false,
-      problems: ["That design profile is not offered any more. Choose another."],
+      problems: ["That theme is not offered any more. Choose another."],
     });
     expect((await one(sql`select count(*)::int as n from commerce.stores where slug = ${`third-${run}`}`)).n).toBe(0);
   });
@@ -352,18 +352,37 @@ describe("choosing a design profile when a store is made (D176)", () => {
     expect(store.header_id).toBeNull();
   });
 
-  it("offers a store template's recommended profile first, while both are published", async () => {
-    const starter = await starters.createStarter(admin, { slug: `rec-${run}`, details: starterDetails() });
-    const starterId = (starter as { id: string }).id;
-    // The recommendation is one of the template's details (D177): a draft until the template is published.
-    expect(await starters.saveStarterDraft(admin, starterId, { ...starterDetails(), recommendedDesign: presetId })).toEqual({ ok: true });
-    expect((await designs.designChoices()).recommended[starterId]).toBeUndefined();
-    expect(await starters.publishStarter(admin, starterId)).toMatchObject({ ok: true });
-    expect((await designs.designChoices()).recommended[starterId]).toBe(presetId);
+  it("starts a new store from the demo store of the look chosen, else the Standard store (D273)", async () => {
+    // A published demo store of a pack, as Kaizena Flow keeps them; one this test did not make is set aside, its store's address too.
+    await db().execute(sql`
+      update commerce.stores s set slug = left(s.slug, 20) || '-' || ${run}
+      from commerce.store_starters ss where ss.store_id = s.id and ss.pack_key = 'neon'
+    `);
+    await db().execute(sql`update commerce.store_starters set pack_key = pack_key || '-' || ${run} where pack_key = 'neon'`);
+    const [demo] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, starter) values (${`demo-${run}`}, 'Demo', true) returning id`);
+    const [pack] = await db().execute<Row>(sql`
+      insert into commerce.store_starters (store_id, title, category, pack_key, pack_version, published)
+      values (${String(demo.id)}::uuid, 'Neon', 'retail', 'neon', 1, true) returning id
+    `);
+    const before = (await one(sql`select listing from commerce.design_presets where id = ${presetId}::uuid`)).listing;
+    expect(await designs.demoStoreForLook(null)).toBeNull();
+    // The theme's own look names no demo store: the Standard store.
+    await db().execute(sql`update commerce.design_presets set listing = '{}'::jsonb where id = ${presetId}::uuid`);
+    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
+    await db().execute(sql`update commerce.design_presets set listing = ${JSON.stringify({ pack: "neon" })}::jsonb where id = ${presetId}::uuid`);
+    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBe(String(pack.id));
+    // A preset the theme no longer has starts from the theme's own look's.
+    expect(await designs.demoStoreForLook({ id: presetId, variation: "gone" })).toBe(String(pack.id));
+    // A demo store no longer published, or a theme no longer offered, gives the Standard store.
+    await db().execute(sql`update commerce.store_starters set published = false where id = ${String(pack.id)}::uuid`);
+    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
+    await db().execute(sql`update commerce.store_starters set published = true where id = ${String(pack.id)}::uuid`);
     await designs.unpublishDesign(admin, presetId);
-    expect((await designs.designChoices()).recommended[starterId]).toBeUndefined();
+    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
     await designs.publishDesign(admin, presetId);
-    expect(await starters.saveStarterDraft(owner, starterId, { ...starterDetails(), recommendedDesign: presetId })).toMatchObject({ ok: false });
+    expect(await designs.demoStoreForLook({ id: "not-an-id", variation: null })).toBeNull();
+    await db().execute(sql`update commerce.design_presets set listing = ${JSON.stringify(before ?? {})}::jsonb where id = ${presetId}::uuid`);
+    await db().execute(sql`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${String(pack.id)}::uuid`);
   });
 });
 
@@ -378,7 +397,7 @@ describe("the preview (D176)", () => {
   });
 });
 
-describe("a design profile's workspace and its draft (D177)", () => {
+describe("a theme's workspace and its draft (D177)", () => {
   let scratch: string;
   let workspace: { id: string; slug: string };
 
@@ -496,7 +515,7 @@ describe("a design profile's workspace and its draft (D177)", () => {
   });
 });
 
-describe("the life of a design profile (D177)", () => {
+describe("the life of a theme (D177)", () => {
   it("is taken out of the choices at once when unpublished, and says which pending requests chose it", async () => {
     const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Chosen ${run}`) }, deps);
     const id = (made as { id: string }).id;
@@ -513,7 +532,7 @@ describe("the life of a design profile (D177)", () => {
       fellBack: { starter: null, design: `Chosen ${run}` },
     });
     // A request chose it: it is archived, never deleted.
-    expect(await designs.deleteDesign(admin, id)).toEqual({ ok: false, problems: ["This design profile cannot be deleted: 1 access request names it. Archive it instead."] });
+    expect(await designs.deleteDesign(admin, id)).toEqual({ ok: false, problems: ["This theme cannot be deleted: 1 access request names it. Archive it instead."] });
   });
 
   it("is archived out of every list and choice and every template's recommendation, and restored unpublished", async () => {
@@ -534,7 +553,7 @@ describe("the life of a design profile (D177)", () => {
     const row = (await starters.getStarter(starterId))!;
     expect(row.recommendedDesign).toBeNull();
     expect(row.draft?.recommendedDesign).toBeNull();
-    expect(await designs.publishDesign(admin, id)).toEqual({ ok: false, problems: ["This design profile is archived. Restore it before publishing it."] });
+    expect(await designs.publishDesign(admin, id)).toEqual({ ok: false, problems: ["This theme is archived. Restore it before publishing it."] });
     expect(await designs.applyDesignPreset(target.id, id, admin.id, deps)).toMatchObject({ ok: false });
 
     expect(await designs.restoreDesign(admin, id)).toEqual({ ok: true });
@@ -542,7 +561,7 @@ describe("the life of a design profile (D177)", () => {
   });
 
   it("is deleted only while unused: a store that applied it keeps it, else its workspace is closed and kept", async () => {
-    expect(await designs.deleteDesign(admin, presetId)).toMatchObject({ ok: false, problems: [expect.stringMatching(/^This design profile cannot be deleted: \d+ stores applied it.* Archive it instead\.$/)] });
+    expect(await designs.deleteDesign(admin, presetId)).toMatchObject({ ok: false, problems: [expect.stringMatching(/^This theme cannot be deleted: \d+ stores applied it.* Archive it instead\.$/)] });
     const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Gone ${run}`) }, deps);
     const id = (made as { id: string }).id;
     const workspaceId = (await designs.getDesign(id))!.workspaceStoreId!;

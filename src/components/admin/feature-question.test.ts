@@ -31,9 +31,9 @@ describe("the setup wizard's question (D178 step 6)", () => {
 
   it("asks for a tick only when leaving something out has something to warn of, and says what", () => {
     expect(draw(["goods"], [])).not.toContain('name="confirm"');
-    const html = draw(["appointments"], [], [{ label: "Appointments", lines: ["2 appointment products can no longer be booked."] }], "Your store was made from the store template Spa.");
+    const html = draw(["appointments"], [], [{ label: "Appointments", lines: ["2 appointment products can no longer be booked."] }], "Your store was made from the demo store Spa.");
     expect(html).toContain('name="confirm"');
     expect(html).toContain("2 appointment products can no longer be booked.");
-    expect(html).toContain("Your store was made from the store template Spa.");
+    expect(html).toContain("Your store was made from the demo store Spa.");
   });
 });

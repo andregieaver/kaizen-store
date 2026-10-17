@@ -81,10 +81,10 @@ export type DesignResult<T = Record<never, never>> = ({ ok: true } & T) | { ok: 
 
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const refuse = (message: string): { ok: false; problems: string[] } => ({ ok: false, problems: [message] });
-const UNKNOWN = "Unknown design profile.";
-const NOT_OFFERED = "That design profile is not offered any more. Choose another.";
+const UNKNOWN = "Unknown theme.";
+const NOT_OFFERED = "That theme is not offered any more. Choose another.";
 const NO_PRESET = "This theme has no such preset any more. Choose another.";
-const KEPT = "This store is kept by the platform (a store template's published copy or a design profile's workspace): its look is not changed here.";
+const KEPT = "This store is kept by the platform (a demo store's published copy or a theme's workspace): its look is not changed here.";
 
 function describe(error: unknown): string {
   const parts: string[] = [];
@@ -99,7 +99,7 @@ function describe(error: unknown): string {
 
 /** Plain words for an error from the database, never its text. */
 export function designProblem(error: unknown): string {
-  return designRefusal(describe(error)) ?? "The design profile could not be saved. Nothing was changed; try again.";
+  return designRefusal(describe(error)) ?? "The theme could not be saved. Nothing was changed; try again.";
 }
 
 // ---------------------------------------------------------------------------
@@ -129,48 +129,67 @@ export async function listOfferedDesigns(): Promise<OfferedDesign[]> {
 }
 
 /**
- * What the create-store and sign-up forms offer (cached under `DESIGNS_TAG` and `STARTERS_TAG`): the card that keeps the template's own
- * look first, then each published profile with its preview; and each published store template's recommended profile (D175), when that
- * profile is published, which the form chooses when that template is chosen.
+ * What the create-store and sign-up forms offer (D273, cached under `DESIGNS_TAG` and `STARTERS_TAG`): the Standard card first, then each
+ * published theme with its preview and its presets, each look saying which demo store a new store starts with (`demoStoreForLook()`).
  */
-export async function designChoices(): Promise<{ cards: DesignCard[]; recommended: Record<string, string> }> {
+export async function designChoices(): Promise<{ cards: DesignCard[] }> {
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  const [offered, rows, listings, packs] = await Promise.all([
+  const [offered, listings, packs] = await Promise.all([
     listOfferedDesigns(),
-    readDb().execute<Row>(sql`
-      select st.id, st.recommended_design from commerce.store_starters st
-      join commerce.design_presets d on d.id = st.recommended_design and d.published and d.archived_at is null
-      where st.published and st.archived_at is null
-    `),
     readDb().execute<Row>(sql`select id, listing from commerce.design_presets where published and archived_at is null`),
     publishedPacks(),
   ]);
-  const ids = new Set(offered.map((d) => d.id));
   const listingOf = new Map(listings.map((row) => [String(row.id), readListing(row.listing)]));
   // A theme without a picture of its own shows the card made from its own look's photograph (`docs/theme-showcase-phase-2.md` step 1).
   const shots = await themeShotsFor(offered.map((d) => d.id));
-  // Each look with the content pack's template it is shown on (`docs/theme-showcase-phase-1.md` steps 3 and 4), previewed there.
+  // Each look with the content pack's template it is shown on and starts a store with (`docs/theme-showcase-phase-1.md` steps 3 and 4).
   const card = (d: OfferedDesign): DesignCard => {
     const looks = themeLooks(d.title, d.presets ?? [], listingOf.get(d.id) ?? { pack: null, presetPacks: {} }, packs);
+    const own = looks.find((look) => look.key === null)?.showcase ?? null;
     const starterOf = (key: string | null) => looks.find((look) => look.key === key)?.showcase?.starterId ?? null;
     return {
       ...d,
       pictureUrl: d.pictureUrl ?? shots.get(lookOf(d.id, null))?.computer?.card?.url ?? null,
       previewHref: designPreviewPath(d.id, starterOf(null)),
-      starterId: starterOf(null),
+      starterId: own?.starterId ?? null,
+      demo: own?.line ?? null,
       looks: looks.flatMap((look) =>
         look.key === null
           ? []
-          : [{ key: look.key, name: look.name, trade: look.showcase?.trade ?? null, starterId: look.showcase?.starterId ?? null, previewHref: designPreviewPath(d.id, starterOf(look.key), false, false, false, look.key) }],
+          : [
+              {
+                key: look.key,
+                name: look.name,
+                trade: look.showcase?.trade ?? null,
+                starterId: look.showcase?.starterId ?? null,
+                demo: look.showcase?.line ?? null,
+                previewHref: designPreviewPath(d.id, starterOf(look.key), false, false, false, look.key),
+              },
+            ],
       ),
     };
   };
-  return {
-    cards: [keepDesignCard(), ...offered.map(card)],
-    recommended: Object.fromEntries(rows.filter((r) => ids.has(String(r.recommended_design))).map((r) => [String(r.id), String(r.recommended_design)])),
-  };
+  return { cards: [keepDesignCard(), ...offered.map(card)] };
+}
+
+/**
+ * The demo store a theme's look starts a new store with (D273): the published store template of the content pack the look is shown on
+ * (`themeLooks()`), the theme's own look's when the preset is gone from its published version, else null: the Standard store. Sign-up,
+ * creating a store and approving a request all ask it, so a new store's content always follows the look chosen; nobody chooses it apart.
+ */
+export async function demoStoreForLook(look: { id: string; variation: string | null } | null): Promise<string | null> {
+  if (!look || !isUuid(look.id)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select title, listing, snapshot from commerce.design_presets where id = ${look.id}::uuid and published and archived_at is null
+  `);
+  if (!row) return null;
+  const snapshot = parseDesignSnapshot(row.snapshot);
+  const presets = snapshot ? variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name })) : [];
+  const looks = themeLooks(String(row.title), presets, readListing(row.listing), await publishedPacks());
+  const chosen = looks.find((one) => one.key === (look.variation ?? null)) ?? looks[0];
+  return chosen?.showcase?.starterId ?? null;
 }
 
 const ROW_SELECT = sql`
@@ -266,7 +285,7 @@ export async function draftVariations(presetId: string): Promise<DraftVariation[
  * it is stored (version 2 only when it has presets, so a theme without them keeps its key and versions as before).
  */
 async function draftedSnapshot(design: Pick<DesignRow, "id" | "workspaceStoreId">): Promise<DesignResult<{ snapshot: DesignSnapshot; notes: string[] }>> {
-  if (!design.workspaceStoreId) return refuse("This design profile has no workspace yet.");
+  if (!design.workspaceStoreId) return refuse("This theme has no workspace yet.");
   const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
   if (!taken.ok) return taken;
   const variations = publishedVariations(await draftVariations(design.id));
@@ -362,7 +381,7 @@ export async function takeSnapshot(storeId: string, options: { drafts?: boolean 
     productLayout: layout(store.product_layout, "productLayout"),
     css,
   });
-  if (!snapshot) return refuse("The store's look could not be read as a design profile. Check its header, footer and product layout in the builder.");
+  if (!snapshot) return refuse("The store's look could not be read as a theme. Check its header, footer and product layout in the builder.");
   return { ok: true, snapshot, notes: notesText(notes, rawCss !== "" && css === "") };
 }
 
@@ -463,11 +482,11 @@ export async function ensureWorkspace(admin: Account, presetId: string, deps: Ap
   if (!found) return refuse(UNKNOWN);
   if (found.workspace) return { ok: true, workspace: { presetId, title: found.title, store: found.workspace } };
   const snapshot = parseDesignSnapshot(found.snapshot);
-  if (!snapshot) return refuse("This design profile can no longer be read, so it cannot be edited.");
+  if (!snapshot) return refuse("This theme can no longer be read, so it cannot be edited.");
   const made = await makeWorkspace(admin);
   const written = await writeWorkspaceLook(made.id, snapshot, { sourceId: found.sourceId, accountId: admin.id, title: found.title, deps });
   if (!written.ok) {
-    await closeWorkspace(made.id, admin.id, "Its design profile's look could not be written into it.");
+    await closeWorkspace(made.id, admin.id, "Its theme's look could not be written into it.");
     return written;
   }
   const taken = await takeSnapshot(made.id, { drafts: true });
@@ -477,7 +496,7 @@ export async function ensureWorkspace(admin: Account, presetId: string, deps: Ap
     returning id
   `);
   if (!linked) {
-    await closeWorkspace(made.id, admin.id, "Another workspace was made for its design profile first.");
+    await closeWorkspace(made.id, admin.id, "Another workspace was made for its theme first.");
     const again = await workspaceOf(admin, presetId);
     return again ? { ok: true, workspace: again } : refuse(UNKNOWN);
   }
@@ -558,7 +577,7 @@ async function writeWorkspaceLook(
     });
   } catch (error) {
     console.error("[design-presets] writing a workspace failed", error);
-    return refuse("The look could not be written into the design profile. Nothing was changed; try again.");
+    return refuse("The look could not be written into the theme. Nothing was changed; try again.");
   }
   return { ok: true, notes: placed.notes };
 }
@@ -573,7 +592,7 @@ export async function createDesign(
   input: { origin: DesignOrigin; details: DesignDetails },
   deps: ApplyDeps = {},
 ): Promise<DesignResult<{ id: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins make design profiles.");
+  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins make themes.");
   const { origin } = input;
   const notes: string[] = [];
   let source: DesignSnapshot | null = null;
@@ -588,14 +607,14 @@ export async function createDesign(
   if (source && origin.kind === "store") {
     const written = await writeWorkspaceLook(workspace.id, source, { sourceId: origin.storeId, accountId: admin.id, title: input.details.title, deps });
     if (!written.ok) {
-      await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
+      await closeWorkspace(workspace.id, admin.id, "Its theme could not be made.");
       return written;
     }
     notes.push(...written.notes);
   }
   const fresh = await takeSnapshot(workspace.id, { drafts: true });
   if (!fresh.ok) {
-    await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
+    await closeWorkspace(workspace.id, admin.id, "Its theme could not be made.");
     return fresh;
   }
   const { title, summary, description, pictureUrl } = input.details;
@@ -610,7 +629,7 @@ export async function createDesign(
     `);
     id = String(row.id);
   } catch (error) {
-    await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
+    await closeWorkspace(workspace.id, admin.id, "Its theme could not be made.");
     return refuse(designProblem(error));
   }
   await audit(admin.id, origin.kind === "store" ? origin.storeId : workspace.id, "platform.design_preset_created", {
@@ -727,7 +746,7 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
   if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
-  if (design.archivedAt) return refuse("This design profile is archived. Restore it before publishing it.");
+  if (design.archivedAt) return refuse("This theme is archived. Restore it before publishing it.");
   let snapshot: DesignSnapshot | null = null;
   const notes: string[] = [];
   if (design.workspaceStoreId) {
@@ -782,7 +801,7 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
       )
       select p.id, (select number from versioned) as version from published p
     `);
-    if (!row) return refuse("This design profile is archived. Restore it before publishing it.");
+    if (!row) return refuse("This theme is archived. Restore it before publishing it.");
   } catch (error) {
     return refuse(designProblem(error));
   }
@@ -855,14 +874,14 @@ export async function deleteDesign(admin: Account, id: string): Promise<DesignRe
   if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
-  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
+  const blocker = deleteBlocker("theme", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
   if (blocker) return refuse(blocker);
   try {
     await db().transaction(async (tx) => {
       await tx.execute(sql`delete from commerce.design_presets where id = ${id}::uuid`);
       if (design.workspaceStoreId) {
         await tx.execute(sql`
-          update commerce.stores set status = 'closed', status_reason = 'Its design profile was deleted.', status_changed_by = ${admin.id}::uuid
+          update commerce.stores set status = 'closed', status_reason = 'Its theme was deleted.', status_changed_by = ${admin.id}::uuid
            where id = ${design.workspaceStoreId}::uuid and status <> 'closed'
         `);
       }
@@ -993,7 +1012,7 @@ async function placeSnapshot(
     const parsed = pageInput.safeParse(content);
     const problem = parsed.success ? pageRulesProblem(storeId, LAYOUT_PAGE_TYPE[kind], parsed.data) : parsed.error.issues[0]?.message;
     if (problem || !parsed.success) return refuse(`The profile's ${designPageTitle(kind, "").trim()} does not fit this store: ${problem ?? "it cannot be read"}`);
-    if (leftoverStorageUrls(parsed.data, new Set(replaced.values())).length > 0) return refuse("This design profile could not be made ready for your store.");
+    if (leftoverStorageUrls(parsed.data, new Set(replaced.values())).length > 0) return refuse("This theme could not be made ready for your store.");
     pages[kind] = parsed.data;
   }
   const siteCss = cssProblem(mapped.css) === null ? mapped.css : "";
@@ -1059,7 +1078,7 @@ async function placeDesign(
   if (!preset) return refuse(UNKNOWN);
   if (preset.archived_at || (!preset.published && !(platformAdmin && facts.starter))) return refuse(NOT_OFFERED);
   const whole = parseDesignSnapshot(preset.snapshot);
-  if (!whole) return refuse("This design profile can no longer be read.");
+  if (!whole) return refuse("This theme can no longer be read.");
   // One of its presets (`docs/theme-showcase-phase-1.md`): the theme with the preset's settings, the install named after both.
   const snapshot = variationSnapshot(whole, variation);
   if (!snapshot) return refuse(NO_PRESET);
@@ -1150,7 +1169,7 @@ async function placeDesign(
   } catch (error) {
     if (error instanceof Refused || error instanceof InstallRefused) return refuse(error.message);
     console.error("[design-presets] applying failed", error);
-    return refuse(live ? "The design profile could not be applied. Nothing was changed; try again." : "The theme could not be added. Nothing was changed; try again.");
+    return refuse(live ? "The theme could not be applied. Nothing was changed; try again." : "The theme could not be added. Nothing was changed; try again.");
   }
   if (!live) {
     await audit(
@@ -1203,7 +1222,7 @@ export async function installPresetOnPlatform(
   if (!preset) return refuse(UNKNOWN);
   if (preset.archived_at || !preset.published) return refuse(NOT_OFFERED);
   const whole = parseDesignSnapshot(preset.snapshot);
-  if (!whole) return refuse("This design profile can no longer be read.");
+  if (!whole) return refuse("This theme can no longer be read.");
   const snapshot = variationSnapshot(whole, variation);
   if (!snapshot) return refuse(NO_PRESET);
   const title = installTitle(String(preset.title), whole, variation);
@@ -2239,6 +2258,28 @@ export async function saveThemeListing(admin: Account, id: string, slug: string,
     return refuse(designProblem(error));
   }
   // Where a look is shown may have changed: its pictures on the new showcase are asked for.
+  await askForThemeShots();
+  return { ok: true };
+}
+
+/**
+ * The demo store each of a theme's looks is shown on and starts new stores from (D273, the listing's `pack` and `presetPacks`), saved on
+ * their own and at once, as the rest of the listing is: the theme store and new stores follow it while the theme is published. A pack the
+ * code does not know, or a preset key that is no key, is dropped (`readListing()`); "" is the Standard store.
+ */
+export async function saveThemeDemoStores(admin: Account, id: string, chosen: { pack: unknown; presetPacks: Record<string, unknown> }): Promise<DesignResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const read = readListing({ pack: chosen.pack, presetPacks: chosen.presetPacks });
+  const rows = await db().execute<Row>(sql`
+    update commerce.design_presets
+       set listing = coalesce(listing, '{}'::jsonb) || ${JSON.stringify({ pack: read.pack, presetPacks: read.presetPacks })}::jsonb, updated_by = ${admin.id}::uuid
+     where id = ${id}::uuid returning workspace_store_id
+  `);
+  if (rows.length === 0) return refuse(UNKNOWN);
+  await audit(admin.id, rows[0].workspace_store_id ? String(rows[0].workspace_store_id) : null, "platform.design_preset_demo_stores", { preset: id, pack: read.pack, presets: read.presetPacks }, {
+    target: { type: "design_preset", id },
+  });
+  // Each look's photographs are taken on its demo store, so a look moved to another is photographed again.
   await askForThemeShots();
   return { ok: true };
 }

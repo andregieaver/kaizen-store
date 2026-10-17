@@ -61,7 +61,7 @@ const code = (file: string) =>
     .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
     .join("\n");
 
-describe("store templates are not real stores (D175)", () => {
+describe("demo stores are not real stores (D175)", () => {
   it("finds the modules", () => {
     expect(files.length).toBeGreaterThan(200);
   });

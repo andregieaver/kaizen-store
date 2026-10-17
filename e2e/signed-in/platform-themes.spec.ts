@@ -51,7 +51,7 @@ async function backToCustom(browser: Browser) {
   const context = await browser.newContext({ storageState: ADMIN.state });
   try {
     const page = await context.newPage();
-    await page.goto("/admin/platform/themes");
+    await page.goto("/admin/platform/site-design");
     await page.getByRole("button", { name: "Switch to it (Custom)" }).click();
     await expect.poll(customLive).toBe(true);
   } finally {
@@ -96,7 +96,7 @@ test("the platform admin adds a theme, customises and previews it, switches to i
   const before = await siteNow();
 
   // Added without going live.
-  await page.goto("/admin/platform/themes");
+  await page.goto("/admin/platform/site-design");
   await expect(page.getByRole("heading", { level: 1, name: "Themes" })).toBeVisible();
   await page.getByRole("button", { name: `Add (${TITLE})` }).click();
   const installed = page.getByRole("list", { name: "Installed themes" });
@@ -114,13 +114,13 @@ test("the platform admin adds a theme, customises and previews it, switches to i
   expect(await siteNow()).toEqual(before);
 
   // Previewed on Kaizena Flow's own pages, inert and not for search engines.
-  await page.goto(`/admin/platform/themes/${installId}/preview`);
+  await page.goto(`/admin/platform/site-design/${installId}/preview`);
   await expect(page.getByRole("status").getByText(`Preview of “${TITLE}”`)).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   expect(await page.locator("[inert][data-theme-preview]").count()).toBe(1);
 
   // Switched to: the site wears the theme's look and its CSS; pages and menus stay.
-  await page.goto("/admin/platform/themes");
+  await page.goto("/admin/platform/site-design");
   await page.getByRole("button", { name: `Switch to it (${TITLE})` }).click();
   await expect(installed.getByRole("listitem").filter({ hasText: TITLE })).toContainText("Live");
   await expect.poll(async () => (await siteNow()).custom_css).toBe(CSS);
@@ -133,7 +133,7 @@ test("the platform admin adds a theme, customises and previews it, switches to i
   expect(await page.content()).toContain("e2e-platform");
 
   // Switched back to its own look, exactly as it was, and the theme removed.
-  await page.goto("/admin/platform/themes");
+  await page.goto("/admin/platform/site-design");
   await page.getByRole("button", { name: "Switch to it (Custom)" }).click();
   await expect(installed.getByRole("button", { name: `Switch to it (${TITLE})` })).toBeVisible();
   await expect.poll(siteNow).toEqual(before);

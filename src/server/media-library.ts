@@ -414,7 +414,7 @@ function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
     case "theme":
       return { label: "Design", href: `${base}/settings/design` };
     case "theme_listing":
-      return { label: `Theme: ${label || "Untitled"}`, href: `/admin/platform/design-profiles/${row.ref_id}` };
+      return { label: `Theme: ${label || "Untitled"}`, href: `/admin/platform/themes/${row.ref_id}` };
     default:
       return { label: row.source, href: null };
   }

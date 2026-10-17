@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
-import { starterChoice } from "@/lib/store-starters";
+import { demoStoreForLook } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
 
 const input = z.object({
@@ -40,13 +40,13 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
   try {
-    // The store template (D175), design profile (D176) and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen: each kept only
-    // when it is a published one, checked inside.
+    // The theme and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen, kept only when published (checked inside), and the demo
+    // store the look starts a store with (D273): never chosen apart.
     const look = designLookChoice(formData.get("design"));
     await createAccessRequest({
       ...parsed.data,
       referralCode,
-      starterId: starterChoice(formData.get("starter")),
+      starterId: await demoStoreForLook(look),
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
     });

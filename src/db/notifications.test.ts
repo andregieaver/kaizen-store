@@ -143,7 +143,7 @@ describe("the store events queue (3.3 points 2 and 3)", () => {
     expect(await events(s, "order.paid")).toEqual([{ event: "order.paid", subject_id: o.id }]);
   });
 
-  it("queues an order inserted paid (a renewal), never a copied one, never a store template's or starter's", async () => {
+  it("queues an order inserted paid (a renewal), never a copied one, never a demo store's or starter's", async () => {
     const s = await createInvoiceStore(db, "ntf-q2");
     const o = await paid({}, s);
     expect(await events(s, "order.paid")).toEqual([{ event: "order.paid", subject_id: o.id }]);

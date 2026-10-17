@@ -13,7 +13,7 @@ const calm: DesignCard = {
   summary: "Pale wood, deep green, Lora headings.",
   description: "A quiet look.\nGood for spas.",
   pictureUrl: "/storage/calm.webp",
-  previewHref: "/admin/account/design-profiles/0f8fad5b-d9cb-469f-a165-70867728950e/preview",
+  previewHref: "/admin/account/themes/0f8fad5b-d9cb-469f-a165-70867728950e/preview",
 };
 
 const checked = (html: string, value: string) => {
@@ -22,23 +22,38 @@ const checked = (html: string, value: string) => {
 };
 const links = (html: string) => html.match(/<a [^>]*>/g) ?? [];
 
-describe("the design profile cards (D176)", () => {
-  it("offers keeping the template's own design first and chosen, then each profile with its picture and summary", () => {
+describe("the theme cards, the one choice a new store starts from (D273)", () => {
+  it("offers Standard first and chosen, then each theme with its picture and summary", () => {
     const html = renderToString(createElement(DesignCards, { cards: [keepDesignCard(), calm] }));
-    expect(html.indexOf("Keep the template&#x27;s own design")).toBeLessThan(html.indexOf("Nordic calm"));
+    expect(html.indexOf("Standard")).toBeLessThan(html.indexOf("Nordic calm"));
     expect(checked(html, "")).toBe(true);
     expect(checked(html, calm.id)).toBe(false);
     expect(html).toContain('src="/storage/calm.webp"');
     expect(html).toContain("More about it");
   });
 
-  it("chooses the recommended profile when told to, and falls back to keeping the look for an unknown one", () => {
+  it("chooses the look it is told to, and falls back to Standard for an unknown one", () => {
     expect(checked(renderToString(createElement(DesignCards, { cards: [keepDesignCard(), calm], selected: calm.id })), calm.id)).toBe(true);
     expect(checked(renderToString(createElement(DesignCards, { cards: [keepDesignCard(), calm], selected: "nope" })), "")).toBe(true);
   });
 
-  it("opens each preview in a new window without giving it this page, and has none for keeping the look", () => {
-    const html = renderToString(createElement(DesignCards, { cards: [keepDesignCard(), calm], recommended: {} }));
+  it("says which demo store each look starts a store with, and the standard demo products where none is published", () => {
+    const html = renderToString(
+      createElement(DesignCards, {
+        cards: [
+          keepDesignCard(),
+          { ...calm, demo: "Field & Fold, eight clothes", looks: [{ key: "sand", name: "Sand", trade: "Beauty", starterId: null, demo: null, previewHref: "/p" }] },
+        ],
+      }),
+    ).replaceAll("<!-- -->", "");
+    expect(html).toContain("Starts with the demo store Field &amp; Fold, eight clothes");
+    expect(html).toContain("Starts with the standard demo products");
+    // No store template is chosen apart: the form has the theme's radios only.
+    expect(html).not.toContain('name="starter"');
+  });
+
+  it("opens each preview in a new window without giving it this page, and has none for Standard", () => {
+    const html = renderToString(createElement(DesignCards, { cards: [keepDesignCard(), calm] }));
     expect(links(html)).toHaveLength(1);
     const [link] = links(html);
     expect(link).toContain('target="_blank"');
@@ -48,7 +63,7 @@ describe("the design profile cards (D176)", () => {
   });
 });
 
-describe("the design profiles on a store's Design settings (D176)", () => {
+describe("the themes on a store's Design settings (D176)", () => {
   const draw = (props: Partial<Parameters<typeof DesignProfilePanel>[0]> = {}) =>
     // Without React's text markers, so sentences read as they show.
     renderToString(

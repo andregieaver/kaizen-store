@@ -182,7 +182,7 @@ export async function approveAccessRequest(
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
   // A profile the admin chose that is not offered is refused in plain words before anything is made.
   if (designPresetId && !(await isOfferedDesign(designPresetId))) {
-    return { ok: false, problems: ["That design profile is not offered any more. Choose another."] };
+    return { ok: false, problems: ["That theme is not offered any more. Choose another."] };
   }
   // What the requester chose (D175, D176), to say what gave way when it is no longer offered (D177).
   const [asked] = await db().execute<Row>(sql`
@@ -237,11 +237,11 @@ export async function approveAccessRequest(
   // (Also when the admin left the choice empty on a request whose profile is gone: the request page offers none in its place.)
   const askedDesign = asked?.design_preset_id ? String(asked.design_preset_id) : null;
   const designGone = askedDesign !== null && !designPresetId && !(await isOfferedDesign(askedDesign));
-  const designFellBack = designGone ? (asked?.design_title ? String(asked.design_title) : "A design profile") : null;
+  const designFellBack = designGone ? (asked?.design_title ? String(asked.design_title) : "A theme") : null;
   if (designGone && chosenDesign === askedDesign) chosenDesign = null;
   // The store template likewise: approval made the store from the Standard store (`approve_access_request()`).
   const starterFellBack =
-    !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A store template") : null;
+    !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A demo store") : null;
   // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
   const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id, chosenVariation) : null;
   // What the store template brought is its demo content, removable in one press from the store's Home (`docs/theme-showcase-phase-1.md` 4b).
@@ -282,8 +282,8 @@ async function applyChosenDesign(
     const title = preset ? (kept && preset.variation_name ? `${String(preset.title)} · ${String(preset.variation_name)}` : String(preset.title)) : null;
     return { title, problem: result.ok ? null : result.problems.join(" ") };
   } catch (error) {
-    console.error("[platform] the design profile could not be applied", error);
-    return { title: null, problem: "The design profile could not be applied." };
+    console.error("[platform] the theme could not be applied", error);
+    return { title: null, problem: "The theme could not be applied." };
   }
 }
 
@@ -355,7 +355,7 @@ export async function createStoreForOwner(
   if (!name.trim()) problems.push("Enter a store name.");
   const problem = slugProblem(slug);
   if (problem) problems.push(`Store address: ${problem}`);
-  if (designPresetId && !(await isOfferedDesign(designPresetId))) problems.push("That design profile is not offered any more. Choose another.");
+  if (designPresetId && !(await isOfferedDesign(designPresetId))) problems.push("That theme is not offered any more. Choose another.");
   if (problems.length > 0) return { ok: false, problems };
 
   const [owned] = await db().execute<Row>(sql`

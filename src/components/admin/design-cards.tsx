@@ -1,8 +1,6 @@
 import { designLookValue, type DesignCard } from "@/lib/design-presets";
 
-import { DesignChoiceSync } from "./design-choice-sync";
-
-/** The Preview link of a design profile: a new window, without giving it this page. */
+/** The Preview link of a theme: a new window, without giving it this page. */
 export function DesignPreviewLink({ href, title, className }: { href: string; title: string; className?: string }) {
   return (
     <a
@@ -25,28 +23,25 @@ export function DesignPreviewLink({ href, title, className }: { href: string; ti
 }
 
 /**
- * The choice of design profile (D176) for a new store, as radio cards after the store template's: "Keep the template's own design" first,
- * then each published profile with its picture, summary and a Preview opening in a new window, and its presets as choices under it
- * (`docs/theme-showcase-phase-1.md` step 4). Used on `/admin/stores` and `/sign-up`; the form sends `name`: a profile's id, `{id}:{key}`
- * for a preset, or "" to keep the template's look, and the server checks it again. Each choice carries the store template its look is
- * shown on (`data-starter`), which *Start with this theme* chooses too (`ThemeFromAddress`). With `recommended`, choosing a
- * store template in the same form chooses the profile it recommends (`DesignChoiceSync`). Plain markup otherwise: it works without
- * JavaScript.
+ * The choice of theme for a new store (D273), the one choice it starts from, as radio cards: Standard first, then each published theme with
+ * its picture, summary and a Preview opening in a new window, and its presets as choices under it (`docs/theme-showcase-phase-1.md` step
+ * 4). Each look says which demo store a new store starts with (`demo`); the server works that out again from the look
+ * (`demoStoreForLook()`), so nothing else is chosen. Used on `/admin/stores` and `/sign-up`; the form sends `name`: a theme's id,
+ * `{id}:{key}` for a preset, or "" for Standard. *Start with this theme* chooses one from the address (`ThemeFromAddress`). Plain markup:
+ * it works without JavaScript.
  */
 export function DesignCards({
   cards,
   name = "design",
   selected = "",
-  legend = "Design profile",
+  legend = "Theme",
   hint,
-  recommended,
 }: {
   cards: DesignCard[];
   name?: string;
   selected?: string;
   legend?: string;
   hint?: string;
-  recommended?: Record<string, string>;
 }) {
   // A theme's own look (`{id}`) or one of its presets (`{id}:{key}`, `docs/theme-showcase-phase-1.md` step 4).
   const values = cards.flatMap((card) => [card.id, ...(card.looks ?? []).map((look) => designLookValue(card.id, look.key))]);
@@ -55,7 +50,6 @@ export function DesignCards({
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">{legend}</legend>
       {hint && <p className="text-sm text-muted">{hint}</p>}
-      {recommended && <DesignChoiceSync recommended={recommended} designName={name} />}
       <ul className="grid gap-3 sm:grid-cols-2">
         {cards.map((card) => {
           const inputId = `${name}-${card.id || "keep"}`;
@@ -82,6 +76,7 @@ export function DesignCards({
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="font-medium">{card.title}</span>
                     {card.summary && <span className="font-normal">{card.summary}</span>}
+                    {card.id && <StartsWith demo={card.demo ?? null} />}
                   </span>
                 </span>
               </label>
@@ -95,9 +90,12 @@ export function DesignCards({
                       <span key={look.key} className="flex min-h-8 flex-wrap items-center gap-x-2">
                         <label className="flex min-h-8 cursor-pointer items-center gap-2">
                           <input type="radio" name={name} value={value} defaultChecked={value === chosen} data-starter={look.starterId ?? undefined} />
-                          <span>
-                            {look.name}
-                            {look.trade && <span className="text-muted"> · {look.trade}</span>}
+                          <span className="flex flex-col">
+                            <span>
+                              {look.name}
+                              {look.trade && <span className="text-muted"> · {look.trade}</span>}
+                            </span>
+                            <StartsWith demo={look.demo ?? null} />
                           </span>
                         </label>
                         <DesignPreviewLink
@@ -125,4 +123,9 @@ export function DesignCards({
       </ul>
     </fieldset>
   );
+}
+
+/** What a look starts a new store with (D273): its demo store, which the owner removes in one press from Home, or the Standard store's. */
+function StartsWith({ demo }: { demo: string | null }) {
+  return <span className="text-caption text-muted">Starts with {demo ? `the demo store ${demo}` : "the standard demo products"}</span>;
 }

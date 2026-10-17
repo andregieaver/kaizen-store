@@ -64,7 +64,7 @@ describe("setting up the content packs", () => {
     expect(result.made).toEqual([]);
   });
 
-  it("makes a store template of each pack, unpublished, at its own address", async () => {
+  it("makes a demo store of each pack, unpublished, at its own address", async () => {
     const result = await packs.syncContentPacks(admin, deps);
     expect(result.problems).toEqual([]);
     expect(result.made).toEqual(CONTENT_PACKS.map((pack) => pack.title));

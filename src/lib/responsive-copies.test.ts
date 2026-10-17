@@ -94,7 +94,7 @@ describe("copies keep the settings by size and the visibility", () => {
   });
 });
 
-describe("design profiles", () => {
+describe("themes", () => {
   it("carry the theme's screen sizes", () => {
     const settings = { ...templateSettings("warm"), breakpoints: { md: 800, lg: 1100, xl: 1440 } };
     expect(themeSettingsSchema.parse(settings).breakpoints).toEqual({ md: 800, lg: 1100, xl: 1440 });

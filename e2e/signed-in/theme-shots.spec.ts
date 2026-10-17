@@ -54,7 +54,7 @@ test.afterAll(async () => {
 });
 
 test("a theme's page shows its photographs, says why one could not be made, and tries it again", async ({ page }) => {
-  await page.goto(`/admin/platform/design-profiles/${presetId}`);
+  await page.goto(`/admin/platform/themes/${presetId}`);
   const pictures = page.getByRole("region", { name: "Pictures" });
   await expect(pictures).toBeVisible();
   await expect(pictures.getByRole("img", { name: "E2E Pictured on a computer" })).toBeVisible();
@@ -75,7 +75,7 @@ test("a theme's page shows its photographs, says why one could not be made, and 
 });
 
 test("a theme's highlight words are written on its page and saved with its listing; Suggest words says when no model is set", async ({ page }) => {
-  await page.goto(`/admin/platform/design-profiles/${presetId}`);
+  await page.goto(`/admin/platform/themes/${presetId}`);
   const words = page.getByRole("group", { name: "Highlights" });
   const devices = words.locator('[data-highlight-words="devices"]');
   await devices.getByLabel("Title").fill("On every screen");
@@ -109,7 +109,7 @@ test("the admin puts their own share image in place of the made one, the theme's
         await sql.end();
       }
     });
-  await page.goto(`/admin/platform/design-profiles/${presetId}`);
+  await page.goto(`/admin/platform/themes/${presetId}`);
   const section = page.locator("[data-own-pictures]");
   await section.getByText("Use your own pictures").click();
   const share = section.locator('[data-own-slot="share"]');
@@ -121,7 +121,7 @@ test("the admin puts their own share image in place of the made one, the theme's
   await page.goto(`/themes/${SLUG}`);
   await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute("content", new RegExp(`${own.replaceAll(".", "\\.")}$`));
 
-  await page.goto(`/admin/platform/design-profiles/${presetId}`);
+  await page.goto(`/admin/platform/themes/${presetId}`);
   await page.locator("[data-own-pictures]").getByText("1 in use").click();
   const kept = page.locator('[data-own-pictures] [data-own-slot="share"]');
   await kept.getByRole("button", { name: "Remove the picture" }).click();

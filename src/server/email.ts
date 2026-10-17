@@ -136,7 +136,7 @@ async function suppressed(message: OutgoingEmail): Promise<string | null> {
   if (!message.to || message.to === REMOVED) return ERASED;
   const kind = emailClassOf(message.kind);
   if (message.storeId && (kind === "shopper" || kind === "security") && (await isStarter(message.storeId))) {
-    return "suppressed: a store template does not email shoppers";
+    return "suppressed: a demo store does not email shoppers";
   }
   if (message.kind.startsWith("privacy.") || kind === "evidence") return null;
   if (!message.orderId && !message.subscriptionId) return null;

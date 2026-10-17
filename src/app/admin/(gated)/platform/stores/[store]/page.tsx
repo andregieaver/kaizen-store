@@ -21,7 +21,7 @@ import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreF
 import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
 
-import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../design-profiles/actions";
+import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../themes/actions";
 import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Store plan" };

@@ -48,9 +48,9 @@ async function arrange(): Promise<{ published: string; hidden: string; starter: 
   }
 }
 
-test("a published design profile's preview shows its look on a store template, kept from search engines", async ({ page }) => {
+test("a published theme's preview shows its look on a demo store, kept from search engines", async ({ page }) => {
   const { published, starter } = await arrange();
-  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
+  await page.goto(`/admin/account/themes/${published}/preview?starter=${starter}`);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   await expect(page.getByRole("status").filter({ hasText: "Nothing here can be pressed" })).toBeVisible();
   const canvas = page.locator("[data-design-preview]");
@@ -64,16 +64,16 @@ test("a published design profile's preview shows its look on a store template, k
   // A store selling to both kinds of buyer shows no Private / Business switch over a look that is about the theme.
   await expect(page.locator("[data-buyer-choice]")).toHaveCount(0);
   // In the theme store's frames, the store alone, with no line above it.
-  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}&embed=1`);
+  await page.goto(`/admin/account/themes/${published}/preview?starter=${starter}&embed=1`);
   await expect(page.locator("[data-design-preview]")).toBeVisible();
   await expect(page.getByText("Nothing here can be pressed")).toHaveCount(0);
 });
 
-test("an unpublished design profile has no public preview", async ({ page }) => {
+test("an unpublished theme has no public preview", async ({ page }) => {
   const { hidden, starter } = await arrange();
   // The page streams (it reads the address), so a refusal is the not-found page with noindex rather than a 404 status.
   for (const query of [`?starter=${starter}`, `?starter=${starter}&as=admin`]) {
-    await page.goto(`/admin/account/design-profiles/${hidden}/preview${query}`);
+    await page.goto(`/admin/account/themes/${hidden}/preview${query}`);
     await expect(page.locator("[data-design-preview]")).toHaveCount(0);
     await expect(page.getByText("Nothing here can be pressed")).toHaveCount(0);
     await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
@@ -97,16 +97,16 @@ test("the public preview shows the published look, never the workspace's draft",
   } finally {
     await sql.end();
   }
-  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
+  await page.goto(`/admin/account/themes/${published}/preview?starter=${starter}`);
   await expect(page.locator("[data-design-preview]")).toHaveCSS("background-color", "rgb(253, 246, 227)");
   await expect(page.getByText("Draft title")).toHaveCount(0);
   await expect(page.getByText("as drafted")).toHaveCount(0);
   // The draft is for a signed-in platform admin only: asked for while signed out, it is not found.
-  await page.goto(`/admin/account/design-profiles/${published}/preview?as=admin&draft=1`);
+  await page.goto(`/admin/account/themes/${published}/preview?as=admin&draft=1`);
   await expect(page.locator("[data-design-preview]")).toHaveCount(0);
 });
 
-test("a store template is previewed from its published copy, whatever happens to the store kept working in", async ({ page }) => {
+test("a demo store is previewed from its published copy, whatever happens to the store kept working in", async ({ page }) => {
   const { published, starter } = await arrange();
   const sql = testDb();
   try {
@@ -117,12 +117,12 @@ test("a store template is previewed from its published copy, whatever happens to
   } finally {
     await sql.end();
   }
-  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
+  await page.goto(`/admin/account/themes/${published}/preview?starter=${starter}`);
   await expect(page.locator("[data-design-preview]")).toHaveCSS("background-color", "rgb(253, 246, 227)");
   await expect(page.locator("[data-design-preview] .product-card").first()).toBeVisible();
 });
 
-test("an archived design profile has no public preview", async ({ page }) => {
+test("an archived theme has no public preview", async ({ page }) => {
   const { hidden, starter } = await arrange();
   const sql = testDb();
   try {
@@ -130,6 +130,6 @@ test("an archived design profile has no public preview", async ({ page }) => {
   } finally {
     await sql.end();
   }
-  await page.goto(`/admin/account/design-profiles/${hidden}/preview?starter=${starter}`);
+  await page.goto(`/admin/account/themes/${hidden}/preview?starter=${starter}`);
   await expect(page.locator("[data-design-preview]")).toHaveCount(0);
 });

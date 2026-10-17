@@ -135,6 +135,6 @@ the ones proposed: Atelier, Arcade and Botanica.
 ## What production needs from a person
 
 Signature themes reach production as the launch themes and packs do: a platform admin presses *Sync launch themes* and *Sync content
-packs* (`/admin/platform/design-profiles`, `/admin/platform/store-templates`) after a deploy that changes them, then *Make the pictures* on
+packs* (both on `/admin/platform/themes` since D273: *Add and update Kaizena Flow's themes* and the *Demo stores* card) after a deploy that changes them, then *Make the pictures* on
 each signature pack, or *Make every picture* (D270: its photographs, made by the platform's picture model; D271: by a job, a minute or two
-each, so the page may be closed), looks at them, and publishes the store templates.
+each, so the page may be closed), looks at them, and publishes the demo stores.

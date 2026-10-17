@@ -367,7 +367,7 @@ shop, and *Open your store*. A step the store does not have resumes the wizard (
 or payments; the launch step lists the shop's items only with the shop and says *Open my website*. `store_is_active()` asks only the status and that the store is no starter, never selling setup.
 The AI manager's `setup_progress` follows the same rules (a website has no shipping, payments or products to set up).
 
-**Store templates choose features.** On `/admin/platform/store-templates/{id}` the platform admin sees what the template switches on (*Now*
+**Store templates choose features.** On `/admin/platform/themes/demo-stores/{id}` (a store template's page before D273) the platform admin sees what the template switches on (*Now*
 and *As published*, `featureSummary()`) and sets it as a whole (`setStarterFeatures()`: `setFeatures()` on the template's working store with the
 platform admin as its owner, as `joinStarter()` lets every platform admin edit every template; audited `store.feature` with `via:
 "store_template"`). They reach new stores on the next Publish: the frozen copy keeps them and `clone_starter_setup()` copies them into each store

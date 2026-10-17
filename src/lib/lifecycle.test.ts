@@ -4,7 +4,7 @@ import { LIFECYCLE_WORDS, canonicalJson, deleteBlocker, lifecycleActions, lifecy
 
 const base = { published: false, archivedAt: null, publishedAt: null, changed: false };
 
-describe("the life of a store template or a design profile (D177)", () => {
+describe("the life of a demo store or a theme (D177)", () => {
   it("names each state", () => {
     expect(lifecycleState(base)).toBe("never_published");
     expect(lifecycleState({ ...base, publishedAt: "2026-10-01T00:00:00Z" })).toBe("unpublished");
@@ -23,11 +23,11 @@ describe("the life of a store template or a design profile (D177)", () => {
   });
 
   it("says why something cannot be deleted", () => {
-    expect(deleteBlocker("store template", { stores: 0, requests: 0 })).toBeNull();
-    expect(deleteBlocker("store template", { stores: 2, requests: 1 })).toBe(
-      "This store template cannot be deleted: 2 stores were made from it and 1 access request names it. Archive it instead.",
+    expect(deleteBlocker("demo store", { stores: 0, requests: 0 })).toBeNull();
+    expect(deleteBlocker("demo store", { stores: 2, requests: 1 })).toBe(
+      "This demo store cannot be deleted: 2 stores were made from it and 1 access request names it. Archive it instead.",
     );
-    expect(deleteBlocker("design profile", { stores: 1, requests: 0 })).toBe("This design profile cannot be deleted: 1 store applied it. Archive it instead.");
+    expect(deleteBlocker("theme", { stores: 1, requests: 0 })).toBe("This theme cannot be deleted: 1 store applied it. Archive it instead.");
   });
 
   it("reads the list's filter from the address", () => {

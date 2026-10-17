@@ -188,6 +188,6 @@ describe("pictures in place of made ones (docs/theme-showcase-phase-2.md step 3)
       values (null, 'image', ${url}, 'product-media', ${`platform/own-${run}.webp`}, 'own.webp', 'image/webp', 1000, 1600, 1000) returning id`);
     expect(await designs.saveThemeOwnPicture(admin, made.id, "collage", url)).toEqual({ ok: true });
     const uses = (await mediaUses({ storeId: null, storeSlug: null }, [String(file.id)])).get(String(file.id))!;
-    expect(uses).toContainEqual(expect.objectContaining({ label: `Theme: Pictured ${run}`, href: `/admin/platform/design-profiles/${made.id}`, source: "theme_listing" }));
+    expect(uses).toContainEqual(expect.objectContaining({ label: `Theme: Pictured ${run}`, href: `/admin/platform/themes/${made.id}`, source: "theme_listing" }));
   });
 });

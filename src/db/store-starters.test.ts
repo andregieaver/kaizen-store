@@ -60,7 +60,7 @@ afterAll(async () => {
   await db.close();
 });
 
-describe("a store template's own rules (D175)", () => {
+describe("a demo store's own rules (D175)", () => {
   it("is never also the template", async () => {
     const { store } = await createStarter("never-both");
     await refused("update commerce.stores set is_template = true where id = $1", [store], /stores_starter_not_template|stores_one_template/);
@@ -224,7 +224,7 @@ describe("what a new store is copied from", () => {
   });
 });
 
-describe("publishing, archiving and deleting a store template (D177)", () => {
+describe("publishing, archiving and deleting a demo store (D177)", () => {
   it("freezes its store into a hidden copy that new stores are made from; a later publish closes the copy it replaces", async () => {
     const spa = await createStarter("frozen-spa");
     await db.query("update commerce.stores set audience = 'both' where id = $1", [spa.store]);
@@ -256,7 +256,7 @@ describe("publishing, archiving and deleting a store template (D177)", () => {
     expect((await one<{ id: string }>("select commerce.starter_source($1) as id", [spa.starter])).id).toBe(second);
   });
 
-  it("publishes only its own frozen copy, and a copy describes no store template", async () => {
+  it("publishes only its own frozen copy, and a copy describes no demo store", async () => {
     const one1 = await createStarter("own-copy-a");
     const other = await createStarter("own-copy-b");
     const { id: copy } = await one<{ id: string }>("select commerce.freeze_starter($1, $2) as id", [one1.starter, owner]);

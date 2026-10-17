@@ -13,7 +13,7 @@ import {
   starterRefusal,
 } from "./store-starters";
 
-describe("store templates' details (D175)", () => {
+describe("demo stores' details (D175)", () => {
   it("reads a valid form, trimmed, with an empty picture as none", () => {
     expect(parseStarterDetails({ title: "  Spa  ", summary: " Book treatments ", description: "Line one\r\nLine two", category: "appointments", pictureUrl: "" })).toEqual({
       ok: true,
@@ -72,14 +72,14 @@ describe("choosing a template", () => {
   });
 
   it("words the database's refusals", () => {
-    expect(starterRefusal("store_starters.not_offered: that store template is not offered")).toMatch(/not offered any more/);
-    expect(starterRefusal("stores.starter_has_sales: …")).toMatch(/cannot become a store template/);
+    expect(starterRefusal("store_starters.not_offered: that demo store is not offered")).toMatch(/not offered any more/);
+    expect(starterRefusal("stores.starter_has_sales: …")).toMatch(/cannot become a demo store/);
     expect(starterRefusal("something else")).toBeNull();
   });
 });
 
-describe("a store template's draft details (D177)", () => {
-  it("reads the recommended design profile as one of the details, only when the form has it", () => {
+describe("a demo store's draft details (D177)", () => {
+  it("reads the recommended theme as one of the details, only when the form has it", () => {
     const withDesign = parseStarterDetails({ title: "Spa", category: "appointments", recommendedDesign: "0F8FAD5B-D9CB-469F-A165-70867728950E" });
     expect(withDesign.ok && withDesign.details.recommendedDesign).toBe("0f8fad5b-d9cb-469f-a165-70867728950e");
     const none = parseStarterDetails({ title: "Spa", category: "appointments", recommendedDesign: "" });
