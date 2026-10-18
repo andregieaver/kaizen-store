@@ -40,10 +40,17 @@ const bucket = { stored: new Map<string, Buffer>(), removed: [] as string[] };
 const PUBLIC = "https://x.supabase.co/storage/v1/object/public/product-media/";
 const looked: string[] = [];
 let failFor: string | null = null;
+/** How many of the next photographs come back one flat white, as a page that had not drawn did (D279). */
+let blankTries = 0;
+let blank: Buffer;
 const shotDeps: import("./theme-shots").ShotDeps = {
   photograph: async (url, kind) => {
     looked.push(`${kind} ${url}`);
     if (failFor && url.includes(failFor)) throw new Error("The preview answered 500.");
+    if (blankTries > 0) {
+      blankTries--;
+      return { full: blank, screen: blank, parts: { length: 900, header: null, rows: [], product: null, footer: null } };
+    }
     return { ...photos[kind], parts: { length: 3000, header: { top: 0, height: 100 }, rows: [{ top: 100, height: 800 }], product: null, footer: null } };
   },
   upload: async (path, bytes) => {
@@ -73,10 +80,16 @@ async function publish(): Promise<void> {
   if (!result.ok) throw new Error(result.problems.join(" "));
 }
 
-const png = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: "#336699" } }).png().toBuffer();
+/** A made-up photograph of a page: a header band over the page's colour (one flat colour would be refused as blank, D279). */
+const png = (width: number, height: number) =>
+  sharp({ create: { width, height, channels: 3, background: "#336699" } })
+    .composite([{ input: { create: { width, height: Math.min(80, height), channels: 3, background: "#ffffff" } }, top: 0, left: 0 }])
+    .png()
+    .toBuffer();
 
 beforeAll(async () => {
   photos = { computer: { full: await png(1440, 3000), screen: await png(1440, 900) }, phone: { full: await png(390, 2400), screen: await png(780, 1688) } };
+  blank = await sharp({ create: { width: 1440, height: 900, channels: 3, background: "#ffffff" } }).png().toBuffer();
   const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`shots-${run}@example.com`}, 'Admin', true) returning id, email`);
   admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true } as Account;
   standard = String((await db().execute<Row>(sql`select id from commerce.stores where is_template limit 1`))[0].id);
@@ -238,9 +251,17 @@ describe("a theme's photographs", () => {
     expect(await shots.retryThemeShots({ ...admin, platformAdmin: false }, theme)).toBe(0);
     expect(await shots.retryThemeShots(admin, theme)).toBe(2);
     failFor = null;
+    // A photograph of a page that had not drawn (one flat colour) is not kept: a try, the look photographed again (D279).
+    blankTries = 1;
+    const stored = bucket.stored.size;
+    const taken = await shots.claimThemeShot({ presetIds: [theme] });
+    expect(await shots.takeThemeShot(taken!, await shots.queueThemeShots(), ORIGIN, shotDeps)).toBe("waiting");
+    expect((await mine()).find((r) => r.id === taken!.id)).toMatchObject({ status: "waiting", tries: 1, problem: shots.BLANK_PAGE, pictures: null });
+    expect(bucket.stored.size).toBe(stored);
     await runJob();
     rows = (await mine()).filter((r) => r.version === 3);
     expect(rows.map((r) => r.status)).toEqual(["done", "done", "done"]);
+    expect(rows.find((r) => r.id === taken!.id)).toMatchObject({ tries: 2, problem: null });
     const audited = await db().execute<Row>(sql`select 1 from commerce.audit_log where action = 'platform.theme_shots_retried' and account_id = ${admin.id}::uuid`);
     expect(audited).toHaveLength(1);
   });

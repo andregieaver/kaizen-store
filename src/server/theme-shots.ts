@@ -32,7 +32,7 @@ import { audit, type Account } from "./auth";
 import { removeStoredFiles, uploadBytes } from "./media";
 import { publishedContents } from "./store-starters";
 import { composeHighlights } from "./theme-highlights";
-import { shotFiles, type MadeFile } from "./theme-shot-files";
+import { pictureIsBlank, shotFiles, type MadeFile } from "./theme-shot-files";
 
 /**
  * The photographs of published themes' looks (`docs/theme-showcase-phase-2.md` step 1): what is wanted and queued, each unit claimed and
@@ -46,6 +46,8 @@ type Row = Record<string, unknown>;
 const CLAIM = "3 minutes";
 /** Sets no longer wanted are kept this long, as cached pages still name their files. */
 const KEEP_SUPERSEDED = "7 days";
+/** Why a photograph of one flat colour is not kept (D279): it counts as a try, and the look is photographed again. */
+export const BLANK_PAGE = "The page was still blank when it was photographed. It is tried again.";
 
 /** Every published, unarchived theme with a readable snapshot and a version, each look on the theme's own published content (D275). */
 async function publishedThemes(): Promise<ShotTheme[]> {
@@ -199,6 +201,8 @@ const fetchFile = (deps: ShotDeps) =>
 async function madeFiles(shot: ClaimedShot, origin: string, deps: ShotDeps): Promise<{ files: MadeFile[]; parts: ShotParts | null }> {
   if (shot.kind !== "highlights") {
     const taken = await deps.photograph(shotPreviewUrl(origin, shot), shot.kind);
+    // Kept as a failed try, so the look is photographed again rather than shown blank.
+    if (await pictureIsBlank(taken.screen)) throw new Error(BLANK_PAGE);
     return { files: await shotFiles(shot.kind, taken), parts: taken.parts };
   }
   const rows = await db().execute<Row>(sql`

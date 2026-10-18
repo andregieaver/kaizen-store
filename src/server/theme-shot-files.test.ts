@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { shotFiles } = await import("./theme-shot-files");
+const { pictureIsBlank, shotFiles } = await import("./theme-shot-files");
 
 /** A made-up photograph: a band of colour at the top (what the card and share image show), white below. */
 async function photograph(width: number, height: number): Promise<Buffer> {
@@ -43,5 +43,21 @@ describe("the pictures made from a look's photographs", () => {
   it("a page shorter than a card is still a whole card, never stretched out of shape", async () => {
     const files = await shotFiles("computer", { full: await photograph(1440, 700), screen: await photograph(1440, 700) });
     expect(files.find((f) => f.kind === "card")).toMatchObject({ width: 800, height: 600 });
+  });
+});
+
+/** A page that had not drawn when it was photographed is one flat colour (D279): never kept as a look's photograph. */
+describe("a blank photograph", () => {
+  it("is one flat colour, white or any other", async () => {
+    for (const background of ["#ffffff", "#0b1020"]) {
+      expect(await pictureIsBlank(await sharp({ create: { width: 1440, height: 900, channels: 3, background } }).png().toBuffer())).toBe(true);
+    }
+  });
+
+  it("is not a page with anything on it, even a little", async () => {
+    expect(await pictureIsBlank(await photograph(1440, 900))).toBe(false);
+    const line = await sharp({ create: { width: 200, height: 12, channels: 3, background: "#222222" } }).png().toBuffer();
+    const almost = await sharp({ create: { width: 780, height: 1688, channels: 3, background: "#ffffff" } }).composite([{ input: line, top: 40, left: 24 }]).png().toBuffer();
+    expect(await pictureIsBlank(almost)).toBe(false);
   });
 });

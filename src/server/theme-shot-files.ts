@@ -45,6 +45,15 @@ async function cut(source: Buffer, size: { width: number; height: number }, rati
   return sharp(source).extract(rect).resize({ width: size.width, height: size.height, fit: "cover", position: "top" }).png().toBuffer();
 }
 
+/**
+ * Whether a photograph is one flat colour: a page that had not drawn (found on Orbit and Arcade, photographed while the preview's server was
+ * busy: white, one screen long). A theme's first screen always holds words or a picture, so such a photograph is never kept.
+ */
+export async function pictureIsBlank(source: Buffer): Promise<boolean> {
+  const { channels } = await sharp(source).stats();
+  return channels.slice(0, 3).every((channel) => channel.stdev < 1);
+}
+
 /** Every picture a width makes from its photographs. */
 export async function shotFiles(kind: ShotKind, shot: Pick<Shot, "full" | "screen" | "detail">): Promise<MadeFile[]> {
   const out: MadeFile[] = [];
