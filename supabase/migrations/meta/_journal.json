@@ -2556,6 +2556,13 @@
       "when": 1792353070106,
       "tag": "20261018195110_demo_stores_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 365,
+      "version": "7",
+      "when": 1792358676577,
+      "tag": "20261018212436_theme_shots_retry",
+      "breakpoints": true
     }
   ]
 }

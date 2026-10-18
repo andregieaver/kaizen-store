@@ -202,6 +202,23 @@ describe("a theme's photographs", () => {
     await db().execute(sql`delete from commerce.theme_shots where id = ${unit.id}::uuid`);
   });
 
+  it("are taken one at a time across runs: none is claimed while another is being photographed", async () => {
+    const [busy] = await db().execute<Row>(sql`
+      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status, tries, claimed_until)
+      values (${theme}::uuid, 99, ${demo.store}::uuid, 'computer', 'running', 1, now() + interval '3 minutes') returning id
+    `);
+    const [waiting] = await db().execute<Row>(sql`
+      insert into commerce.theme_shots (preset_id, version, showcase_store_id, kind, status)
+      values (${theme}::uuid, 98, ${demo.store}::uuid, 'phone', 'waiting') returning id
+    `);
+    expect(await shots.claimThemeShot({ presetIds: [theme] })).toBeNull();
+    // The run that held it stopped: its claim runs out and the queue moves on.
+    await db().execute(sql`update commerce.theme_shots set claimed_until = now() - interval '1 second' where id = ${String(busy.id)}::uuid`);
+    expect(await shots.claimThemeShot({ presetIds: [theme] })).not.toBeNull();
+    expect(await shots.claimThemeShot({ presetIds: [theme] })).toBeNull();
+    await db().execute(sql`delete from commerce.theme_shots where id in (${String(busy.id)}::uuid, ${String(waiting.id)}::uuid)`);
+  });
+
   it("wait for another try when they could not be made, are failed after the third, and start over on Try again", async () => {
     const before = await designs.getDesign(theme);
     await db().execute(sql`update commerce.stores set custom_css = '.x { color: blue; }' where id = ${before!.workspaceStoreId}::uuid`);

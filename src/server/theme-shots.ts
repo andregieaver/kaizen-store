@@ -141,12 +141,22 @@ export type ClaimedShot = StoredShot & { tries: number };
 /** Which units a run may take: every theme's (the job), or only these themes' (a test sharing its database with others). */
 export type ShotScope = { presetIds?: readonly string[] };
 
-/** Takes the oldest unit waiting (or one whose run stopped), for this run alone; null when there is none. */
+/**
+ * Takes the oldest unit waiting (or one whose run stopped), for this run alone; null when there is none, or while another unit is being
+ * photographed. One look at a time across every run: the job starts every minute and a run takes looks for up to `RUN_MS`, so runs overlap, and
+ * two browsers at once in one function ran it out of memory ("The browser stopped …", found on the signature themes). The claim is made
+ * under a lock of its own, so two runs never both see none running.
+ */
 export async function claimThemeShot(scope: ShotScope = {}): Promise<ClaimedShot | null> {
-  const only = scope.presetIds ? sql`and t.preset_id = any(${`{${scope.presetIds.join(",")}}`}::uuid[])` : sql``;
-  const [row] = await db().execute<Row>(sql`
+  const ids = scope.presetIds ? `{${scope.presetIds.join(",")}}` : null;
+  const only = ids ? sql`and t.preset_id = any(${ids}::uuid[])` : sql``;
+  const busy = ids ? sql`and r.preset_id = any(${ids}::uuid[])` : sql``;
+  const [row] = await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.theme_shots.claim'))`);
+    return tx.execute<Row>(sql`
     update commerce.theme_shots s set status = 'running', tries = s.tries + 1, claimed_until = now() + ${CLAIM}::interval
-     where s.id = (
+     where not exists (select 1 from commerce.theme_shots r where r.status = 'running' and r.claimed_until >= now() ${busy})
+       and s.id = (
        select t.id from commerce.theme_shots t
         where (t.status = 'waiting' or (t.status = 'running' and t.claimed_until < now())) and t.tries < ${SHOT_TRIES} ${only}
           -- Highlights are composed from the look's two photographs: only once both are made.
@@ -160,6 +170,7 @@ export async function claimThemeShot(scope: ShotScope = {}): Promise<ClaimedShot
      )
     returning s.id, s.preset_id, s.version, s.variation, s.starter_id, s.showcase_store_id, s.kind, s.status, s.tries
   `);
+  });
   return row ? { ...storedOf(row), tries: Number(row.tries) } : null;
 }
 
