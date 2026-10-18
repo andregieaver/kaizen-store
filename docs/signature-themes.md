@@ -105,6 +105,25 @@ is. Pages and articles only, in the store's builder and Kaizena Flow's own (not 
 *Deviation from the plan:* the sections are the code's, found by the live install's `launch_key`, not a snapshot version 3. A theme made by
 a person or by the platform AI (step 5) will need them in its version; that is step 5's snapshot change.
 
+## Built (Kinetic, D281)
+
+The owner (18 October 2026): "Programmatically create a new theme for a sports brand. Make sure that images has male and female athletes in
+them."
+
+* **Kinetic** (`src/lib/signature/kinetic.ts`): a sportswear brand on the move. Chalk-white pages, Barlow Condensed in bold italic capitals
+  over Inter, tartan-track red as the accent, a header that lies over a hero as wide as the screen (glass on the front page, a stripe of the
+  accent elsewhere), the hero's bottom edge cut on a slant, a band of words that runs across the page (still for reduced motion), women's and
+  men's kit side by side as two tall pictures, square buttons with an arrow, pictures and product cards with a cut corner, outlined numerals,
+  a dark footer, and a floodlit band to end on. Presets: *Night run* (dark, a volt accent) and *Glacier* (cool blue). Eight sections.
+* **Its store**, *Halden Athletic* (pack `sports`), sells running and training wear for women and men (three pieces each) and shoes and
+  gear, in the collections Women, Men and Shoes and gear.
+* **Women and men athletes**: the briefs of the hero (a woman and a man sprinting side by side at sunrise), the story (a running club of
+  women and men at dusk), the Women and Men pictures (a female runner mid-stride, a male sprinter on the starting line) and the floodlit band
+  (a woman and a man on a night track) all show athletes, framed as sports photographs often are (from the side or behind, faces turned away
+  or in shadow), because every pack picture keeps `PICTURE_RULES` (no recognisable faces). The products are photographed alone on a grey
+  seamless background. Until the photographs are made, the art (`scripts/theme-art/kinetic.js`) draws the same scenes with pictogram runners,
+  a woman with a ponytail and a man, and the kit laid out on grey.
+
 ## Photographs (D270)
 
 The owner found the drawn pictures fake and asked for pictures that look shot by a professional product photographer, made by the

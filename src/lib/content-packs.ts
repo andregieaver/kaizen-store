@@ -3,6 +3,7 @@ import type { PackDesignKey } from "./pack-designs";
 import { ARCADE_PACK } from "./signature/arcade";
 import { ATELIER_PACK } from "./signature/atelier";
 import { BOTANICA_PACK } from "./signature/botanica";
+import { KINETIC_PACK } from "./signature/kinetic";
 import { ORBIT_PACK } from "./signature/orbit";
 
 /**
@@ -17,7 +18,7 @@ import { ORBIT_PACK } from "./signature/orbit";
  * The packs: the six trades, then the demo stores signature themes bring of their own (`docs/signature-themes.md`), each written beside its
  * theme in `src/lib/signature/`.
  */
-export const PACK_KEYS = ["fashion", "beauty", "food", "home", "electronics", "services", "astronomy", "ceramics", "neon", "plants"] as const;
+export const PACK_KEYS = ["fashion", "beauty", "food", "home", "electronics", "services", "astronomy", "ceramics", "neon", "plants", "sports"] as const;
 export type PackKey = (typeof PACK_KEYS)[number];
 
 /** A pack's product: goods (one variant, kept in stock) or, for services, an appointment of so many minutes. */
@@ -329,6 +330,7 @@ export const CONTENT_PACKS: readonly ContentPack[] = [
   ATELIER_PACK,
   ARCADE_PACK,
   BOTANICA_PACK,
+  KINETIC_PACK,
 ];
 
 /** Each pack's trade in a word or two, for a theme's cards and its looks' choices (`docs/theme-showcase-phase-1.md` step 3). */
@@ -343,6 +345,7 @@ export const PACK_TRADES: Record<PackKey, string> = {
   ceramics: "Ceramics",
   neon: "Neon signs",
   plants: "Plants",
+  sports: "Sports and running",
 };
 
 /** What a pack's store is, after its name: "Field & Fold, a demo fashion store". */
@@ -357,6 +360,7 @@ export const PACK_DEMO_WORDS: Record<PackKey, string> = {
   ceramics: "a demo ceramics studio",
   neon: "a demo neon sign workshop",
   plants: "a demo plant shop",
+  sports: "a demo sportswear store",
 };
 
 /** A pack by its key, or null. */

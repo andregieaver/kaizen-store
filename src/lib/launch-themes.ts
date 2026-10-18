@@ -4,6 +4,7 @@ import type { SectionStyles } from "./section-styles";
 import { ARCADE } from "./signature/arcade";
 import { ATELIER } from "./signature/atelier";
 import { BOTANICA } from "./signature/botanica";
+import { KINETIC } from "./signature/kinetic";
 import { ORBIT } from "./signature/orbit";
 import { coreStyles, rem } from "./theme-kit";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
@@ -290,4 +291,5 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
   ATELIER,
   ARCADE,
   BOTANICA,
+  KINETIC,
 ];

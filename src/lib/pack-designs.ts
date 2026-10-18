@@ -4,6 +4,7 @@ import type { PageContent } from "./page-content";
 import { arcadeAboutPage, arcadeHomePage } from "./signature/arcade";
 import { atelierAboutPage, atelierHomePage } from "./signature/atelier";
 import { botanicaAboutPage, botanicaHomePage } from "./signature/botanica";
+import { kineticAboutPage, kineticHomePage } from "./signature/kinetic";
 import { orbitAboutPage, orbitHomePage } from "./signature/orbit";
 
 /**
@@ -25,6 +26,7 @@ export const PACK_DESIGNS = {
   atelier: { home: atelierHomePage, about: atelierAboutPage },
   arcade: { home: arcadeHomePage, about: arcadeAboutPage },
   botanica: { home: botanicaHomePage, about: botanicaAboutPage },
+  kinetic: { home: kineticHomePage, about: kineticAboutPage },
 } as const satisfies Record<string, PackDesign>;
 
 export type PackDesignKey = keyof typeof PACK_DESIGNS;
