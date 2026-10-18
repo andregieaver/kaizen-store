@@ -117,12 +117,14 @@ them."
   a dark footer, and a floodlit band to end on. Presets: *Night run* (dark, a volt accent) and *Glacier* (cool blue). Eight sections.
 * **Its store**, *Halden Athletic* (pack `sports`), sells running and training wear for women and men (three pieces each) and shoes and
   gear, in the collections Women, Men and Shoes and gear.
-* **Women and men athletes**: the briefs of the hero (a woman and a man sprinting side by side at sunrise), the story (a running club of
-  women and men at dusk), the Women and Men pictures (a female runner mid-stride, a male sprinter on the starting line) and the floodlit band
-  (a woman and a man on a night track) all show athletes, framed as sports photographs often are (from the side or behind, faces turned away
-  or in shadow), because every pack picture keeps `PICTURE_RULES` (no recognisable faces). The products are photographed alone on a grey
-  seamless background. Until the photographs are made, the art (`scripts/theme-art/kinetic.js`) draws the same scenes with pictogram runners,
-  a woman with a ponytail and a man, and the kit laid out on grey.
+* **Women and men athletes, with their faces, in action** (D282): the briefs of the hero (a woman and a man sprinting side by side at
+  sunrise), the story (a running club of women and men coming toward the camera at dusk), the Women and Men pictures (a female runner
+  mid-stride, a male sprinter driving out of the blocks) and the floodlit band (a woman and a man running toward the camera at night) are
+  photographs of people (`PackPhoto.people`): the picture model is told to show natural, expressive faces of invented models, never a real
+  or famous person (`PEOPLE_RULES`), in place of the packs' "no recognisable faces". The products and the gear picture show no one. The
+  photographs are made by the platform's picture model with *Make the pictures*, as every pack's are; until then the art
+  (`scripts/theme-art/kinetic.js`) stands in on the unpublished demo store only (pictogram runners and the kit on grey), and the store is
+  not published before every photograph is made.
 
 ## Photographs (D270)
 

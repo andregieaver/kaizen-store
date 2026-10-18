@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { findClaims } from "./claims";
-import { CONTENT_PACKS, PACK_KEYS, PICTURE_RULES, REAL_PHOTO, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, picturesMissing, slotMissing } from "./content-packs";
+import { CONTENT_PACKS, NO_TEXT, PACK_KEYS, PEOPLE_RULES, PICTURE_RULES, REAL_PHOTO, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, picturesMissing, slotMissing } from "./content-packs";
 
 /** Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): demo stores per trade, as data. */
 
@@ -73,11 +73,29 @@ describe("the content packs", () => {
         expect(prompt, slot).toContain(photo.brief);
         expect(prompt).toContain(pack.look);
         expect(prompt).toContain(REAL_PHOTO);
-        expect(prompt).toContain(PICTURE_RULES);
+        expect(prompt).toContain(NO_TEXT);
+        // A photograph of people shows their faces as invented models (D282); every other keeps faces out.
+        expect(prompt).toContain(photo.people ? PEOPLE_RULES : PICTURE_RULES);
         expect(prompt.length, `${pack.key} ${slot}`).toBeLessThanOrEqual(4000);
         for (const words of [photo.brief, photo.alt]) expect(findClaims(words), words).toEqual([]);
       }
     }
+  });
+
+  it("show Kinetic's athletes as women and men with their faces, in action, and its kit alone (D282)", () => {
+    const pack = contentPack("sports")!;
+    const people = Object.entries(pack.photos ?? {}).filter(([, photo]) => photo.people);
+    expect(people.map(([slot]) => slot).sort()).toEqual(["hero", "story", "tile:men", "tile:women", "track"]);
+    const briefs = people.map(([, photo]) => photo.brief.toLowerCase());
+    expect(briefs.some((brief) => /\b(woman|women|female)\b/.test(brief))).toBe(true);
+    expect(briefs.some((brief) => /\b(man|men|male)\b/.test(brief))).toBe(true);
+    for (const brief of briefs) {
+      expect(brief).toMatch(/face/);
+      expect(brief).not.toMatch(/turned away|in shadow|not seen|from behind|silhouette/);
+    }
+    // The products and the gear picture show no one.
+    for (const [slot, photo] of Object.entries(pack.photos ?? {})) if (slot.startsWith("product:") || slot === "tile:gear") expect(photo.people, slot).toBeFalsy();
+    expect(packPhotoPrompt(pack, pack.photos!.hero)).not.toContain("No recognisable faces");
   });
 
   it("count a briefed slot as missing until its photograph is made: placed art only stands in", () => {

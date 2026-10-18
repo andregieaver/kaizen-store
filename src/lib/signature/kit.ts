@@ -106,8 +106,13 @@ export const site = (id: string, part: string, extra: Record<string, unknown> = 
 /** A product page part, by its fixed id. */
 export const product = (id: string, part: string, extra: Record<string, unknown> = {}) => ({ id, type: "product", part, ...extra });
 
-/** A photograph the picture model makes for a pack's slot (D270): its shape, its alt text and the photographer's brief. */
-export const shot = (shape: PackPhoto["shape"], alt: string, brief: string): PackPhoto => ({ brief, shape, alt });
+/** A photograph the picture model makes for a pack's slot (D270): its shape, its alt text and the photographer's brief; `people` shows faces (D282). */
+export const shot = (shape: PackPhoto["shape"], alt: string, brief: string, options: { people?: boolean } = {}): PackPhoto => ({
+  brief,
+  shape,
+  alt,
+  ...(options.people && { people: true }),
+});
 
 /** Hidden on phones (Small). */
 export const phonesHidden = { visibility: { hideAt: ["sm"] } };

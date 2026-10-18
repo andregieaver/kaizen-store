@@ -81,11 +81,24 @@ export type ContentPack = {
   design?: PackDesignKey;
 };
 
-/** One photograph a pack asks the picture model for: what is in it and how it is framed, as a photographer's brief, its shape and its alt text. */
-export type PackPhoto = { brief: string; shape: "landscape" | "portrait" | "square"; alt: string };
+/**
+ * One photograph a pack asks the picture model for: what is in it and how it is framed, as a photographer's brief, its shape and its alt text.
+ * `people`: a photograph of people in action whose faces are part of it (D282, Kinetic's athletes), made by `PEOPLE_RULES` in place of
+ * `PICTURE_RULES`.
+ */
+export type PackPhoto = { brief: string; shape: "landscape" | "portrait" | "square"; alt: string; people?: boolean };
 
-/** Every picture of every pack: no words, letters, logos or faces, so nothing in it can mislead or need a licence. */
-export const PICTURE_RULES = "No text, letters, numbers, logos, labels or watermarks anywhere in the picture. No recognisable faces.";
+/** Every picture of every pack: no words, letters, numbers, logos or watermarks, so nothing in it can mislead or need a licence. */
+export const NO_TEXT = "No text, letters, numbers, logos, labels or watermarks anywhere in the picture.";
+
+/** Every pack picture that is not a photograph of people: no words, and no faces anyone could recognise. */
+export const PICTURE_RULES = `${NO_TEXT} No recognisable faces.`;
+
+/**
+ * A photograph of people (D282): their faces are shown, as a sports or lifestyle photographer would catch them, and are invented models, never
+ * a real or famous person, so nothing in it can mislead or need a licence; no words, as every pack picture.
+ */
+export const PEOPLE_RULES = `${NO_TEXT} The people are invented models, never a real or famous person: natural, expressive faces caught in the moment, real skin and sweat, plain clothing without any branding.`;
 
 export const CONTENT_PACKS: readonly ContentPack[] = [
   {
@@ -372,8 +385,8 @@ export const packPicturePrompt = (pack: ContentPack, subject: string): string =>
 /** What every photograph of a pack is, said to the model in so many words. */
 export const REAL_PHOTO = "A real photograph, not a 3D render, illustration, painting or digital art.";
 
-/** The prompt for one of a pack's photographs: the slot's brief, the shoot's direction (`look`), and the rules every pack picture keeps. */
-export const packPhotoPrompt = (pack: ContentPack, photo: PackPhoto): string => `${photo.brief} ${pack.look} ${REAL_PHOTO} ${PICTURE_RULES}`;
+/** The prompt for one of a pack's photographs: the slot's brief, the shoot's direction (`look`), and its rules (people's faces shown, D282, or none). */
+export const packPhotoPrompt = (pack: ContentPack, photo: PackPhoto): string => `${photo.brief} ${pack.look} ${REAL_PHOTO} ${photo.people ? PEOPLE_RULES : PICTURE_RULES}`;
 
 /** A price in Norway's kroner as the minor units a market's price is set in: the same number in Sweden, about two thirds in Denmark. */
 export function packPrice(price: number, market: string): number {
