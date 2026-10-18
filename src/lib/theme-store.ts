@@ -1,3 +1,4 @@
+import { baseScheme } from "./color-mode";
 import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
@@ -193,7 +194,7 @@ export type ThemeLook = {
   swatch?: ThemeSwatch;
 };
 
-/** A look's light colours and heading font, for a swatch. */
+/** The colours a look is shown in and its heading font, for a swatch (`swatchOf()`). */
 export type ThemeSwatch = { background: string; surface: string; text: string; accent: string; accentText: string; heading: string | null };
 
 /**
@@ -226,7 +227,7 @@ export type ThemeStoreCard = {
   looks: ThemeLook[];
   listing: ThemeListing;
   features: ThemeFeature[];
-  /** For a card without a picture: the light colours and the heading font. */
+  /** For a card without a picture: the colours its own look is shown in and the heading font. */
   swatch: ThemeSwatch;
 };
 
@@ -249,9 +250,14 @@ export const shownLooks = <T extends Pick<ThemeLook, "showcase">>(looks: readonl
 export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShare"> & { listing?: Pick<ThemeListing, "own"> }): string | null =>
   card.listing?.own?.share ?? card.pictureUrl ?? card.madeShare;
 
+/**
+ * A look's swatch (D280): the palette it is shown in (`baseScheme()`: its dark one when it is always dark, else its light one, as its
+ * photographs show it) and its heading font. Its card, its dot among the presets and its highlights' backdrop are drawn in these.
+ */
 export const swatchOf = (snapshot: DesignSnapshot): ThemeStoreCard["swatch"] => {
-  const light = snapshot.theme.settings.light;
-  return { background: light.background, surface: light.surface, text: light.text, accent: light.accent, accentText: light.accentText, heading: snapshot.theme.settings.fonts.heading ?? null };
+  const settings = snapshot.theme.settings;
+  const shown = settings[baseScheme(settings)];
+  return { background: shown.background, surface: shown.surface, text: shown.text, accent: shown.accent, accentText: shown.accentText, heading: settings.fonts.heading ?? null };
 };
 
 /** The list's filters, from the address: one kind of store, one style, one feature; anything unknown is no filter. */

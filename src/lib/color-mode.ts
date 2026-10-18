@@ -5,6 +5,13 @@
  * and Tailwind's `dark:` all follow it.
  */
 
+/**
+ * Which of a theme's two palettes it is drawn in before a device or a visitor's choice says otherwise: the dark one only when it is always
+ * dark (D60's mode). So a theme always dark is shown, photographed and drawn as a swatch (D280) in its dark colours, and any other in its
+ * light ones, as a device in light mode and every photograph of it show it.
+ */
+export const baseScheme = (settings: { mode: "auto" | "light" | "dark" }): "light" | "dark" => (settings.mode === "dark" ? "dark" : "light");
+
 export const COLOR_CHOICES = { system: "Same as this device", light: "Light", dark: "Dark" } as const;
 export type ColorChoice = keyof typeof COLOR_CHOICES;
 

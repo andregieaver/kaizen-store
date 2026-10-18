@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
-import { LAUNCH_THEMES } from "./launch-themes";
+import { LAUNCH_THEMES, launchVariation } from "./launch-themes";
 import {
   cardPicture,
   filterThemes,
@@ -18,6 +18,7 @@ import {
   themeFeatures,
   themeFilterHref,
   sharePicture,
+  swatchOf,
   themeJsonLd,
   lookChoice,
   previewView,
@@ -231,3 +232,32 @@ describe("a theme's page and full-screen preview keep the look and the view in t
     expect(themePagePath("calm", "coast")).toBe("/themes/calm?preset=coast");
   });
 });
+
+/** A look's swatch is drawn in the colours it is shown in (D280): its dark palette when it is always dark, else its light one. */
+describe("a look's swatch", () => {
+  it("of a theme always dark is its dark colours, of any other its light ones", () => {
+    const theme = snap();
+    theme.theme.settings.mode = "dark";
+    expect(swatchOf(theme)).toMatchObject({ background: theme.theme.settings.dark.background, accent: theme.theme.settings.dark.accent });
+    for (const mode of ["light", "auto"] as const) {
+      theme.theme.settings.mode = mode;
+      expect(swatchOf(theme)).toMatchObject({ background: theme.theme.settings.light.background, accent: theme.theme.settings.light.accent });
+    }
+  });
+
+  it("of every launch theme's look is the palette it is shown in, and no two looks of a theme share one", () => {
+    for (const launch of LAUNCH_THEMES) {
+      const looks = [launch.snapshot, ...launch.presets.map((preset) => ({ ...launch.snapshot, theme: launchVariation(launch, preset).theme }))];
+      const swatches = looks.map((look) => {
+        const settings = look.theme.settings;
+        const shown = settings.mode === "dark" ? settings.dark : settings.light;
+        const swatch = swatchOf(look as DesignSnapshot);
+        expect(swatch, launch.key).toMatchObject({ background: shown.background, surface: shown.surface, text: shown.text, accent: shown.accent });
+        return `${swatch.background} ${swatch.accent}`;
+      });
+      // Presets that differ only in their dark colours (Orbit's Mars and Nebula) were drawn alike from the light ones.
+      expect(new Set(swatches).size, launch.key).toBe(swatches.length);
+    }
+  });
+});
+

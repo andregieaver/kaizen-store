@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { baseScheme } from "./color-mode";
 import { hoverTimingVars, themeHoverSchema, type ThemeHover } from "./hover-timing";
 import { DEFAULT_BREAKPOINTS, type Breakpoints } from "./breakpoints";
 import { breakpointsSchema } from "./breakpoints-schema";
@@ -351,7 +352,7 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
   ].join("; ");
   const colors = (scheme: "light" | "dark") => paletteVars(settings[scheme], scheme);
   if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }`;
-  const base = settings.mode === "dark" ? "dark" : "light";
+  const base = baseScheme(settings);
   const other = base === "dark" ? "light" : "dark";
   let css = `${selector} { ${colors(base)}; ${sizes}; }`;
   if (settings.mode === "auto") {
