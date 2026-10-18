@@ -2542,6 +2542,20 @@
       "when": 1792324960769,
       "tag": "20261018120240_theme_content_launch",
       "breakpoints": true
+    },
+    {
+      "idx": 363,
+      "version": "7",
+      "when": 1792353044021,
+      "tag": "20261018195043_demo_stores",
+      "breakpoints": true
+    },
+    {
+      "idx": 364,
+      "version": "7",
+      "when": 1792353070106,
+      "tag": "20261018195110_demo_stores_rules",
+      "breakpoints": true
     }
   ]
 }

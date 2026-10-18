@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."store_starters" ADD COLUMN "kind" text DEFAULT 'content' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."store_starters" ADD CONSTRAINT "store_starters_kind" CHECK ("commerce"."store_starters"."kind" in ('content', 'demo'));--> statement-breakpoint
+ALTER TABLE "commerce"."store_starters" ADD CONSTRAINT "store_starters_demo" CHECK ("commerce"."store_starters"."kind" <> 'demo' or ("commerce"."store_starters"."design_preset_id" is null and "commerce"."store_starters"."pack_key" is null and "commerce"."store_starters"."published_store_id" is null));

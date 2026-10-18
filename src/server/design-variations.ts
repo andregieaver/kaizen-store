@@ -36,8 +36,11 @@ export async function variationForEdit(admin: Account, presetId: string, key: st
   return found ? { ...found, storeTheme: { base: found.theme.base, savedId: null, settings: found.theme.settings } } : null;
 }
 
-/** Adds a preset: named, with a key from its name, starting as a copy of the theme's drafted look (its workspace's theme). */
-export async function addVariation(admin: Account, presetId: string, nameInput: unknown): Promise<DesignResult<{ key: string }>> {
+/**
+ * Adds a preset: named, with a key from its name, starting as a copy of the theme's drafted look (its workspace's theme), or as `look` when
+ * given (a demo store's theme settings, D277: *Publish this look… → As a preset*), checked as a store's theme is against the workspace.
+ */
+export async function addVariation(admin: Account, presetId: string, nameInput: unknown, look?: StoreTheme): Promise<DesignResult<{ key: string }>> {
   if (!admin.platformAdmin) return refuse(NOT_YOURS);
   const name = variationName(nameInput);
   if (!name) return refuse("Give the preset a name.");
@@ -49,8 +52,15 @@ export async function addVariation(admin: Account, presetId: string, nameInput: 
   const existing = await draftVariations(presetId);
   if (existing.length >= VARIATIONS_MAX) return refuse(`A theme has at most ${VARIATIONS_MAX + 1} presets: its own look and ${VARIATIONS_MAX} more.`);
   if (existing.some((v) => v.name.toLowerCase() === name.toLowerCase())) return refuse("Another preset of this theme has that name.");
-  const [store] = await db().execute<Row>(sql`select theme from commerce.stores where id = ${workspace.workspace.store.id}::uuid`);
-  const theme = parseStoreTheme(store?.theme);
+  let theme: StoreTheme;
+  if (look) {
+    const checked = await checkStoreTheme(workspace.workspace.store.id, { ...look, savedId: null });
+    if (!checked.ok) return checked;
+    theme = checked.theme;
+  } else {
+    const [store] = await db().execute<Row>(sql`select theme from commerce.stores where id = ${workspace.workspace.store.id}::uuid`);
+    theme = parseStoreTheme(store?.theme);
+  }
   const key = variationKey(name, existing.map((v) => v.key));
   try {
     await db().execute(sql`
@@ -61,7 +71,9 @@ export async function addVariation(admin: Account, presetId: string, nameInput: 
   } catch (error) {
     return refuse(variationProblem(error));
   }
-  await audit(admin.id, design.workspaceStoreId, "platform.design_variation_added", { preset: presetId, variation: key }, { target: { type: "design_preset", id: presetId } });
+  await audit(admin.id, design.workspaceStoreId, "platform.design_variation_added", { preset: presetId, variation: key, from: look ? "store" : "theme" }, {
+    target: { type: "design_preset", id: presetId },
+  });
   return { ok: true, key };
 }
 

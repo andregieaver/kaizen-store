@@ -49,6 +49,8 @@ export type OfferedStarter = {
  * preview and new stores are made from.
  */
 export type StarterRow = OfferedStarter & {
+  /** Starting content (`content`, frozen on Publish) or a live demo store (`demo`, D277). */
+  kind: "content" | "demo";
   published: boolean;
   position: number;
   storeId: string;
@@ -70,6 +72,17 @@ export type StarterRow = OfferedStarter & {
   /** Its working store changed since the last Publish, as its activity log tells (an estimate: not every change is logged). */
   changedInStore: boolean;
   updatedAt: string;
+};
+
+/** What content a copy can start from is (`contentSources()`, D275, D277). */
+export type ContentSourceKind = "pack" | "theme" | "template" | "demo";
+
+/** The kind of a content source as the platform admin reads it beside its name. */
+export const CONTENT_SOURCE_WORDS: Record<ContentSourceKind, string> = {
+  pack: "starting content",
+  theme: "a theme's content",
+  template: "older starting content",
+  demo: "demo store, as it is now",
 };
 
 /** A card to choose: a store template, or the Standard store (`id` empty). */
@@ -200,5 +213,7 @@ export function starterRefusal(text: string): string | null {
   if (text.includes("store_starters.archived")) return "This demo store is archived. Restore it before publishing it.";
   if (text.includes("store_starters.not_open")) return "The demo store is not open, so it cannot be published.";
   if (text.includes("store_starters_archived_unpublished")) return "An archived demo store is never published. Restore it first.";
+  if (text.includes("store_starters.demo_live")) return "A demo store is live as it stands: Publish puts it at its address, with nothing to freeze.";
+  if (text.includes("store_starters.kind_fixed")) return "A demo store stays a demo store, and starting content stays starting content.";
   return null;
 }

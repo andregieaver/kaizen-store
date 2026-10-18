@@ -1,6 +1,6 @@
 # Themes with their own content, demo stores at their own addresses (D275)
 
-Status: **agreed with the owner on 18 October 2026; step 1 built (D275), step 2 built (D276).** It replaces the per-look demo store of D273
+Status: **agreed with the owner on 18 October 2026; step 1 built (D275), step 2 built (D276), step 3 built (D277).** It replaces the per-look demo store of D273
 (`ThemeListing.pack`, `presetPacks`, `demoStoreForLook()`) and the gate of D274 (`shownLooks()`).
 
 ## 1. In four sentences
@@ -140,6 +140,13 @@ On the demo store's page, **Publish this look…** offers three things:
 
 Each is a copy made once, when pressed. The demo store and the theme never stay linked, so an experiment on a demo store never reaches
 the stores that use the theme.
+
+*Built (D277):* a demo store is a store template of kind `demo` (`store_starters.kind`), made by `createDemoStore()`, published by
+`publishDemoStore()` (nothing frozen), listed by `liveDemosOf()`, and its look published by `demoLookAsTheme()`, `demoLookAsPreset()` and
+`demoLookIntoNextVersion()` (`src/server/demo-stores.ts`). A preset is also refused for Kaizena Flow's own themes, whose presets are written
+in code. Until step 4 a demo store lives at its store-domain address as any store template does, so *Unpublish* takes it off *See it live*;
+the address itself comes down with the demo domain. *See it live* shows the picture set on the demo store's page, else the look's
+colours; photographs of demo stores are not made yet.
 
 ## 5. Addresses on kaizenaflow.com
 

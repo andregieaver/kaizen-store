@@ -224,6 +224,58 @@ describe("what a new store is copied from", () => {
   });
 });
 
+describe("a live demo store (D277)", () => {
+  /** A demo store made as `createDemoStore()` makes one: a copy of starting content, marked, and described as kind `demo`. */
+  async function createDemo(slug: string, published = false): Promise<{ store: string; starter: string }> {
+    const { id: store } = await one<{ id: string }>("select commerce.clone_store(commerce.starter_source(null), $1, $1, $2) as id", [slug, owner]);
+    await db.query("update commerce.stores set starter = true where id = $1", [store]);
+    const { id: starter } = await one<{ id: string }>(
+      "insert into commerce.store_starters (store_id, kind, title, category, published) values ($1, 'demo', $2, 'retail', $3) returning id",
+      [store, slug, published],
+    );
+    return { store, starter };
+  }
+
+  it("is a kind of its own, kept for good, with no frozen copy, pack or theme content", async () => {
+    const demo = await createDemo("demo-kind");
+    const { id: other } = await one<{ id: string }>("select commerce.clone_store(commerce.starter_source(null), 'demo-odd', 'demo-odd', $1) as id", [owner]);
+    await db.query("update commerce.stores set starter = true where id = $1", [other]);
+    await refused("insert into commerce.store_starters (store_id, kind, title, category) values ($1, 'shop', 'Odd', 'retail')", [other], /store_starters_kind/);
+    await refused("update commerce.store_starters set kind = 'content' where id = $1", [demo.starter], /store_starters\.kind_fixed/);
+    await refused("update commerce.store_starters set pack_key = 'fashion' where id = $1", [demo.starter], /store_starters_demo/);
+    const content = await createStarter("content-kind");
+    expect((await one<{ kind: string }>("select kind from commerce.store_starters where id = $1", [content.starter])).kind).toBe("content");
+    await refused("update commerce.store_starters set kind = 'demo' where id = $1", [content.starter], /store_starters\.kind_fixed/);
+  });
+
+  it("is live as it stands: never frozen", async () => {
+    const demo = await createDemo("demo-live", true);
+    await refused("select commerce.freeze_starter($1, $2)", [demo.starter, owner], /store_starters\.demo_live/);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.stores where starter_copy_of = $1", [demo.starter])).n).toBe(0);
+  });
+
+  it("is never a new store's content, but is copied as it stands, published or not, while open and not archived", async () => {
+    const demo = await createDemo("demo-source");
+    expect((await one<{ id: string | null }>("select commerce.starter_offered_source($1) as id", [demo.starter])).id).toBeNull();
+    expect((await one<{ id: string }>("select commerce.starter_source($1) as id", [demo.starter])).id).toBe(demo.store);
+    await db.query("update commerce.store_starters set published = true where id = $1", [demo.starter]);
+    expect((await one<{ id: string | null }>("select commerce.starter_offered_source($1) as id", [demo.starter])).id).toBeNull();
+    expect((await one<{ id: string }>("select commerce.starter_source($1) as id", [demo.starter])).id).toBe(demo.store);
+    // A request naming it is approved from the Standard store.
+    const { id: request } = await one<{ id: string }>(
+      "insert into commerce.access_requests (email, name, store_name, starter_id) values ('demo-ask@example.com', 'New', 'New', $1) returning id",
+      [demo.starter],
+    );
+    const { id } = await one<{ id: string }>("select commerce.approve_access_request($1, 'from-demo', 'From demo', null) as id", [request]);
+    expect((await one<{ made_from_starter: string | null }>("select made_from_starter from commerce.stores where id = $1", [id])).made_from_starter).toBeNull();
+    await db.query("update commerce.store_starters set archived_at = now(), published = false where id = $1", [demo.starter]);
+    await refused("select commerce.starter_source($1)", [demo.starter], /store_starters\.not_offered/);
+    await db.query("update commerce.store_starters set archived_at = null where id = $1", [demo.starter]);
+    await db.query("update commerce.stores set status = 'closed' where id = $1", [demo.store]);
+    await refused("select commerce.starter_source($1)", [demo.starter], /store_starters\.not_offered/);
+  });
+});
+
 describe("publishing, archiving and deleting a demo store (D177)", () => {
   it("freezes its store into a hidden copy that new stores are made from; a later publish closes the copy it replaces", async () => {
     const spa = await createStarter("frozen-spa");

@@ -31,14 +31,14 @@ export function DemoStoresCard({ packs, older, contentOf }: { packs: PackState[]
   const ready = (pack: PackState) => pack.starterId !== null && pack.current && !pack.archived;
   const toAsk = packs.filter((pack) => ready(pack) && pack.pictures < pack.slots && !pack.asked).map((pack) => pack.key);
   return (
-    <div id="demo-stores" className="scroll-mt-4">
+    <div id="starting-content" className="scroll-mt-4">
       <Card
         title="Starting content"
         description="Pages, products and photographs Kaizena Flow writes in English, one set per trade. Each of Kaizena Flow's themes has one as its own content, which its preview shows and a new store started from it begins with; a new theme's content starts as a copy of one. Set them up, make their pictures (made in the background, so you can leave the page), then publish each."
         aside={
           toSetUp > 0 ? (
             <ActionForm action={syncContentPacksAction}>
-              <SubmitButton>{fresh ? "Set up the demo stores" : "Bring them up to date"}</SubmitButton>
+              <SubmitButton>{fresh ? "Set up the starting content" : "Bring it up to date"}</SubmitButton>
             </ActionForm>
           ) : toAsk.length > 1 ? (
             <AllPackPictures ask={askPackPicturesAction.bind(null, toAsk)} />
@@ -83,9 +83,9 @@ export function DemoStoresCard({ packs, older, contentOf }: { packs: PackState[]
         </List>
         {older.length > 0 && (
           <div className="mt-6 flex flex-col gap-2">
-            <h3 className="text-body-strong text-ink">Older demo stores</h3>
-            <p className="text-sm text-muted">Demo stores made by hand before themes had their own. No look starts from them; open one to archive or delete it.</p>
-            <List label="Older demo stores">
+            <h3 className="text-body-strong text-ink">Older starting content</h3>
+            <p className="text-sm text-muted">Starting content made by hand before themes had their own. No look starts from it; open one to archive or delete it.</p>
+            <List label="Older starting content">
               {older.map((starter) => (
                 <ListRow key={starter.id}>
                   <RowLead title={starter.title} href={demoStoreHref(starter.id)} sub={`/s/${starter.storeSlug}`} />

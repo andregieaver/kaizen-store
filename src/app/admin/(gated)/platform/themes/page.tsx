@@ -7,11 +7,13 @@ import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-b
 import { PreviewLink } from "@/components/admin/preview-link";
 import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from "@/lib/design-presets";
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
+import { CONTENT_SOURCE_WORDS } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { launchThemeStates } from "@/server/launch-themes";
 import { contentPackStates } from "@/server/content-packs";
 import { contentOwners, contentSources, listStarters } from "@/server/store-starters";
+import { listDemoStores } from "@/server/demo-stores";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 
@@ -26,6 +28,7 @@ import {
   unpublishDesignAction,
 } from "./actions";
 import { DemoStoresCard } from "./demo-stores/demo-stores-card";
+import { LiveDemoStoresCard } from "./demo-stores/live-demo-stores-card";
 
 export const metadata: Metadata = { title: "Themes" };
 
@@ -33,7 +36,6 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 const field = "flex flex-col gap-1 text-sm font-medium";
 const tab = "flex min-h-10 items-center rounded-md border border-edge px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium";
 const KIND_WORDS = { template: "the Standard store", starter: "demo store", store: "store" } as const;
-const CONTENT_WORDS = { pack: "starting content", theme: "a theme's content", demo: "demo store" } as const;
 
 /**
  * Themes (D176, D177, D273, `docs/themes-unified.md`): a look (theme, header, footer, product layout and CSS) with its presets, which any
@@ -47,7 +49,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   const query = await searchParams;
   const filter = listFilterOf(query.show);
   const current = filter === "current";
-  const [designs, sources, launch, packs, starters, owners, contents] = await Promise.all([
+  const [designs, sources, launch, packs, starters, owners, contents, demos] = await Promise.all([
     listDesigns(filter),
     snapshotSources(admin),
     launchThemeStates(),
@@ -55,6 +57,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
     current ? listStarters() : Promise.resolve([]),
     current ? contentOwners() : Promise.resolve(new Map<string, string>()),
     current ? contentSources() : Promise.resolve([]),
+    current ? listDemoStores() : Promise.resolve([]),
   ]);
   const facts = await Promise.all(designs.map((design) => designLifecycle(design)));
   const published = designs.filter((d) => d.published).length;
@@ -82,7 +85,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
 
       {query.deleted && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          {query.deleted === "demo" ? "The demo store was deleted. Its store and published copies are closed and kept." : "The theme was deleted; its workspace is closed and kept."}
+          {query.deleted === "demo"
+            ? "The demo store was deleted. Its store is closed and kept."
+            : query.deleted === "content"
+              ? "The starting content was deleted. Its store and published copies are closed and kept."
+              : "The theme was deleted; its workspace is closed and kept."}
         </p>
       )}
 
@@ -103,6 +110,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
           ))}
         </ol>
       )}
+
+      {current && <LiveDemoStoresCard demos={demos} />}
 
       {current && <DemoStoresCard packs={packs} older={older} contentOf={contentOf} />}
 
@@ -166,7 +175,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
                   A store&apos;s look
                   <span className="block text-muted">
                     {sources.length === 0
-                      ? "You work in no store yet: open a demo store's admin from Demo stores first."
+                      ? "You work in no store yet: open a demo store's admin from Demo stores or Starting content first."
                       : "Its theme, header, footer, product page and CSS as they are now, to change here; the store is not touched."}
                   </span>
                 </span>
@@ -189,7 +198,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
               <select name="content" defaultValue={contents.find((c) => c.kind === "pack")?.id ?? ""} className={control}>
                 {contents.map((source) => (
                   <option key={source.id} value={source.id}>
-                    {source.title} ({CONTENT_WORDS[source.kind]})
+                    {source.title} ({CONTENT_SOURCE_WORDS[source.kind]})
                   </option>
                 ))}
                 <option value="">None for now: choose it on its Content tab</option>

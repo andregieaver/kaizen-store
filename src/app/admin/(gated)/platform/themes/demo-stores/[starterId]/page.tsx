@@ -8,10 +8,11 @@ import { PreviewLink } from "@/components/admin/preview-link";
 import { deleteBlocker } from "@/lib/lifecycle";
 import { formatMoney } from "@/lib/money";
 import { featureSummary } from "@/lib/onboarding";
-import { DEMO_STORES_HREF } from "@/lib/theme-admin-paths";
+import { STARTING_CONTENT_HREF } from "@/lib/theme-admin-paths";
 import { FEATURES_BY_ID, STORE_FEATURES, featureKept, featureOn, featureWarnings } from "@/lib/store-features";
 import { requirePlatformAdmin } from "@/server/auth";
 import { featureFacts } from "@/server/store-features";
+import { getDemoStore, presetCheck } from "@/server/demo-stores";
 import { getStarter, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
 import { Card, PageHeader } from "@/components/admin/ui";
 
@@ -24,19 +25,28 @@ import {
   setStarterFeaturesAction,
   unpublishStarterAction,
 } from "../actions";
+import { DemoStoreView } from "./demo-store-view";
 
 export const metadata: Metadata = { title: "Demo store" };
 
 /**
- * One demo store (D175, D177, D273): a store template in code, the content a theme's look starts new stores with. Its life (publish, which
+ * One store template (D175, D177, D273): starting content, the content a theme's look starts new stores with, with its life (publish, which
  * freezes its store as it is then; unpublish, archive or restore, delete while unused) and the features a new store starts with switched
- * on. What it holds is edited in its own store admin; which looks it shows is chosen on each theme's page.
+ * on; or a live demo store (D277, `DemoStoreView`). What either holds is edited in its own store admin.
  */
-export default async function DemoStorePage({ params }: PageProps<"/admin/platform/themes/demo-stores/[starterId]">) {
+export default async function DemoStorePage({ params, searchParams }: PageProps<"/admin/platform/themes/demo-stores/[starterId]">) {
   await connection();
   await requirePlatformAdmin();
-  const starter = await getStarter((await params).starterId);
+  const { starterId } = await params;
+  const starter = await getStarter(starterId);
   if (!starter) notFound();
+  // A live demo store (D277) has a page of its own: live as it stands, and *Publish this look…*.
+  if (starter.kind === "demo") {
+    const demo = await getDemoStore(starterId);
+    if (!demo) notFound();
+    const [query, preset] = await Promise.all([searchParams, presetCheck(demo)]);
+    return <DemoStoreView demo={demo} preset={preset.ok ? { ok: true } : preset} unthemed={Boolean(query.unthemed)} />;
+  }
   const shown = shownDetails(starter);
   const facts = starterLifecycle(starter);
   const blocker = deleteBlocker("demo store", { stores: starter.storesMade, requests: starter.requests });
@@ -50,7 +60,7 @@ export default async function DemoStorePage({ params }: PageProps<"/admin/platfo
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: DEMO_STORES_HREF, label: "Themes" }}
+        back={{ href: STARTING_CONTENT_HREF, label: "Themes" }}
         title={shown.title}
         status={<LifecycleBadge facts={facts} />}
         meta={[

@@ -51,7 +51,7 @@ export async function createAccessRequest(input: AccessRequestInput): Promise<vo
   await db().execute(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
-      (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published),
+      (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
       ${publishedVariation(input.designPresetId, input.designVariation)})
     on conflict ((lower(email))) where status = 'pending' do nothing

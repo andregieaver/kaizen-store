@@ -771,6 +771,12 @@ export const storeStarters = commerce.table(
      * starting content only.
      */
     designPresetId: uuid("design_preset_id").references((): AnyPgColumn => designPresets.id, { onDelete: "set null" }),
+    /**
+     * What it is (D277, `docs/themes-content-and-demo-stores.md` section 4): `content`, a starting point new stores and themes are copied
+     * from (frozen on Publish, D177), or `demo`, a live store a platform admin dresses in a theme: published as it stands, never frozen, never
+     * a new store's content, shown under *See it live* on the theme it wears. Fixed once made.
+     */
+    kind: text("kind").notNull().default("content"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -790,6 +796,11 @@ export const storeStarters = commerce.table(
     index("store_starters_published_store_idx").on(t.publishedStoreId),
     index("store_starters_archived_by_idx").on(t.archivedBy),
     check("store_starters_archived_unpublished", sql`not (${t.published} and ${t.archivedAt} is not null)`),
+    check("store_starters_kind", sql`${t.kind} in ('content', 'demo')`),
+    check(
+      "store_starters_demo",
+      sql`${t.kind} <> 'demo' or (${t.designPresetId} is null and ${t.packKey} is null and ${t.publishedStoreId} is null)`,
+    ),
     check("store_starters_draft", sql`${t.draft} is null or jsonb_typeof(${t.draft}) = 'object'`),
     index("store_starters_offered_idx").on(t.published, t.position),
     index("store_starters_created_by_idx").on(t.createdBy),

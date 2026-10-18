@@ -820,8 +820,8 @@ const PAGES: readonly AdminPage[] = [
   platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),
   platform("customer", "/customers/[accountId]", "Customer", "Platform", "One store owner: stores, plans, invoices and emails."),
   platform("stores", "/stores", "Stores", "Platform", "Every store with its plan, subscription and fee."),
-  platform("themes", "/themes", "Themes", "Platform", "Kaizena Flow's themes (D241, D273): a whole look (theme, header, footer, product page layout and CSS, never content or brand) with up to five presets, each preset's demo store the content a new store starts with. Add and update Kaizena Flow's own themes, make one from a store or from scratch, publish, unpublish, archive, restore or delete it, order them and preview it; set up the demo stores and make their pictures. Any store applies one from its Design settings and people creating a store choose one.", {
-    tasks: ["Make a theme from a store", "Make a theme from scratch", "Publish a theme", "Preview a theme", "Archive a theme", "Set up the demo stores", "Make a demo store's pictures"],
+  platform("themes", "/themes", "Themes", "Platform", "Kaizena Flow's themes (D241, D273, D275): a whole look (theme, header, footer, product page layout and CSS, never brand) with up to five presets and its own content, the content a new store starts with. Add and update Kaizena Flow's own themes, make one from a store or from scratch, publish, unpublish, archive, restore or delete it, order them and preview it; make demo stores (D277), live stores wearing a theme; set up the starting content and make its pictures. Any store applies one from its Design settings and people creating a store choose one.", {
+    tasks: ["Make a theme from a store", "Make a theme from scratch", "Publish a theme", "Preview a theme", "Archive a theme", "Make a demo store", "Set up the starting content", "Make the starting content's pictures"],
     keywords: ["design profile", "look", "theme preset", "style", "skin", "demo store", "store template", "content pack", "starter"],
   }),
   platform("theme", "/themes/[presetId]", "Theme", "Platform", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
@@ -844,9 +844,13 @@ const PAGES: readonly AdminPage[] = [
   platform("theme.footer", "/themes/[presetId]/footer", "Theme footer", "Platform", "A theme's footer: the standard one, or its own built in the page builder; saved as the theme's draft."),
   platform("theme.product-layout", "/themes/[presetId]/product-layout", "Theme product page", "Platform", "A theme's product page layout: the standard one, or its own built in the page builder; saved as the theme's draft."),
   platform("theme.css", "/themes/[presetId]/css", "Theme CSS", "Platform", "A theme's own CSS for every page, checked when saved; part of the theme's draft."),
-  platform("theme.demo-store", "/themes/demo-stores/[starterId]", "Demo store", "Platform", "One demo store, the content a theme's look starts new stores with (D273): publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, delete it while nothing used it, open its admin, preview it, and choose the features a new store starts with switched on.", {
-    tasks: ["Publish a demo store", "Preview a demo store", "Edit a demo store's products and pages"],
-    keywords: ["store template", "content pack", "starter", "demo content"],
+  platform("theme.demo-store", "/themes/demo-stores/[starterId]", "Demo store", "Platform", "One demo store (D277), a live store wearing a theme: publish it live as it stands or take it down, its trade and picture for See it live, open its admin to customise it, and Publish this look… as a new theme, a preset of the theme it wears or that theme's next version. Or one set of starting content (D275): publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, delete it while nothing used it, preview it, and choose the features a new store starts with switched on.", {
+    tasks: ["Publish a demo store", "Preview a demo store", "Edit a demo store's products and pages", "Make a theme from a demo store", "Add a demo store's look as a preset"],
+    keywords: ["store template", "content pack", "starter", "demo content", "see it live", "publish this look"],
+  }),
+  platform("theme.demo-store.new", "/themes/demo-stores/new", "New demo store", "Platform", "Make a demo store (D277): its name, its address, the theme or preset it wears and the starting content it is copied from; it opens in its own store admin to customise.", {
+    tasks: ["Make a demo store"],
+    keywords: ["demo store", "live store", "showcase", "see it live"],
   }),
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a theme to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),

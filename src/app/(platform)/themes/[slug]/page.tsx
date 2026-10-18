@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { JsonLdScript } from "@/components/json-ld";
+import { SeeItLive } from "@/components/see-it-live";
 import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
 import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, sharePicture, shownLooks, themeJsonLd, themePreviewPath, themeStartLink, themeTryLink } from "@/lib/theme-store";
+import { liveDemosOf } from "@/server/demo-stores";
 import { themeStoreCards, themeStorePage } from "@/server/theme-store";
 import { platformHref, themeStorePath, themeStoreUrl, themesHost } from "@/lib/theme-host";
 
@@ -33,7 +36,8 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]">):
 /**
  * A theme's page in the theme store (D275, `docs/themes-content-and-demo-stores.md` section 6), written for Homer: the theme large, a
  * computer and a phone showing the chosen look on its own content with its presets as swatches under them, *Use this theme* and *Preview*
- * (full screen) for the chosen look, its highlights, what one gets, and the details folded away for Lisa. Free; no price anywhere.
+ * (full screen) for the chosen look, the demo stores wearing it (*See it live*, D277), its highlights, what one gets, and the details folded
+ * away for Lisa. Free; no price anywhere.
  */
 export default async function ThemePage({ params }: PageProps<"/themes/[slug]">) {
   const { slug } = await params;
@@ -89,6 +93,11 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           }
         />
       </div>
+
+      {/* The demo stores wearing one of its looks (D277), read every few minutes: the page itself stays prerendered. */}
+      <Suspense fallback={null}>
+        <LiveDemos presetId={theme.id} title={theme.title} looks={looks} />
+      </Suspense>
 
       {/* Pictures composed from its photographs, with words a person wrote or accepted (`docs/theme-showcase-phase-2.md` step 2). */}
       {highlights.length > 0 && (
@@ -205,4 +214,10 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
       </details>
     </main>
   );
+}
+
+/** *See it live* (D277): the published demo stores wearing one of the theme's looks; nothing when there is none. */
+async function LiveDemos({ presetId, title, looks }: { presetId: string; title: string; looks: StageLook[] }) {
+  const demos = await liveDemosOf(presetId);
+  return <SeeItLive title={title} demos={demos} looks={looks} />;
 }

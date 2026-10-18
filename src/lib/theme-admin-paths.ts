@@ -1,6 +1,6 @@
 /**
- * Where themes live in the platform's admin (D273): one Themes page under Stores (each theme, its presets and the demo store each look
- * starts new stores with), the demo stores under it, and Kaizena Flow's own site's installed themes under Website as its Design. Build
+ * Where themes live in the platform's admin (D273): one Themes page under Stores (each theme with its presets and its own content), the
+ * starting content and the demo stores (D277) under it, and Kaizena Flow's own site's installed themes under Website as its Design. Build
  * these links with the functions here, never by hand.
  */
 export const THEMES_ADMIN = "/admin/platform/themes";
@@ -8,11 +8,17 @@ export const THEMES_ADMIN = "/admin/platform/themes";
 /** Kaizena Flow's own site's installed themes (D251), one live. */
 export const SITE_DESIGN = "/admin/platform/site-design";
 
-/** One demo store (a content pack's store template, D257), the content a theme's look starts new stores with. */
+/** One store template: starting content (a content pack's, D257) or a live demo store (D277), each with its own page. */
 export const demoStoreHref = (starterId: string): string => `${THEMES_ADMIN}/demo-stores/${starterId}`;
 
-/** The demo stores, a card on the Themes page. */
+/** The demo stores (D277), live stores dressed in a theme: a card on the Themes page. */
 export const DEMO_STORES_HREF = `${THEMES_ADMIN}#demo-stores`;
+
+/** *New demo store* (D277): its name, address, theme and the content it starts with. */
+export const NEW_DEMO_STORE = `${THEMES_ADMIN}/demo-stores/new`;
+
+/** The starting content (D275), the content packs a theme's content or a demo store starts as a copy of: a card on the Themes page. */
+export const STARTING_CONTENT_HREF = `${THEMES_ADMIN}#starting-content`;
 
 /**
  * The addresses themes, design profiles and store templates had before D273 and where they went, as Next's `redirects`

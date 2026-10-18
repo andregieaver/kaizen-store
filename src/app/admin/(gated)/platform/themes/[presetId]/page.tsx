@@ -59,6 +59,13 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
           {query.notes && " Some of the store's look could not be kept: custom fields, menus other than the header's and footer's, or CSS reaching into its files."}
         </p>
       )}
+      {query.copied && (
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
+          The draft look is the demo store&apos;s now. Review it on the tabs above, preview the draft, write What&apos;s new and publish: stores
+          that follow updates get it only then.
+          {query.notes && " Some of the store's look could not be kept: custom fields, menus other than the header's and footer's, or CSS reaching into its files."}
+        </p>
+      )}
 
       <section aria-labelledby="publishing" className={card}>
         <h2 id="publishing" className="text-title text-ink">

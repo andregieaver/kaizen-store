@@ -72,7 +72,7 @@ export async function deleteStarterAction(starterId: string, _state: FormState, 
   const result = await deleteStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
-  redirect(`${THEMES_ADMIN}?deleted=demo#demo-stores`);
+  redirect(`${THEMES_ADMIN}?deleted=content#starting-content`);
 }
 
 /** Opens the demo store's admin, making the platform admin an owner of it first if they are not a member yet. */
@@ -113,7 +113,7 @@ export async function syncContentPacksAction(): Promise<FormState> {
   const said = [
     result.made.length > 0 && `Set up: ${result.made.join(", ")}.`,
     result.updated.length > 0 && `Brought up to date: ${result.updated.join(", ")}.`,
-    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "Every demo store is up to date.",
+    result.made.length + result.updated.length === 0 && result.problems.length === 0 && "All the starting content is up to date.",
   ].filter((line): line is string => typeof line === "string");
   if (result.problems.length > 0) return { status: "error", messages: [...said, ...result.problems] };
   return { status: "ok", messages: said };

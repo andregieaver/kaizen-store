@@ -13,12 +13,13 @@ import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
 import { storeAreas, storeTabs } from "@/lib/store-nav";
-import { DEMO_STORES_HREF } from "@/lib/theme-admin-paths";
+import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { waitingCount } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
+import { starterOfStore } from "@/server/store-starters";
 
 import {
   assistantHearAction,
@@ -73,6 +74,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
   // Support (D216): the number of conversations waiting for a person, on the Support tab of those who may read it.
   const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
+  // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
+  const starter = store.starter ? await starterOfStore(store.id) : null;
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
   const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
@@ -132,18 +135,37 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       workspaceLinks={INBOX}
       focus={{ pattern: SETUP, back: { href: base, label: "Leave setup" }, title: `Setting up ${store.name}` }}
     >
-      {store.starter && (
+      {store.starter && starter?.kind === "demo" && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">This store is a demo store.</p>
+          <p className="font-medium">This store is a demo store{starter.published ? ", live" : ", not published yet"}.</p>
           <p className="text-muted">
-            New stores that start from a theme&apos;s look shown on it start with its products, services, staff, pages, menus, settings and
-            page drafts, as they were when it was last published: changes made here reach new stores when it is published again. It takes no
-            orders and is never shown to search engines.
+            {starter.published
+              ? "Every change here shows on it at once, and the theme's page lists it under See it live."
+              : "Publish it from its page to put it live; the theme's page then lists it under See it live."}{" "}
+            It takes no orders, sends no emails to shoppers and is never shown to search engines.
             {account.platformAdmin && (
               <>
                 {" "}
-                <Link href={DEMO_STORES_HREF} className="font-medium underline underline-offset-2">
-                  Demo stores
+                <Link href={demoStoreHref(starter.id)} className="font-medium underline underline-offset-2">
+                  Its page
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+      )}
+      {store.starter && starter?.kind !== "demo" && (
+        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+          <p className="font-medium">This store is starting content.</p>
+          <p className="text-muted">
+            A theme shown on it is previewed with its products, services, staff, pages, menus, settings and page drafts, and new stores that
+            start from that theme begin with them, as they were when it was last published: changes made here reach new stores when it is
+            published again. It takes no orders and is never shown to search engines.
+            {account.platformAdmin && (
+              <>
+                {" "}
+                <Link href={starter ? demoStoreHref(starter.id) : STARTING_CONTENT_HREF} className="font-medium underline underline-offset-2">
+                  Its page
                 </Link>
               </>
             )}

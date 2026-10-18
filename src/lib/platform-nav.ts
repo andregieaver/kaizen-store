@@ -27,7 +27,7 @@ export const WEBSITE_ITEMS: SectionItem[] = [
 /** The Stores section (D175): every store, and the themes new stores start from and any store can apply (D176, D273). */
 export const STORE_ITEMS: SectionItem[] = [
   item("/stores", "All stores", "Every store with its plan, subscription and fee.", true),
-  item("/themes", "Themes", "Kaizena Flow's themes, each a whole look with its presets and the demo store each preset starts new stores with: make, edit, publish, archive, order and preview them, and set up the demo stores."),
+  item("/themes", "Themes", "Kaizena Flow's themes, each a whole look with its presets and its own content: make, edit, publish, archive, order and preview them; make demo stores and set up the starting content."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [

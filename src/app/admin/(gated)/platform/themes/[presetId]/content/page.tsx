@@ -5,6 +5,7 @@ import { PackPictures, PackPicturesWatch } from "@/components/admin/pack-picture
 import { PreviewLink } from "@/components/admin/preview-link";
 import { Card, Chip } from "@/components/admin/ui";
 import { designPreviewPath } from "@/lib/design-presets";
+import { CONTENT_SOURCE_WORDS } from "@/lib/store-starters";
 import { contentPackStates } from "@/server/content-packs";
 import { shownDesignDetails } from "@/server/design-presets";
 import { contentSources, themeContentOf } from "@/server/store-starters";
@@ -17,7 +18,6 @@ import { DesignShell } from "../shell";
 export const metadata: Metadata = { title: "Theme content" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
-const KIND_WORDS = { pack: "starting content", theme: "a theme's content", demo: "demo store" } as const;
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -123,7 +123,7 @@ export default async function ThemeContentPage({ params, searchParams }: PagePro
               <select name="source" required className={control}>
                 {others.map((source) => (
                   <option key={source.id} value={source.id}>
-                    {source.title} ({KIND_WORDS[source.kind]})
+                    {source.title} ({CONTENT_SOURCE_WORDS[source.kind]})
                   </option>
                 ))}
               </select>

@@ -1449,7 +1449,7 @@ async function readPreview(presetId: string, starterId: string | null, admin: bo
     ? await readDb().execute<Row>(sql`
         select s.slug, st.title from commerce.store_starters st
         join commerce.stores s on s.id = ${admin ? sql`st.store_id` : sql`coalesce(st.published_store_id, st.store_id)`} and s.starter
-        where st.id = ${starterId}::uuid and s.status = 'active' and (${admin} or (st.published and st.archived_at is null))
+        where st.id = ${starterId}::uuid and st.kind = 'content' and s.status = 'active' and (${admin} or (st.published and st.archived_at is null))
       `)
     : await readDb().execute<Row>(sql`
         select slug, title from (
@@ -1488,12 +1488,15 @@ export async function adminDesignPreview(presetId: string, starterId: string | n
   return readPreview(presetId, starterId, true, draft, variation);
 }
 
-/** Every published store template that is no theme's own content (D275), for the preview's chooser and the platform's pages. */
+/**
+ * Every published store template that is no theme's own content (D275) and no demo store (D277, seen live, never in a preview), for the
+ * preview's chooser and the platform's pages.
+ */
 export async function previewStarters(): Promise<{ id: string; title: string }[]> {
   const rows = await readDb().execute<Row>(sql`
     select st.id, st.title from commerce.store_starters st
     join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.status = 'active'
-    where st.published and st.archived_at is null and st.design_preset_id is null order by st.position, lower(st.title)
+    where st.published and st.archived_at is null and st.kind = 'content' and st.design_preset_id is null order by st.position, lower(st.title)
   `);
   return rows.map((r) => ({ id: String(r.id), title: String(r.title) }));
 }
@@ -1523,6 +1526,45 @@ function currentLook(install: Row, store: Row): Omit<LookRecord, "versionId" | "
   const look = (install.look && typeof install.look === "object" ? install.look : {}) as Row;
   const id = (value: unknown) => (typeof value === "string" && isUuid(value) ? value : null);
   return { theme: look.theme ?? {}, css: typeof look.css === "string" ? look.css : "", headerId: id(look.headerId), footerId: id(look.footerId), productLayoutId: id(look.productLayoutId) };
+}
+
+/**
+ * What a store changed of the look its live theme placed (D277, *Publish this look… → As a preset*): the theme it wears and its preset, and
+ * which of the parts a preset shares with its theme (header, footer, product page, CSS) differ from what was placed, by the fingerprints an
+ * update compares (`layoutFate()`). `changed` is null when the store wears no theme or its install kept nothing of what it placed (one from
+ * before updates were kept), so nothing can be told.
+ */
+export async function liveLookChanges(
+  storeId: string,
+): Promise<{ presetId: string | null; variation: string | null; settings: unknown; changed: ("header" | "footer" | "productLayout" | "css")[] | null }> {
+  const none = { presetId: null, variation: null, settings: null, changed: null };
+  if (!isUuid(storeId)) return none;
+  const [row] = await db().execute<Row>(sql`
+    select s.theme, s.custom_css, s.header_id, s.footer_id, s.product_layout_id, i.preset_id, i.variation, i.placed, i.live
+    from commerce.stores s join commerce.store_theme_installs i on i.store_id = s.id and i.live
+    where s.id = ${storeId}::uuid
+  `);
+  if (!row?.preset_id) return none;
+  const presetId = String(row.preset_id);
+  const variation = row.variation ? String(row.variation) : null;
+  const placed = (row.placed && typeof row.placed === "object" ? row.placed : null) as PlacedLook | null;
+  if (!placed) return { presetId, variation, settings: row.theme ?? null, changed: null };
+  const now = currentLook(row, row);
+  const changed: ("header" | "footer" | "productLayout" | "css")[] = [];
+  for (const kind of DESIGN_LAYOUT_KINDS) {
+    const id = now[LOOK_ID[kind]];
+    let current: { id: string; hash: string } | null = null;
+    if (id) {
+      const [page] = await db().execute<Row>(sql`select published from commerce.pages where id = ${id}::uuid and store_id = ${storeId}::uuid`);
+      const content = page ? parsePageContent(page.published) : null;
+      current = { id, hash: content ? fingerprint(content) : "" };
+    }
+    const was = placed.layouts?.[kind] ?? null;
+    const same = (was === null && current === null) || (was !== null && current !== null && was.id === current.id && was.hash === current.hash);
+    if (!same) changed.push(kind);
+  }
+  if (now.css !== (placed.css ?? "")) changed.push("css");
+  return { presetId, variation, settings: row.theme ?? null, changed };
 }
 
 const sameLook = (a: Omit<LookRecord, "versionId" | "placed">, b: Omit<LookRecord, "versionId" | "placed">) =>

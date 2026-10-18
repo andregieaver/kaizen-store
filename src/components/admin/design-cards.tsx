@@ -36,12 +36,15 @@ export function DesignCards({
   selected = "",
   legend = "Theme",
   hint,
+  startsWith = true,
 }: {
   cards: DesignCard[];
   name?: string;
   selected?: string;
   legend?: string;
   hint?: string;
+  /** Whether each look says what a new store starts with; off where the content is chosen apart (a demo store, D277). */
+  startsWith?: boolean;
 }) {
   // A theme's own look (`{id}`) or one of its presets (`{id}:{key}`, `docs/theme-showcase-phase-1.md` step 4).
   const values = cards.flatMap((card) => [card.id, ...(card.looks ?? []).map((look) => designLookValue(card.id, look.key))]);
@@ -76,7 +79,7 @@ export function DesignCards({
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="font-medium">{card.title}</span>
                     {card.summary && <span className="font-normal">{card.summary}</span>}
-                    {card.id && <StartsWith demo={card.demo ?? null} />}
+                    {card.id && startsWith && <StartsWith demo={card.demo ?? null} />}
                   </span>
                 </span>
               </label>
@@ -95,7 +98,7 @@ export function DesignCards({
                               {look.name}
                               {look.trade && <span className="text-muted"> · {look.trade}</span>}
                             </span>
-                            <StartsWith demo={look.demo ?? null} />
+                            {startsWith && <StartsWith demo={look.demo ?? null} />}
                           </span>
                         </label>
                         <DesignPreviewLink

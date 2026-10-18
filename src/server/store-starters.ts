@@ -17,6 +17,7 @@ import {
   sameStarterDetails,
   standardCard,
   starterRefusal,
+  type ContentSourceKind,
   type OfferedStarter,
   type StarterCard,
   type StarterCategory,
@@ -68,7 +69,7 @@ export async function listOfferedStarters(): Promise<OfferedStarter[]> {
     select st.id, st.title, st.summary, st.description, st.category, st.picture_url, s.slug, s.features
     from commerce.store_starters st
     join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
-    where st.published and st.archived_at is null and (st.design_preset_id is null or st.pack_key is not null)
+    where st.published and st.archived_at is null and st.kind = 'content' and (st.design_preset_id is null or st.pack_key is not null)
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toOffered);
@@ -93,7 +94,7 @@ export async function starterCards(): Promise<StarterCard[]> {
 }
 
 const ROW_SELECT = sql`
-  select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
+  select st.id, st.kind, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
          st.recommended_design, st.draft, st.published_at, st.archived_at, s.id as store_id, s.slug, s.name as store_name, s.features,
          p.slug as published_slug, p.features as published_features,
          (select count(*)::int from commerce.stores m where m.made_from_starter = st.id and m.starter_copy_of is null) as stores_made,
@@ -109,13 +110,13 @@ const ROW_SELECT = sql`
 
 /**
  * The store templates for the platform admin: the current ones (published or not), or the archived ones. A theme's own copy of content
- * (D275) is the theme's, seen on its Content tab, never listed here.
+ * (D275) is the theme's, seen on its Content tab, and a demo store (D277) is listed with the demo stores (`listDemoStores()`), never here.
  */
 export async function listStarters(filter: ListFilter = "current"): Promise<StarterRow[]> {
   const rows = await db().execute<Row>(sql`
     ${ROW_SELECT}
     where ${filter === "archived" ? sql`st.archived_at is not null` : sql`st.archived_at is null`}
-      and (st.design_preset_id is null or st.pack_key is not null)
+      and st.kind = 'content' and (st.design_preset_id is null or st.pack_key is not null)
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toRow);
@@ -132,6 +133,7 @@ function toRow(row: Row): StarterRow {
   const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
   return {
     ...toOffered(row),
+    kind: row.kind === "demo" ? "demo" : "content",
     published: Boolean(row.published),
     position: Number(row.position ?? 0),
     storeId: String(row.store_id),
@@ -348,21 +350,21 @@ export async function contentOwners(): Promise<Map<string, string>> {
 }
 
 /**
- * The published store templates a theme's content may be copied from (D275): Kaizena Flow's starting content (the content packs), other
- * themes' content and demo stores, each by its title and what it is.
+ * The store templates a theme's content may be copied from (D275): Kaizena Flow's starting content (the content packs), other themes'
+ * content and older starting content, each published, and the demo stores (D277) as they stand, each by its title and what it is.
  */
-export async function contentSources(): Promise<{ id: string; title: string; kind: "pack" | "theme" | "demo" }[]> {
+export async function contentSources(): Promise<{ id: string; title: string; kind: ContentSourceKind }[]> {
   const rows = await db().execute<Row>(sql`
-    select st.id, s.name, st.pack_key, p.title as theme_title from commerce.store_starters st
+    select st.id, st.kind, s.name, st.pack_key, p.title as theme_title from commerce.store_starters st
       join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
       left join commerce.design_presets p on p.id = st.design_preset_id
-     where st.published and st.archived_at is null
-     order by st.pack_key is null, st.design_preset_id is null, st.position, lower(s.name)
+     where st.archived_at is null and (st.published or st.kind = 'demo')
+     order by st.pack_key is null, st.design_preset_id is null, st.kind = 'demo', st.position, lower(s.name)
   `);
   return rows.map((row) => ({
     id: String(row.id),
     title: row.theme_title ? `${String(row.name)}, ${String(row.theme_title)}'s content` : String(row.name),
-    kind: row.pack_key ? "pack" : row.theme_title ? "theme" : "demo",
+    kind: row.kind === "demo" ? "demo" : row.pack_key ? "pack" : row.theme_title ? "theme" : "template",
   }));
 }
 
@@ -383,8 +385,9 @@ export async function giveThemeContent(admin: Account, presetId: string, sourceI
       const [source] = await tx.execute<Row>(sql`
         select st.category, s.name from commerce.store_starters st
           join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
-         where st.id = ${sourceId}::uuid and st.published and st.archived_at is null
+         where st.id = ${sourceId}::uuid and st.archived_at is null and (st.published or st.kind = 'demo')
       `);
+      // Starting content is copied as published; a demo store (D277) as it stands, published or not.
       if (!source) throw new Refused("That content is not published. Choose published content to start from.");
       const [store] = await tx.execute<Row>(sql`
         select commerce.clone_store(commerce.starter_source(${sourceId}::uuid), ${slug}, ${String(source.name)}, ${admin.id}::uuid) as id
@@ -598,4 +601,11 @@ export async function setStarterFeatures(
     return result.needsConfirmation ? { ok: false, problems: result.problems, warnings: result.warnings ?? [], needsConfirmation: true } : { ok: false, problems: result.problems };
   }
   return { ok: true, features: result.features };
+}
+
+/** The store template a starter store is the working store of (its id and kind), for the banner in its admin; null for any other store. */
+export async function starterOfStore(storeId: string): Promise<{ id: string; kind: "content" | "demo"; published: boolean } | null> {
+  if (!isUuid(storeId)) return null;
+  const [row] = await db().execute<Row>(sql`select id, kind, published from commerce.store_starters where store_id = ${storeId}::uuid`);
+  return row ? { id: String(row.id), kind: row.kind === "demo" ? "demo" : "content", published: Boolean(row.published) } : null;
 }
