@@ -237,6 +237,7 @@ describe("a theme's draft and its own pages (D177)", () => {
       "/admin/platform/themes/p1",
       "/admin/platform/themes/p1/theme",
       "/admin/platform/themes/p1/presets",
+      "/admin/platform/themes/p1/content",
       "/admin/platform/themes/p1/header",
       "/admin/platform/themes/p1/footer",
       "/admin/platform/themes/p1/product-layout",

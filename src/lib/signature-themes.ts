@@ -96,9 +96,9 @@ export function signatureCheck(theme: LaunchTheme, options: { artExists: (url: s
     for (const part of FIRST_ROW_PARTS) if (!parts.includes(part)) problems.push(`Its product page's first row has no ${part}, so a shopper may have to scroll to buy.`);
   }
 
-  // Its world: a demo store of its own with designed pages and art for every picture, bundled with the code.
-  const pack = theme.listing.pack ? contentPack(theme.listing.pack) : null;
-  if (!pack) problems.push(`Its demo store (${theme.listing.pack ?? "none"}) is not a content pack.`);
+  // Its world: content of its own (D275) with designed pages and art for every picture, bundled with the code.
+  const pack = contentPack(theme.content);
+  if (!pack) problems.push(`Its content (${theme.content}) is not a content pack.`);
   else {
     if (!pack.design || !PACK_DESIGNS[pack.design]) problems.push(`Its demo store, ${pack.storeName}, has no pages designed for it.`);
     const art = pack.art ?? {};
@@ -112,8 +112,6 @@ export function signatureCheck(theme: LaunchTheme, options: { artExists: (url: s
       else if (!options.artExists(picture.url)) problems.push(`Its art for ${slot} (${picture.url}) is missing: run node scripts/theme-art.mjs ${theme.key}.`);
       if (!picture.alt.trim()) problems.push(`Its art for ${slot} has no alt text.`);
     }
-    const others = theme.presets.filter((preset) => preset.pack === theme.listing.pack);
-    if (others.length > 0) problems.push("A preset is shown on the theme's own demo store; each look needs a store of its own.");
   }
 
   // Its sections (D272): its designed rows an owner can place on a page of their own, each one a row a page's check accepts.

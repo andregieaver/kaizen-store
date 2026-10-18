@@ -598,10 +598,10 @@ export const ORBIT: LaunchTheme = {
   description:
     "Made from scratch for stores with a sense of wonder. Pages under a field of stars that slowly drifts, Unbounded's wide letters over Manrope, starlight gold for the button that matters, a header that lies over the hero, glass product cards, and a product page that sets each picture in a soft glow beside a buy box that stays in view. Its demo store, Far Light, sells prints of the night sky.",
   notes: null,
+  content: "astronomy",
   listing: {
     kinds: ["crafts", "home", "digital"],
     styles: ["bold", "artistic"],
-    pack: "astronomy",
     highlights: {
       devices: { title: "A window to space", text: "Orbit's starry sky, wide letters and gold buttons on a computer and on a phone." },
       collage: { title: "Sections with a sense of wonder", text: "A hero over a planet's sunrise, collections as tiles, numbered steps and the story told beside its picture." },
@@ -614,7 +614,6 @@ export const ORBIT: LaunchTheme = {
     {
       key: "nebula",
       name: "Nebula",
-      pack: "beauty",
       changes: {
         dark: { background: "#0b0716", surface: "#170f2b", text: "#f3eeff", muted: "#b9acdb", border: "#33244f", accent: "#d4a8ff", accentText: "#160a26" },
       },
@@ -622,7 +621,6 @@ export const ORBIT: LaunchTheme = {
     {
       key: "mars",
       name: "Mars",
-      pack: "electronics",
       changes: {
         dark: { background: "#120a08", surface: "#1f1310", text: "#f7ece6", muted: "#cdb3a7", border: "#3d2620", accent: "#ff8a5c", accentText: "#1a0b05" },
       },

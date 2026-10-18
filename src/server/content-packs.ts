@@ -23,7 +23,7 @@ import { storePicture } from "./media-library";
 import { pagesTag, savePage } from "./pages";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext } from "./products";
 import { refreshTag } from "./refresh";
-import { dressSignaturePacks } from "./signature-themes";
+import { dressSignaturePacks, linkLaunchContents } from "./signature-themes";
 import { createStarter, setStarterFeatures } from "./store-starters";
 import { getStore, storeTag, type Store } from "./stores";
 import { termsTag } from "./taxonomy";
@@ -233,6 +233,8 @@ export async function syncContentPacks(admin: Account, deps: PackDeps = {}): Pro
       result.problems.push(`${pack.title} could not be set up: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+  // Each launch theme's own content, linked once the theme is there too (D275).
+  await linkLaunchContents();
   if (result.made.length + result.updated.length > 0) {
     // A signature theme's demo store wears its theme once both are there (`dressSignaturePacks()`).
     result.problems.push(...(await dressSignaturePacks(admin, deps.apply)));

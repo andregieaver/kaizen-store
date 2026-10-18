@@ -39,11 +39,11 @@ async function liveTheme(owner: string | null): Promise<LaunchTheme | null> {
 }
 
 /**
- * The pictures a theme's sections are made with: the theme's demo store's (`pack_pictures`, a photograph or the art placed there, in its
+ * The pictures a theme's sections are made with: the theme's own content's (D275, `pack_pictures`, a photograph or the art placed there, in its
  * library) by slot, else the theme's art from the site's own files, as a full address the page can keep.
  */
 async function sectionPictures(theme: LaunchTheme): Promise<{ sourceId: string | null; picture: PackPictureOf }> {
-  const pack = contentPack(theme.listing.pack ?? "");
+  const pack = contentPack(theme.content);
   const [row] = pack
     ? await db().execute<Row>(sql`select store_id, pack_pictures from commerce.store_starters where pack_key = ${pack.key}`)
     : [];

@@ -15,6 +15,7 @@ import {
   themeLooks,
   themeSectionStyles,
   type ChangelogEntry,
+  type ThemeContent,
   type ThemeStoreCard,
   type ThemeVersion,
 } from "@/lib/theme-store";
@@ -22,7 +23,7 @@ import { themeHighlights } from "@/lib/theme-highlights";
 import type { LookShots } from "@/lib/theme-shots";
 
 import { DESIGNS_TAG } from "./design-presets";
-import { STARTERS_TAG, publishedPacks } from "./store-starters";
+import { STARTERS_TAG, publishedContents } from "./store-starters";
 import { lookOf, themeShotsFor } from "./theme-shots";
 
 /**
@@ -33,13 +34,13 @@ import { lookOf, themeShotsFor } from "./theme-shots";
 
 type Row = Record<string, unknown>;
 
-const cardOf = (row: Row, snapshot: DesignSnapshot, packs: ReadonlyMap<string, string>, shots: ReadonlyMap<string, LookShots>): ThemeStoreCard => {
+const cardOf = (row: Row, snapshot: DesignSnapshot, contents: ReadonlyMap<string, ThemeContent>, shots: ReadonlyMap<string, LookShots>): ThemeStoreCard => {
   const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
   const listing = readListing(row.listing);
   const id = String(row.id);
-  // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), only of looks on a published demo store (D274): the first of those
-  // with a photograph at a computer's width gives the card and the share image, and the highlights are its own look's while it is shown.
-  const looks = themeLooks(String(row.title), presets, listing, packs).map((look) => ({ ...look, shots: look.showcase ? (shots.get(lookOf(id, look.key)) ?? null) : null }));
+  // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), each on the theme's own content (D275) once it is published: the first
+  // with a photograph at a computer's width gives the card and the share image, and the highlights are its own look's.
+  const looks = themeLooks(String(row.title), presets, contents.get(id) ?? null).map((look) => ({ ...look, shots: look.showcase ? (shots.get(lookOf(id, look.key)) ?? null) : null }));
   const lead = shownLooks(looks).find((look) => look.shots?.computer)?.shots?.computer ?? null;
   return {
     id,
@@ -63,7 +64,7 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  const packs = await publishedPacks();
+  const contents = await publishedContents();
   const rows = await readDb().execute<Row>(sql`
     select id, slug, title, summary, picture_url, listing, snapshot from commerce.design_presets
     where published and archived_at is null and slug is not null
@@ -72,7 +73,7 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   const shots = await themeShotsFor(rows.map((row) => String(row.id)));
   return rows.flatMap((row) => {
     const snapshot = parseDesignSnapshot(row.snapshot);
-    return snapshot ? [cardOf(row, snapshot, packs, shots)] : [];
+    return snapshot ? [cardOf(row, snapshot, contents, shots)] : [];
   });
 }
 
@@ -105,7 +106,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   });
   const latest = versions.at(-1) ?? null;
   return {
-    ...cardOf(row, snapshot, await publishedPacks(), await themeShotsFor([String(row.id)])),
+    ...cardOf(row, snapshot, await publishedContents(), await themeShotsFor([String(row.id)])),
     description: String(row.description ?? ""),
     sectionStyles: themeSectionStyles(snapshot),
     changelog: themeChangelog(versions),

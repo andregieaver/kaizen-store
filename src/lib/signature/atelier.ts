@@ -714,10 +714,10 @@ export const ATELIER: LaunchTheme = {
   description:
     "Made from scratch for studios and makers with a sense of craft. Warm plaster pages with a fine paper grain, Cormorant Garamond's fine letters over Jost, a two-row header with your name in the middle, small capitals and thin rules, collections shown as pictures with their words beneath, roman numerals for how things are made, and a product page that gives the piece the larger half. Its demo store, Ostra Studio, sells hand-thrown stoneware.",
   notes: null,
+  content: "ceramics",
   listing: {
     kinds: ["home", "crafts", "fashion"],
     styles: ["minimal", "classic", "artistic"],
-    pack: "ceramics",
     highlights: {
       devices: { title: "A lookbook for your shop", text: "Atelier's plaster pages, fine serif letters and quiet buttons on a computer and on a phone." },
       collage: { title: "Room for every piece", text: "A still life to open with, a statement, collections as pictures with their words beneath, and the story beside the studio." },
@@ -730,7 +730,6 @@ export const ATELIER: LaunchTheme = {
     {
       key: "linen",
       name: "Linen",
-      pack: "home",
       changes: {
         light: { background: "#eef0ea", surface: "#e2e6dc", text: "#1d231c", muted: "#5d665a", border: "#d2d8cb", accent: "#37452f", accentText: "#f2f4ee" },
       },
@@ -738,7 +737,6 @@ export const ATELIER: LaunchTheme = {
     {
       key: "noir",
       name: "Noir",
-      pack: "fashion",
       changes: {
         mode: "dark",
         dark: { background: "#141210", surface: "#1e1b18", text: "#f1ebe1", muted: "#b0a698", border: "#35302a", accent: "#d9b98c", accentText: "#17130e" },

@@ -26,7 +26,7 @@ import {
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
 import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
-import { demoStoreForLook, designTags } from "@/server/design-presets";
+import { contentForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
@@ -79,7 +79,7 @@ export async function decideAction(
     String(formData.get("storeName") ?? ""),
     site,
     // The demo store follows the theme chosen (D273); a form without the field keeps the requester's choice of both.
-    look === undefined ? undefined : await demoStoreForLook(look),
+    look === undefined ? undefined : await contentForLook(look),
     look === undefined ? undefined : (look?.id ?? null),
     look?.variation ?? null,
   );

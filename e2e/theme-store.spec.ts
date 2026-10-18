@@ -6,7 +6,7 @@ import { demoStoreOf, testDb } from "./db";
 /**
  * The theme store (`docs/theme-phase-3.md` step 1), signed out: a theme's page, published after the site was built, is drawn on its first
  * visit with what it includes, its changelog, structured data without a price and its preview at computer and phone widths (the public
- * preview, inert, `noindex`, on each look's demo store: D274); *Start with this theme* leads to sign-up with the theme named. The list's
+ * preview, inert, `noindex`, on the theme's own content: D275); *Start with this theme* leads to sign-up with the theme named. The list's
  * filters are plain links.
  */
 
@@ -22,13 +22,14 @@ test.beforeAll(async () => {
     const snapshot = { ...LAUNCH_THEMES[3].snapshot, v: 2, variations: [{ key: "coast", name: "Coast", theme: LAUNCH_THEMES[1].snapshot.theme }] };
     const [row] = await sql`
       insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing)
-      values ('E2E Fjord', 'Cool and clear.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ kinds: ["home"], styles: ["natural"], pictures: ["/demo/mug.svg"], pack: "home", presetPacks: { coast: "home" } })})
+      values ('E2E Fjord', 'Cool and clear.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ kinds: ["home"], styles: ["natural"], pictures: ["/demo/mug.svg"] })})
       returning id`;
     id = String(row.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${id}, 1, ${sql.json(snapshot as never)})`;
   } finally {
     await sql.end();
   }
+  await demo.linkTo(id);
 });
 
 test.afterAll(async () => {

@@ -352,37 +352,65 @@ describe("choosing a theme when a store is made (D176)", () => {
     expect(store.header_id).toBeNull();
   });
 
-  it("starts a new store from the demo store of the look chosen, else the Standard store (D273)", async () => {
-    // A published demo store of a pack, as Kaizena Flow keeps them; one this test did not make is set aside, its store's address too.
-    await db().execute(sql`
-      update commerce.stores s set slug = left(s.slug, 20) || '-' || ${run}
-      from commerce.store_starters ss where ss.store_id = s.id and ss.pack_key = 'neon'
+  it("starts a new store from the theme's own content, the same for every preset, else the Standard store (D275)", async () => {
+    const [store] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, starter) values (${`content-${run}`}, 'Content', true) returning id`);
+    const [content] = await db().execute<Row>(sql`
+      insert into commerce.store_starters (store_id, title, category, published, published_at) values (${String(store.id)}::uuid, 'Content', 'retail', true, now()) returning id
     `);
-    await db().execute(sql`update commerce.store_starters set pack_key = pack_key || '-' || ${run} where pack_key = 'neon'`);
-    const [demo] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, starter) values (${`demo-${run}`}, 'Demo', true) returning id`);
-    const [pack] = await db().execute<Row>(sql`
-      insert into commerce.store_starters (store_id, title, category, pack_key, pack_version, published)
-      values (${String(demo.id)}::uuid, 'Neon', 'retail', 'neon', 1, true) returning id
-    `);
-    const before = (await one(sql`select listing from commerce.design_presets where id = ${presetId}::uuid`)).listing;
-    expect(await designs.demoStoreForLook(null)).toBeNull();
-    // The theme's own look names no demo store: the Standard store.
-    await db().execute(sql`update commerce.design_presets set listing = '{}'::jsonb where id = ${presetId}::uuid`);
-    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
-    await db().execute(sql`update commerce.design_presets set listing = ${JSON.stringify({ pack: "neon" })}::jsonb where id = ${presetId}::uuid`);
-    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBe(String(pack.id));
-    // A preset the theme no longer has starts from the theme's own look's.
-    expect(await designs.demoStoreForLook({ id: presetId, variation: "gone" })).toBe(String(pack.id));
-    // A demo store no longer published, or a theme no longer offered, gives the Standard store.
-    await db().execute(sql`update commerce.store_starters set published = false where id = ${String(pack.id)}::uuid`);
-    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
-    await db().execute(sql`update commerce.store_starters set published = true where id = ${String(pack.id)}::uuid`);
+    expect(await designs.contentForLook(null)).toBeNull();
+    // No content of its own: the Standard store.
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBeNull();
+    await db().execute(sql`update commerce.store_starters set design_preset_id = ${presetId}::uuid where id = ${String(content.id)}::uuid`);
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBe(String(content.id));
+    // Every preset, even one the theme no longer has, starts from the same content.
+    expect(await designs.contentForLook({ id: presetId, variation: "gone" })).toBe(String(content.id));
+    // Its preview draws it (no demo store named).
+    expect(await designs.adminDesignPreview(presetId, null)).toMatchObject({ storeSlug: `content-${run}`, starterTitle: null });
+    // Content no longer published, or a theme no longer offered, gives the Standard store.
+    await db().execute(sql`update commerce.store_starters set published = false where id = ${String(content.id)}::uuid`);
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBeNull();
+    await db().execute(sql`update commerce.store_starters set published = true where id = ${String(content.id)}::uuid`);
     await designs.unpublishDesign(admin, presetId);
-    expect(await designs.demoStoreForLook({ id: presetId, variation: null })).toBeNull();
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBeNull();
     await designs.publishDesign(admin, presetId);
-    expect(await designs.demoStoreForLook({ id: "not-an-id", variation: null })).toBeNull();
-    await db().execute(sql`update commerce.design_presets set listing = ${JSON.stringify(before ?? {})}::jsonb where id = ${presetId}::uuid`);
-    await db().execute(sql`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${String(pack.id)}::uuid`);
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBe(String(content.id));
+    expect(await designs.contentForLook({ id: "not-an-id", variation: null })).toBeNull();
+    await db().execute(sql`update commerce.store_starters set design_preset_id = null, published = false where id = ${String(content.id)}::uuid`);
+  });
+
+  it("gives a theme a copy of published content, published with the theme, and lets the content it had go (D275)", async () => {
+    const made = await starters.createStarter(admin, { slug: `src-${run}`, details: starterDetails() });
+    const sourceId = (made as { id: string }).id;
+    expect(await starters.giveThemeContent(admin, presetId, sourceId)).toMatchObject({ ok: false, problems: [expect.stringMatching(/not published/)] });
+    expect(await starters.publishStarter(admin, sourceId)).toMatchObject({ ok: true });
+    expect(await starters.giveThemeContent({ ...admin, platformAdmin: false }, presetId, sourceId)).toMatchObject({ ok: false });
+    const given = await starters.giveThemeContent(admin, presetId, sourceId);
+    expect(given).toMatchObject({ ok: true });
+    const first = (given as { id: string }).id;
+    const content = await starters.themeContentOf(presetId);
+    expect(content).toMatchObject({ starterId: first, pack: null, published: false });
+    expect(content!.storeSlug).toMatch(/^content-[0-9a-f]{8}$/);
+    // A copy of its own: a starter described as the theme's, never listed among the demo stores.
+    expect((await one(sql`select starter from commerce.stores where id = ${content!.storeId}::uuid`)).starter).toBe(true);
+    expect((await starters.listStarters()).some((row) => row.id === first)).toBe(false);
+    // Publishing the theme publishes its content: new stores and the preview read the frozen copy.
+    expect(await designs.publishDesign(admin, presetId)).toMatchObject({ ok: true });
+    expect(await starters.themeContentOf(presetId)).toMatchObject({ published: true, changed: false });
+    expect(await designs.contentForLook({ id: presetId, variation: null })).toBe(first);
+    const frozen = await one(sql`select s.slug from commerce.store_starters st join commerce.stores s on s.id = st.published_store_id where st.id = ${first}::uuid`);
+    expect(await designs.publicDesignPreview(presetId, null)).toMatchObject({ storeSlug: String(frozen.slug) });
+    // Replaced: the copy it had is archived, never left as a demo store.
+    const again = await starters.giveThemeContent(admin, presetId, sourceId);
+    expect(again).toMatchObject({ ok: true });
+    expect(await one(sql`select design_preset_id, archived_at is not null as archived, published from commerce.store_starters where id = ${first}::uuid`)).toEqual({
+      design_preset_id: null,
+      archived: true,
+      published: false,
+    });
+    expect((await starters.themeContentOf(presetId))?.starterId).toBe((again as { id: string }).id);
+    const audited = await db().execute<Row>(sql`select 1 from commerce.audit_log where action = 'platform.design_preset_content' and account_id = ${admin.id}::uuid`);
+    expect(audited.length).toBeGreaterThanOrEqual(2);
+    await db().execute(sql`update commerce.store_starters set design_preset_id = null, published = false where design_preset_id = ${presetId}::uuid`);
   });
 });
 

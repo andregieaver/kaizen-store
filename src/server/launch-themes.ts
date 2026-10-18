@@ -8,7 +8,7 @@ import { LAUNCH_THEMES, launchListing, launchVariation, type LaunchTheme } from 
 import { audit, type Account } from "./auth";
 import { createDesign, markLaunchTheme, publishDesign, saveDesignDraft, writeDesignLook, type ApplyDeps } from "./design-presets";
 import { writeLaunchVariations } from "./design-variations";
-import { dressSignaturePacks } from "./signature-themes";
+import { dressSignaturePacks, linkLaunchContents } from "./signature-themes";
 
 /**
  * Kaizena Flow's launch themes (D246, `src/lib/launch-themes.ts`) brought into the platform's themes on a platform admin's press: each one
@@ -91,6 +91,8 @@ export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Pr
     if (problem) result.problems.push(`${theme.title}: ${problem}`);
     else (first ? result.made : result.updated).push(theme.title);
   }
+  // Each launch theme's own content, linked once its pack's template is there too (D275).
+  await linkLaunchContents();
   if (result.made.length + result.updated.length > 0) {
     // A signature theme's demo store wears it once both are there (`dressSignaturePacks()`).
     result.problems.push(...(await dressSignaturePacks(admin, deps)));

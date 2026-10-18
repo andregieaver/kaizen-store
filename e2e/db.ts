@@ -73,12 +73,13 @@ export async function testStore(name: string, features: string[] = []): Promise<
 }
 
 /**
- * A published demo store of a content pack (D257), as the platform keeps one: a copy of the template (its catalogue and markets), marked as
- * a store template and published under the pack's key. The theme store shows only looks on one (D274), so a test's theme names `key` in its
- * listing. A demo store of that key the test did not make is set aside first, its store's address too; give each spec file a key of its
- * own, as they run side by side. `putAway()` unpublishes it and frees the key after.
+ * A theme's own content (D275): a published store template of a content pack (D257), as the platform keeps one, a copy of the template
+ * (its catalogue and markets), marked as a store template and published under the pack's key. The theme store shows a theme only on its
+ * own content, so a test links it to its theme with `linkTo()`. A template of that key the test did not make is set aside first, its
+ * store's address too; give each spec file a key of its own, as they run side by side. `putAway()` unpublishes it, unlinks it and frees the
+ * key after.
  */
-export async function demoStoreOf(key: string): Promise<{ starter: string; store: string; putAway: () => Promise<void> }> {
+export async function demoStoreOf(key: string): Promise<{ starter: string; store: string; linkTo: (presetId: string) => Promise<void>; putAway: () => Promise<void> }> {
   const run = Date.now().toString(36);
   const sql = testDb();
   try {
@@ -93,15 +94,18 @@ export async function demoStoreOf(key: string): Promise<{ starter: string; store
     const [{ id: starter }] = await sql`
       insert into commerce.store_starters (store_id, title, category, pack_key, pack_version, published)
       values (${store}, ${`Demo ${key}`}, 'retail', ${key}, 1, true) returning id`;
-    const putAway = async () => {
+    const once = async (write: (db: ReturnType<typeof testDb>) => Promise<unknown>) => {
       const db = testDb();
       try {
-        await db`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${starter}`;
+        await write(db);
       } finally {
         await db.end();
       }
     };
-    return { starter: String(starter), store: String(store), putAway };
+    const linkTo = (presetId: string) => once((db) => db`update commerce.store_starters set design_preset_id = ${presetId} where id = ${starter}`);
+    const putAway = () =>
+      once((db) => db`update commerce.store_starters set published = false, design_preset_id = null, pack_key = pack_key || '-x-' || ${run} where id = ${starter}`);
+    return { starter: String(starter), store: String(store), linkTo, putAway };
   } finally {
     await sql.end();
   }

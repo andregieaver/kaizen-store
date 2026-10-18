@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -22,7 +24,8 @@ import {
   type StarterRow,
 } from "@/lib/store-starters";
 
-import { PACK_KEYS, contentPack, picturesMissing } from "@/lib/content-packs";
+import { contentPack, packSlots, picturesMissing } from "@/lib/content-packs";
+import { isPack, type ThemeContent } from "@/lib/theme-store";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
 import { audit, type Account } from "./auth";
@@ -65,7 +68,7 @@ export async function listOfferedStarters(): Promise<OfferedStarter[]> {
     select st.id, st.title, st.summary, st.description, st.category, st.picture_url, s.slug, s.features
     from commerce.store_starters st
     join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
-    where st.published and st.archived_at is null
+    where st.published and st.archived_at is null and (st.design_preset_id is null or st.pack_key is not null)
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toOffered);
@@ -104,11 +107,15 @@ const ROW_SELECT = sql`
   left join commerce.stores p on p.id = st.published_store_id
 `;
 
-/** The store templates for the platform admin: the current ones (published or not), or the archived ones. */
+/**
+ * The store templates for the platform admin: the current ones (published or not), or the archived ones. A theme's own copy of content
+ * (D275) is the theme's, seen on its Content tab, never listed here.
+ */
 export async function listStarters(filter: ListFilter = "current"): Promise<StarterRow[]> {
   const rows = await db().execute<Row>(sql`
     ${ROW_SELECT}
     where ${filter === "archived" ? sql`st.archived_at is not null` : sql`st.archived_at is null`}
+      and (st.design_preset_id is null or st.pack_key is not null)
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toRow);
@@ -276,7 +283,7 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
       // A content pack (`docs/theme-showcase-phase-1.md` step 2) is published only once all its pictures are made.
       const pack = row.pack_key ? contentPack(String(row.pack_key)) : null;
       const missing = pack ? picturesMissing(pack, row.pack_pictures) : 0;
-      if (missing > 0) throw new Refused(`Make this content pack's pictures first: ${missing} still to make, under Demo stores on the Themes page.`);
+      if (missing > 0) throw new Refused(`Make its pictures first: ${missing} still to make, under Starting content on the Themes page or on its theme's Content tab.`);
       const draft = readStarterDraft(row.draft);
       if (draft) {
         let recommended = draft.recommendedDesign ?? null;
@@ -317,16 +324,139 @@ export async function publishStarter(admin: Account, id: string): Promise<Starte
 class Refused extends Error {}
 
 /**
- * The content packs whose store templates are published and not archived (`docs/theme-showcase-phase-1.md` step 3), pack key to template
- * id: the stores a theme's looks are shown on, and what starting from a look starts from (step 4). A cached read that calls this carries
- * `STARTERS_TAG` (publishing a template refreshes it).
+ * Every published theme's own content (D275, `docs/themes-content-and-demo-stores.md`), theme id to it: its store template, published, not
+ * archived, its store open. What the theme store, the photographs and new stores read; a cached read that calls this carries `STARTERS_TAG`
+ * (publishing a template or a theme refreshes it).
  */
-export async function publishedPacks(): Promise<Map<string, string>> {
+export async function publishedContents(): Promise<Map<string, ThemeContent>> {
   const rows = await readDb().execute<Row>(sql`
-    select id, pack_key from commerce.store_starters
-    where pack_key = any(${`{${PACK_KEYS.join(",")}}`}::text[]) and published and archived_at is null
+    select st.id, st.design_preset_id, st.pack_key, s.name from commerce.store_starters st
+      join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+     where st.design_preset_id is not null and st.published and st.archived_at is null
   `);
-  return new Map(rows.map((row) => [String(row.pack_key), String(row.id)]));
+  return new Map(rows.map((row) => [String(row.design_preset_id), toContent(row)]));
+}
+
+const toContent = (row: Row): ThemeContent => ({ starterId: String(row.id), pack: isPack(row.pack_key) ? row.pack_key : null, storeName: String(row.name) });
+
+/** Which theme each store template is the own content of (D275), by template id: for the Themes page's starting content. */
+export async function contentOwners(): Promise<Map<string, string>> {
+  const rows = await db().execute<Row>(sql`
+    select st.id, p.title from commerce.store_starters st join commerce.design_presets p on p.id = st.design_preset_id
+  `);
+  return new Map(rows.map((row) => [String(row.id), String(row.title)]));
+}
+
+/**
+ * The published store templates a theme's content may be copied from (D275): Kaizena Flow's starting content (the content packs), other
+ * themes' content and demo stores, each by its title and what it is.
+ */
+export async function contentSources(): Promise<{ id: string; title: string; kind: "pack" | "theme" | "demo" }[]> {
+  const rows = await db().execute<Row>(sql`
+    select st.id, s.name, st.pack_key, p.title as theme_title from commerce.store_starters st
+      join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+      left join commerce.design_presets p on p.id = st.design_preset_id
+     where st.published and st.archived_at is null
+     order by st.pack_key is null, st.design_preset_id is null, st.position, lower(s.name)
+  `);
+  return rows.map((row) => ({
+    id: String(row.id),
+    title: row.theme_title ? `${String(row.name)}, ${String(row.theme_title)}'s content` : String(row.name),
+    kind: row.pack_key ? "pack" : row.theme_title ? "theme" : "demo",
+  }));
+}
+
+/**
+ * Gives a theme its own content (D275): a copy of a published store template (`clone_store(starter_source(source))`, the admin its owner),
+ * marked a starter and described as the theme's, unpublished until the theme or its Content tab publishes it. The content it had is let go
+ * in the same transaction: a content pack's template stays starting content, a copy of its own is archived.
+ */
+export async function giveThemeContent(admin: Account, presetId: string, sourceId: string): Promise<StarterResult<{ id: string }>> {
+  if (!admin.platformAdmin || !isUuid(presetId)) return { ok: false, problems: ["Unknown theme."] };
+  if (!isUuid(sourceId)) return { ok: false, problems: ["Choose the content to start from."] };
+  const slug = `content-${randomBytes(4).toString("hex")}`;
+  let made: { id: string; storeId: string };
+  try {
+    made = await db().transaction(async (tx) => {
+      const [theme] = await tx.execute<Row>(sql`select id from commerce.design_presets where id = ${presetId}::uuid and archived_at is null for update`);
+      if (!theme) throw new Refused("Unknown theme, or it is archived. Restore it first.");
+      const [source] = await tx.execute<Row>(sql`
+        select st.category, s.name from commerce.store_starters st
+          join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+         where st.id = ${sourceId}::uuid and st.published and st.archived_at is null
+      `);
+      if (!source) throw new Refused("That content is not published. Choose published content to start from.");
+      const [store] = await tx.execute<Row>(sql`
+        select commerce.clone_store(commerce.starter_source(${sourceId}::uuid), ${slug}, ${String(source.name)}, ${admin.id}::uuid) as id
+      `);
+      const storeId = String(store.id);
+      await tx.execute(sql`update commerce.stores set starter = true where id = ${storeId}::uuid`);
+      await tx.execute(sql`
+        update commerce.store_starters
+           set design_preset_id = null,
+               archived_at = case when pack_key is null then coalesce(archived_at, now()) else archived_at end,
+               archived_by = case when pack_key is null then coalesce(archived_by, ${admin.id}::uuid) else archived_by end,
+               published = case when pack_key is null then false else published end, updated_by = ${admin.id}::uuid
+         where design_preset_id = ${presetId}::uuid
+      `);
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.store_starters (store_id, title, category, position, published, design_preset_id, created_by, updated_by)
+        values (${storeId}::uuid, ${String(source.name)}, ${String(source.category)},
+          (select coalesce(max(position), 0) + 1 from commerce.store_starters), false, ${presetId}::uuid, ${admin.id}::uuid, ${admin.id}::uuid)
+        returning id
+      `);
+      return { id: String(row.id), storeId };
+    });
+  } catch (error) {
+    if (error instanceof Refused) return { ok: false, problems: [error.message] };
+    console.error("[store-starters] giving a theme content failed", error);
+    return { ok: false, problems: [starterRefusal(describe(error)) ?? "The content could not be copied. Nothing was changed; try again."] };
+  }
+  await audit(admin.id, made.storeId, "platform.design_preset_content", { preset: presetId, starter: made.id, from: sourceId }, {
+    target: { type: "design_preset", id: presetId },
+  });
+  return { ok: true, id: made.id };
+}
+
+/** A theme's own content for the platform admin (D275), published or not: its template, its working store and what it holds; null: none. */
+export type ThemeContentRow = ThemeContent & {
+  storeId: string;
+  storeSlug: string;
+  published: boolean;
+  publishedAt: string | null;
+  products: number;
+  pages: number;
+  /** A content pack's pictures, made and wanted; null for content of its own (its pictures are its library's). */
+  pictures: { made: number; slots: number } | null;
+  /** Products or pages changed in its working store since it was last published. */
+  changed: boolean;
+};
+
+export async function themeContentOf(presetId: string): Promise<ThemeContentRow | null> {
+  if (!isUuid(presetId)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select st.id, st.pack_key, st.pack_pictures, st.published, st.published_at, s.id as store_id, s.slug, s.name,
+           (select count(*)::int from commerce.products p where p.store_id = s.id and p.status <> 'archived') as products,
+           (select count(*)::int from commerce.pages g where g.store_id = s.id and g.type in ('page', 'article')) as pages,
+           (st.published_at is null or exists (select 1 from commerce.products p where p.store_id = s.id and p.updated_at > st.published_at)
+              or exists (select 1 from commerce.pages g where g.store_id = s.id and g.updated_at > st.published_at)) as changed
+      from commerce.store_starters st join commerce.stores s on s.id = st.store_id
+     where st.design_preset_id = ${presetId}::uuid and st.archived_at is null
+  `);
+  if (!row) return null;
+  const pack = isPack(row.pack_key) ? contentPack(row.pack_key) : null;
+  const made = row.pack_pictures && typeof row.pack_pictures === "object" ? Object.keys(row.pack_pictures as object).length : 0;
+  return {
+    ...toContent(row),
+    storeId: String(row.store_id),
+    storeSlug: String(row.slug),
+    published: Boolean(row.published),
+    publishedAt: row.published_at ? new Date(String(row.published_at)).toISOString() : null,
+    products: Number(row.products ?? 0),
+    pages: Number(row.pages ?? 0),
+    pictures: pack ? { made: Math.min(made, packSlots(pack).length), slots: packSlots(pack).length } : null,
+    changed: Boolean(row.changed),
+  };
 }
 
 /** Stops offering a store template at once (D177): stores made from it keep what they got; pending sign-ups that chose it get the Standard store. */

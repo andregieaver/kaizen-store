@@ -1,6 +1,6 @@
 # Themes with their own content, demo stores at their own addresses (D275)
 
-Status: **spec, for review before building.** Agreed with the owner on 18 October 2026. It replaces the per-look demo store of D273
+Status: **agreed with the owner on 18 October 2026; step 1 built (D275).** It replaces the per-look demo store of D273
 (`ThemeListing.pack`, `presetPacks`, `demoStoreForLook()`) and the gate of D274 (`shownLooks()`).
 
 ## 1. In four sentences

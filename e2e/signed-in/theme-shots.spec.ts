@@ -17,14 +17,14 @@ let demo: Awaited<ReturnType<typeof demoStoreOf>>;
 const SLUG = `e2e-pictured-${Date.now().toString(36)}`;
 
 test.beforeAll(async ({ baseURL }) => {
-  // Its own look on a demo store, as the theme store shows only those (D274).
+  // Shown on its own content, as the theme store shows a theme only there (D275).
   demo = await demoStoreOf("plants");
   const sql = testDb();
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
     const [theme] = await sql`
-      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug, listing)
-      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ pack: "plants" })}) returning id`;
+      insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug)
+      values ('E2E Pictured', 'Photographed.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}) returning id`;
     presetId = String(theme.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${presetId}, 1, ${sql.json(snapshot as never)})`;
     const file = (name: string, width: number, height: number) => ({
@@ -44,6 +44,7 @@ test.beforeAll(async ({ baseURL }) => {
   } finally {
     await sql.end();
   }
+  await demo.linkTo(presetId);
 });
 
 test.afterAll(async () => {

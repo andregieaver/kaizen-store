@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."store_starters" ADD COLUMN "design_preset_id" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."store_starters" ADD CONSTRAINT "store_starters_design_preset_id_design_presets_id_fk" FOREIGN KEY ("design_preset_id") REFERENCES "commerce"."design_presets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "store_starters_design_preset_idx" ON "commerce"."store_starters" USING btree ("design_preset_id");

@@ -2,7 +2,7 @@ import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
 import { whatsNew } from "./theme-update";
-import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, contentPack, type PackKey } from "./content-packs";
+import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
 import { readHighlightWords, type HighlightWords, type ThemeHighlight } from "./theme-highlights";
@@ -49,16 +49,14 @@ export const THEME_FEATURES = {
 export type ThemeFeature = keyof typeof THEME_FEATURES;
 
 /**
- * A listing: the kinds of store and styles a theme is listed under, and its own pictures beside its main one (`docs/theme-phase-3.md`); and
- * the content pack each of its looks is shown on (`docs/theme-showcase-phase-1.md` step 3): `pack` for the theme's own look, `presetPacks`
- * for its presets by key. A look with no pack, or whose pack's store template is not published, is shown on the Standard store.
+ * A listing: the kinds of store and styles a theme is listed under, and its own pictures beside its main one (`docs/theme-phase-3.md`). What
+ * its looks are shown on is the theme's own content (D275, `ThemeContent`), never a choice in the listing: the `pack` and `presetPacks` a
+ * listing kept before are no longer read.
  */
 export type ThemeListing = {
   kinds: StoreKind[];
   styles: ThemeStyle[];
   pictures: string[];
-  pack: PackKey | null;
-  presetPacks: Record<string, PackKey>;
   /** Its highlights' words (`docs/theme-showcase-phase-2.md` step 2), only when some are written. */
   highlights?: HighlightWords;
   /** The platform admin's own pictures in place of made ones (step 3), by slot, only when some are set. */
@@ -90,13 +88,7 @@ export function readOwnPictures(value: unknown): OwnPictures {
   return out;
 }
 
-/** A preset's key, as `VARIATION_KEY` (here without zod's module). */
-const PRESET_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const isPack = (value: unknown): value is PackKey => typeof value === "string" && (PACK_KEYS as readonly string[]).includes(value);
-
-/** The content pack a look of the theme is shown on: its own look (`null`) or a preset's, or null for the Standard store. */
-export const showcasePack = (listing: Pick<ThemeListing, "pack" | "presetPacks">, key: string | null): PackKey | null =>
-  key === null ? listing.pack : (listing.presetPacks[key] ?? null);
+export const isPack = (value: unknown): value is PackKey => typeof value === "string" && (PACK_KEYS as readonly string[]).includes(value);
 
 /** At most this many pictures beside a theme's main one. */
 export const THEME_PICTURES_MAX = 6;
@@ -116,19 +108,12 @@ export function readListing(value: unknown): ThemeListing {
   const kinds = new Set(listOf(raw.kinds).filter((k) => isKey(STORE_KINDS, k)));
   const styles = new Set(listOf(raw.styles).filter((s) => isKey(THEME_STYLES, s)));
   const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
-  const presets = raw.presetPacks && typeof raw.presetPacks === "object" && !Array.isArray(raw.presetPacks) ? (raw.presetPacks as Record<string, unknown>) : {};
   const highlights = readHighlightWords(raw.highlights);
   const own = readOwnPictures(raw.own);
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
     pictures,
-    pack: isPack(raw.pack) ? raw.pack : null,
-    presetPacks: Object.fromEntries(
-      Object.entries(presets)
-        .filter((entry): entry is [string, PackKey] => PRESET_KEY.test(entry[0]) && isPack(entry[1]))
-        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-    ),
     ...(Object.keys(highlights).length > 0 ? { highlights } : {}),
     ...(Object.keys(own).length > 0 ? { own } : {}),
   };
@@ -140,10 +125,6 @@ export function parseListing(form: {
   kinds?: unknown;
   styles?: unknown;
   pictures?: unknown;
-  /** The pack the theme's own look is shown on ("" for the Standard store). */
-  pack?: unknown;
-  /** Each preset's pack, by key ("" for the Standard store). */
-  presetPacks?: Record<string, unknown>;
   /** The highlights' words, by kind (`readHighlightWords()`). */
   highlights?: unknown;
   /** The own pictures the listing already has, kept as they are. */
@@ -158,7 +139,7 @@ export function parseListing(form: {
   if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
   // The admin's own pictures in place of made ones are saved on their own (`saveThemeOwnPicture()`), so the listing form keeps them.
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, pack: form.pack, presetPacks: form.presetPacks, highlights: form.highlights, own: form.own }) };
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, highlights: form.highlights, own: form.own }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */
@@ -183,10 +164,25 @@ export function themeFeatures(snapshot: DesignSnapshot): ThemeFeature[] {
 /** The section styles a version has, by their names in the builder. */
 export const themeSectionStyles = (snapshot: DesignSnapshot): string[] => Object.keys(snapshot.theme.settings.sectionStyles ?? {}).map(sectionStyleLabel);
 
-/** The demo store a look is shown on: a content pack's published store template. */
-export type Showcase = { pack: PackKey; trade: string; line: string; starterId: string };
+/**
+ * A theme's own content (D275, `docs/themes-content-and-demo-stores.md`): its published store template (`store_starters.design_preset_id`),
+ * what its preview and photographs draw and new stores started from it are copied from; `pack` when it is one of Kaizena Flow's content
+ * packs (a launch theme's), for the words of its trade.
+ */
+export type ThemeContent = { starterId: string; pack: PackKey | null; storeName: string };
 
-/** A look of a theme (its own, `key` null, or a preset) and the demo store it is shown on; null: the Standard store. */
+/** What a look is shown on: its theme's own content, the same for every look. */
+export type Showcase = { pack: PackKey | null; trade: string | null; line: string; starterId: string };
+
+/** A theme's content as a look's showcase: its store's name, with its trade's words when it is a content pack's. */
+export const contentShowcase = (content: ThemeContent): Showcase => ({
+  pack: content.pack,
+  trade: content.pack ? PACK_TRADES[content.pack] : null,
+  line: content.pack ? `${content.storeName}, ${PACK_DEMO_WORDS[content.pack]}` : content.storeName,
+  starterId: content.starterId,
+});
+
+/** A look of a theme (its own, `key` null, or a preset) and what it is shown on: the theme's own content; null while it has none published. */
 export type ThemeLook = {
   key: string | null;
   name: string;
@@ -196,21 +192,16 @@ export type ThemeLook = {
 };
 
 /**
- * A theme's looks, its own first, each with the content pack its listing names when that pack's store template is published (`packs`: pack
- * to its template's id); any other look is shown on the Standard store, as before packs (`docs/theme-showcase-phase-1.md` step 3).
+ * A theme's looks, its own first, each shown on the theme's own content (D275) while it has one published; a preset is another look on the
+ * same content. Without published content no look is shown: never a demo store chosen apart, never the Standard store.
  */
-export function themeLooks(title: string, presets: { key: string; name: string }[], listing: Pick<ThemeListing, "pack" | "presetPacks">, packs: ReadonlyMap<string, string>): ThemeLook[] {
-  const showcase = (key: string | null): Showcase | null => {
-    const pack = showcasePack(listing, key);
-    const starterId = pack ? packs.get(pack) : undefined;
-    const data = pack ? contentPack(pack) : null;
-    return pack && starterId && data ? { pack, trade: PACK_TRADES[pack], line: `${data.storeName}, ${PACK_DEMO_WORDS[pack]}`, starterId } : null;
-  };
-  return [{ key: null, name: title, showcase: showcase(null) }, ...presets.map((p) => ({ key: p.key, name: p.name, showcase: showcase(p.key) }))];
+export function themeLooks(title: string, presets: { key: string; name: string }[], content: ThemeContent | null): ThemeLook[] {
+  const showcase = content ? contentShowcase(content) : null;
+  return [{ key: null, name: title, showcase }, ...presets.map((p) => ({ key: p.key, name: p.name, showcase }))];
 }
 
 /** The trades a theme's looks are shown on, each once, in its looks' order. */
-export const showcaseTrades = (looks: ThemeLook[]): string[] => [...new Set(looks.flatMap((look) => (look.showcase ? [look.showcase.trade] : [])))];
+export const showcaseTrades = (looks: ThemeLook[]): string[] => [...new Set(looks.flatMap((look) => (look.showcase?.trade ? [look.showcase.trade] : [])))];
 
 /** A theme as the list shows it. */
 export type ThemeStoreCard = {
@@ -226,7 +217,7 @@ export type ThemeStoreCard = {
   highlights?: ThemeHighlight[];
   /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`), in order. */
   presets: { key: string; name: string }[];
-  /** Its own look and its presets, each with the demo store it is shown on (`themeLooks()`). */
+  /** Its own look and its presets, each shown on its own content (`themeLooks()`). */
   looks: ThemeLook[];
   listing: ThemeListing;
   features: ThemeFeature[];
@@ -235,14 +226,14 @@ export type ThemeStoreCard = {
 };
 
 /**
- * The picture a theme's card shows (`docs/theme-showcase-phase-2.md`): the theme's own, else the card made from the photograph of its first
- * look on a published demo store; null: its colours (`Swatch`). Never the Standard store (D274).
+ * The picture a theme's card shows (`docs/theme-showcase-phase-2.md`): the theme's own, else the card made from the photograph of its own
+ * look on its content; null: its colours (`Swatch`). Never the Standard store (D274).
  */
 export const cardPicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeCard">): string | null => card.pictureUrl ?? card.madeCard;
 
 /**
- * The looks the theme store shows (D274): those on a published demo store, the theme's own first. A look on none is not drawn, photographed
- * or previewed there until its demo store is published: the Standard store is never part of the theme store.
+ * The looks the theme store shows (D274, D275): all of them once the theme's own content is published, none before. A look is never drawn,
+ * photographed or previewed on the Standard store.
  */
 export const shownLooks = <T extends Pick<ThemeLook, "showcase">>(looks: readonly T[]): T[] => looks.filter((look) => look.showcase !== null);
 

@@ -626,10 +626,10 @@ export const ARCADE: LaunchTheme = {
   description:
     "Made from scratch for shops with a playful streak. Near-black pages with faint scanlines, headings in Tilt Neon that glow like bent glass and light up as a sign does, pixel labels with a blinking cursor, hot pink for the button that matters and cyan for what answers the pointer, product cards like lit screens, levels for how things are made, and a product page whose picture sits in a glowing frame. Its demo store, Neon Alley, sells LED neon signs.",
   notes: null,
+  content: "neon",
   listing: {
     kinds: ["home", "digital", "crafts"],
     styles: ["bold", "playful", "artistic"],
-    pack: "neon",
     highlights: {
       devices: { title: "Lit up on every screen", text: "Arcade's glowing headings, pixel labels and neon buttons on a computer and on a phone." },
       collage: { title: "Sections that glow", text: "A synthwave hero, collections as lit screens, levels for how things are made, and a wall of signs to end on." },
@@ -642,7 +642,6 @@ export const ARCADE: LaunchTheme = {
     {
       key: "vapor",
       name: "Vapor",
-      pack: "beauty",
       changes: {
         dark: { background: "#100a1c", surface: "#1a1230", text: "#f4f0ff", muted: "#b6a9d6", border: "#2e2450", accent: "#7df9ff", accentText: "#071318" },
       },
@@ -650,7 +649,6 @@ export const ARCADE: LaunchTheme = {
     {
       key: "terminal",
       name: "Terminal",
-      pack: "electronics",
       changes: {
         dark: { background: "#050a06", surface: "#0b140d", text: "#d9ffe0", muted: "#8fbf98", border: "#1b2e1f", accent: "#39ff6a", accentText: "#031006" },
       },

@@ -824,9 +824,13 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Make a theme from a store", "Make a theme from scratch", "Publish a theme", "Preview a theme", "Archive a theme", "Set up the demo stores", "Make a demo store's pictures"],
     keywords: ["design profile", "look", "theme preset", "style", "skin", "demo store", "store template", "content pack", "starter"],
   }),
-  platform("theme", "/themes/[presetId]", "Theme", "Platform", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), the demo store each of its looks starts new stores with and is shown on, its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
-    tasks: ["Choose a theme's demo stores", "Preview a theme on its demo store"],
-    keywords: ["demo store", "showcase", "listing"],
+  platform("theme", "/themes/[presetId]", "Theme", "Platform", "One theme's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), its photographs, its theme store listing, previews of the published look and the draft, and starting its look again from a store.", {
+    tasks: ["Preview a theme", "List a theme in the theme store"],
+    keywords: ["showcase", "listing"],
+  }),
+  platform("theme.content", "/themes/[presetId]/content", "Theme content", "Platform", "A theme's own content (D275): the pages, products and pictures its preview and photographs show and new stores started from it begin with; edited in its store admin, its pictures made, published with the theme, or replaced with a copy of other content.", {
+    tasks: ["Edit a theme's content", "Make a theme's pictures", "Give a theme content"],
+    keywords: ["demo store", "demo content", "sample content", "content pack", "starter"],
   }),
   platform("theme.settings", "/themes/[presetId]/theme", "Theme settings", "Platform", "A theme's settings: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the theme's draft.", {
     keywords: ["colours", "fonts", "buttons", "corners", "dark mode"],

@@ -765,6 +765,12 @@ export const storeStarters = commerce.table(
     /** Tries in a row that failed, and why the last one did (shown on the Store templates page). */
     pictureFailures: smallint("picture_failures").notNull().default(0),
     pictureProblem: text("picture_problem"),
+    /**
+     * The theme this is the own content of (D275, `docs/themes-content-and-demo-stores.md`): what its preview and photographs draw and what a
+     * new store started from it is copied from. One per theme; a content pack's template may be a launch theme's. Null: a demo store or
+     * starting content only.
+     */
+    designPresetId: uuid("design_preset_id").references((): AnyPgColumn => designPresets.id, { onDelete: "set null" }),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -773,6 +779,7 @@ export const storeStarters = commerce.table(
   (t) => [
     uniqueIndex("store_starters_store_idx").on(t.storeId),
     uniqueIndex("store_starters_pack_key_idx").on(t.packKey),
+    uniqueIndex("store_starters_design_preset_idx").on(t.designPresetId),
     check("store_starters_pack", sql`${t.packVersion} is null or (${t.packKey} is not null and ${t.packVersion} > 0)`),
     check("store_starters_pack_pictures", sql`jsonb_typeof(${t.packPictures}) = 'object'`),
     check("store_starters_pictures_wanted", sql`(${t.picturesWantedBy} is null) = (${t.picturesWantedAt} is null) and (${t.picturesWantedAt} is null or ${t.packKey} is not null)`),

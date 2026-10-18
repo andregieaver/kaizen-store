@@ -89,7 +89,7 @@ export function ThemePreviewStage({ title, looks }: { title: string; looks: Stag
           <iframe src={look.frameHref} title={`${name} on a phone`} loading="lazy" className="h-[640px] w-full" />
         </div>
       </div>
-      {look.line && <p className="text-sm text-muted">Shown on {look.line}. Its products, words and pictures are a demo.</p>}
+      {look.line && <p className="text-sm text-muted">Sample content: {look.line}. Your own words, pictures and products take its place.</p>}
     </div>
   );
 }

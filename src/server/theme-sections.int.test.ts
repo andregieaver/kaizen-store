@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
 const run = Date.now().toString(36);
 const files = "https://files.example.com/storage/v1/object/public";
 const atelier = LAUNCH_THEMES.find((theme) => theme.key === "atelier")!;
-const pack = contentPack(atelier.listing.pack!)!;
+const pack = contentPack(atelier.content)!;
 
 let admin: Account;
 let store: string;

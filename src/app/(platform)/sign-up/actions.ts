@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
-import { demoStoreForLook } from "@/server/design-presets";
+import { contentForLook } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
 
 const input = z.object({
@@ -46,7 +46,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
     await createAccessRequest({
       ...parsed.data,
       referralCode,
-      starterId: await demoStoreForLook(look),
+      starterId: await contentForLook(look),
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
     });

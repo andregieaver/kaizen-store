@@ -145,7 +145,7 @@ export default async function ThemePage({ params }: PageProps<"/themes/[slug]">)
           <h2 id="preview" className="text-xl font-semibold">
             Preview
           </h2>
-          <p className="text-sm text-muted">A demo store drawn with {theme.title}. Nothing in it can be pressed.</p>
+          <p className="text-sm text-muted">{theme.title} with its own sample content. Nothing in it can be pressed.</p>
           <ThemePreviewStage title={theme.title} looks={looks} />
         </section>
       )}

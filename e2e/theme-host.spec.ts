@@ -19,20 +19,21 @@ let id = "";
 let demo: Awaited<ReturnType<typeof demoStoreOf>>;
 
 test.beforeAll(async () => {
-  // Shown on a demo store, as the theme store shows only looks on one (D274).
+  // Shown on its own content, as the theme store shows a theme only there (D275).
   demo = await demoStoreOf("beauty");
   const sql = testDb();
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
     const [row] = await sql`
-      insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing)
-      values ('E2E Hosted', 'On its own host.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json({ pack: "beauty" })})
+      insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug)
+      values ('E2E Hosted', 'On its own host.', 'A theme made by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG})
       returning id`;
     id = String(row.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${id}, 1, ${sql.json(snapshot as never)})`;
   } finally {
     await sql.end();
   }
+  await demo.linkTo(id);
 });
 
 test.afterAll(async () => {

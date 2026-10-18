@@ -31,7 +31,7 @@ const deps = {
 let admin: Account;
 let theme: string;
 let standard: string;
-/** The theme's own look's demo store: a published content pack's store template (D257) and its store. */
+/** The theme's own content (D275): a published content pack's store template (D257) and its store. */
 let demo: { starter: string; store: string };
 let photos: Record<ShotKind, { full: Buffer; screen: Buffer }>;
 
@@ -95,12 +95,14 @@ beforeAll(async () => {
   const made = await designs.createDesign(admin, { details: { title: `Shotline ${run}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
   if (!made.ok) throw new Error(made.problems.join(" "));
   theme = made.id;
-  const listed = await designs.saveThemeListing(admin, theme, `shotline-${run}`, { kinds: [], styles: [], pictures: [], pack: "food", presetPacks: {} });
+  const listed = await designs.saveThemeListing(admin, theme, `shotline-${run}`, { kinds: [], styles: [], pictures: [] });
   if (!listed.ok) throw new Error(listed.problems.join(" "));
+  // The demo store is the theme's own content (D275), as a launch theme's content pack is.
+  await db().execute(sql`update commerce.store_starters set design_preset_id = ${theme}::uuid where id = ${demo.starter}::uuid`);
 });
 
 afterAll(async () => {
-  await db().execute(sql`update commerce.store_starters set published = false, pack_key = pack_key || '-x-' || ${run} where id = ${demo.starter}::uuid`);
+  await db().execute(sql`update commerce.store_starters set published = false, design_preset_id = null, pack_key = pack_key || '-x-' || ${run} where id = ${demo.starter}::uuid`);
   await closeDb();
 });
 
@@ -153,8 +155,6 @@ describe("a theme's photographs", () => {
       kinds: [],
       styles: [],
       pictures: [],
-      pack: "food",
-      presetPacks: {},
       highlights: { devices: { title: "On every screen", text: "A computer and two phones." } },
     });
     expect(listed.ok).toBe(true);

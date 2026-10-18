@@ -19,12 +19,12 @@ function packStatus(pack: PackState): { words: string; signal: "positive" | "war
 }
 
 /**
- * The demo stores on the Themes page (D273): the content a new store starts with. Each look of a theme is shown on one (its Demo stores
- * card), and a store started from that look is a copy of it. Kaizena Flow writes them in code (content packs, D257): one press sets them up
- * or brings them up to date, each then needs its pictures (made by the job in the background, D271) and is published here with one press.
- * `older` are store templates made before D273, kept for the stores and requests that name them.
+ * The starting content on the Themes page (D275, the content packs of D257): pages, products and photographs Kaizena Flow writes in code,
+ * one per trade. Each launch theme has one as its own content, and a new theme's content is a copy of one. One press sets them up or brings
+ * them up to date, each then needs its pictures (made by the job in the background, D271) and is published here with one press. `older`
+ * are demo stores made by hand before D273, kept for the stores and requests that name them.
  */
-export function DemoStoresCard({ packs, older, shownOn }: { packs: PackState[]; older: StarterRow[]; shownOn: Record<string, string[]> }) {
+export function DemoStoresCard({ packs, older, contentOf }: { packs: PackState[]; older: StarterRow[]; contentOf: Record<string, string> }) {
   const toSetUp = packs.filter((pack) => !pack.archived && (!pack.starterId || !pack.current)).length;
   const fresh = packs.every((pack) => !pack.starterId);
   // Demo stores whose pictures can be asked for: set up, current, not archived, some missing and not asked for already.
@@ -33,8 +33,8 @@ export function DemoStoresCard({ packs, older, shownOn }: { packs: PackState[]; 
   return (
     <div id="demo-stores" className="scroll-mt-4">
       <Card
-        title="Demo stores"
-        description="What a new store starts with: each look of a theme is shown on a demo store, and a store started from that look is a copy of it, its products, pages and menus included, which the owner removes in one press. Kaizena Flow writes them in English. Set them up, make their pictures (made in the background, so you can leave the page), then publish each."
+        title="Starting content"
+        description="Pages, products and photographs Kaizena Flow writes in English, one set per trade. Each of Kaizena Flow's themes has one as its own content, which its preview shows and a new store started from it begins with; a new theme's content starts as a copy of one. Set them up, make their pictures (made in the background, so you can leave the page), then publish each."
         aside={
           toSetUp > 0 ? (
             <ActionForm action={syncContentPacksAction}>
@@ -46,11 +46,11 @@ export function DemoStoresCard({ packs, older, shownOn }: { packs: PackState[]; 
         }
       >
         <PackPicturesWatch active={packs.some((pack) => ready(pack) && pack.asked && pack.pictures < pack.slots)} />
-        <List label="Demo stores">
+        <List label="Starting content">
           {packs.map((pack) => {
             const status = packStatus(pack);
-            const themes = shownOn[pack.key] ?? [];
-            const sub = [pack.slug ? `${pack.storeName} · /s/${pack.slug}` : pack.storeName, themes.length > 0 ? `shown on ${themes.join(", ")}` : "shown on no theme yet"].join(" · ");
+            const theme = contentOf[pack.key];
+            const sub = [pack.slug ? `${pack.storeName} · /s/${pack.slug}` : pack.storeName, theme ? `${theme}'s content` : "no theme's own content"].join(" · ");
             return (
               <ListRow key={pack.key}>
                 <RowLead title={pack.title} href={pack.starterId ? demoStoreHref(pack.starterId) : undefined} sub={sub} />

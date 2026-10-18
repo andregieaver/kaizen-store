@@ -11,7 +11,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { launchThemeStates } from "@/server/launch-themes";
 import { contentPackStates } from "@/server/content-packs";
-import { listStarters } from "@/server/store-starters";
+import { contentOwners, contentSources, listStarters } from "@/server/store-starters";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 
@@ -33,6 +33,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 const field = "flex flex-col gap-1 text-sm font-medium";
 const tab = "flex min-h-10 items-center rounded-md border border-edge px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium";
 const KIND_WORDS = { template: "the Standard store", starter: "demo store", store: "store" } as const;
+const CONTENT_WORDS = { pack: "starting content", theme: "a theme's content", demo: "demo store" } as const;
 
 /**
  * Themes (D176, D177, D273, `docs/themes-unified.md`): a look (theme, header, footer, product layout and CSS) with its presets, which any
@@ -46,20 +47,20 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   const query = await searchParams;
   const filter = listFilterOf(query.show);
   const current = filter === "current";
-  const [designs, sources, launch, packs, starters] = await Promise.all([
+  const [designs, sources, launch, packs, starters, owners, contents] = await Promise.all([
     listDesigns(filter),
     snapshotSources(admin),
     launchThemeStates(),
     current ? contentPackStates() : Promise.resolve([]),
     current ? listStarters() : Promise.resolve([]),
+    current ? contentOwners() : Promise.resolve(new Map<string, string>()),
+    current ? contentSources() : Promise.resolve([]),
   ]);
   const facts = await Promise.all(designs.map((design) => designLifecycle(design)));
   const published = designs.filter((d) => d.published).length;
-  // Which themes each demo store shows (any of their looks), for its row; older store templates are those no content pack made.
-  const shownOn: Record<string, string[]> = {};
-  for (const design of designs) {
-    for (const pack of new Set([design.listing.pack, ...Object.values(design.listing.presetPacks)])) if (pack) (shownOn[pack] ??= []).push(design.title);
-  }
+  // Which theme each starting content is the own content of (D275), for its row; older demo stores are those no content pack made.
+  const contentOf: Record<string, string> = {};
+  for (const pack of packs) if (pack.starterId && owners.has(pack.starterId)) contentOf[pack.key] = owners.get(pack.starterId)!;
   const packStores = new Set(packs.map((pack) => pack.starterId));
   const older = starters.filter((starter) => !packStores.has(starter.id));
 
@@ -67,7 +68,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Themes"
-        description={<>A theme is a whole look (colours, fonts, buttons, corners, light and dark, a header and footer, a product page and CSS) with up to five presets over it. Each look is shown on a demo store, and a new store started from it begins as a copy of that demo store. Owners apply a theme from their store&apos;s Design settings, which never changes their words; people creating a store choose one. Every change is a draft until you publish it.</>}
+        description={<>A theme is a whole look (colours, fonts, buttons, corners, light and dark, a header and footer, a product page and CSS) with up to five presets over it, and its own content: the pages, products and pictures it is shown with, which a new store started from it begins with. Owners apply a theme from their store&apos;s Design settings, which never changes their words; people creating a store choose one. Every change is a draft until you publish it.</>}
       />
 
       <nav aria-label="Which themes" className="flex flex-wrap gap-2">
@@ -103,7 +104,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
         </ol>
       )}
 
-      {current && <DemoStoresCard packs={packs} older={older} shownOn={shownOn} />}
+      {current && <DemoStoresCard packs={packs} older={older} contentOf={contentOf} />}
 
       {current && (
         <Card
@@ -183,6 +184,17 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
                 </select>
               </label>
             )}
+            <label className={field}>
+              Content to start with <span className="font-normal text-muted">(its pages, products and pictures, a copy the theme can change)</span>
+              <select name="content" defaultValue={contents.find((c) => c.kind === "pack")?.id ?? ""} className={control}>
+                {contents.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.title} ({CONTENT_WORDS[source.kind]})
+                  </option>
+                ))}
+                <option value="">None for now: choose it on its Content tab</option>
+              </select>
+            </label>
             <label className={field}>
               Summary <span className="font-normal text-muted">(on the card)</span>
               <input name="summary" maxLength={DESIGN_LIMITS.summary} className={control} />

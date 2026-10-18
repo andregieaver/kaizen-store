@@ -7,23 +7,19 @@ import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
 import { ThemeChecks } from "@/components/admin/theme-checks";
 import { ThemeShotsPanel } from "@/components/admin/theme-shots-panel";
-import { DESIGN_LIMITS, designPreviewPath } from "@/lib/design-presets";
+import { DESIGN_LIMITS, designTabHref } from "@/lib/design-presets";
 import { deleteBlocker } from "@/lib/lifecycle";
-import { demoStoreHref } from "@/lib/theme-admin-paths";
 import { themeStoreUrl } from "@/lib/theme-host";
 import { STORE_KINDS, THEME_PICTURES_MAX, THEME_STYLES, suggestedSlug } from "@/lib/theme-store";
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listVariations } from "@/server/design-variations";
-import { contentPackStates } from "@/server/content-packs";
 import { themeShotStatus } from "@/server/theme-shots";
-import { Card } from "@/components/admin/ui";
 
 import { uploadPlatformImageAction } from "../../actions";
 import {
   copyStoreLookAction,
   retryThemeShotsAction,
   saveDesignDraftAction,
-  saveThemeDemoStoresAction,
   saveThemeListingAction,
   saveThemeOwnPictureAction,
   suggestHighlightWordsAction,
@@ -39,22 +35,20 @@ const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 const KIND_WORDS = { template: "the Standard store", starter: "demo store", store: "store" } as const;
 
 /**
- * A theme's details (D176, D177, D273): what stores read on its card and its picture, saved as a draft and published with the theme; the
- * demo store each of its looks is shown on and starts new stores from, with previews there; its photographs and listing; and where it
- * starts again from a store. Its look is edited on the other tabs.
+ * A theme's details (D176, D177): what stores read on its card and its picture, saved as a draft and published with the theme; its checks,
+ * photographs and listing; and where it starts again from a store. Its look is edited on the other tabs, and its own content (D275) on its
+ * Content tab.
  */
 export default async function ThemePage({ params, searchParams }: PageProps<"/admin/platform/themes/[presetId]">) {
   const { admin, design, facts } = await designPage((await params).presetId);
-  const [query, packs, sources, checks, presets, shots] = await Promise.all([
+  const [query, sources, checks, presets, shots] = await Promise.all([
     searchParams,
-    contentPackStates(),
     snapshotSources(admin),
     designChecks(design),
     listVariations(admin, design.id),
     themeShotStatus(design.id),
   ]);
   const shown = shownDesignDetails(design);
-  const looks = [{ key: null as string | null, name: `${shown.title} (its own look)` }, ...presets.map((p) => ({ key: p.key as string | null, name: p.name }))];
   const blocker = deleteBlocker("theme", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
 
   return (
@@ -84,60 +78,13 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
         )}
       </section>
 
-      <Card
-        title="Demo stores"
-        description={
-          <>
-            Each look is shown on a demo store in the theme store, and a new store started from that look begins as a copy of it: its products,
-            pages and menus, which the owner removes in one press. A look whose demo store is not published yet is left out of the theme store,
-            and new stores started from it get the Standard store. Saved at once, not as a draft.
-          </>
-        }
-      >
-        <ActionForm action={saveThemeDemoStoresAction.bind(null, design.id)} className="flex flex-col gap-3">
-          {looks.map((look) => {
-            const chosen = (look.key ? design.listing.presetPacks[look.key] : design.listing.pack) ?? null;
-            const pack = chosen ? packs.find((one) => one.key === chosen) : undefined;
-            return (
-              <div key={look.key ?? ""} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <label className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-40">{look.name}</span>
-                  <select name={look.key ? `pack:${look.key}` : "pack"} defaultValue={chosen ?? ""} className={control}>
-                    <option value="">The Standard store</option>
-                    {packs.map((one) => (
-                      <option key={one.key} value={one.key}>
-                        {one.storeName} ({one.title}){one.published ? "" : ", not published yet"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <a href={designPreviewPath(design.id, pack?.starterId ?? null, true, false, false, look.key)} target="_blank" rel="noopener" className="underline underline-offset-2">
-                  Preview<span className="sr-only"> {look.name} (opens in a new window)</span>
-                </a>
-                {design.workspaceStoreId && (
-                  <a href={designPreviewPath(design.id, pack?.starterId ?? null, true, true, false, look.key)} target="_blank" rel="noopener" className="underline underline-offset-2">
-                    the draft<span className="sr-only"> of {look.name} (opens in a new window)</span>
-                  </a>
-                )}
-                {pack?.starterId && (
-                  <Link href={demoStoreHref(pack.starterId)} className="text-muted underline underline-offset-2">
-                    {pack.published ? "Its demo store" : "Set it up"}
-                    <span className="sr-only"> for {look.name}</span>
-                  </Link>
-                )}
-                {!pack?.published && (
-                  <span className="basis-full text-caption text-muted">
-                    {pack ? "Not in the theme store until its demo store is published." : "Not in the theme store: choose a demo store."}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          <div>
-            <SubmitButton variant="secondary">Save the demo stores</SubmitButton>
-          </div>
-        </ActionForm>
-      </Card>
+      <p className="text-sm text-muted">
+        What the theme store shows it with and new stores started from it begin with is its own content:{" "}
+        <Link href={designTabHref(design.id, "content")} className="text-ink underline underline-offset-2">
+          its Content tab
+        </Link>
+        .
+      </p>
 
       <ThemeChecks result={checks} />
 

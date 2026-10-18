@@ -12,7 +12,6 @@ import {
   parseThemeFilter,
   readListing,
   readOwnPictures,
-  showcasePack,
   shownLooks,
   showcaseTrades,
   themeLooks,
@@ -38,7 +37,7 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
   madeShare: null,
   presets: [],
   looks: [{ key: null, name: id, showcase: null }],
-  listing: { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} },
+  listing: { kinds: [], styles: [], pictures: [] },
   features: [],
   swatch: { background: "#fff", surface: "#eee", text: "#000", accent: "#111", accentText: "#fff", heading: null },
   ...extra,
@@ -46,21 +45,15 @@ const card = (id: string, extra: Partial<ThemeStoreCard> = {}): ThemeStoreCard =
 
 describe("a listing", () => {
   it("keeps only known kinds and styles, once, in their own order", () => {
-    expect(readListing({ kinds: ["home", "nonsense", "food", "home"], styles: "bold" })).toEqual({ kinds: ["food", "home"], styles: ["bold"], pictures: [], pack: null, presetPacks: {} });
-    expect(readListing(null)).toEqual({ kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} });
-    // The pack each look is shown on (`docs/theme-showcase-phase-1.md` step 3): known packs only, preset keys as keys are written.
-    expect(readListing({ pack: "food", presetPacks: { olive: "home", "Bad Key": "beauty", rose: "cars", blush: "beauty" } })).toMatchObject({
-      pack: "food",
-      presetPacks: { blush: "beauty", olive: "home" },
-    });
-    expect(readListing({ pack: "cars", presetPacks: ["home"] })).toMatchObject({ pack: null, presetPacks: {} });
-    const listing = readListing({ pack: "fashion", presetPacks: { volt: "electronics" } });
-    expect([showcasePack(listing, null), showcasePack(listing, "volt"), showcasePack(listing, "gone")]).toEqual(["fashion", "electronics", null]);
-    expect(parseListing({ slug: "calm", pack: "", presetPacks: { sand: "beauty", ink: "" } })).toMatchObject({ ok: true, listing: { pack: null, presetPacks: { sand: "beauty" } } });
+    expect(readListing({ kinds: ["home", "nonsense", "food", "home"], styles: "bold" })).toEqual({ kinds: ["food", "home"], styles: ["bold"], pictures: [] });
+    expect(readListing(null)).toEqual({ kinds: [], styles: [], pictures: [] });
+    // The pack and presets' packs a listing kept before D275 are no longer read: a theme's looks are shown on its own content.
+    expect(readListing({ kinds: ["food"], pack: "food", presetPacks: { olive: "home" } })).toEqual({ kinds: ["food"], styles: [], pictures: [] });
+    expect(parseListing({ slug: "calm", pack: "fashion" } as Parameters<typeof parseListing>[0])).toMatchObject({ ok: true, listing: { kinds: [], styles: [], pictures: [] } });
   });
 
   it("needs an address of the store's shape", () => {
-    expect(parseListing({ slug: " Calm ", kinds: ["fashion"] })).toEqual({ ok: true, slug: "calm", listing: { kinds: ["fashion"], styles: [], pictures: [], pack: null, presetPacks: {} } });
+    expect(parseListing({ slug: " Calm ", kinds: ["fashion"] })).toEqual({ ok: true, slug: "calm", listing: { kinds: ["fashion"], styles: [], pictures: [] } });
     expect(parseListing({ slug: "" }).ok).toBe(false);
     expect(parseListing({ slug: "-calm" }).ok).toBe(false);
     expect(parseListing({ slug: "calm theme" }).ok).toBe(false);
@@ -97,9 +90,9 @@ describe("what a theme includes", () => {
 
 describe("the list's filters", () => {
   const cards = [
-    card("a", { listing: { kinds: ["food"], styles: ["warm"], pictures: [], pack: null, presetPacks: {} }, features: ["dark"] }),
-    card("b", { listing: { kinds: [], styles: ["bold"], pictures: [], pack: null, presetPacks: {} }, features: [] }),
-    card("c", { listing: { kinds: ["fashion"], styles: ["warm"], pictures: [], pack: null, presetPacks: {} }, features: ["dark"] }),
+    card("a", { listing: { kinds: ["food"], styles: ["warm"], pictures: [] }, features: ["dark"] }),
+    card("b", { listing: { kinds: [], styles: ["bold"], pictures: [] }, features: [] }),
+    card("c", { listing: { kinds: ["fashion"], styles: ["warm"], pictures: [] }, features: ["dark"] }),
   ];
 
   it("reads the address and ignores what it does not know", () => {
@@ -156,7 +149,7 @@ describe("the admin's own pictures in place of made ones (docs/theme-showcase-ph
 
   it("are kept by the listing form, which never sets them itself", () => {
     expect(parseListing({ slug: "calm", own: { share: "/media/s.jpg" } })).toMatchObject({ ok: true, listing: { own: { share: "/media/s.jpg" } } });
-    expect(parseListing({ slug: "calm" })).toEqual({ ok: true, slug: "calm", listing: { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} } });
+    expect(parseListing({ slug: "calm" })).toEqual({ ok: true, slug: "calm", listing: { kinds: [], styles: [], pictures: [] } });
   });
 });
 
@@ -200,27 +193,32 @@ describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", (
   });
 });
 
-describe("a theme's looks and the stores they are shown on (docs/theme-showcase-phase-1.md step 3)", () => {
+describe("a theme's looks, each on the theme's own content (D275)", () => {
   const presets = [
     { key: "olive", name: "Olive" },
     { key: "blush", name: "Blush" },
   ];
-  const listing = { pack: "food" as const, presetPacks: { olive: "home" as const, blush: "beauty" as const } };
+  const content = { starterId: "starter-food", pack: "food" as const, storeName: "Harbour Pantry" };
 
-  it("are its own look first, then its presets, each on its pack's store while that pack is published", () => {
-    const looks = themeLooks("Hearth", presets, listing, new Map([["food", "starter-food"], ["home", "starter-home"]]));
+  it("are its own look first, then its presets, all on the theme's content", () => {
+    const looks = themeLooks("Hearth", presets, content);
     expect(looks.map((l) => [l.key, l.name, l.showcase?.starterId ?? null])).toEqual([
       [null, "Hearth", "starter-food"],
-      ["olive", "Olive", "starter-home"],
-      // Its pack is not published: shown nowhere until it is (D274), and a new store started from it gets the Standard store.
-      ["blush", "Blush", null],
+      ["olive", "Olive", "starter-food"],
+      ["blush", "Blush", "starter-food"],
     ]);
     expect(looks[0].showcase).toMatchObject({ pack: "food", trade: "Food and drink", line: "Harbour Pantry, a demo food and drink store" });
-    expect(showcaseTrades(looks)).toEqual(["Food and drink", "Home"]);
+    expect(showcaseTrades(looks)).toEqual(["Food and drink"]);
   });
 
-  it("are all on the Standard store when no pack is named or published", () => {
-    expect(themeLooks("Calm", [], { pack: null, presetPacks: {} }, new Map([["fashion", "x"]]))).toEqual([{ key: null, name: "Calm", showcase: null }]);
-    expect(showcaseTrades(themeLooks("Hearth", presets, listing, new Map()))).toEqual([]);
+  it("name content of its own by its store, with no trade", () => {
+    const looks = themeLooks("Calm", [], { starterId: "own", pack: null, storeName: "Calm's shop" });
+    expect(looks[0].showcase).toEqual({ pack: null, trade: null, line: "Calm's shop", starterId: "own" });
+    expect(showcaseTrades(looks)).toEqual([]);
+  });
+
+  it("are shown nowhere while the theme has no published content", () => {
+    expect(themeLooks("Calm", [], null)).toEqual([{ key: null, name: "Calm", showcase: null }]);
+    expect(shownLooks(themeLooks("Hearth", presets, null))).toEqual([]);
   });
 });

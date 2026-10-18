@@ -45,8 +45,6 @@ describe("the theme store's data", () => {
       kinds: ["food", "home", "crafts"],
       styles: ["warm", "classic"],
       pictures: [],
-      pack: "food",
-      presetPacks: { blush: "beauty", olive: "home" },
       // Its highlights' words are the code's (`docs/theme-showcase-phase-2.md` step 2).
       highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
     });
@@ -64,15 +62,13 @@ describe("the theme store's data", () => {
   it("keeps a launch theme's pictures, which are the admin's, when the code's listing is written again", async () => {
     const hearth = await store.themeStorePage("hearth");
     if (!hearth) throw new Error("Hearth is not in the store");
-    expect(await designs.saveThemeListing(admin, hearth.id, "hearth", { kinds: [], styles: [], pictures: ["/media/hearth-1.webp"], pack: null, presetPacks: {} })).toEqual({ ok: true });
+    expect(await designs.saveThemeListing(admin, hearth.id, "hearth", { kinds: [], styles: [], pictures: ["/media/hearth-1.webp"] })).toEqual({ ok: true });
     await syncLaunchThemes(admin, deps);
     const after = await store.themeStorePage("hearth");
     expect(after?.listing).toEqual({
       kinds: ["food", "home", "crafts"],
       styles: ["warm", "classic"],
       pictures: ["/media/hearth-1.webp"],
-      pack: "food",
-      presetPacks: { blush: "beauty", olive: "home" },
       highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
     });
   });
@@ -80,13 +76,13 @@ describe("the theme store's data", () => {
   it("saves an admin's listing, refuses another theme's address, and shows a theme only while it is published", async () => {
     const made = await designs.createDesign(admin, { details: { title: `Listed ${run}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
     if (!made.ok) throw new Error(made.problems.join(" "));
-    expect(await designs.saveThemeListing(admin, made.id, "calm", { kinds: [], styles: [], pictures: [], pack: null, presetPacks: {} })).toEqual({ ok: false, problems: ["Another theme has that address. Choose another."] });
+    expect(await designs.saveThemeListing(admin, made.id, "calm", { kinds: [], styles: [], pictures: [] })).toEqual({ ok: false, problems: ["Another theme has that address. Choose another."] });
     const slug = `listed-${run}`;
-    expect(await designs.saveThemeListing(admin, made.id, slug, { kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"], pack: null, presetPacks: {} })).toEqual({ ok: true });
+    expect(await designs.saveThemeListing(admin, made.id, slug, { kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"] })).toEqual({ ok: true });
     // Not published yet: not in the store.
     expect((await store.themeStoreCards()).some((card) => card.slug === slug)).toBe(false);
     expect((await designs.publishDesign(admin, made.id)).ok).toBe(true);
-    expect((await store.themeStoreCards()).find((card) => card.slug === slug)?.listing).toEqual({ kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"], pack: null, presetPacks: {} });
+    expect((await store.themeStoreCards()).find((card) => card.slug === slug)?.listing).toEqual({ kinds: ["food"], styles: ["warm"], pictures: ["/media/one.webp"] });
     // Unpublished: gone again.
     expect((await designs.unpublishDesign(admin, made.id)).ok).toBe(true);
     expect(await store.themeStorePage(slug)).toBeNull();
@@ -147,7 +143,7 @@ describe("pictures in place of made ones (docs/theme-showcase-phase-2.md step 3)
       expect(await designs.saveThemeOwnPicture({ ...admin, platformAdmin: false }, signal.id, "collage", share)).toMatchObject({ ok: false });
 
       // The listing form never sends them, and they stay; a new version of the launch theme keeps them and its main picture.
-      expect(await designs.saveThemeListing(admin, signal.id, "signal", { kinds: ["digital"], styles: [], pictures: [], pack: null, presetPacks: {} })).toEqual({ ok: true });
+      expect(await designs.saveThemeListing(admin, signal.id, "signal", { kinds: ["digital"], styles: [], pictures: [] })).toEqual({ ok: true });
       await db().execute(sql`update commerce.design_presets set picture_url = ${`/media/signal-main-${run}.webp`}, launch_version = launch_version - 1 where id = ${signal.id}::uuid`);
       const synced = await syncLaunchThemes(admin, deps);
       expect(synced.problems).toEqual([]);

@@ -29,8 +29,8 @@ describe("signature themes", () => {
     for (const theme of signature) expect(signatureCheck(theme, { artExists }), theme.key).toEqual([]);
   });
 
-  it("have their own demo store, art for every picture its pages and products use, and words the checks read", () => {
-    const pack = contentPack(orbit.listing.pack ?? "")!;
+  it("have their own content, art for every picture its pages and products use, and words the checks read", () => {
+    const pack = contentPack(orbit.content)!;
     expect(pack.storeName).toBe("Far Light");
     expect(pack.design).toBe("orbit");
     const words = signatureWords(orbit, pack).join(" ");
@@ -68,7 +68,7 @@ describe("signature themes", () => {
 
   it("offer their designed rows as sections with words for any store, never their demo store's (D272)", () => {
     for (const theme of signature) {
-      const pack = contentPack(theme.listing.pack ?? "")!;
+      const pack = contentPack(theme.content)!;
       const offered = theme.sections!(() => null);
       expect(offered.length, theme.key).toBeGreaterThanOrEqual(4);
       const words = JSON.stringify(offered.map((section) => section.row));

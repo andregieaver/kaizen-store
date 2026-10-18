@@ -646,10 +646,10 @@ export const BOTANICA: LaunchTheme = {
   description:
     "Made from scratch for shops that grow things. Warm cream pages with a paper grain, Fraunces' soft letters with an italic word in each heading over DM Sans, a header that floats as a rounded bar, pictures shaped as arches and soft blobs, a fern sprig that sways by the hero, collections on rounded cards, care told with small icons, and a leafy band to end on. Its demo store, Fernhouse, sells house plants.",
   notes: null,
+  content: "plants",
   listing: {
     kinds: ["home", "food", "beauty"],
     styles: ["natural", "warm", "artistic"],
-    pack: "plants",
     highlights: {
       devices: { title: "Calm on every screen", text: "Botanica's paper pages, soft serif letters and rounded buttons on a computer and on a phone." },
       collage: { title: "Sections that breathe", text: "An arched picture beside the words, collections on cards, care with small icons, and a leafy band to end on." },
@@ -662,7 +662,6 @@ export const BOTANICA: LaunchTheme = {
     {
       key: "terracotta",
       name: "Terracotta",
-      pack: "food",
       changes: {
         light: { background: "#f6eee6", surface: "#eedfd2", text: "#2a1d16", muted: "#6e5a4d", border: "#e0cfc0", accent: "#a4472a", accentText: "#fff6ef" },
       },
@@ -670,7 +669,6 @@ export const BOTANICA: LaunchTheme = {
     {
       key: "night-garden",
       name: "Night garden",
-      pack: "services",
       changes: { mode: "dark" },
     },
   ],

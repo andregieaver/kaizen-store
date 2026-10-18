@@ -37,12 +37,11 @@ describe("themeCheck()", () => {
         expect(preset.key).toMatch(/^[a-z0-9][a-z0-9-]{0,39}$/);
       }
       expect(new Set(theme.presets.map((p) => p.key)).size).toBe(theme.presets.length);
-      // Each look of a theme is shown on a different store, and every pack is shown by some theme.
-      const packs = [theme.listing.pack, ...theme.presets.map((p) => p.pack)];
-      expect(new Set(packs).size, theme.title).toBe(packs.length);
     }
-    const shown = new Set(LAUNCH_THEMES.flatMap((t) => [t.listing.pack, ...t.presets.map((p) => p.pack)]));
-    expect([...PACK_KEYS].filter((key) => !shown.has(key))).toEqual([]);
+    // Each launch theme has content of its own (D275): no two share a content pack, and two packs are left over for demo stores.
+    const contents = LAUNCH_THEMES.map((t) => t.content);
+    expect(new Set(contents).size).toBe(contents.length);
+    expect([...PACK_KEYS].filter((key) => !contents.includes(key)).sort()).toEqual(["beauty", "services"]);
   });
 
   it("refuses a package that cannot be read", () => {

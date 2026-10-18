@@ -22,10 +22,11 @@ import type { ThemeListing } from "./theme-store";
  */
 
 /**
- * A launch theme's preset (`docs/theme-showcase-phase-1.md` step 3): its fixed key, its name, the content pack it is shown on, and its
- * look: the theme's own settings with these changes (colours, fonts, corners, buttons), so its elements and section styles stay the theme's.
+ * A launch theme's preset (`docs/theme-showcase-phase-1.md` step 3): its fixed key, its name and its look: the theme's own settings with
+ * these changes (colours, fonts, corners, buttons), so its elements and section styles stay the theme's. It is shown on the theme's own
+ * content (D275), as every preset is.
  */
-export type LaunchPreset = { key: string; name: string; pack: PackKey; changes: Partial<ThemeSettings> };
+export type LaunchPreset = { key: string; name: string; changes: Partial<ThemeSettings> };
 
 export type LaunchTheme = {
   /** Stable for ever: how the platform's theme is found again (`design_presets.launch_key`). */
@@ -43,10 +44,12 @@ export type LaunchTheme = {
   /** *What's new* for the version (D245), null for the first. */
   notes: string | null;
   /**
-   * Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. Its pictures are the platform admin's; `pack`
-   * is the content pack its own look is shown on, and its presets' come from `presets`.
+   * Its own content (D275, `docs/themes-content-and-demo-stores.md`): the content pack whose template its preview and photographs draw and
+   * new stores started from it are copied from, linked by `syncLaunchThemes()` (`store_starters.design_preset_id`). No two share one.
    */
-  listing: Omit<ThemeListing, "pictures" | "presetPacks">;
+  content: PackKey;
+  /** Its listing in the theme store (`docs/theme-phase-3.md`); its address there is its `key`. Its pictures are the platform admin's. */
+  listing: Omit<ThemeListing, "pictures">;
   /** Its own look (no presets in it: they are `presets`, laid over it by `launchSnapshot()`). */
   snapshot: DesignSnapshot;
   presets: LaunchPreset[];
@@ -61,11 +64,8 @@ export const launchVariation = (theme: LaunchTheme, preset: LaunchPreset): Desig
   theme: { base: theme.snapshot.theme.base, settings: { ...theme.snapshot.theme.settings, ...preset.changes } },
 });
 
-/** The listing written for a launch theme: the code's kinds, styles and packs (its own look's and each preset's). */
-export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"> => ({
-  ...theme.listing,
-  presetPacks: Object.fromEntries(theme.presets.map((p) => [p.key, p.pack])),
-});
+/** The listing written for a launch theme: the code's kinds, styles and highlight words. */
+export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"> => ({ ...theme.listing });
 
 /**
  * The core section styles a theme made from a store, or from scratch, starts with where it has none (D246): neutral, legible in light and
@@ -94,10 +94,10 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Black and white with soft greys, system fonts and pill buttons. Generous space between sections lets products and pictures speak. Follows the visitor's light or dark mode.",
     notes: "Three presets: Sand, warm beige with Lora headings; Ink, always dark with a blue accent; Sage, soft green-grey.",
+    content: "fashion",
     listing: {
       kinds: [],
       styles: ["minimal"],
-      pack: "fashion",
       highlights: {
         devices: { title: "Calm on every screen", text: "The same quiet layout on a computer and a phone, with the menu folded away on small screens." },
         collage: { title: "Room to breathe", text: "Generous spacing and clear type let products and stories take the lead." },
@@ -114,7 +114,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "sand",
         name: "Sand",
-        pack: "beauty",
         changes: {
           light: { background: "#faf7f2", surface: "#f0e9df", text: "#2a2420", muted: "#6b6058", border: "#e6ddd1", accent: "#8a5a44", accentText: "#ffffff" },
           dark: { background: "#1a1613", surface: "#26201b", text: "#f2ebe3", muted: "#b8ab9e", border: "#3a322b", accent: "#d9a88c", accentText: "#1a1613" },
@@ -125,7 +124,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "ink",
         name: "Ink",
-        pack: "electronics",
         changes: {
           mode: "dark",
           dark: { background: "#0d0f12", surface: "#171a1f", text: "#e8eaed", muted: "#9aa1ab", border: "#2a2f36", accent: "#4f8cff", accentText: "#0d0f12" },
@@ -137,7 +135,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "sage",
         name: "Sage",
-        pack: "home",
         changes: {
           light: { background: "#f6f7f4", surface: "#e9ece5", text: "#1f2620", muted: "#56605a", border: "#d9ded4", accent: "#3f5e4a", accentText: "#ffffff" },
           dark: { background: "#121613", surface: "#1c221d", text: "#e7ece6", muted: "#a6b0a8", border: "#2c342d", accent: "#9cc4a8", accentText: "#121613" },
@@ -154,10 +151,10 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "Cream paper and terracotta, Playfair Display headings over Lora, softly rounded bordered cards and a centred logo. Quotes are set large in the heading font.",
     notes: "Two presets: Olive, warm white and olive green; Blush, rose and plum.",
+    content: "food",
     listing: {
       kinds: ["food", "home", "crafts"],
       styles: ["warm", "classic"],
-      pack: "food",
       highlights: {
         devices: { title: "Warm on any screen", text: "Hearth's warm colours and friendly type carry from a computer to a phone." },
         collage: { title: "Made for stories", text: "Sections for your story, your range and your place, in Hearth's warm palette." },
@@ -174,7 +171,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "olive",
         name: "Olive",
-        pack: "home",
         changes: {
           light: { background: "#f7f5ee", surface: "#ece8da", text: "#26261c", muted: "#5f5e4c", border: "#ddd8c4", accent: "#5c6b2e", accentText: "#fffdf5" },
           dark: { background: "#181812", surface: "#23231a", text: "#efedde", muted: "#b9b59c", border: "#3a3a2c", accent: "#b7c47a", accentText: "#181812" },
@@ -184,7 +180,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "blush",
         name: "Blush",
-        pack: "beauty",
         changes: {
           light: { background: "#fbf5f3", surface: "#f3e6e1", text: "#2e1f1c", muted: "#6e5650", border: "#e7d4cd", accent: "#9c3d54", accentText: "#ffffff" },
           dark: { background: "#1c1416", surface: "#2a1e21", text: "#f5e9ea", muted: "#c4a9ae", border: "#45333a", accent: "#e8a0b0", accentText: "#1c1416" },
@@ -202,10 +197,10 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures. Sections sit close together.",
     notes: "Two presets: Volt, always dark with an electric yellow-green; Cobalt, a strong blue with headings as written.",
+    content: "electronics",
     listing: {
       kinds: ["fashion", "digital"],
       styles: ["bold"],
-      pack: "fashion",
       highlights: {
         devices: { title: "Bold on every screen", text: "Strong type and high contrast hold together on a computer and a phone." },
         collage: { title: "Sections that stand out", text: "Strong headings and clear blocks mark each part of the page." },
@@ -222,7 +217,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "volt",
         name: "Volt",
-        pack: "electronics",
         changes: {
           mode: "dark",
           dark: { background: "#0a0a0a", surface: "#161616", text: "#f5f5f5", muted: "#a3a3a3", border: "#f5f5f5", accent: "#d4ff3a", accentText: "#0a0a0a" },
@@ -231,7 +225,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "cobalt",
         name: "Cobalt",
-        pack: "services",
         changes: {
           light: { background: "#ffffff", surface: "#eef1ff", text: "#0a0a0a", muted: "#4a4f63", border: "#0a0a0a", accent: "#1f3fff", accentText: "#ffffff" },
           dark: { background: "#0a0a12", surface: "#161a2c", text: "#f5f6ff", muted: "#a3a8c2", border: "#f5f6ff", accent: "#7d93ff", accentText: "#0a0a12" },
@@ -249,10 +242,10 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
     description:
       "A blue-grey palette with a deep sea-blue accent, Inter throughout, rounded buttons and raised product cards. Light by day and dark by night, as the visitor's device says.",
     notes: "Two presets: Mist, pale lilac and violet with Playfair Display headings; Pine, a deep forest green.",
+    content: "home",
     listing: {
       kinds: ["home", "beauty", "services"],
       styles: ["minimal", "natural"],
-      pack: "home",
       highlights: {
         devices: { title: "Clear on any screen", text: "Fjord's cool colours and open layout read well on a computer and a phone." },
         collage: { title: "Calm, open sections", text: "Light backgrounds and soft lines let the pictures speak first." },
@@ -276,7 +269,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "mist",
         name: "Mist",
-        pack: "beauty",
         changes: {
           light: { background: "#f8f7fb", surface: "#ece9f3", text: "#1f1b2e", muted: "#575270", border: "#dcd7e8", accent: "#5b4b9a", accentText: "#ffffff" },
           dark: { background: "#14121c", surface: "#1f1c2a", text: "#ece9f5", muted: "#aca6c4", border: "#312d42", accent: "#b5a8f0", accentText: "#14121c" },
@@ -286,7 +278,6 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
       {
         key: "pine",
         name: "Pine",
-        pack: "services",
         changes: {
           light: { background: "#f5f8f6", surface: "#e4ece7", text: "#10221a", muted: "#46594f", border: "#cfddd5", accent: "#1d5c43", accentText: "#ffffff" },
           dark: { background: "#0d1612", surface: "#16221c", text: "#e4efe9", muted: "#9db5a9", border: "#25362d", accent: "#7fd1ab", accentText: "#0d1612" },

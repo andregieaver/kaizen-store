@@ -26,7 +26,7 @@ export function DesignPreviewLink({ href, title, className }: { href: string; ti
  * The choice of theme for a new store (D273), the one choice it starts from, as radio cards: Standard first, then each published theme with
  * its picture, summary and a Preview opening in a new window, and its presets as choices under it (`docs/theme-showcase-phase-1.md` step
  * 4). Each look says which demo store a new store starts with (`demo`); the server works that out again from the look
- * (`demoStoreForLook()`), so nothing else is chosen. Used on `/admin/stores` and `/sign-up`; the form sends `name`: a theme's id,
+ * (`contentForLook()`), so nothing else is chosen. Used on `/admin/stores` and `/sign-up`; the form sends `name`: a theme's id,
  * `{id}:{key}` for a preset, or "" for Standard. *Start with this theme* chooses one from the address (`ThemeFromAddress`). Plain markup:
  * it works without JavaScript.
  */

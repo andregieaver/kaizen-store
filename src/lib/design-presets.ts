@@ -452,6 +452,7 @@ export const DESIGN_TABS = [
   { key: "details", label: "Details", segment: "" },
   { key: "theme", label: "Theme", segment: "/theme" },
   { key: "presets", label: "Presets", segment: "/presets" },
+  { key: "content", label: "Content", segment: "/content" },
   { key: "header", label: "Header", segment: "/header" },
   { key: "footer", label: "Footer", segment: "/footer" },
   { key: "productLayout", label: "Product page", segment: "/product-layout" },

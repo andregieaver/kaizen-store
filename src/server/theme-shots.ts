@@ -7,7 +7,7 @@ import { designPreviewPath, parseDesignSnapshot } from "@/lib/design-presets";
 import { variationsOf } from "@/lib/design-variations";
 import { lookProblem } from "@/lib/replicate-look";
 import type { Shot } from "@/lib/theme-shoot";
-import { readListing, swatchOf, themeLooks } from "@/lib/theme-store";
+import { swatchOf, themeLooks } from "@/lib/theme-store";
 import {
   SHOT_TRIES,
   missingShots,
@@ -30,7 +30,7 @@ import {
 
 import { audit, type Account } from "./auth";
 import { removeStoredFiles, uploadBytes } from "./media";
-import { publishedPacks } from "./store-starters";
+import { publishedContents } from "./store-starters";
 import { composeHighlights } from "./theme-highlights";
 import { shotFiles, type MadeFile } from "./theme-shot-files";
 
@@ -47,23 +47,23 @@ const CLAIM = "3 minutes";
 /** Sets no longer wanted are kept this long, as cached pages still name their files. */
 const KEEP_SUPERSEDED = "7 days";
 
-/** Every published, unarchived theme with a readable snapshot and a version, each look with the store template its listing shows it on. */
+/** Every published, unarchived theme with a readable snapshot and a version, each look on the theme's own published content (D275). */
 async function publishedThemes(): Promise<ShotTheme[]> {
-  const [rows, packs] = await Promise.all([
+  const [rows, contents] = await Promise.all([
     readDb().execute<Row>(sql`
-      select p.id, p.title, p.listing, p.snapshot,
+      select p.id, p.title, p.snapshot,
              (select max(v.number) from commerce.design_preset_versions v where v.preset_id = p.id) as version
         from commerce.design_presets p
        where p.published and p.archived_at is null
     `),
-    publishedPacks(),
+    publishedContents(),
   ]);
   return rows.flatMap((row) => {
     const snapshot = parseDesignSnapshot(row.snapshot);
     const version = Number(row.version);
     if (!snapshot || !Number.isInteger(version) || version < 1) return [];
     const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
-    const looks = themeLooks(String(row.title), presets, readListing(row.listing), packs).map((look) => ({ variation: look.key, starterId: look.showcase?.starterId ?? null }));
+    const looks = themeLooks(String(row.title), presets, contents.get(String(row.id)) ?? null).map((look) => ({ variation: look.key, starterId: look.showcase?.starterId ?? null }));
     return [{ id: String(row.id), version, looks }];
   });
 }

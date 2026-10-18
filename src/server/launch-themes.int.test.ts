@@ -53,7 +53,7 @@ describe("syncLaunchThemes()", () => {
     expect(states.every((state) => state.published !== null && state.published >= state.version)).toBe(true);
   });
 
-  it("publishes each theme's presets into its version and names the pack each look is shown on (docs/theme-showcase-phase-1.md step 3)", async () => {
+  it("publishes each theme's presets into its version and links its own content (D275)", async () => {
     for (const theme of LAUNCH_THEMES) {
       const row = await presetOf(theme.key);
       const snapshot = row?.snapshot as {
@@ -68,8 +68,16 @@ describe("syncLaunchThemes()", () => {
         const accent = preset.changes.light?.accent ?? snapshot.theme.settings.light.accent;
         expect(snapshot.variations?.find((v) => v.key === preset.key)?.theme.settings.light.accent, `${theme.title} · ${preset.name}`).toBe(accent);
       }
+      // What its looks are shown on is its own content (D275), never the listing: the content pack's template its `content` names, once there.
       const [listed] = await db().execute<Row>(sql`select listing from commerce.design_presets where launch_key = ${theme.key}`);
-      expect(listed.listing).toMatchObject({ pack: theme.listing.pack, presetPacks: Object.fromEntries(theme.presets.map((p) => [p.key, p.pack])) });
+      expect(listed.listing).not.toHaveProperty("pack");
+      expect(listed.listing).not.toHaveProperty("presetPacks");
+      // (Other tests set a pack's template aside under a longer key: the content kept is the pack's, by its key's start.)
+      const [pack] = await db().execute<Row>(sql`select 1 as there from commerce.store_starters where pack_key = ${theme.content}`);
+      const [content] = await db().execute<Row>(sql`
+        select st.pack_key from commerce.store_starters st join commerce.design_presets p on p.id = st.design_preset_id where p.launch_key = ${theme.key}
+      `);
+      if (pack) expect(String(content?.pack_key ?? ""), theme.title).toMatch(new RegExp(`^${theme.content}(-|$)`));
     }
   });
 

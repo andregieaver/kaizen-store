@@ -10,7 +10,7 @@ import { demoStoreOf, testDb } from "./db";
 /**
  * The theme shots' photographer (`docs/theme-showcase-phase-2.md` step 1) against the running site: a published theme's public preview,
  * alone (`embed=1`), photographed at a computer's and a phone's width, at full length and its first screen, its parts measured, and nothing
- * blank. The job runs exactly this in a browser of its own (`src/server/theme-shot-runner.ts`), on the look's demo store (D274).
+ * blank. The job runs exactly this in a browser of its own (`src/server/theme-shot-runner.ts`), on the theme's own content (D275).
  */
 
 let id = "";
@@ -23,7 +23,7 @@ test.beforeAll(async ({ baseURL }) => {
   try {
     const snapshot = LAUNCH_THEMES[0].snapshot;
     // With the words of one highlight written (`docs/theme-showcase-phase-2.md` step 2).
-    const listing = { kinds: [], styles: [], pictures: [], pack: "electronics", highlights: { devices: { title: "On every screen", text: "A computer and two phones." } } };
+    const listing = { kinds: [], styles: [], pictures: [], highlights: { devices: { title: "On every screen", text: "A computer and two phones." } } };
     const [row] = await sql`
       insert into commerce.design_presets (title, summary, snapshot, published, published_at, slug, listing)
       values ('E2E Shots', 'Photographed by the test.', ${sql.json(snapshot as never)}, true, now(), ${SLUG}, ${sql.json(listing)})
@@ -38,6 +38,7 @@ test.beforeAll(async ({ baseURL }) => {
   } finally {
     await sql.end();
   }
+  await demo.linkTo(id);
 });
 
 test.afterAll(async () => {

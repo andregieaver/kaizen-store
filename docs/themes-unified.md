@@ -14,9 +14,10 @@ unification is the interface, the choice a new store starts from, and the words.
 
 ## 1. The rule
 
-A theme has its own look and up to five presets. Each look is shown on one demo store in the theme store, and **a new store started from a
-look begins as a copy of that look's demo store**: its products, pages and menus, marked as demo content and removed by the owner in one
-press (D260). A look with no demo store, or whose demo store is not published, starts from the Standard store.
+A theme has its own look and up to five presets. Since D275 (`docs/themes-content-and-demo-stores.md`) every look is shown on the theme's
+own content, and **a new store started from a theme begins as a copy of that content**: its products, pages and menus, marked as demo
+content and removed by the owner in one press (D260). A theme with no published content starts new stores from the Standard store.
+(Under D273 each look had a demo store of its own, chosen on the theme's page; that choice is gone.)
 
 Nobody chooses the content apart from the look. The server works it out from the look:
 

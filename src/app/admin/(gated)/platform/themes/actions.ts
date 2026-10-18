@@ -16,13 +16,11 @@ import {
   createDesign,
   deleteDesign,
   designTags,
-  getDesign,
   moveDesign,
   publishDesign,
   restoreDesign,
   restoreDesignLook,
   saveDesignDraft,
-  saveThemeDemoStores,
   saveThemeListing,
   saveThemeOwnPicture,
   unpublishDesign,
@@ -30,7 +28,7 @@ import {
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { parseListing, type OwnSlot } from "@/lib/theme-store";
 import { syncLaunchThemes } from "@/server/launch-themes";
-import { STARTERS_TAG } from "@/server/store-starters";
+import { STARTERS_TAG, giveThemeContent, joinStarter, publishStarter, themeContentOf } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
 import { retryThemeShots } from "@/server/theme-shots";
 import { suggestHighlightWords, type HighlightSuggestion } from "@/server/theme-highlight-words";
@@ -69,6 +67,13 @@ export async function createDesignAction(_state: FormState, formData: FormData):
   }
   const result = await createDesign(admin, { origin, details: details.details });
   if (!result.ok) return { status: "error", messages: result.problems };
+  // Its own content (D275): a copy of the content chosen; a theme can be given it later on its Content tab, so a failure keeps the theme.
+  const source = formData.get("content");
+  if (typeof source === "string" && source !== "") {
+    const given = await giveThemeContent(admin, result.id, source);
+    if (given.ok) updateTag(STARTERS_TAG);
+    else redirect(`${designTabHref(result.id, "content")}?made=1&nocontent=1`);
+  }
   redirect(`${designTabHref(result.id, "details")}?made=1${result.notes.length > 0 ? "&notes=1" : ""}`);
 }
 
@@ -197,12 +202,9 @@ export async function syncLaunchThemesAction(): Promise<FormState> {
   return { status: "ok", messages: said };
 }
 
-/** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store, styles and each look's demo store. Shown at once while published. */
+/** Saves a theme's listing in the theme store (`docs/theme-phase-3.md`): its address, kinds of store, styles and highlight words. Shown at once while published. */
 export async function saveThemeListingAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  // Each look's demo store is saved on its own (`saveThemeDemoStoresAction`, D273): the listing keeps what is chosen.
-  const design = await getDesign(presetId);
-  if (!design) return { status: "error", messages: ["Unknown theme."] };
   // The highlights' words (`docs/theme-showcase-phase-2.md` step 2): `highlight:{kind}:title` and `highlight:{kind}:text`.
   const highlights: Record<string, Record<string, unknown>> = {};
   for (const [name, value] of formData.entries()) {
@@ -214,8 +216,6 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
     kinds: formData.getAll("kinds"),
     styles: formData.getAll("styles"),
     pictures: formData.getAll("pictures"),
-    pack: design.listing.pack ?? "",
-    presetPacks: design.listing.presetPacks,
     highlights,
   });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
@@ -227,18 +227,41 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
 }
 
 /**
- * A theme's demo stores (D273): which demo store each look (`pack` for the theme's own, `pack:{key}` for each preset) is shown on in the
- * theme store and starts new stores from. Saved at once; the theme cards and the theme store are read again.
+ * A theme's own content (D275): a copy of the published content chosen (`giveThemeContent()`), replacing what it had, which is said first
+ * in the form. Unpublished until the theme or *Publish the content* publishes it.
  */
-export async function saveThemeDemoStoresAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
+export async function giveThemeContentAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  const presetPacks = Object.fromEntries([...formData.entries()].filter(([name]) => name.startsWith("pack:")).map(([name, value]) => [name.slice(5), value]));
-  const result = await saveThemeDemoStores(admin, presetId, { pack: formData.get("pack"), presetPacks });
+  const source = formData.get("source");
+  const result = await giveThemeContent(admin, presetId, typeof source === "string" ? source : "");
   if (!result.ok) return { status: "error", messages: result.problems };
-  updateTag(DESIGNS_TAG);
   updateTag(STARTERS_TAG);
+  updateTag(DESIGNS_TAG);
   refresh();
-  return { status: "ok", messages: ["Saved. New stores started from these looks begin with their demo store, and the theme store shows them there."] };
+  return { status: "ok", messages: ["Copied. Edit it in its store admin, then publish it (or publish the theme) to show it in the theme store."] };
+}
+
+/** Publishes a theme's own content now (D275, `publishStarter()`): its frozen copy is what the preview, photographs and new stores read. */
+export async function publishThemeContentAction(presetId: string, _state: FormState): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const content = await themeContentOf(presetId);
+  if (!content) return { status: "error", messages: ["This theme has no content yet. Give it content first."] };
+  const result = await publishStarter(admin, content.starterId);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(STARTERS_TAG);
+  updateTag(DESIGNS_TAG);
+  refresh();
+  return { status: "ok", messages: ["Published. The theme store, its photographs and new stores use this content now.", ...result.notes] };
+}
+
+/** Opens a theme's own content in its store admin (D275): the platform admin is made its owner if they were not (`joinStarter()`). */
+export async function openThemeContentAction(presetId: string): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const content = await themeContentOf(presetId);
+  if (!content) return { status: "error", messages: ["This theme has no content yet. Give it content first."] };
+  const joined = await joinStarter(admin, content.starterId);
+  if (!joined.ok) return { status: "error", messages: joined.problems };
+  redirect(`/admin/${joined.slug}`);
 }
 
 /** *Try again* on a theme's photographs that could not be made (`docs/theme-showcase-phase-2.md` step 1): the job takes them again. */

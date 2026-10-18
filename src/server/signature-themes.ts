@@ -21,6 +21,22 @@ import { refreshTag } from "./refresh";
  */
 type Row = Record<string, unknown>;
 
+/**
+ * Each launch theme's own content (D275, `docs/themes-content-and-demo-stores.md`): the template of the content pack its `content` names,
+ * linked once both are there (`store_starters.design_preset_id`). A theme that has content already, and a pack that is another theme's
+ * content, are left as they are, so a platform admin's own choice is kept. Both syncs call it, as the pack and the theme come by two presses.
+ */
+export async function linkLaunchContents(): Promise<void> {
+  for (const theme of LAUNCH_THEMES) {
+    await db().execute(sql`
+      update commerce.store_starters st set design_preset_id = p.id
+        from commerce.design_presets p
+       where p.launch_key = ${theme.key} and st.pack_key = ${theme.content} and st.design_preset_id is null
+         and not exists (select 1 from commerce.store_starters o where o.design_preset_id = p.id)
+    `);
+  }
+}
+
 export async function dressSignaturePacks(admin: Account, deps: ApplyDeps = {}): Promise<string[]> {
   const problems: string[] = [];
   if (!admin.platformAdmin) return problems;
@@ -35,7 +51,7 @@ export async function dressSignaturePacks(admin: Account, deps: ApplyDeps = {}):
         from commerce.store_starters ss
         join commerce.stores s on s.id = ss.store_id
         join commerce.design_presets p on p.launch_key = ${theme.key} and p.published and p.archived_at is null
-        where ss.pack_key = ${theme.listing.pack} and ss.archived_at is null and s.status = 'active'
+        where ss.pack_key = ${theme.content} and ss.archived_at is null and s.status = 'active'
       `);
       if (!row?.latest_version) continue;
       const storeId = String(row.store_id);

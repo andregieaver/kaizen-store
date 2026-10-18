@@ -8,10 +8,11 @@ import { PACK_TRADES } from "@/lib/content-packs";
 import { parseDesignSnapshot } from "@/lib/design-presets";
 import { variationsOf } from "@/lib/design-variations";
 import { HIGHLIGHT_KINDS, HIGHLIGHT_NAMES, HIGHLIGHT_WORDS_MAX, readHighlightWords, type HighlightKind, type HighlightWords } from "@/lib/theme-highlights";
-import { THEME_FEATURES, readListing, showcasePack, themeFeatures } from "@/lib/theme-store";
+import { THEME_FEATURES, themeFeatures } from "@/lib/theme-store";
 
 import { AiError, aiFor, completeText } from "./ai";
 import type { Account } from "./auth";
+import { themeContentOf } from "./store-starters";
 
 /**
  * *Suggest words* for a theme's highlights (`docs/theme-showcase-phase-2.md` step 2): Kaizena Flow's text model writes a title and a line
@@ -67,21 +68,20 @@ export function checkedSuggestion(answer: string): { words: HighlightWords; left
 
 export async function suggestHighlightWords(admin: Account, presetId: string): Promise<HighlightSuggestion> {
   if (!admin.platformAdmin) return { ok: false, problem: "Only Kaizena Flow's platform admins write a theme's words." };
-  const [row] = await readDb().execute<Row>(sql`select title, summary, listing, snapshot from commerce.design_presets where id = ${presetId}::uuid`);
+  const [row] = await readDb().execute<Row>(sql`select title, summary, snapshot from commerce.design_presets where id = ${presetId}::uuid`);
   const snapshot = row ? parseDesignSnapshot(row.snapshot) : null;
   if (!row || !snapshot) return { ok: false, problem: "The theme's published look could not be read: publish it first." };
   const connection = await aiFor(null, { feature: "theme_highlights", accountId: admin.id });
   if (!connection?.textModel) return { ok: false, problem: "No text model is set in Kaizena Flow's AI settings, so no words can be suggested. Write them yourself." };
-  const listing = readListing(row.listing);
-  const looks = [{ key: null as string | null, name: String(row.title) }, ...variationsOf(snapshot).map((v) => ({ key: v.key as string | null, name: v.name }))];
+  // Every look is shown on the theme's own content (D275): its trade's words when it is a content pack's.
+  const content = await themeContentOf(presetId);
+  const shownOn = content?.pack ? `sample content of a ${PACK_TRADES[content.pack].toLowerCase()} store` : "sample content";
+  const looks = [String(row.title), ...variationsOf(snapshot).map((v) => v.name)];
   const facts = {
     theme: String(row.title),
     summary: String(row.summary ?? ""),
     includes: themeFeatures(snapshot).map((feature) => THEME_FEATURES[feature]),
-    presets: looks.map((look) => {
-      const pack = showcasePack(listing, look.key);
-      return { name: look.name, shownOn: pack ? `a demo ${PACK_TRADES[pack].toLowerCase()} store` : "a demo store" };
-    }),
+    presets: looks.map((name) => ({ name, shownOn })),
     pictures: HIGHLIGHT_KINDS.map((kind) => ({ key: kind, shows: HIGHLIGHT_NAMES[kind] })),
   };
   try {

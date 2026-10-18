@@ -56,7 +56,7 @@ import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { pageRulesProblem } from "./page-rules";
 import { pagesTag } from "./pages";
-import { STARTERS_TAG, publishedPacks } from "./store-starters";
+import { STARTERS_TAG, publishStarter, publishedContents, themeContentOf } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
 import { askForThemeShots, lookOf, themeShotsFor } from "./theme-shots";
@@ -130,23 +130,19 @@ export async function listOfferedDesigns(): Promise<OfferedDesign[]> {
 
 /**
  * What the create-store and sign-up forms offer (D273, cached under `DESIGNS_TAG` and `STARTERS_TAG`): the Standard card first, then each
- * published theme with its preview and its presets, each look saying which demo store a new store starts with (`demoStoreForLook()`).
+ * published theme with its preview and its presets, each saying what a new store starts with: the theme's own content (D275,
+ * `contentForLook()`).
  */
 export async function designChoices(): Promise<{ cards: DesignCard[] }> {
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  const [offered, listings, packs] = await Promise.all([
-    listOfferedDesigns(),
-    readDb().execute<Row>(sql`select id, listing from commerce.design_presets where published and archived_at is null`),
-    publishedPacks(),
-  ]);
-  const listingOf = new Map(listings.map((row) => [String(row.id), readListing(row.listing)]));
+  const [offered, contents] = await Promise.all([listOfferedDesigns(), publishedContents()]);
   // A theme without a picture of its own shows the card made from its own look's photograph (`docs/theme-showcase-phase-2.md` step 1).
   const shots = await themeShotsFor(offered.map((d) => d.id));
-  // Each look with the content pack's template it is shown on and starts a store with (`docs/theme-showcase-phase-1.md` steps 3 and 4).
+  // Each look on the theme's own content, which a store started from it is copied from (D275).
   const card = (d: OfferedDesign): DesignCard => {
-    const looks = themeLooks(d.title, d.presets ?? [], listingOf.get(d.id) ?? { pack: null, presetPacks: {} }, packs);
+    const looks = themeLooks(d.title, d.presets ?? [], contents.get(d.id) ?? null);
     const own = looks.find((look) => look.key === null)?.showcase ?? null;
     const starterOf = (key: string | null) => looks.find((look) => look.key === key)?.showcase?.starterId ?? null;
     return {
@@ -175,21 +171,19 @@ export async function designChoices(): Promise<{ cards: DesignCard[] }> {
 }
 
 /**
- * The demo store a theme's look starts a new store with (D273): the published store template of the content pack the look is shown on
- * (`themeLooks()`), the theme's own look's when the preset is gone from its published version, else null: the Standard store. Sign-up,
- * creating a store and approving a request all ask it, so a new store's content always follows the look chosen; nobody chooses it apart.
+ * What a theme's look starts a new store with (D275): the theme's own published content, the same for every preset; null (the Standard
+ * store) for a theme that is not published or has no published content. Sign-up, creating a store and approving a request all ask it, so a
+ * new store's content always follows the theme chosen; nobody chooses it apart.
  */
-export async function demoStoreForLook(look: { id: string; variation: string | null } | null): Promise<string | null> {
+export async function contentForLook(look: { id: string; variation: string | null } | null): Promise<string | null> {
   if (!look || !isUuid(look.id)) return null;
   const [row] = await db().execute<Row>(sql`
-    select title, listing, snapshot from commerce.design_presets where id = ${look.id}::uuid and published and archived_at is null
+    select st.id from commerce.design_presets p
+      join commerce.store_starters st on st.design_preset_id = p.id and st.published and st.archived_at is null
+      join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+     where p.id = ${look.id}::uuid and p.published and p.archived_at is null
   `);
-  if (!row) return null;
-  const snapshot = parseDesignSnapshot(row.snapshot);
-  const presets = snapshot ? variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name })) : [];
-  const looks = themeLooks(String(row.title), presets, readListing(row.listing), await publishedPacks());
-  const chosen = looks.find((one) => one.key === (look.variation ?? null)) ?? looks[0];
-  return chosen?.showcase?.starterId ?? null;
+  return row ? String(row.id) : null;
 }
 
 const ROW_SELECT = sql`
@@ -806,6 +800,14 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
     return refuse(designProblem(error));
   }
   await audit(admin.id, design.workspaceStoreId, "platform.design_preset_published", { preset: id, snapshot: snapshot !== null }, { target: { type: "design_preset", id } });
+  // Its own content goes out with it (D275): frozen when it was never published or has changed since, so the preview, the photographs and
+  // new stores read what was published. Content that cannot be published yet (a content pack's pictures still to make) is said, never fatal.
+  const content = await themeContentOf(id);
+  if (!content) notes.push("It has no content of its own yet, so the theme store shows no preview of it: give it content on its Content tab.");
+  else if (!content.published || content.changed) {
+    const shown = await publishStarter(admin, content.starterId);
+    if (!shown.ok) notes.push(`Its content was not published: ${shown.problems.join(" ")}`);
+  }
   // Its looks are photographed in the background (`docs/theme-showcase-phase-2.md` step 1); asking now shows them waiting at once.
   await askForThemeShots();
   return { ok: true, notes };
@@ -878,6 +880,18 @@ export async function deleteDesign(admin: Account, id: string): Promise<DesignRe
   if (blocker) return refuse(blocker);
   try {
     await db().transaction(async (tx) => {
+      // Its own copy of content (D275) goes with it, archived and its store closed; a content pack's template stays starting content.
+      const [own] = await tx.execute<Row>(sql`
+        update commerce.store_starters set design_preset_id = null, archived_at = coalesce(archived_at, now()), archived_by = coalesce(archived_by, ${admin.id}::uuid),
+               published = false, updated_by = ${admin.id}::uuid
+         where design_preset_id = ${id}::uuid and pack_key is null returning store_id
+      `);
+      if (own) {
+        await tx.execute(sql`
+          update commerce.stores set status = 'closed', status_reason = 'Its theme was deleted.', status_changed_by = ${admin.id}::uuid
+           where id = ${String(own.store_id)}::uuid and status <> 'closed'
+        `);
+      }
       await tx.execute(sql`delete from commerce.design_presets where id = ${id}::uuid`);
       if (design.workspaceStoreId) {
         await tx.execute(sql`
@@ -1429,13 +1443,23 @@ async function readPreview(presetId: string, starterId: string | null, admin: bo
   const presetName = variation ? (variationsOf(whole).find((v) => v.key === variation)?.name ?? null) : null;
   const title = draft ? (readDesignDraft(preset.draft)?.title ?? String(preset.title)) : String(preset.title);
   // Owners see a store template as published: its frozen copy (D177). An admin sees its working store, as it is now.
+  // Without one named, the theme's own content (D275): as published, or for an admin's draft as it is now; the Standard store only for a
+  // theme that has none yet (the theme store never links such a preview).
   const [store] = starterId
     ? await readDb().execute<Row>(sql`
         select s.slug, st.title from commerce.store_starters st
         join commerce.stores s on s.id = ${admin ? sql`st.store_id` : sql`coalesce(st.published_store_id, st.store_id)`} and s.starter
         where st.id = ${starterId}::uuid and s.status = 'active' and (${admin} or (st.published and st.archived_at is null))
       `)
-    : await readDb().execute<Row>(sql`select slug, null as title from commerce.stores where is_template`);
+    : await readDb().execute<Row>(sql`
+        select slug, title from (
+          select s.slug, null::text as title, 0 as rank from commerce.store_starters st
+            join commerce.stores s on s.id = ${admin && draft ? sql`st.store_id` : sql`coalesce(st.published_store_id, st.store_id)`} and s.starter
+           where st.design_preset_id = ${presetId}::uuid and s.status = 'active' and st.archived_at is null and (${admin} or st.published)
+          union all
+          select slug, null::text, 1 from commerce.stores where is_template
+        ) found order by rank limit 1
+      `);
   if (!store) return null;
   const wanted = snapshotFonts(snapshot);
   const installed = wanted.length === 0
@@ -1464,12 +1488,12 @@ export async function adminDesignPreview(presetId: string, starterId: string | n
   return readPreview(presetId, starterId, true, draft, variation);
 }
 
-/** Every published store template, for the preview's chooser and the platform's pages. */
+/** Every published store template that is no theme's own content (D275), for the preview's chooser and the platform's pages. */
 export async function previewStarters(): Promise<{ id: string; title: string }[]> {
   const rows = await readDb().execute<Row>(sql`
     select st.id, st.title from commerce.store_starters st
     join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.status = 'active'
-    where st.published and st.archived_at is null order by st.position, lower(st.title)
+    where st.published and st.archived_at is null and st.design_preset_id is null order by st.position, lower(st.title)
   `);
   return rows.map((r) => ({ id: String(r.id), title: String(r.title) }));
 }
@@ -2188,11 +2212,11 @@ export async function checkedDesign(snapshot: unknown): Promise<ThemeCheckResult
  * the code's definition once that is published.
  */
 export async function markLaunchTheme(presetId: string, key: string, version: number | null, listing?: Omit<ThemeListing, "pictures">): Promise<void> {
-  // A launch theme's address in the theme store is its key, and its kinds, styles and the packs its looks are shown on the code's
-  // (`docs/theme-phase-3.md`, `docs/theme-showcase-phase-1.md` step 3); the pictures beside its main one are the platform admin's and kept.
-  // Its highlights' words (`docs/theme-showcase-phase-2.md` step 2) are the code's where it has them, else the admin's, kept.
+  // A launch theme's address in the theme store is its key, and its kinds and styles the code's (`docs/theme-phase-3.md`); the pictures
+  // beside its main one are the platform admin's and kept. Its highlights' words (`docs/theme-showcase-phase-2.md` step 2) are the code's
+  // where it has them, else the admin's, kept. What its looks are shown on is its own content (D275, `linkLaunchContent()`), never the listing.
   const given = listing
-    ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles, pack: listing.pack, presetPacks: listing.presetPacks, ...(listing.highlights ? { highlights: listing.highlights } : {}) })
+    ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles, ...(listing.highlights ? { highlights: listing.highlights } : {}) })
     : null;
   await db().execute(sql`
     update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version),
@@ -2257,29 +2281,7 @@ export async function saveThemeListing(admin: Account, id: string, slug: string,
   } catch (error) {
     return refuse(designProblem(error));
   }
-  // Where a look is shown may have changed: its pictures on the new showcase are asked for.
-  await askForThemeShots();
-  return { ok: true };
-}
-
-/**
- * The demo store each of a theme's looks is shown on and starts new stores from (D273, the listing's `pack` and `presetPacks`), saved on
- * their own and at once, as the rest of the listing is: the theme store and new stores follow it while the theme is published. A pack the
- * code does not know, or a preset key that is no key, is dropped (`readListing()`); "" is the Standard store.
- */
-export async function saveThemeDemoStores(admin: Account, id: string, chosen: { pack: unknown; presetPacks: Record<string, unknown> }): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
-  const read = readListing({ pack: chosen.pack, presetPacks: chosen.presetPacks });
-  const rows = await db().execute<Row>(sql`
-    update commerce.design_presets
-       set listing = coalesce(listing, '{}'::jsonb) || ${JSON.stringify({ pack: read.pack, presetPacks: read.presetPacks })}::jsonb, updated_by = ${admin.id}::uuid
-     where id = ${id}::uuid returning workspace_store_id
-  `);
-  if (rows.length === 0) return refuse(UNKNOWN);
-  await audit(admin.id, rows[0].workspace_store_id ? String(rows[0].workspace_store_id) : null, "platform.design_preset_demo_stores", { preset: id, pack: read.pack, presets: read.presetPacks }, {
-    target: { type: "design_preset", id },
-  });
-  // Each look's photographs are taken on its demo store, so a look moved to another is photographed again.
+  // A theme newly given an address is photographed if it was not yet (`queueThemeShots()` asks for what is missing).
   await askForThemeShots();
   return { ok: true };
 }
