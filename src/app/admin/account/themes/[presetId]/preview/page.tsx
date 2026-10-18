@@ -28,7 +28,7 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
 
 /**
  * A design profile shown before it is chosen (D176, `docs/design-profiles.md` section 5): a store template's front page and one of its
- * products (the Standard store's when no template is named), drawn with the profile's theme, header, footer, product layout and CSS in
+ * products (the theme's own content when no template is named, D275, else the Standard store's; `show` draws one of the two alone), drawn with the profile's theme, header, footer, product layout and CSS in
  * place of the store's own, exactly as `applyDesignPreset()` would place them (`layoutForStore()`), without writing anything. Open to
  * anyone, since people at sign-up are not signed in: it shows only a published profile on a published store template (or the Standard
  * store), its reads are cached per profile and template, it sets no cookie and reads none, and its content is inert (nothing can be
@@ -67,6 +67,8 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
   const { snapshot } = preview;
   const admin = query.as === "admin";
   const embedded = !admin && query.embed === "1";
+  // The full-screen preview's Home or A product (D275); unless said, the front page and then a product, as the photographs measure them.
+  const show = query.show === "home" || query.show === "product" ? query.show : null;
   // The store as it would look with the profile applied: its own name, logos, menus and products, the profile's look. Shown as a
   // store for consumers, so a store selling to both draws no Private / Business switch over a look that is about the theme.
   const store: Store = {
@@ -91,7 +93,9 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
     campaignNotices(base.id, market),
   ]);
   const front = pages.find((page) => page.id === base.frontPageId) ?? null;
-  const product = products[0] ? await getProduct(base.id, market, products[0].handle) : null;
+  const product = show === "home" || !products[0] ? null : await getProduct(base.id, market, products[0].handle);
+  // A product alone only when there is one; else the front page.
+  const showFront = show !== "product" || !product;
   // The profile's fonts Kaizen has, and the front page's own (installed when it was saved).
   const families = [...new Set([...preview.fonts, ...(front ? pageFonts(front.content) : [])])];
   const home = marketPath(store.slug, market.slug);
@@ -112,7 +116,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
       ) : (
         !embedded && (
           <p role="status" className="sticky top-0 z-50 bg-foreground px-4 py-2 text-center text-xs text-background">
-            A preview of the {preview.title} theme{preview.presetName ? ` (${preview.presetName})` : ""} on a demo store. Nothing here can be pressed.
+            A preview of the {preview.title} theme{preview.presetName ? ` (${preview.presetName})` : ""} with sample content. Nothing here can be pressed.
           </p>
         )
       )}
@@ -133,7 +137,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
           <ScopedCss css={[store.customCss, header?.content.css, footer?.content.css, productLayout.css]} root="[data-site-css]" />
           {header ? <StoreSiteHeader store={store} market={market} notice={null} layout={header} /> : <StoreHeader store={store} market={market} notice={null} />}
           <main className="flex flex-col">
-            {front ? (
+            {!showFront ? null : front ? (
               // `data-shot`: the parts the theme store's photographs measure (`docs/theme-showcase-phase-2.md`, `theme-shoot.ts`).
               <div className="store-page" data-shot="front">
                 <PageArticle content={front.content} place={{ pageId: front.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }} inAdmin />
@@ -149,7 +153,11 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
               </div>
             )}
             {product && (
-              <section aria-label={product.title} data-shot="product" className="mx-auto w-full max-w-(--content-width) border-t border-border px-4 py-8">
+              <section
+                aria-label={product.title}
+                data-shot="product"
+                className={`mx-auto w-full max-w-(--content-width) px-4 py-8 ${showFront ? "border-t border-border" : ""}`}
+              >
                 <ProductLayoutView layout={productLayout} ctx={{ store, market, product, m, campaigns: notices }} inAdmin />
               </section>
             )}

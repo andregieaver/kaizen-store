@@ -59,14 +59,25 @@ test("the list and a theme answer at the host's root, linking back to Kaizena Fl
   expect(page.url()).toBe(themes(`/${SLUG}`));
   expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(themes(`/${SLUG}`));
   await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Themes" })).toHaveAttribute("href", "/");
-  await expect(page.getByRole("link", { name: "Start with this theme" })).toHaveAttribute("href", `${baseURL}/sign-up?theme=${id}`);
-  await expect(page.getByRole("link", { name: "Try it in your store" })).toHaveAttribute("href", `${baseURL}/themes/${SLUG}/try`);
+  await expect(page.getByRole("link", { name: "Use this theme" })).toHaveAttribute("href", `${baseURL}/sign-up?theme=${id}`);
+  await expect(page.getByRole("link", { name: "Already have a store? Add it to your store" })).toHaveAttribute("href", `${baseURL}/themes/${SLUG}/try`);
   await expect(page.locator(`iframe[title="E2E Hosted on a phone"]`)).toHaveAttribute("src", `${baseURL}/admin/account/themes/${id}/preview?starter=${demo.starter}&embed=1`);
+
+  // The full-screen preview is the host's own (D275), its store drawn by Kaizena Flow's preview and its button leading back there.
+  await expect(page.getByRole("link", { name: /^Preview/ })).toHaveAttribute("href", `/${SLUG}/preview`);
+  const full = await page.goto(themes(`/${SLUG}/preview`));
+  expect(full?.status()).toBe(200);
+  expect(page.url()).toBe(themes(`/${SLUG}/preview`));
+  await expect(page.locator(`iframe[title="E2E Hosted on a computer"]`)).toHaveAttribute("src", `${baseURL}/admin/account/themes/${id}/preview?starter=${demo.starter}&embed=1&show=home`);
+  await expect(page.getByRole("link", { name: "Use this theme" })).toHaveAttribute("href", `${baseURL}/sign-up?theme=${id}`);
+  await expect(page.getByRole("link", { name: "E2E Hosted", exact: true }).first()).toHaveAttribute("href", `/${SLUG}`);
 });
 
 test("Kaizena Flow's own addresses of the theme store move there; the try route stays", async ({ page, request }) => {
   await page.goto(`/themes/${SLUG}`);
   await expect(page).toHaveURL(themes(`/${SLUG}`));
+  await page.goto(`/themes/${SLUG}/preview?preset=x`);
+  await expect(page).toHaveURL(themes(`/${SLUG}/preview?preset=x`));
   const moved = await request.get("/themes", { maxRedirects: 0 });
   expect(moved.status()).toBe(308);
   expect(moved.headers().location).toBe(themes("/"));

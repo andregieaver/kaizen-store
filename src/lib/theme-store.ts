@@ -189,7 +189,12 @@ export type ThemeLook = {
   showcase: Showcase | null;
   /** Its photographs on its showcase (`docs/theme-showcase-phase-2.md` step 1), where made: the latest set at each width. */
   shots?: LookShots | null;
+  /** Its own colours and heading font (D275): what its swatch on the theme's page and card is drawn in. */
+  swatch?: ThemeSwatch;
 };
+
+/** A look's light colours and heading font, for a swatch. */
+export type ThemeSwatch = { background: string; surface: string; text: string; accent: string; accentText: string; heading: string | null };
 
 /**
  * A theme's looks, its own first, each shown on the theme's own content (D275) while it has one published; a preset is another look on the
@@ -222,7 +227,7 @@ export type ThemeStoreCard = {
   listing: ThemeListing;
   features: ThemeFeature[];
   /** For a card without a picture: the light colours and the heading font. */
-  swatch: { background: string; surface: string; text: string; accent: string; accentText: string; heading: string | null };
+  swatch: ThemeSwatch;
 };
 
 /**
@@ -243,21 +248,6 @@ export const shownLooks = <T extends Pick<ThemeLook, "showcase">>(looks: readonl
  */
 export const sharePicture = (card: Pick<ThemeStoreCard, "pictureUrl" | "madeShare"> & { listing?: Pick<ThemeListing, "own"> }): string | null =>
   card.listing?.own?.share ?? card.pictureUrl ?? card.madeShare;
-
-/**
- * The pictures a theme's page shows when it has none of its own: each look's first screen at a computer's width, then at a phone's, where
- * made, each named for its look.
- */
-export function madeScreens(card: Pick<ThemeStoreCard, "title" | "looks">): { url: string; alt: string; width: number; height: number; kind: "computer" | "phone" }[] {
-  return (["computer", "phone"] as const).flatMap((kind) =>
-    shownLooks(card.looks).flatMap((look) => {
-      const screen = look.shots?.[kind]?.screen;
-      if (!screen) return [];
-      const name = look.key === null ? card.title : `${card.title}, ${look.name}`;
-      return [{ url: screen.url, alt: `${name} on a ${kind}${look.showcase ? `, on ${look.showcase.line}` : ""}`, width: screen.width, height: screen.height, kind }];
-    }),
-  );
-}
 
 export const swatchOf = (snapshot: DesignSnapshot): ThemeStoreCard["swatch"] => {
   const light = snapshot.theme.settings.light;
@@ -337,6 +327,35 @@ export const themeTryPath = (slug: string, preset: string | null = null) =>
 /** *Start with this theme*: sign-up with the theme, or one of its presets, chosen (`ThemeFromAddress`, `docs/theme-showcase-phase-1.md` step 4). */
 export const themeStartLink = (id: string, preset: string | null = null) =>
   `/sign-up?theme=${encodeURIComponent(id)}${preset ? `&preset=${encodeURIComponent(preset)}` : ""}`;
+
+/** A look's key from the address (`?preset=`): one of the theme's presets, else null (its own look). */
+export const lookChoice = (looks: readonly Pick<ThemeLook, "key">[], value: unknown): string | null =>
+  typeof value === "string" && value !== "" && looks.some((look) => look.key === value) ? value : null;
+
+/** The full-screen preview's choices (D275): Home or A product, on a computer or a phone. */
+export type PreviewView = { show: "home" | "product"; device: "computer" | "phone" };
+
+export const previewView = (query: Record<string, string | string[] | undefined>): PreviewView => ({
+  show: query.show === "product" ? "product" : "home",
+  device: query.device === "phone" ? "phone" : "computer",
+});
+
+/**
+ * A theme's full-screen preview in the theme store (D275, `docs/themes-content-and-demo-stores.md` section 6): `/themes/{slug}/preview`,
+ * or `/{slug}/preview` on its own host, with the look and the view in the address so a shared link opens on them.
+ */
+export function themePreviewPath(slug: string, preset: string | null = null, view: Partial<PreviewView> = {}): string {
+  const query = new URLSearchParams();
+  if (preset) query.set("preset", preset);
+  if (view.show === "product") query.set("show", "product");
+  if (view.device === "phone") query.set("device", "phone");
+  const search = query.toString();
+  return themeStorePath(`${slug}/preview${search ? `?${search}` : ""}`);
+}
+
+/** A theme's page with one of its looks chosen (`?preset=`), as a shared link opens it. */
+export const themePagePath = (slug: string, preset: string | null = null): string =>
+  themeStorePath(`${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`);
 
 /** What *Try it in your store* links to: a route that sends the person there, or to sign in and back (the theme's page is cached). */
 export const themeTryLink = (slug: string, preset: string | null = null) => `/themes/${slug}/try${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;

@@ -219,6 +219,8 @@ describe("details, choices and cards", () => {
     expect(designPreviewPath("p1", null, false, true)).toBe("/admin/account/themes/p1/preview");
     // In the theme store's frames, the store alone.
     expect(designPreviewPath("p1", null, false, false, true)).toBe("/admin/account/themes/p1/preview?embed=1");
+    // The full-screen preview's Home or A product (D275).
+    expect(designPreviewPath("p1", "s1", false, false, true, "sand", "product")).toBe("/admin/account/themes/p1/preview?starter=s1&preset=sand&embed=1&show=product");
   });
 });
 

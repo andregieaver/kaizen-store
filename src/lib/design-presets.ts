@@ -501,7 +501,18 @@ export function keepDesignCard(): DesignCard {
  * The address of a design profile's preview: on a store template's front page and one product (the Standard store's when none); with
  * `admin` unpublished ones too, and with `draft` the look in its workspace as last saved (D177).
  */
-export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false, embed = false, variation: string | null = null): string {
+/** What a preview draws (D275): the front page alone, a product alone, or both, one under the other, unless said. */
+export type PreviewShow = "home" | "product";
+
+export function designPreviewPath(
+  presetId: string,
+  starterId?: string | null,
+  admin = false,
+  draft = false,
+  embed = false,
+  variation: string | null = null,
+  show: PreviewShow | null = null,
+): string {
   const query = new URLSearchParams();
   if (starterId) query.set("starter", starterId);
   // One of the theme's presets (`docs/theme-showcase-phase-1.md`), by its key; none: the theme's own look.
@@ -511,6 +522,8 @@ export function designPreviewPath(presetId: string, starterId?: string | null, a
   if (admin && draft) query.set("draft", "1");
   // In a frame on the theme store's page, which says what it is: the store alone, no line above it.
   if (embed) query.set("embed", "1");
+  // The full-screen preview's Home or A product (D275).
+  if (show) query.set("show", show);
   const search = query.toString();
   return `/admin/account/themes/${presetId}/preview${search ? `?${search}` : ""}`;
 }

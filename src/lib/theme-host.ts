@@ -4,11 +4,11 @@
  *
  * With it, routing by host (`themeHostRoutes()`, in `next.config.ts` beside stores' own hosts):
  *
- * - on the host, `/` serves the list and `/{slug}` a theme's page (the routes under `/themes`), with its own `sitemap.xml` and `robots.txt`;
- *   an address there that is not a theme (`/pricing`, the header's links) goes on to the same address on Kaizena Flow's site, by the theme
- *   page (one part) or by a redirect here (more than one);
- * - on Kaizena Flow's own host, `/themes` and `/themes/{slug}` move there for good (a store's own `/themes` is untouched); `/themes/{slug}/try` stays, as only Kaizena Flow's own host
- *   sees the admin's sign-in.
+ * - on the host, `/` serves the list, `/{slug}` a theme's page and `/{slug}/preview` its full-screen preview (D275, the routes under
+ *   `/themes`), with its own `sitemap.xml` and `robots.txt`; an address there that is not a theme (`/pricing`, the header's links) goes on to
+ *   the same address on Kaizena Flow's site, by the theme page (one part) or by a redirect here (more than one);
+ * - on Kaizena Flow's own host, `/themes`, `/themes/{slug}` and `/themes/{slug}/preview` move there for good (a store's own `/themes` is
+ *   untouched); `/themes/{slug}/try` stays, as only Kaizena Flow's own host sees the admin's sign-in.
  *
  * Links in the theme store are built with `themeStorePath()` (a path on whichever host serves it), `themeStoreUrl()` (a full address:
  * canonical, sitemap, structured data) and `platformHref()` (a link to Kaizena Flow's own site, full on the host).
@@ -71,6 +71,9 @@ const SHARED = "_next/|api/|demo/|kaizen/";
 /** A theme's address (`THEME_SLUG`) or the host's two files; anything else on the host is Kaizena Flow's own. */
 const ON_HOST = "[a-z0-9][a-z0-9-]*|sitemap\\.xml|robots\\.txt";
 
+/** A theme's full-screen preview (D275), the one address of two parts the host serves itself. */
+const PREVIEW = "[a-z0-9][a-z0-9-]*";
+
 export function themeHostRoutes(host: string | null, platformUrl: string): { redirects: ThemeHostRedirect[]; rewrites: ThemeHostRewrite[] } {
   if (!host) return { redirects: [], rewrites: [] };
   const origin = themesOrigin(host) as string;
@@ -81,11 +84,13 @@ export function themeHostRoutes(host: string | null, platformUrl: string): { red
       // Kaizena Flow's own addresses of the theme store move to its host, for good; only on Kaizena Flow's host (a store's `/themes` is its own).
       { source: "/themes", has: [onPlatform], destination: `${origin}/`, permanent: true },
       { source: `/themes/:slug(${ON_HOST})`, has: [onPlatform], destination: `${origin}/:slug`, permanent: true },
-      // On the host, an address of more than one part is Kaizena Flow's own (the admin, the blog, the try route).
-      { source: `/:path((?!${SHARED})[^/]+/.+)`, has: [onHost], destination: `${platformUrl}/:path`, permanent: false },
+      { source: `/themes/:slug(${PREVIEW})/preview`, has: [onPlatform], destination: `${origin}/:slug/preview`, permanent: true },
+      // On the host, an address of more than one part is Kaizena Flow's own (the admin, the blog, the try route), but a theme's preview.
+      { source: `/:path((?!${SHARED}|${PREVIEW}/preview$)[^/]+/.+)`, has: [onHost], destination: `${platformUrl}/:path`, permanent: false },
     ],
     // Rewrites before files apply in turn, each to the path the one before left: the root comes last, so `/themes` is not rewritten again.
     rewrites: [
+      { source: `/:slug(${PREVIEW})/preview`, has: [onHost], destination: "/themes/:slug/preview" },
       { source: `/:slug(${ON_HOST})`, has: [onHost], destination: "/themes/:slug" },
       { source: "/", has: [onHost], destination: "/themes" },
     ],

@@ -13,6 +13,8 @@ import {
 } from "@/lib/theme-store";
 import { themeStorePath } from "@/lib/theme-host";
 
+import { SwatchDot } from "./theme-swatch";
+
 /**
  * The theme store's list (`docs/theme-phase-3.md` step 1): a card per theme under one bar of filters (kind of store, style, what it
  * includes), plain links in small menus, so it works without JavaScript and every filtered list has an address. Drawn in Kaizena
@@ -65,6 +67,14 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
           </Link>
         </h2>
         {card.summary && <p className="text-sm text-muted">{card.summary}</p>}
+        {/* Its looks as dots in their colours (D275); the count of presets below says it in words. */}
+        {card.looks.length > 1 && (
+          <p className="flex gap-1.5" data-look-swatches="">
+            {card.looks.map((look) => (
+              <SwatchDot key={look.key ?? ""} swatch={look.swatch ?? card.swatch} size="sm" />
+            ))}
+          </p>
+        )}
         {trades.length > 0 && <p className="text-sm text-muted">{shownOn(trades)}</p>}
         <p className="mt-auto text-sm">
           <span className="font-medium">Free</span>

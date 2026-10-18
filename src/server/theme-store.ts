@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
-import { variationsOf } from "@/lib/design-variations";
+import { variationSnapshot, variationsOf } from "@/lib/design-variations";
 import {
   readListing,
   shownLooks,
@@ -40,7 +40,12 @@ const cardOf = (row: Row, snapshot: DesignSnapshot, contents: ReadonlyMap<string
   const id = String(row.id);
   // Its looks' photographs (`docs/theme-showcase-phase-2.md` step 1), each on the theme's own content (D275) once it is published: the first
   // with a photograph at a computer's width gives the card and the share image, and the highlights are its own look's.
-  const looks = themeLooks(String(row.title), presets, contents.get(id) ?? null).map((look) => ({ ...look, shots: look.showcase ? (shots.get(lookOf(id, look.key)) ?? null) : null }));
+  // Each look in its own colours (D275): the swatch its preset is chosen by.
+  const looks = themeLooks(String(row.title), presets, contents.get(id) ?? null).map((look) => ({
+    ...look,
+    shots: look.showcase ? (shots.get(lookOf(id, look.key)) ?? null) : null,
+    swatch: swatchOf(variationSnapshot(snapshot, look.key) ?? snapshot),
+  }));
   const lead = shownLooks(looks).find((look) => look.shots?.computer)?.shots?.computer ?? null;
   return {
     id,

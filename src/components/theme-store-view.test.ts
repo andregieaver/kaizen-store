@@ -86,4 +86,17 @@ describe("the theme store's list", () => {
     expect(draw([card("calm")], { ...none, style: "bold" })).toContain("No theme matches all of these.");
     expect(draw([])).toContain("No themes yet.");
   });
+
+  it("dots each look in its own colours on a theme with presets, and none on a theme without (D275)", () => {
+    const swatch = (accent: string) => ({ background: "#ffffff", surface: "#eeeeee", text: "#111111", accent, accentText: "#ffffff", heading: null });
+    const looks = [
+      { key: null, name: "CALM", showcase: null, swatch: swatch("#aa0000") },
+      { key: "coast", name: "Coast", showcase: null, swatch: swatch("#0000aa") },
+    ];
+    const html = draw([card("calm", { looks, presets: [{ key: "coast", name: "Coast" }] }), card("plain")]);
+    expect(html.match(/data-look-swatches/g)?.length).toBe(1);
+    expect(html).toContain("#aa0000 50% 100%");
+    expect(html).toContain("#0000aa 50% 100%");
+    expect(html).toContain("2 presets");
+  });
 });

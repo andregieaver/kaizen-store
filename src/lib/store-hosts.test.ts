@@ -165,6 +165,9 @@ describe("the theme store on its own host (docs/theme-phase-3.md step 3)", () =>
     expect(route(routes, "themes.kaizenaflow.com", "/robots.txt")).toEqual({ rewrite: "/themes/robots.txt" });
     expect(route(routes, "themes.kaizenaflow.com", "/admin/sign-in")).toEqual({ redirect: "https://kaizenaflow.com/admin/sign-in" });
     expect(route(routes, "themes.kaizenaflow.com", "/calm/try")).toEqual({ redirect: "https://kaizenaflow.com/calm/try" });
+    // A theme's full-screen preview (D275) is the host's own; a longer address with the word is not.
+    expect(route(routes, "themes.kaizenaflow.com", "/calm/preview")).toEqual({ rewrite: "/themes/calm/preview" });
+    expect(route(routes, "themes.kaizenaflow.com", "/calm/preview/x")).toEqual({ redirect: "https://kaizenaflow.com/calm/preview/x" });
     // Next.js's files, the API and `public` are served on every host.
     expect(route(routes, "themes.kaizenaflow.com", "/_next/static/x.js")).toEqual({});
     expect(route(routes, "themes.kaizenaflow.com", "/api/fonts/css/inter")).toEqual({});
@@ -175,6 +178,7 @@ describe("the theme store on its own host (docs/theme-phase-3.md step 3)", () =>
     expect(route(routes, "kaizenaflow.com", "/themes")).toEqual({ redirect: "https://themes.kaizenaflow.com/" });
     expect(route(routes, "kaizenaflow.com", "/themes/calm")).toEqual({ redirect: "https://themes.kaizenaflow.com/calm" });
     expect(route(routes, "kaizenaflow.com", "/themes/calm/try")).toEqual({});
+    expect(route(routes, "kaizenaflow.com", "/themes/calm/preview")).toEqual({ redirect: "https://themes.kaizenaflow.com/calm/preview" });
     // A store is untouched.
     expect(route(routes, "demo.kaizenstore.site", "/themes")).toEqual({ rewrite: "/s/demo/themes" });
   });

@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { DesignSnapshot } from "./design-presets";
 import { LAUNCH_THEMES } from "./launch-themes";
-import type { ShotFile } from "./theme-shots";
 import {
   cardPicture,
   filterThemes,
-  madeScreens,
   OWN_SLOTS,
   parseListing,
   parseThemeFilter,
@@ -21,6 +19,10 @@ import {
   themeFilterHref,
   sharePicture,
   themeJsonLd,
+  lookChoice,
+  previewView,
+  themePagePath,
+  themePreviewPath,
   type ThemeStoreCard,
 } from "./theme-store";
 
@@ -154,8 +156,6 @@ describe("the admin's own pictures in place of made ones (docs/theme-showcase-ph
 });
 
 describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", () => {
-  const file = (name: string, width = 1440, height = 900): ShotFile => ({ path: `platform/theme-shots/${name}`, url: `https://x.test/${name}`, width, height, bytes: 1 });
-
   it("cards and shares its own picture first, then what its photograph made, else (a card) its colours, never a picture by hand (D274)", () => {
     expect(cardPicture({ pictureUrl: "/own.webp", madeCard: "/made.webp" })).toBe("/own.webp");
     expect(cardPicture({ pictureUrl: null, madeCard: "/made.webp" })).toBe("/made.webp");
@@ -168,22 +168,6 @@ describe("the pictures a theme shows (docs/theme-showcase-phase-2.md step 1)", (
     const listing = readListing({ own: { share: "/media/share.jpg" } });
     expect(sharePicture({ pictureUrl: "/own.webp", madeShare: "/share.jpg", listing })).toBe("/media/share.jpg");
     expect(sharePicture({ pictureUrl: null, madeShare: "/share.jpg", listing: readListing({}) })).toBe("/share.jpg");
-  });
-
-  it("without pictures of its own, shows its shown looks' first screens: computers, then phones, each named for its look and store", () => {
-    const fashion = { pack: "fashion" as const, trade: "Fashion", line: "Field & Fold, a demo fashion store", starterId: "f" };
-    const looks = [
-      { key: null, name: "Calm", showcase: fashion, shots: { computer: { screen: file("own-c") }, phone: { screen: file("own-p", 780, 1688) }, version: 2 } },
-      { key: "sand", name: "Sand", showcase: { pack: "beauty" as const, trade: "Beauty", line: "Dune, a demo skin care store", starterId: "s" }, shots: { computer: { screen: file("sand-c") }, phone: null, version: 2 } },
-      { key: "ink", name: "Ink", showcase: null, shots: null },
-      // A look on no published demo store is never drawn, even with a set made before (D274: never the Standard store).
-      { key: "sage", name: "Sage", showcase: null, shots: { computer: { screen: file("sage-c") }, phone: null, version: 1 } },
-    ];
-    expect(madeScreens({ title: "Calm", looks }).map((s) => [s.url, s.alt, s.kind])).toEqual([
-      ["https://x.test/own-c", "Calm on a computer, on Field & Fold, a demo fashion store", "computer"],
-      ["https://x.test/sand-c", "Calm, Sand on a computer, on Dune, a demo skin care store", "computer"],
-      ["https://x.test/own-p", "Calm on a phone, on Field & Fold, a demo fashion store", "phone"],
-    ]);
   });
 
   it("shows only looks on a published demo store, its own first (D274)", () => {
@@ -220,5 +204,30 @@ describe("a theme's looks, each on the theme's own content (D275)", () => {
   it("are shown nowhere while the theme has no published content", () => {
     expect(themeLooks("Calm", [], null)).toEqual([{ key: null, name: "Calm", showcase: null }]);
     expect(shownLooks(themeLooks("Hearth", presets, null))).toEqual([]);
+  });
+});
+
+describe("a theme's page and full-screen preview keep the look and the view in the address (D275)", () => {
+  const looks = [{ key: null }, { key: "coast" }];
+
+  it("takes a preset only when the theme has it", () => {
+    expect(lookChoice(looks, "coast")).toBe("coast");
+    expect(lookChoice(looks, "gone")).toBeNull();
+    expect(lookChoice(looks, ["coast"])).toBeNull();
+    expect(lookChoice(looks, undefined)).toBeNull();
+  });
+
+  it("reads Home or A product, and a computer or a phone, Home on a computer unless said", () => {
+    expect(previewView({})).toEqual({ show: "home", device: "computer" });
+    expect(previewView({ show: "product", device: "phone" })).toEqual({ show: "product", device: "phone" });
+    expect(previewView({ show: "x", device: ["phone"] })).toEqual({ show: "home", device: "computer" });
+  });
+
+  it("writes only what differs from the defaults", () => {
+    expect(themePreviewPath("calm")).toBe("/themes/calm/preview");
+    expect(themePreviewPath("calm", "coast", { show: "product", device: "phone" })).toBe("/themes/calm/preview?preset=coast&show=product&device=phone");
+    expect(themePreviewPath("calm", null, { show: "home", device: "computer" })).toBe("/themes/calm/preview");
+    expect(themePagePath("calm")).toBe("/themes/calm");
+    expect(themePagePath("calm", "coast")).toBe("/themes/calm?preset=coast");
   });
 });
