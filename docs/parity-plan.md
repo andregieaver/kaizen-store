@@ -159,7 +159,7 @@ D) run on other people's clocks.
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
-| 1 | **PayPal and a second payment provider** (Stripe does not allow PayPal for platforms taking direct charges, D23) | Stay Stripe-only and accept the PayPal row; add a provider adapter with Mollie (EU, many local methods, PayPal) or Adyen for stores that choose it | Add the adapter with Mollie as the first alternative; keep Stripe the default. PayPal is a large share of German top-shop revenue, and the adapter also unlocks Swish and Vipps. |
+| 1 | **PayPal and a second payment provider** (Stripe does not allow PayPal for platforms taking direct charges, D23) | Stay Stripe-only and accept the PayPal row; add a provider adapter with Mollie (EU, many local methods, PayPal) or Adyen for stores that choose it | Add the adapter with Mollie as the first alternative; keep Stripe the default. PayPal is a large share of German top-shop revenue, and the adapter also unlocks Swish and Vipps. **Made 2026-10-19: Mollie behind an adapter, Stripe the default (`docs/wave-4-payments.md`, D292).** |
 | 2 | **Extension platform** (Shopify's biggest advantage is its App Store) | Public API and webhooks only; or OAuth apps with scopes and a listing; or full UI extensions | API, webhooks and scoped custom apps first (wave 9); a public app directory only after there are outside developers asking. |
 | 3 | **POS and retail** | Skip; later; build a simple tablet POS on the existing orders and Stripe Terminal | Defer. It is a weight-2 row and a large build (hardware, offline). Revisit after wave 9. |
 | 4 | **Headless Storefront API** | Skip; GraphQL read API on the catalogue and cart | Cheap once the Admin API exists; do it in wave 9, weight 2. |
