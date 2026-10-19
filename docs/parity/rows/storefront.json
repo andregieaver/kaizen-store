@@ -16,36 +16,55 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Three built-in looks (`THEME_TEMPLATES`: Minimal, Warm classic, Bold modern) plus the store's own saved themes (D60); the marketplace (D125, D127) shares rows, columns, components and whole page layouts, never a whole theme (settings, header, footer and product layout together). No theme listing, preview or switch between published themes.",
+    "gap": "Built since the last read (D241 to D287, docs/theme-store.md, docs/theme-prices.md): the theme store at /themes with a page per theme, a full-screen preview on the theme's own demo content (D275, D276) and the inert, noindex public preview; presets (D256); Add to my themes and Try it in your store install a theme without going live (D248); applying copies pictures into the store's library, keeps its own pages and products and puts the look before away in the theme library (D241, D244); switching keeps every install (theme-installs.int.test.ts, signed-in theme-switch.spec.ts through every launch theme and back with no content changed); unpublish and archive take a theme out of every list (design-presets.int.test.ts); updates reach installs that follow them (on by default, the owner can switch it off), with What's new and undo (D245). Paid themes (D286): a price per currency, shown on the cards, the theme page and before the button that pays; nothing is charged before the store goes live with it; invoiced through Kaizena Flow's Stripe billing and settled by the billing webhook. Still short: (1) the collection of a premium theme's invoice is held only against the repository's stand-in for Stripe (theme-prices.int.test.ts); no premium theme has been invoiced and paid in Stripe's test mode on a real store, the precedent D173, D174 and D239 hold rows to. Criteria restated on 2026-10-19: the first criterion asked that a store owner publish a whole theme to a marketplace, which is not part of Shopify's theme store (themes there come from Shopify and from designers it admits); themes from outside designers are scored in platform.themes-and-templates-marketplace.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
-      "An owner can publish a whole theme (look settings, header, footer, product layout, saved parts) to the marketplace, and another store can preview it, inert and without saving, before using it.",
-      "Using a marketplace theme copies it into the store (pictures and parts included) without touching the store's products or pages, and the store's previous look stays as a saved theme.",
-      "A platform admin can hide or remove a shared theme, and a hidden theme is in no store's list (as templates are, D125).",
-      "A store can hold several saved themes and switch the live one without losing the others; a test covers the switch."
+      "Whole themes (look settings, header, footer, product layout and presets) are listed in a theme store with a page each, and any store previews one, inert and without saving, before using it.",
+      "Using a theme copies it into the store (pictures included) without touching the store's products or pages, and the look before stays in the store's theme library.",
+      "A platform admin can unpublish or archive a theme, and it leaves every list and choice at once.",
+      "A store holds several themes and switches the live one without losing the others; a test covers the switch.",
+      "A theme is free or paid; a paid theme's price is shown before anything is paid, the store pays once, and the payment is collected and settled through the platform's billing (proven against Stripe in test mode, not only a stand-in)."
     ],
     "evidence": {
       "files": [
-        "src/lib/theme.ts",
-        "src/server/themes.ts",
-        "src/components/admin/theme-editor.tsx",
-        "src/lib/templates.ts",
-        "src/server/templates.ts",
-        "src/lib/page-layout.ts"
+        "src/server/theme-store.ts",
+        "src/lib/theme-store.ts",
+        "src/server/design-presets.ts",
+        "src/server/theme-installs.ts",
+        "src/server/theme-prices.ts",
+        "src/lib/theme-prices.ts",
+        "src/components/theme-store-view.tsx",
+        "src/app/admin/account/themes/[presetId]/preview/page.tsx"
       ],
       "tests": [
-        "src/lib/theme.test.ts",
-        "src/server/themes.int.test.ts",
-        "src/server/templates.int.test.ts",
-        "e2e/themes.spec.ts"
+        "src/server/theme-store.int.test.ts",
+        "src/server/design-presets.int.test.ts",
+        "src/server/theme-installs.int.test.ts",
+        "src/server/theme-preview.int.test.ts",
+        "src/server/theme-prices.int.test.ts",
+        "src/lib/theme-prices.test.ts",
+        "e2e/theme-store.spec.ts",
+        "e2e/signed-in/theme-switch.spec.ts",
+        "e2e/signed-in/theme-try.spec.ts",
+        "e2e/signed-in/theme-prices.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D60",
       "D125",
-      "D127"
+      "D127",
+      "D241",
+      "D244",
+      "D245",
+      "D247",
+      "D248",
+      "D256",
+      "D273",
+      "D275",
+      "D276",
+      "D286"
     ],
     "history": []
   },
@@ -570,14 +589,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Responsive storefront with phone controls (hide a menu on phones, side by side or reversed columns, tiles per screen size, text alignment by screen) but no phone or tablet preview in the builder's canvas and no per-device overrides of spacing, backgrounds or visibility for ordinary blocks.",
-    "bucket": "A",
-    "wave": 7,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The builder has a device toggle (computer, tablet, phone) that redraws the canvas at that width.",
       "Spacing, visibility, alignment, order and column counts can be set per device on rows, columns and blocks, and the site honours them with CSS only, so the first paint is right.",
@@ -585,22 +604,39 @@
     ],
     "evidence": {
       "files": [
+        "src/lib/responsive.ts",
+        "src/lib/part-css.ts",
+        "src/lib/breakpoints.ts",
+        "src/lib/visibility.ts",
+        "src/components/admin/responsive-edit.tsx",
         "src/components/admin/page-builder.tsx",
         "src/lib/page-content.ts",
-        "src/components/page-parts.tsx",
-        "src/components/menu-view.tsx"
+        "src/components/page-parts.tsx"
       ],
       "tests": [
-        "e2e/pages.spec.ts",
-        "e2e/navigation.spec.ts",
-        "e2e/menus.spec.ts"
+        "src/lib/responsive.test.ts",
+        "src/components/admin/responsive-edit.test.ts",
+        "src/lib/visibility.test.ts",
+        "e2e/text-colour.spec.ts",
+        "e2e/gallery.spec.ts",
+        "e2e/responsive-parity.spec.ts",
+        "e2e/visibility.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D48"
+      "D48",
+      "D179",
+      "D187"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "partial",
+        "to": "full",
+        "why": "D179 (docs/responsive-editing.md, phases 1 to 4) shipped after the last re-read. Read src/lib/responsive.ts, src/lib/part-css.ts, src/lib/breakpoints.ts, src/lib/visibility.ts and src/components/admin/responsive-edit.tsx: the builder's responsive mode draws the canvas at Small, Medium, Large and Extra large (the store's own widths, Ctrl/Cmd+Shift+R); spacing, typography and alignment, columns, column order per line, widths and visibility (hideAt) are set per size on rows, columns and blocks in PartBase.at and written as CSS rules only (media queries on the site, container queries on the canvas), so the first paint is right. Held by responsive.test.ts (a medium or small value is written inside its media query and the base is untouched), responsive-edit.test.ts, visibility.test.ts, and the browser tests text-colour.spec.ts and gallery.spec.ts (a value set for Small changes the phone and not the computer), responsive-parity.spec.ts (old pages unchanged) and visibility.spec.ts; all passed on 2026-10-19 (pnpm test, and the e2e suite against a production build)."
+      }
+    ]
   },
   {
     "id": "storefront.media-library",

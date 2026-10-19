@@ -259,7 +259,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "generateImage()/makePicture() (picture model named in the AI settings, never in code) is called only by the AI page studio (src/server/page-ai.ts), which saves to the media library. The product editor, the media library and the page builder have no generate-image action.",
+    "gap": "generateImage()/makePicture() (the picture model named in the AI settings, never in code) is used by the AI page studio (src/server/page-ai.ts), the content packs (D257, D270) and, since D283, every picture field of the page builder: Make with AI and Make again with AI, in the site's look (pictureDirection()), metered as `page_pictures`, kept in the media library with alt text from the request (src/server/picture-maker.ts, /admin/{store}/media/make). Still short: (1) the media library and the product editor have no generate-picture action (criterion 1); (2) a made picture is not marked as AI-made in the library (criterion 3); the alt text is the request's first sentence, which the claims filter does not check.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -269,23 +269,29 @@
     ],
     "evidence": {
       "files": [
+        "src/components/admin/page-studio.tsx",
+        "src/components/admin/picture-maker.tsx",
+        "src/lib/picture-direction.ts",
         "src/server/ai-pictures.ts",
         "src/server/ai.ts",
         "src/server/page-ai.ts",
-        "src/components/admin/page-studio.tsx"
+        "src/server/picture-maker.ts",
+        "src/server/picture-route.ts"
       ],
       "tests": [
+        "src/lib/picture-direction.test.ts",
         "src/server/ai-pictures.test.ts",
+        "src/server/ai-usage.int.test.ts",
         "src/server/ai.int.test.ts",
-        "src/server/page-ai.int.test.ts",
-        "src/server/ai-usage.int.test.ts"
+        "src/server/page-ai.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D92",
       "D106",
-      "D146"
+      "D146",
+      "D283"
     ],
     "history": []
   },
@@ -558,7 +564,7 @@
       "was": null
     },
     "weight": 2,
-    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign.",
+    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign. Since D283 the builder's picture fields make and remake a picture from a description in the site's look; that is pictures, not edits of the page or the theme.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -590,7 +596,8 @@
     "decisions": [
       "D92",
       "D128",
-      "D150"
+      "D150",
+      "D283"
     ],
     "history": []
   },

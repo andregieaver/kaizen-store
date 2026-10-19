@@ -513,7 +513,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D129 duplicates a whole store (content in one SQL transaction, pictures, customers and orders as a resumable cron job) and D126 duplicates pages; saved themes (`store_themes`, D60), a page's draft against its published copy and A/B versions of pages (D148) exist. No revision history or rollback of pages, themes or settings, no staging copy that is merged back, no shareable preview of unpublished changes.",
+    "gap": "D129 duplicates a whole store and D126 duplicates pages; A/B versions of pages (D148). Themes now keep versions: every Publish of a theme is a `design_preset_versions` row (D241), a store's installed themes keep the look they placed and an update keeps the look before for undo (D245), switching puts the live look away whole (D241, D244), and letting pages follow the theme keeps each page before and after for undo (D243). Still short: no revision history or restore of pages, headers, footers, product layouts or settings; no staging copy of a store merged back; no shareable preview address of an unpublished page for someone without a sign-in (the theme preview of an installed theme is for the store's staff only).",
     "bucket": "A",
     "wave": 9,
     "criteria": [
@@ -545,7 +545,10 @@
       "D60",
       "D126",
       "D129",
-      "D148"
+      "D148",
+      "D241",
+      "D243",
+      "D245"
     ],
     "history": []
   },
@@ -566,7 +569,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use; stores choose a theme template and save themes (D60). No whole-store theme package (design, header, footer, product layout and starter pages in one), no submissions or review queue for designers outside Kaizen, no ratings, no paid templates; the supply of third-party designers is a business matter code does not create.",
+    "gap": "Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use. Since D241 to D287 whole themes exist: design, header, footer, product layout, presets and their own demo content, each publish a version with notes, updates applied by the five-minute job to installs that follow them (D245: on by default, switchable per install, What's new and undo), free or paid (D286), listed in the theme store. Still short: (1) themes are made only by Kaizena Flow's platform admins (a demo store's look can become a theme only through them, D277); an owner or an outside designer cannot submit one; (2) no review queue with approve, reject with a reason or hide for submissions from outside; (3) a theme shows no author, and the stores using it are counted for the platform admin only; (4) an update is applied by itself to an install that follows updates, which is the default, where criterion 3 asks that it only be offered. The supply of outside designers is a business matter code does not create.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -576,20 +579,25 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/templates.ts",
-        "src/server/templates.ts",
-        "src/lib/page-layout.ts",
         "src/lib/page-layout-apply.ts",
+        "src/lib/page-layout.ts",
         "src/lib/template-content.ts",
+        "src/lib/templates.ts",
         "src/lib/theme.ts",
+        "src/server/design-presets.ts",
+        "src/server/templates.ts",
+        "src/server/theme-installs.ts",
+        "src/server/theme-store.ts",
         "src/server/themes.ts"
       ],
       "tests": [
-        "src/server/templates.int.test.ts",
-        "src/server/themes.int.test.ts",
+        "e2e/themes.spec.ts",
         "src/lib/page-layout-apply.test.ts",
         "src/lib/template-content.test.ts",
-        "e2e/themes.spec.ts"
+        "src/server/design-presets.int.test.ts",
+        "src/server/templates.int.test.ts",
+        "src/server/theme-store.int.test.ts",
+        "src/server/themes.int.test.ts"
       ],
       "untested": false
     },
@@ -597,7 +605,12 @@
       "D46",
       "D60",
       "D125",
-      "D127"
+      "D127",
+      "D241",
+      "D245",
+      "D247",
+      "D277",
+      "D286"
     ],
     "history": []
   },
