@@ -611,7 +611,7 @@ const CSS = `
 :root, :scope[data-site-css] { --kinetic-line: color-mix(in srgb, var(--foreground) 14%, transparent); --kinetic-cut: 44px; }
 @keyframes kinetic-run { to { transform: translateX(-50%); } }
 
-h1, h2, h3 { font-style: italic; text-wrap: balance; }
+h1, h2, h3 { font-style: italic; text-wrap: balance; overflow-wrap: break-word; hyphens: auto; }
 h1 em, h2 em { color: var(--accent); font-style: italic; }
 .kinetic-display em { color: var(--accent); }
 .kinetic-eyebrow.kinetic-eyebrow .rich-text p { color: var(--accent); margin: 0 0 1rem; }
