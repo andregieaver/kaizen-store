@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 import { factsOfCharge, type ChargeFacts, type ChargeLike } from "@/lib/payment-facts";
+import { feeOfBalance, type BalanceLike } from "@/lib/payouts";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { uuidList } from "./sql-arrays";
@@ -28,20 +29,23 @@ type Target = { id: string; storeId: string; reference: string; account: string;
 
 const idOf = (value: string | { id: string } | null | undefined): string | null => (typeof value === "string" ? value : (value?.id ?? null));
 
-/** The latest charge of a PaymentIntent, expanded or fetched. */
-async function chargeOfIntent(stripe: Stripe, intent: string | Stripe.PaymentIntent | null | undefined, options: Stripe.RequestOptions): Promise<ChargeLike | null> {
+/** A charge with its balance transaction (expanded where Stripe has one), whose fee is what Stripe took (D290). */
+type ChargeWithBalance = ChargeLike & { balance_transaction?: BalanceLike | string | null };
+
+/** The latest charge of a PaymentIntent, expanded or fetched, with its balance transaction. */
+async function chargeOfIntent(stripe: Stripe, intent: string | Stripe.PaymentIntent | null | undefined, options: Stripe.RequestOptions): Promise<ChargeWithBalance | null> {
   if (!intent) return null;
-  const pi = typeof intent === "string" ? await stripe.paymentIntents.retrieve(intent, { expand: ["latest_charge"] }, options) : intent;
+  const pi = typeof intent === "string" ? await stripe.paymentIntents.retrieve(intent, { expand: ["latest_charge.balance_transaction"] }, options) : intent;
   const charge = pi.latest_charge;
   if (!charge) return null;
-  return typeof charge === "string" ? ((await stripe.charges.retrieve(charge, {}, options)) as ChargeLike) : (charge as ChargeLike);
+  return typeof charge === "string" ? ((await stripe.charges.retrieve(charge, { expand: ["balance_transaction"] }, options)) as ChargeWithBalance) : (charge as ChargeWithBalance);
 }
 
 /** The charge behind a payment's reference: a Checkout session (`cs_`), a PaymentIntent (`pi_`) or a subscription invoice (`in_`). */
-async function chargeOf(stripe: Stripe, reference: string, options: Stripe.RequestOptions): Promise<ChargeLike | null> {
+async function chargeOf(stripe: Stripe, reference: string, options: Stripe.RequestOptions): Promise<ChargeWithBalance | null> {
   if (reference.startsWith("pi_")) return chargeOfIntent(stripe, reference, options);
   if (reference.startsWith("cs_")) {
-    const session = await stripe.checkout.sessions.retrieve(reference, { expand: ["payment_intent.latest_charge"] }, options);
+    const session = await stripe.checkout.sessions.retrieve(reference, { expand: ["payment_intent.latest_charge.balance_transaction"] }, options);
     if (session.payment_intent) return chargeOfIntent(stripe, session.payment_intent, options);
     const invoice = idOf(session.invoice as string | { id: string } | null);
     return invoice ? chargeOf(stripe, invoice, options) : null;
@@ -54,13 +58,23 @@ async function chargeOf(stripe: Stripe, reference: string, options: Stripe.Reque
   return null;
 }
 
-async function write(target: Target, facts: ChargeFacts | null) {
+async function write(target: Target, facts: ChargeFacts | null, fee: ReturnType<typeof feeOfBalance>) {
   await db().execute(sql`
     update commerce.payments set
       method_type = ${facts?.methodType ?? null}, wallet = ${facts?.wallet ?? null}, card_brand = ${facts?.cardBrand ?? null},
       risk_level = ${facts?.riskLevel ?? null}, risk_score = ${facts?.riskScore ?? null}, charge_reference = ${facts?.chargeReference ?? null},
       facts_read_at = now(), updated_at = now()
     where store_id = ${target.storeId}::uuid and id = ${target.id}::uuid and provider = 'stripe' and facts_read_at is null
+  `);
+  // What Stripe took (D290), once: a payout that settles the payment may have read it first.
+  if (fee) await writeFee(target.storeId, target.id, fee);
+}
+
+/** Keeps a Stripe payment's fee as its balance transaction gave it, once (the database refuses a change). */
+export async function writeFee(storeId: string, paymentId: string, fee: NonNullable<ReturnType<typeof feeOfBalance>>) {
+  await db().execute(sql`
+    update commerce.payments set provider_fee_minor = ${fee.providerFeeMinor}, application_fee_minor = ${fee.applicationFeeMinor}, fee_currency = ${fee.currency}, updated_at = now()
+    where store_id = ${storeId}::uuid and id = ${paymentId}::uuid and provider = 'stripe' and provider_fee_minor is null
   `);
 }
 
@@ -70,7 +84,7 @@ async function readOne(target: Target, deps: FactsDeps): Promise<"read" | "faile
   if (!stripe) return "failed";
   try {
     const charge = await chargeOf(stripe, target.reference, { stripeAccount: target.account });
-    await write(target, charge ? factsOfCharge(charge) : null);
+    await write(target, charge ? factsOfCharge(charge) : null, charge ? feeOfBalance(charge.balance_transaction) : null);
     return "read";
   } catch {
     return "failed";

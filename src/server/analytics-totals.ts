@@ -204,11 +204,13 @@ type Bundle = {
   disputes: Row[];
   platform: Row[];
   fees: Row[];
+  /** Stripe's real fees (D290), per fee currency, with how many orders they are for. */
+  realFees: Row[];
   customers: Row[];
   spend: number;
 };
 
-const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], platform: [], fees: [], customers: [], spend: 0 });
+const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], platform: [], fees: [], realFees: [], customers: [], spend: 0 });
 
 /** The currencies the store can convert into its main currency, as a Postgres text array literal. */
 function convertibleCurrencies(store: Store): string {
@@ -309,7 +311,11 @@ async function loadBundles(
     with po0 as materialized (
       select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.source, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
         coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
-        (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk
+        (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk,
+        -- Stripe's real fee is known for the order (D290): it has a captured Stripe payment and every one has its fee, in a currency the store converts.
+        (exists (select 1 from commerce.payments fp where fp.store_id = o.store_id and fp.order_id = o.id and fp.provider = 'stripe' and fp.status = 'captured')
+          and not exists (select 1 from commerce.payments fp where fp.store_id = o.store_id and fp.order_id = o.id and fp.provider = 'stripe' and fp.status = 'captured'
+            and (fp.provider_fee_minor is null or not (fp.fee_currency = any(${known}))))) as fee_known
       from commerce.orders o
       where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
     ),
@@ -386,9 +392,16 @@ async function loadBundles(
     select 'orders' as kind, to_jsonb(t) as r from orders_agg t
     union all select 'platform', to_jsonb(t) from platform t
     union all select 'left_out', to_jsonb(t) from left_out t
+    -- What Stripe took (D290), for the orders whose every Stripe payment has its fee: Stripe's own fee only (the application fee is the platform fee above).
+    union all select 'real_fees', to_jsonb(t) from (
+      select po0.bk, fp.fee_currency::text as currency, sum(fp.provider_fee_minor) as fee, count(distinct po0.id) as n
+      from po0 join commerce.payments fp on fp.order_id = po0.id
+      where po0.ok and po0.fee_known and fp.store_id = ${id}::uuid and fp.provider = 'stripe' and fp.status = 'captured'
+      group by po0.bk, fp.fee_currency
+    ) t
     ${
       feesOn
-        ? sql`union all select 'fees', to_jsonb(t) from (select bk, currency::text as currency, total_minor, count(*) as n from po0 where ok group by bk, currency, total_minor) t`
+        ? sql`union all select 'fees', to_jsonb(t) from (select bk, currency::text as currency, total_minor, count(*) as n from po0 where ok and not fee_known group by bk, currency, total_minor) t`
         : sql``
     }
     union all select 'customers', to_jsonb(t) from (
@@ -444,6 +457,7 @@ async function loadBundles(
     orders: (r) => at(String(r.bk)).orders.push(r),
     platform: (r) => at(String(r.bk)).platform.push(r),
     fees: (r) => at(String(r.bk)).fees.push(r),
+    real_fees: (r) => at(String(r.bk)).realFees.push(r),
     left_out: (r) => excluded.set(String(r.currency).trim(), (excluded.get(String(r.currency).trim()) ?? 0) + num(r, "n")),
   };
   // Customers: the keys active in each bucket, and of them those whose first paid order falls on or after the bucket's first day.
@@ -491,6 +505,10 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     const total = toMainOne(store, String(r.currency), num(r, "total_minor"));
     if (total !== null) paymentFeesMinor += paymentFees([total], settings) * num(r, "n");
   }
+  // Stripe's real fees (D290) for the orders that have them; the estimate above is only for the rest.
+  const realFees = inMain(store, bundle.realFees.map((r) => ({ ...r, currency: String(r.currency) })), ["fee"]).values;
+  paymentFeesMinor += realFees.fee;
+  const realFeeOrders = bundle.realFees.reduce((s, r) => s + num(r, "n"), 0);
 
   const sum = (rows: Row[], key: string) => rows.reduce((s, r) => s + num(r, key), 0);
   const active = sum(bundle.customers, "active");
@@ -517,6 +535,7 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     returningCustomers: active - fresh,
     units: sum(bundle.orders, "units"),
     ...(disputes.amount !== 0 ? { lostDisputesMinor: disputes.amount } : {}),
+    ...(realFeeOrders > 0 ? { realFeeOrders } : {}),
   };
 }
 

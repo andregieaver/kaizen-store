@@ -561,6 +561,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["profit", "margin", "cogs", "fees", "vat", "net sales", "contribution"],
     feature: "shop",
   }),
+  store("analytics.payouts", "/analytics/payouts", "Payouts", "Analytics", "Each Stripe payout to the bank with its date, amount and Stripe's fees, the payments, refunds and disputes it settles with their orders, a flag where it does not add up or holds money not tied to an order, and a CSV.", {
+    keywords: ["payout", "bank", "transfer", "settlement", "reconciliation", "stripe fees", "balance"],
+    feature: "shop",
+  }),
+  store("analytics.payout", "/analytics/payouts/[payout]", "A payout", "Analytics", "One Stripe payout: each payment, refund, dispute and fee in it with the order it is for, and whether it adds up.", { feature: "shop" }),
   store("analytics.tax", "/analytics/tax", "VAT, OSS and IOSS reports", "Analytics", "VAT by delivery country, rate and basis made from your invoices and credit notes, the quarterly OSS and monthly IOSS return data in euro at the ECB rate, how they reconcile with Finance and your orders, and CSV files for your accountant. Your own figures, never a tax return.", {
     keywords: ["vat", "moms", "mva", "oss", "ioss", "one stop shop", "return", "rate", "country", "accountant", "reconciliation", "tax report", "ecb", "euro"],
     feature: "shop",

@@ -63,8 +63,13 @@ export type Totals = {
   knownCostRevenueMinor: number;
   /** Σ (total − tax) over the order lines: what `knownCostRevenueMinor` is a share of (revenue less shipping income, give or take rounding). */
   lineRevenueMinor: number;
-  /** Estimated payment fees (see `paymentFees()`). */
+  /**
+   * Payment fees: Stripe's real fee for the orders whose every Stripe payment has one (D290, `realFeeOrders` of them), and the estimate
+   * (`paymentFees()`) for the rest.
+   */
   paymentFeesMinor: number;
+  /** Of the paid orders, those whose payment fee is Stripe's real fee rather than the estimate (D290). Absent means none. */
+  realFeeOrders?: number;
   /** What Kaizen took on the period's captured payments. */
   platformFeesMinor: number;
   /** Estimated shipping costs (orders with a physical line × `shippingCostMinor`). */

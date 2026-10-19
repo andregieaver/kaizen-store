@@ -17,6 +17,8 @@ import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { applyIntentCanceled, authorizeFromSession } from "./payment-capture";
 import { applyStripeDispute, isDisputeEvent } from "./payment-disputes";
+import { applyPayout } from "./payouts";
+import { isPayoutEvent } from "@/lib/payouts";
 import { readPaymentFacts } from "./payment-facts";
 import { applyStripeRefund, isRefundEvent, paymentOfIntent, stripeForAccount } from "./stripe-refunds";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
@@ -56,7 +58,9 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
     // Disputes (D288).
     isDisputeEvent(event.type) ||
     // A held card's hold ended (D289): its order is cancelled and its stock released.
-    event.type === "payment_intent.canceled";
+    event.type === "payment_intent.canceled" ||
+    // The store's payouts (D290).
+    isPayoutEvent(event.type);
   if (!handled) return;
   if (!(await recordEvent(storeId, event))) return;
   try {
@@ -72,6 +76,8 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
     } else if (event.type === "payment_intent.canceled") {
       const stripe = await stripeForAccount(storeId, event.account);
       await applyIntentCanceled(storeId, event.data.object as Stripe.PaymentIntent, (intent) => paymentOfIntent(storeId, intent, { stripe, account: event.account ?? null }));
+    } else if (isPayoutEvent(event.type)) {
+      await applyPayout(storeId, event.data.object as Stripe.Payout, event.account);
     } else if (isDisputeEvent(event.type)) {
       await applyStripeDispute(storeId, event.data.object as Stripe.Dispute, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
     } else {

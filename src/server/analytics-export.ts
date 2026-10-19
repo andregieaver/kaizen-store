@@ -3,6 +3,7 @@ import "server-only";
 import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFileRows, type AnalyticsTable, type ExportPeriod, type TableData } from "@/lib/analytics-export";
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
+import { payoutsReport } from "./payouts-report";
 import { paymentMethodsReport } from "./analytics-payments-data";
 import { bandHours } from "@/lib/analytics-heatmap";
 import { addDays, bucketFor, todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
@@ -158,6 +159,26 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
       // A line the comparison lacks was 0 (rounding), as the page reads it; with no sales then, nothing to compare with.
       previous: comparable && x.against ? { period: span(x.against), rows: lines.map((l) => ({ amount: lineOf(comparable.statement, l.key)?.amountMinor ?? (l.key === "rounding" ? 0 : null) })) } : null,
       leftOut: left(current),
+    };
+  },
+  "payouts.list": async (x) => {
+    const r = await payoutsReport(x.ctx.store, x.period);
+    return {
+      rows: r.payouts.map((p) => ({
+        payout: p.reference,
+        arrival: p.arrivalOn,
+        status: p.status,
+        amount: p.amountMinor,
+        fees: p.reconciliation.state === "not_read" || p.reconciliation.state === "manual" ? null : p.reconciliation.feesMinor,
+        payments: p.payments,
+        refunds: p.refunds,
+        state: p.reconciliation.state,
+        difference: p.reconciliation.state === "difference" ? p.reconciliation.differenceMinor : null,
+        untied: p.reconciliation.untiedCount > 0 ? p.reconciliation.untiedMinor : null,
+        mode: p.testMode ? "test" : "live",
+        currency: p.currency,
+      })),
+      leftOut: { orders: r.unconverted, currencies: r.missingCurrencies },
     };
   },
   "finance.payment_methods": async (x) => {

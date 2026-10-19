@@ -117,6 +117,24 @@ Each Stripe charge's real fee (`balance_transaction.fee`, Stripe's and Kaizena F
 finance analytics use real fees where every payment of the period has one and say *estimated* otherwise (`costCoverageOf()` style: how much of the
 period's money has real fees). Amounts in the payout's currency; the page converts to the main currency only for totals, with the euro scenario.
 
+**As built (D290).** Payouts are read for the store's own Stripe account only (`commerce.stripe_accounts`, never a host's), by the
+connected-account webhook (`PAYOUT_EVENTS` in `WEBHOOK_EVENTS`, so older endpoints gain them) and a daily read per store (`payout_reads`,
+`runPayoutJobs()` in the five-minute dispatcher: payouts created in the last 30 days, then up to five paid ones whose lines are unread). A
+paid payout's lines are its balance transactions (`balanceTransactions.list({ payout })`, at most `PAYOUT_LINES_MAX`; more makes it
+*incomplete*), each tied once to its payment (`charge_reference`, else the PaymentIntent's session), refund or dispute and so to its order; a
+line's fee is Stripe's `fee_details` split into Stripe's own fee and Kaizena Flow's application fee (`feeParts()`), and a charge's line writes
+its payment's `provider_fee_minor`, `application_fee_minor` and `fee_currency` once (also from the charge's balance transaction when the
+payment's facts are read, `writeFee()`). A manual payout lists no lines (Stripe does not say) and says so. Whether a payout adds up is
+`reconcilePayout()` only: its lines' net against its amount (*Adds up*, *Does not add up by …*), or *Money not tied to an order* for charges,
+refunds and disputes with no order; never a guess. The tables are append-only (no delete, identity fixed, ties set once, a line's currency
+the payout's). Finance's payment fees are Stripe's real fee (without Kaizena Flow's, which is the platform fee) for each order whose every
+captured Stripe payment has one in a currency the store converts, and the estimate from Analytics settings for the rest, labelled *estimated*
+with how many are real (`Totals.realFeeOrders`); *Payments by method* does the same per payment. The page is Analytics → Payouts
+(`/analytics/payouts`, by arrival day in the store's time zone, each payout in its own currency, totals of paid live payouts converted with a
+currency without a rate left out and counted), one payout at `/analytics/payouts/{id}`, and the CSV `payouts.list` (per-row currency,
+`rowCurrency`). Tested: `src/lib/payouts.test.ts`, `src/db/payouts.test.ts`, `src/server/payouts.int.test.ts` (a euro payout included),
+`payouts-view.test.ts`, `analytics-finance.test.ts`.
+
 ## 6. Unit D (D291): methods per country
 
 `PAYMENT_CAPABILITIES` gains `ideal_payments`, `bancontact_payments`, `blik_payments`, `eps_payments`, `p24_payments` and `sepa_debit_payments`; Kaizena

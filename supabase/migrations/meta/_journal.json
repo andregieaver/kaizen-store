@@ -2626,6 +2626,20 @@
       "when": 1792435550447,
       "tag": "20261019184550_capture_later_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 375,
+      "version": "7",
+      "when": 1792438705589,
+      "tag": "20261019193825_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 376,
+      "version": "7",
+      "when": 1792438978541,
+      "tag": "20261019194258_payouts_rules",
+      "breakpoints": true
     }
   ]
 }

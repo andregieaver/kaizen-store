@@ -40,7 +40,7 @@ export type TableColumn = {
   previous?: boolean;
 };
 
-export const ANALYTICS_PAGES = ["overview", "finance", "customers", "products", "inventory", "marketing", "subscriptions", "traffic", "settings", "tax"] as const;
+export const ANALYTICS_PAGES = ["overview", "finance", "customers", "products", "inventory", "marketing", "subscriptions", "traffic", "settings", "tax", "payouts"] as const;
 export type AnalyticsPage = (typeof ANALYTICS_PAGES)[number];
 
 /** What drew it: a table, a bar chart, a line chart's series, a heat map, a funnel or a cohort table (all have a data table behind them). */
@@ -57,6 +57,8 @@ export type AnalyticsTable = {
   columns: TableColumn[];
   /** Amounts are in it: the file has a `currency` column. */
   money: boolean;
+  /** Each row is in its own currency (its `currency` value, a payout's, D290), not the main one: amounts and the currency column follow the row. */
+  rowCurrency?: boolean;
 };
 
 const text = (key: string, header = key): TableColumn => ({ key, header, kind: "text" });
@@ -92,6 +94,17 @@ const REGISTRY: AnalyticsTable[] = [
   bars("finance.where_it_went", "finance", "finance-view.tsx", "Where net revenue went"),
   series("finance.revenue_profit", "finance", "finance-view.tsx", "Net revenue and contribution profit", [amount("net", "net_revenue", true), amount("profit", "contribution_profit")], true),
   /** D288: with VAT, as the money moved (the one table of the page that is; its headers say so). */
+  // Payouts (D290): each payout in its own currency, as Stripe paid it.
+  {
+    id: "payouts.list",
+    page: "payouts",
+    view: "payouts-view.tsx",
+    shape: "table",
+    caption: "Payouts with what each settles and whether it adds up",
+    columns: [text("payout"), date("arrival", "arrives_on"), text("status"), amount("amount"), amount("fees", "stripe_fees"), int("payments"), int("refunds"), text("state", "reconciliation"), amount("difference"), amount("untied", "not_tied_to_an_order"), text("mode")],
+    money: true,
+    rowCurrency: true,
+  },
   table("finance.payment_methods", "finance", "payments-view.tsx", "Payments by method", [text("method"), int("payments"), amount("received", "received_with_vat"), pct("share", "share_of_received"), amount("refunded", "refunded_with_vat"), amount("fees", "fees_estimated")], true),
 
   // Customers
@@ -159,6 +172,7 @@ export const ANALYTICS_TABLE_IDS: readonly string[] = REGISTRY.map((t) => t.id);
  * The VAT, OSS and IOSS tables keep the four files of D161 (`/admin/{store}/analytics/tax/export`, with their own log and drift check).
  */
 export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
+  "payout-lines": "One payout's lines are on its own page, for one payout, not a period; the period's payouts are in the payouts file and every line is in Stripe's payout report (D290).",
   "tax.vat": "VAT report: it has its own CSV, its log and its drift check (D161).",
   "tax.vat_chart": "The data behind the VAT chart is in the VAT file (D161).",
   "tax.reconciliation": "The reconciliation has its own CSV with a direction column (D161).",
@@ -248,12 +262,13 @@ export function tableRows(t: AnalyticsTable, data: TableData): Cell[][] {
   const comparing = !!data.previous;
   const prevCols = t.columns.filter((c) => c.previous);
   return data.rows.map((row, i) => {
-    const out: Cell[] = t.columns.map((c) => cellOf(c.kind, row[c.key], data.currency));
+    const currency = t.rowCurrency && typeof row.currency === "string" ? row.currency : data.currency;
+    const out: Cell[] = t.columns.map((c) => cellOf(c.kind, row[c.key], currency));
     if (comparing) {
       const before = data.previous?.rows[i];
-      for (const c of prevCols) out.push(before ? cellOf(c.kind, before[c.key], data.currency) : null);
+      for (const c of prevCols) out.push(before ? cellOf(c.kind, before[c.key], currency) : null);
     }
-    if (t.money) out.push(data.currency);
+    if (t.money) out.push(currency);
     out.push(data.period.from, lastDayOf(data.period.to));
     if (comparing && data.previous) out.push(data.previous.period.from, lastDayOf(data.previous.period.to));
     return out;

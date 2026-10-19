@@ -53,6 +53,7 @@ import {
 import { EXCHANGE_CHANNELS, EXCHANGE_SHIPPING_KINDS, EXCHANGE_STATUSES, LABEL_SOURCES, REFUND_KINDS } from "../lib/exchange-status";
 import { DISPUTE_STATUSES, RISK_LEVELS } from "../lib/payment-facts";
 import { CAPTURE_MODES, CAPTURE_SETTINGS } from "../lib/capture";
+import { PAYOUT_LINE_KINDS, PAYOUT_STATUSES } from "../lib/payouts";
 import { CARRIER_IDS } from "../lib/shipping-carriers";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
@@ -4139,6 +4140,14 @@ export const payments = commerce.table(
     riskScore: smallint("risk_score"),
     chargeReference: text("charge_reference"),
     factsReadAt: timestamp("facts_read_at", { withTimezone: true }),
+    /**
+     * What Stripe took for the payment (wave 4 unit C, D290), from its charge's balance transaction (`fee_details`): Stripe's own fee (with any tax on it)
+     * and the application fee (Kaizena Flow's) told apart, in the balance transaction's currency (the account's settlement currency, which may not be the
+     * payment's). Null until read: from the charge with the payment's facts, or from the payout that settles it.
+     */
+    providerFeeMinor: bigint("provider_fee_minor", { mode: "number" }),
+    applicationFeeMinor: bigint("application_fee_minor", { mode: "number" }),
+    feeCurrency: char("fee_currency", { length: 3 }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -4183,6 +4192,11 @@ export const payments = commerce.table(
     check(
       "payments_facts_stripe",
       sql`${t.provider} = 'stripe' or (${t.methodType} is null and ${t.wallet} is null and ${t.cardBrand} is null and ${t.riskLevel} is null and ${t.chargeReference} is null)`,
+    ),
+    check(
+      "payments_provider_fee",
+      sql`(${t.providerFeeMinor} is null) = (${t.feeCurrency} is null) and (${t.applicationFeeMinor} is null or ${t.providerFeeMinor} is not null)
+        and (${t.providerFeeMinor} is null or (${t.provider} = 'stripe' and ${t.providerFeeMinor} >= 0 and coalesce(${t.applicationFeeMinor}, 0) >= 0))`,
     ),
     index("payments_charge_idx")
       .on(t.storeId, t.chargeReference)
@@ -4320,6 +4334,114 @@ export const paymentDisputes = commerce.table(
     check("payment_disputes_reason", sql`${t.reason} is null or char_length(${t.reason}) <= 80`),
   ],
 );
+
+/**
+ * A store's payout from its Stripe account to its bank (wave 4 unit C, D290, `src/server/payouts.ts`): as Stripe reported it, from `payout.*` on the
+ * connected-account webhook and the daily read back 30 days. One row per provider reference; written only by `applyPayout()`. Amounts in the payout's
+ * own currency. A payout made in Stripe's test mode says so.
+ */
+export const payouts = commerce.table(
+  "payouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    provider: text("provider").notNull(),
+    /** The provider's id (`po_…`). */
+    providerReference: text("provider_reference").notNull(),
+    /** The connected account it was paid from. */
+    providerAccount: text("provider_account").notNull(),
+    testMode: boolean("test_mode").notNull().default(false),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    status: text("status").notNull(),
+    /** Stripe's own payouts (`automatic`) list what they settle; a manual payout does not. */
+    automatic: boolean("automatic").notNull(),
+    /** The day Stripe said it reaches the bank. */
+    arrivalOn: date("arrival_on", { mode: "string" }),
+    providerCreatedAt: timestamp("provider_created_at", { withTimezone: true }).notNull(),
+    failureCode: text("failure_code"),
+    failureMessage: text("failure_message"),
+    /** When its balance transactions were read, and whether all of them were (`PAYOUT_LINES_MAX`). */
+    linesReadAt: timestamp("lines_read_at", { withTimezone: true }),
+    linesComplete: boolean("lines_complete").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique("payouts_store_id_key").on(t.storeId, t.id),
+    unique("payouts_reference_key").on(t.storeId, t.provider, t.providerReference),
+    index("payouts_arrival_idx").on(t.storeId, t.arrivalOn),
+    index("payouts_lines_due_idx")
+      .on(t.providerCreatedAt)
+      .where(sql`${t.linesReadAt} is null and ${t.status} = 'paid' and ${t.automatic}`),
+    check("payouts_provider", sql`${t.provider} in ('stripe')`),
+    check("payouts_status", sql`${t.status} in (${sqlList(PAYOUT_STATUSES)})`),
+    check("payouts_failure", sql`(${t.failureCode} is null or char_length(${t.failureCode}) <= 80) and (${t.failureMessage} is null or char_length(${t.failureMessage}) <= 300)`),
+  ],
+);
+
+/**
+ * What a payout settles (wave 4 unit C, D290): each balance transaction Stripe lists for it, with Stripe's gross, fee and net in the payout's currency,
+ * and, where Kaizena Flow knows it, the payment, refund or dispute and the order it is for. Written only with its payout's read (`readPayoutLines()`), each
+ * once by its provider reference; nothing of the person.
+ */
+export const payoutLines = commerce.table(
+  "payout_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    payoutId: uuid("payout_id").notNull(),
+    /** The balance transaction's id (`txn_…`). */
+    providerReference: text("provider_reference").notNull(),
+    kind: text("kind").notNull(),
+    /** Stripe's balance transaction type, as given. */
+    providerType: text("provider_type").notNull(),
+    /** The source's id (`ch_…`, `re_…`, `dp_…`, `py_…`). */
+    sourceReference: text("source_reference"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    feeMinor: bigint("fee_minor", { mode: "number" }).notNull().default(0),
+    netMinor: bigint("net_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    paymentId: uuid("payment_id"),
+    refundId: uuid("refund_id"),
+    disputeId: uuid("dispute_id"),
+    orderId: uuid("order_id"),
+    providerCreatedAt: timestamp("provider_created_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique("payout_lines_reference_key").on(t.storeId, t.payoutId, t.providerReference),
+    foreignKey({ name: "payout_lines_payout_fk", columns: [t.storeId, t.payoutId], foreignColumns: [payouts.storeId, payouts.id] }),
+    foreignKey({ name: "payout_lines_payment_fk", columns: [t.storeId, t.paymentId], foreignColumns: [payments.storeId, payments.id] }),
+    foreignKey({ name: "payout_lines_refund_fk", columns: [t.storeId, t.refundId], foreignColumns: [refunds.storeId, refunds.id] }),
+    foreignKey({ name: "payout_lines_dispute_fk", columns: [t.storeId, t.disputeId], foreignColumns: [paymentDisputes.storeId, paymentDisputes.id] }),
+    orderRef("payout_lines_order_fk", t),
+    index("payout_lines_payout_idx").on(t.storeId, t.payoutId),
+    index("payout_lines_payment_idx")
+      .on(t.storeId, t.paymentId)
+      .where(sql`${t.paymentId} is not null`),
+    index("payout_lines_refund_idx")
+      .on(t.storeId, t.refundId)
+      .where(sql`${t.refundId} is not null`),
+    index("payout_lines_dispute_idx")
+      .on(t.storeId, t.disputeId)
+      .where(sql`${t.disputeId} is not null`),
+    index("payout_lines_order_idx")
+      .on(t.storeId, t.orderId)
+      .where(sql`${t.orderId} is not null`),
+    check("payout_lines_kind", sql`${t.kind} in (${sqlList(PAYOUT_LINE_KINDS)})`),
+    check("payout_lines_net", sql`${t.netMinor} = ${t.amountMinor} - ${t.feeMinor}`),
+  ],
+);
+
+/** When a store's payouts were last read back (wave 4 unit C, D290): the daily read takes the stores read longest ago, a few a run. */
+export const payoutReads = commerce.table("payout_reads", {
+  storeId: uuid("store_id")
+    .primaryKey()
+    .references(() => stores.id),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull(),
+  problem: text("problem"),
+});
 
 /**
  * A parcel sent for an order (D27): the carrier and tracking number shoppers

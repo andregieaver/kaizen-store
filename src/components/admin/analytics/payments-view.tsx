@@ -18,7 +18,7 @@ export function PaymentsView({ currency, locale, report: r }: { currency: string
     { key: "received", label: "Received (with VAT)", align: "right", cell: (l) => money(l.receivedMinor) },
     { key: "share", label: "Share", align: "right", cell: (l) => (l.share === null ? NO_FIGURE : formatPercent(l.share)) },
     { key: "refunded", label: "Refunded (with VAT)", align: "right", cell: (l) => money(l.refundedMinor) },
-    { key: "fees", label: "Fees (estimated)", align: "right", cell: (l) => (l.feesMinor === null ? "None" : money(l.feesMinor)) },
+    { key: "fees", label: r.estimatedFeePayments > 0 ? "Fees (estimated)" : "Fees", align: "right", cell: (l) => (l.feesMinor === null ? "None" : money(l.feesMinor)) },
   ];
   return (
     <AnalyticsSection
@@ -49,7 +49,13 @@ export function PaymentsView({ currency, locale, report: r }: { currency: string
         />
       )}
       <div className="space-y-2">
-        <Note>Fees are estimated from the fee in Analytics settings for payments through Stripe; payments recorded by staff, a return&apos;s credit and payments at the venue have none.</Note>
+        <Note>
+          {r.realFeePayments > 0 && r.estimatedFeePayments === 0
+            ? "Fees are what Stripe took, as Stripe reported it. Payments recorded by staff, a return's credit and payments at the venue have none."
+            : r.realFeePayments > 0
+              ? `Fees are what Stripe took for ${formatCount(r.realFeePayments)} of ${formatCount(r.realFeePayments + r.estimatedFeePayments)} payments through Stripe and estimated from the fee in Analytics settings for the rest. Payments recorded by staff, a return's credit and payments at the venue have none.`
+              : "Fees are estimated from the fee in Analytics settings for payments through Stripe; payments recorded by staff, a return's credit and payments at the venue have none."}
+        </Note>
         {r.unknown > 0 && (
           <Note>{`${formatCount(r.unknown)} ${r.unknown === 1 ? "payment's method is" : "payments' methods are"} not known yet: Kaizena Flow reads it from Stripe shortly after the payment.`}</Note>
         )}

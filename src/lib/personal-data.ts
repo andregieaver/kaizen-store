@@ -87,6 +87,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "gift_to", "gift_from", "gift_message", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode", "delivery_note", "held_reason"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once. The note for the driver of a local delivery (D237) is the buyer's own words: exported, and cleared when the order is anonymised. A hold's reason (D238) typed by a person is staff's own text (it can hold a name): exported with the order and replaced by a marker when it is anonymised; a rule's reason is the owner's words about the rule.", { also: ["addresses", "consents"], until: "bookkeeping" }),
   entry("order_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", KEEP_ORDER),
   entry("payments", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A payment's amount and status; no personal field (the card is held by Stripe, not by the store). " + KEEP_ORDER),
+  entry("payout_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "What a Stripe payout settled (D290): amounts, Stripe's type and ids, tied to the payment, refund or dispute and its order; no personal field. " + KEEP_ORDER),
   entry("payment_disputes", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A dispute on a payment as Stripe reported it (D288): amount, Stripe's reason code, status and dates; no personal field. " + KEEP_ORDER),
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url", "undo_reason"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it. The reason staff gave for undoing a parcel (D174 follow-up) is their own text (it can hold a name): exported with the parcel and replaced by a marker when the order is anonymised."),
@@ -223,6 +224,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  payouts: "A store's payouts from its Stripe account to its bank (D290): amounts, dates, status and Stripe's ids; the store's money, no person's.",
+  payout_reads: "When a store's payouts were last read back from Stripe (D290).",
   notification_settings: "A store's switches for its customer emails (D238).",
   email_templates: "The owner's own wording of the store's customer emails (D238): a subject, a heading and a text with placeholders, filled per email; no person's data.",
   staff_alert_settings: "A store's staff summary choice and which alerts its contact address gets (D238).",

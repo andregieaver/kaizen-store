@@ -2,6 +2,7 @@ import "server-only";
 
 import Stripe from "stripe";
 
+import { PAYOUT_EVENTS } from "@/lib/payouts";
 import { PAYMENT_MODES, platformKey, type PaymentModeName } from "@/lib/stripe-account";
 
 const OPTIONS: Stripe.StripeConfig = {
@@ -74,6 +75,8 @@ export const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] =
   "charge.dispute.funds_reinstated",
   // A held card's hold ended or was let go in Stripe's Dashboard (D289).
   "payment_intent.canceled",
+  // The store's payouts to its bank (D290): what each settles is read once it is paid.
+  ...PAYOUT_EVENTS,
 ];
 
 /** Account (v2) events: a store's Stripe account needs something, or changed. */

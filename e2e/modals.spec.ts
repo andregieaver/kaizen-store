@@ -265,7 +265,8 @@ test("a modal shown once per visit is not opened again by itself, but a link sti
   );
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  expect(await page.evaluate(() => sessionStorage.getItem("kaizen_modal_sesjon"))).toBe("1");
+  // The dialog's close event, which keeps it, comes a moment after the dialog is hidden.
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("kaizen_modal_sesjon"))).toBe("1");
 
   await page.reload();
   await page.waitForTimeout(2500);

@@ -21,8 +21,11 @@ export type PaymentGroupRow = {
   refundedMinor: number;
   /** The percentage part of the estimated fee, in the currency (Stripe payments only; 0 for others). */
   feeShareMinor: number;
-  /** Stripe payments in the group (each carries the fixed part of the fee). */
+  /** Stripe payments in the group whose fee is estimated (each carries the fixed part of the fee). */
   feePayments: number;
+  /** What Stripe took for the group's payments whose fee was read (D290), in the currency, and how many they are. */
+  realFeeMinor?: number;
+  realFeePayments?: number;
 };
 
 export type PaymentMethodLine = {
@@ -31,7 +34,7 @@ export type PaymentMethodLine = {
   payments: number;
   receivedMinor: number;
   refundedMinor: number;
-  /** Estimated from Analytics settings for Stripe payments; null for a method with no provider fee (staff-recorded, exchange credit, venue). */
+  /** Stripe's fee as Stripe reported it where read (D290), else estimated from Analytics settings; null for a method with no provider fee (staff-recorded, exchange credit, venue). */
   feesMinor: number | null;
   /** Of the money received. */
   share: number | null;
@@ -45,25 +48,31 @@ export type PaymentsByMethod = {
   missingCurrencies: string[];
   /** Stripe payments whose method is not known (their charge was not read). */
   unknown: number;
+  /** Stripe payments whose fee is Stripe's own, and those whose fee is estimated (D290). */
+  realFeePayments: number;
+  estimatedFeePayments: number;
 };
 
 /** A currency's amount in the main currency, or null when there is no rate. */
 export type ToMain = (currency: string, minor: number) => number | null;
 
 /**
- * Groups by method (a wallet over its card), biggest first by money received, *Unknown* last. Fees are the estimate's percentage part converted plus
- * the fixed part (already in the main currency) per Stripe payment.
+ * Groups by method (a wallet over its card), biggest first by money received, *Unknown* last. Fees are Stripe's own where read (D290), converted, and
+ * for the other Stripe payments the estimate's percentage part converted plus the fixed part (already in the main currency) per payment.
  */
 export function paymentsByMethod(rows: readonly PaymentGroupRow[], toMain: ToMain, feeFixedMinor: number): PaymentsByMethod {
   const by = new Map<string, PaymentMethodLine>();
   const missing = new Set<string>();
   let unconverted = 0;
   let unknown = 0;
+  let realFeePayments = 0;
+  let estimatedFeePayments = 0;
   for (const r of rows) {
     const received = toMain(r.currency, r.receivedMinor);
     const refunded = toMain(r.currency, r.refundedMinor);
     const feeShare = toMain(r.currency, r.feeShareMinor);
-    if (received === null || refunded === null || feeShare === null) {
+    const realFee = toMain(r.currency, r.realFeeMinor ?? 0);
+    if (received === null || refunded === null || feeShare === null || realFee === null) {
       unconverted += r.payments;
       missing.add(r.currency);
       continue;
@@ -75,6 +84,9 @@ export function paymentsByMethod(rows: readonly PaymentGroupRow[], toMain: ToMai
     line.receivedMinor += received;
     line.refundedMinor += refunded;
     if (r.feePayments > 0) line.feesMinor = (line.feesMinor ?? 0) + feeShare + feeFixedMinor * r.feePayments;
+    if ((r.realFeePayments ?? 0) > 0) line.feesMinor = (line.feesMinor ?? 0) + realFee;
+    realFeePayments += r.realFeePayments ?? 0;
+    estimatedFeePayments += r.feePayments;
     by.set(group.key, line);
   }
   const lines = [...by.values()].sort((a, b) => (a.key === "unknown" ? 1 : b.key === "unknown" ? -1 : b.receivedMinor - a.receivedMinor || a.label.localeCompare(b.label)));
@@ -83,5 +95,5 @@ export function paymentsByMethod(rows: readonly PaymentGroupRow[], toMain: ToMai
     { payments: 0, receivedMinor: 0, refundedMinor: 0, feesMinor: 0 },
   );
   for (const l of lines) l.share = safeRatio(l.receivedMinor, total.receivedMinor > 0 ? total.receivedMinor : null);
-  return { lines, total, unconverted, missingCurrencies: [...missing].sort(), unknown };
+  return { lines, total, unconverted, missingCurrencies: [...missing].sort(), unknown, realFeePayments, estimatedFeePayments };
 }

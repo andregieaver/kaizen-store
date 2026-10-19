@@ -47,7 +47,7 @@ describe("payments by method (D288)", () => {
   });
 
   it("is empty with nothing paid", () => {
-    expect(paymentsByMethod([], toMain, 200)).toEqual({ lines: [], total: { payments: 0, receivedMinor: 0, refundedMinor: 0, feesMinor: 0 }, unconverted: 0, missingCurrencies: [], unknown: 0 });
+    expect(paymentsByMethod([], toMain, 200)).toEqual({ lines: [], total: { payments: 0, receivedMinor: 0, refundedMinor: 0, feesMinor: 0 }, unconverted: 0, missingCurrencies: [], unknown: 0, realFeePayments: 0, estimatedFeePayments: 0 });
   });
 });
 

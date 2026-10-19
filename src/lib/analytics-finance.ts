@@ -153,11 +153,20 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
     note: estimated ? `${basis}.` : hasCosts ? null : costsNote,
   });
 
-  const feesUnset = orders > 0 && settings.paymentFeeBps === 0 && settings.paymentFeeFixedMinor === 0;
-  push("paymentFees", "Payment fees (estimated)", -totals.paymentFeesMinor, {
-    estimated: true,
+  // Stripe's real fees where every Stripe payment of an order has one (D290), the estimate for the rest: estimated unless every order's is real.
+  const realOrders = Math.min(totals.realFeeOrders ?? 0, orders);
+  const allReal = orders > 0 && realOrders === orders;
+  const feesUnset = orders > realOrders && settings.paymentFeeBps === 0 && settings.paymentFeeFixedMinor === 0;
+  push("paymentFees", allReal ? "Payment fees" : "Payment fees (estimated)", -totals.paymentFeesMinor, {
+    estimated: !allReal,
     missing: feesUnset,
-    note: feesUnset ? "No payment fee is set in Analytics settings, so it counts as 0." : "Estimated from the fee in Analytics settings and each order's total with VAT.",
+    note: allReal
+      ? "What Stripe took for every order's payments, as Stripe reported it."
+      : realOrders > 0
+        ? `Stripe's own fee for ${realOrders} of ${orders} orders; the rest ${feesUnset ? "count as 0, as no payment fee is set in Analytics settings" : "estimated from the fee in Analytics settings"}.`
+        : feesUnset
+          ? "No payment fee is set in Analytics settings, so it counts as 0."
+          : "Estimated from the fee in Analytics settings and each order's total with VAT.",
   });
   push("platformFees", "Platform fees", -totals.platformFeesMinor, { note: "What Kaizena Flow took on the period's payments." });
   const shippingUnset = orders > 0 && settings.shippingCostMinor === 0;

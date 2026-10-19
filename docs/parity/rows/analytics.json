@@ -587,15 +587,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "Payouts are in the owner's Stripe Dashboard; Kaizen estimates payment fees from a percentage and keeps no payout or balance-transaction data.",
-    "history": [],
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 4 unit C (D290): each Stripe payout of the store's own connected account is kept from the payout webhook events and a daily read, with its balance transactions as lines tied to the payment, refund or dispute and so the order each settles. Analytics → Payouts lists them by arrival day with amount, Stripe's fees and what they settle, flags a payout whose lines do not add up (with the difference) or that holds money not tied to an order, opens one payout's lines, and exports to CSV; totals are in the main currency, a euro payout included. Each charge's real Stripe fee (Kaizena Flow's application fee apart) is kept on its payment and Finance uses it per order where every payment has one, labelling the rest estimated. Held by payouts.int.test.ts (tie, fees, reconciliation, flags, manual and other accounts, Stripe down, daily once, euro), src/db/payouts.test.ts, the view and finance tests and the signed-in browser test."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Each Stripe payout of a store's connected account is listed with date, amount, fees and the orders and refunds it settles.",
       "Real Stripe fees replace the estimated payment fee in profit when balance transactions exist, and the page says which it uses.",
@@ -604,18 +611,30 @@
     ],
     "evidence": {
       "files": [
-        "src/server/connect.ts",
+        "src/lib/payouts.ts",
+        "src/server/payouts.ts",
+        "src/server/payouts-report.ts",
         "src/server/stripe-webhooks.ts",
-        "src/lib/analytics-finance.ts"
+        "src/server/payment-facts.ts",
+        "src/server/analytics-totals.ts",
+        "src/lib/analytics-finance.ts",
+        "src/components/admin/analytics/payouts-view.tsx",
+        "supabase/migrations/20261019194258_payouts_rules.sql"
       ],
       "tests": [
-        "src/lib/analytics-finance.test.ts"
+        "src/server/payouts.int.test.ts",
+        "src/db/payouts.test.ts",
+        "src/lib/payouts.test.ts",
+        "src/components/admin/analytics/payouts-view.test.ts",
+        "src/lib/analytics-finance.test.ts",
+        "e2e/signed-in/payouts.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D17",
-      "D152"
+      "D152",
+      "D290"
     ]
   },
   {

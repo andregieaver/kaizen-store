@@ -182,6 +182,18 @@ describe("financeStatement", () => {
     expect(line(s, "marketing").estimated).toBe(false);
   });
 
+  it("uses Stripe's real fees where every order has them, and says how much is estimated otherwise (D290)", () => {
+    const orders = totals().orders;
+    const real = financeStatement(totals({ realFeeOrders: orders }), settings, 30);
+    expect(line(real, "paymentFees")).toMatchObject({ label: "Payment fees", estimated: false });
+    expect(line(real, "paymentFees").note).toMatch(/as Stripe reported it/);
+    const some = financeStatement(totals({ realFeeOrders: 1 }), settings, 30);
+    expect(line(some, "paymentFees")).toMatchObject({ label: "Payment fees (estimated)", estimated: true });
+    expect(line(some, "paymentFees").note).toBe(`Stripe's own fee for 1 of ${orders} orders; the rest estimated from the fee in Analytics settings.`);
+    const unset = financeStatement(totals({ realFeeOrders: orders }), { ...settings, paymentFeeBps: 0, paymentFeeFixedMinor: 0 }, 30);
+    expect(line(unset, "paymentFees").missing).toBe(false);
+  });
+
   it("marks the subtotals", () => {
     const s = financeStatement(totals(), settings, 30);
     expect(s.lines.filter((l) => l.subtotal).map((l) => l.key)).toEqual(["revenue", "netRevenue", "grossProfit", "contributionProfit", "operatingProfit"]);
