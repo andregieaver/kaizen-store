@@ -126,6 +126,28 @@ them."
   (`scripts/theme-art/kinetic.js`) stands in on the unpublished demo store only (pictogram runners and the kit on grey), and the store is
   not published before every photograph is made.
 
+## Built (Meridian, D287)
+
+The owner (19 October 2026): "To kick off this new feature [premium themes, D286], also create a new theme. This theme should be for a
+corporate consulting business. It needs to be modern, exclusive, professional."
+
+* **Meridian** (`src/lib/signature/meridian.ts`): a consultancy at ease in the boardroom, and Kaizena Flow's first premium theme. Ivory
+  pages and deep navy, Newsreader in light display sizes with the turn of a phrase in brass italics over Hanken Grotesk, small capitals
+  spaced wide over a short brass rule, a header that lies over a hero as wide as the screen (glass on the front page, ivory with a hairline
+  elsewhere), the hero's words rising in on load (still for reduced motion), four principles divided by hairlines, three practices as tall
+  pictures whose brass rule grows on hover, engagements to book in cards with a fine frame, an approach under light numerals, a quote in
+  large italics, pictures in a fine inset frame, a navy footer and a navy band over the city to end on. Square buttons in spaced capitals.
+  Presets: *Midnight* (dark navy, brass) and *Harbour* (cool grey, steel blue). Nine sections, among them a heading row of its own.
+* **Its store**, *Aldren Partners* (pack `consulting`, a services pack: its engagements are appointments booked with its two partners),
+  sells a strategy session, a growth review, a board workshop, leadership coaching, an operations review and a change programme kick-off,
+  in the practices Strategy, Leadership and Operations. The words name no figures, clients or results: a demo store must not claim them.
+* **Its photographs** are an annual report's: boardrooms and offices in natural light, glass, stone, walnut, leather and brass. Only the
+  story's (two partners with a client at the table) shows people, with their faces (`people`); the rest show rooms, objects and the city,
+  no one. Until they are made, the art (`scripts/theme-art/meridian.js`: boardrooms above a city at dusk, glass towers at night, a meeting
+  in silhouette, a compass on walnut, a stone staircase, an aisle under skylights, the engagements' still lifes) stands in.
+* **Premium**: `LaunchTheme.prices` (NOK 3,490, SEK 3,490, DKK 2,490, EUR 299 without VAT) are set by `syncLaunchThemes()` when it first
+  makes the theme; the platform's admin changes them on its page afterwards.
+
 ## Photographs (D270)
 
 The owner found the drawn pictures fake and asked for pictures that look shot by a professional product photographer, made by the

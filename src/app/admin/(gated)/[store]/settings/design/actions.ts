@@ -2,6 +2,7 @@
 
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
 import { designChoice } from "@/lib/design-presets";
@@ -10,10 +11,12 @@ import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } f
 import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, installDesignPreset, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
 import { presetChoice } from "@/lib/design-variations";
+import { chargeToken, readChargeToken } from "@/lib/theme-prices";
 import { detachDryRun, runDetach, undoDetach } from "@/server/theme-detach";
 import { removeInstall, setFollowsUpdates, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
+import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
 
 const read = (payload: string): unknown => {
@@ -84,6 +87,12 @@ export async function saveCartBehaviourAction(storeSlug: string, _state: FormSta
   return { status: "ok", messages: ["Saved."] };
 }
 
+/** The price a person agreed to for a premium theme (D286), as the form's `charge` sends it; only one that could be a price passes. */
+const agreedCharge = (formData: FormData): string | null => {
+  const price = readChargeToken(formData.get("charge"));
+  return price ? chargeToken(price) : null;
+};
+
 /**
  * Applies a design profile to the store (D176): the theme, a header, footer and product layout as new pages, and the CSS; the look from
  * before is kept so it can be put back.
@@ -93,8 +102,11 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   const presetId = designChoice(formData.get("design"));
   if (!presetId) return { status: "error", messages: ["Choose a theme."] };
-  const result = await applyDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")));
+  // A premium theme (D286): the price the owner was shown and agreed to, which the database checks.
+  const charge = agreedCharge(formData);
+  const result = await applyDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")), charge);
   if (!result.ok) return { status: "error", messages: result.problems };
+  if (charge) after(() => chargeDueThemePurchases({ storeId: member.store.id }));
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
   return { status: "ok", messages: [`Applied. Your look from before stays in your theme library as “${result.previous}”, and can be put back here.${notes}`] };
@@ -104,8 +116,10 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
 export async function switchThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const result = await switchToInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
+  const charge = agreedCharge(formData);
+  const result = await switchToInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id, charge);
   if (!result.ok) return { status: "error", messages: result.problems };
+  if (charge) after(() => chargeDueThemePurchases({ storeId: member.store.id }));
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
   return { status: "ok", messages: [`${result.title} is live. ${result.from} stays in your theme library.${notes}`] };

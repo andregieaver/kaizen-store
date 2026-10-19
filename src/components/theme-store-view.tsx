@@ -12,6 +12,7 @@ import {
   type ThemeStoreCard,
 } from "@/lib/theme-store";
 import { themeStorePath } from "@/lib/theme-host";
+import { cardPrice } from "@/lib/theme-prices";
 
 import { SwatchDot } from "./theme-swatch";
 
@@ -77,7 +78,7 @@ export function ThemeCard({ card }: { card: ThemeStoreCard }) {
         )}
         {trades.length > 0 && <p className="text-sm text-muted">{shownOn(trades)}</p>}
         <p className="mt-auto text-sm">
-          <span className="font-medium">Free</span>
+          <span className="font-medium">{cardPrice(card.prices)}</span>
           {card.listing.styles.length > 0 && <span className="text-muted"> · {card.listing.styles.map((s) => THEME_STYLES[s]).join(", ")}</span>}
           {card.presets.length > 0 && <span className="text-muted"> · {card.presets.length + 1} presets</span>}
         </p>

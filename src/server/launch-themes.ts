@@ -9,6 +9,7 @@ import { audit, type Account } from "./auth";
 import { createDesign, markLaunchTheme, publishDesign, saveDesignDraft, writeDesignLook, type ApplyDeps } from "./design-presets";
 import { writeLaunchVariations } from "./design-variations";
 import { dressSignaturePacks, linkLaunchContents } from "./signature-themes";
+import { setThemePrices } from "./theme-prices";
 
 /**
  * Kaizena Flow's launch themes (D246, `src/lib/launch-themes.ts`) brought into the platform's themes on a platform admin's press: each one
@@ -86,6 +87,11 @@ export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Pr
       presetId = made.id;
       // Claimed at once, so a second press finds it rather than making another.
       await markLaunchTheme(presetId, theme.key, null);
+      // A premium theme's prices (D286), set only now: afterwards they are the platform's admin's.
+      if (theme.prices && theme.prices.length > 0) {
+        const priced = await setThemePrices(admin, presetId, theme.prices);
+        if (!priced.ok) result.problems.push(`${theme.title}: ${priced.problems.join(" ")}`);
+      }
     }
     const problem = await publishLaunch(admin, presetId, theme, first, deps);
     if (problem) result.problems.push(`${theme.title}: ${problem}`);

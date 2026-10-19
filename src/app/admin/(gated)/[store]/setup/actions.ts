@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
+import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
 import { readAnswers } from "@/lib/onboarding";
@@ -21,6 +22,7 @@ import {
   type SetupStepId,
 } from "@/server/setup";
 import { storeTag } from "@/server/stores";
+import { chargeDueThemePurchases } from "@/server/theme-prices";
 
 // Setup is the owner's job; every action re-checks that on the server.
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
@@ -107,6 +109,8 @@ export async function openStoreAction(
   if (!("store" in owner)) return owner;
   const result = await completeSetup(owner);
   if (!result.ok) return { status: "error", messages: result.problems };
+  // A premium theme live at opening is due now (D286): invoiced through Kaizena Flow's billing after the answer.
+  after(() => chargeDueThemePurchases({ storeId: owner.store.id }));
   refreshStore(owner);
   return { status: "ok", messages: ["Your store is open."] };
 }

@@ -8,6 +8,8 @@ import { isStarterPicture } from "./store-starters";
 import { themeStorePath } from "./theme-host";
 import { readHighlightWords, type HighlightWords, type ThemeHighlight } from "./theme-highlights";
 import type { LookShots } from "./theme-shots";
+import { minorUnitDigits } from "./money";
+import type { ThemePrice } from "./theme-prices";
 
 /**
  * The theme store (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): a theme's listing and what the list and a theme's page say.
@@ -229,6 +231,8 @@ export type ThemeStoreCard = {
   features: ThemeFeature[];
   /** For a card without a picture: the colours its own look is shown in and the heading font. */
   swatch: ThemeSwatch;
+  /** What a store pays for it once, without VAT, per currency in the plans' order (D286); empty or absent: free. */
+  prices?: ThemePrice[];
 };
 
 /**
@@ -312,7 +316,12 @@ export function themeChangelog(versions: ThemeVersion[]): ChangelogEntry[] {
 }
 
 /** Structured data for a theme's page: a free creative work, no price. */
-export function themeJsonLd(theme: { title: string; summary: string; pictureUrl: string | null }, url: string, publisher: string): Record<string, unknown> {
+export function themeJsonLd(
+  theme: { title: string; summary: string; pictureUrl: string | null; prices?: readonly ThemePrice[] },
+  url: string,
+  publisher: string,
+): Record<string, unknown> {
+  const prices = theme.prices ?? [];
   return {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
@@ -320,7 +329,16 @@ export function themeJsonLd(theme: { title: string; summary: string; pictureUrl:
     ...(theme.summary && { description: theme.summary }),
     url,
     ...(theme.pictureUrl && { image: theme.pictureUrl }),
-    isAccessibleForFree: true,
+    isAccessibleForFree: prices.length === 0,
+    // A premium theme's prices (D286): what a store pays once, without VAT, in each currency.
+    ...(prices.length > 0 && {
+      offers: prices.map((price) => ({
+        "@type": "Offer",
+        price: (price.amountMinor / 10 ** minorUnitDigits(price.currency)).toFixed(minorUnitDigits(price.currency)),
+        priceCurrency: price.currency,
+        url,
+      })),
+    }),
     genre: "Website theme",
     publisher: { "@type": "Organization", name: publisher },
   };

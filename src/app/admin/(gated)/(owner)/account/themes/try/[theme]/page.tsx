@@ -10,6 +10,7 @@ import { getAccount, listStores } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { storesWithTheme } from "@/server/theme-installs";
 import { themeStorePage } from "@/server/theme-store";
+import { priceLine } from "@/lib/theme-prices";
 
 import { installThemeAction } from "../../../../../[store]/settings/design/actions";
 
@@ -45,6 +46,11 @@ export default async function TryThemePage({ params, searchParams }: PageProps<"
         title={<>Try {name} in your store</>}
         description="The theme is added to the store's theme library without going live: you preview it on your own pages, customise it, and switch when you are ready. Visitors see nothing until then, and no page, product, word or picture changes."
       />
+      {theme.prices && theme.prices.length > 0 && (
+        <p className="rounded-panel border border-line bg-card p-4 text-sm" data-theme-price="">
+          {name} is a premium theme: {priceLine(theme.prices)} Adding it to try costs nothing.
+        </p>
+      )}
       {theme.presets.length > 0 && (
         <Card title="Choose a preset" description="Ready-made designs of the theme, each with its own colours, fonts and buttons.">
           <nav aria-label="Presets" className="flex flex-wrap gap-2">

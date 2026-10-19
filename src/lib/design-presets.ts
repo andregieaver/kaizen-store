@@ -24,6 +24,7 @@ import {
   type MediaResolver,
 } from "./template-content";
 import type { ThemeListing } from "./theme-store";
+import type { ThemePrice } from "./theme-prices";
 import { THEME_TEMPLATE_KEYS, themeSettingsSchema, type ThemeSettings, type ThemeTemplate } from "./theme";
 
 /**
@@ -477,6 +478,8 @@ export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description"
   demo?: string | null;
   /** Its presets (step 4), each its own choice under the card. */
   looks?: DesignLookCard[];
+  /** What a store pays for it once, without VAT (D286): empty or absent, free. */
+  prices?: ThemePrice[];
 };
 
 /** A theme's preset as a choice under its card: its key and name, the trade it is shown on, the demo store it starts with, its preview. */

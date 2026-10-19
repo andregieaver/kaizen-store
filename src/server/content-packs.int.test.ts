@@ -87,8 +87,8 @@ describe("setting up the content packs", () => {
       const store = await storeOf(pack.key);
       const storeId = String(store.id);
       expect(store.locales).toEqual(["en-GB"]);
-      // It sells where the template does, in one language; only the services pack books appointments.
-      expect([...(store.features as string[])].sort()).toEqual(pack.key === "services" ? ["appointments", "countries", "shop"] : ["countries", "shop"]);
+      // It sells where the template does, in one language; only the packs of services (the salon, the consultancy) book appointments.
+      expect([...(store.features as string[])].sort()).toEqual(pack.products.some((p) => p.minutes) ? ["appointments", "countries", "shop"] : ["countries", "shop"]);
       const markets = await all(sql`select code, default_locale from commerce.markets where store_id = ${storeId}::uuid order by code`);
       expect(markets.length).toBeGreaterThan(0);
       expect(markets.every((m) => m.default_locale === "en-GB")).toBe(true);

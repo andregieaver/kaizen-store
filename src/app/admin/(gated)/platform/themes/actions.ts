@@ -31,6 +31,8 @@ import { syncLaunchThemes } from "@/server/launch-themes";
 import { STARTERS_TAG, giveThemeContent, joinStarter, publishStarter, themeContentOf } from "@/server/store-starters";
 import { getStore } from "@/server/stores";
 import { retryThemeShots } from "@/server/theme-shots";
+import { planCurrencies } from "@/server/billing";
+import { parseThemePricesForm, setThemePrices } from "@/server/theme-prices";
 import { suggestHighlightWords, type HighlightSuggestion } from "@/server/theme-highlight-words";
 
 /** The design profile form's fields, as the server reads them. */
@@ -168,11 +170,12 @@ export async function applyDesignToStoreAction(storeSlug: string, _state: FormSt
   const presetId = designChoice(formData.get("design"));
   if (!store) return { status: "error", messages: ["That store no longer exists."] };
   if (!presetId) return { status: "error", messages: ["Choose a theme."] };
-  const result = await applyDesignPreset(store.id, presetId, admin.id, {}, presetChoice(formData.get("preset")));
+  // A premium theme applied by Kaizena Flow is given, never charged to the store (D286).
+  const result = await applyDesignPreset(store.id, presetId, admin.id, {}, presetChoice(formData.get("preset")), "grant");
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(store)) updateTag(tag);
   refresh();
-  return { status: "ok", messages: withNotes(`Applied. The look from before stays in the store's theme library as “${result.previous}” and can be put back.`, result.notes) };
+  return { status: "ok", messages: withNotes(`Applied. The look from before stays in the store's theme library as “${result.previous}” and can be put back. A premium theme applied here is the store's without charge.`, result.notes) };
 }
 
 /** Puts back the look a store had before its latest design profile, from its page on the platform. */
@@ -224,6 +227,25 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
   updateTag(DESIGNS_TAG);
   refresh();
   return { status: "ok", messages: ["Saved. The theme store shows it at once while the theme is published."] };
+}
+
+/**
+ * A theme's price (D286): Free, or Premium with a price in every currency stores are billed in. Saved at once; the theme store, the
+ * choices and Design settings show it straight away. Stores that have the theme when it gets its first price keep it free.
+ */
+export async function saveThemePricesAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const parsed = parseThemePricesForm(formData, await planCurrencies());
+  if (!parsed.ok) return { status: "error", messages: parsed.problems };
+  const result = await setThemePrices(admin, presetId, parsed.prices);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(DESIGNS_TAG);
+  refresh();
+  const note =
+    parsed.prices.length === 0
+      ? `The theme is free.${result.cancelled ? ` ${result.cancelled} ${result.cancelled === 1 ? "store that had not been invoiced pays" : "stores that had not been invoiced pay"} nothing for it.` : ""}`
+      : `The theme is premium.${result.granted ? ` ${result.granted} ${result.granted === 1 ? "store that has it keeps" : "stores that have it keep"} it free.` : ""}`;
+  return { status: "ok", messages: [note] };
 }
 
 /**

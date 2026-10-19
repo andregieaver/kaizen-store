@@ -14,6 +14,8 @@ import { STORE_KINDS, THEME_PICTURES_MAX, THEME_STYLES, suggestedSlug } from "@/
 import { designChecks, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { listVariations } from "@/server/design-variations";
 import { themeShotStatus } from "@/server/theme-shots";
+import { planCurrencies } from "@/server/billing";
+import { stuckThemePurchases, themePrices, themePurchaseCounts } from "@/server/theme-prices";
 
 import { uploadPlatformImageAction } from "../../actions";
 import {
@@ -25,6 +27,7 @@ import {
   suggestHighlightWordsAction,
 } from "../actions";
 import { designPage } from "./data";
+import { ThemePriceCard } from "./price-card";
 import { DesignShell } from "./shell";
 
 export const metadata: Metadata = { title: "Theme" };
@@ -41,12 +44,16 @@ const KIND_WORDS = { template: "the Standard store", starter: "demo store", stor
  */
 export default async function ThemePage({ params, searchParams }: PageProps<"/admin/platform/themes/[presetId]">) {
   const { admin, design, facts } = await designPage((await params).presetId);
-  const [query, sources, checks, presets, shots] = await Promise.all([
+  const [query, sources, checks, presets, shots, prices, currencies, counts, stuck] = await Promise.all([
     searchParams,
     snapshotSources(admin),
     designChecks(design),
     listVariations(admin, design.id),
     themeShotStatus(design.id),
+    themePrices([design.id]),
+    planCurrencies(),
+    themePurchaseCounts(design.id),
+    stuckThemePurchases(design.id),
   ]);
   const shown = shownDesignDetails(design);
   const blocker = deleteBlocker("theme", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
@@ -92,6 +99,15 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
         </Link>
         .
       </p>
+
+      <ThemePriceCard
+        presetId={design.id}
+        title={shown.title}
+        prices={prices.get(design.id) ?? []}
+        currencies={currencies}
+        counts={counts}
+        stuck={stuck}
+      />
 
       <ThemeChecks result={checks} />
 

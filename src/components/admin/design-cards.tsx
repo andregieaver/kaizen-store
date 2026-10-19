@@ -1,4 +1,5 @@
 import { designLookValue, type DesignCard } from "@/lib/design-presets";
+import { pricesText } from "@/lib/theme-prices";
 
 /** The Preview link of a theme: a new window, without giving it this page. */
 export function DesignPreviewLink({ href, title, className }: { href: string; title: string; className?: string }) {
@@ -79,6 +80,7 @@ export function DesignCards({
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="font-medium">{card.title}</span>
                     {card.summary && <span className="font-normal">{card.summary}</span>}
+                    {card.prices && card.prices.length > 0 && <PremiumNote text={pricesText(card.prices)} />}
                     {card.id && startsWith && <StartsWith demo={card.demo ?? null} />}
                   </span>
                 </span>
@@ -125,6 +127,15 @@ export function DesignCards({
         })}
       </ul>
     </fieldset>
+  );
+}
+
+/** A premium theme's price on its card (D286): what a store pays once, and that nothing is paid before the store opens. */
+function PremiumNote({ text }: { text: string }) {
+  return (
+    <span className="text-caption" data-theme-price="">
+      <span className="font-medium">Premium:</span> {text} excl. VAT, once. Nothing to pay now: it is charged when your store opens with it.
+    </span>
   );
 }
 

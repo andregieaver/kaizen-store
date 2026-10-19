@@ -630,7 +630,12 @@ async function prepare(
 
 /** Norwegian stores pay 25 % MVA on their plan; others are invoiced without VAT. */
 async function vatRatesFor(p: Prepared): Promise<string[]> {
-  return (p.store.details.country ?? "NO") === "NO" ? [await norwegianVatRate(p.stripe, p.mode)] : [];
+  return billingTaxRates(p.stripe, p.mode, p.store.details.country);
+}
+
+/** The VAT on anything Kaizena Flow bills a store (its plan, a premium theme, D286): 25 % MVA for a store in Norway, none for others. */
+export async function billingTaxRates(stripe: Stripe, mode: PaymentModeName, country: string | null): Promise<string[]> {
+  return (country ?? "NO") === "NO" ? [await norwegianVatRate(stripe, mode)] : [];
 }
 
 /**

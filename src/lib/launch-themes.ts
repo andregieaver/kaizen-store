@@ -5,12 +5,14 @@ import { ARCADE } from "./signature/arcade";
 import { ATELIER } from "./signature/atelier";
 import { BOTANICA } from "./signature/botanica";
 import { KINETIC } from "./signature/kinetic";
+import { MERIDIAN } from "./signature/meridian";
 import { ORBIT } from "./signature/orbit";
 import { coreStyles, rem } from "./theme-kit";
 import { templateSettings, type Palette, type ThemeSettings, type ThemeTemplate } from "./theme";
 import type { ThemeElements } from "./theme-elements";
 import type { ThemeSections } from "./theme-sections";
 import type { ThemeListing } from "./theme-store";
+import type { ThemePrice } from "./theme-prices";
 
 /**
  * Kaizena Flow's own launch themes (D246, `docs/theme-phase-2.md` step 5, `docs/theme-store.md` 0.5: three to five, made from today's
@@ -56,6 +58,11 @@ export type LaunchTheme = {
   presets: LaunchPreset[];
   /** Its designed rows as sections an owner can place on their own pages while it is live (D272), with words for any store. */
   sections?: ThemeSections;
+  /**
+   * A premium theme's prices (D286): what a store pays once, without VAT, per currency, set by `syncLaunchThemes()` only when it makes the
+   * theme, so the platform's admin changes them on the theme's page afterwards. None: free.
+   */
+  prices?: ThemePrice[];
 };
 
 /** A launch preset as a theme's version holds it: the theme's own settings with the preset's changes. */
@@ -292,4 +299,5 @@ export const LAUNCH_THEMES: readonly LaunchTheme[] = [
   ARCADE,
   BOTANICA,
   KINETIC,
+  MERIDIAN,
 ];

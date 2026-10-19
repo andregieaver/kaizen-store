@@ -3,11 +3,12 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { OfferedDesign } from "@/lib/design-presets";
 
 import { DesignPreviewLink } from "./design-cards";
-import { Card } from "@/components/admin/ui";
+import { Card, Chip } from "@/components/admin/ui";
 import { themeStoreUrl } from "@/lib/theme-host";
+import { chargeButton, chargeLine, chargeToken, type ThemeCharge } from "@/lib/theme-prices";
 
-/** A design profile offered to a store, with where its preview is. */
-export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean };
+/** A design profile offered to a store, with where its preview is, and what making it live costs the store (D286; none: free). */
+export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean; charge?: ThemeCharge };
 
 /** One card: a theme's own look or one of its presets (`docs/theme-showcase-phase-1.md`), each added or applied on its own. */
 type PanelLook = PanelDesign & { preset: { key: string; name: string } | null };
@@ -90,6 +91,7 @@ export function DesignProfilePanel({
                     {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
                   </h3>
                   {design.preset ? <p>A preset of {design.title}: its own colours, fonts and buttons.</p> : design.summary && <p>{design.summary}</p>}
+                  <ChargeNote charge={design.charge} />
                   {canChange && install && (
                     <ActionForm action={install} className="mt-auto">
                       <input type="hidden" name="design" value={design.id} />
@@ -113,10 +115,12 @@ export function DesignProfilePanel({
                           <li>keeps your products, pages, menus, logo, name and business details as they are.</li>
                         </ul>
                         <p>Your look now stays in your theme library with every change you made to it, and you can switch back to it at any time.</p>
+                        {design.charge && chargeLine(design.charge) && <p className="text-body-strong text-ink">{chargeLine(design.charge)}</p>}
                         <ActionForm action={apply}>
                           <input type="hidden" name="design" value={design.id} />
                           {design.preset && <input type="hidden" name="preset" value={design.preset.key} />}
-                          <SubmitButton>Apply {name}</SubmitButton>
+                          {design.charge?.kind === "now" && <input type="hidden" name="charge" value={chargeToken(design.charge.price)} />}
+                          <SubmitButton>{design.charge ? chargeButton(design.charge, `Apply ${name}`) : `Apply ${name}`}</SubmitButton>
                         </ActionForm>
                       </div>
                     </details>
@@ -129,5 +133,16 @@ export function DesignProfilePanel({
         </ul>
       )}
     </Card>
+  );
+}
+
+/** What a premium theme costs this store, under its summary (D286): its price and when it is paid, or that the store has it. */
+export function ChargeNote({ charge }: { charge?: ThemeCharge }) {
+  if (!charge || charge.kind === "free") return null;
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-caption text-muted">
+      <Chip signal={charge.kind === "owned" ? "positive" : "insight"}>{charge.kind === "owned" ? "Yours" : "Premium"}</Chip>
+      <span>{chargeLine(charge)}</span>
+    </p>
   );
 }

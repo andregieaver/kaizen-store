@@ -1187,6 +1187,91 @@ export const storeThemeInstalls = commerce.table(
 );
 
 /**
+ * A theme's price (D286, `docs/theme-prices.md`): what a store pays Kaizena Flow once to use it, without VAT, one row per currency. A theme
+ * with no row is free. Written only by `setThemePrices()` (`src/server/theme-prices.ts`) and the launch themes' sync when it makes one;
+ * read for a store through `commerce.theme_price_for()`.
+ */
+export const themePrices = commerce.table(
+  "theme_prices",
+  {
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id, { onDelete: "cascade" }),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.presetId, t.currency] }),
+    check("theme_prices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("theme_prices_amount", sql`${t.amountMinor} between 1 and 100000000`),
+    index("theme_prices_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * A store's purchase of a premium theme (D286): made by the database when a priced theme goes live on a store that does not have it
+ * (`commerce.theme_installs_charge()`): `owed` while the store is not open yet, `due` once it is (opening turns `owed` into `due`), then
+ * `invoiced` by Kaizena Flow's Stripe billing (`chargeDueThemePurchases()`) and `paid` when Stripe says so. `granted`: the store has it
+ * without paying (it used the theme before the theme had a price, or Kaizena Flow gave it); `cancelled`: no longer owed (another theme went
+ * live before the store opened, or the theme was made free before it was charged); `void`: the invoice was voided. One live purchase per store
+ * and theme; the steps only go forward, and a purchase is never deleted (`commerce.theme_purchases_rules()`). A store that has the theme keeps
+ * it, with every preset and update.
+ */
+export const themePurchases = commerce.table(
+  "theme_purchases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id),
+    status: text("status").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** What is charged, without VAT; 0 for a theme given. */
+    amountMinor: money("amount_minor"),
+    /** The Stripe mode it was invoiced in, its invoice and how it is collected: `card` (the plan's card) or `invoice` (due in 14 days). */
+    mode: text("mode"),
+    stripeInvoiceId: text("stripe_invoice_id").unique(),
+    invoiceNumber: text("invoice_number"),
+    invoiceUrl: text("invoice_url"),
+    collection: text("collection"),
+    /** Why the last try to invoice it failed, in plain words, and when it is tried again. */
+    problem: text("problem"),
+    tries: integer("tries").notNull().default(0),
+    nextTryAt: timestamp("next_try_at", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    /** Who made it live (the account whose choice it was), when known. */
+    chosenBy: uuid("chosen_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    invoicedAt: timestamp("invoiced_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("theme_purchases_status", sql`${t.status} in ('owed', 'due', 'invoiced', 'paid', 'granted', 'cancelled', 'void')`),
+    check("theme_purchases_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("theme_purchases_amount", sql`${t.amountMinor} >= 0 and (${t.amountMinor} > 0 or ${t.status} in ('granted', 'cancelled'))`),
+    check("theme_purchases_mode", sql`${t.mode} is null or ${t.mode} in ('test', 'live')`),
+    check("theme_purchases_collection", sql`${t.collection} is null or ${t.collection} in ('card', 'invoice')`),
+    check("theme_purchases_invoiced", sql`(${t.status} in ('invoiced', 'paid', 'void')) = (${t.stripeInvoiceId} is not null) or ${t.status} = 'due'`),
+    check("theme_purchases_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+    uniqueIndex("theme_purchases_one_idx")
+      .on(t.storeId, t.presetId)
+      .where(sql`${t.status} in ('owed', 'due', 'invoiced', 'paid', 'granted')`),
+    index("theme_purchases_store_idx").on(t.storeId, t.createdAt),
+    index("theme_purchases_preset_idx").on(t.presetId),
+    index("theme_purchases_due_idx").on(t.dueAt).where(sql`${t.status} = 'due'`),
+    index("theme_purchases_chosen_by_idx").on(t.chosenBy),
+  ],
+);
+
+/**
  * The page migration of `docs/theme-store.md` 4.4 as it was run on a store (D243, `docs/theme-phase-2.md` step 2): one row per page it changed,
  * with the page's draft and published content before and after, so the run can be undone while the page is still as the run left it. Written
  * only by `src/server/theme-detach.ts`; pruned after `THEME_DETACH_KEEP_DAYS`.

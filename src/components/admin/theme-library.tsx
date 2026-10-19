@@ -1,9 +1,13 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { chargeButton, chargeLine, chargeToken, type ThemeCharge } from "@/lib/theme-prices";
 
-/** An installed theme as the library shows it (`ThemeInstall` in `src/server/theme-installs.ts`). */
-export type LibraryInstall = { id: string; title: string; version: number | null; live: boolean; installedAt: string; switchedAt: string | null };
+/**
+ * An installed theme as the library shows it (`ThemeInstall` in `src/server/theme-installs.ts`), with what making it live costs the store
+ * (D286; none: free).
+ */
+export type LibraryInstall = { id: string; title: string; version: number | null; live: boolean; installedAt: string; switchedAt: string | null; charge?: ThemeCharge };
 
 /**
  * The store's theme library (D241, `docs/theme-phase-1.md`): the live theme and the others installed, each with *Switch to* and *Remove*.
@@ -67,14 +71,30 @@ export function ThemeLibrary({
                     <span className="sr-only"> {install.title}</span>
                   </ButtonLink>
                 )}
-                {switchTo && (
-                  <ActionForm action={switchTo}>
-                    <input type="hidden" name="install" value={install.id} />
-                    <SubmitButton variant="secondary">
-                      Switch to<span className="sr-only"> {install.title}</span>
-                    </SubmitButton>
-                  </ActionForm>
-                )}
+                {switchTo &&
+                  (install.charge && (install.charge.kind === "now" || install.charge.kind === "at_opening") ? (
+                    // A premium theme the store does not have (D286): what it costs is said before the button that agrees to it.
+                    <details>
+                      <summary className="flex min-h-10 cursor-pointer items-center rounded-pill px-3 text-sm underline-offset-2 hover:underline">
+                        Switch to<span className="sr-only"> {install.title}</span>…
+                      </summary>
+                      <div className="mt-2 flex max-w-xs flex-col gap-2 text-sm">
+                        <p>{chargeLine(install.charge)}</p>
+                        <ActionForm action={switchTo}>
+                          <input type="hidden" name="install" value={install.id} />
+                          {install.charge.kind === "now" && <input type="hidden" name="charge" value={chargeToken(install.charge.price)} />}
+                          <SubmitButton>{chargeButton(install.charge, `Switch to ${install.title}`)}</SubmitButton>
+                        </ActionForm>
+                      </div>
+                    </details>
+                  ) : (
+                    <ActionForm action={switchTo}>
+                      <input type="hidden" name="install" value={install.id} />
+                      <SubmitButton variant="secondary">
+                        Switch to<span className="sr-only"> {install.title}</span>
+                      </SubmitButton>
+                    </ActionForm>
+                  ))}
                 {remove && (
                   <details>
                     <summary className="flex min-h-10 cursor-pointer items-center rounded-pill px-3 text-sm underline-offset-2 hover:underline">

@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
 import { audit } from "./auth";
+import { CHARGE_CHANGED, isChargeRefusal, setThemeCharge } from "./theme-prices";
 import { checkStoreTheme } from "./themes";
 
 /**
@@ -202,7 +203,13 @@ export async function lookChangeRefusal(storeId: string, accountId: string): Pro
  * kept), the chosen one becomes live. One transaction; the caller refreshes `designTags()`. Words, pictures, pages, products and menus are
  * never touched.
  */
-export async function switchToInstall(storeId: string, installId: string, accountId: string): Promise<InstallResult<{ title: string; from: string; notes: string[] }>> {
+export async function switchToInstall(
+  storeId: string,
+  installId: string,
+  accountId: string,
+  /** The price the person agreed to for a premium theme the store does not have yet (D286, `chargeToken()`). */
+  charge: string | null = null,
+): Promise<InstallResult<{ title: string; from: string; notes: string[] }>> {
   if (!isUuid(storeId) || !isUuid(installId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const refusal = await lookChangeRefusal(storeId, accountId);
   if (refusal) return refuse(refusal);
@@ -216,6 +223,7 @@ export async function switchToInstall(storeId: string, installId: string, accoun
       `);
       if (!target) throw new Refused(UNKNOWN);
       if (target.live) throw new Refused("That theme is live already.");
+      await setThemeCharge(tx, accountId, charge);
       const from = await putAwayLive(tx, storeId);
       const made = await makeLive(tx, storeId, installId);
       return { title: made.title, from: from.title, fromId: from.id, notes: made.notes };
@@ -234,6 +242,7 @@ export async function switchToInstall(storeId: string, installId: string, accoun
 
 /** The words for a refusal of the database's rules while switching. */
 function switchProblem(error: unknown): string {
+  if (isChargeRefusal(error)) return CHARGE_CHANGED;
   const text = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
   if (/stores?_experiment|experiment/i.test(text)) return "A running A/B test uses this store's header or footer. Stop it before switching themes.";
   return "The theme could not be switched. Nothing was changed; try again.";

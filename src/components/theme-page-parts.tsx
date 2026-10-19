@@ -7,6 +7,7 @@ import { designPreviewPath } from "@/lib/design-presets";
 import { STORE_KINDS, THEME_FEATURES, THEME_STYLES, shownLooks, themePreviewPath, themeStartLink, themeTryLink } from "@/lib/theme-store";
 import { THEME_STORE_PART_COPY, withThemeName } from "@/lib/theme-store-parts";
 import { platformHref, themeStorePath } from "@/lib/theme-host";
+import { priceLine } from "@/lib/theme-prices";
 import { liveDemosOf } from "@/server/demo-stores";
 import type { ThemeStorePage } from "@/server/theme-store";
 
@@ -56,8 +57,9 @@ export function ThemeStagePart({ theme }: { theme: ThemeStorePage }) {
           <>
             <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{theme.title}</h1>
             {theme.summary && <p className="text-lg text-muted">{theme.summary}</p>}
-            <p className="text-sm text-muted">
-              Free{theme.presets.length > 0 ? ` · ${theme.presets.length + 1} presets` : ""}
+            <p className="text-sm text-muted" data-theme-price="">
+              {priceLine(theme.prices)}
+              {theme.presets.length > 0 ? ` · ${theme.presets.length + 1} presets` : ""}
             </p>
           </>
         }

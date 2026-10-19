@@ -5,6 +5,7 @@ import { arcadeAboutPage, arcadeHomePage } from "./signature/arcade";
 import { atelierAboutPage, atelierHomePage } from "./signature/atelier";
 import { botanicaAboutPage, botanicaHomePage } from "./signature/botanica";
 import { kineticAboutPage, kineticHomePage } from "./signature/kinetic";
+import { meridianAboutPage, meridianHomePage } from "./signature/meridian";
 import { orbitAboutPage, orbitHomePage } from "./signature/orbit";
 
 /**
@@ -27,6 +28,7 @@ export const PACK_DESIGNS = {
   arcade: { home: arcadeHomePage, about: arcadeAboutPage },
   botanica: { home: botanicaHomePage, about: botanicaAboutPage },
   kinetic: { home: kineticHomePage, about: kineticAboutPage },
+  meridian: { home: meridianHomePage, about: meridianAboutPage },
 } as const satisfies Record<string, PackDesign>;
 
 export type PackDesignKey = keyof typeof PACK_DESIGNS;

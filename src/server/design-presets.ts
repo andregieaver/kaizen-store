@@ -59,6 +59,7 @@ import { pagesTag } from "./pages";
 import { STARTERS_TAG, publishStarter, publishedContents, themeContentOf } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";
+import { CHARGE_CHANGED, isChargeRefusal, setThemeCharge, themePrices } from "./theme-prices";
 import { askForThemeShots, lookOf, themeShotsFor } from "./theme-shots";
 import { parseSiteFonts } from "@/lib/fonts-schema";
 
@@ -138,8 +139,9 @@ export async function designChoices(): Promise<{ cards: DesignCard[] }> {
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const [offered, contents] = await Promise.all([listOfferedDesigns(), publishedContents()]);
-  // A theme without a picture of its own shows the card made from its own look's photograph (`docs/theme-showcase-phase-2.md` step 1).
-  const shots = await themeShotsFor(offered.map((d) => d.id));
+  // A theme without a picture of its own shows the card made from its own look's photograph (`docs/theme-showcase-phase-2.md` step 1),
+  // and a premium theme its price (D286).
+  const [shots, prices] = await Promise.all([themeShotsFor(offered.map((d) => d.id)), themePrices(offered.map((d) => d.id))]);
   // Each look on the theme's own content, which a store started from it is copied from (D275).
   const card = (d: OfferedDesign): DesignCard => {
     const looks = themeLooks(d.title, d.presets ?? [], contents.get(d.id) ?? null);
@@ -149,6 +151,7 @@ export async function designChoices(): Promise<{ cards: DesignCard[] }> {
       ...d,
       pictureUrl: d.pictureUrl ?? shots.get(lookOf(d.id, null))?.computer?.card?.url ?? null,
       previewHref: designPreviewPath(d.id, starterOf(null)),
+      prices: prices.get(d.id) ?? [],
       starterId: own?.starterId ?? null,
       demo: own?.line ?? null,
       looks: looks.flatMap((look) =>
@@ -1045,8 +1048,16 @@ async function placeSnapshot(
  * own pages) and chosen, and the site's CSS is set. Never the store's name, logos, business details, menus, pages or products. The caller
  * refreshes `designTags()`.
  */
-export async function applyDesignPreset(storeId: string, presetId: string, accountId: string, deps: ApplyDeps = {}, variation: string | null = null): Promise<ApplyResult> {
-  const done = await placeDesign(storeId, presetId, accountId, deps, true, variation);
+export async function applyDesignPreset(
+  storeId: string,
+  presetId: string,
+  accountId: string,
+  deps: ApplyDeps = {},
+  variation: string | null = null,
+  /** A premium theme (D286): the price the person agreed to (`chargeToken()`), or `grant` where Kaizena Flow gives it. */
+  charge: string | null = null,
+): Promise<ApplyResult> {
+  const done = await placeDesign(storeId, presetId, accountId, deps, true, variation, charge);
   if (!done.ok) return done;
   return { ok: true, useId: done.useId ?? "", installId: done.installId, previous: done.previous ?? "", notes: done.notes };
 }
@@ -1076,6 +1087,7 @@ async function placeDesign(
   deps: ApplyDeps,
   live: boolean,
   variation: string | null = null,
+  charge: string | null = null,
 ): Promise<DesignResult<{ useId: string | null; installId: string; previous: string | null; title: string; notes: string[] }>> {
   if (!isUuid(storeId) || !isUuid(presetId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const facts = await actorFacts(storeId, accountId);
@@ -1121,6 +1133,7 @@ async function placeDesign(
       const [{ n }] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.store_theme_installs where store_id = ${storeId}::uuid`);
       if (Number(n) >= INSTALLS_MAX) throw new Refused(INSTALLS_FULL);
       // Only applying puts the live theme away; an install that is not live leaves the store as it is.
+      if (live) await setThemeCharge(tx, accountId, charge);
       const before = live ? await putAwayLive(tx, storeId) : null;
       // New pages, never over the store's own.
       const pageIds: Record<string, string | null> = { header: null, footer: null, productLayout: null };
@@ -1182,6 +1195,7 @@ async function placeDesign(
     });
   } catch (error) {
     if (error instanceof Refused || error instanceof InstallRefused) return refuse(error.message);
+    if (isChargeRefusal(error)) return refuse(CHARGE_CHANGED);
     console.error("[design-presets] applying failed", error);
     return refuse(live ? "The theme could not be applied. Nothing was changed; try again." : "The theme could not be added. Nothing was changed; try again.");
   }
@@ -1358,6 +1372,8 @@ export async function restoreDesignLook(storeId: string, accountId: string): Pro
   try {
     done = await db().transaction(async (tx) => {
       await tx.execute(sql`select 1 from commerce.stores where id = ${storeId}::uuid for update`);
+      // The look before was live on the store, so a premium theme there is the store's already (D286): nothing new is charged.
+      await setThemeCharge(tx, accountId, null);
       const [use] = await tx.execute<Row>(sql`
         select u.id, u.preset_id, u.previous, u.previous_install_id, d.title, i.live as previous_live
         from commerce.design_preset_uses u
@@ -1391,6 +1407,7 @@ export async function restoreDesignLook(storeId: string, accountId: string): Pro
     });
   } catch (error) {
     if (error instanceof Refused || error instanceof InstallRefused) return refuse(error.message);
+    if (isChargeRefusal(error)) return refuse("The look from before is a premium theme your store does not have: make it live from your theme library to buy it.");
     return refuse(designProblem(error));
   }
   await audit(accountId, storeId, "store.design_preset_restored", { preset: done.presetId, use: done.useId, install: done.install }, {

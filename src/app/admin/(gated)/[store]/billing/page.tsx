@@ -10,7 +10,9 @@ import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { PURCHASE_STATUS_WORDS, priceText } from "@/lib/theme-prices";
+import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
 
 import {
   applyPlanDiscountAction,
@@ -31,7 +33,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
-  const [billing, plans, matrix] = await Promise.all([getStoreBilling(store.id), listPlans(), getFeatureMatrix()]);
+  const [billing, plans, matrix, themes] = await Promise.all([getStoreBilling(store.id), listPlans(), getFeatureMatrix(), storeThemePurchases(store.id)]);
   const isOwner = memberCan(staffer, "owner");
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
   const mode = billingMode();
@@ -139,6 +141,8 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <PlanFeatureTable matrix={matrix} planIds={offered.map((plan) => plan.id)} current={onPlan ? billing?.planId : null} />
         </section>
       )}
+
+      {themes.length > 0 && <ThemePurchases purchases={themes} />}
 
       {onPlan && isOwner && (
         <Card title="Invoices and payment" compact>
@@ -272,5 +276,50 @@ function WithCode({
         .join(" or ")}
       , {how}
     </p>
+  );
+}
+
+/**
+ * The premium themes the store has or owes (D286): each paid once, without VAT, when it went live on the open store (one chosen before the
+ * store opened is paid when it opens), invoiced by Kaizena Flow like the plan.
+ */
+function ThemePurchases({ purchases }: { purchases: ThemePurchase[] }) {
+  return (
+    <Card
+      title="Themes"
+      description="Premium themes are paid once, when the theme goes live on your open store, and are yours after that with every preset and update."
+      compact
+    >
+      <List label="Premium themes">
+        {purchases.map((purchase) => {
+          const status = PURCHASE_STATUS_WORDS[purchase.status];
+          return (
+            <ListRow key={purchase.id}>
+              <RowLead
+                title={purchase.title}
+                sub={purchase.paidAt ? `Paid ${purchase.paidAt.slice(0, 10)}` : `Chosen ${purchase.createdAt.slice(0, 10)}`}
+              />
+              <RowFact sub="excl. VAT">{purchase.status === "granted" ? "Included" : priceText(purchase.price)}</RowFact>
+              <Chip signal={status.signal} dot>
+                {status.words}
+              </Chip>
+              {purchase.invoiceUrl && (
+                <RowActions>
+                  <a
+                    href={purchase.invoiceUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-10 items-center rounded-pill px-3 text-sm underline underline-offset-2"
+                  >
+                    Invoice{purchase.invoiceNumber && ` ${purchase.invoiceNumber}`}
+                    <span className="sr-only"> for {purchase.title} (opens in a new window)</span>
+                  </a>
+                </RowActions>
+              )}
+            </ListRow>
+          );
+        })}
+      </List>
+    </Card>
   );
 }

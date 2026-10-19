@@ -22,11 +22,13 @@ import {
 } from "@/server/setup";
 import { featureFacts } from "@/server/store-features";
 import { listCountries } from "@/server/stores";
+import { storeThemePurchases } from "@/server/theme-prices";
 
 import { answersForFeatures, QUESTION_FEATURES } from "@/lib/onboarding";
 import { nextSetupStep, stepApplies } from "@/lib/setup-steps";
 import { FEATURES_BY_ID, featureOn, featureWarnings, kindFeature, kindOffered } from "@/lib/store-features";
 import { formatMoney } from "@/lib/money";
+import { priceText } from "@/lib/theme-prices";
 import {
   chooseFeaturesAction,
   openStoreAction,
@@ -342,7 +344,9 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
   );
 }
 
-function LaunchStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+async function LaunchStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+  // A premium theme live before opening is paid when the store opens (D286): said before the button that opens it.
+  const owed = (await storeThemePurchases(member.store.id)).filter((purchase) => purchase.status === "owed");
   const { store } = member;
   // A website (the online shop off, D178) has no checkout or products to set up: it opens with its details and country.
   const selling = featureOn(store, "shop");
@@ -407,6 +411,12 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
           {!progress.readyToOpen && (
             <p className="text-sm text-muted">Add your business details and a country to open {selling ? "the store" : "the website"}.</p>
           )}
+          {owed.map((purchase) => (
+            <p key={purchase.id} className="text-sm" data-theme-price="">
+              Opening charges your premium theme {purchase.title}: {priceText(purchase.price)} excl. VAT, once, by Kaizena Flow (by your
+              plan&apos;s card, otherwise an invoice due in 14 days). Switch to a free theme on Design settings first if you would rather not.
+            </p>
+          ))}
         </ActionForm>
       )}
     </div>

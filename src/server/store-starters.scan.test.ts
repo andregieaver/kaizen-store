@@ -39,6 +39,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/store-copy.ts": "real",
   "src/server/stores.ts": "both",
   "src/server/support-platform.ts": "real",
+  // Premium themes (D286): only a real store keeps a theme it had as given when the theme gets its first price.
+  "src/server/theme-prices.ts": "real",
   "src/server/vat-admin.ts": "real",
   "src/server/wordpress.ts": "real",
 };

@@ -5989,6 +5989,129 @@ describe("updates of installed themes (D245)", () => {
   });
 });
 
+describe("premium themes (D286)", () => {
+  const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
+
+  async function theme(title: string, prices: [string, number][] = []): Promise<string> {
+    const { id } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot, published) values ($1, $2::jsonb, true) returning id", [title, SNAP]);
+    for (const [currency, amount] of prices) {
+      await db.query("insert into commerce.theme_prices (preset_id, currency, amount_minor) values ($1, $2, $3)", [id, currency, amount]);
+    }
+    return id;
+  }
+
+  /** Makes a theme live on a store as the app does: the live one put away, the new one made live, with what the person agreed to. */
+  async function goLive(store: string, preset: string | null, charge?: string): Promise<void> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, title, look) values ($1, $2, 'A theme', '{}'::jsonb) returning id",
+      [store, preset],
+    );
+    await db.transaction(async (tx) => {
+      if (charge) await tx.query("select set_config('kaizen.theme_charge', $1, true)", [charge]);
+      await tx.query("update commerce.store_theme_installs set live = false, look = '{}'::jsonb where store_id = $1 and live", [store]);
+      await tx.query("update commerce.store_theme_installs set live = true, look = null, switched_at = now() where id = $1", [id]);
+    });
+  }
+
+  const purchases = async (store: string) =>
+    (
+      await db.query<{ preset_id: string; status: string; currency: string; amount_minor: string }>(
+        "select preset_id, status, currency, amount_minor from commerce.theme_purchases where store_id = $1 order by created_at, status",
+        [store],
+      )
+    ).rows.map((row) => ({ preset: row.preset_id, status: row.status, currency: row.currency, amount: Number(row.amount_minor) }));
+
+  it("price a store in its plan's currency, else its own country's, else the first; a theme without prices is free", async () => {
+    const store = await createStore("premium-price", ["SE", "DE"]);
+    await db.query("update commerce.stores set country = 'SE' where id = $1", [store]);
+    const premium = await theme("Priced", [["EUR", 29900], ["NOK", 349000], ["SEK", 349000]]);
+    const free = await theme("Free");
+    const price = async (preset: string) => (await db.query<{ currency: string; amount_minor: number }>("select * from commerce.theme_price_for($1, $2)", [store, preset])).rows;
+    expect(await price(free)).toEqual([]);
+    expect((await price(premium))[0]).toMatchObject({ currency: "SEK" });
+    const { id: plan } = await one<{ id: string }>("insert into commerce.plans (name) values ('Pro') returning id");
+    const { id: priceId } = await one<{ id: string }>(
+      "insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values ($1, 'EUR', 'month', 2900) returning id",
+      [plan],
+    );
+    await db.query("insert into commerce.store_billing (store_id, plan_id, price_id) values ($1, $2, $3)", [store, plan, priceId]);
+    expect((await price(premium))[0]).toMatchObject({ currency: "EUR" });
+    expect(Number((await price(premium))[0].amount_minor)).toBe(29900);
+    await db.query("delete from commerce.theme_prices where preset_id = $1 and currency in ('EUR', 'SEK')", [premium]);
+    expect((await price(premium))[0]).toMatchObject({ currency: "NOK" });
+  });
+
+  it("owe a premium theme live before the store opens, charge only the one live at opening, and never a free theme or a store template", async () => {
+    const store = await createStore("premium-owed", ["NO"]);
+    const first = await theme("First", [["NOK", 199000]]);
+    const second = await theme("Second", [["NOK", 299000]]);
+    const free = await theme("Free");
+    await goLive(store, free);
+    expect(await purchases(store)).toEqual([]);
+    await goLive(store, first);
+    await goLive(store, second);
+    expect(await purchases(store)).toEqual([
+      { preset: first, status: "cancelled", currency: "NOK", amount: 199000 },
+      { preset: second, status: "owed", currency: "NOK", amount: 299000 },
+    ]);
+    // Back to its own look: nothing is owed.
+    await goLive(store, null);
+    expect((await purchases(store)).map((p) => p.status)).toEqual(["cancelled", "cancelled"]);
+    await goLive(store, second);
+    // Opening: what is owed is due, at the lower of the price agreed and the price now.
+    await db.query("update commerce.theme_prices set amount_minor = 249000 where preset_id = $1", [second]);
+    await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [store]);
+    expect((await purchases(store)).at(-1)).toEqual({ preset: second, status: "due", currency: "NOK", amount: 249000 });
+
+    const starter = await createStore("premium-starter", ["NO"]);
+    await db.query("update commerce.stores set starter = true where id = $1", [starter]);
+    await goLive(starter, first);
+    expect(await purchases(starter)).toEqual([]);
+  });
+
+  it("on an open store, make a premium theme live only with its price agreed or given, once per store and theme", async () => {
+    const store = await createStore("premium-open", ["NO"]);
+    await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [store]);
+    const premium = await theme("Exclusive", [["NOK", 399000]]);
+    const given = await theme("Given", [["NOK", 99000]]);
+    await expect(goLive(store, premium)).rejects.toThrow(/theme_purchases.confirm/);
+    await expect(goLive(store, premium, "NOK:299000")).rejects.toThrow(/theme_purchases.confirm/);
+    expect(await purchases(store)).toEqual([]);
+    await goLive(store, premium, "NOK:399000");
+    expect(await purchases(store)).toEqual([{ preset: premium, status: "due", currency: "NOK", amount: 399000 }]);
+    // Switching away and back again costs nothing more: the store has it.
+    await goLive(store, null);
+    await goLive(store, premium);
+    expect(await purchases(store)).toHaveLength(1);
+    await goLive(store, given, "grant");
+    expect((await purchases(store)).at(-1)).toEqual({ preset: given, status: "granted", currency: "NOK", amount: 0 });
+  });
+
+  it("move a purchase only forward, keep its store, theme, currency and invoice, and never delete it", async () => {
+    const store = await createStore("premium-rules", ["NO"]);
+    await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [store]);
+    const premium = await theme("Rules", [["NOK", 150000]]);
+    await goLive(store, premium, "NOK:150000");
+    const { id } = await one<{ id: string }>("select id from commerce.theme_purchases where store_id = $1", [store]);
+    await expect(db.query("update commerce.theme_purchases set status = 'paid' where id = $1", [id])).rejects.toThrow(/theme_purchases.forward/);
+    await expect(db.query("update commerce.theme_purchases set amount_minor = 1 where id = $1", [id])).rejects.toThrow(/theme_purchases.amount/);
+    await expect(db.query("update commerce.theme_purchases set currency = 'EUR' where id = $1", [id])).rejects.toThrow(/theme_purchases.fixed/);
+    await expect(db.query("update commerce.theme_purchases set status = 'invoiced' where id = $1", [id])).rejects.toThrow(/theme_purchases_invoiced/);
+    await db.query("update commerce.theme_purchases set stripe_invoice_id = 'in_1', problem = 'Stripe was busy', tries = 1 where id = $1", [id]);
+    await db.query("update commerce.theme_purchases set status = 'invoiced', invoiced_at = now(), mode = 'test', collection = 'invoice' where id = $1", [id]);
+    await expect(db.query("update commerce.theme_purchases set stripe_invoice_id = 'in_2' where id = $1", [id])).rejects.toThrow(/theme_purchases.invoice/);
+    await db.query("update commerce.theme_purchases set status = 'paid', paid_at = now() where id = $1", [id]);
+    await expect(db.query("update commerce.theme_purchases set status = 'void' where id = $1", [id])).rejects.toThrow(/theme_purchases.forward/);
+    await expect(db.query("delete from commerce.theme_purchases where id = $1", [id])).rejects.toThrow(/theme_purchases.kept/);
+    // A second live purchase of the same theme for the store is refused.
+    await expect(
+      db.query("insert into commerce.theme_purchases (store_id, preset_id, status, currency, amount_minor) values ($1, $2, 'owed', 'NOK', 1)", [store, premium]),
+    ).rejects.toThrow(/theme_purchases_one_idx/);
+    await expect(db.query("insert into commerce.theme_prices (preset_id, currency, amount_minor) values ($1, 'nok', 1)", [premium])).rejects.toThrow(/theme_prices_currency/);
+    await expect(db.query("insert into commerce.theme_prices (preset_id, currency, amount_minor) values ($1, 'EUR', 0)", [premium])).rejects.toThrow(/theme_prices_amount/);
+  });
+});
+
 describe("the theme store's addresses (docs/theme-phase-3.md)", () => {
   const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
 

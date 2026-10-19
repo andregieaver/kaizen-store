@@ -8,6 +8,8 @@ import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead, PageHeader 
 import { memberCan, requirePermission } from "@/server/permissions";
 import { installPreview, whatChangesFor } from "@/server/theme-preview";
 import { listSavedThemes } from "@/server/themes";
+import { themeCharge } from "@/server/theme-prices";
+import { chargeButton, chargeLine, chargeToken } from "@/lib/theme-prices";
 
 import { deleteSavedThemeAction, installStoreFontAction, saveSavedThemeAction, switchThemeAction } from "../../actions";
 import { saveInstallCssAction, saveInstallThemeAction } from "./actions";
@@ -29,7 +31,12 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const design = `/admin/${store.slug}/settings/design`;
   if (preview.install.live) redirect(design);
   const canChange = memberCan(member, "website:write");
-  const [changes, saved] = await Promise.all([whatChangesFor(store.id, installId), listSavedThemes(store.id)]);
+  const [changes, saved, charge] = await Promise.all([
+    whatChangesFor(store.id, installId),
+    listSavedThemes(store.id),
+    // A premium theme (D286): what switching to it costs the store, said before the button that agrees to it.
+    preview.install.presetId ? themeCharge(store.id, preview.install.presetId) : null,
+  ]);
   const { install } = preview;
   const previewHref = `/admin/${store.slug}/settings/design/themes/${install.id}/preview`;
   const layouts = [
@@ -60,9 +67,11 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
       )}
       {canChange && (
         <Card title="Switch to it" description="Makes this theme live at once. Your live theme stays in your library with every change you made to it, so you can switch back." compact>
+          {charge && chargeLine(charge) && <p className="mb-3 text-sm text-ink">{chargeLine(charge)}</p>}
           <ActionForm action={switchThemeAction.bind(null, store.slug)}>
             <input type="hidden" name="install" value={install.id} />
-            <SubmitButton>Switch to “{install.title}”</SubmitButton>
+            {charge?.kind === "now" && <input type="hidden" name="charge" value={chargeToken(charge.price)} />}
+            <SubmitButton>{charge ? chargeButton(charge, `Switch to “${install.title}”`) : `Switch to “${install.title}”`}</SubmitButton>
           </ActionForm>
         </Card>
       )}

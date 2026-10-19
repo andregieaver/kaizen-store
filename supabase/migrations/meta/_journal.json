@@ -2584,6 +2584,20 @@
       "when": 1792399407682,
       "tag": "20261019084327_theme_store_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 369,
+      "version": "7",
+      "when": 1792406633823,
+      "tag": "20261019104353_theme_prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 370,
+      "version": "7",
+      "when": 1792406745258,
+      "tag": "20261019104545_theme_prices_rules",
+      "breakpoints": true
     }
   ]
 }

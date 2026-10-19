@@ -12,6 +12,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { THEME_DETACH_KEEP_DAYS, listDetachRuns } from "@/server/theme-detach";
 import { listInstalls } from "@/server/theme-installs";
 import { listSavedThemes } from "@/server/themes";
+import { themeCharges } from "@/server/theme-prices";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
@@ -40,7 +41,11 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
   const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
-  const updates = await themeUpdates(store.id);
+  // What making each theme live costs this store (D286): free, already the store's, or its price, now or when the store opens.
+  const [updates, charges] = await Promise.all([
+    themeUpdates(store.id),
+    themeCharges(store.id, [...designs.map((d) => d.id), ...installs.flatMap((i) => (i.presetId ? [i.presetId] : []))]),
+  ]);
   // Design profiles (D176): applied by those who may change the website.
   const canChange = memberCan(member, "website:write");
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
@@ -58,7 +63,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         </p>
       )}
       <ThemeLibrary
-        installs={installs}
+        installs={installs.map((install) => ({ ...install, charge: install.presetId ? charges.get(install.presetId) : undefined }))}
         base={`/admin/${store.slug}/settings/design`}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
@@ -80,7 +85,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         undo={canChange ? undoThemeFollowAction.bind(null, store.slug) : null}
       />
       <DesignProfilePanel
-        designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))}
+        designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id), charge: charges.get(d.id) }))}
         latest={latest}
         apply={canChange ? applyDesignAction.bind(null, store.slug) : null}
         install={canChange ? installThemeAction.bind(null, store.slug) : null}

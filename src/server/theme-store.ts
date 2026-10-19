@@ -22,10 +22,12 @@ import {
 } from "@/lib/theme-store";
 import { themeHighlights } from "@/lib/theme-highlights";
 import type { LookShots } from "@/lib/theme-shots";
+import type { ThemePrice } from "@/lib/theme-prices";
 
 import { DESIGNS_TAG } from "./design-presets";
 import { STARTERS_TAG, publishedContents } from "./store-starters";
 import { lookOf, themeShotsFor } from "./theme-shots";
+import { themePrices } from "./theme-prices";
 
 /**
  * The theme store's reads (phase 3 of `docs/theme-store.md`, `docs/theme-phase-3.md`): published, unarchived themes that have an
@@ -35,7 +37,13 @@ import { lookOf, themeShotsFor } from "./theme-shots";
 
 type Row = Record<string, unknown>;
 
-const cardOf = (row: Row, snapshot: DesignSnapshot, contents: ReadonlyMap<string, ThemeContent>, shots: ReadonlyMap<string, LookShots>): ThemeStoreCard => {
+const cardOf = (
+  row: Row,
+  snapshot: DesignSnapshot,
+  contents: ReadonlyMap<string, ThemeContent>,
+  shots: ReadonlyMap<string, LookShots>,
+  prices: ReadonlyMap<string, ThemePrice[]>,
+): ThemeStoreCard => {
   const presets = variationsOf(snapshot).map((v) => ({ key: v.key, name: v.name }));
   const listing = readListing(row.listing);
   const id = String(row.id);
@@ -62,6 +70,7 @@ const cardOf = (row: Row, snapshot: DesignSnapshot, contents: ReadonlyMap<string
     listing,
     features: themeFeatures(snapshot),
     swatch: swatchOf(snapshot),
+    prices: prices.get(id) ?? [],
   };
 };
 
@@ -92,10 +101,11 @@ async function loadCards(): Promise<ThemeStoreCard[]> {
     where published and archived_at is null and slug is not null
     order by position, lower(title), id
   `);
-  const shots = await themeShotsFor(rows.map((row) => String(row.id)));
+  const ids = rows.map((row) => String(row.id));
+  const [shots, prices] = await Promise.all([themeShotsFor(ids), themePrices(ids)]);
   return rows.flatMap((row) => {
     const snapshot = parseDesignSnapshot(row.snapshot);
-    return snapshot ? [cardOf(row, snapshot, contents, shots)] : [];
+    return snapshot ? [cardOf(row, snapshot, contents, shots, prices)] : [];
   });
 }
 
@@ -128,7 +138,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   });
   const latest = versions.at(-1) ?? null;
   return {
-    ...cardOf(row, snapshot, await publishedContents(), await themeShotsFor([String(row.id)])),
+    ...cardOf(row, snapshot, await publishedContents(), await themeShotsFor([String(row.id)]), await themePrices([String(row.id)])),
     description: String(row.description ?? ""),
     sectionStyles: themeSectionStyles(snapshot),
     changelog: themeChangelog(versions),
