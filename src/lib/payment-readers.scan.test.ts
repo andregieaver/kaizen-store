@@ -58,6 +58,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
   "src/server/payment-facts.ts": { count: 3, reason: "what a payment was, and its real fee (D290), is read from its Stripe charge (D288); a manual, venue or exchange payment keeps its own method and has no charge" },
+  "src/server/payment-methods.ts": { count: 1, reason: "a bank payment on its way is a Stripe session waiting for the bank (D291); no other provider's payment waits so" },
   "src/server/payouts.ts": { count: 1, reason: "a Stripe payout's charge is tied to the Stripe payment it settles (D290); no other provider's payment is in a Stripe payout" },
   "src/server/analytics-totals.ts": { count: 3, reason: "Stripe's real fee replaces the estimate only for an order whose every captured Stripe payment has one (D290); other providers have no fee" },
   "src/server/payment-capture.ts": { count: 3, reason: "only a Stripe payment is held and captured later (D289); a manual, venue or exchange payment is never authorised" },

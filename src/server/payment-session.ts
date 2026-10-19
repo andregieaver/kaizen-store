@@ -16,6 +16,7 @@ import type { CheckoutProblem, CheckoutShop, PlacedOrder } from "./checkout";
 import { ensurePaymentDomain, ensureTestAccount } from "./connect";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
 import { kaizenInvoicingOn } from "./invoice-settings";
+import { excludedPaymentMethods } from "./payment-methods";
 import { getCheckoutAccount } from "./settings";
 import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
@@ -213,6 +214,8 @@ export async function openPaymentSession(
     .filter(Boolean)
     .join(" · ");
   const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
+  // Methods the owner switched off for this country (D291): left out of Stripe's choice, never a list of methods of our own.
+  const excluded = await excludedPaymentMethods(shop.storeId, options.allowedCountry ?? shop.market.code);
   // Wallets, Link and Klarna show in Stripe's form only on registered domains.
   if (ui === "custom" && origin.startsWith("https://")) {
     await ensurePaymentDomain(shop.storeId, connection.mode, seller, new URL(origin).hostname);
@@ -319,7 +322,11 @@ export async function openPaymentSession(
             ],
           }),
         // No payment_method_types: Stripe shows the methods the store has
-        // turned on in its Stripe Dashboard that suit the shopper.
+        // turned on in its Stripe Dashboard that suit the shopper, less the
+        // ones switched off for this country (D291).
+        ...(excluded.length > 0 && {
+          excluded_payment_method_types: excluded as Stripe.Checkout.SessionCreateParams.ExcludedPaymentMethodType[],
+        }),
         // Subscriptions always get Stripe invoices; this is for single payments.
         // An invoice for part of an order would mislead: the store invoices the whole at the venue.
         // A host is the seller of their own bookings, so the store's invoices are not theirs (D71).

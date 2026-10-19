@@ -3,15 +3,17 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PaymentMethodsCard } from "@/components/admin/payment-methods-card";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
 import { kaizenInvoicingOn } from "@/server/invoice-settings";
+import { methodChoices, methodStates } from "@/server/payment-methods";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 import { Card, PageHeader } from "@/components/admin/ui";
 
-import { setStripeProviderAction } from "../../../actions";
+import { savePaymentMethodsAction, setStripeProviderAction } from "../../../actions";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -23,7 +25,7 @@ export default async function PaymentSettingsPage({
   const shopOff = requireFeature(current, "shop");
   if (shopOff) return shopOff;
   const { account, store } = current;
-  const [settings, audit, kaizenInvoices] = await Promise.all([getPaymentSettings(store), recentAudit(store.id), kaizenInvoicingOn(store.id)]);
+  const [settings, audit, kaizenInvoices, choices] = await Promise.all([getPaymentSettings(store), recentAudit(store.id), kaizenInvoicingOn(store.id), methodChoices(store.id)]);
   const isOwner = memberCan(current, "owner");
   const { accounts, stripe } = settings;
   const modes = settings.modes;
@@ -38,6 +40,8 @@ export default async function PaymentSettingsPage({
       ? await ensureTestAccount(store.id, account.id, await requestIp())
       : null;
   const testReady = accounts.test?.cardPayments === "active" || (testSetup?.ok === true && testSetup.ready);
+  // What Stripe says of each method (D291), on the account checkout uses: the live one once it is there, else the test one.
+  const methods = { choices, states: await methodStates(store.id, stripe.enabled ? stripe.activeMode : modes.includes("live") && accounts.live ? "live" : "test") };
 
   return (
     <div className="flex flex-col gap-8">
@@ -158,22 +162,13 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.length > 0 && (
-        <Card title="Payment methods" compact>
-          <p className="text-sm text-muted">
-            Stripe shows each shopper the methods that suit them from the ones you turn on in your
-            Stripe Dashboard under{" "}
-            <a
-              href="https://dashboard.stripe.com/settings/payment_methods"
-              className="underline"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Settings → Payment methods
-            </a>
-            : cards, Apple Pay and Google Pay, Klarna, MobilePay in Denmark, Swish in Sweden, and
-            more.
-          </p>
-        </Card>
+        <PaymentMethodsCard
+          states={methods.states}
+          choices={methods.choices}
+          markets={store.markets.map((m) => m.code)}
+          isOwner={isOwner}
+          action={savePaymentMethodsAction.bind(null, store.slug)}
+        />
       )}
 
       <Card title="Recent changes" compact>

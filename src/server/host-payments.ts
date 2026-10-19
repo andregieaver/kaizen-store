@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { accountStatus, requirementNotes, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
-import { INCLUDE, PAYMENT_CAPABILITIES, makeTestAccount, requestIp, stripeProblem, type StripeAccount } from "./connect";
+import { BASE_CAPABILITIES, INCLUDE, makeTestAccount, requestIp, stripeProblem, type StripeAccount } from "./connect";
 import type { Hosting } from "./hosts";
 import { platformStripe } from "./stripe";
 
@@ -48,8 +48,8 @@ export async function getHostStripeAccounts(
 }
 
 const requested = () =>
-  Object.fromEntries(PAYMENT_CAPABILITIES.map((capability) => [capability, { requested: true }])) as Record<
-    (typeof PAYMENT_CAPABILITIES)[number],
+  Object.fromEntries(BASE_CAPABILITIES.map((capability) => [capability, { requested: true }])) as Record<
+    (typeof BASE_CAPABILITIES)[number],
     { requested: true }
   >;
 

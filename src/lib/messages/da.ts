@@ -475,6 +475,7 @@ export const da: Messages = {
   thanks: "Tak for din bestilling!",
   orderNumber: "Ordrenummer",
   paymentPending: "Vi venter på bekræftelse af betalingen. Siden opdateres af sig selv.",
+  paymentBank: "Din bankbetaling er på vej. Det kan tage et par hverdage; vi sender dig en e-mail, så snart den er kommet.",
   /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
   orderCancelledPaid: "Bestillingen er annulleret.",
   orderCancelled: "Bestillingen blev afbrudt, og du har ikke betalt.",

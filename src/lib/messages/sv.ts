@@ -475,6 +475,7 @@ export const sv: Messages = {
   thanks: "Tack för din beställning!",
   orderNumber: "Ordernummer",
   paymentPending: "Vi väntar på bekräftelse av betalningen. Sidan uppdateras av sig själv.",
+  paymentBank: "Din bankbetalning är på väg. Det kan ta några bankdagar; vi mejlar dig så snart den har kommit fram.",
   /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
   orderCancelledPaid: "Beställningen är avbruten.",
   orderCancelled: "Beställningen avbröts och du har inte betalat.",

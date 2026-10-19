@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."orders" ADD COLUMN "awaiting_bank_since" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."stripe_accounts" ADD COLUMN "method_states" jsonb DEFAULT '{}'::jsonb NOT NULL;

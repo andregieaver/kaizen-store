@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { PAYMENT_CAPABILITIES } from "@/lib/payment-methods";
 import { encryptSecret } from "@/lib/secret-box";
 
 import type { Account } from "./auth";
@@ -333,12 +334,13 @@ describe("plans", () => {
     fake.refuseUpdates.on = true;
     await ensureStorePaymentMethods(storeId);
     fake.refuseUpdates.on = false;
-    expect(capabilityRequests()).toHaveLength(1);
+    // Refused together, then each on its own (D291): nine missing, ten asks, none kept, so all are asked again.
+    expect(capabilityRequests()).toHaveLength(10);
 
     await ensureStorePaymentMethods(storeId);
     await ensureStorePaymentMethods(storeId);
     const updates = capabilityRequests();
-    expect(updates).toHaveLength(2);
+    expect(updates).toHaveLength(11);
     expect(updates.at(-1)?.params).toMatchObject({
       configuration: {
         merchant: {
@@ -346,6 +348,8 @@ describe("plans", () => {
             klarna_payments: { requested: true },
             link_payments: { requested: true },
             mobilepay_payments: { requested: true },
+            ideal_payments: { requested: true },
+            sepa_debit_payments: { requested: true },
           },
         },
       },
@@ -354,7 +358,7 @@ describe("plans", () => {
     const [row] = await db().execute<Row>(sql`
       select payment_methods_requested from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'
     `);
-    expect(row.payment_methods_requested).toEqual(["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"]);
+    expect(row.payment_methods_requested).toEqual(PAYMENT_CAPABILITIES);
 
     // Kaizen's own test account also gets the test org number MobilePay asks for …
     expect(calls("accounts.update").some((c) => JSON.stringify(c.params).includes('"no_orgnr"'))).toBe(true);

@@ -331,7 +331,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Kaizen requests `klarna_payments` for every store account, switches Klarna on in Kaizen-made test accounts (`ensureStorePaymentMethods()`), and Stripe's form and express buttons show it where it fits. Live accounts: the owner enables it in their own Stripe Dashboard. No Kaizen-side switch or per-market control, no Klarna messaging on product pages, no test that a checkout offers it.",
+    "gap": "Kaizena Flow requests `klarna_payments` for every store account, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291: excluded from that country's sessions, tested). Missing: Klarna's payment messaging on product and cart pages, and a test that Stripe offers it to an eligible checkout (Stripe decides that, outside Kaizena Flow).",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -413,7 +413,7 @@
       "was": "full"
     },
     "weight": 3,
-    "gap": "Kaizen requests `mobilepay_payments` and switches MobilePay on, with the test organisation number it asks for, in the test accounts it makes (D23), and Stripe's form shows it to Danish and Finnish shoppers; a test holds the request and the display settings. Live accounts: the owner enables it in their own Stripe Dashboard; there is no Kaizen switch or per-market control, no test that a DKK or EUR checkout offers it, and subscriptions and boxes are card-only. Rated like Klarna, which is requested the same way (first report: full, not rechecked).",
+    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, tested). Missing: a test that Stripe offers it to a Danish or Finnish checkout (Stripe decides that), and subscription boxes are card-only.",
     "bucket": "A",
     "wave": 4,
     "criteria": [
@@ -495,14 +495,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Checkout sends no `payment_method_types` (tested), so methods the owner enables in their own Stripe Dashboard can appear. Kaizen requests no capability for iDEAL, Bancontact, BLIK, EPS or P24, has no admin switch or per-market control, no test that any is offered, and subscriptions and boxes are card-only.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Kaizen requests capabilities for iDEAL, Bancontact, BLIK, EPS, P24 and SEPA debit for every store account and shows each one's state in the admin.",
       "An owner switches each method on or off per market; a checkout for a country offers only the methods on and suited to it (integration tests per method and currency).",
@@ -511,18 +511,26 @@
     ],
     "evidence": {
       "files": [
-        "src/server/checkout.ts",
+        "src/lib/payment-methods.ts",
+        "src/server/payment-methods.ts",
         "src/server/connect.ts",
-        "src/lib/stripe-account.ts"
+        "src/server/payment-session.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/components/admin/payment-methods-card.tsx",
+        "supabase/migrations/20261019205502_payment_methods_rules.sql"
       ],
       "tests": [
-        "src/server/checkout-stripe.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
+        "src/server/payment-methods.int.test.ts",
+        "src/db/bank-payments.test.ts",
+        "src/lib/payment-methods.test.ts",
+        "src/server/billing.int.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D291"
     ],
     "history": [
       {
@@ -530,6 +538,12 @@
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: was missing, owner-enabled Stripe methods can appear."
+      },
+      {
+        "on": "2026-10-19",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 4 unit D (D291): Kaizena Flow asks Stripe for iDEAL, Bancontact, BLIK, EPS, Przelewy24 and SEPA Direct Debit on every store's account (after it is made, one at a time when Stripe refuses them together) and the Payments page shows each method's state as Stripe reports it, with Stripe's reason. The owner switches each method off per country; that country's checkout sessions pass it in excluded_payment_method_types, never payment_method_types (payment-methods.int.test.ts: Norway in kroner and shown in euro, Sweden untouched, back on). A SEPA payment keeps the order pending_payment with its stock held for 21 days until Stripe's async success makes it paid or its failure cancels it and lets the stock go (bank-payments.test.ts and the int test); the shopper's order page and the admin say it waits for the bank. The Payments page says subscriptions take only the methods Stripe allows for repeat payments."
       }
     ]
   },

@@ -2640,6 +2640,20 @@
       "when": 1792438978541,
       "tag": "20261019194258_payouts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 377,
+      "version": "7",
+      "when": 1792443157361,
+      "tag": "20261019205237_payment_methods_per_country",
+      "breakpoints": true
+    },
+    {
+      "idx": 378,
+      "version": "7",
+      "when": 1792443302536,
+      "tag": "20261019205502_payment_methods_rules",
+      "breakpoints": true
     }
   ]
 }

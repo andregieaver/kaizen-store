@@ -20,6 +20,7 @@ import { catalogTag } from "@/server/catalog";
 import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
+import { saveMethodChoices } from "@/server/payment-methods";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
 
 // Every action takes the store's slug as its first (bound) argument and
@@ -100,6 +101,23 @@ export async function setStripeProviderAction(
   // The storefront's "cannot buy yet" notice depends on this switch.
   if (result.ok) updateTag(storeTag(owner.store.slug));
   return toState(result);
+}
+
+/**
+ * Which payment methods each country's checkout offers (D291): the boxes ticked are on, the rest of the store's countries' switchable methods off.
+ * Owners only, as the rest of the Payments page.
+ */
+export async function savePaymentMethodsAction(
+  storeSlug: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const markets = formData.getAll("market").map(String);
+  const on = new Set(formData.getAll("on").map(String));
+  const { changed } = await saveMethodChoices(owner.store.id, owner.account.id, { markets, on });
+  return toState({ ok: true }, changed === 0 ? "Nothing changed." : "Saved. New checkouts offer these methods.");
 }
 
 export async function saveShippingAction(

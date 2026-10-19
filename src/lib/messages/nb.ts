@@ -478,6 +478,7 @@ export const nb: Messages = {
   thanks: "Takk for bestillingen!",
   orderNumber: "Ordrenummer",
   paymentPending: "Vi venter på bekreftelse fra betalingen. Siden oppdateres av seg selv.",
+  paymentBank: "Bankbetalingen din er på vei. Det kan ta noen virkedager; vi sender deg en e-post så snart den er kommet.",
   /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
   orderCancelledPaid: "Bestillingen er kansellert.",
   orderCancelled: "Bestillingen ble avbrutt, og du har ikke betalt.",

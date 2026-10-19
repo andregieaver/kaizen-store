@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { capabilityStates, PAYMENT_CAPABILITIES as ALL_CAPABILITIES } from "@/lib/payment-methods";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
 import { accountStatus, requirementNotes, type AccountStatus, type PaymentModeName } from "@/lib/stripe-account";
 
@@ -117,7 +118,7 @@ export async function createStripeAccount(
     insert into commerce.stripe_accounts
       (store_id, mode, account_id, card_payments, requirements_due, payment_methods_requested, created_by)
     values (${store.id}::uuid, ${mode}, ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
-            ${CAPABILITY_LIST}::text[], ${account.id}::uuid)
+            ${BASE_LIST}::text[], ${account.id}::uuid)
     on conflict (store_id, mode) do nothing
   `);
   await audit(account.id, store.id, "payments.stripe_account_created", { mode, accountId: created.id });
@@ -134,19 +135,25 @@ export async function requestIp(): Promise<string> {
 }
 
 /**
- * The payment methods Kaizen asks Stripe to switch on for every store's
- * account (D23): cards (with Apple Pay and Google Pay), Klarna, Link and
- * MobilePay. Stripe offers each where it fits the shopper's country and
- * currency. Swish and Vipps follow once Stripe opens them to Kaizen.
+ * The payment methods an account is made with (D23): cards (with Apple Pay and
+ * Google Pay), Klarna, Link and MobilePay. A host's account (D71) keeps these.
+ * Swish and Vipps follow once Stripe opens them to Kaizen.
  */
-export const PAYMENT_CAPABILITIES = ["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"] as const;
+export const BASE_CAPABILITIES = ["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"] as const;
 
-/** The same, as a Postgres array literal for queries. */
+/**
+ * Every capability asked for on a store's account (D291, `PAYMENT_METHODS`): the base ones and the European bank methods, requested after the
+ * account is made, one at a time when Stripe refuses them together, so a method Stripe does not offer a store never stops its account.
+ */
+export const PAYMENT_CAPABILITIES = ALL_CAPABILITIES;
+
+/** The same, as Postgres array literals for queries: what a new account was made with, and everything a store's account is asked for. */
+const BASE_LIST = `{${BASE_CAPABILITIES.join(",")}}`;
 const CAPABILITY_LIST = `{${PAYMENT_CAPABILITIES.join(",")}}`;
 
 const requestedCapabilities = () =>
-  Object.fromEntries(PAYMENT_CAPABILITIES.map((capability) => [capability, { requested: true }])) as Record<
-    (typeof PAYMENT_CAPABILITIES)[number],
+  Object.fromEntries(BASE_CAPABILITIES.map((capability) => [capability, { requested: true }])) as Record<
+    (typeof BASE_CAPABILITIES)[number],
     { requested: true }
   >;
 
@@ -311,7 +318,7 @@ export async function ensureTestAccount(
        payment_methods_requested, created_by)
     values (${storeId}::uuid, 'test', ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
             ${JSON.stringify(requirementNotes(fresh))}::jsonb, true,
-            ${CAPABILITY_LIST}::text[], ${actorId}::uuid)
+            ${BASE_LIST}::text[], ${actorId}::uuid)
     on conflict (store_id, mode) do update set
       account_id = excluded.account_id, card_payments = excluded.card_payments,
       requirements_due = excluded.requirements_due, requirements = excluded.requirements,
@@ -329,7 +336,9 @@ async function saveStatus(storeId: string, mode: PaymentModeName, account: Strip
   await db().execute(sql`
     update commerce.stripe_accounts
        set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue},
-           requirements = ${JSON.stringify(requirementNotes(account))}::jsonb, updated_at = now()
+           requirements = ${JSON.stringify(requirementNotes(account))}::jsonb,
+           method_states = ${JSON.stringify(capabilityStates(account.configuration?.merchant?.capabilities as Record<string, never> | undefined))}::jsonb,
+           updated_at = now()
      where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${account.id}
   `);
   return status;
@@ -542,24 +551,32 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
     const asked = new Set(row.payment_methods_requested as string[]);
     const missing = PAYMENT_CAPABILITIES.filter((capability) => !asked.has(capability));
     if (missing.length > 0) {
-      const done = await stripe.v2.core.accounts
-        .update(accountId, {
-          configuration: {
-            merchant: {
-              capabilities: Object.fromEntries(missing.map((capability) => [capability, { requested: true }])),
-            },
-          },
-        })
-        .then(
-          () => true,
-          () => false,
-        );
-      if (done) {
+      const ask = (capabilities: readonly string[]) =>
+        stripe.v2.core.accounts
+          .update(accountId, {
+            configuration: { merchant: { capabilities: Object.fromEntries(capabilities.map((capability) => [capability, { requested: true }])) } },
+          })
+          .then(
+            () => true,
+            () => false,
+          );
+      // Together first; when Stripe refuses (one it does not offer this account, D291), one at a time, so the others are still asked for.
+      let granted: string[] = [];
+      const refused: string[] = [];
+      if (await ask(missing)) granted = [...missing];
+      else
+        for (const capability of missing) {
+          if (await ask([capability])) granted.push(capability);
+          else refused.push(capability);
+        }
+      // Stripe took some: the ones it refused are ones it does not offer this account, kept as asked so they are not asked again every time
+      // (Stripe's answer, read back below, says they are not on). It took none: Stripe may be down, and all are asked again next time.
+      if (granted.length > 0) {
         await db().execute(sql`
           update commerce.stripe_accounts set payment_methods_requested = ${CAPABILITY_LIST}::text[], updated_at = now()
           where ${where}
         `);
-        await audit(null, storeId, "payments.methods_requested", { mode, capabilities: missing });
+        await audit(null, storeId, "payments.methods_requested", { mode, capabilities: granted, ...(refused.length ? { refused } : {}) });
       }
     }
 

@@ -1117,7 +1117,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Kaizen asks Stripe for MobilePay on every store's account (D23) and Stripe shows it in Denmark and Finland where the account qualifies; Vipps (Norway) and Swish are in private preview at Stripe, not available for Accounts v2, so Vipps cannot be offered, and an owner cannot see or switch the method from Kaizen.",
+    "gap": "MobilePay is requested on every store's account, its state is shown on the Payments page and it can be switched off per country (D291). Vipps (Norway) and Swish are in private preview at Stripe, not available for Accounts v2, so Vipps cannot be offered yet; a second provider (unit E, Mollie) is the other way in.",
     "bucket": "B",
     "wave": 4,
     "criteria": [

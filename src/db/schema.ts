@@ -3494,6 +3494,11 @@ export const orders = commerce.table(
     captureMode: text("capture_mode"),
     captureBefore: timestamp("capture_before", { withTimezone: true }),
     captureWarnedAt: timestamp("capture_warned_at", { withTimezone: true }),
+    /**
+     * The shopper finished paying with a bank method whose money arrives days later (SEPA Direct Debit, D291): the order waits for the bank,
+     * `pending_payment` with its stock held (`commerce.await_bank_payment()`), until Stripe says the payment succeeded or failed.
+     */
+    awaitingBankSince: timestamp("awaiting_bank_since", { withTimezone: true }),
         heldAt: timestamp("held_at", { withTimezone: true }),
     heldReason: text("held_reason"),
     heldByRule: uuid("held_by_rule"),
@@ -5698,6 +5703,8 @@ export const stripeAccounts = commerce.table(
     paymentMethodsRequested: text("payment_methods_requested").array().notNull().default(sql`'{}'::text[]`),
     /** Kaizen has switched its payment methods on in this (Kaizen-made test) account's display settings. */
     paymentMethodsShown: boolean("payment_methods_shown").notNull().default(false),
+    /** What Stripe last said of each of Kaizena Flow's payment capabilities on this account (`capabilityStates()`, D291): status and Stripe's reason. */
+    methodStates: jsonb("method_states").notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

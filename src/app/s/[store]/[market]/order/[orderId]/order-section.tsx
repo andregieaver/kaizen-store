@@ -193,7 +193,8 @@ export async function OrderContinue(shop: Shop) {
 function statusBlock({ order, m, exchange }: OrderView) {
   return (
     <>
-      <RefreshWhile waiting={order.status === "pending_payment"} />
+      {/* A bank payment takes days (D291): the page does not keep asking. */}
+      <RefreshWhile waiting={order.status === "pending_payment" && !order.awaitingBank} />
       {/* The paid order has emptied the cart; show the header without it. */}
       {order.status !== "pending_payment" && <RefreshOnce id={`order:${order.id}:${order.status}`} />}
       <div className="flex flex-col gap-6">
@@ -201,7 +202,7 @@ function statusBlock({ order, m, exchange }: OrderView) {
           <h1 className="text-3xl font-heading tracking-tight">
             {order.status === "cancelled" ? (order.wasPaid ? m.orderCancelledPaid : m.orderCancelled) : m.thanks}
           </h1>
-          {order.status === "pending_payment" && <p className="mt-2">{m.paymentPending}</p>}
+          {order.status === "pending_payment" && <p className="mt-2">{order.awaitingBank ? m.paymentBank : m.paymentPending}</p>}
         </div>
         <p>
           {m.orderNumber}: <strong>{order.number}</strong>. {order.status !== "cancelled" && m.keepNumber}

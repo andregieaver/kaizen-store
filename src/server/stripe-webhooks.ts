@@ -18,6 +18,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } f
 import { applyIntentCanceled, authorizeFromSession } from "./payment-capture";
 import { applyStripeDispute, isDisputeEvent } from "./payment-disputes";
 import { applyPayout } from "./payouts";
+import { awaitBankPayment } from "./payment-methods";
 import { isPayoutEvent } from "@/lib/payouts";
 import { readPaymentFacts } from "./payment-facts";
 import { applyStripeRefund, isRefundEvent, paymentOfIntent, stripeForAccount } from "./stripe-refunds";
@@ -144,6 +145,16 @@ export async function applySession(
       if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
       return;
     }
+  }
+
+  // A bank payment that arrives days later (D291, SEPA Direct Debit): the order waits for the bank with its stock held; nothing is a sale yet, and
+  // `async_payment_succeeded` or `async_payment_failed` settles it below.
+  if (session.status === "complete" && session.payment_status === "unpaid" && !failed && !delivery) {
+    if (await awaitBankPayment(storeId, session.id)) {
+      await markCheckoutRecovered(storeId, orderId);
+      await linkOrderToCustomer(storeId, orderId);
+    }
+    return;
   }
 
   if (session.status === "complete" && session.payment_status !== "unpaid" && !failed) {

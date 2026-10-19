@@ -147,6 +147,23 @@ and release both on `async_payment_failed`; the order page says *Waiting for the
 debit, as Stripe allows). Tested: a session for each country and currency excludes exactly the methods switched off (a fake Stripe records the
 request), and a delayed payment's success and failure.
 
+**As built (D291).** The methods are `PAYMENT_METHODS` (`src/lib/payment-methods.ts`): cards (always on, with Apple Pay and Google Pay), Klarna,
+Link, MobilePay, iDEAL, Bancontact, EPS, Przelewy24, BLIK and SEPA Direct Debit, each with its Stripe type and capability. An account is still made
+with the four base capabilities (`BASE_CAPABILITIES`, a host's too); `ensureStorePaymentMethods()` asks for the rest afterwards, together, and one
+at a time when Stripe refuses them together, so a method Stripe does not offer a store never stops its account (a refusal of all is asked again
+next time). What Stripe says of each capability is kept on the account (`stripe_accounts.method_states`, `capabilityStates()`, by `saveStatus()`)
+and shown on the Payments page (`PaymentMethodsCard`: *Active*, *Stripe is checking*, *Requested*, *Not available* with Stripe's reason in words).
+`commerce.payment_methods` is the owner's choice: a row with `enabled = false` switches a method off for a country, no row is on (the template's
+rows are all on), an unknown method is ignored and cards are never off. `excludedPaymentMethods()` gives a country's list, which
+`openPaymentSession()` passes as `excluded_payment_method_types` for the order's own country (also shown in another currency); never
+`payment_method_types`. A subscription box's pay link saves the card for later deliveries and stays card-only. A completed session that is unpaid
+and holds no card (SEPA Direct Debit processing) makes the order wait for the bank: `commerce.await_bank_payment()` keeps it `pending_payment`, sets
+`orders.awaiting_bank_since`, holds its stock and booked times for `BANK_WAIT_DAYS` (21) and converts the cart, once; the shopper's order page says
+the payment is on its way (`m.paymentBank`, four languages, and stops refreshing), the admin's order header *Waiting for the bank*; Stripe's
+`async_payment_succeeded` completes it as any paid order (the confirmation email follows) and `async_payment_failed` cancels it and lets the stock
+go. Tested: `src/lib/payment-methods.test.ts`, `src/db/bank-payments.test.ts`, `src/server/payment-methods.int.test.ts` (Norway in kroner and shown
+in euro, Sweden untouched, the bank wait paid and failed), `billing.int.test.ts` (capabilities asked for one at a time after a refusal).
+
 ## 7. Unit E (D292): the provider adapter and Mollie
 
 **The adapter.** `src/server/payment-providers/` holds a `PaymentProvider` (`id`, `openPayment()`, `readPayment()`, `refund()`, `capture?()`,

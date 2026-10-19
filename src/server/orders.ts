@@ -113,6 +113,8 @@ export type OrderView = {
   balanceMinor: number;
   /** It was paid (or confirmed to be paid at the venue) at some point, even if cancelled since. */
   wasPaid: boolean;
+  /** A bank payment is on its way (D291, SEPA Direct Debit): the shopper paid, the money arrives in a few days. */
+  awaitingBank: boolean;
   shippingAddress: Address;
   billingAddress: Address;
   lines: {
@@ -274,6 +276,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
   wasPaid: Boolean(row.was_paid),
+  awaitingBank: row.status === "pending_payment" && row.awaiting_bank_since != null,
   shippingAddress: (row.shipping_address ?? {}) as Address,
   billingAddress: (row.billing_address ?? {}) as Address,
   lines: lines.map((line) => ({

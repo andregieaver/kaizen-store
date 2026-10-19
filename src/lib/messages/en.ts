@@ -484,6 +484,8 @@ export const en = {
   thanks: "Thank you for your order!",
   orderNumber: "Order number",
   paymentPending: "We are waiting for the payment to be confirmed. This page updates by itself.",
+  /** A bank payment on its way (D291, SEPA Direct Debit). */
+  paymentBank: "Your bank payment is on its way. It can take a few working days; we send you an email as soon as it has arrived.",
   /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
   orderCancelledPaid: "The order is cancelled.",
   orderCancelled: "The order was cancelled and you have not paid.",
