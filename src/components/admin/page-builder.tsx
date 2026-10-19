@@ -2377,8 +2377,11 @@ function Canvas({
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
 /** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
-/** A column of the builder that scrolls on its own on a computer, never handing its scroll on to the page. */
-const STANDALONE = "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain";
+/**
+ * A column of the builder that scrolls on its own on a computer, never handing its scroll on to the page. Positioned, so what lies
+ * absolutely inside it (a field's label for screen readers) is held by its scroll too and never makes the page itself scroll.
+ */
+const STANDALONE = "lg:relative lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain";
 
 /**
  * What dragging a sidebar's edge needs to know (D262): its width now, the other side's (folded or open), and the room the three
