@@ -26,6 +26,7 @@ import { closeSession, completeOrderPayment } from "./checkout";
 import { getCheckoutAccount } from "./settings";
 import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
+import { mollieProvider } from "./payment-providers/mollie";
 
 type Row = Record<string, unknown>;
 
@@ -347,6 +348,16 @@ async function closeOpenCheckouts(subject: PrivacySubject): Promise<void> {
     where o.store_id = ${subject.storeId}::uuid and o.id = any(${uuidList(subject.orderIds)}) and o.status = 'pending_payment' and o.copied_from is null
       and starts_with(p.provider_reference, 'cs_') and p.provider_account is not null
   `);
+  // A Mollie payment waiting for the shopper (D292) is closed by Mollie: one paid meanwhile completes its order, one under way stops the erasure.
+  const mollie = await db().execute<Row>(sql`
+    select o.id, p.id as payment_id, p.provider_reference from commerce.orders o
+    join commerce.payments p on p.store_id = o.store_id and p.order_id = o.id and p.provider = 'mollie' and p.status = 'pending'
+    where o.store_id = ${subject.storeId}::uuid and o.id = any(${uuidList(subject.orderIds)}) and o.status = 'pending_payment' and o.copied_from is null
+  `);
+  for (const row of mollie) {
+    const outcome = await mollieProvider.close(subject.storeId, { id: String(row.payment_id), orderId: String(row.id), provider: "mollie", reference: String(row.provider_reference), account: null, mode: null });
+    if (outcome === "processing" || outcome === "unknown") throw new ExternalFailure(`order ${String(row.id)}: a payment is still being processed`);
+  }
   if (open.length === 0) return;
   const found = await getCheckoutAccount(subject.storeId);
   const stripe = found ? platformStripe(found.mode) : null;

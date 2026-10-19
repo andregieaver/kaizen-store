@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh, updateTag } from "next/cache";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -21,6 +21,8 @@ import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
 import { saveMethodChoices } from "@/server/payment-methods";
+import { MOLLIE_COOKIE, MOLLIE_COOKIE_PATH } from "@/lib/mollie";
+import { activateMollieMethod, chooseCheckoutProvider, disconnectMollie, mollieStart } from "@/server/mollie";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
 
 // Every action takes the store's slug as its first (bound) argument and
@@ -118,6 +120,50 @@ export async function savePaymentMethodsAction(
   const on = new Set(formData.getAll("on").map(String));
   const { changed } = await saveMethodChoices(owner.store.id, owner.account.id, { markets, on });
   return toState({ ok: true }, changed === 0 ? "Nothing changed." : "Saved. New checkouts offer these methods.");
+}
+
+/** "Connect Mollie" (D292): off to Mollie to approve Kaizena Flow, back to `/api/integrations/mollie/callback`. Owners only. */
+export async function connectMollieAction(storeSlug: string): Promise<void> {
+  const owner = await asOwner(storeSlug);
+  const start = "store" in owner ? mollieStart(owner.store.slug, owner.account.id) : null;
+  if (!start) redirect(`/admin/${storeSlug}/settings/payments`);
+  (await cookies()).set(MOLLIE_COOKIE, start.cookie, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: MOLLIE_COOKIE_PATH,
+    maxAge: 600,
+  });
+  redirect(start.url);
+}
+
+/** Which provider each mode's checkout uses (D292): Stripe, or Mollie once it is connected. Owners only. */
+export async function saveCheckoutProviderAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  for (const mode of ["test", "live"] as const) {
+    const chosen = formData.get(`provider:${mode}`);
+    if (chosen !== "stripe" && chosen !== "mollie") continue;
+    const saved = await chooseCheckoutProvider(owner.store.id, owner.account.id, mode, chosen);
+    if (!saved.ok) return { status: "error", messages: [saved.problem] };
+  }
+  return toState({ ok: true }, "Saved. New checkouts use it.");
+}
+
+/** Ends the Mollie connection; checkouts go back to Stripe (D292). Owners only. */
+export async function disconnectMollieAction(storeSlug: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  await disconnectMollie(owner.store.id, owner.account.id);
+  return toState({ ok: true }, "Mollie is disconnected. Checkouts use Stripe.");
+}
+
+/** Asks Mollie to switch a method on for the store's profile (D292). Owners only. */
+export async function activateMollieMethodAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const done = await activateMollieMethod(owner.store.id, owner.account.id, String(formData.get("method") ?? ""));
+  return done.ok ? toState({ ok: true }, "Asked Mollie. It shows as active once Mollie has switched it on.") : { status: "error", messages: [done.problem] };
 }
 
 export async function saveShippingAction(

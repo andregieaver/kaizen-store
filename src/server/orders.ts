@@ -14,6 +14,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
+import { mollieAppOn } from "./mollie";
 import { providerOf } from "./payment-providers";
 import { platformModes } from "./stripe";
 
@@ -432,7 +433,7 @@ export async function getShopperOrder(
     left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
       -- An exchange order (D239) paid wholly by its return's credit opens by its exchange payment's reference.
-      and pay.provider in ('stripe', 'venue', 'manual', 'exchange') and pay.provider_reference = ${sessionId}
+      and pay.provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange') and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 
@@ -470,6 +471,13 @@ export async function getCheckoutInfo(storeId: string, marketCode: string, view?
       ) as payments_on,
       (select active_mode from commerce.payment_providers
         where store_id = ${storeId}::uuid and provider = 'stripe') as active_mode,
+      -- The store's checkout is Mollie's in the mode it is in (D292): chosen, connected, and payments switched on.
+      exists (
+        select 1 from commerce.payment_providers p
+        join commerce.checkout_providers c on c.store_id = p.store_id and c.mode = p.active_mode and c.provider = 'mollie'
+        join commerce.mollie_connections m on m.store_id = p.store_id and m.revoked_at is null
+        where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
+      ) as on_mollie,
       (select amount_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,
       (select free_over_minor from commerce.shipping_rates
@@ -482,8 +490,12 @@ export async function getCheckoutInfo(storeId: string, marketCode: string, view?
     vatRate: Number(row?.vat_rate ?? 0),
     /** A store template (D175): a preview that takes no orders, so payments are off and the cart says why. */
     starter: Boolean(row?.starter),
-    // Test payments also need Kaizen's own test keys to be set.
-    paymentsOn: !row?.starter && Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test")),
+    // Test payments also need Kaizen's own test keys to be set; a Mollie checkout needs Kaizena Flow's Mollie app (D292).
+    paymentsOn:
+      !row?.starter &&
+      ((Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test"))) || (Boolean(row?.on_mollie) && mollieAppOn())),
+    /** Whose page the shopper pays on (D292): Mollie's asks for no address, so the cart asks for who pays first. */
+    provider: row?.on_mollie && mollieAppOn() ? ("mollie" as const) : ("stripe" as const),
     shipping:
       row?.amount_minor == null
         ? null

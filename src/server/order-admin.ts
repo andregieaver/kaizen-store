@@ -172,7 +172,8 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       select coalesce(sum(amount_minor) filter (where status = 'captured'), 0)::bigint as paid,
              -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizena Flow (D173, refunded by being recorded), can be refunded here.
              -- An exchange order's credit (D239, provider exchange) is refunded at the original order's payment, so it is refundable here too.
-             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'manual', 'exchange')), 0)::bigint as online,
+             -- A Mollie payment (D292) is refunded through Mollie.
+             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'mollie', 'manual', 'exchange')), 0)::bigint as online,
              bool_or(status = 'captured' and (provider_account is not null or provider = 'exchange')) as connect,
              bool_or(status = 'captured' and provider = 'manual') as manual,
              (array_agg(method order by created_at) filter (where provider = 'manual' and status = 'captured'))[1] as manual_method,
@@ -734,7 +735,9 @@ export async function refundOrder(
       await db().execute<Row>(sql`
         select p.id, coalesce(src.provider, p.provider) as provider,
           coalesce(src.provider_reference, p.provider_reference) as provider_reference,
-          coalesce(src.provider_account, p.provider_account) as provider_account, coalesce(sa.mode, a.mode) as mode,
+          coalesce(src.provider_account, p.provider_account) as provider_account,
+          -- A Mollie payment keeps its mode on the row (D292); a Stripe payment's is its connected account's.
+          coalesce(sa.mode::text, a.mode::text, case when coalesce(src.provider, p.provider) = 'mollie' then case when coalesce(src.test_mode, p.test_mode) then 'test' else 'live' end end) as mode,
           p.amount_minor - coalesce((select sum(r.amount_minor) from commerce.refunds r
                                       where r.store_id = p.store_id and r.payment_id = p.id and r.status::text <> 'failed'), 0) as left_minor
         from commerce.payments p
@@ -743,8 +746,8 @@ export async function refundOrder(
         left join commerce.payments src on src.store_id = tr.store_id and src.id = tr.payment_id
         left join commerce.connected_accounts sa on sa.store_id = src.store_id and sa.account_id = src.provider_account
         where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured'
-          and (p.provider = 'manual' or (p.provider = 'stripe' and a.mode is not null)
-               or (p.provider = 'exchange' and (src.provider = 'manual' or (src.provider = 'stripe' and sa.mode is not null))))
+          and (p.provider in ('manual', 'mollie') or (p.provider = 'stripe' and a.mode is not null)
+               or (p.provider = 'exchange' and (src.provider in ('manual', 'mollie') or (src.provider = 'stripe' and sa.mode is not null))))
           and (${options.paymentId ?? null}::uuid is null or p.id = ${options.paymentId ?? null}::uuid)
         order by (p.provider = 'exchange'), p.created_at, p.id
       `);
@@ -776,6 +779,7 @@ export async function refundOrder(
       const provider = providerOf(payment.provider);
       if (!provider) throw new PaymentProviderRefusal("This payment's provider cannot be reached right now.");
       const refund = await provider.refund(
+        storeId,
         {
           id: part.paymentId,
           orderId,

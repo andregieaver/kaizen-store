@@ -66,7 +66,7 @@ export const stripeProvider: PaymentProvider = {
     return state;
   },
 
-  async refund(payment, request) {
+  async refund(_storeId, payment, request) {
     const stripe = payment.mode ? platformStripe(payment.mode) : null;
     if (!stripe || !payment.account) throw new PaymentProviderRefusal("Stripe cannot be reached for this store right now.");
     const stripeAccount = payment.account;

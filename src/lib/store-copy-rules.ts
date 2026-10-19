@@ -238,6 +238,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   payouts: never("A store's payouts are its own Stripe account's money (D290); a copy has none."),
   payout_lines: never("What a payout settled belongs to that payout (D290)."),
   payout_reads: never("When a store's payouts were last read back (D290)."),
+  mollie_connections: never("A store's Mollie connection holds its own token; the new store connects its own (D292)."),
+  checkout_providers: never("Which provider a store's checkout uses follows its own connections (D292)."),
   product_files: never("Download files stay with the original (their products wait as drafts)."),
   refunds: never("Copied orders have no refunds."),
   resource_blocks: never("Closures and blocks from iCal feeds belong to the original's calendar."),
@@ -309,6 +311,7 @@ export const copyTables = (group: CopyGroup): string[] =>
 export const SECRET_TABLES = [
   "payment_credentials",
   "stripe_accounts",
+  "mollie_connections",
   "store_domains",
   "store_integrations",
   "ai_providers",

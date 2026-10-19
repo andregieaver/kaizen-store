@@ -630,6 +630,21 @@ export const da: Messages = {
   problemConsent: "Sæt kryds ved samtykket til downloaden for at gå videre.",
   problemCompany: "Udfyld firmanavn og CVR-nummer for at gå videre.",
   problemCompanyNumber: "CVR-nummeret ser ikke rigtigt ud. Tjek det, og prøv igen.",
+  /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
+  payer: {
+    legend: "Dine oplysninger",
+    name: "Navn",
+    email: "E-mail",
+    phone: "Telefon",
+    phoneOptional: "Telefon (valgfrit)",
+    address: "Leveringsadresse",
+    line1: "Adresse",
+    line2: "Adresse, linje 2 (valgfrit)",
+    postalCode: "Postnummer",
+    city: "By",
+    note: "Du betaler på Mollies sikre side bagefter.",
+    problem: "Udfyld navn og e-mail, og leveringsadressen, hvis bestillingen sendes til dig.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Virksomheden",

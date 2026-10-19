@@ -61,6 +61,34 @@ export type CheckoutContactFields = {
 };
 
 /**
+ * Who pays and where the goods go, asked when the store's checkout is Mollie's (D292), whose page asks for neither. Filled in from a signed-in customer;
+ * the address only when goods are sent to the shopper, a phone number required when the store's own driver brings them.
+ */
+export type CheckoutPayerFields = {
+  needs: { address: boolean; phone: boolean };
+  name: string;
+  email: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  postalCode: string;
+  city: string;
+  labels: {
+    legend: string;
+    name: string;
+    email: string;
+    phone: string;
+    phoneOptional: string;
+    address: string;
+    line1: string;
+    line2: string;
+    postalCode: string;
+    city: string;
+    note: string;
+  };
+};
+
+/**
  * Sends the shopper to payment; stays put and explains if that is not
  * possible. With `consents`, the shopper first ticks each one: that
  * downloads start at once and end the right of withdrawal, and the terms of
@@ -74,6 +102,7 @@ export function CheckoutButton({
   consents = {},
   company,
   contact,
+  payer,
   vat,
 }: {
   store: string;
@@ -85,6 +114,8 @@ export function CheckoutButton({
   company?: CheckoutCompany;
   /** When the order is paid entirely at the venue (D66). */
   contact?: CheckoutContactFields;
+  /** When the store's checkout is Mollie's (D292). */
+  payer?: CheckoutPayerFields;
   /** Where the cart offers a business's EU VAT number (D157); only with `company.ask`. */
   vat?: CheckoutVat;
 }) {
@@ -131,6 +162,17 @@ export function CheckoutButton({
               phone: String(form.get("contactPhone") ?? ""),
             }
           : null,
+        payer
+          ? {
+              name: String(form.get("payerName") ?? ""),
+              email: String(form.get("payerEmail") ?? ""),
+              phone: String(form.get("payerPhone") ?? ""),
+              line1: String(form.get("payerLine1") ?? ""),
+              line2: String(form.get("payerLine2") ?? ""),
+              postalCode: String(form.get("payerPostalCode") ?? ""),
+              city: String(form.get("payerCity") ?? ""),
+            }
+          : null,
       );
     },
     { problem: null },
@@ -141,6 +183,16 @@ export function CheckoutButton({
     if (to) window.location.assign(to);
   }, [to]);
   const [who, setWho] = useState({ name: contact?.name ?? "", email: contact?.email ?? "", phone: contact?.phone ?? "" });
+  // Kept as typed: a form action resets its fields.
+  const [pays, setPays] = useState({
+    name: payer?.name ?? "",
+    email: payer?.email ?? "",
+    phone: payer?.phone ?? "",
+    line1: payer?.line1 ?? "",
+    line2: payer?.line2 ?? "",
+    postalCode: payer?.postalCode ?? "",
+    city: payer?.city ?? "",
+  });
   const field = "min-h-11 w-full rounded-md border border-border bg-background px-3";
   return (
     <form action={action} className="flex flex-col gap-3">
@@ -212,6 +264,59 @@ export function CheckoutButton({
               />
             </label>
           ))}
+        </fieldset>
+      )}
+      {payer && (
+        <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">{payer.labels.legend}</legend>
+          {(
+            [
+              ["name", "payerName", payer.labels.name, "text", "name", true, 120],
+              ["email", "payerEmail", payer.labels.email, "email", "email", true, 200],
+              ["phone", "payerPhone", payer.needs.phone ? payer.labels.phone : payer.labels.phoneOptional, "tel", "tel", payer.needs.phone, 40],
+            ] as const
+          ).map(([key, name, text, type, autoComplete, required, max]) => (
+            <label key={key} className="flex flex-col gap-1">
+              {text}
+              <input
+                name={name}
+                type={type}
+                value={pays[key]}
+                onChange={(e) => setPays({ ...pays, [key]: e.target.value })}
+                required={required}
+                maxLength={max}
+                autoComplete={autoComplete}
+                className={field}
+              />
+            </label>
+          ))}
+          {payer.needs.address && (
+            <>
+              <p className="mt-2 font-medium">{payer.labels.address}</p>
+              {(
+                [
+                  ["line1", "payerLine1", payer.labels.line1, "address-line1", true, 200],
+                  ["line2", "payerLine2", payer.labels.line2, "address-line2", false, 200],
+                  ["postalCode", "payerPostalCode", payer.labels.postalCode, "postal-code", true, 20],
+                  ["city", "payerCity", payer.labels.city, "address-level2", true, 100],
+                ] as const
+              ).map(([key, name, text, autoComplete, required, max]) => (
+                <label key={key} className="flex flex-col gap-1">
+                  {text}
+                  <input
+                    name={name}
+                    value={pays[key]}
+                    onChange={(e) => setPays({ ...pays, [key]: e.target.value })}
+                    required={required}
+                    maxLength={max}
+                    autoComplete={autoComplete}
+                    className={field}
+                  />
+                </label>
+              ))}
+            </>
+          )}
+          <p className="text-muted">{payer.labels.note}</p>
         </fieldset>
       )}
       {(["subscription", "digital"] as const).map(

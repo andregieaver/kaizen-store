@@ -13,6 +13,7 @@ import { getStripeAccounts, type StripeAccount } from "./connect";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { platformModes } from "./stripe";
 import type { Store } from "./stores";
+import { checkoutProviderOf } from "./mollie";
 
 type Row = Record<string, unknown>;
 
@@ -58,7 +59,8 @@ export async function setStripeProvider(
   orderInvoices: boolean,
 ): Promise<SaveResult> {
   // Test payments need no Stripe account of the store's own (decision D20).
-  if (enabled && activeMode === "live") {
+  // Real payments through Mollie (D292) need the store's Mollie account, chosen for real payments and connected, instead.
+  if (enabled && activeMode === "live" && (await checkoutProviderOf(store.id, "live")) !== "mollie") {
     const accounts = await getStripeAccounts(store.id);
     if (accountStage(accounts[activeMode] ?? null) !== "ready") {
       return {

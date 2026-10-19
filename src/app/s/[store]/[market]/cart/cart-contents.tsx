@@ -63,7 +63,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const sumNet = (parts: { minor: number; rate: number }[]) =>
     money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
   // A signed-in customer's saved company and details fill the fields in.
-  const saved = (business && !cart.company) || summary.atVenueOnly ? await getCustomer(store.id) : null;
+  const saved = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" ? await getCustomer(store.id) : null;
   const companyNeeded = companyRequired(
     store.audience,
     cart.lines.map((line) => line.audience),
@@ -665,6 +665,25 @@ function checkoutAction({ store, market, m, view }: Draw) {
                     email: m.booking.contactEmail,
                     phone: m.booking.contactPhone,
                   },
+                }
+              : undefined
+          }
+          payer={
+            // Mollie's page asks for no address (D292): who pays, and where the goods go, are asked here first.
+            checkout.provider === "mollie" && !atVenueOnly
+              ? {
+                  needs: {
+                    address: summary.ships && summary.deliveryState?.method !== "pickup",
+                    phone: summary.deliveryState?.method === "local",
+                  },
+                  name: saved?.name ?? "",
+                  email: saved?.email ?? "",
+                  phone: saved?.phone ?? "",
+                  line1: saved?.address.line1 ?? "",
+                  line2: saved?.address.line2 ?? "",
+                  postalCode: saved?.address.postalCode ?? "",
+                  city: saved?.address.city ?? "",
+                  labels: m.payer,
                 }
               : undefined
           }

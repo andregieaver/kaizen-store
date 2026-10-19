@@ -112,6 +112,12 @@ redirect that ends on `/checkout` use a full navigation (the cart's action hands
 market layout's `PayDocumentWatcher` notes that in a module variable (nothing is stored, a reload starts clean, so it cannot loop).
 The cart's slide-out on phones is not a pay page and is left alone. A scan test fails on a `<Link>` to `/checkout`.
 
+**A store on Mollie (D292) adds no origin to the policy.** The cart's action hands back the address of Mollie's own hosted page and the
+browser leaves with a full navigation; the shopper types nothing about a card on Kaizena Flow's pages (their name, email and address only,
+which the cart asks before Mollie's page asks for none), and comes back to the order page by Mollie's redirect. Nothing of Mollie's is
+framed, scripted or posted to from a pay route, so `checkoutCsp()` is unchanged and the SAQ A reading above stands for Mollie as for Stripe's
+hosted page.
+
 **The checkout page may not hold an `html` block or a video that embeds another site** (the policy would block them, and they
 are exactly the owner-script risk): `savePage()` refuses to save one on the page chosen for the checkout, and `setPageRole()`
 refuses to choose a page that holds one. An uploaded video is allowed.

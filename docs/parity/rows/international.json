@@ -1117,7 +1117,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "MobilePay is requested on every store's account, its state is shown on the Payments page and it can be switched off per country (D291). Vipps (Norway) and Swish are in private preview at Stripe, not available for Accounts v2, so Vipps cannot be offered yet; a second provider (unit E, Mollie) is the other way in.",
+    "gap": "MobilePay is requested on every store's Stripe account, its state is shown and it can be switched off per country (D291). Vipps is offered through Mollie (D292) to a store whose Mollie account has it (the store's own Vipps agreement); tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app.",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -1128,17 +1128,21 @@
     ],
     "evidence": {
       "files": [
+        "src/lib/mollie.ts",
+        "src/lib/stripe-account.ts",
         "src/server/connect.ts",
-        "src/lib/stripe-account.ts"
+        "src/server/payment-providers/mollie.ts"
       ],
       "tests": [
         "src/lib/stripe-account.test.ts",
-        "src/server/checkout-stripe.int.test.ts"
+        "src/server/checkout-stripe.int.test.ts",
+        "src/server/mollie.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D292"
     ],
     "history": []
   },

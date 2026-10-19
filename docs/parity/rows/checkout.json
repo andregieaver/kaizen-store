@@ -268,14 +268,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "One gateway only: Stripe (`payment_providers.provider` is always 'stripe' in code). Several methods through it are scored in the local-methods, Klarna and MobilePay rows, not here. No Mollie, Adyen, Nets, Paytrail or bank transfer; stores Stripe does not serve cannot sell.",
-    "bucket": "C",
-    "wave": 4,
+    "gap": "Two providers behind one adapter (D292): Stripe, every store's default, and Mollie, connected by the owner's approval at Mollie and chosen per mode on the Payments page. Checkout, the webhook, the late read, closing open payments and refunds go to the payment's own provider; a Mollie order goes to paid, refunded and disputed in tests against a recorded fake of Mollie's API. Live Mollie payments wait for Kaizena Flow's Mollie app (bucket B for the methods it brings); Adyen, Nets and bank transfer are not built.",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A `PaymentProvider` adapter sits next to the Stripe code; checkout, webhooks and refunds go through it.",
       "A store chooses its provider in the admin, and a second provider takes an order to paid with the same tests as Stripe.",
@@ -283,21 +283,28 @@
     ],
     "evidence": {
       "files": [
-        "src/server/checkout.ts",
-        "src/server/stripe.ts",
-        "src/server/stripe-webhooks.ts",
-        "src/db/schema.ts"
+        "src/server/payment-providers/types.ts",
+        "src/server/payment-providers/stripe.ts",
+        "src/server/payment-providers/mollie.ts",
+        "src/server/payment-outcome.ts",
+        "src/server/mollie.ts",
+        "src/lib/payment-providers.ts",
+        "src/lib/mollie.ts",
+        "src/app/api/mollie/[mode]/route.ts"
       ],
       "tests": [
-        "src/server/checkout-stripe.int.test.ts",
-        "src/server/checkout.int.test.ts"
+        "src/lib/mollie.test.ts",
+        "src/server/mollie.int.test.ts",
+        "src/lib/payment-providers.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D15",
       "D17",
-      "D23"
+      "D23",
+      "D292"
     ],
     "history": [
       {
@@ -311,6 +318,12 @@
         "from": "partial",
         "to": "missing",
         "why": "One gateway only; method breadth is scored in the local-methods, Klarna and MobilePay rows"
+      },
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "full",
+        "why": "The payment-provider adapter (E1) and Mollie behind it (E2, D292): a store chooses its checkout provider per mode, and a Mollie order is paid, refunded and charged back through the same order code as Stripe's, in tests."
       }
     ]
   },
@@ -371,12 +384,12 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Not offered: not yet available for Stripe Accounts v2 (D23). Needs Stripe's access, or a second provider.",
+    "gap": "Through Mollie (D292): a store on Mollie's checkout is offered every method Mollie has active for it, Vipps included; Mollie offers it in NOK once the store has its own Vipps agreement and a Nordic business. The Payments page lists Mollie's methods with their state and an Activate button where Mollie allows it. Built and tested against a recorded fake of Mollie's API; live payments wait for Kaizena Flow's Mollie app (bucket B).",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -386,15 +399,30 @@
     ],
     "evidence": {
       "files": [
-        "src/server/connect.ts"
+        "src/server/payment-providers/mollie.ts",
+        "src/server/mollie.ts",
+        "src/lib/mollie.ts",
+        "src/components/admin/mollie-card.tsx"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/mollie.test.ts",
+        "src/server/mollie.int.test.ts",
+        "src/lib/payment-providers.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D292"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "partial",
+        "why": "Mollie behind the payment-provider adapter (D292) offers Vipps where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app."
+      }
+    ]
   },
   {
     "id": "checkout.mobilepay",
@@ -413,7 +441,7 @@
       "was": "full"
     },
     "weight": 3,
-    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, tested). Missing: a test that Stripe offers it to a Danish or Finnish checkout (Stripe decides that), and subscription boxes are card-only.",
+    "gap": "Kaizena Flow requests `mobilepay_payments`, the Payments page shows its state at Stripe with the reason, and the owner switches it off per country (D291, tested). Missing: a test that Stripe offers it to a Danish or Finnish checkout (Stripe decides that), and subscription boxes are card-only. Through Mollie (D292) too, where the store has its own MobilePay agreement.",
     "bucket": "A",
     "wave": 4,
     "criteria": [
@@ -458,12 +486,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "In private preview at Stripe: Kaizen's platform account must be given access first (D23); not requested or shown.",
+    "gap": "Through Mollie (D292): a store on Mollie's checkout is offered every method Mollie has active for it, Swish included; Mollie offers it in SEK once the store has a business in the EEA and Swish active at Mollie. The Payments page lists Mollie's methods with their state and an Activate button where Mollie allows it. Built and tested against a recorded fake of Mollie's API; live payments wait for Kaizena Flow's Mollie app (bucket B).",
     "bucket": "B",
     "wave": 4,
     "criteria": [
@@ -473,15 +501,30 @@
     ],
     "evidence": {
       "files": [
-        "src/server/connect.ts"
+        "src/server/payment-providers/mollie.ts",
+        "src/server/mollie.ts",
+        "src/lib/mollie.ts",
+        "src/components/admin/mollie-card.tsx"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/mollie.test.ts",
+        "src/server/mollie.int.test.ts",
+        "src/lib/payment-providers.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D292"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "partial",
+        "why": "Mollie behind the payment-provider adapter (D292) offers Swish where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app."
+      }
+    ]
   },
   {
     "id": "checkout.ideal-bancontact-sepa-blik-eps-p24-and-other-local-methods",
@@ -559,13 +602,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "Not allowed by Stripe for platforms taking direct charges (D23); needs a second payment provider (docs/parity-plan.md section 5, decision 1).",
-    "bucket": "C",
+    "gap": "Through Mollie (D292): a store on Mollie's checkout is offered every method Mollie has active for it, PayPal included; Mollie offers it to the store once the store's Mollie account has it active. The Payments page lists Mollie's methods with their state and an Activate button where Mollie allows it. Built and tested against a recorded fake of Mollie's API; live payments wait for Kaizena Flow's Mollie app (bucket B).",
+    "bucket": "B",
     "wave": 4,
     "criteria": [
       "A store chooses PayPal as a payment method and a shopper pays with it at checkout (provider sandbox).",
@@ -573,14 +616,31 @@
       "Orders, stock and VAT behave as for card payments (a scenario in checkout-kinds.int.test.ts)."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/payment-providers/mollie.ts",
+        "src/server/mollie.ts",
+        "src/lib/mollie.ts",
+        "src/components/admin/mollie-card.tsx"
+      ],
+      "tests": [
+        "src/lib/mollie.test.ts",
+        "src/server/mollie.int.test.ts",
+        "src/lib/payment-providers.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D292"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "partial",
+        "why": "Mollie behind the payment-provider adapter (D292) offers PayPal where the store's Mollie account has it; a Mollie order's payment and refund are tested against a fake of Mollie's API, live access waits for Kaizena Flow's Mollie app."
+      }
+    ]
   },
   {
     "id": "checkout.authorize-then-capture",

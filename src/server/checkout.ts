@@ -21,6 +21,7 @@ import type { OrderVatTreatment, VatKind } from "@/lib/vat-treatment";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
+import { cleanPayer, type PayerDetails } from "@/lib/mollie";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
@@ -37,7 +38,9 @@ import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
-import { resolveDelivery } from "./delivery-options";
+import { flagDeliveryMismatch, resolveDelivery } from "./delivery-options";
+import { checkoutProviderOf } from "./mollie";
+import { mollieProvider, openMolliePayment } from "./payment-providers/mollie";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
@@ -130,7 +133,9 @@ export type CheckoutProblem =
   | "contact"
   | "pay_later_mix"
   | "host_mix"
-  | "host_payments_off";
+  | "host_payments_off"
+  /** On Mollie (D292): who pays, or where the goods go, is missing or not right. */
+  | "payer";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -917,6 +922,34 @@ async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: Chec
   return token;
 }
 
+/**
+ * The mode a store's checkout is in when its provider there is Mollie (D292), else null: payments switched on (the store's `payment_providers` row, D15),
+ * and Mollie chosen for that mode and connected.
+ */
+async function mollieCheckoutMode(storeId: string): Promise<PaymentModeName | null> {
+  const [row] = await db().execute<Row>(sql`
+    select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled
+  `);
+  if (!row) return null;
+  const mode = row.active_mode as PaymentModeName;
+  return (await checkoutProviderOf(storeId, mode)) === "mollie" ? mode : null;
+}
+
+/** Who pays and where the goods go, as the shopper gave them before Mollie's page (which asks for neither), kept on the order as Stripe's would be. */
+async function writePayer(storeId: string, orderId: string, payer: PayerDetails, country: string): Promise<void> {
+  const address = payer.address
+    ? { name: payer.name, line1: payer.address.line1, line2: payer.address.line2 || null, postalCode: payer.address.postalCode, city: payer.address.city, country }
+    : { name: payer.name };
+  await db().execute(sql`
+    update commerce.orders set email = ${payer.email},
+      billing_address = ${JSON.stringify({ ...address, phone: payer.phone || null })}::jsonb,
+      shipping_address = case when delivery_method = 'pickup' or ${payer.address === null} then '{}'::jsonb else ${JSON.stringify(address)}::jsonb end
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+  `);
+  // The postal code a delivery was priced for is the shopper's typing at the cart; the address is what they typed now (D237 2.7): a difference is flagged.
+  await flagDeliveryMismatch(storeId, orderId);
+}
+
 /** Cancels an unpaid order and releases its stock. */
 export async function cancelUnpaidOrder(orderId: string, reason: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
@@ -963,18 +996,30 @@ export async function startCheckout(
   {
     customerId = null,
     contact = null,
+    payer = null,
   }: {
     customerId?: string | null;
     /** Who books when nothing is paid online (D66): Stripe asks everyone else. */
     contact?: CheckoutContact | null;
+    /** Who pays and where the goods go, as typed, for a store whose checkout is Mollie's (D292): Mollie's page asks for neither. */
+    payer?: Partial<Record<"name" | "email" | "phone" | "line1" | "line2" | "postalCode" | "city", string>> | null;
   } = {},
 ): Promise<CheckoutStart> {
   // A referral cookie the visitor allowed (D131) is kept with the cart before the order is placed.
   await rememberAffiliate({ storeId: shop.storeId, market: shop.market }, cartId);
+  // The store's checkout provider for the mode it is in (D292): Mollie while chosen and connected, else Stripe.
+  const mollieMode = await mollieCheckoutMode(shop.storeId);
   const connected = await paymentConnection(shop.storeId);
-  if (!connected) return { ok: false, problem: "payments_off" };
-  const { connection, stripe } = connected;
+  if (!connected && !mollieMode) return { ok: false, problem: "payments_off" };
   const ui = await getCheckoutUi();
+  // Mollie's page asks for no address: who pays is checked before the order is placed, for what the basket needs.
+  let cleanedPayer: PayerDetails | null = null;
+  if (mollieMode) {
+    const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market);
+    const needs = { address: resolved?.delivery != null && resolved.method !== "pickup", phone: resolved?.method === "local" };
+    const cleaned = payer ? cleanPayer(payer, needs) : null;
+    if (cleaned?.ok) cleanedPayer = cleaned.payer;
+  }
   // Payment methods added since the account was made, for the next shopper (D23).
   try {
     after(() => ensureStorePaymentMethods(shop.storeId));
@@ -985,23 +1030,38 @@ export async function startCheckout(
   // A shopper who went back from Stripe and checks out again: the earlier
   // session is closed first, so the same basket cannot be paid twice.
   const earlier = await db().execute<Row>(sql`
-    select o.id, pay.provider_reference, pay.provider_account
+    select o.id, pay.id as payment_id, pay.provider, pay.provider_reference, pay.provider_account, pay.test_mode
     from commerce.orders o
-    left join commerce.payments pay on pay.order_id = o.id and pay.provider = 'stripe'
+    left join commerce.payments pay on pay.order_id = o.id and pay.provider in ('stripe', 'mollie')
     where o.store_id = ${shop.storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
   `);
   for (const row of earlier) {
     const orderId = String(row.id);
-    if (row.provider_reference && row.provider_account) {
-      const outcome = await closeSession(stripe, String(row.provider_account), String(row.provider_reference));
+    if (row.provider === "stripe" && row.provider_reference && row.provider_account && connected) {
+      const outcome = await closeSession(connected.stripe, String(row.provider_account), String(row.provider_reference));
       if (outcome === "paid") {
         await completeOrderPayment(orderId, String(row.provider_reference));
         return { ok: false, problem: "already_paid", orderId };
       }
       if (outcome === "processing") return { ok: false, problem: "processing", orderId };
     }
+    if (row.provider === "mollie" && row.provider_reference) {
+      // Closed by Mollie itself (D292): a payment it reports paid completes its order; one a shopper is still paying is waited for.
+      const outcome = await mollieProvider.close(shop.storeId, {
+        id: String(row.payment_id),
+        orderId,
+        provider: "mollie",
+        reference: String(row.provider_reference),
+        account: row.provider_account ? String(row.provider_account) : null,
+        mode: row.test_mode ? "test" : "live",
+      });
+      if (outcome === "paid") return { ok: false, problem: "already_paid", orderId };
+      if (outcome === "processing" || outcome === "unknown") return { ok: false, problem: "processing", orderId };
+    }
     await cancelUnpaidOrder(orderId, "replaced by a new checkout");
   }
+  // On Mollie, who pays must be given before anything is placed (D292); a booking paid wholly at the venue gives its contact instead (D66).
+  if (mollieMode && !cleanedPayer && (payer || !contact)) return { ok: false, problem: "payer" };
 
   // A VAT number checked more than 24 hours ago (or that VIES could not answer) is asked again here, before the order is
   // placed, and never while it is (D157); a failure only means VAT is charged. Never stops the checkout.
@@ -1021,6 +1081,24 @@ export async function startCheckout(
     const token = await confirmAtVenue(shop.storeId, order, contact);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
+  // On Mollie (D292), an order Mollie can take: what Stripe alone does stays Stripe's (a subscription's renewals, a deposit's saved card, a host's account).
+  const onMollie = mollieMode !== null && !order.subscription && !order.hostId && !order.lines.some((line) => line.deposit);
+  if (onMollie) {
+    if (!cleanedPayer) {
+      await cancelUnpaidOrder(order.orderId, "who pays was not given");
+      return { ok: false, problem: "payer" };
+    }
+    await writePayer(shop.storeId, order.orderId, cleanedPayer, shop.market.code);
+    const opened = await openMolliePayment(shop, order, origin, mollieMode!, cleanedPayer);
+    if (opened.ok) return { ok: true, url: opened.url };
+    await cancelUnpaidOrder(order.orderId, "mollie payment could not be created");
+    return { ok: false, problem: opened.problem };
+  }
+  if (!connected) {
+    await cancelUnpaidOrder(order.orderId, "stripe is not set up for this order");
+    return { ok: false, problem: "payments_off" };
+  }
+  const { connection, stripe } = connected;
   // Taken when sent or by staff (D289): the order keeps the capture it is checked out under.
   const captureLater = (await prepareCapture(shop.storeId, order)) !== null;
   const opened = await openPaymentSession(shop, order, origin, shippingLabel, { connection, ui, stripe, captureLater });

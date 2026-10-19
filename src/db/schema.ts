@@ -4330,7 +4330,7 @@ export const paymentDisputes = commerce.table(
     index("payment_disputes_due_idx")
       .on(t.evidenceDueBy)
       .where(sql`${t.closedAt} is null and ${t.remindedAt} is null`),
-    check("payment_disputes_provider", sql`${t.provider} in ('stripe')`),
+    check("payment_disputes_provider", sql`${t.provider} in ('stripe', 'mollie')`),
     check("payment_disputes_amount", sql`${t.amountMinor} > 0`),
     check("payment_disputes_status", sql`${t.status} in (${sqlList(DISPUTE_STATUSES)})`),
     check("payment_disputes_outcome", sql`${t.outcome} is null or ${t.outcome} in ('won', 'lost')`),
@@ -5713,6 +5713,53 @@ export const stripeAccounts = commerce.table(
     primaryKey({ columns: [t.storeId, t.mode] }),
     unique("stripe_accounts_account_key").on(t.mode, t.accountId),
     index("stripe_accounts_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * A store's Mollie connection (wave 4 unit E, D292): the owner approved Kaizena Flow's Mollie app at Mollie (OAuth), and Kaizena Flow keeps the refresh
+ * token encrypted (`SETTINGS_ENCRYPTION_KEY`, never shown again) and the access token it last had, with when it ends. One per store: test payments are the
+ * same connection with Mollie's `testmode`. Written only by `src/server/mollie.ts`.
+ */
+export const mollieConnections = commerce.table(
+  "mollie_connections",
+  {
+    storeId: storeId().references(() => stores.id).primaryKey(),
+    organizationId: text("organization_id").notNull(),
+    organizationName: text("organization_name"),
+    /** The website profile payments are made on (Mollie asks for one with an OAuth token). */
+    profileId: text("profile_id").notNull(),
+    profileName: text("profile_name"),
+    scopes: text("scopes").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    accessToken: text("access_token"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    connectedBy: uuid("connected_by").references(() => accounts.id),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("mollie_connections_connected_by_idx").on(t.connectedBy),
+    check("mollie_connections_ids", sql`${t.organizationId} ~ '^org_[A-Za-z0-9]+$' and ${t.profileId} ~ '^pfl_[A-Za-z0-9]+$'`),
+    check("mollie_connections_names", sql`(${t.organizationName} is null or length(${t.organizationName}) <= 200) and (${t.profileName} is null or length(${t.profileName}) <= 200)`),
+  ],
+);
+
+/** Which provider a store's checkout uses in a mode (D292): no row is Stripe, every store's default. */
+export const checkoutProviders = commerce.table(
+  "checkout_providers",
+  {
+    storeId: storeId().references(() => stores.id),
+    mode: paymentMode("mode").notNull(),
+    provider: text("provider").notNull(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.mode] }),
+    index("checkout_providers_updated_by_idx").on(t.updatedBy),
+    check("checkout_providers_provider", sql`${t.provider} in ('stripe', 'mollie')`),
   ],
 );
 

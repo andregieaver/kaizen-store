@@ -131,7 +131,7 @@ async function creditNoteOf(storeId: string, refundId: string): Promise<string |
   return c ? String(c.id) : null;
 }
 
-async function announce(storeId: string, refundId: string, deps: RefundDeps) {
+async function announce(storeId: string, refundId: string, deps: Pick<RefundDeps, "notify">) {
   const noteId = await creditNoteOf(storeId, refundId);
   if (!noteId) return;
   try {
@@ -157,7 +157,7 @@ async function stillFailed(refund: Stripe.Refund, deps: RefundDeps): Promise<boo
  * reads lower and the customer has not been paid back: the order says so once (`order.edit_refund_failed`), and the order page, the store checkup and the
  * control center show it (`EDIT_REFUND_OWED_SQL`) until staff refund the customer again. Nothing else changes (the change, its documents and the order stand).
  */
-async function flagFailedEditRefund(storeId: string, orderId: string, refundId: string): Promise<void> {
+async function flagFailedEditRefund(storeId: string, orderId: string, refundId: string, actor = "stripe"): Promise<void> {
   const [row] = await db().execute<Row>(sql`
     select r.amount_minor, e.id as edit_id, e.seq from commerce.refunds r
     join commerce.order_edits e on e.store_id = r.store_id and e.id = r.order_edit_id
@@ -168,16 +168,53 @@ async function flagFailedEditRefund(storeId: string, orderId: string, refundId: 
     select 1 as one from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editRefundFailed} and data ->> 'refundId' = ${refundId}
   `);
   if (said) return;
-  await event(storeId, orderId, FULFILMENT_EVENTS.editRefundFailed, { refundId, edit: String(row.edit_id), label: editLabel(Number(row.seq)), amount: Number(row.amount_minor) }, "stripe");
+  await event(storeId, orderId, FULFILMENT_EVENTS.editRefundFailed, { refundId, edit: String(row.edit_id), label: editLabel(Number(row.seq)), amount: Number(row.amount_minor) }, actor);
 }
 
 /** Brings the store's refund row for this Stripe refund up to date, or records it. */
 export async function applyStripeRefund(storeId: string, refund: Stripe.Refund, deps: RefundDeps = {}): Promise<RefundApplied> {
-  const status = refundStatusOf(refund.status);
+  return applyRefundReport(
+    storeId,
+    {
+      provider: "stripe",
+      reference: refund.id,
+      status: refundStatusOf(refund.status),
+      amountMinor: refund.amount,
+      currency: refund.currency ?? null,
+      own: Boolean(refund.metadata?.order_id),
+      createdAt: refund.created,
+      payment: () => paymentFor(storeId, refund, deps),
+      stillFailed: () => stillFailed(refund, deps),
+    },
+    deps,
+  );
+}
+
+/** A refund a provider reports (D159, D292): what `applyRefundReport()` needs, with how to find its payment and to ask the provider again. */
+export type RefundReport = {
+  provider: "stripe" | "mollie";
+  /** The provider's id of the refund (`provider_reference`, unique per store). */
+  reference: string;
+  status: RefundStatus;
+  amountMinor: number;
+  currency: string | null;
+  /** Kaizena Flow made it (its metadata names the order): its own row is written by the staff action a moment after the provider answers. */
+  own: boolean;
+  /** When the provider made it, in seconds. */
+  createdAt: number;
+  /** The store's payment it is a refund of, or null when it is not this store's. */
+  payment: () => Promise<{ id: string; orderId: string; currency: string } | null>;
+  /** Whether the provider, asked now, still reports it failed (true when it cannot be asked). */
+  stillFailed: () => Promise<boolean>;
+};
+
+/** Brings the store's refund row for a provider's refund up to date, or records it (the one writer for refunds a provider reports, Stripe's and Mollie's). */
+export async function applyRefundReport(storeId: string, report: RefundReport, deps: Pick<RefundDeps, "now" | "notify"> = {}): Promise<RefundApplied> {
+  const status = report.status;
   const [existing] = await db().execute<Row>(sql`
     select r.id, r.status, p.order_id from commerce.refunds r
     join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-    where r.store_id = ${storeId}::uuid and r.provider_reference = ${refund.id}
+    where r.store_id = ${storeId}::uuid and r.provider_reference = ${report.reference}
   `);
 
   if (existing) {
@@ -185,51 +222,51 @@ export async function applyStripeRefund(storeId: string, refund: Stripe.Refund, 
     const orderId = String(existing.order_id);
     const before = String(existing.status) as RefundStatus;
     if (before === status) return { outcome: "unchanged", refundId, status, orderId };
-    // Stripe does not send events in order, and Kaizen refuses the first `refund.created` of its own refunds on purpose, so Stripe sends it
+    // Providers do not send events in order, and Kaizen refuses the first `refund.created` of its own refunds on purpose, so Stripe sends it
     // again later with the status it had then. `pending` is the first state of a refund: an event that says it never moves a row that is
     // already final, and is never a reversal.
     if (status === "pending") return { outcome: "unchanged", refundId, status: before, orderId };
     if (before === "succeeded") {
-      // Final in the database: the credit note may stand for it. Only a refund Stripe itself still says failed is a reversal (an event
-      // may be older than the row), confirmed with Stripe when it can be asked, and said once, for the checkup.
-      if (!(await stillFailed(refund, deps))) return { outcome: "unchanged", refundId, status: "succeeded", orderId };
+      // Final in the database: the credit note may stand for it. Only a refund the provider itself still says failed is a reversal (an event
+      // may be older than the row), confirmed with the provider when it can be asked, and said once, for the checkup.
+      if (!(await report.stillFailed())) return { outcome: "unchanged", refundId, status: "succeeded", orderId };
       const [said] = await db().execute<Row>(sql`
         select 1 as one from commerce.order_events
         where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = 'refund.reversed_after_success' and data ->> 'refundId' = ${refundId}
       `);
-      if (!said) await event(storeId, orderId, "refund.reversed_after_success", { refundId, reportedStatus: status }, "stripe");
+      if (!said) await event(storeId, orderId, "refund.reversed_after_success", { refundId, reportedStatus: status }, report.provider);
       return { outcome: "unchanged", refundId, status: "succeeded", orderId };
     }
     await db().execute(sql`
       update commerce.refunds set status = ${status}::commerce.refund_status
       where store_id = ${storeId}::uuid and id = ${refundId}::uuid and status = ${before}::commerce.refund_status
     `);
-    await event(storeId, orderId, "refund.status_changed", { refundId, from: before, to: status }, "stripe");
+    await event(storeId, orderId, "refund.status_changed", { refundId, from: before, to: status }, report.provider);
     if (status === "succeeded") await announce(storeId, refundId, deps);
-    if (status === "failed") await flagFailedEditRefund(storeId, orderId, refundId);
+    if (status === "failed") await flagFailedEditRefund(storeId, orderId, refundId, report.provider);
     return { outcome: "updated", refundId, status, orderId };
   }
 
-  // Not a row of ours: a refund made in Stripe's Dashboard, or one of Kaizen's own whose row is not written yet.
-  const own = Boolean(refund.metadata?.order_id);
+  // Not a row of ours: a refund made in the provider's Dashboard, or one of Kaizen's own whose row is not written yet.
   const now = (deps.now ?? Date.now)();
-  if (own && now / 1000 - refund.created < OWN_REFUND_GRACE_SECONDS) throw new RefundNotRecordedYet();
-  const payment = await paymentFor(storeId, refund, deps);
+  if (report.own && now / 1000 - report.createdAt < OWN_REFUND_GRACE_SECONDS) throw new RefundNotRecordedYet();
+  const payment = await report.payment();
   if (!payment) return { outcome: "unmatched", reason: "no_payment" };
-  if (refund.currency && refund.currency.toUpperCase() !== payment.currency.toUpperCase()) return { outcome: "unmatched", reason: "other_currency" };
+  if (report.currency && report.currency.toUpperCase() !== payment.currency.toUpperCase()) return { outcome: "unmatched", reason: "other_currency" };
+  const reason = report.own ? REFUND_REASON_RECORDED : REFUND_REASON_DASHBOARD;
   const [row] = await db().execute<Row>(sql`
     insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
-    values (${storeId}::uuid, ${payment.id}::uuid, ${refund.amount}, ${own ? REFUND_REASON_RECORDED : REFUND_REASON_DASHBOARD}, ${refund.id}, ${status}::commerce.refund_status, '[]'::jsonb, null)
+    values (${storeId}::uuid, ${payment.id}::uuid, ${report.amountMinor}, ${reason}, ${report.reference}, ${status}::commerce.refund_status, '[]'::jsonb, null)
     on conflict (store_id, provider_reference) do nothing
     returning id
   `);
   if (!row) {
     // Written by another request in the meantime: that one's outcome stands.
-    const [again] = await db().execute<Row>(sql`select id, status from commerce.refunds where store_id = ${storeId}::uuid and provider_reference = ${refund.id}`);
+    const [again] = await db().execute<Row>(sql`select id, status from commerce.refunds where store_id = ${storeId}::uuid and provider_reference = ${report.reference}`);
     return { outcome: "unchanged", refundId: String(again?.id), status: refundStatusOf(String(again?.status)), orderId: payment.orderId };
   }
   const refundId = String(row.id);
-  await event(storeId, payment.orderId, "order.refunded", { amount: refund.amount, reason: own ? REFUND_REASON_RECORDED : REFUND_REASON_DASHBOARD, restocked: [], ...(status === "failed" ? { status } : {}) }, "stripe");
+  await event(storeId, payment.orderId, "order.refunded", { amount: report.amountMinor, reason, restocked: [], ...(status === "failed" ? { status } : {}) }, report.provider);
   if (status !== "failed") await reverseHostCommission(storeId, payment.id).catch(() => undefined);
   if (status === "succeeded") await announce(storeId, refundId, deps);
   return { outcome: "inserted", refundId, status, orderId: payment.orderId };

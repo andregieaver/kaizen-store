@@ -144,6 +144,8 @@ export async function checkoutAction(
   company?: { name: string; number: string } | null,
   /** Who books, when nothing is paid online (D66). */
   contact: { name: string; email: string; phone: string } | null = null,
+  /** Who pays and where the goods go, as typed, when the store's checkout is Mollie's (D292); checked by `startCheckout()`. */
+  payer: Partial<Record<"name" | "email" | "phone" | "line1" | "line2" | "postalCode" | "city", string>> | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -175,7 +177,7 @@ export async function checkoutAction(
     t(shop.market.lang).shipping,
     { digital: consent.digital === true, subscription: consent.subscription === true },
     // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
-    { customerId: (await getCustomer(shop.store.id))?.id ?? null, contact: who?.success ? who.data : null },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null, contact: who?.success ? who.data : null, payer },
   );
   if (result.ok) return { problem: null, to: result.url };
   refresh();

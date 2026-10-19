@@ -25,6 +25,7 @@ import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
 import { storeTag } from "./stores";
 import { cancelEditsForClosure } from "./order-edits";
+import { mollieProvider } from "./payment-providers/mollie";
 
 /**
  * Closing, suspending and reopening a store (D171, `docs/store-closure.md`). Authorisation is the caller's (the owner's action asks `checkOwnerRole()`, the
@@ -188,7 +189,10 @@ export async function closeStore(actor: Account, storeId: string, options: Close
  */
 export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled: number; failed: number }> {
   const waiting = await db().execute<Row>(sql`
-    select o.id, p.provider_reference, p.provider_account
+    select o.id, p.provider_reference, p.provider_account,
+      -- A Mollie payment waiting for the shopper (D292), closed by Mollie.
+      (select m.id from commerce.payments m where m.store_id = o.store_id and m.order_id = o.id and m.provider = 'mollie' and m.status = 'pending' limit 1) as mollie_id,
+      (select m.provider_reference from commerce.payments m where m.store_id = o.store_id and m.order_id = o.id and m.provider = 'mollie' and m.status = 'pending' limit 1) as mollie_reference
     from commerce.orders o
     left join commerce.payments p on p.store_id = o.store_id and p.order_id = o.id and p.provider = 'stripe' and p.status = 'pending'
       and starts_with(p.provider_reference, 'cs_') and p.provider_account is not null
@@ -209,6 +213,15 @@ export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled:
           continue;
         }
         if (outcome === "processing") {
+          failed++;
+          continue;
+        }
+      }
+      if (row.mollie_reference) {
+        const outcome = await mollieProvider.close(storeId, { id: String(row.mollie_id), orderId: id, provider: "mollie", reference: String(row.mollie_reference), account: null, mode: null });
+        // Paid meanwhile: completed by the close itself. Under way or unanswered: the next try.
+        if (outcome === "paid") continue;
+        if (outcome === "processing" || outcome === "unknown") {
           failed++;
           continue;
         }

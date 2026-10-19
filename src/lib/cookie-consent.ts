@@ -437,6 +437,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // Only while an owner connects the store's Mollie account to Kaizena Flow (D292).
+    name: "kaizen_mollie_connect",
+    pattern: /^kaizen_mollie_connect$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "Checks, for the ten minutes it takes, that a store owner connecting Mollie comes back from the Mollie page they started from.",
+      nb: "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Mollie kommer tilbake fra Mollie-siden de startet fra.",
+      sv: "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Mollie kommer tillbaka från Mollie-sidan de startade från.",
+      da: "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Mollie, kommer tilbage fra den Mollie-side, de startede fra.",
+    },
+  },
+  {
     // Only for signed-in staff who press "Edit text" on a store's own domain, where the admin's sign-in cannot be seen (D193); closed to scripts.
     name: "kaizen_edit",
     pattern: /^kaizen_edit$/,

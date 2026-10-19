@@ -636,6 +636,21 @@ export const nb: Messages = {
   problemConsent: "Kryss av for samtykket til nedlastingen for å gå videre.",
   problemCompany: "Fyll inn firmanavn og organisasjonsnummer for å gå videre.",
   problemCompanyNumber: "Organisasjonsnummeret ser ikke riktig ut. Sjekk det og prøv igjen.",
+  /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
+  payer: {
+    legend: "Dine opplysninger",
+    name: "Navn",
+    email: "E-post",
+    phone: "Telefon",
+    phoneOptional: "Telefon (valgfritt)",
+    address: "Leveringsadresse",
+    line1: "Adresse",
+    line2: "Adresse, linje 2 (valgfritt)",
+    postalCode: "Postnummer",
+    city: "Sted",
+    note: "Du betaler på Mollies sikre side etterpå.",
+    problem: "Fyll inn navn og e-post, og leveringsadressen hvis bestillingen sendes til deg.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Bedriften",

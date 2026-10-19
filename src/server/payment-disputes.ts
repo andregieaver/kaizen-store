@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
-import { disputeRecord, reminderDue, type DisputeLike, type DisputeStatus } from "@/lib/payment-facts";
+import { disputeRecord, reminderDue, type DisputeLike, type DisputeRecord, type DisputeStatus } from "@/lib/payment-facts";
 
 import { readMissingPaymentFacts } from "./payment-facts";
 import { paymentOfIntent } from "./stripe-refunds";
@@ -49,10 +49,10 @@ async function paymentOfCharge(storeId: string, charge: string): Promise<{ id: s
   return p ? { id: String(p.id), orderId: String(p.order_id), currency: String(p.currency).trim() } : null;
 }
 
-async function orderEvent(storeId: string, orderId: string, type: string, data: Record<string, unknown>) {
+async function orderEvent(storeId: string, orderId: string, type: string, data: Record<string, unknown>, actor: "stripe" | "mollie" = "stripe") {
   await db().execute(sql`
     insert into commerce.order_events (store_id, order_id, type, data, actor)
-    values (${storeId}::uuid, ${orderId}::uuid, ${type}, ${JSON.stringify(data)}::jsonb, 'stripe')
+    values (${storeId}::uuid, ${orderId}::uuid, ${type}, ${JSON.stringify(data)}::jsonb, ${actor})
   `);
 }
 
@@ -63,11 +63,25 @@ export async function applyStripeDispute(storeId: string, dispute: DisputeLike, 
   const payment =
     (await paymentOfCharge(storeId, record.chargeReference)) ??
     (record.intent ? await paymentOfIntent(storeId, record.intent, { stripe: deps.stripe ?? null, account: deps.account ?? null }) : null);
+  return writeDispute(storeId, "stripe", payment, record, deps);
+}
+
+/**
+ * Keeps a dispute a provider reported on the store's payment it names (idempotent by the provider and its id); a closed dispute keeps how it closed. The
+ * one writer of `payment_disputes`, for Stripe's disputes and Mollie's chargebacks (D292) alike.
+ */
+export async function writeDispute(
+  storeId: string,
+  provider: "stripe" | "mollie",
+  payment: { id: string; orderId: string; currency: string } | null,
+  record: Omit<DisputeRecord, "intent">,
+  deps: Pick<DisputeDeps, "alert"> = {},
+): Promise<DisputeApplied> {
   if (!payment || payment.currency !== record.currency) return { outcome: "unmatched", reason: "no_payment" };
   const [row] = await db().execute<Row>(sql`
     insert into commerce.payment_disputes (store_id, order_id, payment_id, provider, provider_reference, charge_reference, amount_minor, currency, reason,
       status, evidence_due_by, outcome, funds_withdrawn_minor, fee_minor, test_mode, opened_at, closed_at)
-    values (${storeId}::uuid, ${payment.orderId}::uuid, ${payment.id}::uuid, 'stripe', ${record.reference}, ${record.chargeReference || null},
+    values (${storeId}::uuid, ${payment.orderId}::uuid, ${payment.id}::uuid, ${provider}, ${record.reference}, ${record.chargeReference || null},
       ${record.amountMinor}, ${record.currency}, ${record.reason}, ${record.status}, ${record.evidenceDueBy?.toISOString() ?? null}::timestamptz,
       ${record.outcome}, ${record.fundsWithdrawnMinor}, ${record.feeMinor}, ${record.testMode}, ${record.openedAt.toISOString()}::timestamptz,
       ${record.outcome ? sql`now()` : sql`null`})
@@ -86,7 +100,7 @@ export async function applyStripeDispute(storeId: string, dispute: DisputeLike, 
   const inserted = Boolean(row.inserted);
   const data = { dispute: disputeId, amount: record.amountMinor, currency: record.currency, reason: record.reason };
   if (inserted) {
-    await orderEvent(storeId, payment.orderId, "dispute.opened", data);
+    await orderEvent(storeId, payment.orderId, "dispute.opened", data, provider);
     // One email per recipient, however often Stripe sends the event (the email's key).
     await (deps.alert ?? sendDisputeAlert)(storeId, disputeId, "opened").catch(() => null);
   }
@@ -95,7 +109,7 @@ export async function applyStripeDispute(storeId: string, dispute: DisputeLike, 
     const [seen] = await db().execute<Row>(sql`
       select 1 from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${payment.orderId}::uuid and type = 'dispute.closed' and data->>'dispute' = ${disputeId}
     `);
-    if (!seen) await orderEvent(storeId, payment.orderId, "dispute.closed", { ...data, outcome: String(row.outcome) });
+    if (!seen) await orderEvent(storeId, payment.orderId, "dispute.closed", { ...data, outcome: String(row.outcome) }, provider);
   }
   return { outcome: inserted ? "inserted" : "updated", disputeId, orderId: payment.orderId, status: String(row.status) as DisputeStatus };
 }

@@ -640,6 +640,21 @@ export const en = {
   problemConsent: "Tick the box to agree to the download before you continue.",
   problemCompany: "Fill in the company name and organisation number to continue.",
   problemCompanyNumber: "The organisation number does not look right. Check it and try again.",
+  /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
+  payer: {
+    legend: "Your details",
+    name: "Name",
+    email: "Email",
+    phone: "Phone",
+    phoneOptional: "Phone (optional)",
+    address: "Delivery address",
+    line1: "Address",
+    line2: "Address, line 2 (optional)",
+    postalCode: "Postcode",
+    city: "City",
+    note: "You pay on Mollie's secure page next.",
+    problem: "Fill in your name and email, and the delivery address if the order is sent to you.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Your company",

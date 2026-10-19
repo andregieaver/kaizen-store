@@ -226,6 +226,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 export const NOT_PERSONAL: Record<string, string> = {
   payouts: "A store's payouts from its Stripe account to its bank (D290): amounts, dates, status and Stripe's ids; the store's money, no person's.",
   payout_reads: "When a store's payouts were last read back from Stripe (D290).",
+  mollie_connections: "A store's connection to its Mollie account (D292): the business's organisation and website profile and an encrypted token; no shopper.",
+  checkout_providers: "Which provider a store's checkout uses in each mode (D292).",
   notification_settings: "A store's switches for its customer emails (D238).",
   email_templates: "The owner's own wording of the store's customer emails (D238): a subject, a heading and a text with placeholders, filled per email; no person's data.",
   staff_alert_settings: "A store's staff summary choice and which alerts its contact address gets (D238).",

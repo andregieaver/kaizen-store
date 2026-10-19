@@ -3,17 +3,27 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { MollieCard } from "@/components/admin/mollie-card";
 import { PaymentMethodsCard } from "@/components/admin/payment-methods-card";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
+import { mainCurrency } from "@/lib/markets";
 import { accountStage } from "@/lib/stripe-account";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
 import { kaizenInvoicingOn } from "@/server/invoice-settings";
+import { checkoutProviderOf, chosenCheckoutProviders, mollieAppOn, mollieConnection, mollieMethodStates } from "@/server/mollie";
 import { methodChoices, methodStates } from "@/server/payment-methods";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 import { Card, PageHeader } from "@/components/admin/ui";
 
-import { savePaymentMethodsAction, setStripeProviderAction } from "../../../actions";
+import {
+  activateMollieMethodAction,
+  connectMollieAction,
+  disconnectMollieAction,
+  saveCheckoutProviderAction,
+  savePaymentMethodsAction,
+  setStripeProviderAction,
+} from "../../../actions";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -31,8 +41,10 @@ export default async function PaymentSettingsPage({
   const modes = settings.modes;
   // Test payments need nothing from the owner: Kaizen sets up the store's
   // test Stripe account itself (D20). Only live needs the owner's Stripe setup.
+  // Real payments through Mollie (D292) need no Stripe account of the store's own: Mollie's, chosen and connected, is enough.
+  const liveOnMollie = (await checkoutProviderOf(store.id, "live")) === "mollie";
   const readyModes = modes.filter(
-    (mode) => mode === "test" || accountStage(accounts[mode] ?? null) === "ready",
+    (mode) => mode === "test" || accountStage(accounts[mode] ?? null) === "ready" || (mode === "live" && liveOnMollie),
   );
   // Not ready yet: set it up now, so any problem from Stripe is shown here.
   const testSetup =
@@ -42,6 +54,10 @@ export default async function PaymentSettingsPage({
   const testReady = accounts.test?.cardPayments === "active" || (testSetup?.ok === true && testSetup.ready);
   // What Stripe says of each method (D291), on the account checkout uses: the live one once it is there, else the test one.
   const methods = { choices, states: await methodStates(store.id, stripe.enabled ? stripe.activeMode : modes.includes("live") && accounts.live ? "live" : "test") };
+  // Mollie (D292): offered once Kaizena Flow's Mollie app is set up; its methods are read for the mode the store is in, in its main currency.
+  const mollieOn = mollieAppOn();
+  const [mollie, mollieChosen] = mollieOn ? await Promise.all([mollieConnection(store.id), chosenCheckoutProviders(store.id)]) : [null, {}];
+  const mollieMethods = mollie ? await mollieMethodStates(store.id, stripe.activeMode, mainCurrency(store)) : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -170,6 +186,19 @@ export default async function PaymentSettingsPage({
           action={savePaymentMethodsAction.bind(null, store.slug)}
         />
       )}
+
+      <MollieCard
+        connection={mollie}
+        appOn={mollieOn}
+        isOwner={isOwner}
+        modes={["test", "live"]}
+        chosen={mollieChosen}
+        methods={mollieMethods}
+        connectAction={connectMollieAction.bind(null, store.slug)}
+        providerAction={saveCheckoutProviderAction.bind(null, store.slug)}
+        disconnectAction={disconnectMollieAction.bind(null, store.slug)}
+        activateAction={activateMollieMethodAction.bind(null, store.slug)}
+      />
 
       <Card title="Recent changes" compact>
         {audit.length === 0 ? (

@@ -46,5 +46,5 @@ export interface PaymentProvider {
    * Gives back part of a payment through the provider. `idempotencyKey` replays the same refund on a retry. Throws `PaymentProviderRefusal` with a sentence for
    * staff when the provider refuses or cannot be reached.
    */
-  refund(payment: StoredPayment, request: { amountMinor: number; idempotencyKey: string; orderId: string; orderNumber: string }): Promise<ProviderRefund>;
+  refund(storeId: string, payment: StoredPayment, request: { amountMinor: number; idempotencyKey: string; orderId: string; orderNumber: string }): Promise<ProviderRefund>;
 }

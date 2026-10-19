@@ -220,6 +220,38 @@ everything is built and tested against a recorded fake of Mollie's API. Express 
 - **Deviations.** Opening a payment stays `openPaymentSession()` for Stripe and the Stripe webhook routes stay as they are: E2 adds `openPayment()` to the
   interface with Mollie's, and Mollie's webhook is a route of its own (`/api/mollie/{mode}`), since each provider signs and shapes its calls its own way.
 
+### As built: E2, Mollie (D292)
+
+- **Connecting.** *Connect Mollie* on the Payments page (owners) sends the owner to Mollie's authorize page with `MOLLIE_SCOPES` and a state kept in
+  the `kaizen_mollie_connect` cookie (ten minutes, path-scoped); `/api/integrations/mollie/callback` swaps the code for tokens (HTTP Basic with
+  `MOLLIE_CLIENT_ID`/`MOLLIE_CLIENT_SECRET`), reads the organisation and its first website profile and keeps `commerce.mollie_connections` (one per
+  store; the refresh token and the access token it last had encrypted, the access token renewed from the refresh token when it ends). Test payments
+  are the same connection with Mollie's `testmode`. *Disconnect* revokes the token at Mollie and the checkout goes back to Stripe.
+- **Which provider pays.** `commerce.checkout_providers` (per store and mode; no row is Stripe) through `chooseCheckoutProvider()`; Mollie counts only
+  while it is connected and Kaizena Flow's app is set up (`checkoutProviderOf()`). The store's mode is still the Payments page's (`payment_providers`);
+  real payments through Mollie need no Stripe account of the store's own (`setStripeProvider()` lets live mode on when Mollie is chosen for it).
+  What only Stripe does stays Stripe's, whatever the choice: a subscription's renewals, a deposit's saved card, a host's account, a weekly box, and every
+  pay link (a draft's, a change's, an exchange's).
+- **Paying.** Mollie's hosted page asks for no address, so a Mollie store's cart asks who pays (name, email, phone where a driver brings the goods) and
+  the delivery address when goods are sent (`cleanPayer()`, no zod on the cart), checked before the order is placed and written on the order then.
+  `openMolliePayment()` makes the payment through the Payments API: the amount in the currency shown (euro included) as Mollie's decimal string, the
+  order's own return address, the webhook `/api/mollie/{mode}` (left out on a local address), the market's locale, the store's profile, Kaizena Flow's
+  fee as `applicationFee` capped at half the payment (`MOLLIE_FEE_SHARE_MAX`; the cap is said on the order's `payment.started` event), and a `method`
+  list: what Mollie has active for the amount, less what this unit leaves out (`MOLLIE_LEFT_OUT`: pay-later methods, bank transfer, direct debit) and
+  what the owner switched off for the country (D291). The return address is patched to name the payment once Mollie has made it, as Stripe's does.
+- **Answers.** The webhook names only an id: `handleMollieWebhook()` finds the payment among the stores' in that mode, fetches it from Mollie with the
+  store's token and applies it through `applyPaymentAnswer()` (`mollieAnswer()`), records the event once per state, and reads the payment's refunds
+  (`applyRefundReport()`, shared with Stripe's) and chargebacks (`writeDispute()`, shared with Stripe's; Mollie takes a chargeback's money at once, so
+  it is kept closed as lost, or won when reversed). The order page asks Mollie when the webhook is late (`refresh()`), and a shopper who checks out again
+  has the earlier payment cancelled at Mollie, or waits while Mollie cannot cancel it. Store closure and erasure close a Mollie payment the same way.
+- **Refunds.** `refundOrder()` sends a Mollie payment's part to Mollie with an `Idempotency-Key`; the webhook completes it and the credit note follows
+  (D159). Kaizena Flow's fee is not returned on a Mollie refund (Mollie's rule), said on the Payments page before connecting.
+- **Test mode.** A Mollie payment keeps its mode on the row (`payments.test_mode`): `invoice_eligibility()` and the order file count it as a test, so a
+  Mollie test order never gets an invoice number.
+- **Deviations from the contract above.** No `lines` are sent and pay-later methods (Klarna, Billie, in3, Riverty) are left out until Mollie's captures
+  are built (`authorized` is answered as unsettled and waits); a store keeps one checkout provider per mode; Mollie's payment facts (method, risk) and
+  payouts are not read in this unit.
+
 ## 8. Unit F (D293): payment terms for company accounts
 
 A company account (D108) may have terms: `net_15`, `net_30`, `net_60` (`customer_companies.payment_terms`, staff set it). A signed-in employee of
