@@ -261,6 +261,7 @@ describe("what the guards promise the scan test", () => {
       "currentRequest",
       "startRequest",
       "statusRequest",
+      "storePictureRequest",
       "tickRequest",
     ]);
     expect(p.NO_ACCESS).toBe("You do not have access to this.");
