@@ -14,6 +14,7 @@ import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { TemplateActions } from "@/lib/templates";
 import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
+import type { ThemeStorePart } from "@/lib/theme-store-parts";
 import type { VisibilityChoices } from "@/lib/visibility";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
@@ -93,6 +94,11 @@ export type PageOwnerContext = {
   features?: readonly string[];
   /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
   plans: PlanChoice[] | null;
+  /**
+   * The theme store's components the page may hold (D285): the list of themes on Kaizena Flow's own pages, and a theme's parts too on the
+   * page chosen for a theme's page; absent or null on a store's pages and Kaizena Flow's articles, headers and footers.
+   */
+  themeStore?: { parts: readonly ThemeStorePart[] } | null;
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
   siteCss: string;
   /** The store's custom field groups (D118), for the builder's field components and the page's own fields; null for Kaizen, which has none yet. */
@@ -137,6 +143,12 @@ export type PageOwnerContext = {
    * published. Absent everywhere else.
    */
   draftOnly?: { preview: string; note: string };
+  /**
+   * A page drawn at a place of its own rather than at its address (the theme store's pages, D285, edited from Themes): no Duplicate and no
+   * Save as template, which would make a page of another kind, no address or categories of its own (it is shown at `address`), and *View*
+   * opens the place (`view`; null: nowhere to open yet). Absent everywhere else.
+   */
+  place?: { view: string | null; address: string };
   actions: {
     /** `acknowledged`: the checker's blocking problems the owner has seen and chose to publish with (issue ids), recorded in the audit log. */
     save: (id: string | null, payload: string, publish: boolean, acknowledged?: string[]) => Promise<PageSaveState>;

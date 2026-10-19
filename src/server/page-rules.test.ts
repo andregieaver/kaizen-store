@@ -49,6 +49,19 @@ describe("the store's own custom fields in headers, footers and product layouts 
   });
 });
 
+describe("where a theme store component may be (D285)", () => {
+  const part: PageBlock = { id: "ts", type: "themeStore", part: "list" };
+
+  it("belongs on Kaizena Flow's own pages only, never its articles, header or footer", () => {
+    expect(pageRulesProblem(null, "page", withBlock(part))).toBeNull();
+    for (const type of ["article", "header", "footer"] as const) expect(pageRulesProblem(null, type, withBlock(part)), type).toMatch(/Kaizena Flow's pages/);
+  });
+
+  it("is refused on a store's pages: the themes are the platform's", () => {
+    expect(pageRulesProblem(store, "page", withBlock(part))).toMatch(/theme store's parts belong on Kaizena Flow's own pages/);
+  });
+});
+
 describe("where a plans component may be (D142)", () => {
   const plans: PageBlock = { id: "pl", type: "plans", buttonLabel: "", buttonHref: "" };
 

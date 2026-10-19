@@ -14,6 +14,7 @@ import { launchThemeStates } from "@/server/launch-themes";
 import { contentPackStates } from "@/server/content-packs";
 import { contentOwners, contentSources, listStarters } from "@/server/store-starters";
 import { listDemoStores } from "@/server/demo-stores";
+import { themeStorePageStates } from "@/server/platform-roles";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 
@@ -29,6 +30,7 @@ import {
 } from "./actions";
 import { DemoStoresCard } from "./demo-stores/demo-stores-card";
 import { LiveDemoStoresCard } from "./demo-stores/live-demo-stores-card";
+import { ThemeStorePagesCard } from "./theme-store-pages-card";
 
 export const metadata: Metadata = { title: "Themes" };
 
@@ -41,7 +43,7 @@ const KIND_WORDS = { template: "the Standard store", starter: "demo store", stor
  * Themes (D176, D177, D273, `docs/themes-unified.md`): a look (theme, header, footer, product layout and CSS) with its presets, which any
  * store can apply from its design settings and people creating a store start from, each look with the demo store it is shown on and a new
  * store is copied from. Made from a store or from scratch and edited on the theme's own pages; archived ones are listed only under Archived.
- * The demo stores are set up here too.
+ * The demo stores are set up here too, and the theme store's own pages are built from here (D285).
  */
 export default async function ThemesPage({ searchParams }: PageProps<"/admin/platform/themes">) {
   await connection();
@@ -49,7 +51,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   const query = await searchParams;
   const filter = listFilterOf(query.show);
   const current = filter === "current";
-  const [designs, sources, launch, packs, starters, owners, contents, demos] = await Promise.all([
+  const [designs, sources, launch, packs, starters, owners, contents, demos, storePages] = await Promise.all([
     listDesigns(filter),
     snapshotSources(admin),
     launchThemeStates(),
@@ -58,6 +60,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
     current ? contentOwners() : Promise.resolve(new Map<string, string>()),
     current ? contentSources() : Promise.resolve([]),
     current ? listDemoStores() : Promise.resolve([]),
+    current ? themeStorePageStates() : Promise.resolve([]),
   ]);
   const facts = await Promise.all(designs.map((design) => designLifecycle(design)));
   const published = designs.filter((d) => d.published).length;
@@ -87,9 +90,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           {query.deleted === "demo"
             ? "The demo store was deleted. Its store is closed and kept."
-            : query.deleted === "content"
-              ? "The starting content was deleted. Its store and published copies are closed and kept."
-              : "The theme was deleted; its workspace is closed and kept."}
+            : query.deleted === "store-page"
+              ? "The page was deleted. The theme store shows its standard page there again."
+              : query.deleted === "content"
+                ? "The starting content was deleted. Its store and published copies are closed and kept."
+                : "The theme was deleted; its workspace is closed and kept."}
         </p>
       )}
 
@@ -110,6 +115,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
           ))}
         </ol>
       )}
+
+      {current && <ThemeStorePagesCard states={storePages} />}
 
       {current && <LiveDemoStoresCard demos={demos} />}
 

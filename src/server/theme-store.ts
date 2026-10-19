@@ -16,6 +16,7 @@ import {
   themeSectionStyles,
   type ChangelogEntry,
   type ThemeContent,
+  previewNeighbours,
   type ThemeStoreCard,
   type ThemeVersion,
 } from "@/lib/theme-store";
@@ -69,6 +70,22 @@ export async function themeStoreCards(): Promise<ThemeStoreCard[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
+  return loadCards();
+}
+
+/**
+ * The themes before and after one in the full-screen preview (D285, `previewNeighbours()`), by their address and name; cached per theme
+ * as its page is, so a theme published later has them on its first visit.
+ */
+export async function themePreviewNeighbours(slug: string): Promise<{ previous: { slug: string; title: string }; next: { slug: string; title: string } } | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(DESIGNS_TAG, STARTERS_TAG);
+  const around = previewNeighbours(await loadCards(), slug);
+  return around && { previous: { slug: around.previous.slug, title: around.previous.title }, next: { slug: around.next.slug, title: around.next.title } };
+}
+
+async function loadCards(): Promise<ThemeStoreCard[]> {
   const contents = await publishedContents();
   const rows = await readDb().execute<Row>(sql`
     select id, slug, title, summary, picture_url, listing, snapshot from commerce.design_presets

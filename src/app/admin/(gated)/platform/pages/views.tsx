@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
 
@@ -14,17 +14,28 @@ import { PageArticle } from "@/components/page-article";
 import { ScopedCss } from "@/components/custom-css";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
-import { PLATFORM_ROLE_COPY, PLATFORM_ROLES, type PlatformRole } from "@/lib/platform-roles";
+import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
 import { getPlatformChrome } from "@/server/platform-navigation";
-import { getPlatformPageRoles } from "@/server/platform-roles";
+import { getPlatformPageRoles, themeStoreRoleOf } from "@/server/platform-roles";
+import { themeStoreCards, themeStorePage } from "@/server/theme-store";
+import { THEME_STORE_PARTS, themePartsWith } from "@/lib/theme-store-parts";
+import { THEME_STORE_PAGES, themeStorePageHref } from "@/lib/theme-admin-paths";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
-import { choosePlatformSiteLayoutAction, createPageTermAction, createPlatformRolePageAction, setPlatformPageRoleAction, deletePageTermAction, updatePageTermAction } from "./actions";
+import {
+  choosePlatformSiteLayoutAction,
+  createPageTermAction,
+  createPlatformRolePageAction,
+  deleteThemeStorePageAction,
+  setPlatformPageRoleAction,
+  deletePageTermAction,
+  updatePageTermAction,
+} from "./actions";
 import { platformPageContext } from "./context";
 import { duplicatePageAction } from "./duplicate-action";
 
@@ -57,7 +68,10 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   await requirePlatformAdmin();
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
-  const [pages, query, roles] = await Promise.all([listPages(null, type), searchParams, type === "page" ? getPlatformPageRoles() : []]);
+  const [all, query, roles] = await Promise.all([listPages(null, type), searchParams, type === "page" ? getPlatformPageRoles() : []]);
+  // The theme store's own pages (D285) are edited from Themes, so they are not mixed with these.
+  const themeStorePages = new Set(roles.flatMap(([role, id]) => (isThemeStoreRole(role) ? [id] : [])));
+  const pages = all.filter((p) => !themeStorePages.has(p.id));
   // Pages that have a place of their own (D143) are not offered for another.
   const placedIds = new Set(roles.map(([, id]) => id));
   const roleOf = Object.fromEntries(roles.map(([role, id]) => [role, id]));
@@ -113,7 +127,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
               of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
             </p>
           </div>
-          {PLATFORM_ROLES.map((role) => (
+          {SPECIAL_ROLES.map((role) => (
             <PagePlaceForm
               key={role}
               name={PLATFORM_ROLE_COPY[role].name}
@@ -192,11 +206,30 @@ const load = async (type: PageType, params: Params) => {
   return z.uuid().safeParse(pageId).success ? getPageForEdit(null, pageId, type) : null;
 };
 
-/** One of Kaizen's pages or articles in the editor, opened from its list or from the site. */
-export async function EditPageView({ type, params, searchParams }: { type: PageType; params: Params; searchParams: Query }) {
+/**
+ * The page a page of Kaizen's is edited at: the theme store's own pages (D285) under Themes, every other page under Pages. Null when it is
+ * this one; the other address when the page belongs there.
+ */
+async function editedElsewhere(type: PageType, pageId: string, themeStore: boolean): Promise<string | null> {
+  if (type !== "page") return null;
+  const role = await themeStoreRoleOf(pageId);
+  if (themeStore && !role) return `/admin/platform/pages/${pageId}`;
+  if (!themeStore && role) return themeStorePageHref(pageId);
+  return null;
+}
+
+/** Where a theme store page's View and preview go: the list, or the first theme's page for a theme's page (D285). */
+async function themeStoreView(role: "themes" | "theme") {
+  if (role === "themes") return { slug: null, view: "/themes" };
+  const first = (await themeStoreCards())[0]?.slug ?? null;
+  return { slug: first, view: first ? `/themes/${first}` : null };
+}
+
+/** One of Kaizen's pages or articles in the editor, opened from its list or from the site; `themeStore`: one of the theme store's own (D285). */
+export async function EditPageView({ type, params, searchParams, themeStore = false }: { type: PageType; params: Params; searchParams: Query; themeStore?: boolean }) {
   await connection();
   const admin = await requirePlatformAdmin();
-  const [page, { saved: justSaved }, saved, terms, context, gridTerms] = await Promise.all([
+  const [page, { saved: justSaved }, saved, terms, base, gridTerms] = await Promise.all([
     load(type, params),
     searchParams,
     listSavedParts(null),
@@ -205,7 +238,20 @@ export async function EditPageView({ type, params, searchParams }: { type: PageT
     bothTerms(null),
   ]);
   if (!page) notFound();
-  const address = `${context.siteBase}/${page.slug}`;
+  const elsewhere = await editedElsewhere(type, page.id, themeStore);
+  if (elsewhere) redirect(elsewhere);
+  const role = themeStore ? await themeStoreRoleOf(page.id) : null;
+  const context = role
+    ? {
+        ...base,
+        adminBase: THEME_STORE_PAGES,
+        // A theme's page holds the theme's parts; the list may be on either (and on any of Kaizena Flow's pages).
+        themeStore: { parts: role === "theme" ? [...THEME_STORE_PARTS] : (["list"] as const).slice() },
+        place: { view: (await themeStoreView(role)).view, address: PLATFORM_ROLE_COPY[role].address },
+        actions: { ...base.actions, remove: deleteThemeStorePageAction },
+      }
+    : base;
+  const address = role ? PLATFORM_ROLE_COPY[role].address : `${context.siteBase}/${page.slug}`;
   return (
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
@@ -224,12 +270,19 @@ export async function EditPageView({ type, params, searchParams }: { type: PageT
   );
 }
 
-/** The last saved draft, as the site will show it once published (D42). */
-export async function PreviewPageView({ type, params }: { type: PageType; params: Params }) {
+/** The last saved draft, as the site will show it once published (D42); a theme's page (D285) with the first theme, or `?theme=`'s. */
+export async function PreviewPageView({ type, params, searchParams, themeStore = false }: { type: PageType; params: Params; searchParams?: Query; themeStore?: boolean }) {
   await connection();
   await requirePlatformAdmin();
   const page = await load(type, params);
   if (!page) notFound();
+  const elsewhere = await editedElsewhere(type, page.id, themeStore);
+  if (elsewhere) redirect(`${elsewhere}/preview`);
+  const role = themeStore ? await themeStoreRoleOf(page.id) : null;
+  const asked = role === "theme" ? (await searchParams)?.theme : undefined;
+  const themeSlug = role === "theme" ? (typeof asked === "string" && asked ? asked : (await themeStoreView("theme")).slug) : null;
+  const shownTheme = themeSlug ? await themeStorePage(themeSlug) : null;
+  const back = role ? themeStorePageHref(page.id) : `/admin/platform/${PAGE_TYPE_COPY[type].segment}/${page.id}`;
   const copy = PAGE_TYPE_COPY[type];
   return (
     <>
@@ -242,7 +295,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
               ? "The site still shows the published version."
               : "This is what the site shows."}
         </span>
-        <Link href={`/admin/platform/${copy.segment}/${page.id}`} className="font-medium underline">
+        <Link href={back} className="font-medium underline">
           Back to editing
         </Link>
       </p>
@@ -270,7 +323,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
             inAdmin
           />
         ) : (
-          <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} inAdmin />
+          <PageArticle content={page.draft} place={{ pageId: page.id, owner: null, ...(shownTheme && { themeSlug: shownTheme.slug, themeParts: themePartsWith(shownTheme) }) }} inAdmin />
         )}
       </div>
     </>

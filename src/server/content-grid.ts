@@ -17,6 +17,7 @@ import { marketIn } from "./shop";
 import { summarize } from "@/lib/seo";
 import { featureOn } from "@/lib/store-features";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
+import type { ThemeStorePart } from "@/lib/theme-store-parts";
 
 import { catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { fieldsTag } from "./custom-fields";
@@ -65,6 +66,10 @@ export type GridPlace = {
    * inside a part's display hole (D179 phase 4), so the page around stays prerendered.
    */
   query?: Promise<Record<string, string | string[] | undefined>>;
+  /** On the page chosen for a theme's page in the theme store (D285): the theme its address names, which the theme store's parts draw. */
+  themeSlug?: string;
+  /** With it, the parts that have something for that theme (`themePartsWith()`): the others and rows of nothing else are left out. */
+  themeParts?: readonly ThemeStorePart[];
   /**
    * The theme laid under the rows in place of the owner's live one (D244): another installed theme in its preview, and a store's own header,
    * footer and product layout, which are drawn with the store they belong to at hand (`themeLayersOf(store.theme.settings)`).

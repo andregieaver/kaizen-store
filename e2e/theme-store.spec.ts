@@ -11,11 +11,16 @@ import { demoStoreOf, testDb } from "./db";
  */
 
 const SLUG = `e2e-theme-${Date.now().toString(36)}`;
+/** A second theme, next to the first in the theme store's order, for the full-screen preview's Previous and Next (D285). */
+const SLUG_TWO = `${SLUG}-two`;
 let id = "";
+let two = "";
 let demo: Awaited<ReturnType<typeof demoStoreOf>>;
+let demoTwo: Awaited<ReturnType<typeof demoStoreOf>>;
 
 test.beforeAll(async () => {
   demo = await demoStoreOf("home");
+  demoTwo = await demoStoreOf("food");
   const sql = testDb();
   try {
     // With one preset besides its own look (docs/theme-showcase-phase-1.md): Hearth's settings over Fjord.
@@ -26,21 +31,30 @@ test.beforeAll(async () => {
       returning id`;
     id = String(row.id);
     await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${id}, 1, ${sql.json(snapshot as never)})`;
+    // First in the store's order, both of them, so they are each other's neighbours.
+    const [second] = await sql`
+      insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing, position)
+      values ('E2E Fjord Two', 'The second.', 'Another theme made by the test.', ${sql.json(LAUNCH_THEMES[1].snapshot as never)}, true, now(), ${SLUG_TWO}, ${sql.json({ kinds: [], styles: [], pictures: [] })}, -1000)
+      returning id`;
+    two = String(second.id);
+    await sql`update commerce.design_presets set position = -1001 where id = ${id}`;
   } finally {
     await sql.end();
   }
   await demo.linkTo(id);
+  await demoTwo.linkTo(two);
 });
 
 test.afterAll(async () => {
   const sql = testDb();
   try {
     // Unpublished and moved out of the way; versions are never deleted while their theme is there.
-    await sql`update commerce.design_presets set published = false, slug = null where id = ${id}`;
+    await sql`update commerce.design_presets set published = false, slug = null where id in (${id}, ${two})`;
   } finally {
     await sql.end();
   }
   await demo.putAway();
+  await demoTwo.putAway();
 });
 
 test("a theme's page shows the theme large on its own content, its presets as swatches, and the two ways to use it (D275)", async ({ page }) => {
@@ -127,6 +141,18 @@ test("the full-screen preview has a slim bar: back, presets, Home or A product, 
   await expect(page.getByRole("link", { name: "Use this theme" })).toHaveAttribute("href", `/sign-up?theme=${id}`);
   await page.getByRole("link", { name: "E2E Fjord", exact: true }).first().click();
   await expect(page).toHaveURL(new RegExp(`/themes/${SLUG}$`));
+});
+
+test("the full-screen preview goes to the previous and next theme, on the same page and screen (D285)", async ({ page }) => {
+  await page.goto(`/themes/${SLUG}/preview?preset=coast&show=product`);
+  const others = page.getByRole("navigation", { name: "Other themes" });
+  // The next theme opens on its own look, keeping Home or A product and the screen.
+  await expect(others.getByRole("link", { name: /^Next theme: E2E Fjord Two/ })).toHaveAttribute("href", `/themes/${SLUG_TWO}/preview?show=product`);
+  await others.getByRole("link", { name: /^Next/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/themes/${SLUG_TWO}/preview\\?show=product$`));
+  await expect(page.locator('iframe[title="E2E Fjord Two on a computer"]')).toHaveAttribute("src", /show=product$/);
+  await page.getByRole("navigation", { name: "Other themes" }).getByRole("link", { name: /^Previous theme: E2E Fjord$/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/themes/${SLUG}/preview\\?show=product$`));
 });
 
 test("an address that is no theme is not found, and the list's filters are links", async ({ page }) => {

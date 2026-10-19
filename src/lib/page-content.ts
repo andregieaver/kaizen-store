@@ -35,6 +35,7 @@ import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
+import { THEME_PART_HEADING_MAX, THEME_PART_TEXT_MAX, THEME_STORE_PARTS, type ThemeStorePart } from "./theme-store-parts";
 import { termIdsSchema } from "./taxonomy";
 import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
@@ -1056,6 +1057,19 @@ export type PlansBlock = PartBase & {
 };
 
 /**
+ * A part of the theme store (D285, `src/lib/theme-store-parts.ts`): the list of themes, or one part of a theme's page drawn for the
+ * theme the address names. The themes are the platform's, read where the page is shown; the heading and the line are the page's own,
+ * drawn only when the part has something to show. Kaizena Flow's own pages only.
+ */
+export type ThemeStoreBlock = PartBase & {
+  id: string;
+  type: "themeStore";
+  part: ThemeStorePart;
+  heading?: string;
+  text?: string;
+};
+
+/**
  * The custom fields (D118) of the page or article it is on: one group, one
  * field of it, or with none chosen all the groups that apply to the page, as a
  * table, list or cards. Only fields the owner made public are drawn, in the
@@ -1713,6 +1727,7 @@ export type PageBlock =
   | MenuBlock
   | SearchBlock
   | PlansBlock
+  | ThemeStoreBlock
   | CustomFieldBlock
   | FieldLoopBlock
   | StorePartBlock
@@ -1906,6 +1921,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "plans":
       // The platform's plans decide: with none on offer it draws nothing (D142).
       return true;
+    case "themeStore":
+      // The platform's themes decide: a part with nothing for the theme draws nothing (D285).
+      return true;
     case "customField":
       // The page's own values decide: with none for these fields it draws nothing (D118).
       return true;
@@ -1993,6 +2011,7 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "search":
     case "plans":
+    case "themeStore":
     case "storePart":
     case "customField":
     case "fieldLoop":
@@ -2798,6 +2817,15 @@ const searchBlock = z.object({
   ...partBase,
 });
 
+const themeStoreBlock = z.object({
+  id: itemId,
+  type: z.literal("themeStore"),
+  part: z.enum(THEME_STORE_PARTS),
+  heading: z.string().trim().max(THEME_PART_HEADING_MAX, `Keep the heading under ${THEME_PART_HEADING_MAX} characters.`).optional(),
+  text: z.string().trim().max(THEME_PART_TEXT_MAX, `Keep the line under ${THEME_PART_TEXT_MAX} characters.`).optional(),
+  ...partBase,
+});
+
 const plansBlock = z.object({
   id: itemId,
   type: z.literal("plans"),
@@ -3259,6 +3287,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   menuBlock,
   searchBlock,
   plansBlock,
+  themeStoreBlock,
   customFieldBlock,
   fieldLoopBlock,
   storePartBlock,

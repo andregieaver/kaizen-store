@@ -4,10 +4,10 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import { PLATFORM_ROLE_COPY, platformStarterPage, isPlatformRole, type PlatformRole } from "@/lib/platform-roles";
+import { PLATFORM_ROLE_COPY, platformStarterPage, isPlatformRole, isThemeStoreRole, THEME_STORE_ROLES, type PlatformRole, type ThemeStoreRole } from "@/lib/platform-roles";
 
 import { audit, type Account } from "./auth";
-import { listPublishedPages, pagesTag, savePage, type PublishedPage } from "./pages";
+import { listPages, listPublishedPages, pagesTag, savePage, type PageSummary, type PublishedPage } from "./pages";
 
 type Row = Record<string, unknown>;
 type Result = { ok: true } | { ok: false; problems: string[] };
@@ -21,6 +21,11 @@ export async function getPlatformPageRoles(): Promise<[PlatformRole, string][]> 
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(null));
+  return readPlatformPageRoles();
+}
+
+/** The same, read now: for the admin, which decides where a page is edited and shows what each place holds. */
+async function readPlatformPageRoles(): Promise<[PlatformRole, string][]> {
   const rows = await readDb().execute<Row>(sql`select role, page_id from commerce.platform_page_roles`);
   return rows.flatMap((row) => (isPlatformRole(row.role) ? [[row.role, String(row.page_id)] as [PlatformRole, string]] : []));
 }
@@ -83,4 +88,53 @@ export async function createPlatformRolePage(account: Account, role: PlatformRol
   if (!made || !made.ok) return { ok: false, problems: made ? made.problems : ["The page could not be made."] };
   const placed = await setPlatformPageRole(account, role, made.id);
   return placed.ok ? { ok: true, id: made.id } : placed;
+}
+
+/** The theme store's place a page of Kaizen's holds (D285), if any: it is edited from Themes, never among the other pages. */
+export async function themeStoreRoleOf(pageId: string): Promise<ThemeStoreRole | null> {
+  const role = (await readPlatformPageRoles()).find(([, id]) => id === pageId)?.[0] ?? null;
+  return isThemeStoreRole(role) ? role : null;
+}
+
+export type ThemeStorePageState = { role: ThemeStoreRole; page: Pick<PageSummary, "id" | "title" | "state" | "updatedAt"> | null };
+
+/** The theme store's two places (D285) for the Themes page, each with the page built for it, if any, and whether it is on the site. */
+export async function themeStorePageStates(): Promise<ThemeStorePageState[]> {
+  const [roles, pages] = await Promise.all([readPlatformPageRoles(), listPages(null, "page")]);
+  return THEME_STORE_ROLES.map((role) => {
+    const id = roles.find(([r]) => r === role)?.[1];
+    const page = pages.find((p) => p.id === id);
+    return { role, page: page ? { id: page.id, title: page.title, state: page.state, updatedAt: page.updatedAt } : null };
+  });
+}
+
+/**
+ * Makes the page for one of the theme store's places (D285) from its starter (the standard page's words around its theme store
+ * components), as a draft in its place: the standard page shows until the page is published from the editor, and taking it off the site
+ * again (Unpublish) brings the standard page back. One page per place: asked again, it gives the one there.
+ */
+export async function createThemeStorePage(account: Account, role: ThemeStoreRole): Promise<{ ok: true; id: string } | { ok: false; problems: string[] }> {
+  const [held] = await db().execute<Row>(sql`select page_id from commerce.platform_page_roles where role = ${role}`);
+  if (held) return { ok: true, id: String(held.page_id) };
+  const content = platformStarterPage(role, () => crypto.randomUUID());
+  let made: Awaited<ReturnType<typeof savePage>> | null = null;
+  // The address is the role's own unless another page has taken it, then one of its own: it only ever leads to the place.
+  for (let n = 1; n <= 6; n++) {
+    const slug = n === 1 ? content.slug : n < 6 ? `${content.slug}-${n}` : `${content.slug}-${crypto.randomUUID().slice(0, 8)}`;
+    made = await savePage(account, null, null, { ...content, slug }, { publish: false, type: "page" });
+    if (made.ok || !made.problems.some((p) => /address|slug/i.test(p))) break;
+  }
+  if (!made || !made.ok) return { ok: false, problems: made ? made.problems : ["The page could not be made."] };
+  const placed = await db().execute<Row>(sql`
+    insert into commerce.platform_page_roles (role, page_id, updated_by) values (${role}, ${made.id}::uuid, ${account.id}::uuid)
+    on conflict (role) do nothing
+    returning page_id
+  `);
+  if (placed.length === 0) {
+    // Another admin made it in the same moment: theirs is the place's, and this draft stays among the pages.
+    const [theirs] = await db().execute<Row>(sql`select page_id from commerce.platform_page_roles where role = ${role}`);
+    return theirs ? { ok: true, id: String(theirs.page_id) } : { ok: false, problems: ["The page could not be put in its place. Try again."] };
+  }
+  await audit(account.id, null, "platform.page_role_changed", { role, page: made.id });
+  return { ok: true, id: made.id };
 }

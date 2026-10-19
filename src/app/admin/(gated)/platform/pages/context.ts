@@ -74,6 +74,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     plans: planChoices(plans),
+    // The list of themes on any of Kaizena Flow's pages (D285); a theme's parts only on the page edited as a theme's page (from Themes).
+    themeStore: type === "page" ? { parts: ["list"] } : null,
     // Kaizen's own theme (D235), as a store's is given: its Theme tab, its saved colours, and the theme under every part.
     theme: {
       css: themeCss(chrome.theme.settings, "[data-theme-canvas]"),

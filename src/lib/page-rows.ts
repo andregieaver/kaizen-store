@@ -26,6 +26,7 @@ import { copyWithUses } from "./global-parts";
 import { clearAt, setAt } from "./responsive";
 import { modalDomId, slugifyKey, uniqueKey } from "./page-modal";
 import { isShopPart, type ShopPart } from "./store-parts";
+import { isThemeStorePart, THEME_STORE_PART_COPY, type ThemeStorePart } from "./theme-store-parts";
 
 /**
  * The page builder's edits (D43), as pure functions on a page's rows: each
@@ -47,8 +48,8 @@ export function newRow(layout: RowLayout, id: NewId): PageRow {
   };
 }
 
-/** A new block of a kind; a product or site component (D79, D80) shows `part`. */
-export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePart | ShopPart = "title"): PageBlock {
+/** A new block of a kind; a product, site or theme store component (D79, D80, D285) shows `part`. */
+export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePart | ShopPart | ThemeStorePart = "title"): PageBlock {
   switch (type) {
     case "product":
       return { id: id(), type, part: part in PRODUCT_PARTS ? (part as ProductPart) : "title" };
@@ -63,6 +64,11 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type };
     case "plans":
       return { id: id(), type, buttonLabel: "", buttonHref: "" };
+    case "themeStore": {
+      const shows = isThemeStorePart(part) ? part : "list";
+      const { heading, text } = THEME_STORE_PART_COPY[shows];
+      return { id: id(), type, part: shows, ...(heading && { heading }), ...(text && { text }) };
+    }
     case "fieldLoop":
       return { id: id(), type, layout: "cards", columns: 3, slots: {} };
     case "accordion":

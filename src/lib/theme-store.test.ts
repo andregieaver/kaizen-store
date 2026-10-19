@@ -21,6 +21,7 @@ import {
   swatchOf,
   themeJsonLd,
   lookChoice,
+  previewNeighbours,
   previewView,
   themePagePath,
   themePreviewPath,
@@ -261,3 +262,21 @@ describe("a look's swatch", () => {
   });
 });
 
+
+describe("the previous and next theme in the full-screen preview (D285)", () => {
+  const shown = { pack: null, trade: null, line: "", starterId: "s" };
+  const card = (slug: string, previewable = true) => ({ slug, looks: [{ showcase: previewable ? shown : null }] });
+
+  it("goes round the theme store's order, counting only themes with something to preview", () => {
+    const cards = [card("a"), card("b", false), card("c"), card("d")];
+    expect(previewNeighbours(cards, "a")).toMatchObject({ previous: { slug: "d" }, next: { slug: "c" } });
+    expect(previewNeighbours(cards, "c")).toMatchObject({ previous: { slug: "a" }, next: { slug: "d" } });
+    expect(previewNeighbours(cards, "d")).toMatchObject({ previous: { slug: "c" }, next: { slug: "a" } });
+  });
+
+  it("offers none when there is no other theme to preview, or the theme is not in the store", () => {
+    expect(previewNeighbours([card("a"), card("b", false)], "a")).toBeNull();
+    expect(previewNeighbours([card("a"), card("b")], "gone")).toBeNull();
+    expect(previewNeighbours([card("a"), card("b")], "a")).toMatchObject({ previous: { slug: "b" }, next: { slug: "b" } });
+  });
+});

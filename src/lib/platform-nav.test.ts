@@ -3,16 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { PLAN_ITEMS, SETTINGS_ITEMS, STORE_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "./platform-nav";
+import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "./platform-nav";
 
 const ROOT = "src/app/admin/(gated)/platform";
 /** Sections with no sidebar, and what is in them. */
-const WITHOUT_SIDEBAR = ["customers", "requests", "assistant"];
+const WITHOUT_SIDEBAR = ["stores", "themes", "customers", "requests", "assistant"];
 /** Pages that are a section's first page, not in its sidebar. */
 const HUBS = ["website", "settings"];
 
 describe("the platform admin's sections (D144)", () => {
-  const sections = { website: WEBSITE_ITEMS, stores: STORE_ITEMS, plans: PLAN_ITEMS, support: SUPPORT_ITEMS, settings: SETTINGS_ITEMS };
+  const sections = { website: WEBSITE_ITEMS, plans: PLAN_ITEMS, support: SUPPORT_ITEMS, settings: SETTINGS_ITEMS };
 
   it("lists each page once, in one sidebar", () => {
     const paths = Object.values(sections).flatMap((items) => items.map((i) => i.path));
@@ -33,6 +33,13 @@ describe("the platform admin's sections (D144)", () => {
       // A page's own folder is in its sidebar, or its section has no sidebar, or it is a hub; `[…]` folders belong to their parent.
       expect(homes, `${dir} is in ${homes} sections`).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("puts Themes in the rail beneath Website (D285), each a page the admin map knows", () => {
+    const tabs = platformTabs().map((tab) => tab.label);
+    expect(tabs.indexOf("Themes")).toBe(tabs.indexOf("Website") + 1);
+    const known = new Set(ADMIN_PAGES.filter((p) => p.area === "platform").map((p) => `/admin/platform${p.path}`));
+    for (const tab of platformTabs()) if (tab.href !== "/admin/platform") expect(known.has(tab.href), tab.href).toBe(true);
   });
 
   it("names the pages of a sidebar under the platform's address, and marks only exact ones exact", () => {

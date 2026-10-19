@@ -38,7 +38,7 @@ Nobody chooses the content apart from the look. The server works it out from the
 
 ## 3. The platform
 
-* **Stores → Themes** (`/admin/platform/themes`, `THEMES_ADMIN`): the themes (as before), *Kaizena Flow's themes* (the launch themes),
+* **Stores → Themes** (a rail section of its own since D285; `/admin/platform/themes`, `THEMES_ADMIN`): the themes (as before), *Kaizena Flow's themes* (the launch themes),
   *New theme*, and the **Demo stores** card: each content pack's demo store with its state (not set up, newer version, pictures to make,
   making pictures, ready to publish, published), the themes that show it, *Make the pictures* (the job, D271) and *Publish* in the row.
   Store templates made by hand before D273 are listed under *Older demo stores*; no look starts from them and the admin makes no new one.

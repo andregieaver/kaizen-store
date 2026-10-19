@@ -92,3 +92,26 @@ describe("a page on the live site", () => {
     expect(bare).not.toMatch(/data-kz-page/);
   });
 });
+
+describe("a page with the theme store's parts (D285)", () => {
+  const part = (id: string, which: string): PageBlock => ({ id, type: "themeStore", part: which }) as PageBlock;
+  const content = page(row("r-high", [part("p-high", "highlights")]), row("r-words", [para("t1", "Our own words")]), row("r-mixed", [part("p-pic", "pictures"), para("t2", "Beside it")]));
+
+  it("leaves out a row of parts with nothing for the theme, and the part alone where the row holds more", () => {
+    const html = renderToString(
+      createElement(PageArticle, { content, place: { pageId: PAGE, owner: null, theme: NO_THEME, themeSlug: "calm", themeParts: ["stage", "details"] } }),
+    );
+    // Every part keeps its `kz-{id}` class (D179): the empty row is not drawn at all, the mixed one without its empty part.
+    expect(html).toContain("kz-r-words");
+    expect(html).not.toContain("kz-r-high");
+    expect(html).toContain("kz-r-mixed");
+    expect(html).toContain("kz-t2");
+    expect(html).not.toContain("kz-p-pic");
+  });
+
+  it("leaves out a theme's parts on a page that is no theme's page", () => {
+    const html = renderToString(createElement(PageArticle, { content: page(row("r-high", [part("p-high", "highlights")])), place: { pageId: PAGE, owner: null, theme: NO_THEME } }));
+    expect(html).not.toContain("kz-r-high");
+    expect(html).not.toContain("kz-p-high");
+  });
+});

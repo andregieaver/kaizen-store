@@ -20,6 +20,11 @@ export const NEW_DEMO_STORE = `${THEMES_ADMIN}/demo-stores/new`;
 /** The starting content (D275), the content packs a theme's content or a demo store starts as a copy of: a card on the Themes page. */
 export const STARTING_CONTENT_HREF = `${THEMES_ADMIN}#starting-content`;
 
+/** The theme store's own pages (D285): edited here, never among Kaizena Flow's other pages; the card listing them on Themes. */
+export const THEME_STORE_PAGES = `${THEMES_ADMIN}/pages`;
+export const themeStorePageHref = (pageId: string): string => `${THEME_STORE_PAGES}/${pageId}`;
+export const THEME_STORE_PAGES_HREF = `${THEMES_ADMIN}#theme-store-pages`;
+
 /**
  * The addresses themes, design profiles and store templates had before D273 and where they went, as Next's `redirects`
  * (`next.config.ts`). The old site's themes (`/admin/platform/themes/{install}`) took an address that is now a theme's: the theme page

@@ -325,7 +325,7 @@ export function PageEditor({
       if (latest.current === sent && !sameJson(outcome.page.draft, sent)) setContent(outcome.page.draft);
       setDirty(false);
       setSaved(outcome.page);
-      setMessage(publish ? `Published at ${siteBase}/${outcome.page.slug}.` : "Draft saved.");
+      setMessage(publish ? `Published at ${context.place ? context.place.address : `${siteBase}/${outcome.page.slug}`}.` : "Draft saved.");
       // A new page moves to its own address; the editor there says what happened.
       if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
     });
@@ -477,6 +477,7 @@ export function PageEditor({
           menus: context.menus,
           menusHref: context.menusHref,
           plans: context.plans,
+          themeStore: context.themeStore ?? null,
           features: context.features ?? null,
           shape,
           actions,
@@ -546,6 +547,8 @@ export function PageEditor({
                 <p className={hint}>
                   The address, {content.slug}, is the same in every language. Change it in {main.name}.
                 </p>
+              ) : context.place ? (
+                <p className={hint}>Shown at {context.place.address} once published; until then, and after Unpublish, the standard page shows there.</p>
               ) : (
               <SlugField
                 slug={content.slug}
@@ -565,7 +568,7 @@ export function PageEditor({
                 }}
               />
               )}
-              {moving && !translating && !layout && (
+              {moving && !translating && !layout && !context.place && (
                 <p className="rounded-md bg-sunken p-3 text-sm">
                   When you publish, <strong>{siteBase}/{liveSlug}</strong> will lead to <strong>{siteBase}/{content.slug}</strong> for good
                   (a permanent redirect), so links and search results keep working.
@@ -629,19 +632,21 @@ export function PageEditor({
                 </div>
               </section>
             )}
-            <section aria-labelledby="terms-heading" className={card}>
-              <h2 id="terms-heading" className="text-title text-ink">
-                Categories and tags
-              </h2>
-              <TermPicker
-                terms={terms}
-                value={{ categories: content.categories, tags: content.tags }}
-                onChange={(ids) => change(ids)}
-                onTerms={setTerms}
-                create={actions.createTerm}
-                manageHref={`${adminBase}/categories`}
-              />
-            </section>
+            {!context.place && (
+              <section aria-labelledby="terms-heading" className={card}>
+                <h2 id="terms-heading" className="text-title text-ink">
+                  Categories and tags
+                </h2>
+                <TermPicker
+                  terms={terms}
+                  value={{ categories: content.categories, tags: content.tags }}
+                  onChange={(ids) => change(ids)}
+                  onTerms={setTerms}
+                  create={actions.createTerm}
+                  manageHref={`${adminBase}/categories`}
+                />
+              </section>
+            )}
             <EntityFields
               groups={fieldGroups}
               data={fieldData}
@@ -878,12 +883,20 @@ export function PageEditor({
                 Preview draft{dirty ? " (last saved)" : ""}
               </a>
             )}
-            {liveSlug && !layout && (
-              <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
-                View {noun}
-              </a>
-            )}
-            {!isVersion && (
+            {context.place
+              ? liveSlug &&
+                context.place.view && (
+                  <a href={context.place.view} target="_blank" rel="noopener" className="underline">
+                    View {noun}
+                  </a>
+                )
+              : liveSlug &&
+                !layout && (
+                  <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
+                    View {noun}
+                  </a>
+                )}
+            {!isVersion && !context.place && (
               <button
                 type="button"
                 onClick={() => setTemplateOpen(true)}
@@ -893,7 +906,7 @@ export function PageEditor({
                 Save as template
               </button>
             )}
-            {saved && !isVersion && (
+            {saved && !isVersion && !context.place && (
               <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
                 Duplicate
               </button>

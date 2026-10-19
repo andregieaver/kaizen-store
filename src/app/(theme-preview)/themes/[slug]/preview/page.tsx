@@ -7,7 +7,7 @@ import { SwatchDot } from "@/components/theme-swatch";
 import { designPreviewPath } from "@/lib/design-presets";
 import { lookChoice, previewView, shownLooks, themePagePath, themePreviewPath, themeStartLink, type PreviewView } from "@/lib/theme-store";
 import { platformHref } from "@/lib/theme-host";
-import { themeStorePage } from "@/server/theme-store";
+import { themePreviewNeighbours, themeStorePage } from "@/server/theme-store";
 
 export async function generateMetadata({ params }: PageProps<"/themes/[slug]/preview">): Promise<Metadata> {
   const theme = await themeStorePage((await params).slug);
@@ -16,9 +16,10 @@ export async function generateMetadata({ params }: PageProps<"/themes/[slug]/pre
 
 /**
  * A theme's full-screen preview in the theme store (D275, `docs/themes-content-and-demo-stores.md` section 6): a slim bar (back to the
- * theme, its presets, Home or A product, computer or phone, *Use this theme*) over the chosen look on the theme's own content, which can be
- * scrolled but not pressed (the public preview, inert, in a frame). Every choice is a link that keeps the others, so it works without
- * JavaScript and a shared address opens on the same view.
+ * theme, the previous and next theme (D285), its presets, Home or A product, computer or phone, *Use this theme*) over the chosen look on
+ * the theme's own content, which can be scrolled but not pressed (the public preview, inert, in a frame). Every choice is a link that keeps
+ * the others (the next theme opens on its own look, on the same page and screen), so it works without JavaScript and a shared address opens
+ * on the same view.
  */
 export default function ThemeFullPreview({ params, searchParams }: PageProps<"/themes/[slug]/preview">) {
   return (
@@ -32,7 +33,7 @@ const segment = "flex min-h-9 items-center rounded-full px-3 text-sm aria-[curre
 
 async function FullPreview({ params, searchParams }: Pick<PageProps<"/themes/[slug]/preview">, "params" | "searchParams">) {
   const { slug } = await params;
-  const theme = await themeStorePage(slug);
+  const [theme, around] = await Promise.all([themeStorePage(slug), themePreviewNeighbours(slug)]);
   if (!theme) notFound();
   const looks = shownLooks(theme.looks);
   // A theme with no published content has nothing to preview (D274, D275): its page shows its colours.
@@ -52,6 +53,20 @@ async function FullPreview({ params, searchParams }: Pick<PageProps<"/themes/[sl
         <Link href={themePagePath(theme.slug, key)} className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-sm font-medium hover:underline">
           <span aria-hidden="true">←</span> {theme.title}
         </Link>
+        {around && (
+          <nav aria-label="Other themes" className="flex items-center gap-1 rounded-full border border-border p-0.5">
+            <Link href={themePreviewPath(around.previous.slug, null, view)} rel="prev" title={around.previous.title} className={segment}>
+              <span aria-hidden="true">‹</span>
+              <span className="ml-1">Previous</span>
+              <span className="sr-only"> theme: {around.previous.title}</span>
+            </Link>
+            <Link href={themePreviewPath(around.next.slug, null, view)} rel="next" title={around.next.title} className={segment}>
+              <span className="mr-1">Next</span>
+              <span className="sr-only"> theme: {around.next.title}</span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          </nav>
+        )}
         {looks.length > 1 && (
           <ul aria-label="Presets" className="flex items-center gap-1">
             {looks.map((choice) => (

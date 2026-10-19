@@ -6,7 +6,7 @@ import { ADMIN } from "./accounts";
 
 /**
  * One concept, themes (D273, `docs/themes-unified.md`), as the platform admin sees it: design profiles' and store templates' old addresses
- * land on the Themes page, which holds the starting content; the Stores section offers Themes alone and the Website section the site's
+ * land on the Themes page, which holds the starting content; Themes is a section of its own (D285) and the Website section has the site's
  * Design; a theme's Content tab gives it content of its own and publishes it (D275). `design-presets.int.test.ts` holds that a new store
  * starts from the theme's own content (`contentForLook()`).
  */

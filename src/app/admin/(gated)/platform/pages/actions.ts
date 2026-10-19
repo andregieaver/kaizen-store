@@ -8,8 +8,9 @@ import { requirePlatformAdmin } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
-import { createPlatformRolePage, setPlatformPageRole } from "@/server/platform-roles";
-import { isPlatformRole, PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
+import { createPlatformRolePage, createThemeStorePage, setPlatformPageRole, themeStoreRoleOf } from "@/server/platform-roles";
+import { isSpecialRole, isThemeStoreRole, PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
+import { THEMES_ADMIN, themeStorePageHref } from "@/lib/theme-admin-paths";
 import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
@@ -79,6 +80,29 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
   redirect(`${listOf(type)}?deleted=1`);
+}
+
+/**
+ * Makes the page for one of the theme store's places (D285), a draft in its place, and opens it in the builder; the standard page shows
+ * until it is published. Asked again, it opens the one there.
+ */
+export async function createThemeStorePageAction(role: string): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  if (!isThemeStoreRole(role)) return { status: "error", messages: ["Unknown page."] };
+  const result = await createThemeStorePage(admin, role);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(PAGES_TAG);
+  redirect(themeStorePageHref(result.id));
+}
+
+/** Deletes a theme store page (D285) from its editor: the standard page shows again, and the way back is Themes. */
+export async function deleteThemeStorePageAction(id: string): Promise<{ problems: string[] } | void> {
+  const admin = await requirePlatformAdmin();
+  if (!isId(id)) return { problems: ["Unknown page."] };
+  if (!(await themeStoreRoleOf(id))) return { problems: ["This page is not one of the theme store's."] };
+  await deletePage(admin, null, id, "page");
+  updateTag(PAGES_TAG);
+  redirect(`${THEMES_ADMIN}?deleted=store-page`);
 }
 
 /** What Kaizen's page builder's Theme tab holds (D235): into Kaizen's theme, live on its site at once. */
@@ -248,7 +272,8 @@ export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _stat
 /** Chooses the page Kaizen's front page, blog or 404 page shows (D143), or the standard one; the site follows at once. */
 export async function setPlatformPageRoleAction(role: string, _state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (!isPlatformRole(role)) return { status: "error", messages: ["Unknown page."] };
+  // The Special pages only; the theme store's pages are made and taken away from Themes (D285).
+  if (!isSpecialRole(role)) return { status: "error", messages: ["Unknown page."] };
   const choice = String(form.get("page") ?? "");
   if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
   const result = await setPlatformPageRole(admin, role, choice || null);
@@ -261,7 +286,7 @@ export async function setPlatformPageRoleAction(role: string, _state: FormState,
 /** Makes a starter page for one of Kaizen's places, published and in place, to change in the builder (D143). */
 export async function createPlatformRolePageAction(role: string): Promise<FormState> {
   const admin = await requirePlatformAdmin();
-  if (!isPlatformRole(role)) return { status: "error", messages: ["Unknown page."] };
+  if (!isSpecialRole(role)) return { status: "error", messages: ["Unknown page."] };
   const result = await createPlatformRolePage(admin, role);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);

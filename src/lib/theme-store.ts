@@ -359,6 +359,20 @@ export function themePreviewPath(slug: string, preset: string | null = null, vie
   return themeStorePath(`${slug}/preview${search ? `?${search}` : ""}`);
 }
 
+/**
+ * The themes before and after one in the theme store's order (D285), going round: the full-screen preview's *Previous* and *Next*. Only
+ * themes with something to preview count (`shownLooks()`); none when there is no other.
+ */
+export function previewNeighbours<T extends { slug: string; looks: readonly Pick<ThemeLook, "showcase">[] }>(
+  cards: readonly T[],
+  slug: string,
+): { previous: T; next: T } | null {
+  const previewable = cards.filter((card) => card.slug === slug || shownLooks(card.looks).length > 0);
+  const at = previewable.findIndex((card) => card.slug === slug);
+  if (at === -1 || previewable.length < 2) return null;
+  return { previous: previewable[(at - 1 + previewable.length) % previewable.length], next: previewable[(at + 1) % previewable.length] };
+}
+
 /** A theme's page with one of its looks chosen (`?preset=`), as a shared link opens it. */
 export const themePagePath = (slug: string, preset: string | null = null): string =>
   themeStorePath(`${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`);

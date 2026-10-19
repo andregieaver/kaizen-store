@@ -38,10 +38,11 @@ export default async function PlatformPage({ params, searchParams }: Props) {
   // A page that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(`/${found.redirect}`);
   const { page } = found;
-  // A page chosen for a place of its own (D143) has the place's address: the front page's `/`, the blog's `/blog`; the 404 page has none.
+  // A page chosen for a place of its own (D143) has the place's address: the front page's `/`, the blog's `/blog`, the theme store's and a
+  // theme's page's `/themes` (D285); the 404 page has none.
   const role = await platformRoleOf(page.id);
   if (role) {
-    const address = PLATFORM_ROLE_COPY[role].address;
+    const address = PLATFORM_ROLE_COPY[role].leadsTo;
     if (address) permanentRedirect(address);
     notFound();
   }

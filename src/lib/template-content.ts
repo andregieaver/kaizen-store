@@ -40,6 +40,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   menu: "menu",
   search: "search",
   plans: "plans",
+  themeStore: "theme store part",
   customField: "custom fields",
   fieldLoop: "field loop",
   storePart: "shop page",

@@ -5892,7 +5892,7 @@ export const aiModelPrices = commerce.table(
 /**
  * Which of Kaizen's own pages has a place of its own on its site (D143), as a store's front page and special
  * pages do (D54, D112): its front page (`/`), its blog (`/blog`) and the page shown for an address that is not
- * found. Without one the site's standard page shows. A page holds at most one place, only a page of Kaizen's
+ * found, and the theme store's list and a theme's page (D285). Without one the site's standard page shows. A page holds at most one place, only a page of Kaizen's
  * own (type `page`, no store) can hold one (a trigger in a custom migration), and deleting it lets the place go.
  */
 export const platformPageRoles = commerce.table(
@@ -5907,7 +5907,7 @@ export const platformPageRoles = commerce.table(
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
-    check("platform_page_roles_role", sql`${t.role} in ('front', 'blog', 'not_found')`),
+    check("platform_page_roles_role", sql`${t.role} in ('front', 'blog', 'not_found', 'themes', 'theme')`),
     index("platform_page_roles_updated_by_idx").on(t.updatedBy),
   ],
 );

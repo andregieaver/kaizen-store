@@ -10,23 +10,32 @@ export function SeeItLive({
   title,
   demos,
   looks,
+  heading = "See it live",
+  text,
 }: {
   /** The theme's name: what a demo store wearing its own look is said to wear. */
   title: string;
   demos: readonly LiveDemo[];
   /** The theme's looks by key (null: its own), for each card's look name and colours. */
   looks: readonly { key: string | null; name: string; swatch: ThemeSwatch | null }[];
+  /** Its heading and the line under it: a page built in the page builder writes its own (D285); empty draws none. */
+  heading?: string;
+  text?: string;
 }) {
   if (demos.length === 0) return null;
   const own = looks.find((look) => look.key === null);
   return (
-    <section aria-labelledby="see-it-live" className="flex flex-col gap-6" data-see-it-live="">
-      <div className="flex flex-col gap-1">
-        <h2 id="see-it-live" className="text-2xl font-semibold tracking-tight">
-          See it live
-        </h2>
-        <p className="text-muted">Demo stores wearing {title}, with their own words, pictures and products.</p>
-      </div>
+    <section aria-labelledby={heading ? "see-it-live" : undefined} aria-label={heading ? undefined : "See it live"} className="flex flex-col gap-6" data-see-it-live="">
+      {(heading || text !== "") && (
+        <div className="flex flex-col gap-1">
+          {heading && (
+            <h2 id="see-it-live" className="text-2xl font-semibold tracking-tight" data-kz-text="title">
+              {heading}
+            </h2>
+          )}
+          {text !== "" && <p className="text-muted">{text ?? `Demo stores wearing ${title}, with their own words, pictures and products.`}</p>}
+        </div>
+      )}
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {demos.map((demo) => {
           // A preset the theme no longer has: the theme's own look, as an install of it shows (`installedLook()`).

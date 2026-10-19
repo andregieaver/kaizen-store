@@ -8,13 +8,15 @@ import { pageExcerpt } from "@/lib/page-content";
 import { headerOverlays } from "@/lib/site-layout";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
+import type { ThemeStorePart } from "@/lib/theme-store-parts";
 import type { PublishedPage } from "@/server/pages";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 import { siteLayoutFor } from "@/server/site-layouts";
 
 /**
  * One of Kaizen's published pages as the site shows it (D42): at its own address, or, chosen for a place of its own
- * (D143), as its front page, blog or 404 page, which it then draws at the place's address.
+ * (D143), as its front page, blog or 404 page, or the theme store's list or a theme's page (D285), which it then draws at the
+ * place's address.
  */
 
 /** The page's own search and sharing texts, over Kaizen's; `url` is the address it is shown at. */
@@ -41,12 +43,21 @@ export async function PlatformPageView({
   url,
   front = false,
   query,
+  themeSlug,
+  themeParts,
+  jsonLd = true,
 }: {
   page: PublishedPage;
   url: string;
   front?: boolean;
   /** The address's parameters, read only by a part shown by conditions (D179 phase 4). */
   query?: Promise<Record<string, string | string[] | undefined>>;
+  /** On the page chosen for a theme's page (D285): the theme the address names, which its theme store components draw. */
+  themeSlug?: string;
+  /** With it, the parts that have something for that theme (`themePartsWith()`). */
+  themeParts?: readonly ThemeStorePart[];
+  /** The page's own structured data; off where the route writes its own (a theme's page describes the theme). */
+  jsonLd?: boolean;
 }) {
   const c = page.content;
   const origin = siteUrl();
@@ -56,17 +67,19 @@ export async function PlatformPageView({
   return (
     <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "pb-10")}`} data-header-overlay={over ? "" : undefined}>
       {over && <HeaderOverlayMark />}
-      <JsonLdScript
-        data={pageJsonLd({
-          origin,
-          url: `${origin}${url}`,
-          title: c.title,
-          description: c.seo.description || pageExcerpt(c),
-          image: c.thumbnail?.url ?? null,
-          publishedAt: page.publishedAt,
-        })}
-      />
-      <PageArticle content={c} place={{ pageId: page.id, owner: null, query }} editable />
+      {jsonLd && (
+        <JsonLdScript
+          data={pageJsonLd({
+            origin,
+            url: `${origin}${url}`,
+            title: c.title,
+            description: c.seo.description || pageExcerpt(c),
+            image: c.thumbnail?.url ?? null,
+            publishedAt: page.publishedAt,
+          })}
+        />
+      )}
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, ...(themeSlug && { themeSlug, themeParts }) }} editable />
       <PageEditLink pageId={page.id} />
     </main>
   );

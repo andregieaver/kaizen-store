@@ -56,7 +56,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.platform_page_roles`);
-  await db().execute(sql`delete from commerce.pages where store_id is null and (slug like ${`%-${run}`} or slug like 'front-page%' or slug like 'blog-archive%' or slug like 'page-not-found%')`);
+  await db().execute(sql`delete from commerce.pages where store_id is null and (slug like ${`%-${run}`} or slug like 'front-page%' or slug like 'blog-archive%' or slug like 'page-not-found%' or slug like 'theme-store%' or slug like 'theme-page%')`);
   await closeDb();
 });
 
@@ -123,6 +123,35 @@ describe("Kaizena Flow's front page, blog and 404 page (D143)", () => {
     const again = await roles.createPlatformRolePage(admin, "front");
     expect(again.ok).toBe(true);
     expect((await roles.platformPageForRole("front"))?.slug).toBe("front-page-2");
+  });
+
+  it("makes the theme store's pages as drafts in their places, the standard page showing until each is published (D285)", async () => {
+    const made = await roles.createThemeStorePage(admin, "theme");
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    // A draft: in its place, edited from Themes, but the standard page shows.
+    expect(await roles.themeStoreRoleOf(made.id)).toBe("theme");
+    expect(await roles.platformPageForRole("theme")).toBeNull();
+    const states = await roles.themeStorePageStates();
+    expect(states.map((state) => state.role)).toEqual(["themes", "theme"]);
+    expect(states[0].page).toBeNull();
+    expect(states[1].page).toMatchObject({ id: made.id, state: "draft", title: "A theme's page" });
+    // Asked again, it is the same page.
+    expect(await roles.createThemeStorePage(admin, "theme")).toEqual({ ok: true, id: made.id });
+    // Published from the editor, it is the theme's page; its parts are the theme store's.
+    const page = await pages.getPageForEdit(null, made.id, "page");
+    if (!page) throw new Error("no page");
+    const published = await pages.savePage(admin, null, made.id, page.draft, { publish: true, type: "page" });
+    expect(published.ok).toBe(true);
+    const shown = await roles.platformPageForRole("theme");
+    expect(shown?.id).toBe(made.id);
+    expect(JSON.stringify(shown?.content.rows)).toContain('"type":"themeStore"');
+    expect((await roles.themeStorePageStates())[1].page?.state).toBe("published");
+    // Kaizena Flow's other pages have no theme store place: they stay under Pages.
+    expect(await roles.themeStoreRoleOf((await make("other", true)))).toBeNull();
+    // Deleted, the place is free and the standard page shows again.
+    await pages.deletePage(admin, null, made.id, "page");
+    expect(await roles.platformPageForRole("theme")).toBeNull();
+    expect((await roles.themeStorePageStates())[1].page).toBeNull();
   });
 
   it("leaves a page with a place of its own out of the sitemap, where the place's address is", async () => {

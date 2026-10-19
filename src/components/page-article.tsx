@@ -29,6 +29,8 @@ import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./lazy/blocks";
 import { PlansSection } from "./plans-section";
+import { ThemeStoreSection } from "./theme-store-section";
+import { themePartDraws } from "@/lib/theme-store-parts";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { PartStyles } from "./part-styles";
 import { StorePartSection } from "./store-part-section";
@@ -68,7 +70,7 @@ export function PageArticle({
 }) {
   // A preview draws what the blocks hold; a block still bound to a field is drawn only if it keeps its own content (D118).
   const content = inAdmin ? withoutBindings(given) : given;
-  const rows = content.rows.filter(rowShows);
+  const rows = content.rows.filter((row) => rowShows(row) && !themeRowLeftOut(row, place));
   // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
   // (A modal's headings are its own: it is not in the page's flow, D121.)
   // A heading in a part some visitors do not see (D179 phase 4) does not count: the title stays for them.
@@ -116,6 +118,15 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
   // A modal is not in the page's flow (D121): the first and last rows are the ones drawn in it.
   const rows = flowRows(content.rows.filter(rowShows));
   return [rows[0]?.background ? "" : top, rows.at(-1)?.background ? "" : bottom].filter(Boolean).join(" ");
+};
+
+/** A theme store part with nothing for the theme the address names (D285), which is left out. */
+const themePartLeftOut = (block: PageBlock, place: GridPlace) => block.type === "themeStore" && !themePartDraws(block.part, place);
+
+/** A row holding only such parts, left out with them rather than drawn empty. */
+const themeRowLeftOut = (row: PageRow, place: GridPlace) => {
+  const blocks = row.columns.flatMap((column) => column.blocks);
+  return blocks.length > 0 && blocks.every((block) => themePartLeftOut(block, place));
 };
 
 /** Whether every visitor sees a part (its display is Always, D179 phase 4). */
@@ -290,7 +301,7 @@ function RowMarkup({
           });
           // A product or site component with nothing to show leaves no space behind (D79, D80).
           const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
-          if (own === null) return null;
+          if (own === null || themePartLeftOut(block, place)) return null;
           // A heading or text of the page's own that signed-in staff may edit where it stands (D192): marked for them, never on a preview.
           const mark = editable && !preview && place.pageId ? inlineMarkOf({ row, column, block }, inPanel) : null;
           return (
@@ -307,6 +318,8 @@ function RowMarkup({
                 <SearchSection place={place} results={block.results !== false} />
               ) : block.type === "plans" ? (
                 <PlansSection block={block} />
+              ) : block.type === "themeStore" ? (
+                <ThemeStoreSection block={block} place={place} />
               ) : block.type === "customField" ? (
                 <CustomFieldSection block={block} place={place} />
               ) : block.type === "fieldLoop" ? (

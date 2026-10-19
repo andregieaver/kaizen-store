@@ -1,7 +1,8 @@
 /**
  * The platform admin's sections (D144), pure data for its layout, its hub pages and the tests that keep them in step
- * with the admin map. Each section has a tab and, where it has pages of its own, a sidebar; Home, Customers and Requests
- * have none. Stores has had one since store templates (D175), now its themes (D273).
+ * with the admin map. Each section has a tab and, where it has pages of its own, a sidebar; Home, Stores, Themes, Customers
+ * and Requests have none. Themes is a section of its own beneath Website (D285): its page holds the themes, the demo stores,
+ * the starting content and the theme store's own pages.
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
@@ -22,12 +23,6 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows."),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use."),
   item("/site-design", "Design", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back."),
-];
-
-/** The Stores section (D175): every store, and the themes new stores start from and any store can apply (D176, D273). */
-export const STORE_ITEMS: SectionItem[] = [
-  item("/stores", "All stores", "Every store with its plan, subscription and fee.", true),
-  item("/themes", "Themes", "Kaizena Flow's themes, each a whole look with its presets and its own content: make, edit, publish, archive, order and preview them; make demo stores and set up the starting content."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [
@@ -83,7 +78,9 @@ export function platformTabs(counts: { requests?: number; support?: number } = {
   return [
     { href: base, label: "Home", exact: true, icon: "home" },
     { href: `${base}/website`, label: "Website", icon: "monitor", also: sectionPrefixes("/website", WEBSITE_ITEMS) },
-    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag", also: sectionPrefixes(null, STORE_ITEMS) },
+    // Themes (D285): a section of its own beneath Website, with no sidebar; the theme store's pages are edited from its page.
+    { href: `${base}/themes`, label: "Themes", icon: "palette" },
+    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag" },
     { href: `${base}/customers`, label: "Customers", icon: "users" },
     { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: sectionPrefixes(null, PLAN_ITEMS) },
     { href: `${base}/requests`, label: "Requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },

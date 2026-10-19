@@ -17,11 +17,11 @@ Status: **agreed with the owner on 18 October 2026; step 1 built (D275), step 2 
 
 | Word | What it is | Where you work on it |
 | --- | --- | --- |
-| Theme | A whole look, **and now its own content** | Stores → Themes → the theme |
+| Theme | A whole look, **and now its own content** | Themes → the theme |
 | Preset | Up to five other looks over the theme. Each preset shares the theme's content, header, footer, product page and CSS | The theme's Presets tab |
 | Content | A theme's own pages, products, menus and pictures: what its preview shows and what a new store starts with | The theme's **Content** tab (new) |
-| Demo store | A live store at `{address}.kaizenaflow.com` wearing a theme, made by a platform admin | Stores → Themes → Demo stores |
-| Starting content | Ten sets of pages, products and photographs that Kaizena Flow writes, one per trade (today's content packs, D257). A theme's content or a demo store starts as a copy of one | A card on Stores → Themes |
+| Demo store | A live store at `{address}.kaizenaflow.com` wearing a theme, made by a platform admin | Themes → Demo stores |
+| Starting content | Ten sets of pages, products and photographs that Kaizena Flow writes, one per trade (today's content packs, D257). A theme's content or a demo store starts as a copy of one | A card on Themes |
 | Theme store | themes.kaizenaflow.com | Filled from what you publish |
 
 Visitors read only *theme*, *preset* and *demo store*. *Content* and *starting content* are words for the platform admin.
@@ -103,7 +103,7 @@ Each launch theme takes one starting content as its own. The sync writes it (`sy
 
 ### Making one
 
-On **Stores → Themes → Demo stores**, press **New demo store** and fill in:
+On **Themes → Demo stores**, press **New demo store** and fill in:
 
 - **Name**.
 - **Address**: `{address}.kaizenaflow.com`. Lowercase letters, digits and hyphens; not a platform word; not taken by any store, since

@@ -10,6 +10,15 @@ const PATHS = {
       <path d="M8 20h8M12 16v4" />
     </>
   ),
+  // Themes (D285): a painter's palette.
+  palette: (
+    <>
+      <path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.7 1.6-1.5 0-1-.8-1.4-.8-2.3 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5C21 6.6 17 3 12 3Z" />
+      <circle cx="7.5" cy="11.5" r="1" />
+      <circle cx="9.5" cy="7.5" r="1" />
+      <circle cx="14.5" cy="7.5" r="1" />
+    </>
+  ),
   "shopping-bag": (
     <>
       <path d="M5 8h14l-1 12H6L5 8Z" />

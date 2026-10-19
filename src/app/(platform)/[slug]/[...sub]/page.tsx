@@ -42,7 +42,7 @@ export default async function NestedPlatformPage({ params, searchParams }: Props
   const { page } = found;
   const role = await platformRoleOf(page.id);
   if (role) {
-    const address = PLATFORM_ROLE_COPY[role].address;
+    const address = PLATFORM_ROLE_COPY[role].leadsTo;
     if (address) permanentRedirect(address);
     notFound();
   }

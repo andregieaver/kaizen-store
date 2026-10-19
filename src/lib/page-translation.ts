@@ -88,6 +88,13 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "plans":
       // Plans' names, descriptions and prices are the platform's own; only the button's words are the page's.
       return { ...b, buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text") };
+    case "themeStore":
+      // The themes' names and words are the platform's own (D285); only the part's heading and line are the page's.
+      return {
+        ...b,
+        ...(b.heading !== undefined && { heading: str("heading", b.heading, 200, "Heading") }),
+        ...(b.text !== undefined && { text: str("text", b.text, 500, "Line under the heading") }),
+      };
     case "site":
     case "menu":
     case "search":

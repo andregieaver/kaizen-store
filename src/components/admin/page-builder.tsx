@@ -185,6 +185,7 @@ import {
   type ProductPart,
   type MenuBlock,
   type PlansBlock,
+  type ThemeStoreBlock,
   type SearchBlock,
   type CustomFieldBlock,
   type FieldLoopBlock,
@@ -254,6 +255,8 @@ import { tileEntity } from "@/lib/tile-fields";
 import { copiedItems, customGridData, sourceChoice } from "@/lib/custom-grid";
 import { sourceTraits } from "@/lib/grid-source";
 import { CopyCurrentItems, CustomItemsEditor } from "./custom-items-editor";
+import { ThemeStoreFields, ThemeStoreIcon, ThemeStoreStandIn } from "./theme-store-fields";
+import { THEME_STORE_PART_COPY, type ThemeStorePart } from "@/lib/theme-store-parts";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
 import {
@@ -333,7 +336,7 @@ export const newId = () =>
 /** What is dragged, and what it is dropped on. */
 type DragData =
   | { kind: "palette-row"; layout: RowLayout }
-  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | ShopPart }
+  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | ShopPart | ThemeStorePart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "palette-column" }
@@ -450,6 +453,7 @@ const blockLabels: Record<BlockType, string> = {
   menu: "Menu",
   search: "Search",
   plans: "Plans",
+  themeStore: "Theme store",
   customField: "Custom fields",
   fieldLoop: "Field loop",
   storePart: "Shop page",
@@ -483,6 +487,7 @@ const blockThis: Record<BlockType, string> = {
   menu: "this menu",
   search: "this search",
   plans: "these plans",
+  themeStore: "this theme store component",
   customField: "these custom fields",
   fieldLoop: "this field loop",
   storePart: "this shop component",
@@ -542,6 +547,8 @@ export type GridContext = {
   menusHref: string;
   /** Kaizen's plans for the Plans component (D142); null on a store's pages. */
   plans: PlanChoice[] | null;
+  /** The theme store's components the page may hold (D285); absent or null on a store's pages and Kaizena Flow's other kinds of page. */
+  themeStore?: { parts: readonly ThemeStorePart[] } | null;
   /**
    * The store's features as kept (D178), so the palette offers only the parts of features that are on and the canvas marks a part of one
    * that is off; absent for Kaizen's pages and a design profile's workspace, which offer every part.
@@ -771,7 +778,7 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart, rowIndex?: number) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart | ThemeStorePart, rowIndex?: number) => {
     if (blocksFull) return;
     if (columnId === null && rowIndex !== undefined && rowsFull) return;
     const made = newBlock(type, newId, part);
@@ -1136,6 +1143,8 @@ export function PageBuilder({
             search={grid.owner !== null && !productParts && !siteParts}
             // Kaizen's plans (D142) are for Kaizen's own pages.
             plans={grid.plans !== null && !productParts && !siteParts}
+            // The theme store's components (D285) are for Kaizena Flow's own pages, a theme's page holding the theme's parts too.
+            themeStoreParts={productParts || siteParts ? [] : (grid.themeStore?.parts ?? [])}
             // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
             customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
@@ -1397,6 +1406,7 @@ function Sidebar({
   siteParts,
   search,
   plans,
+  themeStoreParts,
   customFields,
   shop,
   features,
@@ -1426,7 +1436,7 @@ function Sidebar({
   themeSections: { actions: ThemeSectionActions; onPlace: (part: SavedPart) => void } | null;
   /** Adds an empty column beside the one last pointed at, or last in the page (D187). */
   onAddColumn: () => void;
-  onAddBlock: (type: BlockType, part?: ProductPart | SitePart | ShopPart) => void;
+  onAddBlock: (type: BlockType, part?: ProductPart | SitePart | ShopPart | ThemeStorePart) => void;
   productParts: boolean;
   /** A header or footer (D80): the site parts its owner has. */
   siteParts: SitePart[] | null;
@@ -1434,6 +1444,8 @@ function Sidebar({
   search: boolean;
   /** Kaizen's plans can be added (D142). */
   plans: boolean;
+  /** The theme store's components that can be added (D285); none on a store's pages and Kaizena Flow's articles, header and footer. */
+  themeStoreParts: readonly ThemeStorePart[];
   /** The page's own custom fields can be added (D118). */
   customFields: boolean;
   /** The store's working pages' components can be added (D113). */
@@ -1612,7 +1624,30 @@ function Sidebar({
                     </div>
                   </div>
                 ))}
-              {shop && (shopPages.length > 0 || pieceGroups.length > 0) && (
+              {themeStoreParts.length > 0 && (
+                <>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Theme store</h3>
+                  <p className="text-xs text-muted">
+                    {themeStoreParts.length > 1
+                      ? "Each draws the theme the page's address names, and nothing for a theme it has nothing for."
+                      : "Every published theme, with its filters."}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {themeStoreParts.map((part) => (
+                      <PaletteTile
+                        key={part}
+                        id={`palette:theme-store:${part}`}
+                        data={{ kind: "palette-block", type: "themeStore", part }}
+                        label={THEME_STORE_PART_COPY[part].name}
+                        preview={<BlockIcon type="themeStore" />}
+                        onAdd={() => onAddBlock("themeStore", part)}
+                        disabled={blocksFull}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {((shop && (shopPages.length > 0 || pieceGroups.length > 0)) || themeStoreParts.length > 0) && (
                 <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -2010,6 +2045,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SearchIcon />;
     case "plans":
       return <PlansIcon />;
+    case "themeStore":
+      return <ThemeStoreIcon />;
     case "customField":
       return <FieldsIcon />;
     case "fieldLoop":
@@ -3041,6 +3078,8 @@ function BlockItem({
           <SearchStandIn block={block} />
         ) : block.type === "plans" ? (
           <PlansStandIn block={block} />
+        ) : block.type === "themeStore" ? (
+          <ThemeStoreStandIn block={block} />
         ) : block.type === "customField" ? (
           <CustomFieldStandIn block={block} />
         ) : block.type === "fieldLoop" ? (
@@ -3126,6 +3165,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
   plans: "Kaizena Flow's plans: the plans and their prices show where the page is seen.",
+  themeStore: "The theme store: the themes show where the page is seen.",
   customField: "Custom fields.",
   fieldLoop: "A field loop: double-click or use the wrench to choose a repeater.",
   storePart: "A shop page component.",
@@ -3700,6 +3740,29 @@ function Dialogs({
                   value={block.itemHover}
                   onChange={(itemHover) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { itemHover }))}
                 />
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            motion={motionFields({ kind: "block", id: block.id })}
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </SettingsPanel>
+
+      <SettingsPanel
+        open={block?.type === "themeStore"}
+        onClose={onClose}
+        title={block?.type === "themeStore" ? THEME_STORE_PART_COPY[block.part].name : "Theme store"}
+        footer={block && done}
+      >
+        {block?.type === "themeStore" && (
+          <SettingsTabs
+            key={block.id}
+            general={<ThemeStoreFields block={block} onChange={(patch) => onRows((current) => patchBlock<ThemeStoreBlock>(current, block.id, patch))} />}
+            style={
+              <>
                 {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -6694,6 +6757,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Search: change its settings where it is used.</p>
                     ) : block.type === "plans" ? (
                       <p className="text-sm text-muted">Plans: change its settings where it is used.</p>
+                    ) : block.type === "themeStore" ? (
+                      <p className="text-sm text-muted">Theme store: change its settings where it is used.</p>
                     ) : block.type === "customField" ? (
                       <p className="text-sm text-muted">Custom fields: change its settings where it is used.</p>
                     ) : block.type === "fieldLoop" ? (

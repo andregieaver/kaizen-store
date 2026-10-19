@@ -377,6 +377,9 @@ export function textRoles(part: TypedPart): RoleDef[] {
     case "emailForm":
     case "newsletter":
       return FORM_ROLES;
+    case "themeStore":
+      // The theme store's parts (D285): their headings, and the rest (the themes' names, words and buttons) as the part's text.
+      return [TEXT, role("title", "Headings", marked("title"))];
     case "plans":
       return [
         TEXT,
@@ -463,6 +466,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
     consent: "label",
   },
   newsletter: { placeholder: "input", submitLabel: "button", successMessage: "message", consent: "label" },
+  themeStore: { heading: "title", text: "text" },
   plans: { buttonLabel: "button", "plan names": "name", "prices": "price", "what each includes": "meta", "fees and descriptions": "text" },
   product: { heading: "heading", "the product's words": "text" },
   customField: { heading: "heading", "field labels": "label", "field values": "text" },

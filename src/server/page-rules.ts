@@ -22,6 +22,7 @@ export function pageRulesProblem(owner: PageOwner, kind: PageType, content: Page
     siteLayoutProblem(owner, type, content) ??
     searchProblem(owner, type, content) ??
     plansProblem(owner, content) ??
+    themeStoreProblem(owner, type, content) ??
     customFieldProblem(owner, type, content) ??
     storePartProblem(owner, type, content) ??
     // Who sees a part (D179 phase 4): Kaizen's pages ask only what exists there, a header or footer no address parameters.
@@ -40,6 +41,14 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
 /** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
 function plansProblem(owner: PageOwner, content: PageContent): string | null {
   if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizena Flow's plans belong on Kaizena Flow's own pages.";
+  return null;
+}
+
+/** The theme store's parts (D285) show the platform's themes: only Kaizena Flow's own pages hold them, never its articles, header or footer. */
+function themeStoreProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+  if (!pageBlocks(content).some((block) => block.type === "themeStore")) return null;
+  if (owner !== null) return "The theme store's parts belong on Kaizena Flow's own pages.";
+  if (type !== "page") return "The theme store's parts belong in Kaizena Flow's pages, not its articles, header or footer.";
   return null;
 }
 
