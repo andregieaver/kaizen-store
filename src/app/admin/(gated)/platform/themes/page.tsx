@@ -15,6 +15,7 @@ import { contentPackStates } from "@/server/content-packs";
 import { contentOwners, contentSources, listStarters } from "@/server/store-starters";
 import { listDemoStores } from "@/server/demo-stores";
 import { themeStorePageStates } from "@/server/platform-roles";
+import { lookOf, themeShotsFor } from "@/server/theme-shots";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 
@@ -62,7 +63,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
     current ? listDemoStores() : Promise.resolve([]),
     current ? themeStorePageStates() : Promise.resolve([]),
   ]);
-  const facts = await Promise.all(designs.map((design) => designLifecycle(design)));
+  const [facts, shots] = await Promise.all([
+    Promise.all(designs.map((design) => designLifecycle(design))),
+    // A theme without a picture of its own shows its photograph on its own content (D264), as the theme store's cards do.
+    themeShotsFor(designs.map((design) => design.id)),
+  ]);
   const published = designs.filter((d) => d.published).length;
   // Which theme each starting content is the own content of (D275), for its row; older demo stores are those no content pack made.
   const contentOf: Record<string, string> = {};
@@ -111,7 +116,15 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
       {designs.length > 0 && (
         <ol className="flex flex-col gap-3">
           {designs.map((design, index) => (
-            <DesignItem key={design.id} design={design} facts={facts[index]} first={index === 0} last={index === designs.length - 1} archived={filter === "archived"} />
+            <DesignItem
+              key={design.id}
+              design={design}
+              facts={facts[index]}
+              madeCard={shots.get(lookOf(design.id, null))?.computer?.card?.url ?? null}
+              first={index === 0}
+              last={index === designs.length - 1}
+              archived={filter === "archived"}
+            />
           ))}
         </ol>
       )}
@@ -232,23 +245,27 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
 function DesignItem({
   design,
   facts,
+  madeCard,
   first,
   last,
   archived,
 }: {
   design: DesignRow;
   facts: LifecycleFacts & { used: boolean };
+  /** The photograph of its own look made for cards (D264), when it has one. */
+  madeCard: string | null;
   first: boolean;
   last: boolean;
   archived: boolean;
 }) {
   const shown = shownDesignDetails(design);
+  const picture = shown.pictureUrl ?? madeCard;
   const edit = "flex min-h-10 items-center gap-1.5 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
   return (
     <li className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 md:flex-row md:items-start">
-      {shown.pictureUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a theme's picture from Kaizen's media library
-        <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-line object-cover md:w-48" />
+      {picture ? (
+        // eslint-disable-next-line @next/next/no-img-element -- a theme's picture from Kaizen's media library, or its photograph (D264)
+        <img src={picture} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover object-top md:w-48" />
       ) : (
         <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-line md:block" />
       )}
