@@ -60,6 +60,8 @@ let n = 0;
 /** Payout and line ids of this run, so a database used before never holds the same ones. */
 const RUN = Math.random().toString(36).slice(2, 8);
 const now = () => Math.floor(Date.now() / 1000);
+/** Stripe's arrival date is midnight UTC of the day the money arrives: today in the store's time zone (Europe/Oslo), so a run near midnight UTC still means today. */
+const arrivalToday = () => Date.parse(`${todayIn(new Date(), "Europe/Oslo")}T00:00:00Z`) / 1000;
 const eventOf = (type: string, object: unknown, account: string): Stripe.Event =>
   ({ id: `evt_po_${++n}_${Math.random().toString(36).slice(2, 8)}`, type, account, data: { object } }) as unknown as Stripe.Event;
 
@@ -70,7 +72,7 @@ const payoutOf = (id: string, amount: number, over: Record<string, unknown> = {}
   currency: "nok",
   status: "paid",
   automatic: true,
-  arrival_date: now(),
+  arrival_date: arrivalToday(),
   created: now() - 86_400,
   livemode: true,
   ...over,
