@@ -27,6 +27,10 @@ test.beforeAll(async () => {
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     await sql`delete from commerce.order_settings where store_id = (select id from commerce.stores where slug = ${STORE})`;
     const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
+    // One of the store's own goods variants: a line is sent only when it names its variant.
+    const [variant] = await sql`
+      select v.id from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+       where v.store_id = ${store.id} and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`;
     const address = sql.json({ name: "Kari Nordmann", line1: "Storgata 5", line2: null, postalCode: "0182", city: "Oslo", country: "NO" });
     const held = async (key: keyof typeof ids, mode: "by_hand" | "when_sent") => {
       const number = `CAP-${RUN}-${key.toUpperCase()}`;
@@ -36,8 +40,8 @@ test.beforeAll(async () => {
         values (${store.id}, ${number}, 'NO', 'NOK', 'nb-NO', 'kari@example.com', 'authorized', 50000, 0, 0, 10000, 50000, ${address}, ${address}, 0.25, ${mode}, now() + interval '5 days')
         returning id`;
       await sql`
-        insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code, delivery)
-        values (${store.id}, ${o.id}, ${`${number}-L`}, 'Ullgenser', 1, 50000, 0, 50000, 10000, 0.25, 'txcd_99999999', 'physical')`;
+        insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code, delivery)
+        values (${store.id}, ${o.id}, ${variant.id}, ${`${number}-L`}, 'Ullgenser', 1, 50000, 0, 50000, 10000, 0.25, 'txcd_99999999', 'physical')`;
       await sql`
         insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
         values (${store.id}, ${o.id}, 'stripe', ${`cs_e2e_${number.toLowerCase()}`}, 50000, 'NOK', 'authorized')`;
@@ -81,7 +85,7 @@ test("the list says the card is held, filters by it, and counts a held order to 
   await page.goto(`/admin/${STORE}/orders?pay=authorized&q=${encodeURIComponent(`CAP-${RUN}`)}`);
   await expect(page.getByText(`CAP-${RUN}-BYHAND`)).toBeVisible();
   await expect(page.getByText(`CAP-${RUN}-WHENSENT`)).toBeVisible();
-  await expect(page.getByText("Card held").first()).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Card held", exact: true })).toHaveCount(2);
   await page.goto(`/admin/${STORE}/orders?ship=to_send&q=${encodeURIComponent(`CAP-${RUN}`)}`);
   await expect(page.getByText(`CAP-${RUN}-WHENSENT`)).toBeVisible();
   await expect(page.getByText(`CAP-${RUN}-BYHAND`)).toHaveCount(0);

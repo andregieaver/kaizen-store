@@ -110,12 +110,21 @@ export function payCellOf(order: {
 }
 
 /** What the fulfilment cell says. */
-export function shipCellOf(order: { status: OrderStatusValue; copied: boolean; physical: boolean; backorderUnits: number; /** A parcel is recorded and units are still to send (D174). */ partlySent?: boolean }): ShipCell {
+export function shipCellOf(order: {
+  status: OrderStatusValue;
+  copied: boolean;
+  physical: boolean;
+  backorderUnits: number;
+  /** A parcel is recorded and units are still to send (D174). */
+  partlySent?: boolean;
+  /** The later capture a held card's order waits for (D289). */
+  captureMode?: "when_sent" | "by_hand" | null;
+}): ShipCell {
   if (order.copied) return "copied";
   if (order.status === "pending_payment") return "none";
   if (!order.physical) return "no_shipping";
-  // D289: the card is held; under *when sent* the first parcel charges it, so the order is to send.
-  if (order.status === "authorized") return "to_send";
+  // D289: the card is held; under *when sent* the first parcel charges it, so the order is to send (as the *To send* filter says); captured by hand, it waits for the capture.
+  if (order.status === "authorized") return order.captureMode === "when_sent" ? "to_send" : "none";
   if (order.status === "fulfilled") return "sent";
   if (order.status === "paid") return order.backorderUnits > 0 ? "waiting" : order.partlySent ? "partly_sent" : "to_send";
   return "none";

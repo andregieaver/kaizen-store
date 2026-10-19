@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { captureAmountProblem, captureDeadline, captureEventText, captureModeFor, DEFAULT_HOLD_DAYS, type CaptureFacts } from "./capture";
+import { shipCellOf } from "./order-list-row";
 
 const goods: CaptureFacts = { subscription: false, booking: false, partial: false, host: false, digital: false, ships: true };
 
@@ -41,5 +42,14 @@ describe("when an order is captured (D289)", () => {
     expect(captureEventText("payment.captured", { amount: 8000, released: 2000, by: "acc" }, money)).toBe("Captured 80 NOK; 20 NOK of the hold released");
     expect(captureEventText("payment.captured", { amount: 10000, released: 0, by: null }, money)).toBe("Captured 100 NOK (by Kaizena Flow)");
     expect(captureEventText("order.paid", {}, money)).toBeNull();
+  });
+});
+
+describe("a held card in the order list (D289)", () => {
+  const row = { copied: false, physical: true, backorderUnits: 0 };
+  it("is to send when the first parcel captures it, and waits for the capture otherwise", () => {
+    expect(shipCellOf({ ...row, status: "authorized", captureMode: "when_sent" })).toBe("to_send");
+    expect(shipCellOf({ ...row, status: "authorized", captureMode: "by_hand" })).toBe("none");
+    expect(shipCellOf({ ...row, status: "paid" })).toBe("to_send");
   });
 });

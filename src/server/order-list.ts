@@ -119,7 +119,7 @@ const selectRow = (context: Pick<OrderListContext, "totalFactors">) => sql`
   (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(least(l.backorder_quantity, commerce.line_to_send(l.id))), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0) else 0 end) as owed,
   exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as has_parcel, o.edited_at is not null as edited,
   exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment') as edit_pending,
-  ${PHYSICAL_SQL} as physical, ${CAPTURED_SQL} as captured, ${REFUNDED_SQL} as refunded, o.balance_minor,
+  ${PHYSICAL_SQL} as physical, o.capture_mode, ${CAPTURED_SQL} as captured, ${REFUNDED_SQL} as refunded, o.balance_minor,
   o.delivery_method, o.delivery ->> 'label' as delivery_label, o.ready_for_pickup_at is not null as ready_for_pickup,
   coalesce(nullif(o.shipping_address ->> 'postalCode', ''), o.delivery ->> 'postalCode') as delivery_postal, o.shipping_address ->> 'city' as delivery_city,
   coalesce(nullif(o.shipping_address ->> 'phone', ''), nullif(o.billing_address ->> 'phone', '')) as delivery_phone, left(o.delivery_note, 81) as delivery_note
@@ -154,7 +154,7 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     owed,
     tags: tags.get(String(row.id)) ?? [],
     pay: payCellOf({ status, copied, capturedMinor: Number(row.captured), refundedMinor: Number(row.refunded), balanceMinor: Number(row.balance_minor ?? 0) }),
-    ship: shipCellOf({ status, copied, physical: Boolean(row.physical), backorderUnits: owed, partlySent: Boolean(row.has_parcel) }),
+    ship: shipCellOf({ status, copied, physical: Boolean(row.physical), backorderUnits: owed, partlySent: Boolean(row.has_parcel), captureMode: row.capture_mode === "when_sent" ? "when_sent" : row.capture_mode === "by_hand" ? "by_hand" : null }),
     balanceMinor: Number(row.balance_minor ?? 0),
     edited: Boolean(row.edited),
     editPending: Boolean(row.edit_pending),
