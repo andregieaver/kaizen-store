@@ -5,12 +5,15 @@ import { sql } from "drizzle-orm";
 import { db, readDb } from "@/db/client";
 import { designPreviewPath, parseDesignSnapshot } from "@/lib/design-presets";
 import { variationsOf } from "@/lib/design-variations";
-import { lookProblem } from "@/lib/replicate-look";
 import type { Shot } from "@/lib/theme-shoot";
 import { swatchOf, themeLooks } from "@/lib/theme-store";
 import {
+  SHOT_RESTS,
   SHOT_TRIES,
+  SHOT_TRIES_ALL,
+  afterFailedTry,
   missingShots,
+  shotProblem,
   readShotParts,
   readShotPictures,
   shotFolder,
@@ -129,13 +132,21 @@ export async function queueThemeShots(wanted?: WantedShot[]): Promise<WantedShot
        where id = any(${`{${aside.join(",")}}`}::uuid[]) and status <> 'superseded'
     `);
   }
+  // A run that stopped at the end of a round (its function ended under it): the unit rests before the next round, or fails after the last.
   await db().execute(sql`
-    update commerce.theme_shots set status = 'failed', claimed_until = null,
+    update commerce.theme_shots
+       set status = case when tries >= ${SHOT_TRIES_ALL} then 'failed' else 'waiting' end,
+           claimed_until = case when tries >= ${SHOT_TRIES_ALL} then null else now() + ${REST_OF_TRIES} end,
            problem = coalesce(problem, 'The look did not finish being photographed in time.')
-     where status = 'running' and claimed_until < now() and tries >= ${SHOT_TRIES}
+     where status = 'running' and claimed_until < now() and tries % ${SHOT_TRIES} = 0
   `);
   return want;
 }
+
+/** The rest before a unit's next round, by how many tries it has had (`SHOT_RESTS`), as SQL over the row's `tries`. */
+const REST_OF_TRIES = sql.raw(
+  `(case tries ${SHOT_RESTS.map((rest, round) => `when ${(round + 1) * SHOT_TRIES} then interval '${rest}'`).join(" ")} else interval '${SHOT_RESTS[0]}' end)`,
+);
 
 /** A unit as the job takes it. */
 export type ClaimedShot = StoredShot & { tries: number };
@@ -160,7 +171,10 @@ export async function claimThemeShot(scope: ShotScope = {}): Promise<ClaimedShot
      where not exists (select 1 from commerce.theme_shots r where r.status = 'running' and r.claimed_until >= now() ${busy})
        and s.id = (
        select t.id from commerce.theme_shots t
-        where (t.status = 'waiting' or (t.status = 'running' and t.claimed_until < now())) and t.tries < ${SHOT_TRIES} ${only}
+        -- A waiting unit after its rest, if it has one (D284); a run that stopped mid-round is taken again at once.
+        where ((t.status = 'waiting' and (t.claimed_until is null or t.claimed_until < now()))
+            or (t.status = 'running' and t.claimed_until < now() and t.tries % ${SHOT_TRIES} <> 0))
+          and t.tries < ${SHOT_TRIES_ALL} ${only}
           -- Highlights are composed from the look's two photographs: only once both are made.
           and (t.kind <> 'highlights' or (
             select count(*) from commerce.theme_shots x
@@ -277,13 +291,17 @@ export async function takeThemeShot(shot: ClaimedShot, wanted: readonly WantedSh
     return "done";
   } catch (error) {
     if (stored.length > 0) await remove(deps)(stored).catch(() => false);
-    const problem = lookProblem(error).slice(0, 500);
-    const last = shot.tries >= SHOT_TRIES;
+    const problem = shotProblem(error);
+    console.error(`[theme-shots] ${shot.kind} of ${shot.presetId} (${shot.variation ?? "own look"}), try ${shot.tries}:`, error);
+    // Tried again at once within a round; at a round's end it rests (D284) and is tried again by itself; after the last round it fails.
+    const next = afterFailedTry(shot.tries);
     await db().execute(sql`
-      update commerce.theme_shots set status = ${last ? "failed" : "waiting"}, problem = ${problem}, claimed_until = null
+      update commerce.theme_shots
+         set status = ${next.next === "failed" ? "failed" : "waiting"}, problem = ${problem},
+             claimed_until = ${next.next === "rest" ? sql`now() + ${next.rest}::interval` : sql`null`}
        where id = ${shot.id}::uuid and status = 'running'
     `);
-    return last ? "failed" : "waiting";
+    return next.next === "failed" ? "failed" : "waiting";
   }
 }
 
@@ -361,13 +379,16 @@ export type ShotStatus = {
   status: StoredShot["status"];
   problem: string | null;
   finishedAt: string | null;
+  /** A waiting unit that failed a round of tries: when it is tried again by itself (D284). */
+  retryAt: string | null;
   pictures: ShotPictures;
 };
 
 /** A theme's units not set aside, newest first per look and width: what is made, being made, or could not be made. */
 export async function themeShotStatus(presetId: string): Promise<ShotStatus[]> {
   const rows = await readDb().execute<Row>(sql`
-    select distinct on (coalesce(variation, ''), kind) variation, kind, version, status, problem, finished_at, pictures
+    select distinct on (coalesce(variation, ''), kind) variation, kind, version, status, problem, finished_at, pictures,
+           case when status = 'waiting' and claimed_until > now() then claimed_until end as retry_at
       from commerce.theme_shots where preset_id = ${presetId}::uuid and status <> 'superseded'
      order by coalesce(variation, ''), kind, version desc, created_at desc
   `);
@@ -378,16 +399,17 @@ export async function themeShotStatus(presetId: string): Promise<ShotStatus[]> {
     status: String(row.status) as StoredShot["status"],
     problem: row.problem ? String(row.problem) : null,
     finishedAt: row.finished_at ? new Date(String(row.finished_at)).toISOString() : null,
+    retryAt: row.retry_at ? new Date(String(row.retry_at)).toISOString() : null,
     pictures: readShotPictures(row.pictures),
   }));
 }
 
-/** *Try again* on a theme's pictures that could not be made: their tries start over. Platform admins only. */
+/** *Try again* on a theme's pictures that could not be made, or rest before trying again (D284): their tries start over now. Platform admins only. */
 export async function retryThemeShots(admin: Account, presetId: string): Promise<number> {
   if (!admin.platformAdmin) return 0;
   const rows = await db().execute<Row>(sql`
     update commerce.theme_shots set status = 'waiting', tries = 0, problem = null, claimed_until = null
-     where preset_id = ${presetId}::uuid and status = 'failed' returning id
+     where preset_id = ${presetId}::uuid and (status = 'failed' or (status = 'waiting' and claimed_until > now())) returning id
   `);
   if (rows.length > 0) await audit(admin.id, null, "platform.theme_shots_retried", { preset: presetId, units: rows.length }, { target: { type: "design_preset", id: presetId } });
   return rows.length;

@@ -48,6 +48,8 @@ export function ThemeShotsPanel({
   const of = (key: string | null, kind: ShotKind) => shots.find((shot) => shot.variation === key && shot.kind === kind) ?? null;
   const highlights = shots.find((shot) => shot.variation === null && shot.kind === "highlights") ?? null;
   const failed = shots.filter((shot) => shot.status === "failed").length;
+  // Units resting after a round of failed tries (D284): tried again by themselves, or now with *Try again*.
+  const resting = shots.filter((shot) => shot.status === "waiting" && shot.retryAt).length;
   const waiting = shots.filter((shot) => shot.status === "waiting" || shot.status === "running").length;
   const inUse = OWN_SLOTS.filter((slot) => own[slot]).length;
   return (
@@ -92,6 +94,11 @@ export function ThemeShotsPanel({
                         </span>
                       )}
                       {shot?.status === "failed" && shot.problem && <span className="max-w-52 text-danger-text">{shot.problem}</span>}
+                      {shot?.status === "waiting" && shot.retryAt && (
+                        <span className="max-w-52">
+                          Tried again by itself {when(shot.retryAt)} UTC{shot.problem ? `. Last time: ${shot.problem}` : ""}
+                        </span>
+                      )}
                     </figcaption>
                   </figure>
                 );
@@ -118,6 +125,11 @@ export function ThemeShotsPanel({
           </div>
         )}
         {highlights?.status === "failed" && highlights.problem && <p className="text-caption text-danger-text">{highlights.problem}</p>}
+        {highlights?.status === "waiting" && highlights.retryAt && (
+          <p className="text-caption text-muted">
+            Tried again by itself {when(highlights.retryAt)} UTC{highlights.problem ? `. Last time: ${highlights.problem}` : ""}
+          </p>
+        )}
       </div>
       {/* Lisa's step: any made picture the theme store shows can be replaced with the admin's own, and put back (step 3). */}
       {ownAction && upload && (
@@ -149,11 +161,13 @@ export function ThemeShotsPanel({
           </ul>
         </details>
       )}
-      {failed > 0 && (
+      {failed + resting > 0 && (
         <ActionForm action={retry} className="mt-4 flex flex-wrap items-center gap-3">
-          <SubmitButton>Try again</SubmitButton>
+          <SubmitButton>Try again now</SubmitButton>
           <span className="text-caption text-muted">
-            {failed === 1 ? "One picture" : `${failed} pictures`} could not be made after three tries.
+            {failed > 0
+              ? `${failed === 1 ? "One picture" : `${failed} pictures`} could not be made after every try.`
+              : `${resting === 1 ? "One picture" : `${resting} pictures`} will be tried again by itself.`}
           </span>
         </ActionForm>
       )}

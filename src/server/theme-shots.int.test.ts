@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { readShotPictures, type ShotKind } from "@/lib/theme-shots";
+import { SHOT_TRIES, SHOT_TRIES_ALL, readShotPictures, type ShotKind } from "@/lib/theme-shots";
 
 import type { Account } from "./auth";
 
@@ -70,7 +70,10 @@ const shotDeps: import("./theme-shots").ShotDeps = {
 };
 
 const mine = async () =>
-  db().execute<Row>(sql`select id, version, variation, starter_id, showcase_store_id, kind, status, tries, problem, pictures from commerce.theme_shots where preset_id = ${theme}::uuid order by version, kind`);
+  db().execute<Row>(sql`
+    select id, version, variation, starter_id, showcase_store_id, kind, status, tries, problem, pictures, claimed_until > now() as resting
+      from commerce.theme_shots where preset_id = ${theme}::uuid order by version, kind
+  `);
 
 /** Runs the job until nothing of this theme is left to take (other tests' themes share the database and are left alone). */
 const runJob = () => shots.runThemeShots(ORIGIN, Date.now() + shots.SHOT_MS + 120_000, shotDeps, { presetIds: [theme] });
@@ -232,20 +235,35 @@ describe("a theme's photographs", () => {
     await db().execute(sql`delete from commerce.theme_shots where id in (${String(busy.id)}::uuid, ${String(waiting.id)}::uuid)`);
   });
 
-  it("wait for another try when they could not be made, are failed after the third, and start over on Try again", async () => {
+  it("try again after a rest when a round of tries failed, are failed after the last round, and start over on Try again (D284)", async () => {
     const before = await designs.getDesign(theme);
     await db().execute(sql`update commerce.stores set custom_css = '.x { color: blue; }' where id = ${before!.workspaceStoreId}::uuid`);
     await publish();
     failFor = theme;
     await runJob();
     let rows = (await mine()).filter((r) => r.version === 3);
-    // The highlights wait for photographs that never came.
-    expect(rows.map((r) => [r.kind, r.status, r.problem])).toEqual([
-      ["computer", "failed", "The preview answered 500."],
-      ["highlights", "waiting", null],
-      ["phone", "failed", "The preview answered 500."],
+    // After a round of three tries each rests, waiting to be tried again by itself; the highlights wait for photographs that never came.
+    expect(rows.map((r) => [r.kind, r.status, r.problem, r.resting])).toEqual([
+      ["computer", "waiting", "The preview answered 500.", true],
+      ["highlights", "waiting", null, null],
+      ["phone", "waiting", "The preview answered 500.", true],
     ]);
-    expect(rows.filter((r) => r.kind !== "highlights").every((r) => Number(r.tries) === 3)).toBe(true);
+    expect(rows.filter((r) => r.kind !== "highlights").map((r) => Number(r.tries))).toEqual([SHOT_TRIES, SHOT_TRIES]);
+    // None is taken while it rests.
+    expect(await shots.claimThemeShot({ presetIds: [theme] })).toBeNull();
+    expect((await shots.themeShotStatus(theme)).find((unit) => unit.kind === "computer")?.retryAt).not.toBeNull();
+    // Each rest over, another round; after the last the units fail and wait for a person.
+    while ((await mine()).some((r) => r.version === 3 && r.kind !== "highlights" && r.status === "waiting")) {
+      await db().execute(sql`update commerce.theme_shots set claimed_until = now() - interval '1 second' where preset_id = ${theme}::uuid and status = 'waiting'`);
+      await runJob();
+    }
+    rows = (await mine()).filter((r) => r.version === 3);
+    expect(rows.map((r) => [r.kind, r.status])).toEqual([
+      ["computer", "failed"],
+      ["highlights", "waiting"],
+      ["phone", "failed"],
+    ]);
+    expect(rows.filter((r) => r.kind !== "highlights").map((r) => Number(r.tries))).toEqual([SHOT_TRIES_ALL, SHOT_TRIES_ALL]);
     // Version 2's pictures are still what the theme store shows.
     expect((await shots.themeShotsFor([theme])).get(shots.lookOf(theme, null))?.version).toBe(2);
     expect(await shots.retryThemeShots({ ...admin, platformAdmin: false }, theme)).toBe(0);

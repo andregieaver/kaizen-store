@@ -1,4 +1,5 @@
 import { SHOT_HEIGHT_MAX } from "./replicate-capture";
+import { lookProblem } from "./replicate-look";
 
 /**
  * The photographs of a theme's looks (`docs/theme-showcase-phase-2.md` step 1): what is wanted, how each width is photographed, the pictures
@@ -162,8 +163,35 @@ export const missingShots = (stored: readonly Pick<StoredShot, "presetId" | "ver
   return wanted.filter((shot) => !have.has(shotKey(shot)));
 };
 
-/** How many tries a unit gets before it is `failed`. */
+/** How many tries a unit gets in a row, a minute or so apart. */
 export const SHOT_TRIES = 3;
+
+/**
+ * The rests between rounds of tries (D284): a unit that failed `SHOT_TRIES` times in a row is tried again by itself after the next rest, so a
+ * look photographed while the server was busy or cold still gets its pictures without a person; after the last round it is `failed` until
+ * *Try again*. Postgres intervals.
+ */
+export const SHOT_RESTS = ["10 minutes", "1 hour", "6 hours", "24 hours"] as const;
+
+/** Every try a unit gets before it is `failed`. */
+export const SHOT_TRIES_ALL = SHOT_TRIES * (SHOT_RESTS.length + 1);
+
+/** After a failed try, what comes next: another try at once, a rest before the next round (its interval), or `failed`. */
+export function afterFailedTry(tries: number): { next: "again" } | { next: "rest"; rest: (typeof SHOT_RESTS)[number] } | { next: "failed" } {
+  if (tries >= SHOT_TRIES_ALL) return { next: "failed" };
+  if (tries % SHOT_TRIES !== 0) return { next: "again" };
+  return { next: "rest", rest: SHOT_RESTS[tries / SHOT_TRIES - 1] };
+}
 
 /** A look's pictures as the theme store reads them: its latest done set at each width, and (its own look's) highlights. */
 export type LookShots = { computer: ShotPictures | null; phone: ShotPictures | null; highlights?: ShotPictures | null; version: number | null };
+
+/**
+ * Why a try failed, for the theme's page: the plain sentence, and the browser's own words after it when they say more (D284: "The browser
+ * stopped" alone could not tell a page that crashes it from a server that was busy).
+ */
+export function shotProblem(error: unknown): string {
+  const plain = lookProblem(error);
+  const own = error instanceof Error ? error.message.split("\n")[0].replace(/\s+/g, " ").trim() : "";
+  return (own && own !== plain && !plain.includes(own) ? `${plain} (${own.slice(0, 200)})` : plain).slice(0, 500);
+}

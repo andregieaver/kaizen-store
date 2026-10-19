@@ -79,7 +79,9 @@ showcase's store unchanged; otherwise superseded), and photographs it (`shootLoo
 so a browser test can run it): open the preview at the width (reduced motion, so entrances are shown finished), wait for the page, its
 fonts and its pictures (lazy ones made eager, the page scrolled through), measure its parts, take the full-length photograph and the first
 screen. `sharp` cuts and sizes the pictures (`src/server/theme-shot-files.ts`), which are uploaded, and only then the unit is `done` with
-its `pictures`. A failure (`lookProblem()`) is kept and the unit waits for its next try; after the third it is `failed`. Units are taken one
+its `pictures`. A failure (`shotProblem()`: the plain sentence and the browser's own words) is kept and the unit waits for its next try;
+after three in a row it rests and is tried again by itself (D284, `SHOT_RESTS`: 10 minutes, then an hour, 6 hours and a day, `afterFailedTry()`),
+and only after the last round is it `failed`, until *Try again*. Units are taken one
 after another while the run has time (each within `SHOT.ms`), then the run ends. When a unit is done the theme store's reads are refreshed
 (`revalidateTag(DESIGNS_TAG)`). `pruneThemeShots()` (in the five-minute job, no Chromium) deletes the files and rows of sets superseded more
 than seven days ago.

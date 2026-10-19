@@ -7,7 +7,12 @@ import {
   CARD_SIZE,
   SHARE_SIZE,
   SHOTS_FOLDER,
+  SHOT_RESTS,
+  SHOT_TRIES,
+  SHOT_TRIES_ALL,
+  afterFailedTry,
   missingShots,
+  shotProblem,
   picturesOf,
   readShotParts,
   readShotPictures,
@@ -137,5 +142,31 @@ describe("Chromium stays in the theme shots' own route", () => {
   it("is loaded only by the runner, which only the job's route imports", () => {
     expect(importing(/from "(\.\/|@\/server\/)theme-shot-runner"/)).toEqual(["src/app/api/cron/theme-shots/route.ts"]);
     expect(importing(/from "(\.\/|@\/server\/)browser"/).filter((file) => /theme-shot/.test(file))).toEqual(["src/server/theme-shot-runner.ts"]);
+  });
+});
+
+describe("a failed try (D284)", () => {
+  it("is tried again at once within a round, rests between rounds, longer each time, and fails after the last", () => {
+    expect(afterFailedTry(1)).toEqual({ next: "again" });
+    expect(afterFailedTry(2)).toEqual({ next: "again" });
+    expect(afterFailedTry(SHOT_TRIES)).toEqual({ next: "rest", rest: SHOT_RESTS[0] });
+    expect(afterFailedTry(SHOT_TRIES + 1)).toEqual({ next: "again" });
+    expect(afterFailedTry(2 * SHOT_TRIES)).toEqual({ next: "rest", rest: SHOT_RESTS[1] });
+    expect(afterFailedTry(SHOT_TRIES_ALL - SHOT_TRIES)).toEqual({ next: "rest", rest: SHOT_RESTS.at(-1) });
+    expect(afterFailedTry(SHOT_TRIES_ALL)).toEqual({ next: "failed" });
+    expect(SHOT_TRIES_ALL).toBe(SHOT_TRIES * (SHOT_RESTS.length + 1));
+    // Every rest is longer than the one before, and the last is a day: a busy server has passed by then.
+    expect(SHOT_RESTS).toEqual(["10 minutes", "1 hour", "6 hours", "24 hours"]);
+  });
+});
+
+describe("why a try failed (D284)", () => {
+  it("keeps the browser's own words beside the plain sentence, and a plain sentence of ours alone", () => {
+    expect(shotProblem(new Error("page.goto: Target crashed\n  at …"))).toBe(
+      "The browser stopped while it was looking at the page (it may have run out of memory on a very long page). Try again. (page.goto: Target crashed)",
+    );
+    expect(shotProblem(new Error("The preview answered 500."))).toBe("The preview answered 500.");
+    expect(shotProblem("nothing")).toBe("The page could not be opened.");
+    expect(shotProblem(new Error(`page.screenshot: ${"x".repeat(900)}`)).length).toBeLessThanOrEqual(500);
   });
 });

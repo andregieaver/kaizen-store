@@ -14,6 +14,7 @@ const shot = (variation: string | null, kind: "computer" | "phone", status: Shot
   status,
   problem: null,
   finishedAt: status === "done" ? "2026-10-16T12:00:00.000Z" : null,
+  retryAt: null,
   pictures: status === "done" ? (kind === "computer" ? { card: file("card.webp", 800, 600), screen: file("c.webp", 1440, 900) } : { screen: file("p.webp", 780, 1688) }) : {},
   ...extra,
 });
@@ -42,7 +43,19 @@ describe("the Pictures panel", () => {
     expect(html).toContain("Could not be made");
     expect(html).toContain("The preview answered 404.");
     expect(html).toContain("Try again");
-    expect(html).toContain("One picture could not be made after three tries.");
+    expect(html).toContain("One picture could not be made after every try.");
+  });
+
+  it("says when a picture that failed a round of tries is tried again by itself, and offers to try now (D284)", () => {
+    const html = draw([
+      shot(null, "computer", "done"),
+      shot(null, "phone", "waiting", { problem: "The browser stopped while it was looking at the page.", retryAt: "2026-10-19T08:10:00.000Z" }),
+    ]);
+    expect(html).toContain("Waiting to be made");
+    expect(html).toContain("Tried again by itself 19 Oct, 08:10 UTC. Last time: The browser stopped while it was looking at the page.");
+    expect(html).toContain("Try again now");
+    expect(html).toContain("One picture will be tried again by itself.");
+    expect(html).not.toContain("Could not be made");
   });
 
   it("shows the three highlights once composed, and that they follow the photographs before", () => {
@@ -53,6 +66,7 @@ describe("the Pictures panel", () => {
       status: "done",
       problem: null,
       finishedAt: "2026-10-16T12:00:00.000Z",
+      retryAt: null,
       pictures: { devices: file("d.webp", 1600, 1000), collage: file("g.webp", 1600, 1000), closeup: file("u.webp", 1600, 1000) },
     };
     const made = draw([shot(null, "computer", "done"), shot(null, "phone", "done"), highlights]);
