@@ -3,7 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
-import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 import { shipmentProblems, shipmentProblemText, type ParcelLine, type ShipmentProblemCode } from "@/lib/fulfilment";
@@ -11,6 +10,7 @@ import { editLabel } from "@/lib/order-edit-status";
 import { formatMoney } from "@/lib/money";
 import { FULFILMENT_AUDIT_ACTIONS, FULFILMENT_EVENTS, ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
 import type { Tag } from "@/lib/order-tags";
+import { isPaymentProvider } from "@/lib/payment-providers";
 import { isAdoptedRefund } from "@/lib/refund-adopted";
 import { splitRefund, type RefundPart } from "@/lib/refund-split";
 import { bookedCarrierName } from "@/lib/shipment-undo";
@@ -28,7 +28,7 @@ import { accountMayRecordOutside } from "./order-settings";
 import { getOrderTags } from "./order-tags";
 import { isDeliveryOrder } from "./standing-orders";
 import { applyRestock, orderStockHistory, planRestock } from "./stock-restock";
-import { platformStripe } from "./stripe";
+import { PaymentProviderRefusal, providerOf } from "./payment-providers";
 
 type Row = Record<string, unknown>;
 
@@ -666,31 +666,6 @@ export type RefundOptions = {
   restockIf?: (tx: Tx, status: "succeeded" | "pending" | "failed") => Promise<boolean>;
 };
 
-/** The Stripe payment behind an order's payment row: its PaymentIntent, on the store's account. */
-async function paymentIntentFor(
-  stripe: Stripe,
-  reference: string,
-  stripeAccount: string,
-): Promise<string | null> {
-  const options = { stripeAccount };
-  const id = (value: string | { id: string } | null | undefined) =>
-    typeof value === "string" ? value : (value?.id ?? null);
-  let invoiceId: string | null = null;
-  // A charge made on its own, such as a no-show fee (D66).
-  if (reference.startsWith("pi_")) return reference;
-  if (reference.startsWith("cs_")) {
-    const session = await stripe.checkout.sessions.retrieve(reference, {}, options);
-    if (session.payment_intent) return id(session.payment_intent);
-    invoiceId = id(session.invoice);
-  } else if (reference.startsWith("in_")) {
-    invoiceId = reference;
-  }
-  if (!invoiceId) return null;
-  const invoice = await stripe.invoices.retrieve(invoiceId, { expand: ["payments"] }, options);
-  const payment = invoice.payments?.data?.find((p) => p.status === "paid") ?? invoice.payments?.data?.[0];
-  return id(payment?.payment?.payment_intent);
-}
-
 /**
  * Stripe's idempotency key for a refund staff make: the order, the refunds Kaizen itself made so far and the amount, so a retry after a
  * failed write replays the same Stripe refund and a deliberate second refund of the same amount gets a new key. Rows the webhook
@@ -777,7 +752,7 @@ export async function refundOrder(
   const parts = options.outside
     ? []
     : splitRefund(
-        payments.map((p) => ({ id: String(p.id), provider: p.provider === "manual" ? ("manual" as const) : ("stripe" as const), leftMinor: Number(p.left_minor) })),
+        payments.map((p) => ({ id: String(p.id), provider: p.provider === "manual" ? ("manual" as const) : isPaymentProvider(p.provider) ? p.provider : ("stripe" as const), leftMinor: Number(p.left_minor) })),
         input.amountMinor,
       );
   if (!options.outside && payments.length === 0) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
@@ -797,34 +772,23 @@ export async function refundOrder(
       continue;
     }
     try {
-      const stripe = platformStripe(payment.mode as PaymentModeName);
-      if (!stripe) throw new RefundRefused("Stripe cannot be reached for this store right now.");
-      const stripeAccount = String(payment.provider_account);
-      const paymentIntent = await paymentIntentFor(stripe, String(payment.provider_reference), stripeAccount);
-      if (!paymentIntent) throw new RefundRefused("Stripe has no payment to refund for this order.");
-      const refund = await stripe.refunds.create(
+      // The payment's own provider gives the money back (D292): Stripe returns Kaizena Flow's fee on the refunded part to the store.
+      const provider = providerOf(payment.provider);
+      if (!provider) throw new PaymentProviderRefusal("This payment's provider cannot be reached right now.");
+      const refund = await provider.refund(
         {
-          payment_intent: paymentIntent,
-          amount: part.amountMinor,
-          reason: "requested_by_customer",
-          refund_application_fee: true,
-          metadata: { order_id: orderId, order_number: order.number },
+          id: part.paymentId,
+          orderId,
+          provider: provider.id,
+          reference: String(payment.provider_reference),
+          account: payment.provider_account ? String(payment.provider_account) : null,
+          mode: payment.mode ? (payment.mode as PaymentModeName) : null,
         },
-        { stripeAccount, idempotencyKey: i === 0 ? baseKey : `${baseKey}:${part.paymentId}` },
+        { amountMinor: part.amountMinor, idempotencyKey: i === 0 ? baseKey : `${baseKey}:${part.paymentId}`, orderId, orderNumber: order.number },
       );
-      made.push({
-        part,
-        providerReference: refund.id,
-        status: refund.status === "failed" || refund.status === "canceled" ? "failed" : refund.status === "succeeded" ? "succeeded" : "pending",
-        recorded: false,
-      });
+      made.push({ part, providerReference: refund.reference, status: refund.status, recorded: false });
     } catch (error) {
-      const said =
-        error instanceof RefundRefused
-          ? error.message
-          : error instanceof Error && "type" in error
-            ? `Stripe said: ${error.message}`
-            : "Stripe could not make the refund.";
+      const said = error instanceof PaymentProviderRefusal ? error.message : "The refund could not be made.";
       // Nothing moved yet: nothing is written. Stripe already gave back the earlier parts: they are recorded as refunds of the order (never lost), without the
       // caller's own record or the stock, and staff are told what went back.
       const moved = made.filter((m) => !m.recorded && m.status !== "failed");
@@ -899,8 +863,6 @@ async function closeUnsent(tx: Tx, storeId: string, orderId: string, refundId: s
 type MadeRefund = { part: RefundPart; providerReference: string; status: "succeeded" | "pending" | "failed"; recorded: boolean };
 
 /** Kaizen could not ask Stripe for a part of a refund (no Stripe for the mode, or no PaymentIntent behind the payment): the words for staff. */
-class RefundRefused extends Error {}
-
 /**
  * Records the parts of a refund in ONE transaction: a `refunds` row per part (adopting a row the webhook already wrote for the same Stripe refund), the stock
  * going back (D172), the order's history, and the caller's own record (`inTransaction`), so either all of it is written or none.

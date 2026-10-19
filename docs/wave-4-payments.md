@@ -205,6 +205,21 @@ list on the payment (Mollie's own way), never to methods Mollie has off.
 everything is built and tested against a recorded fake of Mollie's API. Express buttons, saved cards, subscriptions and weekly boxes stay on Stripe
 (said on the setting: a store on Mollie sells no subscriptions until a later unit).
 
+### As built: E1, the adapter (D292)
+
+- **One rule for an order's fate.** A provider's answer about a payment is a `PaymentAnswer` (`src/lib/payment-providers.ts`: provider, reference,
+  `open`, `paid`, `unsettled`, `failed` or `expired`, and who paid when it says); `paymentFate()` decides from it alone (complete, hold or wait, cancel unless
+  a weekly delivery or a staff-made order, or settle a change's or an exchange's difference), and `applyPaymentAnswer()` (`src/server/payment-outcome.ts`)
+  acts on it: the customer's details, the order's completion, the confirmation and everything that follows a payment. Stripe's `applySession()` only turns
+  a Checkout session into an answer (`stripeAnswer()`) and hands over what only Stripe can do as hooks: hold a card (D289), wait for the bank (D291), and
+  after the payment its facts, a subscription and a delivery's saved card.
+- **The provider.** `src/server/payment-providers/` holds `PaymentProvider` (`refresh()`: ask for the payment and apply the answer; `close()`: make an open
+  payment unpayable; `refund()`: give part of it back, throwing `PaymentProviderRefusal` with a sentence for staff), `stripe.ts` with Stripe's code moved
+  in unchanged, and `providerOf()`. The order page's late read (`getShopperOrder()`), closing a draft's, change's or exchange's open sessions
+  (`settleOrderSessions()`) and every refund part (`refundOrder()`; `splitRefund()` takes any provider or `manual`) go to the payment's own provider.
+- **Deviations.** Opening a payment stays `openPaymentSession()` for Stripe and the Stripe webhook routes stay as they are: E2 adds `openPayment()` to the
+  interface with Mollie's, and Mollie's webhook is a route of its own (`/api/mollie/{mode}`), since each provider signs and shapes its calls its own way.
+
 ## 8. Unit F (D293): payment terms for company accounts
 
 A company account (D108) may have terms: `net_15`, `net_30`, `net_60` (`customer_companies.payment_terms`, staff set it). A signed-in employee of

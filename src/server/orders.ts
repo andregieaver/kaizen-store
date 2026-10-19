@@ -1,7 +1,6 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
@@ -15,9 +14,8 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
-import { getStripeSecrets } from "./settings";
-import { platformModes, platformStripe, stripeFor } from "./stripe";
-import { applySession } from "./stripe-webhooks";
+import { providerOf } from "./payment-providers";
+import { platformModes } from "./stripe";
 
 type Row = Record<string, unknown>;
 
@@ -421,7 +419,7 @@ export async function returnDownload(storeId: string, token: string): Promise<vo
 /**
  * The order a shopper returns to from Stripe. The order id alone is not
  * enough: the Checkout session id Stripe adds to the return address must
- * match. If the webhook has not arrived yet, Stripe is asked directly.
+ * match. If the webhook has not arrived yet, the payment's provider is asked directly.
  */
 export async function getShopperOrder(
   storeId: string,
@@ -429,7 +427,7 @@ export async function getShopperOrder(
   sessionId: string,
 ): Promise<OrderView | null> {
   const [payment] = await db().execute<Row>(sql`
-    select pay.provider_account, a.mode
+    select pay.id, pay.provider, pay.provider_account, a.mode
     from commerce.payments pay
     left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
@@ -438,30 +436,21 @@ export async function getShopperOrder(
   `);
   if (!payment) return null;
 
-  let order = await getOrder(storeId, orderId);
+  const order = await getOrder(storeId, orderId);
   if (order?.status !== "pending_payment") return order;
 
-  // Stripe is unreachable or slow: the webhook will follow.
-  const apply = async (fetch: () => Promise<Stripe.Checkout.Session>) => {
-    try {
-      await applySession(storeId, await fetch());
-      order = await getOrder(storeId, orderId);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  const stripe = payment.mode ? platformStripe(payment.mode as PaymentModeName) : null;
-  if (stripe && payment.provider_account) {
-    const stripeAccount = String(payment.provider_account);
-    await apply(() => stripe.checkout.sessions.retrieve(sessionId, {}, { stripeAccount }));
-  } else {
-    // A payment taken with the store's own keys, before Stripe Connect.
-    for (const secret of await getStripeSecrets(storeId)) {
-      if (await apply(() => stripeFor(secret).checkout.sessions.retrieve(sessionId))) break;
-    }
-  }
-  return order;
+  // The payment's own provider is asked (D292); unreachable or slow, the webhook will follow.
+  const provider = providerOf(payment.provider);
+  if (!provider) return order;
+  const asked = await provider.refresh(storeId, {
+    id: String(payment.id),
+    orderId,
+    provider: provider.id,
+    reference: sessionId,
+    account: payment.provider_account ? String(payment.provider_account) : null,
+    mode: payment.mode ? (payment.mode as PaymentModeName) : null,
+  });
+  return asked ? getOrder(storeId, orderId) : order;
 }
 
 /**

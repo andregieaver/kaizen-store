@@ -6,15 +6,17 @@
  * payment. Pure; integer minor units.
  */
 
+import type { PaymentProviderId } from "./payment-providers";
+
 export type RefundablePayment = {
   id: string;
-  /** `stripe` (refunded through Stripe) or `manual` (money taken outside Kaizen: the refund is recorded, D173). */
-  provider: "stripe" | "manual";
+  /** A provider's (refunded through that provider, D292) or `manual` (money taken outside Kaizen: the refund is recorded, D173). */
+  provider: PaymentProviderId | "manual";
   /** What the payment took less its refunds that did not fail. */
   leftMinor: number;
 };
 
-export type RefundPart = { paymentId: string; provider: "stripe" | "manual"; amountMinor: number };
+export type RefundPart = { paymentId: string; provider: PaymentProviderId | "manual"; amountMinor: number };
 
 /**
  * The parts of a refund of `amountMinor` over `payments` (already in the order they were made). Null when they have less left than the amount (the caller

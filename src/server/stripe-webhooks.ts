@@ -6,15 +6,11 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
-import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
-import { flagDeliveryMismatch } from "./delivery-options";
-import { adoptDeliveryCard, isDeliveryOrder } from "./standing-orders";
-import { markCheckoutRecovered } from "./cart-reminders";
-import { sendReferrerRewardEmail } from "./affiliate-emails";
-import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
-import { completeEditPayment, markEditSessionEnded } from "./order-edits";
-import { recordHostCommission } from "./host-payments";
-import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
+import type { PaymentAnswer, PaymentState, ShopperAddress, ShopperDetails } from "@/lib/payment-providers";
+
+import { applyPaymentAnswer } from "./payment-outcome";
+import { adoptDeliveryCard } from "./standing-orders";
+import { sendOrderConfirmation } from "./shopper-emails";
 import { applyIntentCanceled, authorizeFromSession } from "./payment-capture";
 import { applyStripeDispute, isDisputeEvent } from "./payment-disputes";
 import { applyPayout } from "./payouts";
@@ -92,144 +88,61 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
 }
 
 /**
- * Brings the order behind a Checkout session up to date with it. Used for
- * webhooks and when the shopper returns before the webhook has arrived.
+ * Brings the order behind a Checkout session up to date with it. Used for webhooks and when the shopper returns before the webhook has arrived. Stripe's
+ * session is turned into a provider's answer (`stripeAnswer()`); what becomes of the order is decided by `applyPaymentAnswer()` for every provider (D292).
  */
 export async function applySession(
   storeId: string,
   session: Stripe.Checkout.Session,
   eventType?: string,
 ): Promise<void> {
-  const [payment] = await db().execute<Row>(sql`
-    select order_id, order_edit_id, exchange_id from commerce.payments
-    where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${session.id}
-  `);
-  if (!payment) return; // Not a session this store created.
-  const orderId = String(payment.order_id);
-  // The difference of an order change (D174) on a paid order: the change is applied (or the money given back), the order is never completed again and never
-  // cancelled, and its addresses are never taken from this session. A session that lapses or fails marks only its own payment row.
-  if (payment.order_edit_id) {
-    const editFailed = eventType === "checkout.session.async_payment_failed";
-    if (session.status === "complete" && session.payment_status !== "unpaid" && !editFailed) await completeEditPayment(storeId, session.id);
-    else if (editFailed || session.status === "expired" || eventType === "checkout.session.expired") await markEditSessionEnded(storeId, session.id, editFailed ? "failed" : "cancelled");
-    return;
-  }
-  // An exchange's difference (D239): the exchange is settled (or the money given back when it can no longer settle); the order is never completed another way
-  // and never cancelled here, and its addresses are never taken from this session (the exchange's own). A session that lapses or fails marks only its row.
-  if (payment.exchange_id) {
-    const failedPay = eventType === "checkout.session.async_payment_failed";
-    const { completeExchangePayment, markExchangeSessionEnded } = await import("./exchanges");
-    if (session.status === "complete" && session.payment_status !== "unpaid" && !failedPay) await completeExchangePayment(storeId, session.id);
-    else if (failedPay || session.status === "expired" || eventType === "checkout.session.expired") await markExchangeSessionEnded(storeId, session.id, failedPay ? "failed" : "cancelled");
-    return;
-  }
-  // A weekly delivery paid by link (D102): its address and contact are the list's, and it stays when the link lapses.
-  const delivery = await isDeliveryOrder(storeId, orderId);
-
-  if (session.status === "complete" && !delivery) {
-    await saveCustomer(storeId, orderId, session);
-    // The postal code a delivery was priced for is the shopper's typing; the address is Stripe's (D237 2.7): a difference is flagged, never re-charged.
-    await flagDeliveryMismatch(storeId, orderId);
-  }
-
-  const failed = eventType === "checkout.session.async_payment_failed";
-  const expired = session.status === "expired" || eventType === "checkout.session.expired";
-
-  // A card held to be captured later (D289): the order is authorized, not paid; the shopper is told it is confirmed, nothing is a sale yet.
-  if (session.status === "complete" && session.payment_status === "unpaid" && !failed && !delivery) {
-    if ((await authorizeFromSession(storeId, session)) === "authorized") {
-      await markCheckoutRecovered(storeId, orderId);
-      const opened = await openCheckoutAccount(storeId, orderId);
-      await linkOrderToCustomer(storeId, orderId);
-      await sendOrderConfirmation(storeId, orderId);
-      if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
-      return;
-    }
-  }
-
-  // A bank payment that arrives days later (D291, SEPA Direct Debit): the order waits for the bank with its stock held; nothing is a sale yet, and
-  // `async_payment_succeeded` or `async_payment_failed` settles it below.
-  if (session.status === "complete" && session.payment_status === "unpaid" && !failed && !delivery) {
-    if (await awaitBankPayment(storeId, session.id)) {
-      await markCheckoutRecovered(storeId, orderId);
-      await linkOrderToCustomer(storeId, orderId);
-    }
-    return;
-  }
-
-  if (session.status === "complete" && session.payment_status !== "unpaid" && !failed) {
-    await completeOrderPayment(orderId, session.id);
-    await setPaymentStatus(storeId, session.id, "captured");
-    // What the payment was (D288): its method, wallet and Stripe's risk outcome, read once after the reply; the five-minute job reads any it missed.
-    try {
-      after(() => readPaymentFacts(storeId, session.id));
-    } catch {
-      // Not in a request (scripts, tests): the five-minute job reads it.
-    }
-    if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
-    if (delivery) await adoptDeliveryCard(storeId, orderId, session);
-    // A host's booking (D71): the store's commission is owed to it now.
-    await recordHostCommission(storeId, orderId);
-    // Paid: no reminders about this cart, or others with the same email (D33).
-    await markCheckoutRecovered(storeId, orderId);
-    // The account asked for at checkout opens now, with the paid email (D32).
-    const opened = await openCheckoutAccount(storeId, orderId);
-    // The order joins the customer's account, if they have one (D28).
-    await linkOrderToCustomer(storeId, orderId);
-    // Once per order, however many times the session is applied (D26).
-    await sendOrderConfirmation(storeId, orderId);
-    // Staff with an email hear of their new appointments (D65), once each.
-    await sendBookingStaffNotices(storeId, orderId);
-    // The customer whose link led to this order hears of the credits it earned them (D131), once per order.
-    await sendReferrerRewardEmail(storeId, orderId).catch(() => null);
-    if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
-  } else if (failed || expired) {
-    // A staff-made order (D173) lives until its draft expires: a session that lapses (Stripe's sessions last at most a day, the link a week or more) or a bank payment that failed
-    // leaves the order and its held stock as they are, and the pay link makes a new session on the next press. `expireDrafts()` cancels it at the draft's expiry.
-    if (!delivery && !(await isDraftOrder(storeId, orderId))) await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
-    await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");
-  }
+  await applyPaymentAnswer(storeId, stripeAnswer(session, eventType), {
+    hold: async () => (await authorizeFromSession(storeId, session)) === "authorized",
+    awaitBank: () => awaitBankPayment(storeId, session.id),
+    afterPaid: async ({ orderId, delivery }) => {
+      // What the payment was (D288): its method, wallet and Stripe's risk outcome, read once after the reply; the five-minute job reads any it missed.
+      try {
+        after(() => readPaymentFacts(storeId, session.id));
+      } catch {
+        // Not in a request (scripts, tests): the five-minute job reads it.
+      }
+      if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+      if (delivery) await adoptDeliveryCard(storeId, orderId, session);
+    },
+  });
 }
 
-/** An order made from a draft order (D173): its `draft_id` is set. */
-async function isDraftOrder(storeId: string, orderId: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
-    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and draft_id is not null
-  `);
-  return Boolean(row);
+/**
+ * A Checkout session as a provider's answer (D292): failed when Stripe says the bank payment failed, expired when the session is, paid once the money is in,
+ * unsettled when the shopper finished but the money is not in yet (a held card, D289, or a bank payment on its way, D291), and who paid once it is complete.
+ */
+export function stripeAnswer(session: Stripe.Checkout.Session, eventType?: string): PaymentAnswer {
+  const complete = session.status === "complete";
+  const state: PaymentState =
+    eventType === "checkout.session.async_payment_failed"
+      ? "failed"
+      : session.status === "expired" || eventType === "checkout.session.expired"
+        ? "expired"
+        : complete
+          ? session.payment_status === "unpaid"
+            ? "unsettled"
+            : "paid"
+          : "open";
+  return { provider: "stripe", reference: session.id, state, shopper: complete ? stripeShopper(session) : null };
 }
 
-async function setPaymentStatus(storeId: string, sessionId: string, status: string) {
-  await db().execute(sql`
-    update commerce.payments set status = ${status}, updated_at = now()
-    where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
-  `);
-}
-
-/** Copies who bought and where it goes from the session onto the order. */
-async function saveCustomer(storeId: string, orderId: string, session: Stripe.Checkout.Session) {
+function stripeShopper(session: Stripe.Checkout.Session): ShopperDetails {
   const details = session.customer_details;
   const shipping = session.collected_information?.shipping_details;
-  const address = (a: Stripe.Address | null | undefined, name: string | null | undefined) =>
-    a
-      ? {
-          name: name ?? null,
-          line1: a.line1,
-          line2: a.line2,
-          postalCode: a.postal_code,
-          city: a.city,
-          country: a.country,
-        }
-      : {};
-  await db().execute(sql`
-    update commerce.orders set
-      email = coalesce(nullif(${details?.email ?? ""}, ''), email),
-      billing_address = ${JSON.stringify({ ...address(details?.address, details?.name), phone: details?.phone ?? null })}::jsonb,
-      -- Collected at the store's place (D237): no address is shipped to, so none is kept as one.
-      shipping_address = case when delivery_method = 'pickup' then '{}'::jsonb
-        else ${JSON.stringify(address(shipping?.address ?? details?.address, shipping?.name ?? details?.name))}::jsonb end
-    where store_id = ${storeId}::uuid and id = ${orderId}::uuid
-      -- An order whose person was erased (D162) stays without them, even when its payment arrives afterwards: the payment still completes it.
-      and anonymised_at is null
-  `);
+  const address = (a: Stripe.Address | null | undefined): ShopperAddress | null =>
+    a ? { line1: a.line1, line2: a.line2, postalCode: a.postal_code, city: a.city, country: a.country } : null;
+  const billing = address(details?.address);
+  const shipped = address(shipping?.address);
+  return {
+    email: details?.email ?? null,
+    name: details?.name ?? null,
+    phone: details?.phone ?? null,
+    billing,
+    shipping: shipped ? { name: shipping?.name ?? details?.name ?? null, address: shipped } : null,
+  };
 }
