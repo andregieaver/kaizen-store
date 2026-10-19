@@ -18,6 +18,9 @@ export type GridTools = {
   undo: (batchId: string) => Promise<UndoResult>;
 };
 
+/** Each row's cells as the grid edits them, copied so an edit never touches what the page loaded. */
+const cellsOf = (rows: readonly GridRowView[]): Record<string, GridCells> => Object.fromEntries(rows.map((r) => [r.variantId, { ...r.cells, prices: { ...r.cells.prices } }]));
+
 /**
  * The bulk grid (D165, `docs/wave-2-data.md` 2.6): one row for each variant, with SKU, a price for each chosen market, stock and cost as typed text. The edits
  * stay in the browser until *Review changes*, which lists every changed cell before and after, what is in conflict with the store's value now and what is
@@ -27,11 +30,21 @@ export type GridTools = {
 export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { rows: GridRowView[]; markets: { code: string; currency: string }[]; mainCurrency: string; tools: GridTools; locale: string }) {
   const router = useRouter();
   const codes = useMemo(() => markets.map((m) => m.code), [markets]);
-  const [edited, setEdited] = useState<Record<string, GridCells>>(() => Object.fromEntries(rows.map((r) => [r.variantId, { ...r.cells, prices: { ...r.cells.prices } }])));
+  const [edited, setEdited] = useState<Record<string, GridCells>>(() => cellsOf(rows));
   const [preview, setPreview] = useState<GridPreview | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [result, setResult] = useState<{ summary: BatchSummary | null; conflicts: number; invalid: number } | null>(null);
   const [pending, start] = useTransition();
+
+  // The page is refreshed after a change is applied or undone: the grid takes the store's values as they are now and keeps what it says about the
+  // change, so its result and *Undo this change* stay on screen.
+  const loaded = JSON.stringify(rows.map((r) => r.cells));
+  const [seen, setSeen] = useState(loaded);
+  if (seen !== loaded) {
+    setSeen(loaded);
+    setEdited(cellsOf(rows));
+    setPreview(null);
+  }
 
   const edits = useMemo(() => changedEdits(rows.map((r) => ({ productId: r.productId, variantId: r.variantId, loaded: r.cells })), edited), [rows, edited]);
   const cells = changedCellCount(edits);
@@ -44,7 +57,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
   };
 
   const discard = () => {
-    setEdited(Object.fromEntries(rows.map((r) => [r.variantId, { ...r.cells, prices: { ...r.cells.prices } }])));
+    setEdited(cellsOf(rows));
     setPreview(null);
   };
 

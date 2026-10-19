@@ -52,6 +52,8 @@ test.afterAll(async () => {
 test("Themes is its own section beneath Website, and builds the theme's page in the page builder (D285)", async ({ page }) => {
   await page.goto("/admin/platform");
   const rail = page.getByRole("navigation", { name: "Platform sections" });
+  // The rail is read once it is drawn, not while the page still streams in.
+  await expect(rail.getByRole("link", { name: "Website" })).toBeVisible();
   const names = await rail.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label") ?? ""));
   expect(names[names.indexOf("Website") + 1]).toBe("Themes");
   await rail.getByRole("link", { name: "Themes" }).click();

@@ -120,7 +120,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
         <Notice>The chosen products have no variants to edit.</Notice>
       ) : (
         <ProductsGrid
-          key={JSON.stringify(rows.map((r) => r.cells))}
+          key={`${rows.map((r) => r.variantId).join(",")}|${shown.join(",")}`}
           rows={rows}
           markets={data.markets}
           mainCurrency={data.mainCurrency}

@@ -700,13 +700,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
-    "gap": "Built and held below the screen, not through it. The server side is complete and tested: previewBulk/startBulk/continueBulk for status, archive, unarchive, categories and tags, price (percentage half up, or amount per market) and stock, applyGrid/previewGrid/undoBatch with conflicts, 500/50 limits, one products.bulk_edited entry per batch and failures with reasons, all through getProductForEdit() and saveProduct() so commerce.set_price keeps the price history (src/server/bulk-edit.int.test.ts, src/lib/bulk-edit.test.ts, passed). What the criteria name is the merchant's screen: tick boxes in the products list, one confirmation step, a grid with a preview of changed cells and an undo. That state machine (src/components/admin/products-bulk.tsx, products-grid.tsx, bulk-recent.tsx) is held only by renderToString view tests (src/components/admin/bulk-views.test.ts, which render the states but never click), and, since D234, e2e/signed-in/products-bulk.spec.ts drives criterion 1 as the owner does it (tick two products, Change price by -10 %, review, apply in one confirmed step, check the prices, undo and check them back). Still not driven in a browser: the grid's preview of changed cells and its undo (criterion 2). The server actions in products/bulk/actions.ts are thin wrappers that cannot be called outside Next's request context, so they are untested too. Also unbuilt by design: the products list is not paged until wave 3, so 'select all matching' and 'select the page' choose the same rows.",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The product list selects many products and applies a bulk action (status, archive, add or remove categories and tags, price change by percentage or amount, stock set) in one confirmed step.",
       "A grid edits price, SKU, stock and cost across variants in a table with a preview and undo; every change goes through the same validation as the editor and `commerce.set_price` (integration test).",
@@ -734,7 +734,8 @@
         "src/server/money-review.int.test.ts",
         "src/lib/product-import-writers.test.ts",
         "src/server/audit-coverage.int.test.ts",
-        "e2e/signed-in/products-bulk.spec.ts"
+        "e2e/signed-in/products-bulk.spec.ts",
+        "e2e/signed-in/products-grid.spec.ts"
       ],
       "untested": false
     },
@@ -745,6 +746,12 @@
         "from": "missing",
         "to": "partial",
         "why": "Wave 2, first run (docs/wave-2-data.md; working tree not yet committed). Read src/server/bulk-edit.ts, src/lib/bulk-edit.ts, the three bulk components and products/bulk/actions.ts and ran bulk-edit.test.ts, bulk-admin.test.ts, bulk-views.test.ts and bulk-edit.int.test.ts (all passed): every action and the grid go through saveProduct() and commerce.set_price, limits, conflicts, undo as its own batch and one audit entry per batch hold. Held at Partial, not Full, because the criteria are the merchant's screen (select many, one confirmed step, a grid with preview and undo) and nothing drives that screen: the view tests only render states, the e2e the spec named was not written (no signed-in admin fixture, D158), and the server actions are untested. The first signed-in browser test of the list and the grid would make this Full."
+      },
+      {
+        "on": "2026-10-19",
+        "from": "partial",
+        "to": "full",
+        "why": "Criterion 2 is now driven in a browser: e2e/signed-in/products-grid.spec.ts opens two products in the grid, changes a SKU, a price and a cost, reviews the three changed cells before and after (nothing written until Apply), applies them (the price through commerce.set_price, a new row of the price history) and undoes them, every value checked back in the database. Writing it found a bug: the page's refresh after Apply re-mounted the grid (it was keyed by its values), so the result and its *Undo this change* vanished at once; the grid now takes the new values and keeps its result (products-grid.tsx). The products list is not paged, so 'select all matching' and 'select the page' still choose the same rows, which no criterion asks otherwise. Passed on 2026-10-19 with the whole signed-in suite on a fresh database."
       }
     ]
   },

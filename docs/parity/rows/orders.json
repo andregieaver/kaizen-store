@@ -11,14 +11,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "Built and held by tests (wave 3 run 2, D173, in production since 6 October 2026). The Orders page reads its whole state from the address (`parseOrderListParams()`, the one parser) and builds every condition in `orderListWhere()`: search over number, email, name, line title, SKU, tag and tracking number (words escaped and bound, AND over at most five words, an erased person not found by email or name, no other store's order); filters for status, payment, fulfilment, tag, market, source, gift, archive and a store-day date range; keyset paging 50 at a time (250 orders walked with each of the four sorts, none lost or repeated; the total sort compares converted totals in a store with several currencies, a review fix); named views per store, 30 at most, opening one gives the orders its parameters typed give; and bulk tag, untag, archive, unarchive and mark as sent on up to 250 ticked orders or on 'all matching' (the query is re-read on the server), each order in its own transaction with every refusal named, one audit entry a batch, plus bulk packing slips without prices. The four criteria hold at the server and action layer (order-list, order-views, order-bulk and order-actions integration tests, run 2026-10-06 on a fresh database: 14 integration files, 286 tests, and the 6 of the action file, all passed). Held at Partial because the feature is the screen and no test clicks it: there is no signed-in admin browser fixture, so the filter bar, the selection state, the 'all matching' confirmation, the view bar and the cursor links are held by `renderToString` view tests only, and `page.tsx`'s own glue is type-checked, not run; the spec's forced-failure test of per-order atomicity (a failure on the third order leaves the first two applied) was not written, the property is read in `runBulk()` and held by the refusal tests; the 5,000-order timing test uses a generous bound on a test database and the spec calls it flaky on a busy one, so there is no measure on a real store's data. Not built, deliberately (spec section 7): bulk cancel, refund and capture, labels, Flow, a Local Delivery view, saved views per person, exporting the filtered list. Full after the signed-in by-hand pass of spec 9.7 item 1 is done and accepted.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Searching an order number, customer name, email or product title finds the matching orders of this store and no other store's (integration test).",
       "The list filters by status, payment, fulfilment and a date range, all in the address, and pages through more than 200 orders without losing any (integration test with 250 orders).",
@@ -56,7 +56,8 @@
         "src/lib/order-bulk.test.ts",
         "src/components/admin/orders/orders-views.test.ts",
         "src/components/admin/orders/packing-slip-views.test.ts",
-        "src/db/orders-ops.test.ts"
+        "src/db/orders-ops.test.ts",
+        "e2e/signed-in/orders-list.spec.ts"
       ],
       "untested": false
     },
@@ -64,7 +65,14 @@
       "D27",
       "D173"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "partial",
+        "to": "full",
+        "why": "The one thing holding it was that no test clicked the screen. e2e/signed-in/orders-list.spec.ts (D234's signed-in fixture) now does, as the owner: searches 60 orders of the run, pages through them 50 and 10 with none lost or repeated (the cursor links), filters To send from the bar (a chip says it), saves the list as a view and opens it again from the view bar, ticks a page and adds a tag, marks the orders sent through the confirmation without emailing anyone, and selects all 60 matching beyond the page and archives them; each step is checked in the database. Passed on 2026-10-19 with the whole signed-in suite on a fresh database. The forced-failure test of per-order atomicity and a timing on a real store's data are still not written; neither is a criterion."
+      }
+    ]
   },
   {
     "id": "orders.order-statuses-timeline-notes",
@@ -441,7 +449,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Built and held by tests (wave 3 run 3, docs/wave-3-fulfilment.md, D174): parcels name their lines and units (`shipment_lines`, `markSent()`), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, and withdrawn units are never sent. Units refunded before they were sent leave what is to send when staff tick *These units were not sent* (`commerce.unsent_closures`, `refundOrder({ notSent })`, `src/server/unsent-closures.int.test.ts` in kroner and euros: an order of 3 with 1 sent and 2 closed becomes Sent, its slip, the pick list and bulk send leave them out, and a closed unit is never offered for withdrawal); criterion 5 is held. Since then a parcel without lines is refused at commit (`shipments_have_lines`) and a parcel can be undone (`undoShipment()`, `src/server/shipment-undo.int.test.ts`). Still short of Full: (1) Spec 6.2 F2 names \"carrier bookings pass their lines (fake carrier)\": `bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts` and `porterbuddy-shipping.int.test.ts` never book a part of an order, so a carrier-booked partial parcel is held by no test; Bring also refuses a second booking of the same order within two minutes, so two Bring parcels of one order cannot be booked back to back. (2) The staff Send card is held by view tests, the form parser and `markSent()` integration tests only (no signed-in admin e2e, D158); spec 9.7's by-hand check is not done. (3) The receipt sentence and the parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
+    "gap": "Built and held by tests (wave 3 run 3, docs/wave-3-fulfilment.md, D174): parcels name their lines and units (`shipment_lines`, `markSent()`), an order stays paid and Partly sent while units are left, each parcel has its own carrier, tracking and email listing its lines, the shopper's order pages list the parcels, bulk Mark as sent sends the remainder and names each refusal, and withdrawn units are never sent. Units refunded before they were sent leave what is to send when staff tick *These units were not sent* (`commerce.unsent_closures`, `refundOrder({ notSent })`, `src/server/unsent-closures.int.test.ts` in kroner and euros: an order of 3 with 1 sent and 2 closed becomes Sent, its slip, the pick list and bulk send leave them out, and a closed unit is never offered for withdrawal); criterion 5 is held. Since then a parcel without lines is refused at commit (`shipments_have_lines`) and a parcel can be undone (`undoShipment()`, `src/server/shipment-undo.int.test.ts`). Still short of Full: (1) Spec 6.2 F2 names \"carrier bookings pass their lines (fake carrier)\": `bring-shipping.int.test.ts`, `helthjem-shipping.int.test.ts` and `porterbuddy-shipping.int.test.ts` never book a part of an order, so a carrier-booked partial parcel is held by no test; Bring also refuses a second booking of the same order within two minutes, so two Bring parcels of one order cannot be booked back to back. (2) The staff Send card is now driven in a browser (e2e/signed-in/order-send.spec.ts, 2026-10-19: one of two sweaters sent, the order stays paid with 2 units to send, a card opened before that parcel is refused with the order-changed sentence and writes nothing, the rest goes in a second parcel and the order is fulfilled). (3) The receipt sentence and the parcel words shown to consumers (spec section 8 items 6 and 7) are not yet read by a person.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -483,7 +491,8 @@
         "src/components/order-shipments.test.ts",
         "e2e/partial-shipment.spec.ts",
         "src/server/unsent-closures.int.test.ts",
-        "src/server/shipment-undo.int.test.ts"
+        "src/server/shipment-undo.int.test.ts",
+        "e2e/signed-in/order-send.spec.ts"
       ],
       "untested": false
     },

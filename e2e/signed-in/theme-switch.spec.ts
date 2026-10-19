@@ -70,7 +70,8 @@ async function seen(page: Page, path: string, ready?: (page: Page) => Locator) {
         links: [...new Set([...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? ""))].filter((href) => !href.startsWith("/admin")).sort(),
       };
     });
-  // Stock and the buy box stream in: read until two readings a moment apart agree.
+  // Stock and the buy box stream in, and the gallery shows the chosen variant's picture once the page's scripts run (D84), which a busy
+  // machine can delay: read until two readings a second apart agree.
   let last = JSON.stringify(await read());
   await expect
     .poll(async () => {
@@ -78,7 +79,7 @@ async function seen(page: Page, path: string, ready?: (page: Page) => Locator) {
       const same = now === last;
       last = now;
       return same;
-    }, { intervals: [400, 400, 800, 1000], timeout: 15_000 })
+    }, { intervals: [1000, 1000, 1000, 1500], timeout: 15_000 })
     .toBe(true);
   return JSON.parse(last) as Awaited<ReturnType<typeof read>>;
 }
