@@ -14,4 +14,5 @@ export const CONDITION_LABELS: Record<ConditionKind, string> = {
   source_is: "It comes from",
   has_tag: "It has a tag",
   seller_is: "Seller is",
+  risk: "Stripe's risk is",
 };

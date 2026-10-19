@@ -66,6 +66,12 @@ export const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] =
   "refund.created",
   "refund.updated",
   "refund.failed",
+  // Disputes (D288): a chargeback or inquiry opens, changes, moves money or closes. Added to older endpoints by `ensureSubscriptionEvents()`.
+  "charge.dispute.created",
+  "charge.dispute.updated",
+  "charge.dispute.closed",
+  "charge.dispute.funds_withdrawn",
+  "charge.dispute.funds_reinstated",
 ];
 
 /** Account (v2) events: a store's Stripe account needs something, or changed. */

@@ -630,15 +630,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Method mix not recorded: Kaizen keeps no payment method on a payment (`payment_methods` is only what is offered per market).",
-    "history": [],
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is Unknown. The Finance page's Payments by method lists payments, money received (with VAT, labelled), share, refunds and the fee per method for the period, adding up to the money received for the paid orders, with a CSV (finance.payment_methods). Fees are the Analytics settings' estimate, labelled, until unit C (D290) reads Stripe's balance transactions. Held by payment-disputes.int.test.ts (a euro order converted, the rows adding up), analytics-payments.test.ts, payments-view.test.ts and the signed-in browser test."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "The payment's method (card, Klarna, MobilePay, Link, wallet) is recorded when the payment is captured.",
       "A report shows orders, amount, fees and refunds per method for a period, reconciling to paid orders.",
@@ -648,13 +655,23 @@
     "evidence": {
       "files": [
         "src/db/schema.ts",
-        "src/server/stripe-webhooks.ts"
+        "src/server/stripe-webhooks.ts",
+        "src/lib/analytics-payments.ts",
+        "src/server/analytics-payments-data.ts",
+        "src/components/admin/analytics/payments-view.tsx",
+        "src/server/payment-facts.ts"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/payment-disputes.int.test.ts",
+        "src/lib/analytics-payments.test.ts",
+        "src/components/admin/analytics/payments-view.test.ts",
+        "e2e/signed-in/payment-facts.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D23"
+      "D23",
+      "D288"
     ]
   },
   {

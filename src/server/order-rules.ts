@@ -32,6 +32,7 @@ import { changeOrderTags } from "./order-tags";
 import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
 import { textList, uuidList } from "./sql-arrays";
+import { readPaymentFacts } from "./payment-facts";
 
 type Row = Record<string, unknown>;
 
@@ -207,7 +208,7 @@ export async function ruleFacts(storeId: string, orderId: string): Promise<(Rule
     from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `);
   if (!row || row.copied) return null;
-  const store = await storeById(storeId);
+  const [store, risk] = await Promise.all([storeById(storeId), riskOf(storeId, orderId)]);
   if (!store) return null;
   const currency = String(row.currency);
   const total = Number(row.total_minor);
@@ -229,7 +230,32 @@ export async function ruleFacts(storeId: string, orderId: string): Promise<(Rule
     source: row.box ? "delivery" : row.source === "draft" ? "draft" : row.renewal ? "subscription" : "checkout",
     tagKeys: ((row.tag_keys ?? []) as string[]).map(String),
     seller: row.host_id ? "host" : "store",
+    risk,
   };
+}
+
+/**
+ * Stripe's risk outcome on an order (D288): the order's captured Stripe payments whose charge is not read yet are read first (the reply's `after()`
+ * usually has), then the highest level of them; `none` when there is no assessed Stripe payment, null when one still cannot be read.
+ */
+async function riskOf(storeId: string, orderId: string): Promise<RuleFacts["risk"]> {
+  const read = async () =>
+    db().execute<Row>(sql`
+      select provider_reference, risk_level, facts_read_at is not null as read from commerce.payments
+       where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'stripe' and status = 'captured'
+    `);
+  let rows = await read();
+  const unread = rows.filter((r) => !r.read);
+  if (unread.length > 0) {
+    for (const r of unread) await readPaymentFacts(storeId, String(r.provider_reference));
+    rows = await read();
+  }
+  if (rows.some((r) => !r.read)) return null;
+  const levels = rows.map((r) => String(r.risk_level ?? ""));
+  if (levels.includes("highest")) return "highest";
+  if (levels.includes("elevated")) return "elevated";
+  if (levels.includes("normal")) return "normal";
+  return "none";
 }
 
 type EventRef = { id: string; storeId: string; subjectId: string };

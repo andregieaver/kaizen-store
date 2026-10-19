@@ -200,13 +200,15 @@ type Grain = Bucket | "period" | readonly string[];
 type Bundle = {
   orders: Row[];
   refunds: Row[];
+  /** Disputes lost (D288), by the day they closed. */
+  disputes: Row[];
   platform: Row[];
   fees: Row[];
   customers: Row[];
   spend: number;
 };
 
-const emptyBundle = (): Bundle => ({ orders: [], refunds: [], platform: [], fees: [], customers: [], spend: 0 });
+const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], platform: [], fees: [], customers: [], spend: 0 });
 
 /** The currencies the store can convert into its main currency, as a Postgres text array literal. */
 function convertibleCurrencies(store: Store): string {
@@ -409,6 +411,19 @@ async function loadBundles(
     group by 1, 2, 3
   `);
 
+  // Lost disputes (D288) by the day they closed: the amount scaled to without VAT by the order's share, as refunds are, plus the provider's fee where known
+  // (no VAT on a fee). Copied orders and hosts' orders never count; Stripe test-mode disputes neither.
+  const disputeDay = dayOf(store, sql`d.closed_at`);
+  const disputes = setBased<Row>(sql`
+    select (${bucketOf(grain, period, disputeDay)})::text as bk, d.currency::text as currency, (d.currency = any(${known})) as converts, count(*) as n,
+      sum(round(d.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0)) + coalesce(d.fee_minor, 0)) as amount
+    from commerce.payment_disputes d
+    join commerce.orders o on o.store_id = d.store_id and o.id = d.order_id
+    where d.store_id = ${id}::uuid and d.outcome = 'lost' and not d.test_mode and ${inPeriod(store, sql`d.closed_at`, period)}
+      and o.copied_from is null and o.host_id is null
+    group by 1, 2, 3
+  `);
+
   const spend = db().execute<Row>(sql`
     select (${bucketOf(grain, period, sql`s.day`)})::text as bk, sum(s.amount_minor) as amount
     from commerce.marketing_spend s
@@ -416,7 +431,7 @@ async function loadBundles(
     group by 1
   `);
 
-  const [mainRows, refundRows, spendRows, firsts] = await Promise.all([main, refunds, spend, firstDays]);
+  const [mainRows, refundRows, spendRows, firsts, disputeRows] = await Promise.all([main, refunds, spend, firstDays, disputes]);
   const bundles = new Map<string, Bundle>();
   const excluded = new Map<string, number>();
   const at = (key: string) => {
@@ -449,6 +464,10 @@ async function loadBundles(
     if (r.converts === true) at(String(r.bk)).refunds.push(r);
     else excluded.set(String(r.currency).trim(), (excluded.get(String(r.currency).trim()) ?? 0) + num(r, "n"));
   }
+  for (const r of disputeRows) {
+    if (r.converts === true) at(String(r.bk)).disputes.push(r);
+    else excluded.set(String(r.currency).trim(), (excluded.get(String(r.currency).trim()) ?? 0) + num(r, "n"));
+  }
   for (const r of spendRows) at(String(r.bk)).spend += num(r, "amount");
   return { bundles, excluded };
 }
@@ -464,6 +483,7 @@ async function loadBundles(
 function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor">, bundle: Bundle): Totals {
   const orders = inMain(store, bundle.orders.map((r) => ({ ...r, currency: String(r.currency) })), ["gross", "disc", "shipping", "vat", "revenue", "known_rev", "line_rev"]).values;
   const refunds = inMain(store, bundle.refunds.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
+  const disputes = inMain(store, bundle.disputes.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const platform = inMain(store, bundle.platform.map((r) => ({ ...r, currency: String(r.currency) })), ["fee"]).values;
 
   let paymentFeesMinor = 0;
@@ -496,6 +516,7 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     newCustomers: fresh,
     returningCustomers: active - fresh,
     units: sum(bundle.orders, "units"),
+    ...(disputes.amount !== 0 ? { lostDisputesMinor: disputes.amount } : {}),
   };
 }
 

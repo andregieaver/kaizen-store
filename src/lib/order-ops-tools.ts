@@ -34,7 +34,7 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written YYYY-MM-DD
 /** The filters of `list_orders`: the Orders page's own (docs 2.2), one parameter each, so the tool and the page answer the same. */
 export const LIST_ORDER_FILTERS = {
   show: z.enum(SHOW_VIEWS).optional().describe("A built-in view: to-send, waiting (for stock), unpaid (unfinished checkouts) or archived."),
-  pay: z.array(z.enum(PAY_FILTERS)).max(PAY_FILTERS.length).optional().describe("Payment state: paid, partially_refunded, refunded, balance_due or unpaid."),
+  pay: z.array(z.enum(PAY_FILTERS)).max(PAY_FILTERS.length).optional().describe("Payment state: paid, partially_refunded, refunded, balance_due, unpaid, disputed (a dispute open or lost) or elevated_risk (Stripe judged the payment elevated or highest risk)."),
   ship: z.array(z.enum(SHIP_FILTERS)).max(SHIP_FILTERS.length).optional().describe("Fulfilment: to_send, partly_sent, sent, waiting, no_shipping or edit_pending (a change waits for the customer's payment)."),
   status: z.array(z.enum(STATUS_FILTERS)).max(STATUS_FILTERS.length).optional().describe("The order's own status."),
   tag: z.array(z.string().trim().min(1).max(120)).max(TOOL_TAGS_MAX).optional().describe("Only orders with all of these tags."),

@@ -10,12 +10,13 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 65.3%** (first report 59.5%), **must-have 77.4%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +4.3 points from the 60 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 66.2%** (first report 59.5%), **must-have 77.4%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +5.2 points from the 63 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (37):
+Rated higher (40):
 
+- Payments reports by method (Analytics): missing to full. Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is U…
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
 - Export reports to CSV (Analytics): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Sell when out of stock (Catalogue): missing to partial. Wave 3 run 1 (docs/wave-3-inventory.md, D172 proposed, tree not committed).
@@ -23,6 +24,8 @@ Rated higher (37):
 - Bulk product import and export (CSV) (Catalogue): missing to full. Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied).
 - Bulk editing (Catalogue): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Bulk editing (Catalogue): partial to full. Criterion 2 is now driven in a browser: e2e/signed-in/products-grid.spec.ts opens two products in the grid, changes a SKU, a price and a cost, reviews the three changed cells before and after (nothing written until Apply), applies them (th…
+- Fraud analysis and risk flags (Checkout): partial to full. Wave 4 unit A (D288): Stripe's risk outcome (level and score) is read from the charge and kept on the payment; the order page's Payment card shows Stripe: elevated or highest risk with the score, the list shows a risk badge and filters by…
+- Chargeback and dispute handling (Checkout): missing to full. Wave 4 unit A (D288): the connected account's charge.dispute.* events are kept as commerce.payment_disputes (one row per dispute, identity fixed, a closed dispute kept as it closed, never deleted); the order page shows the amount, reason,…
 - OSS and IOSS support (Checkout): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran tax-profile, ioss, vat-engine and vat-money-review tests: the OSS and IOSS registration is stored with format and market rules, and an order of at most 150 EUR from outside the EU is mar…
 - B2B VAT ID, reverse charge, exemption (Checkout): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran vat-treatment, vies, vat-engine, vat-security and vat-money-review tests and e2e/vat-reverse-charge.spec.ts against the final tree: a valid VIES number for the delivery country takes the…
 - IOSS (International): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, abov…
@@ -90,7 +93,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **65.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **77.4%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 61.3% overall and 77.0% for must-haves. Counting app-only features gives 64.6%; counting Plus-only as well gives 64.3%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on checkout and payments (47.4%), customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%). Of the 221 core features, 87 are full, 97 partial and 37 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **66.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **77.4%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 62.4% overall and 77.0% for must-haves. Counting app-only features gives 65.4%; counting Plus-only as well gives 65.1%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%), checkout and payments (53.2%). Of the 221 core features, 90 are full, 96 partial and 35 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -100,10 +103,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **65.3%** | 61.3% | 87 / 97 / 37 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **66.2%** | 62.4% | 90 / 96 / 35 |
 | Must-have (core, weight 4 or 5) | 89 | **77.4%** | 77.0% | 50 / 37 / 2 |
-| Core plus app-only features | 246 | 64.6% | 61.2% | 97 / 107 / 42 |
-| Everything, including Plus-only | 252 | 64.3% | 60.5% | 98 / 109 / 45 |
+| Core plus app-only features | 246 | 65.4% | 62.2% | 100 / 106 / 40 |
+| Everything, including Plus-only | 252 | 65.1% | 61.5% | 101 / 108 / 43 |
 
 <!-- parity:generated:end headline -->
 
@@ -117,14 +120,14 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 28 | 13 | 9 | 6 | 66.3% | 8 | 79.4% |
 | Storefront, themes and content | 33 | 22 | 9 | 2 | 85.0% | 15 | 97.0% |
-| Checkout and payments | 21 | 3 | 12 | 6 | 47.4% | 12 | 58.7% |
+| Checkout and payments | 21 | 5 | 11 | 5 | 53.2% | 12 | 58.7% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
 | Customers, marketing and loyalty | 20 | 2 | 14 | 4 | 48.5% | 8 | 63.2% |
-| Analytics, reporting and finance | 26 | 11 | 9 | 6 | 64.0% | 11 | 71.7% |
+| Analytics, reporting and finance | 26 | 12 | 9 | 5 | 66.5% | 11 | 71.7% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 3 | 14 | 5 | 50.0% | 7 | 65.5% |
 | AI and automation | 23 | 9 | 7 | 7 | 56.8% | 2 | 100.0% |
-| **Total** | **221** | **87** | **97** | **37** | **65.3%** | **89** | **77.4%** |
+| **Total** | **221** | **90** | **96** | **35** | **66.2%** | **89** | **77.4%** |
 
 <!-- parity:generated:end domains -->
 
@@ -136,7 +139,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 92 |
+| Full, with tests | 95 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 252 |
@@ -145,7 +148,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 108 | 96 | 24.2 |
+| A | Build in-house | 105 | 93 | 23.3 |
 | B | Build, live only with a third party | 18 | 15 | 4.3 |
 | C | Strategy decision first | 14 | 11 | 3.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -158,14 +161,14 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **65.3%** core, 77.4% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **66.2%** core, 77.4% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 67.4% | 80.6% | +2.1 | 66.6% | 79.6% |
-| 2 | Data in and out | 3 (1) | 67.6% | 80.6% | +0.2 | 66.9% | 79.6% |
-| 3 | Inventory and orders | 14 (13) | 70.6% | 82.9% | +3.0 | 68.2% | 80.8% |
-| 4 | Payments | 15 (13) | 75.0% | 86.5% | +4.4 | 70.7% | 82.3% |
+| 1 | Compliance and money | 11 (8) | 68.3% | 80.6% | +2.1 | 67.5% | 79.6% |
+| 2 | Data in and out | 3 (1) | 68.5% | 80.6% | +0.2 | 67.8% | 79.6% |
+| 3 | Inventory and orders | 14 (13) | 71.5% | 82.9% | +3.0 | 69.1% | 80.8% |
+| 4 | Payments | 12 (10) | 75.0% | 86.5% | +3.5 | 70.7% | 82.3% |
 | 5 | Customers and marketing | 31 (27) | 82.9% | 93.2% | +7.8 | 77.5% | 89.0% |
 | 6 | Catalogue | 13 (12) | 85.8% | 94.4% | +2.9 | 80.4% | 90.2% |
 | 7 | Storefront and international | 17 (16) | 89.3% | 95.4% | +3.5 | 83.7% | 91.2% |
@@ -359,8 +362,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | iDEAL, Bancontact, SEPA, BLIK, EPS, P24 and other local methods | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods) | Partial (was missing) | 4 | A, wave 4 | Checkout sends no `payment_method_types` (tested), so methods the owner enables in their own Stripe Dashboard can appear. Kaizen requests no capability for iDEAL, Bancontact, BLIK, EPS or P24, has no admin switch or per-market control, no test that any is offered, and subscriptions and boxes are card-only. Code: `src/server/checkout.ts`, `src/server/connect.ts`. |
 | PayPal | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments) | Missing | 4 | C, wave 4 | Not allowed by Stripe for platforms taking direct charges (D23); needs a second payment provider (docs/parity-plan.md section 5, decision 1). |
 | Authorize then capture | Native. [page](https://help.shopify.com/en/manual/payments/payment-authorization) | Missing | 2 | A, wave 4 | Sessions capture automatically: no `capture_method` anywhere in `src/server/checkout.ts`; a payment is `captured` the moment the session is complete. Code: `src/server/checkout.ts`, `src/server/stripe-webhooks.ts`. |
-| Fraud analysis and risk flags | Native. [page](https://help.shopify.com/en/manual/orders/fraud-analysis) | Partial | 3 | A, wave 4 | Stripe Radar runs on the store's own Stripe account (direct charges), so card fraud screening exists, and live owners see it in their Stripe Dashboard. Kaizen records no risk outcome: nothing is shown on orders, there is no review queue, rule or hold. The first report's url pointed at a page that is not about fraud. Code: `src/server/checkout.ts`, `src/server/stripe-webhooks.ts`. |
-| Chargeback and dispute handling | Native. [page](https://help.shopify.com/en/manual/payments/chargebacks) | Missing | 3 | A, wave 4 | `handleStripeEvent()` handles only `checkout.session.*`, `invoice.paid` and `customer.subscription.*`: no `charge.dispute.*` or refund events, so disputes live only in Stripe and Kaizen's orders and analytics never see them. Code: `src/server/stripe-webhooks.ts`, `src/app/api/stripe/connect/[mode]/route.ts`. |
+| Fraud analysis and risk flags | Native. [page](https://help.shopify.com/en/manual/orders/fraud-analysis) | Full (was partial) | 3 |  | Evidence: `src/server/checkout.ts`, `src/server/stripe-webhooks.ts`, `src/lib/payment-facts.ts` and 4 more; 4 test files; D288. |
+| Chargeback and dispute handling | Native. [page](https://help.shopify.com/en/manual/payments/chargebacks) | Full (was missing) | 3 |  | Evidence: `src/server/stripe-webhooks.ts`, `src/app/api/stripe/connect/[mode]/route.ts`, `src/server/payment-disputes.ts` and 5 more; 6 test files; D288. |
 | Multi-currency pricing and checkout | Native. [page](https://help.shopify.com/en/manual/markets/pricing/exchange-rates) | Full | 4 |  | Evidence: `src/lib/currency.ts`, `src/lib/ecb.ts`, `src/lib/market-slug.ts` and 3 more; 4 test files; D109. |
 | EU VAT by destination, VAT-inclusive prices, reduced rates | Native. [page](https://help.shopify.com/en/manual/taxes/eu) | Partial | 5 | A, wave 1 | Unit 1a (D157 proposed, docs/wave-1a-tax.md) built criteria 1 to 4 and the audit half of 6: `commerce.vat_categories` (standard, exempt, accommodation, food, books, periodicals, medicines, culture_events, children_goods; the product's category is a foreign key), `commerce.vat_rates` with validity dates, source, checked-on date and a verified flag, written only by `commerce.set_vat_rate()` (a period ends, a new one begins, audit-logged) and read only through `commerce.vat_rate(country, category, at)` (`vat-readers.test.ts` scans the source), a per-country shipping VAT rule that only applies once a person has verified it, the product editor's category select, and the platform page `/admin/platform/vat`. Tests: `src/db/vat.test.ts`, `vat-admin.int.test.ts`, and `checkout-kinds.int.test.ts` (each category, a mixed basket, in the market's currency and in euro view, `cartSummary()` equal to `placeOrder()`, a rate change that leaves placed orders alone). Unit 1c (D161 proposed) built criterion 5 and the reconciliation half of criterion 6: the VAT report per country and rate for a period with refunds netted through credit notes, exported as CSV in the owner's period, and a bridge to Finance and to the sum of `tax_minor` of paid orders that names every difference and leaves out copied and host orders (`tax-reports.int.test.ts`, `src/db/tax-reports.test.ts`); unit 1b's invoice takes the line's rate (the snapshot's buckets, `checkout-kinds.int.test.ts`). Still missing: (1) the rate data is thin and unverified: besides the 28 standard rates only Norway, Sweden, Finland and Germany have reduced rows for food, books, periodicals and culture (13 reduced-rate rows in all, none for medicines or children's goods, plus three accommodation rows), every row is unverified (no person has checked it against TEDB or with an accountant; the TEDB was not readable), and a country with no row charges the standard rate, so a French or Spanish food product is taxed at the standard rate until a platform admin enters the rate; (2) every shipping VAT rule is the standard one, none verified; (3) the platform VAT page and the product editor's category select are now driven in a browser (e2e/signed-in/vat-screens.spec.ts, 2026-10-19: a platform admin schedules a rate, which starts unverified; an owner moves a product to Books and saves); (4) the catalogue's cached VAT label can lag a scheduled rate change by up to the cache lifetime between the country's midnight and the daily 07:00 UTC job. Stripe Tax is not used. Code: `src/lib/vat.ts`, `src/lib/shipping-vat.ts`. |
 | OSS and IOSS support | Native. [page](https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference) | Partial (was missing) | 4 | B, wave 1 | Unit 1a (D157 proposed) records the registration and marks the order: `commerce.store_tax_profile` holds the VAT registration, the OSS scheme (Union with its member state, or non-Union with its EU number) and the IOSS number, intermediary, markets and date, with format checks, owners only, edited at `/admin/{store}/settings/tax`; checkout charges destination VAT on every consumer sale, and a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market is marked `vat_kind = 'ioss'` with the IOSS number on the order, page and email; above 150.00 EUR, a business buyer, an unlisted market, a store sending from inside the EU, downloads and a currency with no euro rate are not marked. Unit 1b's invoice and credit note carry the IOSS statement and the number (D159, `treatment.iossNumber`, `order-document-view.test.ts`). Unit 1c (D161 proposed, `docs/wave-1c-reports.md`) built the return data: `/admin/{store}/analytics/tax?view=oss\|ioss` gives the quarterly Union and non-Union and the monthly IOSS data per Member State of consumption and rate (Part 2 with the Member State of dispatch for 2b and 2d, Part 3 corrections, Part 4, Part 5) in euro at the ECB's reference rate of the period's last day (or the owner's audited override), from invoices and credit notes only, with a formula-safe CSV that is refused while a rate is missing, an export log with a drift line, deadlines, registration warnings and read-only AI tools; a refund reduces the period through its credit note (books mode in its own month, filing mode a Part 3 correction of the sale's period). Tests: `tax-reports.int.test.ts` (a worked example from real orders, IOSS with an above-150 order, a business buyer and a next-month credit), `oss-return.test.ts`, `tax-csv.test.ts`, `tax-report-admin.int.test.ts`, `oss-view.test.ts`. Still short of Full: (1) bucket B: live only with an OSS or IOSS registration the owner holds, and no number is checked against any register; (2) Kaizen files nothing: the data is what a return asks for in its boxes, for the owner's accountant, and which part of a return a sale belongs in (`classify()`, spec 4.3: goods dispatched from outside the EU that were not IOSS sales, booked services, business buyers charged VAT, fee lines, a Norwegian store using the Union scheme) has not been read by an accountant; (3) a refund of an order with no invoice (invoicing off, waiting, test mode) is in no return and shows only in the informational refunds line; (4) the OSS registration changes nothing in checkout (destination VAT was already the rule; the 10,000 EUR threshold and the origin-country rule are not applied, said on the screen); (5) neither the tax screen nor the report page was opened in a browser with data (render and action tests only, the admin needs a sign-in); (6) the IOSS statement and import notice are hand-written and unreviewed, and what counts as intrinsic value for the 150 EUR test is an open question for an accountant; (7) the EC Sales List and each state's own return mapping are not built (wave 2). Code: `src/lib/tax-profile.ts`, `src/lib/ioss.ts`. |
@@ -467,7 +470,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Finance summary | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full | 4 |  | Residual: refunds made only in the Stripe Dashboard are not seen (no refund webhook; the page says so); no payments or liabilities section (separate rows). Evidence: `src/lib/analytics-finance.ts`, `src/components/admin/analytics/finance-view.tsx`, `src/app/admin/(gated)/[store]/analytics/finance/page.tsx` and 3 more; 4 test files; D152. |
 | Tax and VAT reports by rate and jurisdiction | Native. [page](https://help.shopify.com/en/manual/taxes/tax-reports) | Partial | 5 | D, no wave yet | The four criteria are built and held by tests (see the evidence), but an accountant has not read the part-assignment rules of classify(), the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (docs/wave-1c-reports.md section 8), so this is held at Partial like the other tax and legal rows. No browser has opened the page with data (the admin needs a sign-in; e2e/admin.spec.ts only checks the signed-out refusal). The migrations are not yet in production and the daily ECB rate job has not run there. Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause. Code: `src/server/analytics-sql.ts`, `src/lib/tax-periods.ts`. |
 | Payouts and reconciliation | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/payouts/payout-reconciliation-report) | Missing | 4 | A, wave 4 | Payouts are in the owner's Stripe Dashboard; Kaizen estimates payment fees from a percentage and keeps no payout or balance-transaction data. Code: `src/server/connect.ts`, `src/server/stripe-webhooks.ts`. |
-| Payments reports by method | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Missing | 2 | A, wave 4 | Method mix not recorded: Kaizen keeps no payment method on a payment (`payment_methods` is only what is offered per market). Code: `src/db/schema.ts`, `src/server/stripe-webhooks.ts`. |
+| Payments reports by method | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full (was missing) | 2 |  | Evidence: `src/db/schema.ts`, `src/server/stripe-webhooks.ts`, `src/lib/analytics-payments.ts` and 3 more; 4 test files; D23, D288. |
 | Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Partial (was missing) | 2 | A, wave 5 | Outstanding bonus credit is shown at `/admin/{store}/bonus` (`outstandingMinor`), not in Analytics or Finance; no gift cards exist yet; no roll-forward of issued, used and expired credit. Code: `src/server/bonus.ts`, `src/lib/bonus.ts`. |
 | Customer reports: cohorts, repeat rate | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Full | 4 |  | Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | Customer lifetime value | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation/predicted-spend-tier) | Full | 3 |  | Residual: store and cohort level only (historic and predicted); no per-customer predicted value (Shopify's predicted spend tier is per customer). Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |

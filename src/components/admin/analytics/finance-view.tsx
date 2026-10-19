@@ -113,6 +113,9 @@ export function lineChange(line: FinanceLine, previous: FinanceLine | undefined)
 export const plainLabel = (label: string) => label.replace(/ \((estimated|estimate)\)$/, "");
 
 /** The bars of "Where net revenue went", in order: a line of the statement and its label (the CSV repeats them). */
+/** Lines a statement has only when they happened (D288's lost disputes): left out of *Where net revenue went* when absent. */
+export const shownWhere = (s: FinanceStatement, key: FinanceLineKey): boolean => key !== "lostDisputes" || lineOf(s, key) !== undefined;
+
 export const WHERE_IT_WENT: readonly (readonly [FinanceLineKey, string])[] = [
   ["netRevenue", "Net revenue"],
   ["cogs", "Cost of goods"],
@@ -120,6 +123,7 @@ export const WHERE_IT_WENT: readonly (readonly [FinanceLineKey, string])[] = [
   ["platformFees", "Platform fees"],
   ["shippingCosts", "Shipping costs"],
   ["marketing", "Marketing"],
+  ["lostDisputes", "Lost disputes"],
   ["fixedCosts", "Fixed costs"],
   ["operatingProfit", "Operating profit"],
 ];
@@ -495,7 +499,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
       colorIndex,
     };
   };
-  const bars: BarRow[] = WHERE_IT_WENT.map(([key, label]) => flowRow(key, label, key === "operatingProfit" ? 2 : 0));
+  const bars: BarRow[] = WHERE_IT_WENT.filter(([key]) => shownWhere(s, key)).map(([key, label]) => flowRow(key, label, key === "operatingProfit" ? 2 : 0));
 
   // ---- over time ----
   const labels = series.map((p) => p.label);

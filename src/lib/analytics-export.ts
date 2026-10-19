@@ -91,6 +91,8 @@ const REGISTRY: AnalyticsTable[] = [
   table("finance.bridge", "finance", "finance-view.tsx", "From gross sales to operating profit", [text("line"), amount("amount", "amount", true), pct("share_of_net_revenue"), text("estimated")], true),
   bars("finance.where_it_went", "finance", "finance-view.tsx", "Where net revenue went"),
   series("finance.revenue_profit", "finance", "finance-view.tsx", "Net revenue and contribution profit", [amount("net", "net_revenue", true), amount("profit", "contribution_profit")], true),
+  /** D288: with VAT, as the money moved (the one table of the page that is; its headers say so). */
+  table("finance.payment_methods", "finance", "payments-view.tsx", "Payments by method", [text("method"), int("payments"), amount("received", "received_with_vat"), pct("share", "share_of_received"), amount("refunded", "refunded_with_vat"), amount("fees", "fees_estimated")], true),
 
   // Customers
   table("customers.top", "customers", "customers-view.tsx", "Top customers by revenue", [text("customer"), text("email"), text("account"), int("orders", "orders_in_period"), amount("revenue", "revenue_in_period"), int("lifetime", "orders_to_date"), date("last", "last_order_on")], true),

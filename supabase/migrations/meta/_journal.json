@@ -2598,6 +2598,20 @@
       "when": 1792406745258,
       "tag": "20261019104545_theme_prices_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 371,
+      "version": "7",
+      "when": 1792430451661,
+      "tag": "20261019172051_payment_facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 372,
+      "version": "7",
+      "when": 1792430495988,
+      "tag": "20261019172135_payment_facts_rules",
+      "breakpoints": true
     }
   ]
 }

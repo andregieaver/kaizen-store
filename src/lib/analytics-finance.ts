@@ -38,6 +38,7 @@ export type FinanceLineKey =
   | "platformFees"
   | "shippingCosts"
   | "marketing"
+  | "lostDisputes"
   | "contributionProfit"
   | "fixedCosts"
   | "operatingProfit";
@@ -85,7 +86,7 @@ const ROUNDING_LABEL = "Rounding";
 /**
  * The statement for a period: gross sales − discounts + shipping income =
  * revenue; − refunds = net revenue; − COGS = gross profit; − payment fees,
- * platform fees, shipping costs, marketing = contribution profit; − fixed
+ * platform fees, shipping costs, marketing, lost disputes (D288) = contribution profit; − fixed
  * costs (pro rata by day) = operating profit.
  *
  * Cost of goods follows docs/analytics.md ("Gross profit"): exact at coverage 1;
@@ -168,7 +169,12 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
   const noSpend = orders > 0 && totals.marketingMinor === 0;
   push("marketing", "Marketing", -totals.marketingMinor, { missing: noSpend, note: noSpend ? "No marketing spend is entered for the period." : "Spend entered under Marketing." });
 
-  const contribution = grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - totals.marketingMinor;
+  // Lost disputes (D288): money the bank took back, with the provider's fee where known, in the period the dispute closed; shown only when there is one.
+  const lostDisputes = totals.lostDisputesMinor ?? 0;
+  if (lostDisputes !== 0) {
+    push("lostDisputes", "Lost disputes", -lostDisputes, { note: "Disputes the bank decided against the store in the period, without VAT, with Stripe's dispute fee where it is known. Not a refund: no credit note is issued." });
+  }
+  const contribution = grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - totals.marketingMinor - lostDisputes;
   push("contributionProfit", "Contribution profit", contribution, {
     subtotal: true,
     estimated: true,

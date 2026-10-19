@@ -46,6 +46,9 @@ import { FULFILMENT_STATE_LABELS } from "@/lib/fulfilment";
 import { fulfilmentEventText } from "@/lib/fulfilment-events-text";
 import { FULFILMENT_EVENT_LABELS, ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops-events";
 import { opsEventText } from "@/lib/order-ops-events-text";
+import { disputeEventText, dueWords } from "@/lib/payment-facts";
+import { PaymentCard } from "@/components/admin/orders/payment-card";
+import { orderPaymentFacts } from "@/server/payment-disputes";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
@@ -160,11 +163,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const exchangedFor = returns ? await exchangeOrdersOfReturns(store.id, returns.returns.map((r) => r.id)) : {};
   const canWrite = memberCan(member, "orders:write");
   // The hold, the parcels' stored tracking, the switches of the customer emails and who recorded the receipt (wave 3, D238): stored rows, no carrier call.
-  const [hold, parcelTracking, notifyStates, receipt] = await Promise.all([
+  const [hold, parcelTracking, notifyStates, receipt, paymentFacts] = await Promise.all([
     orderHold(store.id, orderId),
     parcelTrackingFor(store.id, orderId),
     notificationStates(store.id).catch(() => ({}) as Record<string, boolean>),
     deliverySourceOf(store.id, orderId),
+    // How it was paid, Stripe's risk outcome and its disputes (D288): stored rows, no Stripe call.
+    orderPaymentFacts(store.id, orderId),
   ]);
   const notificationsHref = `/admin/${store.slug}/settings/notifications`;
   // The *Notify the customer* box follows the email's switch (2.2): off, it is drawn off with a link there, and the sender ignores a `notify` anyway.
@@ -742,6 +747,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </div>
 
         <div className="flex flex-col gap-6">
+          <PaymentCard
+            payments={paymentFacts.payments}
+            disputes={paymentFacts.disputes}
+            money={(minor, currency) => formatMoney(minor, currency, locale)}
+            due={(iso) => dueWords(new Date(iso), store.timeZone)}
+          />
           <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
           {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} />}
           <section aria-labelledby="customer" className={`${card} text-sm`}>
@@ -878,6 +889,9 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
     );
   }
   // Draft orders and the wave 3 operations (D173), in words.
+  // Disputes (D288), in words.
+  const dispute = disputeEventText(event.type, data, money);
+  if (dispute !== null) return <>{dispute}</>;
   const ops = opsEventText(event.type, data, money);
   if (ops !== null) return <>{ops}</>;
   // Parcels and changes of the order (D174), in words.

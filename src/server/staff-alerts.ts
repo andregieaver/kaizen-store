@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
+import { DISPUTE_STATUS_WORDS, disputeDashboardUrl, disputeNeedsResponse, disputeReasonWords, dueWords, type DisputeStatus } from "@/lib/payment-facts";
 import { permissionsOf } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
 import {
@@ -468,6 +469,92 @@ export async function sendReturnRequestedAlert(storeId: string, returnId: string
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+export type DisputeFacts = {
+  orderNumber: string;
+  orderId: string;
+  amountMinor: number;
+  currency: string;
+  reason: string | null;
+  status: DisputeStatus;
+  /** The evidence deadline in the store's own time zone, in words; null when Stripe gave none. */
+  due: string | null;
+  dashboardUrl: string;
+};
+
+/** A dispute's staff email (D288): opened, or its deadline near. The order's number, the amount, Stripe's reason and the deadline; never who the customer is. */
+export function disputeEmail(store: EmailStore, kind: "opened" | "due", f: DisputeFacts): RenderedEmail {
+  const amount = formatMoney(f.amountMinor, f.currency, "en-GB");
+  const needs = disputeNeedsResponse(f.status);
+  return renderEmail({
+    subject: kind === "opened" ? `Payment disputed: order ${f.orderNumber}, ${amount}` : `Dispute evidence due${f.due ? ` ${f.due}` : ""}: order ${f.orderNumber}`,
+    preview: kind === "opened" ? `The customer's bank disputed ${amount} of order ${f.orderNumber}.` : `Send Stripe your evidence for order ${f.orderNumber} before the deadline.`,
+    lang: "en",
+    footer: emailFooter(store, en()),
+    blocks: [
+      { type: "heading", text: kind === "opened" ? "A payment was disputed" : "A dispute's deadline is near" },
+      {
+        type: "paragraph",
+        text:
+          kind === "opened"
+            ? `The customer's bank disputed ${amount} of order ${f.orderNumber}. Stripe holds the amount until the dispute is decided.`
+            : `Stripe needs your evidence for the dispute on order ${f.orderNumber}. Without it the dispute is lost.`,
+      },
+      {
+        type: "lines",
+        rows: [
+          { label: "Amount", value: amount, strong: true },
+          { label: "Reason", value: disputeReasonWords(f.reason) },
+          { label: "Status", value: DISPUTE_STATUS_WORDS[f.status] },
+          ...(f.due ? [{ label: needs ? "Evidence due" : "Deadline", value: f.due }] : []),
+        ],
+      },
+      { type: "paragraph", text: "Evidence is sent in your Stripe Dashboard." },
+      { type: "button", text: "Open the dispute in Stripe", url: f.dashboardUrl },
+      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${f.orderId}`) },
+    ],
+  });
+}
+
+async function disputeFacts(storeId: string, disputeId: string): Promise<DisputeFacts | null> {
+  const [row] = await db().execute<Row>(sql`
+    select d.amount_minor, d.currency, d.reason, d.status, d.evidence_due_by, d.provider_reference, d.test_mode, o.id as order_id, o.number,
+      o.copied_from is not null as copied, s.time_zone
+    from commerce.payment_disputes d
+    join commerce.orders o on o.store_id = d.store_id and o.id = d.order_id
+    join commerce.stores s on s.id = d.store_id
+    where d.store_id = ${storeId}::uuid and d.id = ${disputeId}::uuid
+  `);
+  if (!row || row.copied) return null;
+  return {
+    orderNumber: String(row.number),
+    orderId: String(row.order_id),
+    amountMinor: Number(row.amount_minor),
+    currency: String(row.currency).trim(),
+    reason: row.reason ? String(row.reason) : null,
+    status: String(row.status) as DisputeStatus,
+    due: row.evidence_due_by ? dueWords(new Date(String(row.evidence_due_by)), String(row.time_zone ?? "UTC")) : null,
+    dashboardUrl: disputeDashboardUrl(String(row.provider_reference), Boolean(row.test_mode)),
+  };
+}
+
+/** A dispute's email to each recipient of `dispute` (D288), once per recipient and kind. Null when it gets none (a copied order). */
+export async function sendDisputeAlert(storeId: string, disputeId: string, kind: "opened" | "due", send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
+  const [facts, store, targets] = await Promise.all([disputeFacts(storeId, disputeId), storeById(storeId), alertRecipients(storeId, "dispute")]);
+  if (!facts || !store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  const result = await sendToAll(
+    storeId,
+    store.name,
+    kind === "opened" ? "staff.dispute" : "staff.dispute_due",
+    targets,
+    disputeEmail(store, kind, facts),
+    (r) => (kind === "opened" ? ALERT_KEYS.disputeOpened(disputeId, r) : ALERT_KEYS.disputeDue(disputeId, r)),
+    facts.orderId,
+    send,
+  );
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
 // ---------------------------------------------------------------------------
 // The queue
 // ---------------------------------------------------------------------------
@@ -689,7 +776,18 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
   ];
   const sampleId = "00000000-0000-4000-8000-000000000000";
   const email: RenderedEmail =
-    event === "return_requested"
+    event === "dispute"
+      ? disputeEmail(store, "opened", {
+          orderNumber: "1001",
+          orderId: sampleId,
+          amountMinor: 59700,
+          currency,
+          reason: "product_not_received",
+          status: "needs_response",
+          due: dueWords(new Date(now.getTime() + 7 * 86_400_000), "UTC"),
+          dashboardUrl: disputeDashboardUrl("dp_test", true),
+        })
+      : event === "return_requested"
       ? returnRequestedEmail(store, sampleId, { number: "R-1001-1", orderNumber: "1001", kind: "return", lines: sampleLines })
       : event === "summary"
         ? summaryEmail(store, "daily", {
@@ -740,4 +838,5 @@ export const ALERT_EMAIL_KINDS: Record<StaffAlertEvent, string> = {
   low_stock: "stock.low",
   summary: "staff.summary",
   automation: "automation.notify",
+  dispute: "staff.dispute",
 };

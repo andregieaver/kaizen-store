@@ -234,6 +234,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   page_redirects: never("Old addresses of the original's pages."),
   payment_credentials: never("Payment keys are secrets and are the store's own."),
   payments: never("Copied orders have no payments."),
+  payment_disputes: never("Copied orders have no payments, so no disputes (D288)."),
   product_files: never("Download files stay with the original (their products wait as drafts)."),
   refunds: never("Copied orders have no refunds."),
   resource_blocks: never("Closures and blocks from iCal feeds belong to the original's calendar."),

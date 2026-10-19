@@ -321,6 +321,8 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
         </Link>
         {row.archived && <span className={badge}>Archived</span>}
         {row.held && <span className={badge}>On hold</span>}
+        {row.disputed && <span className={badge}>Disputed</span>}
+        {row.risk && <span className={badge}>{row.risk === "highest" ? "Highest risk" : "Elevated risk"}</span>}
         {row.gift && <span className={badge}>Gift</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? `Staff-made ${row.draftNumber}` : "Staff-made"}</span>}
         {row.source === "exchange" && <span className={badge}>Exchange</span>}

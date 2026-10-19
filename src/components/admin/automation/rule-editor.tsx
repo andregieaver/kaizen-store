@@ -34,6 +34,7 @@ export type ConditionDraft = {
   sources: RuleSource[];
   tag: string;
   seller: "store" | "host";
+  risk: "elevated" | "highest";
 };
 export type ActionDraft = { kind: ActionKind; text: string };
 
@@ -52,6 +53,7 @@ const blankCondition = (kind: ConditionKind): ConditionDraft => ({
   sources: [],
   tag: "",
   seller: "host",
+  risk: "elevated",
 });
 
 /** A saved rule's conditions and actions as the editor holds them; an amount in the main currency's major units. */
@@ -79,6 +81,8 @@ export function draftOfRule(rule: Pick<OrderRule, "conditions" | "actions"> | nu
         return { ...d, tag: c.label };
       case "seller_is":
         return { ...d, seller: c.seller };
+      case "risk":
+        return { ...d, risk: c.level };
       default:
         return d;
     }
@@ -124,6 +128,8 @@ export function ruleBody(input: { name: string; match: "all" | "any"; enabled: b
           return { kind: c.kind, tag: c.tag };
         case "seller_is":
           return { kind: c.kind, seller: c.seller };
+        case "risk":
+          return { kind: c.kind, level: c.risk };
         default:
           return { kind: c.kind };
       }
@@ -329,6 +335,12 @@ export function RuleEditor({
                     Tag (as it was when the order was paid)
                     <input list={`${uid}-tags`} value={c.tag} onChange={(e) => patch(i, { tag: e.target.value })} className={`${field} max-w-80`} />
                   </label>
+                )}
+                {c.kind === "risk" && (
+                  <select value={c.risk} onChange={(e) => patch(i, { risk: e.target.value as "elevated" | "highest" })} className={select} aria-label="Stripe's risk">
+                    <option value="elevated">Elevated or highest</option>
+                    <option value="highest">Highest</option>
+                  </select>
                 )}
                 {c.kind === "seller_is" && (
                   <select value={c.seller} onChange={(e) => patch(i, { seller: e.target.value as "store" | "host" })} className={select} aria-label="Seller">

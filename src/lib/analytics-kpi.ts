@@ -79,6 +79,11 @@ export type Totals = {
   returningCustomers: number;
   /** Units of goods sold. */
   units: number;
+  /**
+   * Disputes lost in the period (D288, by the day they closed): the disputed amount without VAT (scaled by its order's share, as refunds are) and
+   * the provider's dispute fees where known. Money out, never a refund. Absent means none.
+   */
+  lostDisputesMinor?: number;
 };
 
 export const EMPTY_TOTALS: Totals = {
@@ -230,7 +235,7 @@ export function estimateText(coverage: number | null): string | null {
 function contributionOf(t: Totals, coverage: number | null): number | null {
   const cogs = estimatedCogs(t, coverage);
   if (cogs === null) return null;
-  return t.revenueMinor - t.refundsMinor - cogs - t.paymentFeesMinor - t.platformFeesMinor - t.shippingCostsMinor - t.marketingMinor;
+  return t.revenueMinor - t.refundsMinor - cogs - t.paymentFeesMinor - t.platformFeesMinor - t.shippingCostsMinor - t.marketingMinor - (t.lostDisputesMinor ?? 0);
 }
 
 const whole = (n: number | null) => (n === null ? null : Math.round(n));

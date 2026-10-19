@@ -35,6 +35,7 @@ export const CONDITION_KINDS = [
   "source_is",
   "has_tag",
   "seller_is",
+  "risk",
 ] as const;
 export type ConditionKind = (typeof CONDITION_KINDS)[number];
 
@@ -62,7 +63,9 @@ export type RuleCondition =
   | { kind: "source_is"; sources: RuleSource[] }
   /** A tag's key (`normaliseTag()`'s `key`) and its label as typed, for the sentence. */
   | { kind: "has_tag"; tagKey: string; label: string }
-  | { kind: "seller_is"; seller: "store" | "host" };
+  | { kind: "seller_is"; seller: "store" | "host" }
+  /** D288: Stripe's risk outcome on the order's payment is at least this level (`highest` alone, or `elevated` and `highest`). */
+  | { kind: "risk"; level: "elevated" | "highest" };
 
 export type RuleAction =
   /** A tag as `normaliseTag()` made it. */
@@ -100,9 +103,14 @@ export type RuleFacts = {
   /** Tag keys at the time of the event (before any rule ran). */
   tagKeys: readonly string[];
   seller: "store" | "host";
+  /**
+   * D288: Stripe's risk outcome on the order's captured Stripe payments, the highest of them; `none` when no Stripe payment was assessed (paid outside
+   * Kaizena Flow, at a venue, or Stripe did not assess it), null while a Stripe payment's charge has not been read.
+   */
+  risk?: "normal" | "elevated" | "highest" | "none" | null;
 };
 
-export type ConditionOutcome = { kind: ConditionKind; met: boolean; why?: "no_rate" | "unknown" };
+export type ConditionOutcome = { kind: ConditionKind; met: boolean; why?: "no_rate" | "unknown" | "unread" };
 export type ActionProblem = "not_found" | "limit" | "already_held" | "sent" | "invalid" | "no_recipients" | "failed";
 export type ActionOutcome = { kind: ActionKind; ok: boolean; problem?: ActionProblem };
 /** `order_rule_runs.outcome`. */
@@ -139,6 +147,11 @@ export function conditionMet(condition: RuleCondition, facts: RuleFacts): Condit
       return { kind, met: facts.tagKeys.includes(condition.tagKey) };
     case "seller_is":
       return { kind, met: facts.seller === condition.seller };
+    case "risk": {
+      if (facts.risk === null || facts.risk === undefined) return { kind, met: false, why: "unread" };
+      const met = condition.level === "highest" ? facts.risk === "highest" : facts.risk === "elevated" || facts.risk === "highest";
+      return { kind, met };
+    }
   }
 }
 
@@ -196,6 +209,8 @@ export function describeCondition(c: RuleCondition, ctx: DescribeContext): strin
       return `it is tagged "${c.label}"`;
     case "seller_is":
       return c.seller === "host" ? "it is a host's listing" : "it is the store's own sale";
+    case "risk":
+      return c.level === "highest" ? "Stripe judged its payment highest risk" : "Stripe judged its payment elevated or highest risk";
   }
 }
 
@@ -222,6 +237,7 @@ export function describeRule(rule: Pick<OrderRule, "match" | "conditions" | "act
 export const OUTCOME_WORDS: Record<NonNullable<ConditionOutcome["why"]> | ActionProblem, string> = {
   no_rate: "No exchange rate for the order's currency",
   unknown: "Not known for a guest",
+  unread: "Stripe's risk outcome was not read yet",
   not_found: "The order was not found",
   limit: "The order has as many tags as it can hold",
   already_held: "The order was already on hold",

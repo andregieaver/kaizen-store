@@ -51,6 +51,7 @@ import {
   EXCHANGES_PER_RETURN_MAX,
 } from "../lib/exchange-limits";
 import { EXCHANGE_CHANNELS, EXCHANGE_SHIPPING_KINDS, EXCHANGE_STATUSES, LABEL_SOURCES, REFUND_KINDS } from "../lib/exchange-status";
+import { DISPUTE_STATUSES, RISK_LEVELS } from "../lib/payment-facts";
 import { CARRIER_IDS } from "../lib/shipping-carriers";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
@@ -4110,6 +4111,18 @@ export const payments = commerce.table(
     exchangeId: uuid("exchange_id"),
     /** For `provider = 'exchange'`: the original order's `transfer` refund it is paid from (equal in amount and currency, checked at commit). */
     transferRefundId: uuid("transfer_refund_id"),
+    /**
+     * What a Stripe payment was (wave 4 unit A, D288), read once from its charge after capture (`src/server/payment-facts.ts`) and kept as Stripe gave
+     * it: the method (`payment_method_details.type`), the card's wallet and brand, the risk outcome and the charge's id. All null until read, and for any
+     * other provider; `facts_read_at` says the read was made (a value Stripe did not give stays null and is *Unknown*).
+     */
+    methodType: text("method_type"),
+    wallet: text("wallet"),
+    cardBrand: text("card_brand"),
+    riskLevel: text("risk_level"),
+    riskScore: smallint("risk_score"),
+    chargeReference: text("charge_reference"),
+    factsReadAt: timestamp("facts_read_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -4149,6 +4162,18 @@ export const payments = commerce.table(
     check("payments_manual_recorded", sql`${t.provider} <> 'manual' or ${t.recordedBy} is not null`),
     /** A payment taken outside Kaizen is real money whatever mode Stripe is in (`payments_venue_mode` only marks venue payments). */
     check("payments_manual_real", sql`${t.provider} <> 'manual' or not ${t.testMode}`),
+    check("payments_risk_level", sql`${t.riskLevel} is null or ${t.riskLevel} in (${sqlList(RISK_LEVELS)})`),
+    check("payments_risk_score", sql`${t.riskScore} is null or ${t.riskScore} between 0 and 100`),
+    check(
+      "payments_facts_stripe",
+      sql`${t.provider} = 'stripe' or (${t.methodType} is null and ${t.wallet} is null and ${t.cardBrand} is null and ${t.riskLevel} is null and ${t.chargeReference} is null)`,
+    ),
+    index("payments_charge_idx")
+      .on(t.storeId, t.chargeReference)
+      .where(sql`${t.chargeReference} is not null`),
+    index("payments_facts_due_idx")
+      .on(t.createdAt)
+      .where(sql`${t.provider} = 'stripe' and ${t.status} = 'captured' and ${t.factsReadAt} is null`),
     unique("payments_provider_reference_key").on(t.storeId, t.provider, t.providerReference),
     orderRef("payments_order_fk", t),
     index("payments_order_idx").on(t.storeId, t.orderId),
@@ -4217,6 +4242,65 @@ export const refunds = commerce.table(
     }),
     index("refunds_payment_idx").on(t.storeId, t.paymentId),
     check("refunds_amount_positive", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+/**
+ * A dispute (chargeback or inquiry) on a payment (wave 4 unit A, D288, `docs/wave-4-payments.md` 3), as the provider reports it: written only by
+ * `src/server/payment-disputes.ts` from the connected account's `charge.dispute.*` events and its re-reads, one row per dispute. Amounts are in the
+ * dispute's own currency (the payment's); `funds_withdrawn_minor` and `fee_minor` are what the provider's balance transactions say in that currency,
+ * null when they are in another or not known. A lost dispute is money out in the finance analytics in the period it closed, never a refund.
+ */
+export const paymentDisputes = commerce.table(
+  "payment_disputes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    paymentId: uuid("payment_id").notNull(),
+    provider: text("provider").notNull(),
+    /** The provider's id (`dp_…`). */
+    providerReference: text("provider_reference").notNull(),
+    chargeReference: text("charge_reference"),
+    amountMinor: money("amount_minor"),
+    currency: char("currency", { length: 3 }).notNull(),
+    reason: text("reason"),
+    status: text("status").notNull(),
+    evidenceDueBy: timestamp("evidence_due_by", { withTimezone: true }),
+    /** `won` or `lost` once closed (an inquiry closed or a prevented dispute is `won`: it took nothing). */
+    outcome: text("outcome"),
+    fundsWithdrawnMinor: bigint("funds_withdrawn_minor", { mode: "number" }),
+    feeMinor: bigint("fee_minor", { mode: "number" }),
+    /** Whether the dispute was made in the provider's test mode. */
+    testMode: boolean("test_mode").notNull().default(false),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** When staff were emailed that its deadline is near (once). */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique("payment_disputes_store_id_key").on(t.storeId, t.id),
+    unique("payment_disputes_reference_key").on(t.storeId, t.provider, t.providerReference),
+    orderRef("payment_disputes_order_fk", t),
+    foreignKey({
+      name: "payment_disputes_payment_fk",
+      columns: [t.storeId, t.paymentId],
+      foreignColumns: [payments.storeId, payments.id],
+    }),
+    index("payment_disputes_order_idx").on(t.storeId, t.orderId),
+    index("payment_disputes_payment_idx").on(t.storeId, t.paymentId),
+    index("payment_disputes_due_idx")
+      .on(t.evidenceDueBy)
+      .where(sql`${t.closedAt} is null and ${t.remindedAt} is null`),
+    check("payment_disputes_provider", sql`${t.provider} in ('stripe')`),
+    check("payment_disputes_amount", sql`${t.amountMinor} > 0`),
+    check("payment_disputes_status", sql`${t.status} in (${sqlList(DISPUTE_STATUSES)})`),
+    check("payment_disputes_outcome", sql`${t.outcome} is null or ${t.outcome} in ('won', 'lost')`),
+    check("payment_disputes_closed", sql`(${t.closedAt} is null) = (${t.outcome} is null)`),
+    check("payment_disputes_money", sql`(${t.fundsWithdrawnMinor} is null or ${t.fundsWithdrawnMinor} >= 0) and (${t.feeMinor} is null or ${t.feeMinor} >= 0)`),
+    check("payment_disputes_reason", sql`${t.reason} is null or char_length(${t.reason}) <= 80`),
   ],
 );
 

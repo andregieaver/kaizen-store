@@ -87,6 +87,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "gift_to", "gift_from", "gift_message", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode", "delivery_note", "held_reason"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once. The note for the driver of a local delivery (D237) is the buyer's own words: exported, and cleared when the order is anonymised. A hold's reason (D238) typed by a person is staff's own text (it can hold a name): exported with the order and replaced by a marker when it is anonymised; a rule's reason is the owner's words about the rule.", { also: ["addresses", "consents"], until: "bookkeeping" }),
   entry("order_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", KEEP_ORDER),
   entry("payments", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A payment's amount and status; no personal field (the card is held by Stripe, not by the store). " + KEEP_ORDER),
+  entry("payment_disputes", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A dispute on a payment as Stripe reported it (D288): amount, Stripe's reason code, status and dates; no personal field. " + KEEP_ORDER),
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url", "undo_reason"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it. The reason staff gave for undoing a parcel (D174 follow-up) is their own text (it can hold a name): exported with the parcel and replaced by a marker when the order is anonymised."),
   entry("shipment_tracking", "shopper", via("order", "order_id"), ["events"], "orders", "anonymise", "A parcel's carrier events (D238): times, codes and the carrier's own descriptions and places, which can name who signed for it. Exported with the parcel, cleared when the order is anonymised (commerce.anonymise_order(), an update) and 90 days after the parcel stopped being followed."),
@@ -380,6 +381,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "notification.test": "staff",
   "staff.new_order": "staff",
   "staff.return_requested": "staff",
+  /** A dispute opened, and its deadline near (D288): the order's number, the amount and Stripe's reason, never who the customer is. */
+  "staff.dispute": "staff",
+  "staff.dispute_due": "staff",
   "staff.summary": "staff",
   "staff.test": "staff",
   "automation.notify": "staff",

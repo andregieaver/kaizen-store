@@ -3,6 +3,7 @@ import "server-only";
 import { ANALYTICS_TABLES, lastDayOf, OWNER_ONLY_TABLES, tableFileName, tableFileRows, type AnalyticsTable, type ExportPeriod, type TableData } from "@/lib/analytics-export";
 import { COHORT_OFFSETS } from "@/lib/analytics-customers";
 import { financeStatement } from "@/lib/analytics-finance";
+import { paymentMethodsReport } from "./analytics-payments-data";
 import { bandHours } from "@/lib/analytics-heatmap";
 import { addDays, bucketFor, todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { UNKNOWN_CHANNEL, channelLabel } from "@/lib/analytics-traffic";
@@ -11,7 +12,7 @@ import { mainCurrency } from "@/lib/markets";
 import { featureOn } from "@/lib/store-features";
 
 import { codeKindText, trendMonths } from "@/components/admin/analytics/discounts-view";
-import { WHERE_IT_WENT, lineOf, plainLabel } from "@/components/admin/analytics/finance-view";
+import { WHERE_IT_WENT, lineOf, plainLabel, shownWhere } from "@/components/admin/analytics/finance-view";
 import { STATUS_LABEL, parseInventoryParams, sortVariants } from "@/components/admin/analytics/inventory-view";
 import { contributionProfit } from "@/components/admin/analytics/marketing-view";
 import { factorRows } from "@/components/admin/analytics/overview-text";
@@ -159,9 +160,16 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
       leftOut: left(current),
     };
   },
+  "finance.payment_methods": async (x) => {
+    const r = await paymentMethodsReport(x.ctx.store, x.period, x.ctx.settings);
+    return {
+      rows: r.lines.map((l) => ({ method: l.label, payments: l.payments, received: l.receivedMinor, share: l.share, refunded: l.refundedMinor, fees: l.feesMinor })),
+      leftOut: { orders: r.unconverted, currencies: r.missingCurrencies },
+    };
+  },
   "finance.where_it_went": async (x) => {
     const current = await x.once("fin:now", () => financeOf(x, x.period));
-    return { rows: bars(WHERE_IT_WENT.map(([key, label]) => ({ label, value: lineOf(current.statement, key)?.amountMinor ?? null }))), leftOut: left(current) };
+    return { rows: bars(WHERE_IT_WENT.filter(([key]) => shownWhere(current.statement, key)).map(([key, label]) => ({ label, value: lineOf(current.statement, key)?.amountMinor ?? null }))), leftOut: left(current) };
   },
   "finance.revenue_profit": async (x) => {
     const bucket = bucketFor(x.period);

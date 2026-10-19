@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
@@ -14,6 +15,8 @@ import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { completeEditPayment, markEditSessionEnded } from "./order-edits";
 import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
+import { applyStripeDispute, isDisputeEvent } from "./payment-disputes";
+import { readPaymentFacts } from "./payment-facts";
 import { applyStripeRefund, isRefundEvent, stripeForAccount } from "./stripe-refunds";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
@@ -48,7 +51,9 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
     event.type === "invoice.paid" ||
     event.type.startsWith("customer.subscription.") ||
     // Refunds (D159): a pending one completing, one made in Stripe's Dashboard.
-    isRefundEvent(event.type);
+    isRefundEvent(event.type) ||
+    // Disputes (D288).
+    isDisputeEvent(event.type);
   if (!handled) return;
   if (!(await recordEvent(storeId, event))) return;
   try {
@@ -61,6 +66,8 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
       const refund = event.data.object as Stripe.Refund;
       // The credit note is the database's (a trigger at commit); this brings the refund row up to date, or records the refund.
       await applyStripeRefund(storeId, refund, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
+    } else if (isDisputeEvent(event.type)) {
+      await applyStripeDispute(storeId, event.data.object as Stripe.Dispute, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
     } else {
       await applySession(storeId, event.data.object as Stripe.Checkout.Session, event.type);
     }
@@ -118,6 +125,12 @@ export async function applySession(
   if (session.status === "complete" && session.payment_status !== "unpaid" && !failed) {
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
+    // What the payment was (D288): its method, wallet and Stripe's risk outcome, read once after the reply; the five-minute job reads any it missed.
+    try {
+      after(() => readPaymentFacts(storeId, session.id));
+    } catch {
+      // Not in a request (scripts, tests): the five-minute job reads it.
+    }
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
     if (delivery) await adoptDeliveryCard(storeId, orderId, session);
     // A host's booking (D71): the store's commission is owed to it now.

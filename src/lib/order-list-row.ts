@@ -25,6 +25,9 @@ export type OrderListItem = {
   archived: boolean;
   /** On a fulfilment hold (D238, `orders.held_at`): still listed in *To send*, with its chip. */
   held?: boolean;
+  /** D288: Stripe judged a captured payment `elevated` or `highest` risk (null: neither), and a dispute is open or was lost. */
+  risk?: "elevated" | "highest" | null;
+  disputed?: boolean;
   /** `draft` for a staff-made order (D173), with its draft's number (`D-12`) while the draft still exists. */
   source: "checkout" | "draft" | "exchange";
   draftNumber: string | null;

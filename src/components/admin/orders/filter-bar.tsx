@@ -33,6 +33,8 @@ const PAY_LABELS: Record<(typeof PAY_FILTERS)[number], string> = {
   refunded: "Refunded",
   balance_due: "Balance due at the venue",
   unpaid: "Unpaid (unfinished checkouts)",
+  disputed: "Disputed",
+  elevated_risk: "Elevated risk (Stripe)",
 };
 const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
   to_send: "To send",

@@ -71,6 +71,18 @@ const idOf = (value: string | { id: string } | null | undefined): string | null 
 async function paymentFor(storeId: string, refund: Stripe.Refund, deps: RefundDeps): Promise<{ id: string; orderId: string; currency: string } | null> {
   const intent = idOf(refund.payment_intent);
   if (!intent) return null;
+  return paymentOfIntent(storeId, intent, deps);
+}
+
+/**
+ * The store's payment behind a PaymentIntent (D159, also D288's disputes): a charge made on its own is kept by its PaymentIntent, a Checkout payment by
+ * its session and a subscription's renewal by its invoice, each found by asking Stripe through the event's account. Null: not this store's.
+ */
+export async function paymentOfIntent(
+  storeId: string,
+  intent: string,
+  deps: Pick<RefundDeps, "stripe" | "account">,
+): Promise<{ id: string; orderId: string; currency: string } | null> {
   const lookup = async (reference: string) => {
     const [p] = await db().execute<Row>(sql`
       select id, order_id, currency from commerce.payments

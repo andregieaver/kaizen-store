@@ -48,13 +48,14 @@ into E1 (the adapter, with Stripe behind it and nothing else changing) and E2 (M
 connected account) and keeps on the `payments` row: `method_type` (Stripe's `payment_method_details.type`: `card`, `klarna`, `mobilepay`, `link`,
 `ideal`, …), `wallet` (`apple_pay`, `google_pay`, … from the card's wallet), `card_brand`, `risk_level` (`normal`, `elevated`, `highest`,
 `not_assessed`, `unknown`) and `risk_score`, as Stripe gave them, with `charge_reference` (`ch_…`). The read is made in `after()` the payment, and
-a job fills any captured Stripe payment still without facts (at most a few a run, oldest first, a day back). A payment Kaizena Flow cannot read keeps
+a job fills any captured Stripe payment still without facts (at most a few a run, newest first, a day back). A payment Kaizena Flow cannot read keeps
 nulls and is *Unknown*. Manual, venue and exchange payments keep their own `method` (cash, bank transfer) and are *Recorded by staff*.
 
-**The payments report** (`/admin/{store}/analytics/payments`, section Analytics, `analytics:read`): per method for a period, the orders paid, the
-money received (with VAT, in the main currency, said so), Stripe's fees where known (unit C) else the estimate (said so), and refunds; the rows add
-up to the paid orders' money received in the same period, and an *Unknown* row holds payments without facts. CSV like every analytics table
-(`ANALYTICS_TABLES`).
+**The payments report** (built as a section of the Finance page, `/admin/{store}/analytics/finance`, *Payments by method*, `analytics:read`: one
+place for money, no page of its own): per method for a period, the payments, the money received (with VAT, in the main currency, said so), Stripe's
+fees where known (unit C) else the estimate (said so), and refunds; the rows add up to the paid orders' money received in the same period, and an
+*Unknown* row holds payments without facts. CSV like every analytics table (`ANALYTICS_TABLES`, `finance.payment_methods`). Definition in
+`docs/analytics.md`.
 
 **Risk.** The order page and the list show Stripe's risk outcome for an elevated or highest one (a chip, *Stripe: elevated risk*), nothing when
 normal or not assessed. The list filters by risk (`risk=elevated` meaning elevated or highest, through `orderListWhere()`), and an order rule may
@@ -68,8 +69,10 @@ payment intent; a dispute on a payment Kaizena Flow does not know is ignored and
 
 - The order page shows the dispute (amount, reason in words, status, evidence deadline in the store's time zone, a link to the dispute in the store's
   Stripe Dashboard where evidence is submitted); the list filters *Disputed*.
-- Staff are emailed once when a dispute opens and once three days before the deadline (`order.disputed`, `order.dispute_due` as store events through
-  `alertRecipients()`, no shopper's name or address in them, amounts in the order's currency).
+- Staff are emailed once when a dispute opens and once three days before the deadline (built as the staff alert event `dispute`, emails
+  `staff.dispute` and `staff.dispute_due` through `alertRecipients()`, each once per recipient by its key; sent from the webhook and the five-minute
+  job rather than through `store_events`, whose queue is for paid orders and returns; owners get it by default and stores that saved their alert
+  choices give it to each owner on the list; no shopper's name or address in them, amounts in the order's currency).
 - A lost dispute is money out: the finance analytics subtract it (and its fee where known) once, in the period it closed, as *Lost disputes*, never
   as a refund (no credit note, no restock). A won one clears the flag. A dispute on a copied or host order is shown but never counted.
 - Refunds made in Stripe's Dashboard are already recorded (D159, `applyStripeRefund()`), which this unit's dispute criterion names; nothing new.

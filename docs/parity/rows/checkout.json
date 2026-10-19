@@ -620,14 +620,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Stripe Radar runs on the store's own Stripe account (direct charges), so card fraud screening exists, and live owners see it in their Stripe Dashboard. Kaizen records no risk outcome: nothing is shown on orders, there is no review queue, rule or hold. The first report's url pointed at a page that is not about fraud.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A paid order shows Stripe's risk outcome (normal, elevated, highest) read from the charge, in the order list and on the order page.",
       "Staff filter orders by risk and can hold fulfilment on an elevated one.",
@@ -637,13 +637,32 @@
     "evidence": {
       "files": [
         "src/server/checkout.ts",
-        "src/server/stripe-webhooks.ts"
+        "src/server/stripe-webhooks.ts",
+        "src/lib/payment-facts.ts",
+        "src/components/admin/orders/payment-card.tsx",
+        "src/server/order-list-sql.ts",
+        "src/lib/order-rules.ts",
+        "src/server/order-rules.ts"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/payment-disputes.int.test.ts",
+        "src/lib/order-rules.test.ts",
+        "src/components/admin/orders/payment-card.test.ts",
+        "e2e/signed-in/payment-facts.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D288"
+    ],
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 4 unit A (D288): Stripe's risk outcome (level and score) is read from the charge and kept on the payment; the order page's Payment card shows Stripe: elevated or highest risk with the score, the list shows a risk badge and filters by it (pay=elevated_risk), and an automation rule can hold an order by Stripe's risk (condition risk, never met while the charge is unread). Nothing is shown for normal or not assessed and nothing is invented. A disputed order carries its Disputed badge beside the risk; a refunded one its payment state. Held by payment-disputes.int.test.ts, order-rules.test.ts, payment-card.test.ts and the signed-in browser test. Radar's own review queue stays in the store's Stripe Dashboard."
+      }
+    ]
   },
   {
     "id": "checkout.chargeback-and-dispute-handling",
@@ -657,14 +676,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "`handleStripeEvent()` handles only `checkout.session.*`, `invoice.paid` and `customer.subscription.*`: no `charge.dispute.*` or refund events, so disputes live only in Stripe and Kaizen's orders and analytics never see them.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A dispute opened in Stripe appears on the order with its amount, reason and the evidence deadline.",
       "Staff are emailed once when a dispute opens and again before the deadline.",
@@ -674,15 +693,35 @@
     "evidence": {
       "files": [
         "src/server/stripe-webhooks.ts",
-        "src/app/api/stripe/connect/[mode]/route.ts"
+        "src/app/api/stripe/connect/[mode]/route.ts",
+        "src/server/payment-disputes.ts",
+        "src/server/stripe.ts",
+        "src/server/staff-alerts.ts",
+        "src/server/analytics-totals.ts",
+        "src/lib/analytics-finance.ts",
+        "supabase/migrations/20261019172135_payment_facts_rules.sql"
       ],
       "tests": [
-        "src/server/checkout.int.test.ts"
+        "src/server/checkout.int.test.ts",
+        "src/server/payment-disputes.int.test.ts",
+        "src/db/payment-facts.test.ts",
+        "src/lib/payment-facts.test.ts",
+        "src/server/invoice-refunds.int.test.ts",
+        "e2e/signed-in/payment-facts.spec.ts"
       ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D288"
+    ],
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 4 unit A (D288): the connected account's charge.dispute.* events are kept as commerce.payment_disputes (one row per dispute, identity fixed, a closed dispute kept as it closed, never deleted); the order page shows the amount, reason, status and evidence deadline in the store's time zone with a link to the dispute in the store's Stripe Dashboard, where evidence is sent; the order's history says when it opened and closed; staff are emailed once when it opens and once three days before the deadline (staff alert dispute); a lost dispute is money out in the Finance bridge, once, in the period it closed, without VAT plus the fee where known, never a refund or credit note; a won one clears the Disputed mark. A refund made in Stripe's Dashboard was already recorded through the same webhook (D159, invoice-refunds.int.test.ts). Held by payment-disputes.int.test.ts (replayed events, a lost dispute, a reminder once, an unknown payment, euro), src/db/payment-facts.test.ts and the signed-in browser test."
+      }
+    ]
   },
   {
     "id": "checkout.multi-currency-pricing-and-checkout",

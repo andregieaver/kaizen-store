@@ -66,10 +66,21 @@ describe("conditions (4.9)", () => {
       [{ kind: "has_tag", tagKey: "vip", label: "VIP" }, true],
       [{ kind: "has_tag", tagKey: "big", label: "Big" }, false],
       [{ kind: "seller_is", seller: "host" }, false],
+      [{ kind: "risk", level: "elevated" }, false],
     ];
     for (const [c, met] of cases) expect([c.kind, conditionMet(c, facts).met]).toEqual([c.kind, met]);
     const covered = new Set([...cases.map(([c]) => c.kind), "total_at_least", "total_below", "first_order"]);
     expect([...covered].sort()).toEqual([...CONDITION_KINDS].sort());
+  });
+
+  it("reads Stripe's risk (D288): at least the level, and never met while it was not read", () => {
+    const at = (risk: RuleFacts["risk"]) => ({ ...facts, risk });
+    expect(conditionMet({ kind: "risk", level: "elevated" }, at("elevated")).met).toBe(true);
+    expect(conditionMet({ kind: "risk", level: "elevated" }, at("highest")).met).toBe(true);
+    expect(conditionMet({ kind: "risk", level: "highest" }, at("elevated")).met).toBe(false);
+    expect(conditionMet({ kind: "risk", level: "elevated" }, at("normal")).met).toBe(false);
+    expect(conditionMet({ kind: "risk", level: "elevated" }, at("none")).met).toBe(false);
+    expect(conditionMet({ kind: "risk", level: "elevated" }, at(null))).toEqual({ kind: "risk", met: false, why: "unread" });
   });
 
   it("matches all or any, and always without a condition", () => {

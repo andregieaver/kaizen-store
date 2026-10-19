@@ -4,11 +4,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { FinanceView, type FinancePeriodData } from "@/components/admin/analytics/finance-view";
+import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { queryText } from "@/lib/analytics-export";
 import { financeStatement } from "@/lib/analytics-finance";
 import { bucketFor, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext, type AnalyticsContext } from "@/server/analytics-context";
+import { paymentMethodsReport } from "@/server/analytics-payments-data";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { periodTotals, seriesByBucket } from "@/server/analytics-totals";
 
@@ -35,13 +37,15 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
 
-  const [current, comparison, series, comparisonSeries, setup] = await Promise.all([
+  const [current, comparison, series, comparisonSeries, setup, payments] = await Promise.all([
     periodData(ctx, period),
     against ? periodData(ctx, against) : Promise.resolve(null),
     seriesByBucket(store, period, bucket, settings),
     against ? seriesByBucket(store, against, bucket, settings) : Promise.resolve(null),
     // How many products lack a cost is a nicety: the page is right without it.
     analyticsSetupSummary(store.id).catch(() => null),
+    // What the paid orders were paid with (D288).
+    paymentMethodsReport(store, period, settings),
   ]);
 
   return (
@@ -65,6 +69,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           comparisonSeries={comparisonSeries}
           setup={setup}
         />
+        <PaymentsView currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} report={payments} />
       </div>
     </ExportScope>
   );

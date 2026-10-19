@@ -40,6 +40,7 @@ export const ruleConditionInput: z.ZodType<RuleCondition, unknown> = z.union([
     .object({ kind: z.literal("has_tag"), tag: tagText })
     .transform(({ tag }) => ({ kind: "has_tag" as const, tagKey: tag.key, label: tag.label })),
   z.object({ kind: z.literal("seller_is"), seller: z.enum(["store", "host"]) }),
+  z.object({ kind: z.literal("risk"), level: z.enum(["elevated", "highest"]) }),
 ]);
 
 const text = (max: number, empty: string) =>

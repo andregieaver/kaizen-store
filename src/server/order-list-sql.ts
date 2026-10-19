@@ -91,6 +91,11 @@ function payCondition(filter: OrderListParams["pay"][number]): SQL {
       return sql`(o.balance_minor > 0 and o.status in ('paid', 'fulfilled'))`;
     case "unpaid":
       return UNFINISHED;
+    // D288: a dispute still open, or lost; a dispute closed in the store's favour no longer marks the order.
+    case "disputed":
+      return sql`exists (select 1 from commerce.payment_disputes d where d.store_id = o.store_id and d.order_id = o.id and (d.outcome is null or d.outcome = 'lost'))`;
+    case "elevated_risk":
+      return sql`exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured' and p.risk_level in ('elevated', 'highest'))`;
   }
 }
 
