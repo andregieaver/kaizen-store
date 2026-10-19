@@ -66,6 +66,7 @@ import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
+import { PictureMakerProvider } from "./picture-maker";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
@@ -414,6 +415,8 @@ export function PageEditor({
     // Every colour field offers the theme's colours (D180).
     <ColourSwatches value={context.colours}>
     <MediaPickerProvider list={context.media}>
+    {/* Every picture field can make its picture by prompt in the site's look (D283) where the site's AI has a picture model. */}
+    <PictureMakerProvider maker={context.pictures}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
     <ColourLibraryProvider
       initial={context.theme?.settings?.library}
@@ -928,6 +931,7 @@ export function PageEditor({
       </div>
     </div>
     </ColourLibraryProvider>
+    </PictureMakerProvider>
     </MediaPickerProvider>
     </ColourSwatches>
   );

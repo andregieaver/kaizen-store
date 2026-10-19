@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { findClaims } from "./claims";
-import { CONTENT_PACKS, NO_TEXT, PACK_KEYS, PEOPLE_RULES, PICTURE_RULES, REAL_PHOTO, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, picturesMissing, slotMissing } from "./content-packs";
+import {
+  CONTENT_PACKS,
+  NO_TEXT,
+  PACK_KEYS,
+  PEOPLE_RULES,
+  PICTURE_RULES,
+  REAL_PHOTO,
+  contentPack,
+  packPhotoPrompt,
+  packPicturePrompt,
+  packPrice,
+  packSlots,
+  packSlug,
+  picturesMissing,
+  slotBrief,
+  slotLabel,
+  slotMissing,
+  slotShape,
+} from "./content-packs";
 
 /** Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): demo stores per trade, as data. */
 
@@ -52,12 +70,27 @@ describe("the content packs", () => {
     }
   });
 
-  it("brief every picture in the pack's look, with no words, logos or faces", () => {
+  it("brief every picture in the pack's look, with no words, logos or people", () => {
     const pack = CONTENT_PACKS[0];
     const prompt = packPicturePrompt(pack, pack.heroPicture);
     expect(prompt).toContain(pack.heroPicture);
     expect(prompt).toContain(pack.look);
     expect(prompt).toContain(PICTURE_RULES);
+    // A look that describes people never brings them into a product's picture (D283): a rule against faces alone had a head cropped off.
+    expect(PICTURE_RULES).toMatch(/No people, faces, bodies or hands/);
+    expect(PICTURE_RULES).not.toMatch(/recognisable/);
+  });
+
+  it("name, brief and shape every slot for making it again (D283)", () => {
+    for (const pack of CONTENT_PACKS) {
+      for (const slot of packSlots(pack)) {
+        const product = pack.products.find((p) => `product:${p.handle}` === slot);
+        expect(slotLabel(pack, slot), `${pack.key} ${slot}`).not.toBe(slot);
+        expect(slotBrief(pack, slot)).toBe(pack.photos?.[slot]?.brief ?? (slot === "hero" ? pack.heroPicture : slot === "story" ? pack.storyPicture : product!.picture));
+        expect(slotShape(pack, slot)).toBe(pack.photos?.[slot]?.shape ?? (product ? "square" : "landscape"));
+        if (product) expect(slotLabel(pack, slot)).toBe(product.title);
+      }
+    }
   });
 
   it("photograph a signature theme's demo store from a brief for every picture its pages and products read (D270)", () => {
@@ -93,8 +126,12 @@ describe("the content packs", () => {
       expect(brief).toMatch(/face/);
       expect(brief).not.toMatch(/turned away|in shadow|not seen|from behind|silhouette/);
     }
-    // The products and the gear picture show no one.
-    for (const [slot, photo] of Object.entries(pack.photos ?? {})) if (slot.startsWith("product:") || slot === "tile:gear") expect(photo.people, slot).toBeFalsy();
+    // The products and the gear picture show no one, and their prompts say so in so many words (D283).
+    for (const [slot, photo] of Object.entries(pack.photos ?? {})) {
+      if (!slot.startsWith("product:") && slot !== "tile:gear") continue;
+      expect(photo.people, slot).toBeFalsy();
+      expect(packPhotoPrompt(pack, photo), slot).toContain("No people");
+    }
     expect(packPhotoPrompt(pack, pack.photos!.hero)).not.toContain("No recognisable faces");
   });
 

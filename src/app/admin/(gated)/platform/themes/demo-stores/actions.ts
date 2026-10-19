@@ -8,7 +8,15 @@ import type { FormState } from "@/components/admin/action-form";
 import type { PackPictureResult } from "@/components/admin/pack-pictures";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { requirePlatformAdmin } from "@/server/auth";
-import { askForPackPictures, refreshPackStores, runPackPictures, stopPackPictures, syncContentPacks } from "@/server/content-packs";
+import {
+  askForPackPictures,
+  askToRemakePackPicture,
+  putBackPackPicture,
+  refreshPackStores,
+  runPackPictures,
+  stopPackPictures,
+  syncContentPacks,
+} from "@/server/content-packs";
 import { DESIGNS_TAG } from "@/server/design-presets";
 import { STARTERS_TAG, archiveStarter, deleteStarter, joinStarter, publishStarter, restoreStarter, setStarterFeatures, unpublishStarter } from "@/server/store-starters";
 
@@ -131,6 +139,32 @@ export async function askPackPicturesAction(keys: string[]): Promise<PackPicture
     const result = await runPackPictures(Date.now() + 120_000);
     refreshPackStores(result.stores);
   });
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * *Make again* (D283): one of a pack's pictures made again by the job, from the brief as the person left it, starting at once as *Make the
+ * pictures* does. The picture shown stays until the new one is made.
+ */
+export async function remakePackPictureAction(key: string, slot: string, brief: string): Promise<PackPictureResult> {
+  const admin = await requirePlatformAdmin();
+  const asked = await askToRemakePackPicture(admin, String(key), String(slot), typeof brief === "string" ? brief : null);
+  if (!asked.ok) return asked;
+  after(async () => {
+    const result = await runPackPictures(Date.now() + 120_000);
+    refreshPackStores(result.stores);
+  });
+  refresh();
+  return { ok: true };
+}
+
+/** *Put back the one before* (D283): the picture a remake replaced is used again, everywhere it was. */
+export async function putBackPackPictureAction(key: string, slot: string): Promise<PackPictureResult> {
+  const admin = await requirePlatformAdmin();
+  const result = await putBackPackPicture(admin, String(key), String(slot));
+  if (!result.ok) return result;
+  refreshPackStores([result.store]);
   refresh();
   return { ok: true };
 }

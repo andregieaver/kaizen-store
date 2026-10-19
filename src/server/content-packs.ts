@@ -8,8 +8,23 @@ import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { packAboutPage, packHomePage, packProductsPage, type PackPicture } from "@/lib/content-pack-pages";
-import { CONTENT_PACKS, contentPack, packPhotoPrompt, packPicturePrompt, packPrice, packSlots, packSlug, slotMissing, type ContentPack, type PackProduct } from "@/lib/content-packs";
+import {
+  CONTENT_PACKS,
+  contentPack,
+  packPhotoPrompt,
+  packPicturePrompt,
+  packPrice,
+  packSlots,
+  packSlug,
+  slotBrief,
+  slotLabel,
+  slotMissing,
+  slotShape,
+  type ContentPack,
+  type PackProduct,
+} from "@/lib/content-packs";
 import { PACK_DESIGNS } from "@/lib/pack-designs";
+import { SLOT_BRIEF_MAX } from "@/lib/picture-direction";
 import type { MenuEntry } from "@/lib/navigation";
 import { DEFAULT_APPOINTMENT, GENERAL_TAX_CODE, formatPriceInput, type ProductInput } from "@/lib/product-input";
 import { siteUrl } from "@/lib/site";
@@ -19,6 +34,7 @@ import { makePicture } from "./ai-pictures";
 import { activeAccount, audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import type { ApplyDeps } from "./design-presets";
+import { rewriteAddresses } from "./media-compress";
 import { storePicture } from "./media-library";
 import { pagesTag, savePage } from "./pages";
 import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type EditorContext } from "./products";
@@ -62,8 +78,18 @@ const HOURS = {
   exceptions: [],
 };
 
-/** A pack's picture as its template keeps it; `art` is the address of the theme's art it was placed from. */
-type StoredPicture = PackPicture & { thumbnailUrl?: string | null; art?: string };
+/**
+ * A pack's picture as its template keeps it; `art` is the address of the theme's art it was placed from. A picture made again (D283) keeps
+ * the brief it was made from when a person changed the pack's (`brief`), the one it replaced (`previous`, for *Put back the one before*),
+ * and, while it is asked to be made again, `again` with the brief to make it from (null: the pack's, or the one it was last made from).
+ */
+type StoredPicture = PackPicture & {
+  thumbnailUrl?: string | null;
+  art?: string;
+  brief?: string;
+  previous?: StoredPicture;
+  again?: { brief: string | null };
+};
 
 /** How a theme's art file reaches a pack store's media library: stored there (the default), or placed as a test or a developer needs. */
 export type PackDeps = {
@@ -482,19 +508,23 @@ export async function makeNextPackPicture(
   if (row.version === null || row.version < pack.version) return { ok: false, problems: [`Set up ${pack.title} again first: its store has an older version.`] };
   const slots = packSlots(pack);
   const missing = slots.filter((slot) => slotMissing(pack, slot, row.pictures[slot]));
-  if (missing.length === 0) return { ok: true, made: null, remaining: 0, store: { id: row.storeId, slug: row.slug } };
-  const slot = missing[0];
+  // Pictures asked to be made again (D283) come after the missing ones.
+  const again = slots.filter((slot) => !missing.includes(slot) && row.pictures[slot]?.again);
+  const wanted = [...missing, ...again];
+  if (wanted.length === 0) return { ok: true, made: null, remaining: 0, store: { id: row.storeId, slug: row.slug } };
+  const slot = wanted[0];
+  const held = again.includes(slot) ? row.pictures[slot] : undefined;
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(null, { feature: "content_pack", accountId: admin.id });
   if (!connection?.image) {
     return { ok: false, problems: ["Kaizena Flow's AI settings have no picture model. Choose one in the platform's AI settings first."] };
   }
   const product = slot.startsWith("product:") ? pack.products.find((p) => `product:${p.handle}` === slot) : undefined;
-  // A photograph from its brief (D270), else the pack's own picture of the slot.
+  // A photograph from its brief (D270), else the pack's own picture of the slot; made again, from the brief the person gave or kept.
   const photo = pack.photos?.[slot];
-  const subject = slot === "hero" ? pack.heroPicture : slot === "story" ? pack.storyPicture : (product?.picture ?? pack.heroPicture);
-  const shape: ImageShape = photo?.shape ?? (product ? "square" : "landscape");
+  const brief = held ? (held.again?.brief ?? held.brief ?? null) : null;
+  const shape: ImageShape = slotShape(pack, slot);
   const alt = photo?.alt ?? (product ? product.title : slot === "hero" ? `${pack.storeName}: ${pack.headline}` : `${pack.storeName}: ${pack.storyTitle}`);
-  const prompt = photo ? packPhotoPrompt(pack, photo) : packPicturePrompt(pack, subject);
+  const prompt = photo ? packPhotoPrompt(pack, brief ? { ...photo, brief } : photo) : packPicturePrompt(pack, brief ?? slotBrief(pack, slot));
   let made: Awaited<ReturnType<typeof makePicture>>;
   try {
     // A store template's pictures are its showcase: always asked for at the model's best.
@@ -504,6 +534,12 @@ export async function makeNextPackPicture(
   }
   if (!made.ok) return { ok: false, problems: [made.problem] };
   const picture: StoredPicture = { url: made.picture.url, width: made.picture.width, height: made.picture.height, alt, thumbnailUrl: made.picture.thumbnailUrl };
+  if (held) {
+    // Made again: put where the one before is, wherever the store uses it, and keep that one to put back.
+    await swapPackPicture(row, slot, held, { ...picture, ...(brief && { brief }) });
+    await audit(admin.id, row.storeId, "platform.content_pack_picture", { pack: pack.key, slot, again: true }, {});
+    return { ok: true, made: slot, remaining: wanted.length - 1, store: { id: row.storeId, slug: row.slug } };
+  }
   if (product) {
     const store = await getStore(row.slug);
     if (!store) return { ok: false, problems: ["The pack's store could not be read."] };
@@ -516,7 +552,128 @@ export async function makeNextPackPicture(
     update commerce.store_starters set pack_pictures = pack_pictures || ${JSON.stringify({ [slot]: picture })}::jsonb where id = ${row.starterId}::uuid
   `);
   await audit(admin.id, row.storeId, "platform.content_pack_picture", { pack: pack.key, slot }, {});
-  return { ok: true, made: slot, remaining: missing.length - 1, store: { id: row.storeId, slug: row.slug } };
+  return { ok: true, made: slot, remaining: wanted.length - 1, store: { id: row.storeId, slug: row.slug } };
+}
+
+/** What a pack's pictures keep with every `again` mark taken off (D283): stopping, or giving up after failures, ends the remakes asked for. */
+const WITHOUT_AGAIN = sql`(select coalesce(jsonb_object_agg(e.key, e.value - 'again'), '{}'::jsonb) from jsonb_each(pack_pictures) as e)`;
+
+/**
+ * One picture of a pack's store in place of another (D283): every editable place of the store that names the one before (its pages, products,
+ * variants, menus and the rest `rewriteAddresses()` moves) names the new one, each page and product changed is marked changed (so the theme's
+ * content shows changes since it was published), and the slot keeps the new one with the one before. One transaction.
+ */
+async function swapPackPicture(row: PackRow, slot: string, from: StoredPicture, to: StoredPicture): Promise<void> {
+  const pairs: [string, string][] = [[from.url, to.url]];
+  if (from.thumbnailUrl && to.thumbnailUrl) pairs.push([from.thumbnailUrl, to.thumbnailUrl]);
+  // The one before is kept as it was, without its own one before or a wish to make it again.
+  const before: StoredPicture = { ...from };
+  delete before.previous;
+  delete before.again;
+  const kept: StoredPicture = { ...to, previous: before };
+  await db().transaction(async (tx) => {
+    for (const statement of rewriteAddresses(row.storeId, pairs)) await tx.execute(statement);
+    await tx.execute(sql`
+      update commerce.pages set updated_at = now()
+      where store_id = ${row.storeId}::uuid and (position(${to.url} in draft::text) > 0 or position(${to.url} in coalesce(published::text, '')) > 0)
+    `);
+    await tx.execute(sql`
+      update commerce.products p set updated_at = now()
+      where p.store_id = ${row.storeId}::uuid
+        and (exists (select 1 from commerce.product_media m where m.product_id = p.id and m.url = ${to.url})
+          or exists (select 1 from commerce.product_variants v where v.product_id = p.id and v.image_url = ${to.url}))
+    `);
+    await tx.execute(sql`
+      update commerce.store_starters set pack_pictures = pack_pictures || ${JSON.stringify({ [slot]: kept })}::jsonb where id = ${row.starterId}::uuid
+    `);
+  });
+}
+
+/** A pack's picture slot as the theme's Content tab shows it (D283). */
+export type PackSlotView = {
+  slot: string;
+  label: string;
+  /** Its picture now: a made one, or art standing in; null before either. */
+  picture: { url: string; thumbnailUrl: string | null } | null;
+  /** `made` by the picture model (it can be made again), `art` standing in until its photograph is made, `drawn` art meant to stay, `missing`. */
+  state: "made" | "art" | "drawn" | "missing";
+  /** What making it again starts from: the brief it was last made from, else the pack's. */
+  brief: string;
+  /** Asked to be made again, while the job is asked for the pack's pictures. */
+  again: boolean;
+  /** It replaced one that can be put back. */
+  previous: boolean;
+};
+
+/** Each of a pack's picture slots with its picture and what can be done with it, in the slots' order; null for a pack not set up. */
+export async function packSlotViews(key: string): Promise<PackSlotView[] | null> {
+  const pack = contentPack(key);
+  const row = pack ? await packRow(pack.key) : null;
+  if (!pack || !row) return null;
+  return packSlots(pack).map((slot): PackSlotView => {
+    const held = row.pictures[slot];
+    const state = !held ? (pack.art?.[slot] ? "art" : "missing") : held.art ? (pack.photos?.[slot] ? "art" : "drawn") : "made";
+    return {
+      slot,
+      label: slotLabel(pack, slot),
+      picture: held ? { url: held.url, thumbnailUrl: held.thumbnailUrl ?? null } : null,
+      state,
+      brief: held?.brief ?? slotBrief(pack, slot),
+      again: Boolean(held?.again) && row.asked,
+      previous: Boolean(held?.previous),
+    };
+  });
+}
+
+/** A pack, its template's row and one of its slots' made picture, or why not: for making it again or putting back the one before. */
+async function madeSlot(admin: Account, key: string, slot: string): Promise<{ pack: ContentPack; row: PackRow; held: StoredPicture } | { problems: string[] }> {
+  if (!admin.platformAdmin) return { problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  const pack = contentPack(key);
+  const row = pack ? await packRow(pack.key) : null;
+  if (!pack || !row || row.archived) return { problems: ["Set up the content packs first."] };
+  if (row.version === null || row.version < pack.version) return { problems: [`Bring ${pack.title} up to date first: its store has an older version.`] };
+  if (!packSlots(pack).includes(slot)) return { problems: ["That picture is not one of the pack's."] };
+  const held = row.pictures[slot];
+  if (!held || held.art) return { problems: ["This picture has not been made yet: make the pack's pictures first."] };
+  return { pack, row, held };
+}
+
+/**
+ * *Make again* (D283): asks the job to make one of a pack's pictures again, from the pack's brief or one the person changed (`brief`, kept
+ * with the picture made from it), and starts the job for it as *Make the pictures* does. The picture stays as it is until the new one is
+ * made, then the new one takes its place everywhere the store uses it.
+ */
+export async function askToRemakePackPicture(
+  admin: Account,
+  key: string,
+  slot: string,
+  brief: string | null,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const found = await madeSlot(admin, key, slot);
+  if ("problems" in found) return { ok: false, problems: found.problems };
+  const said = brief?.replace(/\s+/g, " ").trim() ?? "";
+  if (said.length > SLOT_BRIEF_MAX) return { ok: false, problems: [`Describe it in at most ${SLOT_BRIEF_MAX} characters.`] };
+  // The pack's own brief is kept as none, so the pack's newer words reach it later.
+  const own = said && said !== slotBrief(found.pack, slot) ? said : null;
+  await db().execute(sql`
+    update commerce.store_starters
+    set pack_pictures = jsonb_set(pack_pictures, ${textArray([slot, "again"])}::text[], ${JSON.stringify({ brief: own })}::jsonb),
+      pictures_wanted_by = ${admin.id}::uuid, pictures_wanted_at = coalesce(pictures_wanted_at, now()), picture_failures = 0, picture_problem = null
+    where id = ${found.row.starterId}::uuid
+  `);
+  return { ok: true };
+}
+
+/** *Put back the one before* (D283): the picture a remake replaced takes its place again everywhere, and the remake is kept to swap back. */
+export async function putBackPackPicture(admin: Account, key: string, slot: string): Promise<{ ok: true; store: { id: string; slug: string } } | { ok: false; problems: string[] }> {
+  const found = await madeSlot(admin, key, slot);
+  if ("problems" in found) return { ok: false, problems: found.problems };
+  const { previous, ...current } = found.held;
+  if (!previous) return { ok: false, problems: ["There is no picture before this one to put back."] };
+  if (found.held.again && found.row.asked) return { ok: false, problems: ["It is being made again. Wait for the new picture, or stop it first."] };
+  await swapPackPicture(found.row, slot, current, previous);
+  await audit(admin.id, found.row.storeId, "platform.content_pack_picture", { pack: found.pack.key, slot, putBack: true }, {});
+  return { ok: true, store: { id: found.row.storeId, slug: found.row.slug } };
 }
 
 /** The pack stores whose pictures changed, refreshed where their pages and products are drawn. */
@@ -560,7 +717,9 @@ export async function askForPackPictures(admin: Account, keys: string[]): Promis
 /** *Stop*: the job makes no more of the pack's pictures; one being made is finished and kept. */
 export async function stopPackPictures(admin: Account, key: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
-  await db().execute(sql`update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null where pack_key = ${key}`);
+  await db().execute(sql`
+    update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null, pack_pictures = ${WITHOUT_AGAIN} where pack_key = ${key}
+  `);
   return { ok: true };
 }
 
@@ -640,7 +799,8 @@ export async function runPackPictures(
           update commerce.store_starters
           set picture_claimed_until = now() + interval '2 minutes', picture_failures = least(picture_failures + 1, 20), picture_problem = ${problem},
             pictures_wanted_by = case when picture_failures + 1 >= ${PICTURE_TRIES} then null else pictures_wanted_by end,
-            pictures_wanted_at = case when picture_failures + 1 >= ${PICTURE_TRIES} then null else pictures_wanted_at end
+            pictures_wanted_at = case when picture_failures + 1 >= ${PICTURE_TRIES} then null else pictures_wanted_at end,
+            pack_pictures = case when picture_failures + 1 >= ${PICTURE_TRIES} then ${WITHOUT_AGAIN} else pack_pictures end
           where id = ${claimed.starterId}::uuid
         `);
       }

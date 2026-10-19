@@ -4441,7 +4441,9 @@ function ImageFields({
         <ImageUploadButton
           upload={upload}
           label={block.image ? "Replace picture" : "Upload picture"}
-          onUploaded={(image) => onChange({ ...block, image: { ...image, alt: block.image?.alt ?? "" } })}
+          current={block.image}
+          // A picture made by prompt (D283) comes described by what it was asked for.
+          onUploaded={(image, made) => onChange({ ...block, image: { ...image, alt: made?.alt ?? block.image?.alt ?? "" } })}
         />
         {block.image && (
           <button type="button" onClick={() => onChange({ ...block, image: null })} className="px-2 py-2 text-sm underline">
@@ -4696,6 +4698,7 @@ function BackgroundFields({
             <ImageUploadButton
               upload={upload}
               label={media?.type === "image" ? "Replace picture" : "Upload picture"}
+              current={media?.type === "image" ? media.image : null}
               onUploaded={(uploaded) => onChange({ type: "image", image: uploaded, ...kept })}
             />
           ) : (

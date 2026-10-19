@@ -1186,7 +1186,12 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
           <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-line object-cover" />
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <ImageUploadButton upload={context.upload} label={block.poster ? "Choose another picture" : "Choose a picture"} onUploaded={(poster) => onChange({ poster })} />
+          <ImageUploadButton
+            upload={context.upload}
+            label={block.poster ? "Choose another picture" : "Choose a picture"}
+            current={block.poster}
+            onUploaded={(poster) => onChange({ poster })}
+          />
           {block.poster && (
             <button type="button" onClick={() => onChange({ poster: null })} className={smallButton}>
               Remove
@@ -1368,7 +1373,12 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
                   // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
                   <img src={item.picture.url} alt="" className="size-12 rounded-full object-cover" />
                 )}
-                <ImageUploadButton upload={context.upload} label={item.picture ? "Choose another" : "Choose a picture"} onUploaded={(picture) => change({ picture })} />
+                <ImageUploadButton
+                  upload={context.upload}
+                  label={item.picture ? "Choose another" : "Choose a picture"}
+                  current={item.picture}
+                  onUploaded={(picture) => change({ picture })}
+                />
                 {item.picture && (
                   <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
                     Remove
@@ -1589,7 +1599,9 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                   <ImageUploadButton
                     upload={context.upload}
                     label={item.picture ? "Choose another" : item.kind === "image" ? "Upload a picture" : "Choose a picture"}
-                    onUploaded={(picture) => change({ picture })}
+                    current={item.picture ? { ...item.picture, alt: item.alt } : null}
+                    // A picture made by prompt (D283) is described by what it was asked for; a video keeps its own title.
+                    onUploaded={(picture, made) => change({ picture, ...(made && item.kind === "image" ? { alt: made.alt } : {}) })}
                   />
                   {item.picture && (
                     <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
@@ -1733,7 +1745,13 @@ function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock
                   // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, shown as it is
                   <img src={item.picture.url} alt="" className="h-12 max-w-32 rounded border border-line bg-card object-contain p-1" />
                 )}
-                <ImageUploadButton upload={context.upload} label={item.picture ? "Choose another" : "Upload a logo"} onUploaded={(picture) => change({ picture })} />
+                <ImageUploadButton
+                  upload={context.upload}
+                  label={item.picture ? "Choose another" : "Upload a logo"}
+                  // A logo is the brand's own: a picture model may not draw one (D283).
+                  make={false}
+                  onUploaded={(picture) => change({ picture })}
+                />
                 {item.picture && (
                   <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
                     Remove

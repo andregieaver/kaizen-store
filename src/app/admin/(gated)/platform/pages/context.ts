@@ -14,6 +14,7 @@ import { siteUrl } from "@/lib/site";
 import { listGridStores } from "@/server/content-grid";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
+import { canMakePictures } from "@/server/picture-maker";
 import { platformMenuPreviews } from "@/server/menus";
 import { getPlatformChrome, getPlatformFonts } from "@/server/platform-navigation";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
@@ -64,6 +65,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     defaultDescription: PLATFORM_DEFAULTS.description,
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,
     media: pickPlatformMediaAction,
+    // Pictures made by prompt in Kaizena Flow's own look (D283), while its AI has a picture model.
+    pictures: (await canMakePictures(null)) ? { endpoint: "/admin/platform/media/make" } : null,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },

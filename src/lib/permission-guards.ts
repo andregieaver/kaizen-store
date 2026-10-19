@@ -31,6 +31,8 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   statusRequest: "src/server/replicate-route.ts",
   tickRequest: "src/server/replicate-route.ts",
   abortRequest: "src/server/replicate-route.ts",
+  /** *Make with AI* in the page builder (D283): `website:write`. */
+  storePictureRequest: "src/server/picture-route.ts",
   /** The page builder's lists and editors, for every kind of page: each calls `requirePageTypeAccess()` with the kind it was given. */
   StorePagesListView: "src/app/admin/(gated)/[store]/pages/views.tsx",
   StorePageTermsView: "src/app/admin/(gated)/[store]/pages/views.tsx",

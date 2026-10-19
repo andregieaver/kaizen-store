@@ -1,5 +1,6 @@
 import type { PackPicture } from "./content-pack-pages";
 import type { PackDesignKey } from "./pack-designs";
+import { NO_TEXT } from "./picture-direction";
 import { ARCADE_PACK } from "./signature/arcade";
 import { ATELIER_PACK } from "./signature/atelier";
 import { BOTANICA_PACK } from "./signature/botanica";
@@ -89,10 +90,13 @@ export type ContentPack = {
 export type PackPhoto = { brief: string; shape: "landscape" | "portrait" | "square"; alt: string; people?: boolean };
 
 /** Every picture of every pack: no words, letters, numbers, logos or watermarks, so nothing in it can mislead or need a licence. */
-export const NO_TEXT = "No text, letters, numbers, logos, labels or watermarks anywhere in the picture.";
+export { NO_TEXT };
 
-/** Every pack picture that is not a photograph of people: no words, and no faces anyone could recognise. */
-export const PICTURE_RULES = `${NO_TEXT} No recognisable faces.`;
+/**
+ * Every pack picture that is not a photograph of people: no words, and no people at all (D283). A look that describes people (Kinetic's
+ * athletes) otherwise brought them into a product's photograph, where a rule against faces alone had the model crop a runner's head off.
+ */
+export const PICTURE_RULES = `${NO_TEXT} No people, faces, bodies or hands anywhere in the picture.`;
 
 /**
  * A photograph of people (D282): their faces are shown, as a sports or lifestyle photographer would catch them, and are invented models, never
@@ -382,8 +386,11 @@ export const contentPack = (key: string): ContentPack | null => CONTENT_PACKS.fi
 /** The prompt for one of a pack's pictures: what it shows, in the pack's look, by the rules every pack picture keeps. */
 export const packPicturePrompt = (pack: ContentPack, subject: string): string => `${subject}. ${pack.look} ${PICTURE_RULES}`;
 
-/** What every photograph of a pack is, said to the model in so many words. */
-export const REAL_PHOTO = "A real photograph, not a 3D render, illustration, painting or digital art.";
+/**
+ * What every photograph of a pack is, said to the model in so many words: one frame (D283: Kinetic's gear picture, whose shoot direction
+ * holds both outdoor action and studio products, came as two pictures side by side).
+ */
+export const REAL_PHOTO = "A single real photograph in one frame, never a collage or a split picture; not a 3D render, illustration, painting or digital art.";
 
 /** The prompt for one of a pack's photographs: the slot's brief, the shoot's direction (`look`), and its rules (people's faces shown, D282, or none). */
 export const packPhotoPrompt = (pack: ContentPack, photo: PackPhoto): string => `${photo.brief} ${pack.look} ${REAL_PHOTO} ${photo.people ? PEOPLE_RULES : PICTURE_RULES}`;
@@ -403,6 +410,30 @@ export function packSlots(pack: ContentPack): string[] {
   const own = Object.keys(pack.photos ?? {}).filter((slot) => slot !== "hero" && slot !== "story" && !products.includes(slot));
   return ["hero", "story", ...own, ...products];
 }
+
+const productOf = (pack: ContentPack, slot: string) => (slot.startsWith("product:") ? pack.products.find((p) => `product:${p.handle}` === slot) : undefined);
+
+/** What a slot's picture is asked to show (the pack's look and rules come after): its photograph's brief, else what the pack says of it. */
+export function slotBrief(pack: ContentPack, slot: string): string {
+  const photo = pack.photos?.[slot];
+  if (photo) return photo.brief;
+  if (slot === "hero") return pack.heroPicture;
+  if (slot === "story") return pack.storyPicture;
+  return productOf(pack, slot)?.picture ?? pack.heroPicture;
+}
+
+/** A slot in words for the theme's admin (D283): its product's name, the front page's or the story's picture, else its photograph's alt text. */
+export function slotLabel(pack: ContentPack, slot: string): string {
+  const product = productOf(pack, slot);
+  if (product) return product.title;
+  if (slot === "hero") return "The front page's large picture";
+  if (slot === "story") return "The story's picture";
+  return pack.photos?.[slot]?.alt ?? pack.art?.[slot]?.alt ?? slot;
+}
+
+/** A slot's picture's shape: its photograph's, else a product's square and a page's wide one. */
+export const slotShape = (pack: ContentPack, slot: string): "landscape" | "portrait" | "square" =>
+  pack.photos?.[slot]?.shape ?? (productOf(pack, slot) ? "square" : "landscape");
 
 /**
  * Whether a slot still needs its picture made, from what the template keeps for it: a photograph not made yet (art placed there only

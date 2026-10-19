@@ -6,6 +6,7 @@ import { compressPicture, extensionOf } from "@/lib/image-compress";
 import { savingWords } from "@/lib/image-quality";
 
 import { LibraryButton } from "./media-picker";
+import { MakePictureButton, type CurrentPicture } from "./picture-maker";
 
 export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
@@ -37,16 +38,24 @@ export async function uploadPicture(
 
 /**
  * Chooses a picture, shrinks it in the browser (1600 px, with a 480 px
- * thumbnail) and uploads it, as product and page pictures are.
+ * thumbnail) and uploads it, as product and page pictures are. In the page
+ * builder it also makes one by prompt (D283, `PictureMakerProvider`): the
+ * made picture comes with its alt text as the second argument; `current` is
+ * the picture the field has, which making again starts from, and `make`
+ * false leaves it out where a made picture does not belong (a brand's logo).
  */
 export function ImageUploadButton({
   upload,
   label,
   onUploaded,
+  current,
+  make = true,
 }: {
   upload: Upload | null;
   label: string;
-  onUploaded: (image: Uploaded) => void;
+  onUploaded: (image: Uploaded, made?: { alt: string }) => void;
+  current?: CurrentPicture | null;
+  make?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -70,9 +79,19 @@ export function ImageUploadButton({
     }
   };
 
-  // A library to choose from (D88) works without uploads being set up.
-  const library = <LibraryButton onPicked={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />;
-  if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">Uploads are not set up on this server.</p>{library}</div>;
+  // A library to choose from (D88) works without uploads being set up, and so does making a picture (D283).
+  const library = (
+    <>
+      <LibraryButton onPicked={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />
+      {make && (
+        <MakePictureButton
+          current={current}
+          onMade={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height }, { alt: picture.alt })}
+        />
+      )}
+    </>
+  );
+  if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">Uploads are not set up on this server.</p><div className="flex flex-wrap gap-2">{library}</div></div>;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">

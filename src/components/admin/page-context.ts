@@ -28,6 +28,7 @@ import type { TermsResult } from "@/server/taxonomy";
 
 import type { StartFieldFile } from "./field-file-upload";
 import type { Upload } from "./image-upload";
+import type { PictureMaker } from "./picture-maker";
 import type { StartVideo } from "./video-upload";
 
 export type PageSaveState =
@@ -69,6 +70,11 @@ export type PageOwnerContext = {
   media?: PickerList;
   /** Uploads a picture; null where uploads are not set up. */
   upload: Upload | null;
+  /**
+   * Makes a picture by prompt in the site's look for any picture field (D283), where the site's AI has a picture model; absent or null
+   * elsewhere (a theme's workspace, whose pictures are the theme's).
+   */
+  pictures?: PictureMaker | null;
   /** Starts a row's background video upload from the browser; null where uploads are not set up. */
   startVideo: StartVideo | null;
   /** Stores whose products a content grid can show; empty on a store's pages, which show their own. */

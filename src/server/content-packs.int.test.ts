@@ -421,3 +421,131 @@ describe("the picture job (D271)", () => {
     await packs.stopPackPictures(admin, "home");
   });
 });
+
+describe("making a pack's picture again (D283)", () => {
+  const connection = { image: { provider: "openai", apiUrl: "https://example.invalid", apiKey: "x", model: "picture", quality: null } } as never;
+  let made = 0;
+  const prompts: string[] = [];
+  const make = (async (_c: unknown, _o: unknown, request: { prompt: string }) => {
+    made++;
+    prompts.push(request.prompt);
+    return { ok: true, picture: { url: `https://example.invalid/again-${run}-${made}.webp`, thumbnailUrl: `https://example.invalid/again-${run}-${made}-480.webp`, width: 1024, height: 1024 } };
+  }) as never;
+  const soon = () => Date.now() + 60_000;
+  const kept = async (key: string) => (await storeOf(key)).pack_pictures as Record<string, { url: string; brief?: string; again?: unknown; previous?: { url: string } }>;
+
+  it("is for Kaizena Flow's admins only, and only for a picture already made", async () => {
+    const slot = `product:${contentPack("fashion")!.products[0].handle}`;
+    expect(await packs.askToRemakePackPicture(owner, "fashion", slot, null)).toMatchObject({ ok: false });
+    expect(await packs.askToRemakePackPicture(admin, "fashion", "nothing", null)).toMatchObject({ ok: false });
+    // The food pack's pictures were never made (its job failed and was stopped).
+    const refused = await packs.askToRemakePackPicture(admin, "food", "hero", null);
+    expect(!refused.ok && refused.problems[0]).toMatch(/not been made yet/);
+  });
+
+  it("makes a product's picture again from the changed brief, in the pack's look, and puts it wherever the store used the one before", async () => {
+    const pack = contentPack("fashion")!;
+    const slot = `product:${pack.products[0].handle}`;
+    const store = await storeOf("fashion");
+    const before = (await kept("fashion"))[slot].url;
+    const brief = "A folded off-white linen shirt on a pale stone bench, seen from above";
+    expect(await packs.askToRemakePackPicture(admin, "fashion", slot, brief)).toEqual({ ok: true });
+    const asked = (await packs.packSlotViews("fashion"))!.find((view) => view.slot === slot)!;
+    expect(asked).toMatchObject({ state: "made", again: true, previous: false });
+
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 1, failed: 0 });
+    expect(prompts.at(-1)).toContain(brief);
+    expect(prompts.at(-1)).toContain(pack.look);
+    expect(prompts.at(-1)).toContain("No people");
+    const after = (await kept("fashion"))[slot];
+    expect(after).toMatchObject({ url: `https://example.invalid/again-${run}-${made}.webp`, brief, previous: { url: before } });
+    expect(after.again).toBeUndefined();
+    const product = await one(sql`
+      select p.updated_at > now() - interval '1 minute' as touched,
+             (select array_agg(m.url) from commerce.product_media m where m.product_id = p.id) as media,
+             (select array_agg(v.image_url) from commerce.product_variants v where v.product_id = p.id) as variants
+      from commerce.products p where p.store_id = ${String(store.id)}::uuid and p.handle = ${pack.products[0].handle}
+    `);
+    expect(product.touched).toBe(true);
+    expect(product.media).toContain(after.url);
+    expect(product.media).not.toContain(before);
+    expect(new Set(product.variants as string[])).toEqual(new Set([after.url]));
+    expect((await packs.packSlotViews("fashion"))!.find((view) => view.slot === slot)).toMatchObject({ again: false, previous: true, brief });
+    // The wish is forgotten: nothing else is asked for.
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0 });
+  });
+
+  it("makes a page's picture again from the pack's brief, and puts the one before back on the page", async () => {
+    const pack = contentPack("fashion")!;
+    const store = await storeOf("fashion");
+    const before = (await kept("fashion")).hero.url;
+    const page = async () => JSON.stringify((await one(sql`select published from commerce.pages where id = ${String(store.front_page_id)}::uuid`)).published);
+    expect(await page()).toContain(before);
+    // The pack's own words are kept as none, so newer words of the pack reach the picture.
+    expect(await packs.askToRemakePackPicture(admin, "fashion", "hero", pack.heroPicture)).toEqual({ ok: true });
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 1 });
+    expect(prompts.at(-1)).toContain(pack.heroPicture);
+    const remade = (await kept("fashion")).hero;
+    expect(remade.brief).toBeUndefined();
+    expect(await page()).toContain(remade.url);
+    expect(await page()).not.toContain(before);
+
+    expect(await packs.putBackPackPicture(owner, "fashion", "hero")).toMatchObject({ ok: false });
+    expect(await packs.putBackPackPicture(admin, "fashion", "hero")).toMatchObject({ ok: true });
+    expect(await page()).toContain(before);
+    expect(await page()).not.toContain(remade.url);
+    expect((await kept("fashion")).hero).toMatchObject({ url: before, previous: { url: remade.url } });
+  });
+
+  it("is ended by Stop, which leaves the picture as it was", async () => {
+    const before = (await kept("fashion")).story.url;
+    expect(await packs.askToRemakePackPicture(admin, "fashion", "story", null)).toEqual({ ok: true });
+    expect(await packs.stopPackPictures(admin, "fashion")).toEqual({ ok: true });
+    expect((await kept("fashion")).story).toMatchObject({ url: before });
+    expect((await kept("fashion")).story.again).toBeUndefined();
+    expect(await packs.runPackPictures(soon(), { connection, make })).toMatchObject({ made: 0 });
+  });
+});
+
+describe("pictures made in the page builder (D283)", () => {
+  const connection = { image: { provider: "openai", apiUrl: "https://example.invalid", apiKey: "x", model: "picture", quality: null } } as never;
+  const requests: { prompt: string; alt: string; shape: string }[] = [];
+  const make = (async (_c: unknown, _o: unknown, request: { prompt: string; alt: string; shape: string }) => {
+    requests.push(request);
+    return { ok: true, picture: { url: `https://example.invalid/site-${run}.webp`, thumbnailUrl: null, width: 1024, height: 1536 } };
+  }) as never;
+
+  it("follow the theme the store has live: its photography, its colours and what the store is about", async () => {
+    const { makeSitePicture, siteLookOf } = await import("./picture-maker");
+    const { getStore } = await import("./stores");
+    // The astronomy pack's store wears Orbit (dressed above).
+    const store = (await getStore(packSlug("astronomy")))!;
+    const look = await siteLookOf(store);
+    expect(look.look).toBe(contentPack("astronomy")!.look);
+    expect(look.settings).toEqual(store.theme.settings);
+    const brief = "A brass telescope on a wooden tripod on a hilltop at dusk. Seen from the side.";
+    const result = await makeSitePicture({ store, accountId: admin.id }, { brief, shape: "portrait", follow: true }, { connection, make });
+    expect(result).toEqual({ ok: true, picture: { url: `https://example.invalid/site-${run}.webp`, width: 1024, height: 1536, alt: "A brass telescope on a wooden tripod on a hilltop at dusk" } });
+    const request = requests.at(-1)!;
+    expect(request.shape).toBe("portrait");
+    expect(request.prompt.startsWith(brief)).toBe(true);
+    expect(request.prompt).toContain(contentPack("astronomy")!.look);
+    expect(request.prompt).toMatch(/never what is in the picture/);
+    // Orbit is always dark: its dark colours, said as such.
+    expect(request.prompt).toMatch(/dark, low-key mood/);
+  });
+
+  it("are made from the words alone when the look is turned off, and need a picture model and a description", async () => {
+    const { makeSitePicture } = await import("./picture-maker");
+    const { getStore } = await import("./stores");
+    const store = (await getStore(packSlug("astronomy")))!;
+    expect(await makeSitePicture({ store, accountId: admin.id }, { brief: "A red kite in the sky", shape: "landscape", follow: false }, { connection, make })).toMatchObject({ ok: true });
+    expect(requests.at(-1)!.prompt).not.toContain(contentPack("astronomy")!.look);
+    expect(await makeSitePicture({ store, accountId: admin.id }, { brief: "A red kite", shape: "landscape", follow: true }, { connection: null, make })).toMatchObject({
+      ok: false,
+      problem: expect.stringMatching(/no picture model/),
+    });
+    expect(await makeSitePicture({ store, accountId: admin.id }, { brief: "", shape: "landscape", follow: true }, { connection, make })).toMatchObject({ ok: false });
+    expect(await makeSitePicture({ store, accountId: admin.id }, { brief: "A kite", shape: "round", follow: true }, { connection, make })).toMatchObject({ ok: false });
+  });
+});

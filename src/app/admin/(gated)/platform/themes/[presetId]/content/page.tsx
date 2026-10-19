@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { PackPictures, PackPicturesWatch } from "@/components/admin/pack-pictures";
+import { PackPictures, PackPicturesWatch, PackSlotPictures } from "@/components/admin/pack-pictures";
 import { PreviewLink } from "@/components/admin/preview-link";
 import { Card, Chip } from "@/components/admin/ui";
 import { designPreviewPath } from "@/lib/design-presets";
 import { CONTENT_SOURCE_WORDS } from "@/lib/store-starters";
-import { contentPackStates } from "@/server/content-packs";
+import { contentPackStates, packSlotViews } from "@/server/content-packs";
 import { shownDesignDetails } from "@/server/design-presets";
 import { contentSources, themeContentOf } from "@/server/store-starters";
 
 import { giveThemeContentAction, openThemeContentAction, publishThemeContentAction } from "../../actions";
-import { askPackPicturesAction, stopPackPicturesAction } from "../../demo-stores/actions";
+import { askPackPicturesAction, putBackPackPictureAction, remakePackPictureAction, stopPackPicturesAction } from "../../demo-stores/actions";
 import { designPage } from "../data";
 import { DesignShell } from "../shell";
 
@@ -32,6 +32,8 @@ export default async function ThemeContentPage({ params, searchParams }: PagePro
   const title = shownDesignDetails(design).title;
   const pack = content?.pack ? packs.find((one) => one.key === content.pack) : undefined;
   const picturesReady = pack && pack.starterId !== null && pack.current && !pack.archived;
+  // Each of its pictures, to make again one by one (D283), once the pack's store is current.
+  const slots = picturesReady ? await packSlotViews(pack.key) : null;
   const status = !content
     ? null
     : !content.published
@@ -103,6 +105,29 @@ export default async function ThemeContentPage({ params, searchParams }: PagePro
           </p>
         )}
       </Card>
+
+      {pack && slots && (
+        <Card
+          title="Its pictures"
+          description={
+            <>
+              Every picture of {content?.storeName ?? pack.storeName}, made by Kaizena Flow&apos;s picture model in the theme&apos;s photography. Make
+              one again when it did not come out well: the new one takes its place wherever the store uses it, and the one before can be put
+              back. The theme store shows it once the content is published.
+            </>
+          }
+        >
+          <PackSlotPictures
+            title={pack.title}
+            slots={slots}
+            // Said by *Make the pictures* above while some are still to make.
+            problem={pack.pictures >= pack.slots ? pack.problem : null}
+            remake={remakePackPictureAction.bind(null, pack.key)}
+            putBack={putBackPackPictureAction.bind(null, pack.key)}
+            stop={stopPackPicturesAction.bind(null, pack.key)}
+          />
+        </Card>
+      )}
 
       <Card
         title={content ? "Replace its content" : "Give it content"}

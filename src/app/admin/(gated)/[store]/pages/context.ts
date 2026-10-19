@@ -17,6 +17,7 @@ import { themeSetsOf } from "@/lib/page-a11y";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
+import { canMakePictures } from "@/server/picture-maker";
 import { EMPTY_LOOKUPS, needsLookups } from "@/lib/custom-fields";
 import { allActiveFieldGroups, fieldLookups } from "@/server/custom-fields";
 import { storeMenuPreviews } from "@/server/menus";
@@ -88,6 +89,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,
     media: pickMediaAction.bind(null, store.slug),
+    // Pictures made by prompt in the store's look (D283), through its own route, while its AI has a picture model.
+    pictures: (await canMakePictures(store.id)) ? { endpoint: `/admin/${store.slug}/media/make` } : null,
     startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],

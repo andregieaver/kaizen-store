@@ -117,7 +117,8 @@ function ItemFields({
           <ImageUploadButton
             upload={upload}
             label={item.picture ? "Choose another" : "Choose a picture"}
-            onUploaded={(picture) => change({ picture: { ...picture, alt: item.picture?.alt ?? "" } })}
+            current={item.picture}
+            onUploaded={(picture, made) => change({ picture: { ...picture, alt: made?.alt ?? item.picture?.alt ?? "" } })}
           />
           {item.picture && (
             <button type="button" onClick={() => change({ picture: null })} className={smallButton}>

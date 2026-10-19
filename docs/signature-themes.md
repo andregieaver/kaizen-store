@@ -159,4 +159,6 @@ Signature themes reach production as the launch themes and packs do: a platform 
 *Add and update Kaizena Flow's themes* and then *Bring it up to date* (or *Set up the starting content* the first time) on the *Starting
 content* card after a deploy that changes them, then *Make the pictures* on
 each signature pack, or *Make every picture* (D270: its photographs, made by the platform's picture model; D271: by a job, a minute or two
-each, so the page may be closed), looks at them, and publishes the demo stores.
+each, so the page may be closed), looks at them, and publishes the demo stores. A picture that did not come out well is made again
+on its own from the theme's **Content** tab, *Its pictures* (D283): *Make again*, with its brief kept or changed; the new one takes the
+old one's place wherever the store uses it (*Put back the one before* undoes it), and *Publish the content* takes it to the theme store.
