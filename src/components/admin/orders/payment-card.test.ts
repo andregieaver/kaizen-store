@@ -2,6 +2,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { CaptureCard } from "./capture-card";
 import { PaymentCard, type PaymentCardDispute, type PaymentCardPayment } from "./payment-card";
 
 const money = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency}`;
@@ -62,5 +63,31 @@ describe("the order's Payment card (D288)", () => {
 
   it("draws nothing for an order with no payment", () => {
     expect(renderToString(h(PaymentCard, { payments: [], disputes: [], money, due: () => "" }))).toBe("");
+  });
+});
+
+describe("the held card (D289)", () => {
+  const action = async () => ({ ok: true, message: null });
+  const draw = (over: Partial<Parameters<typeof CaptureCard>[0]> = {}) =>
+    renderToString(
+      h(CaptureCard, { heldLabel: "1 000,00 kr", heldTyped: "1000,00", currency: "NOK", deadline: "Mon 26 Oct 2026, 12:00", whenSent: false, hasEmail: true, capture: action, release: action, ...over }),
+    );
+
+  it("says what is held and until when, and offers Capture with the whole amount and Cancel and release", () => {
+    const html = draw();
+    expect(text(html)).toContain("1 000,00 kr is held on the customer's card, not charged. The hold ends Mon 26 Oct 2026, 12:00");
+    expect(text(html)).toContain("Nothing is charged until you capture it.");
+    expect(html).toContain('name="amount"');
+    expect(html).toContain('value="1000,00"');
+    expect(text(html)).toContain("Capture");
+    expect(text(html)).toContain("Cancel and release");
+    expect(html).toContain('name="notify"');
+  });
+
+  it("says that sending captures it, and offers nothing to someone who may not change orders", () => {
+    expect(text(draw({ whenSent: true }))).toContain("Recording the first parcel or handover captures it.");
+    const read = draw({ capture: null, release: null, hasEmail: false });
+    expect(read).not.toContain('name="amount"');
+    expect(text(read)).not.toContain("Cancel and release");
   });
 });

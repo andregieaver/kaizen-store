@@ -43,7 +43,8 @@ export function pickupBlock(order: PickupOrderFacts, action: PickupAction): Pick
   if (order.copied) return "copied";
   if (order.status === "cancelled") return "cancelled";
   if (order.collected || order.status === "fulfilled") return "collected";
-  if (order.status !== "paid") return "unpaid";
+  // A card held to be charged when the order is handed over (D289) may be made ready; collecting it captures the payment first.
+  if (order.status !== "paid" && !(order.status === "authorized" && action === "ready")) return "unpaid";
   if (order.closed) return "closed";
   if (order.waitingForStock) return "waiting_for_stock";
   if (order.editPending) return "edit_pending";

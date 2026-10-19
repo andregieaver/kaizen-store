@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 66.2%** (first report 59.5%), **must-have 77.4%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +5.2 points from the 63 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 66.4%** (first report 59.5%), **must-have 77.4%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +5.5 points from the 64 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (40):
+Rated higher (41):
 
 - Payments reports by method (Analytics): missing to full. Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is U…
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
@@ -24,6 +24,7 @@ Rated higher (40):
 - Bulk product import and export (CSV) (Catalogue): missing to full. Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied).
 - Bulk editing (Catalogue): missing to partial. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Bulk editing (Catalogue): partial to full. Criterion 2 is now driven in a browser: e2e/signed-in/products-grid.spec.ts opens two products in the grid, changes a SKU, a price and a cost, reviews the three changed cells before and after (nothing written until Apply), applies them (th…
+- Authorize then capture (Checkout): missing to full. Wave 4 unit B (D289): an owner chooses when the card is charged (at checkout, when sent, when staff capture); a store that waits opens its checkout sessions with capture_method manual for goods (never subscriptions, bookings, deposits, hos…
 - Fraud analysis and risk flags (Checkout): partial to full. Wave 4 unit A (D288): Stripe's risk outcome (level and score) is read from the charge and kept on the payment; the order page's Payment card shows Stripe: elevated or highest risk with the score, the list shows a risk badge and filters by…
 - Chargeback and dispute handling (Checkout): missing to full. Wave 4 unit A (D288): the connected account's charge.dispute.* events are kept as commerce.payment_disputes (one row per dispute, identity fixed, a closed dispute kept as it closed, never deleted); the order page shows the amount, reason,…
 - OSS and IOSS support (Checkout): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran tax-profile, ioss, vat-engine and vat-money-review tests: the OSS and IOSS registration is stored with format and market rules, and an order of at most 150 EUR from outside the EU is mar…
@@ -93,7 +94,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **66.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **77.4%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 62.4% overall and 77.0% for must-haves. Counting app-only features gives 65.4%; counting Plus-only as well gives 65.1%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%), checkout and payments (53.2%). Of the 221 core features, 90 are full, 96 partial and 35 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **66.4%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **77.4%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 62.9% overall and 77.0% for must-haves. Counting app-only features gives 65.7%; counting Plus-only as well gives 65.3%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on customers, marketing and loyalty (48.5%), platform, extensibility and operations (50.0%), checkout and payments (55.8%). Of the 221 core features, 91 are full, 96 partial and 34 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -103,10 +104,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **66.2%** | 62.4% | 90 / 96 / 35 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **66.4%** | 62.9% | 91 / 96 / 34 |
 | Must-have (core, weight 4 or 5) | 89 | **77.4%** | 77.0% | 50 / 37 / 2 |
-| Core plus app-only features | 246 | 65.4% | 62.2% | 100 / 106 / 40 |
-| Everything, including Plus-only | 252 | 65.1% | 61.5% | 101 / 108 / 43 |
+| Core plus app-only features | 246 | 65.7% | 62.6% | 101 / 106 / 39 |
+| Everything, including Plus-only | 252 | 65.3% | 61.9% | 102 / 108 / 42 |
 
 <!-- parity:generated:end headline -->
 
@@ -120,14 +121,14 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Catalogue and products | 28 | 13 | 9 | 6 | 66.3% | 8 | 79.4% |
 | Storefront, themes and content | 33 | 22 | 9 | 2 | 85.0% | 15 | 97.0% |
-| Checkout and payments | 21 | 5 | 11 | 5 | 53.2% | 12 | 58.7% |
+| Checkout and payments | 21 | 6 | 11 | 4 | 55.8% | 12 | 58.7% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
 | Customers, marketing and loyalty | 20 | 2 | 14 | 4 | 48.5% | 8 | 63.2% |
 | Analytics, reporting and finance | 26 | 12 | 9 | 5 | 66.5% | 11 | 71.7% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 3 | 14 | 5 | 50.0% | 7 | 65.5% |
 | AI and automation | 23 | 9 | 7 | 7 | 56.8% | 2 | 100.0% |
-| **Total** | **221** | **90** | **96** | **35** | **66.2%** | **89** | **77.4%** |
+| **Total** | **221** | **91** | **96** | **34** | **66.4%** | **89** | **77.4%** |
 
 <!-- parity:generated:end domains -->
 
@@ -139,7 +140,7 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 
 | Evidence | Rows |
 | --- | ---: |
-| Full, with tests | 95 |
+| Full, with tests | 96 |
 | Full, untested (debt, not hidden) | 6 |
 | Shopify side not read from a page | 1 |
 | Rows in the tracker | 252 |
@@ -148,7 +149,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 105 | 93 | 23.3 |
+| A | Build in-house | 104 | 92 | 23.0 |
 | B | Build, live only with a third party | 18 | 15 | 4.3 |
 | C | Strategy decision first | 14 | 11 | 3.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -161,14 +162,14 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **66.2%** core, 77.4% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **66.4%** core, 77.4% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 68.3% | 80.6% | +2.1 | 67.5% | 79.6% |
-| 2 | Data in and out | 3 (1) | 68.5% | 80.6% | +0.2 | 67.8% | 79.6% |
-| 3 | Inventory and orders | 14 (13) | 71.5% | 82.9% | +3.0 | 69.1% | 80.8% |
-| 4 | Payments | 12 (10) | 75.0% | 86.5% | +3.5 | 70.7% | 82.3% |
+| 1 | Compliance and money | 11 (8) | 68.6% | 80.6% | +2.1 | 67.8% | 79.6% |
+| 2 | Data in and out | 3 (1) | 68.8% | 80.6% | +0.2 | 68.0% | 79.6% |
+| 3 | Inventory and orders | 14 (13) | 71.8% | 82.9% | +3.0 | 69.4% | 80.8% |
+| 4 | Payments | 11 (9) | 75.0% | 86.5% | +3.3 | 70.7% | 82.3% |
 | 5 | Customers and marketing | 31 (27) | 82.9% | 93.2% | +7.8 | 77.5% | 89.0% |
 | 6 | Catalogue | 13 (12) | 85.8% | 94.4% | +2.9 | 80.4% | 90.2% |
 | 7 | Storefront and international | 17 (16) | 89.3% | 95.4% | +3.5 | 83.7% | 91.2% |
@@ -361,7 +362,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Swish | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods) | Missing | 3 | B, wave 4 | In private preview at Stripe: Kaizen's platform account must be given access first (D23); not requested or shown. Code: `src/server/connect.ts`. |
 | iDEAL, Bancontact, SEPA, BLIK, EPS, P24 and other local methods | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods) | Partial (was missing) | 4 | A, wave 4 | Checkout sends no `payment_method_types` (tested), so methods the owner enables in their own Stripe Dashboard can appear. Kaizen requests no capability for iDEAL, Bancontact, BLIK, EPS or P24, has no admin switch or per-market control, no test that any is offered, and subscriptions and boxes are card-only. Code: `src/server/checkout.ts`, `src/server/connect.ts`. |
 | PayPal | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments) | Missing | 4 | C, wave 4 | Not allowed by Stripe for platforms taking direct charges (D23); needs a second payment provider (docs/parity-plan.md section 5, decision 1). |
-| Authorize then capture | Native. [page](https://help.shopify.com/en/manual/payments/payment-authorization) | Missing | 2 | A, wave 4 | Sessions capture automatically: no `capture_method` anywhere in `src/server/checkout.ts`; a payment is `captured` the moment the session is complete. Code: `src/server/checkout.ts`, `src/server/stripe-webhooks.ts`. |
+| Authorize then capture | Native. [page](https://help.shopify.com/en/manual/payments/payment-authorization) | Full (was missing) | 2 |  | Evidence: `src/lib/capture.ts`, `src/server/payment-capture.ts`, `src/server/checkout.ts` and 6 more; 5 test files; D16, D22, D289. |
 | Fraud analysis and risk flags | Native. [page](https://help.shopify.com/en/manual/orders/fraud-analysis) | Full (was partial) | 3 |  | Evidence: `src/server/checkout.ts`, `src/server/stripe-webhooks.ts`, `src/lib/payment-facts.ts` and 4 more; 4 test files; D288. |
 | Chargeback and dispute handling | Native. [page](https://help.shopify.com/en/manual/payments/chargebacks) | Full (was missing) | 3 |  | Evidence: `src/server/stripe-webhooks.ts`, `src/app/api/stripe/connect/[mode]/route.ts`, `src/server/payment-disputes.ts` and 5 more; 6 test files; D288. |
 | Multi-currency pricing and checkout | Native. [page](https://help.shopify.com/en/manual/markets/pricing/exchange-rates) | Full | 4 |  | Evidence: `src/lib/currency.ts`, `src/lib/ecb.ts`, `src/lib/market-slug.ts` and 3 more; 4 test files; D109. |

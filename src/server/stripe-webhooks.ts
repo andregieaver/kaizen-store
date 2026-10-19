@@ -15,9 +15,10 @@ import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { completeEditPayment, markEditSessionEnded } from "./order-edits";
 import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
+import { applyIntentCanceled, authorizeFromSession } from "./payment-capture";
 import { applyStripeDispute, isDisputeEvent } from "./payment-disputes";
 import { readPaymentFacts } from "./payment-facts";
-import { applyStripeRefund, isRefundEvent, stripeForAccount } from "./stripe-refunds";
+import { applyStripeRefund, isRefundEvent, paymentOfIntent, stripeForAccount } from "./stripe-refunds";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -53,7 +54,9 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
     // Refunds (D159): a pending one completing, one made in Stripe's Dashboard.
     isRefundEvent(event.type) ||
     // Disputes (D288).
-    isDisputeEvent(event.type);
+    isDisputeEvent(event.type) ||
+    // A held card's hold ended (D289): its order is cancelled and its stock released.
+    event.type === "payment_intent.canceled";
   if (!handled) return;
   if (!(await recordEvent(storeId, event))) return;
   try {
@@ -66,6 +69,9 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
       const refund = event.data.object as Stripe.Refund;
       // The credit note is the database's (a trigger at commit); this brings the refund row up to date, or records the refund.
       await applyStripeRefund(storeId, refund, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
+    } else if (event.type === "payment_intent.canceled") {
+      const stripe = await stripeForAccount(storeId, event.account);
+      await applyIntentCanceled(storeId, event.data.object as Stripe.PaymentIntent, (intent) => paymentOfIntent(storeId, intent, { stripe, account: event.account ?? null }));
     } else if (isDisputeEvent(event.type)) {
       await applyStripeDispute(storeId, event.data.object as Stripe.Dispute, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
     } else {
@@ -121,6 +127,18 @@ export async function applySession(
 
   const failed = eventType === "checkout.session.async_payment_failed";
   const expired = session.status === "expired" || eventType === "checkout.session.expired";
+
+  // A card held to be captured later (D289): the order is authorized, not paid; the shopper is told it is confirmed, nothing is a sale yet.
+  if (session.status === "complete" && session.payment_status === "unpaid" && !failed && !delivery) {
+    if ((await authorizeFromSession(storeId, session)) === "authorized") {
+      await markCheckoutRecovered(storeId, orderId);
+      const opened = await openCheckoutAccount(storeId, orderId);
+      await linkOrderToCustomer(storeId, orderId);
+      await sendOrderConfirmation(storeId, orderId);
+      if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
+      return;
+    }
+  }
 
   if (session.status === "complete" && session.payment_status !== "unpaid" && !failed) {
     await completeOrderPayment(orderId, session.id);

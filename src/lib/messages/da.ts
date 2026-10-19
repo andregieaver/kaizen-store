@@ -908,6 +908,7 @@ export const da: Messages = {
       cancelled: "Annulleret og refunderet",
       closed: "Afsluttet",
       pending_payment: "Afventer betaling",
+      authorized: "Bekræftet",
     } as Record<string, string>,
     tracking: "Spor pakken",
     backToAccount: "Tilbage til Min konto",

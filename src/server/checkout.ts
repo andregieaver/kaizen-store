@@ -42,6 +42,7 @@ import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
 import { openPaymentSession, paymentConnection } from "./payment-session";
+import { prepareCapture } from "./payment-capture";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -1020,7 +1021,9 @@ export async function startCheckout(
     const token = await confirmAtVenue(shop.storeId, order, contact);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
-  const opened = await openPaymentSession(shop, order, origin, shippingLabel, { connection, ui, stripe });
+  // Taken when sent or by staff (D289): the order keeps the capture it is checked out under.
+  const captureLater = (await prepareCapture(shop.storeId, order)) !== null;
+  const opened = await openPaymentSession(shop, order, origin, shippingLabel, { connection, ui, stripe, captureLater });
   if (opened.ok) return { ok: true, url: opened.url };
   // The session could not be made: nothing was paid and nothing will be, so the order waiting for it is cancelled and its stock goes back.
   await cancelUnpaidOrder(order.orderId, opened.problem === "host_payments_off" ? "the host cannot take payments" : "stripe session could not be created");

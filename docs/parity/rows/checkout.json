@@ -580,14 +580,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Sessions capture automatically: no `capture_method` anywhere in `src/server/checkout.ts`; a payment is `captured` the moment the session is complete.",
-    "bucket": "A",
-    "wave": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "A store can switch to manual capture; a paid session then leaves the order authorised, not paid, with the stock held.",
       "Staff capture the amount (or less) from the order page before the authorisation expires; the order then becomes paid and counts in sales.",
@@ -596,17 +596,38 @@
     ],
     "evidence": {
       "files": [
+        "src/lib/capture.ts",
+        "src/server/payment-capture.ts",
         "src/server/checkout.ts",
-        "src/server/stripe-webhooks.ts"
+        "src/server/payment-session.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/server/order-admin.ts",
+        "src/components/admin/orders/capture-card.tsx",
+        "src/components/admin/orders/settings-form.tsx",
+        "supabase/migrations/20261019184550_capture_later_rules.sql"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/payment-capture.int.test.ts",
+        "src/db/capture.test.ts",
+        "src/lib/capture.test.ts",
+        "src/components/admin/orders/payment-card.test.ts",
+        "e2e/signed-in/capture.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
       "D16",
-      "D22"
+      "D22",
+      "D289"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-19",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 4 unit B (D289): an owner chooses when the card is charged (at checkout, when sent, when staff capture); a store that waits opens its checkout sessions with capture_method manual for goods (never subscriptions, bookings, deposits, hosts' listings or downloads), and a paid session leaves the order authorized with its stock held to a day past the hold's end. Staff capture the whole or less from the order page (the rest released as a release refund with its credit note), or the first parcel or handover captures it; the order then becomes paid through complete_order_payment() and counts from then. Cancel and release, Stripe's payment_intent.canceled and the job past the deadline (a staff email a day before) cancel the order and release its stock. Analytics' paid order needs a captured payment, so a held card counts nowhere. Held by payment-capture.int.test.ts (hold, capture, less than held with a credit note, euro, when sent, by hand refused at sending, void, Stripe's cancel, warning and expiry), src/db/capture.test.ts and the signed-in browser test."
+      }
+    ]
   },
   {
     "id": "checkout.fraud-analysis-and-risk-flags",

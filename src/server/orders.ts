@@ -21,7 +21,7 @@ import { applySession } from "./stripe-webhooks";
 
 type Row = Record<string, unknown>;
 
-export type OrderStatus = "pending_payment" | "paid" | "fulfilled" | "cancelled" | "closed";
+export type OrderStatus = "pending_payment" | "authorized" | "paid" | "fulfilled" | "cancelled" | "closed";
 
 export type Address = {
   name?: string | null;

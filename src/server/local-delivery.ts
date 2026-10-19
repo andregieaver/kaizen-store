@@ -8,6 +8,7 @@ import { areaCovers, codesWithin, type AreaTerms, type GeoPoint } from "@/lib/lo
 import { cleanPostalCode } from "@/lib/postal-code";
 import { localAreaInput } from "@/lib/shipping-methods-schema";
 
+import { captureForSending } from "./payment-capture";
 import { audit } from "./auth";
 import { catalogTag } from "./catalog";
 import { markSentWithin as sendWithin } from "./order-admin";
@@ -220,6 +221,9 @@ export async function markOutForDelivery(storeId: string, input: unknown, accoun
   const parsed = outInput.safeParse(input);
   if (!parsed.success) return { ok: false, reason: "not_found", message: PICKUP_REFUSALS.not_found };
   const { orderId, seen } = parsed.data;
+  // A card held until the order is handed over (D289) is charged first; nothing is taken out when it cannot be.
+  const charged = await captureForSending(storeId, orderId, accountId);
+  if (!charged.ok) return { ok: false, reason: charged.reason, message: PICKUP_REFUSALS[charged.reason] };
   const done = await db()
     .transaction(async (tx) => {
       const sent = await sendWithin(tx, storeId, orderId, { carrier: "other", trackingNumber: "", trackingUrl: null }, accountId, null, { seen: seen ?? null }, "local");

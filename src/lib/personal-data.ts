@@ -384,6 +384,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** A dispute opened, and its deadline near (D288): the order's number, the amount and Stripe's reason, never who the customer is. */
   "staff.dispute": "staff",
   "staff.dispute_due": "staff",
+  /** A held card's deadline is near (D289): the order's number and amount, never who the customer is. */
+  "staff.capture_due": "staff",
   "staff.summary": "staff",
   "staff.test": "staff",
   "automation.notify": "staff",

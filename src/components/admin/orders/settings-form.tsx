@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
+import { CAPTURE_SETTING_WORDS, CAPTURE_SETTINGS, DEFAULT_HOLD_DAYS } from "@/lib/capture";
 import type { OrderSettings } from "@/server/order-settings";
 
 const input = "min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
@@ -104,6 +105,35 @@ export function OrderSettingsForm({
             On a draft order you can record that the customer paid by bank transfer, in cash or another way. Kaizena Flow then treats the order as paid, issues the invoice (which says it was paid outside the online checkout) and sends the
             confirmation, but it did not touch the money and takes no sale fee on it. A refund of such an order is only recorded here: you pay the customer back yourself. Cash taken when goods are handed over is a cash sale under
             the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register.
+          </p>
+          {isOwner ? null : <p className={hint}>Only the owner can change this choice.</p>}
+        </section>
+
+        <section aria-labelledby="capture" className={card}>
+          <h2 id="capture" className="text-title text-ink">
+            Take payment
+          </h2>
+          {isOwner ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="sr-only">When the customer&apos;s card is charged</legend>
+              <input type="hidden" name="captureShown" value="1" />
+              {CAPTURE_SETTINGS.map((value) => (
+                <label key={value} className="flex items-start gap-2 text-sm">
+                  <input type="radio" name="capture" value={value} defaultChecked={settings.capture === value} className="mt-0.5 size-4" />
+                  <span>
+                    <span className="text-body-strong">{CAPTURE_SETTING_WORDS[value].label}</span>
+                    <span className="block text-muted">{CAPTURE_SETTING_WORDS[value].hint}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          ) : (
+            <p className="text-sm">The card is charged {CAPTURE_SETTING_WORDS[settings.capture].label.toLowerCase()}.</p>
+          )}
+          <p className={hint}>
+            A held card is not charged yet: the order shows &ldquo;Card held, to capture&rdquo;, it is not a sale in your figures and no invoice is issued until you capture. A card is held for up to {DEFAULT_HOLD_DAYS} days; you are emailed a day before
+            the hold ends, and an order not captured by then is cancelled and its stock released. You can capture less than was held (the rest is released and credited) or cancel the hold. Subscriptions, bookings, deposits, hosts&apos;
+            listings and downloads are always charged at checkout, as are draft orders, order changes, exchanges and subscription boxes. Changing this applies to orders placed from now on.
           </p>
           {isOwner ? null : <p className={hint}>Only the owner can change this choice.</p>}
         </section>

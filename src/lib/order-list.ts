@@ -15,8 +15,8 @@ export { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE, VIEWS_MAX, VIEW_TITLE_MAX };
 // The vocabulary
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** D288: `disputed` (a dispute open or lost), `elevated_risk` (Stripe's risk outcome elevated or highest on a captured payment). */
-export const PAY_FILTERS = ["paid", "partially_refunded", "refunded", "balance_due", "unpaid", "disputed", "elevated_risk"] as const;
+/** D288: `disputed` (a dispute open or lost), `elevated_risk` (Stripe's risk outcome elevated or highest on a captured payment); D289: `authorized` (the card is held, to capture). */
+export const PAY_FILTERS = ["paid", "partially_refunded", "refunded", "balance_due", "unpaid", "disputed", "elevated_risk", "authorized"] as const;
 export type PayFilter = (typeof PAY_FILTERS)[number];
 
 /** `partly_sent` (D174): a parcel is recorded and units are still to send; `edit_pending`: an order change waits for the customer's payment (the spec's `edit=pending`, kept with the fulfilment filters). */

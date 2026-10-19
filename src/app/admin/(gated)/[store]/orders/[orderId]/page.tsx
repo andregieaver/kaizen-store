@@ -48,7 +48,11 @@ import { FULFILMENT_EVENT_LABELS, ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops
 import { opsEventText } from "@/lib/order-ops-events-text";
 import { disputeEventText, dueWords } from "@/lib/payment-facts";
 import { PaymentCard } from "@/components/admin/orders/payment-card";
+import { CaptureCard } from "@/components/admin/orders/capture-card";
+import { captureEventText } from "@/lib/capture";
 import { orderPaymentFacts } from "@/server/payment-disputes";
+import { orderCapture } from "@/server/payment-capture";
+import { captureOrderAction, releaseCardAction } from "../capture-actions";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
@@ -163,13 +167,15 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const exchangedFor = returns ? await exchangeOrdersOfReturns(store.id, returns.returns.map((r) => r.id)) : {};
   const canWrite = memberCan(member, "orders:write");
   // The hold, the parcels' stored tracking, the switches of the customer emails and who recorded the receipt (wave 3, D238): stored rows, no carrier call.
-  const [hold, parcelTracking, notifyStates, receipt, paymentFacts] = await Promise.all([
+  const [hold, parcelTracking, notifyStates, receipt, paymentFacts, held] = await Promise.all([
     orderHold(store.id, orderId),
     parcelTrackingFor(store.id, orderId),
     notificationStates(store.id).catch(() => ({}) as Record<string, boolean>),
     deliverySourceOf(store.id, orderId),
     // How it was paid, Stripe's risk outcome and its disputes (D288): stored rows, no Stripe call.
     orderPaymentFacts(store.id, orderId),
+    // A card held to be charged later (D289): what is held and until when.
+    orderCapture(store.id, orderId),
   ]);
   const notificationsHref = `/admin/${store.slug}/settings/notifications`;
   // The *Notify the customer* box follows the email's switch (2.2): off, it is drawn off with a link there, and the sender ignores a `notify` anyway.
@@ -189,7 +195,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     .filter((l) => l.physical)
     .map((l) => ({ lineId: l.lineId, title: l.title, sku: l.sku, ordered: l.quantity, sent: l.shipped, withdrawn: l.withdrawn, toSend: l.toSend, closed: l.closed, backordered: Math.min(l.backordered, l.toSend), backorderDays: l.backorderDays }));
   // A carrier is booked only for units still to send, and never while a change waits for the customer's payment (D174 2.1, 2.2).
-  const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite;
+  // A held card (D289) is captured before a carrier is booked: the booking card waits for it.
+  const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite && order.status !== "authorized";
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
   const [bring, porterbuddy, helthjem, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -200,6 +207,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
+  // A card held to be charged when the order is sent (D289): it is sent (or handed over) as a paid one is, and the first parcel captures it.
+  const sendable = paid || held?.mode === "when_sent";
   // A weekly delivery (D102) waits for payment until it is sent: sending charges its card.
   const toCharge = weekly !== null && order.status === "pending_payment";
   const cancelledAfterPayment = order.status === "cancelled" && order.paidMinor > 0;
@@ -470,6 +479,19 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             />
           )}
 
+          {held && (
+            <CaptureCard
+              heldLabel={formatMoney(held.amountMinor, held.currency, locale)}
+              heldTyped={typedAmount(held.amountMinor)}
+              currency={held.currency}
+              deadline={dueWords(new Date(held.captureBefore), store.timeZone)}
+              whenSent={held.mode === "when_sent" && order.ships}
+              hasEmail={Boolean(order.email)}
+              capture={canWrite ? captureOrderAction.bind(null, store.slug, order.id) : null}
+              release={canWrite ? releaseCardAction.bind(null, store.slug, order.id) : null}
+            />
+          )}
+
           {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} />}
 
           {order.balanceMinor > 0 && order.status !== "cancelled" && (
@@ -484,7 +506,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           )}
 
           {/* Collected at the store's place, or delivered by its own driver (D237): handed over, never sent as a parcel here. */}
-          {paid && order.ships && order.deliveryMethod !== "ship" && (
+          {sendable && order.ships && order.deliveryMethod !== "ship" && (
             <section aria-labelledby="handover" className={card}>
               <h2 id="handover" className="mb-3 text-title text-ink">{order.deliveryMethod === "pickup" ? "Pickup" : "Local delivery"}</h2>
               {order.shipments.length > 0 && (
@@ -525,7 +547,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {(paid || toCharge) && order.ships && order.deliveryMethod === "ship" && (
+          {(sendable || toCharge) && order.ships && order.deliveryMethod === "ship" && (
             <section aria-labelledby="sending" className={card}>
               <h2 id="sending" className="mb-3 text-title text-ink">
                 {fulfilment.state === "partly_sent" ? "Partly sent" : sentParcels > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
@@ -635,7 +657,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   carriers={CARRIERS.map(({ id, name }) => ({ id, name }))}
                   hasEmail={Boolean(order.email)}
                   whole={weekly !== null}
-                  submitLabel={toCharge ? "Charge and send" : sentParcels > 0 ? "Send another parcel" : "Send this parcel"}
+                  submitLabel={toCharge ? "Charge and send" : held ? "Capture and send" : sentParcels > 0 ? "Send another parcel" : "Send this parcel"}
                   send={sendOrderAction.bind(null, store.slug, order.id)}
                   notifyOff={notifyOff("order.sent")}
                 />
@@ -892,6 +914,9 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
   // Disputes (D288), in words.
   const dispute = disputeEventText(event.type, data, money);
   if (dispute !== null) return <>{dispute}</>;
+  // A held card and its capture (D289), in words.
+  const captureLine = captureEventText(event.type, data, money);
+  if (captureLine !== null) return <>{captureLine}</>;
   const ops = opsEventText(event.type, data, money);
   if (ops !== null) return <>{ops}</>;
   // Parcels and changes of the order (D174), in words.

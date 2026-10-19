@@ -35,6 +35,7 @@ const PAY_LABELS: Record<(typeof PAY_FILTERS)[number], string> = {
   unpaid: "Unpaid (unfinished checkouts)",
   disputed: "Disputed",
   elevated_risk: "Elevated risk (Stripe)",
+  authorized: "Card held, to capture",
 };
 const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
   to_send: "To send",

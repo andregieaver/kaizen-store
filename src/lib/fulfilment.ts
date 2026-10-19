@@ -119,6 +119,8 @@ export const SHIPMENT_PROBLEMS = {
   not_found: "The order was not found.",
   copied: "A copied order is history and is never sent.",
   unpaid: "The order is not paid yet, so it is not sent.",
+  authorized: "The customer's card is held, not charged yet: capture the payment on the order first.",
+  capture_failed: "Stripe could not charge the held card, so nothing was sent. Try again, or cancel the order.",
   edit_pending: "A change to this order waits for the customer's payment. Nothing is sent until it is paid, cancelled or expired.",
   delivery_box_whole: "A subscription box delivery is sent whole, not in parts.",
   pickup_order: "This order is collected at your place: mark it Collected instead of sending a parcel.",

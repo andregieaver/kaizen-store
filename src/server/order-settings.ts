@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { isCaptureSetting, type CaptureSetting } from "@/lib/capture";
 import { isAutoArchiveDays } from "@/lib/order-archive";
 import { DRAFT_VALID_DAYS_DEFAULT, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN } from "@/lib/order-limits";
 import { ORDER_AUDIT_ACTIONS } from "@/lib/order-ops-events";
@@ -14,7 +15,7 @@ type Row = Record<string, unknown>;
 
 /**
  * The store's order settings (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.3): gift messages (off), automatic archiving (off), how long a draft's pay link is
- * valid, and whether staff other than the owner may record a payment taken outside Kaizen. One row a store, made when first written (a store that never changed
+ * valid, whether staff other than the owner may record a payment taken outside Kaizen, and when the card is charged (D289). One row a store, made when first written (a store that never changed
  * anything has none and reads the defaults). Read per request, never in a `'use cache'` function: gift messages are asked on the cart page.
  */
 export type OrderSettings = {
@@ -23,6 +24,8 @@ export type OrderSettings = {
   autoArchiveDays: number | null;
   draftValidDays: number;
   staffMarkPaid: boolean;
+  /** When the card is charged (D289): at checkout, when the first parcel is recorded, or when staff press Capture. The owner's alone. */
+  capture: CaptureSetting;
 };
 
 export const DEFAULT_ORDER_SETTINGS: OrderSettings = {
@@ -30,11 +33,12 @@ export const DEFAULT_ORDER_SETTINGS: OrderSettings = {
   autoArchiveDays: null,
   draftValidDays: DRAFT_VALID_DAYS_DEFAULT,
   staffMarkPaid: false,
+  capture: "at_checkout",
 };
 
 export async function getOrderSettings(storeId: string): Promise<OrderSettings> {
   const [row] = await db().execute<Row>(sql`
-    select gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid
+    select gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture
     from commerce.order_settings where store_id = ${storeId}::uuid
   `);
   if (!row) return DEFAULT_ORDER_SETTINGS;
@@ -43,6 +47,7 @@ export async function getOrderSettings(storeId: string): Promise<OrderSettings> 
     autoArchiveDays: row.auto_archive_days === null ? null : Number(row.auto_archive_days),
     draftValidDays: Number(row.draft_valid_days),
     staffMarkPaid: Boolean(row.staff_mark_paid),
+    capture: isCaptureSetting(row.capture) ? row.capture : "at_checkout",
   };
 }
 
@@ -54,6 +59,8 @@ export const SETTINGS_PROBLEMS = {
   archive_days: "Automatic archiving is off, or after 14 to 365 days.",
   valid_days: `A pay link is valid for ${DRAFT_VALID_DAYS_MIN} to ${DRAFT_VALID_DAYS_MAX} days.`,
   owner_only: "Only the owner can change whether staff may record payments taken outside Kaizena Flow.",
+  capture_owner_only: "Only the owner can change when the customer's card is charged.",
+  capture: "Choose when the card is charged: when the order is placed, when it is sent, or when you capture it.",
 } as const;
 
 /**
@@ -64,6 +71,10 @@ export async function saveOrderSettings(member: Pick<Membership, "account" | "st
   const before = await getOrderSettings(member.store.id);
   if (input.staffMarkPaid !== undefined && input.staffMarkPaid !== before.staffMarkPaid && !memberCan(member, "owner")) {
     return { ok: false, problem: SETTINGS_PROBLEMS.owner_only };
+  }
+  if (input.capture !== undefined && !isCaptureSetting(input.capture)) return { ok: false, problem: SETTINGS_PROBLEMS.capture };
+  if (input.capture !== undefined && input.capture !== before.capture && !memberCan(member, "owner")) {
+    return { ok: false, problem: SETTINGS_PROBLEMS.capture_owner_only };
   }
   if (input.autoArchiveDays !== undefined && input.autoArchiveDays !== null && !isAutoArchiveDays(input.autoArchiveDays)) {
     return { ok: false, problem: SETTINGS_PROBLEMS.archive_days };
@@ -76,12 +87,13 @@ export async function saveOrderSettings(member: Pick<Membership, "account" | "st
     autoArchiveDays: input.autoArchiveDays === undefined ? before.autoArchiveDays : input.autoArchiveDays,
     draftValidDays: input.draftValidDays ?? before.draftValidDays,
     staffMarkPaid: input.staffMarkPaid ?? before.staffMarkPaid,
+    capture: input.capture ?? before.capture,
   };
   await db().execute(sql`
-    insert into commerce.order_settings (store_id, gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid)
-    values (${member.store.id}::uuid, ${next.giftMessages}, ${next.autoArchiveDays}, ${next.draftValidDays}, ${next.staffMarkPaid})
+    insert into commerce.order_settings (store_id, gift_messages, auto_archive_days, draft_valid_days, staff_mark_paid, capture)
+    values (${member.store.id}::uuid, ${next.giftMessages}, ${next.autoArchiveDays}, ${next.draftValidDays}, ${next.staffMarkPaid}, ${next.capture})
     on conflict (store_id) do update set gift_messages = excluded.gift_messages, auto_archive_days = excluded.auto_archive_days,
-      draft_valid_days = excluded.draft_valid_days, staff_mark_paid = excluded.staff_mark_paid, updated_at = now()
+      draft_valid_days = excluded.draft_valid_days, staff_mark_paid = excluded.staff_mark_paid, capture = excluded.capture, updated_at = now()
   `);
   const changed = (Object.keys(next) as (keyof OrderSettings)[]).filter((key) => next[key] !== before[key]);
   if (changed.length > 0) await audit(member.account.id, member.store.id, ORDER_AUDIT_ACTIONS.settingsChanged, { changed });

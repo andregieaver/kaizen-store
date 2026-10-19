@@ -17,6 +17,7 @@ import { bookedCarrierName } from "@/lib/shipment-undo";
 import { restockRoom } from "@/lib/stock-restock";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
+import { captureForSending } from "./payment-capture";
 import { audit } from "./auth";
 import { cancelUnpaidOrder } from "./checkout";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
@@ -374,6 +375,9 @@ export async function markSent(
   parcel: ParcelChoice = {},
   handover: { method?: ShipmentMethod } = {},
 ): Promise<SendOutcome> {
+  // A card held until the order is sent (D289) is charged first; nothing is sent when it cannot be.
+  const charged = await captureForSending(storeId, orderId, accountId);
+  if (!charged.ok) return { ok: false, reason: charged.reason };
   return db().transaction((tx) => sendWithin(tx, storeId, orderId, input, accountId, booking ?? null, parcel, handover.method ?? "parcel"));
 }
 

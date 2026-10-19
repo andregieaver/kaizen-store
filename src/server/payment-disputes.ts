@@ -133,9 +133,15 @@ export async function sendDueDisputeReminders(options: { now?: Date; alert?: typ
 }
 
 /** The five-minute job's part for payments (D288, never throws): facts of captured Stripe payments still unread, and disputes' deadline reminders. */
-export async function runPaymentJobs(): Promise<{ facts: number; reminders: number }> {
-  const [facts, reminders] = await Promise.all([readMissingPaymentFacts().catch(() => ({ read: 0 })), sendDueDisputeReminders().catch(() => ({ sent: 0 }))]);
-  return { facts: facts.read, reminders: reminders.sent };
+export async function runPaymentJobs(): Promise<{ facts: number; reminders: number; holds: { warned: number; ended: number; captured: number } }> {
+  const { runCaptureJobs } = await import("./payment-capture");
+  const [facts, reminders, holds] = await Promise.all([
+    readMissingPaymentFacts().catch(() => ({ read: 0 })),
+    sendDueDisputeReminders().catch(() => ({ sent: 0 })),
+    // Held cards (D289): staff told a day before a hold ends, and a hold past its deadline settled from what Stripe says.
+    runCaptureJobs(),
+  ]);
+  return { facts: facts.read, reminders: reminders.sent, holds };
 }
 
 export type OrderPaymentView = {

@@ -52,6 +52,7 @@ import {
 } from "../lib/exchange-limits";
 import { EXCHANGE_CHANNELS, EXCHANGE_SHIPPING_KINDS, EXCHANGE_STATUSES, LABEL_SOURCES, REFUND_KINDS } from "../lib/exchange-status";
 import { DISPUTE_STATUSES, RISK_LEVELS } from "../lib/payment-facts";
+import { CAPTURE_MODES, CAPTURE_SETTINGS } from "../lib/capture";
 import { CARRIER_IDS } from "../lib/shipping-carriers";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
@@ -213,6 +214,8 @@ export const cartStatus = commerce.enum("cart_status", ["open", "converted", "ab
 
 export const orderStatus = commerce.enum("order_status", [
   "pending_payment",
+  /** D289: the card is held, not charged; nothing counts as a sale until it is captured (`paid`). */
+  "authorized",
   "paid",
   "fulfilled",
   "cancelled",
@@ -3483,7 +3486,14 @@ export const orders = commerce.table(
      * (`held_by_rule`, no foreign key: a deleted rule leaves its id) or a person (`held_by`); the reason is at most 200 characters (a person's is replaced by
      * the marker when the order is anonymised). Written only by `src/server/order-hold.ts`.
      */
-    heldAt: timestamp("held_at", { withTimezone: true }),
+/**
+     * Authorise now, capture later (D289): the later capture the order was checked out under (`when_sent`, `by_hand`; null: captured at checkout),
+     * and while it is `authorized`, when Stripe lets the hold go (`capture_before`). Staff are told a day ahead (`capture_warned_at`).
+     */
+    captureMode: text("capture_mode"),
+    captureBefore: timestamp("capture_before", { withTimezone: true }),
+    captureWarnedAt: timestamp("capture_warned_at", { withTimezone: true }),
+        heldAt: timestamp("held_at", { withTimezone: true }),
     heldReason: text("held_reason"),
     heldByRule: uuid("held_by_rule"),
     heldBy: uuid("held_by").references(() => accounts.id),
@@ -3496,6 +3506,12 @@ export const orders = commerce.table(
   },
   // Annotated: an order names its exchange and an exchange names its orders, so the types would otherwise infer in a circle.
   (t): PgTableExtraConfigValue[] => [
+    check("orders_capture_mode", sql`${t.captureMode} is null or ${t.captureMode} in (${sqlList(CAPTURE_MODES)})`),
+    /** Only an order waiting for its capture has a deadline (D289); it is kept after for the history. */
+    check("orders_capture_before", sql`${t.status} <> 'authorized' or (${t.captureMode} is not null and ${t.captureBefore} is not null)`),
+    index("orders_authorized_idx")
+      .on(t.captureBefore)
+      .where(sql`${t.status} = 'authorized'`),
     foreignKey({
       name: "orders_exchange_fk",
       columns: [t.storeId, t.exchangeId],
@@ -4225,6 +4241,7 @@ export const refunds = commerce.table(
       "refunds_transfer",
       sql`${t.kind} <> 'transfer' or (${t.exchangeId} is not null and ${t.providerReference} is null and ${t.status} = 'succeeded')`,
     ),
+    check("refunds_release", sql`${t.kind} <> 'release' or (${t.providerReference} is null and ${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
     foreignKey({
       name: "refunds_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -10074,6 +10091,8 @@ export const orderSettings = commerce.table(
     autoArchiveDays: integer("auto_archive_days"),
     draftValidDays: integer("draft_valid_days").notNull().default(7),
     staffMarkPaid: boolean("staff_mark_paid").notNull().default(false),
+    /** When the customer's card is charged (D289): at checkout, when the order is sent, or when staff capture it. */
+    capture: text("capture").notNull().default("at_checkout"),
     /** The next draft's number (`D-{n}`); a counter that promises no gaps, never an order number (D141). */
     nextDraftNumber: bigint("next_draft_number", { mode: "number" }).notNull().default(1),
     updatedAt: updatedAt(),
@@ -10085,6 +10104,7 @@ export const orderSettings = commerce.table(
     ),
     check("order_settings_draft_valid", sql`${t.draftValidDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
     check("order_settings_next_draft", sql`${t.nextDraftNumber} >= 1`),
+    check("order_settings_capture", sql`${t.capture} in (${sqlList(CAPTURE_SETTINGS)})`),
   ],
 );
 

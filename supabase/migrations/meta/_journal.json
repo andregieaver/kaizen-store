@@ -2612,6 +2612,20 @@
       "when": 1792430495988,
       "tag": "20261019172135_payment_facts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 373,
+      "version": "7",
+      "when": 1792435526687,
+      "tag": "20261019184526_capture_later",
+      "breakpoints": true
+    },
+    {
+      "idx": 374,
+      "version": "7",
+      "when": 1792435550447,
+      "tag": "20261019184550_capture_later_rules",
+      "breakpoints": true
     }
   ]
 }

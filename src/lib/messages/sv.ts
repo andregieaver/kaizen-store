@@ -910,6 +910,7 @@ export const sv: Messages = {
       cancelled: "Avbruten och återbetald",
       closed: "Avslutad",
       pending_payment: "Väntar på betalning",
+      authorized: "Bekräftad",
     } as Record<string, string>,
     tracking: "Spåra paketet",
     backToAccount: "Tillbaka till Mitt konto",

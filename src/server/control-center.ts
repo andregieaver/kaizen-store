@@ -104,7 +104,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, count(*)::int as n, min(o.placed_at) as oldest
       from commerce.orders o
-      where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null and o.delivery_method = 'ship'
+      where o.store_id in (${idList(orderIds)}) and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')) and o.copied_from is null and o.delivery_method = 'ship'
         and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')
       group by o.store_id
     `),
@@ -198,8 +198,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     // delivered), archived and copied orders left out as the views leave them out. Counts only.
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id,
-        count(*) filter (where o.delivery_method = 'pickup' and o.status = 'paid')::int as pickup,
-        min(o.placed_at) filter (where o.delivery_method = 'pickup' and o.status = 'paid') as oldest_pickup,
+        count(*) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')))::int as pickup,
+        min(o.placed_at) filter (where o.delivery_method = 'pickup' and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))) as oldest_pickup,
         count(*) filter (where o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)::int as local
       from commerce.orders o
       where o.store_id in (${idList(orderIds)}) and o.copied_from is null and o.archived_at is null and o.delivery_method in ('pickup', 'local')

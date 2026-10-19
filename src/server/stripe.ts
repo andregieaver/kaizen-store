@@ -72,6 +72,8 @@ export const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] =
   "charge.dispute.closed",
   "charge.dispute.funds_withdrawn",
   "charge.dispute.funds_reinstated",
+  // A held card's hold ended or was let go in Stripe's Dashboard (D289).
+  "payment_intent.canceled",
 ];
 
 /** Account (v2) events: a store's Stripe account needs something, or changed. */

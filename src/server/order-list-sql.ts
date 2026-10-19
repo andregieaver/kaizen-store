@@ -53,6 +53,8 @@ export const REFUNDED_SQL = sql`(select coalesce(sum(r.amount_minor), 0)::bigint
 const WAS_PAID = sql`exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured')`;
 export const PHYSICAL_SQL = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical')`;
 /** Units sold on backorder that are still to send (D172, D174 4.7: a backordered unit already in a parcel is not waited for). */
+/** Paid, or a card held to be charged when it is sent (D289): what waits for staff to send or hand over. */
+const SENDABLE = sql`(o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent'))`;
 const BACKORDERED = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0)`;
 /** An unfinished checkout: waiting for payment, or cancelled and never paid. Never copied history. */
 const UNFINISHED = sql`(o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${WAS_PAID})))`;
@@ -94,6 +96,8 @@ function payCondition(filter: OrderListParams["pay"][number]): SQL {
     // D288: a dispute still open, or lost; a dispute closed in the store's favour no longer marks the order.
     case "disputed":
       return sql`exists (select 1 from commerce.payment_disputes d where d.store_id = o.store_id and d.order_id = o.id and (d.outcome is null or d.outcome = 'lost'))`;
+    case "authorized":
+      return sql`(o.status = 'authorized')`;
     case "elevated_risk":
       return sql`exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured' and p.risk_level in ('elevated', 'highest'))`;
   }
@@ -104,10 +108,10 @@ function shipCondition(filter: OrderListParams["ship"][number]): SQL {
   switch (filter) {
     // Parcels only (D237): an order collected at the store's place or taken out by its own driver is handed over, never sent.
     case "to_send":
-      return sql`(o.status = 'paid' and ${PHYSICAL_SQL} and o.delivery_method = 'ship')`;
+      return sql`(${SENDABLE} and ${PHYSICAL_SQL} and o.delivery_method = 'ship')`;
     // D237: paid pickup orders not collected yet (*To hand over*), and paid local deliveries not delivered yet (*Local deliveries*).
     case "pickup":
-      return sql`(o.delivery_method = 'pickup' and o.status = 'paid')`;
+      return sql`(o.delivery_method = 'pickup' and ${SENDABLE})`;
     case "local":
       return sql`(o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)`;
     case "delivery_mismatch":

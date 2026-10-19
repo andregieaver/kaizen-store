@@ -82,6 +82,9 @@ export const EXCHANGE_STATUS_LABELS: Record<ExchangeStatus, string> = {
 export const LABEL_SOURCES = ["pasted", "carrier"] as const;
 export type LabelSource = (typeof LABEL_SOURCES)[number];
 
-/** `refunds.kind`: an ordinary refund (`money`), or the credit of a return moved to an exchange order (`transfer`, no provider call). */
-export const REFUND_KINDS = ["money", "transfer"] as const;
+/**
+ * `refunds.kind`: an ordinary refund (`money`), the credit of a return moved to an exchange order (`transfer`, no provider call), or the part of a
+ * held card payment staff did not capture (`release`, D289: never charged, so no provider call; the sale is reduced and it gets a credit note).
+ */
+export const REFUND_KINDS = ["money", "transfer", "release"] as const;
 export type RefundKind = (typeof REFUND_KINDS)[number];

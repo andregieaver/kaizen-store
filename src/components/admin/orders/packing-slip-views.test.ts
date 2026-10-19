@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import type { PackingSlip } from "@/server/packing-slips";
+import type { OrderSettings } from "@/server/order-settings";
 
 import { PackingSlipView } from "./packing-slip-view";
 import { OrderSettingsForm } from "./settings-form";
@@ -134,7 +135,7 @@ describe("the packing slip", () => {
 });
 
 describe("the order settings", () => {
-  const settings = { giftMessages: false, autoArchiveDays: null as number | null, draftValidDays: 7, staffMarkPaid: false };
+  const settings: OrderSettings = { giftMessages: false, autoArchiveDays: null, draftValidDays: 7, staffMarkPaid: false, capture: "at_checkout" };
   const draw2 = (over: { settings?: typeof settings; canEdit?: boolean; isOwner?: boolean } = {}) =>
     renderToString(h(OrderSettingsForm, { settings: over.settings ?? settings, canEdit: over.canEdit ?? true, isOwner: over.isOwner ?? true, action: async () => ({ status: "ok" as const, messages: [] as string[] }) }));
 
@@ -159,7 +160,8 @@ describe("the order settings", () => {
   });
 
   it("shows what is saved", () => {
-    const html = draw2({ settings: { giftMessages: true, autoArchiveDays: 30, draftValidDays: 14, staffMarkPaid: true } });
+    const html = draw2({ settings: { giftMessages: true, autoArchiveDays: 30, draftValidDays: 14, staffMarkPaid: true, capture: "when_sent" } });
+    expect(html).toMatch(/value="when_sent"[^>]*checked=""|checked=""[^>]*value="when_sent"/);
     expect(html).toMatch(/name="giftMessages"[^>]*checked=""|checked=""[^>]*name="giftMessages"/);
     expect(html).toMatch(/name="autoArchive"[^>]*checked=""|checked=""[^>]*name="autoArchive"/);
     expect(html).toContain('value="30"');
@@ -174,6 +176,18 @@ describe("the order settings", () => {
     expect(staff).not.toContain('name="staffMarkPaidShown"');
     expect(plain(staff)).toContain("Staff may record a payment taken outside Kaizena Flow.");
     expect(plain(staff)).toContain("Only the owner can change this choice.");
+  });
+
+  it("offers when the card is charged to the owner only, with what a hold means (D289)", () => {
+    const owner = draw2({ isOwner: true });
+    for (const value of ["at_checkout", "when_sent", "by_hand"]) expect(owner).toContain(`value="${value}"`);
+    expect(owner).toContain('name="captureShown"');
+    expect(plain(owner)).toContain("it is not a sale in your figures and no invoice is issued until you capture");
+    expect(plain(owner)).toContain("Subscriptions, bookings, deposits");
+    const staff = draw2({ isOwner: false, settings: { ...settings, capture: "by_hand" } });
+    expect(staff).not.toContain('name="capture"');
+    expect(staff).not.toContain('name="captureShown"');
+    expect(plain(staff)).toContain("The card is charged when you capture it.");
   });
 
   it("is read-only for someone who may not change settings", () => {

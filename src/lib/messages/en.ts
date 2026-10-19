@@ -917,6 +917,8 @@ export const en = {
       cancelled: "Cancelled and refunded",
       closed: "Closed",
       pending_payment: "Waiting for payment",
+      // D289: the card is held and charged when the order is sent or the store captures it.
+      authorized: "Confirmed",
     } as Record<string, string>,
     tracking: "Track the parcel",
     backToAccount: "Back to My account",

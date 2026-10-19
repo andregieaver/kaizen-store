@@ -5,10 +5,10 @@
  */
 import type { Tag } from "./order-tags";
 
-export type OrderStatusValue = "pending_payment" | "paid" | "fulfilled" | "cancelled" | "closed";
+export type OrderStatusValue = "pending_payment" | "authorized" | "paid" | "fulfilled" | "cancelled" | "closed";
 
 /** The payment cell: what the money did. `copied` is history from another store (no payment to speak of). */
-export type PayCell = "unpaid" | "paid" | "partially_refunded" | "refunded" | "balance_due" | "copied";
+export type PayCell = "unpaid" | "authorized" | "paid" | "partially_refunded" | "refunded" | "balance_due" | "copied";
 /** The fulfilment cell. `none` is an unfinished checkout or a cancelled order, where there is nothing to send. */
 export type ShipCell = "to_send" | "partly_sent" | "waiting" | "sent" | "no_shipping" | "none" | "copied";
 
@@ -96,6 +96,8 @@ export function payCellOf(order: {
 }): PayCell {
   if (order.copied) return "copied";
   if (order.status === "pending_payment") return "unpaid";
+  // D289: the card is held, nothing is taken yet.
+  if (order.status === "authorized") return "authorized";
   if (order.capturedMinor <= 0) {
     // Cancelled and never paid is an unfinished checkout; paid with nothing taken online (a venue booking) still has a balance to take.
     if (order.status === "cancelled") return "unpaid";
@@ -112,6 +114,8 @@ export function shipCellOf(order: { status: OrderStatusValue; copied: boolean; p
   if (order.copied) return "copied";
   if (order.status === "pending_payment") return "none";
   if (!order.physical) return "no_shipping";
+  // D289: the card is held; under *when sent* the first parcel charges it, so the order is to send.
+  if (order.status === "authorized") return "to_send";
   if (order.status === "fulfilled") return "sent";
   if (order.status === "paid") return order.backorderUnits > 0 ? "waiting" : order.partlySent ? "partly_sent" : "to_send";
   return "none";
@@ -119,6 +123,7 @@ export function shipCellOf(order: { status: OrderStatusValue; copied: boolean; p
 
 export const PAY_CELL_LABELS: Record<PayCell, string> = {
   unpaid: "Unpaid",
+  authorized: "Card held",
   paid: "Paid",
   partially_refunded: "Partially refunded",
   refunded: "Refunded",

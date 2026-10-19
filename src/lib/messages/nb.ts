@@ -914,6 +914,7 @@ export const nb: Messages = {
       cancelled: "Kansellert og refundert",
       closed: "Avsluttet",
       pending_payment: "Venter på betaling",
+      authorized: "Bekreftet",
     } as Record<string, string>,
     tracking: "Spor pakken",
     backToAccount: "Tilbake til Min konto",

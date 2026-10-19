@@ -8,6 +8,7 @@ import { pickupBlock, type PickupAction, type PickupBlock } from "@/lib/pickup";
 import { pickupOptionInput } from "@/lib/shipping-methods-schema";
 import { dayIn, noonOf } from "@/lib/work-dates";
 
+import { captureForSending } from "./payment-capture";
 import { audit } from "./auth";
 import { catalogTag } from "./catalog";
 import { orderFulfilment } from "./fulfilment";
@@ -148,7 +149,7 @@ export async function pickupBlockers(runner: Runner, storeId: string, locationId
 // ---------------------------------------------------------------------------
 
 /** The sentence staff read for each refusal (`pickupBlock()`'s codes and the server's own). */
-export const PICKUP_REFUSALS: Record<PickupBlock | "held" | "not_found" | "changed" | "invalid" | "future" | "before_order" | "send", string> = {
+export const PICKUP_REFUSALS: Record<PickupBlock | "held" | "not_found" | "changed" | "invalid" | "future" | "before_order" | "send" | "authorized" | "capture_failed", string> = {
   not_found: "This order no longer exists.",
   // A fulfilment hold (D238 2.6): nothing is handed over or marked ready until staff release it.
   held: "This order is on hold: release it first.",
@@ -166,6 +167,9 @@ export const PICKUP_REFUSALS: Record<PickupBlock | "held" | "not_found" | "chang
   future: "The order cannot have been collected in the future.",
   before_order: "The order cannot have been collected before it was placed.",
   send: "The handover could not be recorded.",
+  // A card held until the order is handed over (D289).
+  authorized: "The customer's card is held, not charged yet: capture the payment on the order first.",
+  capture_failed: "Stripe could not charge the held card, so nothing was handed over. Try again, or cancel the order.",
 };
 export type PickupRefusal = keyof typeof PICKUP_REFUSALS;
 export type PickupRefused = { ok: false; reason: PickupRefusal; message: string };
@@ -283,6 +287,9 @@ export async function markCollected(storeId: string, input: unknown, accountId: 
   const parsed = collectedInput.safeParse(input);
   if (!parsed.success) return refused("invalid", parsed.error.issues[0]?.message);
   const { orderId, seen, haveStock, on } = parsed.data;
+  // A card held until the order is handed over (D289) is charged first; nothing is handed over when it cannot be.
+  const charged = await captureForSending(storeId, orderId, accountId);
+  if (!charged.ok) return refused(charged.reason);
   return db().transaction(async (tx): Promise<CollectedDone> => {
     const facts = await pickupFacts(tx, storeId, orderId, "collected", haveStock === true);
     if (!facts) return refused("not_found");

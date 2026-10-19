@@ -58,6 +58,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
   "src/server/payment-facts.ts": { count: 2, reason: "what a payment was is read from its Stripe charge (D288); a manual, venue or exchange payment keeps its own method and has no charge" },
+  "src/server/payment-capture.ts": { count: 3, reason: "only a Stripe payment is held and captured later (D289); a manual, venue or exchange payment is never authorised" },
   "src/server/payment-disputes.ts": { count: 1, reason: "a Stripe dispute names a Stripe charge (D288); a payment taken outside Kaizena Flow is never disputed through Stripe" },
   "src/server/order-rules.ts": { count: 1, reason: "the rule condition `risk` reads Stripe's risk outcome (D288); other payments have none and the condition says so" },
   "src/server/analytics-payments-data.ts": { count: 2, reason: "Stripe's fee is estimated for Stripe payments only (D288); every captured payment, of any provider, is a row of the report" },

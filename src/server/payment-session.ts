@@ -135,6 +135,8 @@ export type PaymentSessionOptions = {
   idempotencyKey?: string;
   /** The countries Stripe's address form allows: the order's own market (the VAT it carries was decided for it), never the one in the address bar. */
   allowedCountry?: string;
+  /** Hold the card and capture later (D289, `prepareCapture()` decided it for this checkout's order): `capture_method: manual`. */
+  captureLater?: boolean;
   /**
    * The session pays an order change's difference (D174): the metadata and the payment row name the change, so `applySession()` applies the change and never
    * completes the order a second time; no Stripe invoice is made for it (the change's own documents are Kaizen's).
@@ -284,6 +286,8 @@ export async function openPaymentSession(
               payment_intent_data: {
                 metadata,
                 description: `Order ${order.number}`,
+                // Held now, charged when sent or by staff (D289); a method that cannot wait is charged at once by Stripe and the order simply becomes paid.
+                ...(options.captureLater && { capture_method: "manual" as const }),
                 ...(fee !== null && { application_fee_amount: fee }),
                 // A deposit keeps the card for a no-show fee staff may charge later (D66).
                 ...(order.lines.some((line) => line.deposit) && { setup_future_usage: "off_session" as const }),

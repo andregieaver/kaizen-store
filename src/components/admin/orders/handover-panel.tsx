@@ -66,7 +66,7 @@ export function PickupPanel({
   collected: Action;
 }) {
   const hours = parseOpeningHours(delivery?.hours ?? null);
-  const live = (state.status === "paid" || state.status === "fulfilled") && !state.copied;
+  const live = (state.status === "paid" || state.status === "authorized" || state.status === "fulfilled") && !state.copied;
   const isCollected = state.status === "fulfilled" || state.unitsToSend === 0;
   return (
     <div className="flex flex-col gap-4 text-sm">
@@ -154,7 +154,7 @@ export function LocalDeliveryPanel({
   /** *Mark delivered* (`markDelivered()`): on an order never taken out it writes the handover first, so one press is enough. */
   delivered: Action;
 }) {
-  const live = (state.status === "paid" || state.status === "fulfilled") && !state.copied;
+  const live = (state.status === "paid" || state.status === "authorized" || state.status === "fulfilled") && !state.copied;
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div>

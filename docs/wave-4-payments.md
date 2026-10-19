@@ -89,6 +89,24 @@ ahead and tells staff) cancels the order and releases its stock (`commerce.cance
 drafts and pay links keep capturing at once (said on the setting). Methods that cannot be captured later are captured at once by Stripe; the order
 then simply becomes paid.
 
+**As built (D289).** The setting is the owner's (Orders settings, *Take payment*, three choices with what each means; staff read it). Which
+orders wait is only `captureModeFor()` (`src/lib/capture.ts`): subscriptions, bookings, deposits and venue balances, hosts' listings and downloads
+are captured at checkout, and with `when_sent` so is an order with nothing to send. The order keeps its own `orders.capture_mode` (set by
+`prepareCapture()` in `startCheckout()`), so changing the setting never changes an order already placed. A completed session whose PaymentIntent is
+`requires_capture` goes through `commerce.authorize_order_payment()` (`authorizeFromSession()` in `applySession()`): the order is `authorized` with
+`capture_before` (Stripe's `capture_before` from the card, else seven days), its reservations extended to a day past it, its cart converted and the
+confirmation sent; nothing is drawn, invoiced or counted (analytics' `PAID` needs a captured payment), and the staff alert for a paid order waits
+for the capture. **Capturing less** is a capture of that amount and a `refunds` row of kind `release` (succeeded, no provider reference) for the
+rest, written in the capture's transaction: the invoice is issued on the whole order and the release is credited by the trigger every refund uses,
+so documents and analytics read it as a refund of money that was never taken. Kaizena Flow's fee is the same share of what was captured. *Cancel
+and release* voids the PaymentIntent and cancels the order through `cancel_unpaid_order()` (the customer is emailed when ticked). With `when_sent`,
+`markSent()`, `markCollected()` and `markOutForDelivery()` capture first and record nothing when the capture fails; a carrier booking waits for the
+capture. Stripe's `payment_intent.canceled` and the five-minute job (an alert `staff.capture_due` a day ahead, once; past the deadline Stripe is
+asked: ended cancels, captured in the Dashboard makes it paid) end what Stripe ended. The shopper sees *Confirmed* (nb *Bekreftet*, sv *Bekräftad*,
+da *Bekræftet*) and is never told about the hold; staff see *Card held, to capture* in the list (*Pay* filter *Card held, to capture*; a held
+order to send is in *To send*) and the order's capture card. The order page reads stored rows only (`orderCapture()`); Stripe is called only by a
+press, the webhook and the job.
+
 ## 5. Unit C (D290): payouts and reconciliation
 
 Kaizena Flow reads each store's Stripe payouts (`payout.created`, `.updated`, `.paid`, `.failed` on the connected-account webhook, and a daily read

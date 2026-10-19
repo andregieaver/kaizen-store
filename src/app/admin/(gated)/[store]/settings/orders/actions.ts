@@ -5,7 +5,8 @@ import { refresh } from "next/cache";
 import type { FormState } from "@/components/admin/action-form";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS } from "@/lib/order-limits";
 import { checkPermission } from "@/server/permissions";
-import { saveOrderSettings, type OrderSettingsInput } from "@/server/order-settings";
+import { isCaptureSetting } from "@/lib/capture";
+import { saveOrderSettings, SETTINGS_PROBLEMS, type OrderSettingsInput } from "@/server/order-settings";
 
 const NO_ACCESS = "You do not have access to change these settings.";
 
@@ -36,6 +37,12 @@ export async function saveOrderSettingsAction(storeSlug: string, _previous: Form
 
   // Only the owner decides whether others may record money taken outside Kaizen: a form from anyone else does not carry the choice.
   if (form.get("staffMarkPaidShown") === "1") input.staffMarkPaid = form.get("staffMarkPaid") === "on";
+  // When the card is charged (D289) is the owner's too.
+  if (form.get("captureShown") === "1") {
+    const capture = form.get("capture");
+    if (!isCaptureSetting(capture)) return { status: "error", messages: [SETTINGS_PROBLEMS.capture] };
+    input.capture = capture;
+  }
 
   const saved = await saveOrderSettings(member, input);
   if (!saved.ok) return { status: "error", messages: [saved.problem] };

@@ -555,6 +555,36 @@ export async function sendDisputeAlert(storeId: string, disputeId: string, kind:
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+/** A held card's deadline is a day away (D289): to the recipients of new orders, once per order; the order's number and amount, never who the customer is. */
+export async function sendCaptureDueAlert(storeId: string, orderId: string, send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
+  const [[row], store, targets] = await Promise.all([
+    db().execute<Row>(sql`
+      select o.number, o.total_minor, o.currency, o.capture_before, o.copied_from is not null as copied, s.time_zone
+        from commerce.orders o join commerce.stores s on s.id = o.store_id
+       where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.status = 'authorized'
+    `),
+    storeById(storeId),
+    alertRecipients(storeId, "new_order"),
+  ]);
+  if (!row || row.copied || !store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), "en-GB");
+  const due = dueWords(new Date(String(row.capture_before)), String(row.time_zone ?? "UTC"));
+  const email = renderEmail({
+    subject: `Capture the payment of order ${String(row.number)} by ${due}`,
+    preview: `The card is held for ${amount}. After ${due} the hold ends and the order is cancelled.`,
+    lang: "en",
+    footer: emailFooter(store, en()),
+    blocks: [
+      { type: "heading", text: "A held payment is about to end" },
+      { type: "paragraph", text: `The customer's card is held for ${amount} on order ${String(row.number)}. Capture it by ${due}; after that Stripe lets the hold go and the order is cancelled, its stock released.` },
+      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${orderId}`) },
+    ],
+  });
+  const result = await sendToAll(storeId, store.name, "staff.capture_due", targets, email, (r) => `staff-capture-due:${orderId}:${r.kind === "contact" ? "contact" : r.accountId}`, orderId, send);
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
 // ---------------------------------------------------------------------------
 // The queue
 // ---------------------------------------------------------------------------
