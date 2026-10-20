@@ -11,7 +11,8 @@ import { isEnded, type JobKind, type JobPhase, type JobStatus } from "./data-job
 export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`;
 
 /** Shown on the customer export page: Kaizen records no marketing consent yet, so the file must never be used as a mailing list (section 2.5). */
-export const NO_CONSENT_NOTE = "Kaizena Flow does not record marketing consent yet. Do not treat this file as a mailing list.";
+export const NO_CONSENT_NOTE =
+  "This file is not a mailing list. Who agreed to marketing email is on the Subscribers page, with the words they agreed to and when.";
 
 /** The main-currency columns of the order file: indicative, not for a tax return (section 2.3.3). */
 export const MAIN_CURRENCY_NOTE =

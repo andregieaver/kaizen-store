@@ -18,7 +18,7 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
 
 /**
  * The customer file (wave 2, D165, `docs/wave-2-data.md` 2.4, 2.5): one row for each customer, with the custom fields staff entered about them. The
- * owner's only. The consent column says `not_recorded`, because Kaizen has no record of a customer's consent to marketing yet, and the page says so.
+ * owner's only. The consent column is the address's place on the subscriber list (D295); the list itself, with its consent facts, is on Subscribers.
  */
 export default async function CustomerExportPage({ params, searchParams }: Props) {
   const gated = await requireOwnerRole((await params).store);
@@ -40,7 +40,10 @@ export default async function CustomerExportPage({ params, searchParams }: Props
       </Notice>
       <Notice title="Marketing consent">
         <p>{NO_CONSENT_NOTE}</p>
-        <p className="mt-1">The column marketing_consent always says not_recorded. The column email_opt_out says true for an address that unsubscribed from the store&apos;s emails.</p>
+        <p className="mt-1">
+          The column marketing_consent says subscribed, pending (waiting for their confirmation link), unsubscribed or none. The column email_opt_out says
+          true for an address that asked for no cart reminders.
+        </p>
       </Notice>
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />

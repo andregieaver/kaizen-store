@@ -677,6 +677,27 @@ export const en = {
     stripeLine: (number: string) => `Invoice for order ${number}`,
     dueShort: (day: string) => `Due ${day}`,
   },
+  /** Marketing email (D295): hand-written, never machine-translated (`ui:news.`), needs legal review. */
+  // legal: needs review
+  news: {
+    consent: (store: string) => `Email me news and offers from ${store}. I can unsubscribe at any time.`,
+    heading: "Emails with news and offers",
+    on: "You get emails with news and offers.",
+    off: "You do not get emails with news and offers.",
+    pending: "We sent you an email. Open its link to confirm.",
+    subscribe: "Subscribe",
+    unsubscribe: "Unsubscribe",
+    confirmSubject: (store: string) => `Confirm your emails from ${store}`,
+    confirmHeading: "Confirm your subscription",
+    confirmText: (store: string) => `You asked for emails with news and offers from ${store}. Press the button to confirm. If it was not you, ignore this email and nothing happens.`,
+    confirmButton: "Confirm",
+    confirmValid: "The link works for 7 days.",
+    pageIntro: "Confirm that you want emails with news and offers from this store?",
+    confirmed: "Thank you. You are subscribed.",
+    expired: "We could not find this link. It may be too old or already used.",
+    unsubscribeIntro: "Stop getting emails with news and offers from this store?",
+    unsubscribed: "You are unsubscribed. You will get no more emails with news and offers from us.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Your company",

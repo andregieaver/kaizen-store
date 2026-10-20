@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseCsv, writeCsv } from "./csv";
 import type { FieldDef } from "./custom-fields";
-import { CONSENT_NOT_RECORDED, customerColumns, customerFileRows, customerRows, onePerEmail, type CustomerRecord } from "./customer-csv";
+import { customerColumns, customerFileRows, customerRows, onePerEmail, type CustomerRecord } from "./customer-csv";
 
 const def = (id: string, name: string, type: FieldDef["type"]): FieldDef => ({ id, name, label: name, type, access: "private" }) as FieldDef;
 const FIELDS = [def("f1", "birthday_note", "text"), def("f2", "score", "number"), def("f3", "photos", "gallery"), def("f4", "vip", "boolean")];
@@ -59,10 +59,12 @@ describe("the customer file", () => {
     expect(customerFileRows([customer()], FIELDS)[0]).toEqual(cols);
   });
 
-  it("says marketing consent is not recorded for every customer, whatever else is known, and the unsubscribe list as its own column", () => {
-    const rows = customerRows([customer(), customer({ emailOptOut: true, email: "b@example.com" }), customer({ id: null, account: "none", email: "guest@example.com" })], FIELDS);
-    expect(rows.map((r) => cell(r, "marketing_consent"))).toEqual([CONSENT_NOT_RECORDED, CONSENT_NOT_RECORDED, CONSENT_NOT_RECORDED]);
-    expect(CONSENT_NOT_RECORDED).toBe("not_recorded");
+  it("says the address's place on the subscriber list (none without one, never a guess), and the unsubscribe list as its own column", () => {
+    const rows = customerRows(
+      [customer(), customer({ emailOptOut: true, email: "b@example.com", marketing: "unsubscribed" }), customer({ id: null, account: "none", email: "guest@example.com", marketing: "subscribed" })],
+      FIELDS,
+    );
+    expect(rows.map((r) => cell(r, "marketing_consent"))).toEqual(["none", "unsubscribed", "subscribed"]);
     expect(rows.map((r) => cell(r, "email_opt_out"))).toEqual(["false", "true", "false"]);
     expect(cell(rows[2], "customer_id")).toBeNull();
     expect(cell(rows[2], "account")).toBe("none");

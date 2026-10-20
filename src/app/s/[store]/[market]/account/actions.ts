@@ -29,6 +29,7 @@ import {
   updateCustomerDetails,
   verifySignInCode,
 } from "@/server/customers";
+import { setAccountSubscription } from "@/server/marketing-subscribers";
 import { getShopperOrder } from "@/server/orders";
 import { sendPasswordResetCode, sendSignInCode, sendWelcome } from "@/server/shopper-emails";
 import { resolveSellingShop, resolveShop } from "@/server/shop";
@@ -309,4 +310,21 @@ export async function checkoutSignInAction(
   // Not proven just now (the link on the order page is a convenience): a stale session, so downloading or deleting the account's data asks for a code or the password first (D162).
   if (customerId) await startSession(shop.store.id, customerId, { verified: false });
   redirect(`${base}/account`);
+}
+
+/**
+ * My account's marketing email (D295): on gives consent with the words shown on the page (at once for a verified email, else by the emailed
+ * link), off takes it back at once. The signed-in customer only; the store's own words, never the browser's.
+ */
+export async function newsAction(storeSlug: string, marketSlug: string, on: boolean): Promise<void> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return;
+  const customer = await getCustomer(shop.store.id);
+  if (!customer) return;
+  await setAccountSubscription(shop.store.id, customer.id, on, {
+    text: t(shop.market.lang).news.consent(shop.store.name),
+    locale: shop.market.locale,
+    marketCode: shop.market.code,
+  });
+  refresh();
 }

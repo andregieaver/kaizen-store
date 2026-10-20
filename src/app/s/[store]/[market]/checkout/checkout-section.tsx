@@ -533,6 +533,8 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
                   }
                 : null
             }
+            // Marketing email (D295): an unticked box; its words are what the shopper agrees to.
+            news={{ store: store.slug, market: market.slug, labels: { consent: m.news.consent(store.name) } }}
             // The terms (wave 1, 1e): drawn by the pay button unless the page has its own piece for them.
             termsSlot={drawTerms ? termsNode(store, market, view, display) : null}
             terms={display ? { store: store.slug, market: market.slug, display, labels: { hint: m.terms.hint, failed: m.terms.failed } } : null}

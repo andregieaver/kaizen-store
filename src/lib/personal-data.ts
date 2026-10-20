@@ -26,6 +26,7 @@ export const EXPORT_SECTIONS = [
   "bonus",
   "referrals",
   "consents",
+  "marketing",
   "emails",
   "carts",
   "forms",
@@ -160,6 +161,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Email and consent -----------------------------------------------------------------------------------------------------------------
   entry("email_messages", "shopper", via("email", "to_address"), ["to_address", "subject", "html", "text"], "emails", "anonymise", "The address, subject and body are blanked and the row kept (its idempotency key stops a replayed webhook from sending again); the withdrawal acknowledgement waits for its order.", { until: "email_bodies" }),
+  entry("marketing_subscribers", "shopper", via("customer", "customer_id", "email"), ["email", "name", "customer_id", "consent_text", "locale", "market_code"], "marketing", "delete", "The subscriber list (D295): an address that asked for the store's marketing email, with the words it agreed to, when and how. Found by the account or the account's proven email, exported with its history, and deleted with it on erasure (the person asked for more than not to be emailed). A sign-up whose link ran out goes 30 days later.", { also: ["consents"] }),
+  entry("marketing_consent_events", "shopper", via("customer", "subscriber_id"), ["consent_text"], "marketing", "delete", "A subscriber's consent history (D295): each request, subscription and unsubscription with its source and words; exported with the subscriber and deleted with it."),
   entry("email_opt_outs", "shopper", via("email", "email"), ["email"], "consents", "keep", "A suppression record: kept so the store does not email the person again (their own wish); erasing it would undo it."),
   entry("form_submissions", "shopper", via("email", "email", "visitor"), ["email", "visitor", "payload"], "forms", "delete", "Sign-ups and messages sent by this address are deleted.", { also: ["consents"], until: "form_submissions" }),
   entry("consents", "pseudonymous", via("visitor", "visitor"), ["visitor", "choices"], null, "none", "Cookie consent is kept under a random browser id and cannot be tied to a person; said in the file's notIncluded.", { until: "consents" }),
@@ -325,6 +328,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "affiliate.reward": "shopper",
   "bonus.expiry_reminder": "shopper",
   "form.confirm": "shopper",
+  /** The link that confirms a marketing sign-up from checkout or My account (D295), to the address that asked. */
+  "marketing.confirm": "shopper",
   "account.welcome": "shopper",
   "company.joined": "shopper",
   "company.ended": "shopper",

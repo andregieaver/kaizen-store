@@ -123,7 +123,7 @@ describe("shaping an export", () => {
     expect(validateExport(file)).toEqual([]);
     expect(Object.keys(file.sections).sort()).toEqual([...EXPORT_SECTIONS].sort());
     expect(file.counts).toEqual({
-      profile: 1, addresses: 3, orders: 2, invoices: 1, creditNotes: 1, returns: 2, subscriptions: 1, deliveries: 1, wishlists: 2, bonus: 1, referrals: 3, consents: 2, emails: 1, carts: 2, forms: 1, company: 2, customFields: 2, support: 1,
+      profile: 1, addresses: 3, orders: 2, invoices: 1, creditNotes: 1, returns: 2, subscriptions: 1, deliveries: 1, wishlists: 2, bonus: 1, referrals: 3, consents: 2, emails: 1, carts: 2, forms: 1, company: 2, customFields: 2, support: 1, marketing: 0,
     });
     expect(totalRows(file.counts)).toBe(Object.values(file.counts).reduce((a, b) => a + b, 0));
     expect(file.generatedAt).toBe("2026-10-04T10:00:00.000Z");

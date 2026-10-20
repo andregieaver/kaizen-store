@@ -16,6 +16,7 @@ import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { recordFormSent } from "./experiments";
+import { joinList } from "./marketing-subscribers";
 import { storeById, type EmailStore } from "./shopper-emails";
 
 type Row = Record<string, unknown>;
@@ -205,6 +206,8 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
   const id = String(row.id);
   if (owner.storeId) await recordFormSent(owner.storeId, block.id);
   if (!confirm) {
+    // A store's form keeps the person on its list (D295), as unconfirmed: the owner switched the confirmation off.
+    if (owner.storeId) await keepOnList(owner.storeId, block.id, checked.email, payload, request.lang, "unconfirmed");
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid`);
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: done };
@@ -237,6 +240,27 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
 }
 
 type SignupPayload = { name: string; consent: string; consentedAt: string };
+
+/** A store's newsletter sign-up on the store's subscriber list (D295), with the words agreed to and when; Kaizena Flow's own forms keep none. */
+async function keepOnList(storeId: string, blockId: string, email: string, payload: SignupPayload, locale: string, proof: "confirmed" | "unconfirmed") {
+  try {
+    await joinList({
+      storeId,
+      email,
+      name: payload.name,
+      locale,
+      marketCode: null,
+      source: "form",
+      sourceRef: blockId,
+      consentText: payload.consent.slice(0, 1000),
+      consentedAt: new Date(payload.consentedAt),
+      proof,
+    });
+  } catch (error) {
+    // The owner's email still goes (it carries the same consent), and the person is told it worked; the list misses them, which the log says.
+    console.error("forms: the subscriber list could not keep a sign-up", error instanceof Error ? error.message : error);
+  }
+}
 
 /** The sign-up emailed to the recipients: who, the words they agreed to, and when. */
 function relaySignup(found: FoundForm, email: string, payload: SignupPayload, confirmedAt: Date | null, path: string, id: string) {
@@ -276,7 +300,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
   const [row] = await db().execute<Row>(sql`
     update commerce.form_submissions set token_hash = null, confirmed_at = now()
     where token_hash = ${hash(token)} and status = 'pending'
-    returning id, store_id, block_id, email, payload, path, confirmed_at, created_at > now() - make_interval(days => ${CONFIRM_DAYS}) as fresh
+    returning id, store_id, block_id, email, payload, path, locale, confirmed_at, created_at > now() - make_interval(days => ${CONFIRM_DAYS}) as fresh
   `);
   if (!row) return fallback;
   const storeId = row.store_id ? String(row.store_id) : null;
@@ -289,6 +313,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
     await db().execute(sql`update commerce.form_submissions set status = 'expired', payload = null where id = ${String(row.id)}::uuid`);
     return back("expired");
   }
+  if (storeId) await keepOnList(storeId, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, new Date(String(row.confirmed_at)), path, String(row.id));
   await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid`);
   return back("confirmed");

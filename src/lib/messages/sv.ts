@@ -667,6 +667,27 @@ export const sv: Messages = {
     stripeLine: (number) => `Faktura för order ${number}`,
     dueShort: (day) => `Förfaller ${day}`,
   },
+  /** Marknadsföring via e-post (D295): skriven för hand, aldrig maskinöversatt (`ui:news.`), behöver juridisk granskning. */
+  // legal: needs review
+  news: {
+    consent: (store: string) => `Skicka nyheter och erbjudanden från ${store} till min e-post. Jag kan avsluta när som helst.`,
+    heading: "E-post med nyheter och erbjudanden",
+    on: "Du får e-post med nyheter och erbjudanden.",
+    off: "Du får inte e-post med nyheter och erbjudanden.",
+    pending: "Vi har skickat ett e-postmeddelande till dig. Öppna länken i det för att bekräfta.",
+    subscribe: "Prenumerera",
+    unsubscribe: "Avsluta prenumerationen",
+    confirmSubject: (store: string) => `Bekräfta e-post från ${store}`,
+    confirmHeading: "Bekräfta din prenumeration",
+    confirmText: (store: string) => `Du har bett om e-post med nyheter och erbjudanden från ${store}. Tryck på knappen för att bekräfta. Var det inte du kan du bortse från det här meddelandet, så händer ingenting.`,
+    confirmButton: "Bekräfta",
+    confirmValid: "Länken fungerar i 7 dagar.",
+    pageIntro: "Vill du bekräfta att du vill ha e-post med nyheter och erbjudanden från den här butiken?",
+    confirmed: "Tack. Du prenumererar nu.",
+    expired: "Vi hittade inte den här länken. Den kan vara för gammal eller redan använd.",
+    unsubscribeIntro: "Vill du sluta få e-post med nyheter och erbjudanden från den här butiken?",
+    unsubscribed: "Din prenumeration är avslutad. Du får inga fler e-postmeddelanden med nyheter och erbjudanden från oss.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Företaget",

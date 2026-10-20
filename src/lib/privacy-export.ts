@@ -270,6 +270,19 @@ export type CompanySource = {
   company: { name: string; role: string | null } | null;
   invites: { status: string; createdAt: Ts; expiresAt: Ts; acceptedAt: Ts }[];
 };
+/** The person's place on the store's subscriber list (D295), with its consent history. */
+export type MarketingRow = {
+  email: string;
+  status: string;
+  source: string;
+  consentText: string;
+  consentedAt: string;
+  confirmedAt: string | null;
+  unsubscribedAt: string | null;
+  unsubscribeSource: string | null;
+  history: { kind: string; source: string; consentText: string | null; at: string }[];
+};
+
 /** A support conversation of the customer (D216): what they, the AI and the store's people wrote; never staff's notes or the partner's help. */
 export type SupportRow = {
   startedAt: Ts;
@@ -314,6 +327,8 @@ export type ExportInput = {
   customFields: CustomFieldRow[];
   /** Support conversations (D216); absent is none. */
   support?: SupportRow[];
+  /** The subscriber list (D295); absent is none. */
+  marketing?: MarketingRow[];
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -344,6 +359,7 @@ export type ExportSections = {
   company: { company: Json | null; invites: Json[] };
   customFields: Json[];
   support: Json[];
+  marketing: Json[];
 };
 
 export type ExportCounts = Record<ExportSection, number>;
@@ -672,6 +688,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     company: (input.company.company ? 1 : 0) + input.company.invites.length,
     customFields: input.customFields.length,
     support: (input.support ?? []).length,
+    marketing: (input.marketing ?? []).length,
   };
 }
 
@@ -736,6 +753,17 @@ export function shapeExport(input: ExportInput): ExportFile {
       summary: c.summary ? { title: c.summary.title, outcome: c.summary.outcome } : null,
       rating: text(c.rating),
       ratingComment: text(c.ratingComment),
+    })),
+    marketing: (input.marketing ?? []).map((m) => ({
+      email: m.email,
+      status: m.status,
+      source: m.source,
+      consentText: m.consentText,
+      consentedAt: iso(m.consentedAt),
+      confirmedAt: iso(m.confirmedAt),
+      unsubscribedAt: iso(m.unsubscribedAt),
+      unsubscribeSource: text(m.unsubscribeSource),
+      history: m.history.map((h) => ({ kind: h.kind, source: h.source, consentText: text(h.consentText), at: iso(h.at) })),
     })),
   };
   return {
@@ -872,6 +900,7 @@ export function validateExport(file: unknown): string[] {
     forms: listOf(sections.forms),
     customFields: listOf(sections.customFields),
     support: listOf(sections.support),
+    marketing: listOf(sections.marketing),
   };
   for (const [s, n] of Object.entries(expected)) {
     if (counts[s] !== n) out.push(`counts.${s} is ${String(counts[s])} but the section holds ${n}`);

@@ -123,6 +123,9 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            and e.kind <> all(${textList(EVIDENCE_EMAIL_KINDS)}))::int as email_messages,
         (select count(*) from commerce.email_opt_outs where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as email_opt_outs,
         (select count(*) from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as form_submissions,
+        (select count(*) from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid))::int as marketing_subscribers,
+        (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
+           where m.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as marketing_consent_events,
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
            where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
@@ -184,6 +187,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       email_messages: n(c.email_messages),
       email_opt_outs: n(c.email_opt_outs),
       form_submissions: n(c.form_submissions),
+      marketing_subscribers: n(c.marketing_subscribers),
+      marketing_consent_events: n(c.marketing_consent_events),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
       field_values: n(c.field_values),
@@ -658,6 +663,10 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     delete from commerce.company_invites where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+  // The subscriber list (D295): the person's place on it and its history go (before the account, which it may name).
+  await tx.execute(sql`
+    delete from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
+  `);
 
   // Support conversations of the account (D216): anonymised at once, by the same function as the retention step (an open one is ended first).
   if (cid) {

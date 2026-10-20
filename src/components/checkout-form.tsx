@@ -12,7 +12,7 @@ import {
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
-import { captureCheckoutEmailAction, checkoutRemindersAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
+import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
@@ -44,6 +44,16 @@ export type CheckoutReminderOption = {
   market: string;
   optedOut: boolean;
   labels: { notice: string; optOut: string; optedOut: string; undo: string };
+};
+
+/**
+ * Marketing email (D295): an unticked box with the words the shopper agrees to. Ticked, the pay press asks for consent for the address typed
+ * (by its emailed link, or at once for a signed-in customer with a verified email); it never holds up the payment.
+ */
+export type CheckoutNewsOption = {
+  store: string;
+  market: string;
+  labels: { consent: string };
 };
 
 /** Opening an account with the order (D32), offered to shoppers who are not signed in. */
@@ -114,6 +124,7 @@ export function CheckoutForm({
   links,
   account = null,
   reminders = null,
+  news = null,
   terms = null,
   termsSlot = null,
   delivery = null,
@@ -129,6 +140,7 @@ export function CheckoutForm({
   links: { cart: string; order: string };
   account?: CheckoutAccountOption | null;
   reminders?: CheckoutReminderOption | null;
+  news?: CheckoutNewsOption | null;
   terms?: CheckoutTermsOption | null;
   /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
   termsSlot?: ReactNode;
@@ -148,7 +160,17 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} terms={terms} termsSlot={termsSlot} delivery={delivery} />
+      <Form
+        labels={labels}
+        links={links}
+        ships={ships}
+        account={account}
+        reminders={reminders}
+        news={news}
+        terms={terms}
+        termsSlot={termsSlot}
+        delivery={delivery}
+      />
     </CheckoutElementsProvider>
   );
 }
@@ -170,6 +192,7 @@ function Form({
   ships,
   account,
   reminders,
+  news,
   terms,
   termsSlot,
   delivery,
@@ -179,6 +202,7 @@ function Form({
   ships: boolean;
   account: CheckoutAccountOption | null;
   reminders: CheckoutReminderOption | null;
+  news: CheckoutNewsOption | null;
   terms: CheckoutTermsOption | null;
   termsSlot: ReactNode;
   delivery: CheckoutDeliveryCheck | null;
@@ -198,13 +222,14 @@ function Form({
   const problemRef = useRef<HTMLParagraphElement>(null);
   const id = useId();
   const [optedOut, setOptedOut] = useState(reminders?.optedOut ?? false);
+  const [wantsNews, setWantsNews] = useState(false);
   // The last complete email typed, and the pause before keeping it.
   const typedEmail = useRef<string | null>(null);
   const captureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onContactChange = (event: { complete: boolean; value: { email: string } }) => {
-    if (!reminders) return;
     typedEmail.current = event.complete ? event.value.email : null;
+    if (!reminders) return;
     if (captureTimer.current) clearTimeout(captureTimer.current);
     if (!event.complete || optedOut) return;
     const typed = event.value.email;
@@ -288,6 +313,16 @@ function Form({
     return false;
   };
 
+  /** The box ticked: consent asked for the address typed (D295). Never stops the payment: a failure only means no email about it. */
+  const askForNews = async () => {
+    if (!news || !wantsNews) return;
+    try {
+      await checkoutNewsAction(news.store, news.market, typedEmail.current);
+    } catch {
+      // The payment goes on; the shopper can subscribe from the store's pages or My account.
+    }
+  };
+
   /** Whether the delivery is settled before anything is kept or paid (D237); a refusal is said and focused. */
   const deliverySettled = async (): Promise<boolean> => {
     if (!delivery) return true;
@@ -319,6 +354,7 @@ function Form({
     if (!(await deliverySettled())) return;
     if (!(await saveAccount())) return;
     if (!(await recordTerms())) return;
+    await askForNews();
     // On success Stripe takes the shopper to the order page.
     const result = await checkout.confirm();
     if (result.type === "error") fail(result.error.message);
@@ -342,6 +378,7 @@ function Form({
               event.paymentFailed();
               return;
             }
+            await askForNews();
             const result = await checkout.confirm({ expressCheckoutConfirmEvent: event });
             if (result.type === "error") fail(result.error.message);
           }}
@@ -360,6 +397,18 @@ function Form({
               {optedOut ? reminders.labels.undo : reminders.labels.optOut}
             </button>
           </p>
+        )}
+        {news && (
+          <div className="flex items-start gap-3">
+            <input
+              id={`${id}-news`}
+              type="checkbox"
+              checked={wantsNews}
+              onChange={(event) => setWantsNews(event.target.checked)}
+              className="mt-1 size-4"
+            />
+            <label htmlFor={`${id}-news`}>{news.labels.consent}</label>
+          </div>
         )}
         {account && (
           <div className="flex flex-col gap-3">

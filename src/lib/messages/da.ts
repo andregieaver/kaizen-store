@@ -667,6 +667,27 @@ export const da: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfalder ${day}`,
   },
+  /** Markedsføring på e-mail (D295): skrevet i hånden, aldrig maskinoversat (`ui:news.`), skal gennemgås juridisk. */
+  // legal: needs review
+  news: {
+    consent: (store: string) => `Send mig nyheder og tilbud fra ${store} på e-mail. Jeg kan altid afmelde mig.`,
+    heading: "E-mails med nyheder og tilbud",
+    on: "Du får e-mails med nyheder og tilbud.",
+    off: "Du får ikke e-mails med nyheder og tilbud.",
+    pending: "Vi har sendt dig en e-mail. Åbn linket i den for at bekræfte.",
+    subscribe: "Tilmeld mig",
+    unsubscribe: "Afmeld mig",
+    confirmSubject: (store: string) => `Bekræft e-mails fra ${store}`,
+    confirmHeading: "Bekræft din tilmelding",
+    confirmText: (store: string) => `Du har bedt om e-mails med nyheder og tilbud fra ${store}. Tryk på knappen for at bekræfte. Var det ikke dig, kan du se bort fra denne e-mail, så sker der ingenting.`,
+    confirmButton: "Bekræft",
+    confirmValid: "Linket virker i 7 dage.",
+    pageIntro: "Vil du bekræfte, at du ønsker e-mails med nyheder og tilbud fra denne butik?",
+    confirmed: "Tak. Du er tilmeldt.",
+    expired: "Vi kunne ikke finde dette link. Det kan være for gammelt eller allerede brugt.",
+    unsubscribeIntro: "Vil du holde op med at få e-mails med nyheder og tilbud fra denne butik?",
+    unsubscribed: "Du er afmeldt. Du får ikke flere e-mails med nyheder og tilbud fra os.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Virksomheden",

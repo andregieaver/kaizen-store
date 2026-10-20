@@ -449,6 +449,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
+  store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
+    keywords: ["newsletter", "mailing list", "email list", "marketing consent", "opt-in", "double opt-in", "unsubscribe", "nyhetsbrev", "abonnenter"],
+    tasks: ["See who subscribed to the newsletter", "Export the subscriber list", "Unsubscribe a person"],
+  }),
+  store("subscriber", "/subscribers/[subscriberId]", "Subscriber", "Sales", "One subscriber: what they agreed to, when and from where, their history, and Unsubscribe."),
   store("cart-reminders", "/cart-reminders", "Cart reminders", "Sales", "Emails to shoppers who left their checkout, with their steps and results.", {
     keywords: ["abandoned cart", "recovery"],
     feature: "shop",

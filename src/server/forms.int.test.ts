@@ -78,6 +78,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.form_submissions where store_id in (${storeId}::uuid, ${otherStoreId}::uuid)`);
+  await db().execute(sql`delete from commerce.marketing_subscribers where store_id in (${storeId}::uuid, ${otherStoreId}::uuid)`);
   await closeDb();
 });
 
@@ -92,6 +93,14 @@ const request = (block: string, values: Record<string, string | boolean>, extra:
   elapsed: 8000,
   ...extra,
 });
+
+const subscriber = async (email: string) =>
+  (
+    await db().execute<Row>(sql`
+      select status, source, source_ref, consent_text, name, locale, confirmed_at is not null as confirmed
+      from commerce.marketing_subscribers where store_id = ${storeId}::uuid and email = ${email}
+    `)
+  )[0];
 
 const emails = (to: string) =>
   db().execute<Row>(sql`select kind, subject, html, text, status from commerce.email_messages where to_address = ${to} order by created_at`);
@@ -154,6 +163,8 @@ describe("forms (D93)", () => {
     const [row] = await db().execute<Row>(sql`select status, token_hash, payload from commerce.form_submissions where email = ${to}`);
     expect(row).toMatchObject({ status: "pending", payload: { name: "Ola", consent: "Yes, email me the newsletter. I can unsubscribe at any time." } });
     expect(String(row.token_hash)).not.toBe(new URL(link).searchParams.get("t"));
+    // Nor is the address on the store's subscriber list (D295) until it is confirmed.
+    expect(await subscriber(to)).toBeUndefined();
 
     await forms.submitForm(request(`news-${run}`, { email: to }, { lang: "en" }), `visitor-e-${run}`);
     expect(await emails(to)).toHaveLength(1);
@@ -171,6 +182,16 @@ describe("forms (D93)", () => {
     const [row] = await db().execute<Row>(sql`select status, token_hash, payload, confirmed_at from commerce.form_submissions where email = ${`ny-${run}@example.com`}`);
     expect(row).toMatchObject({ status: "logged", token_hash: null, payload: null });
     expect(row.confirmed_at).not.toBeNull();
+    // On the store's subscriber list (D295), confirmed, with the words agreed to and the form it came from.
+    expect(await subscriber(`ny-${run}@example.com`)).toMatchObject({
+      status: "subscribed",
+      source: "form",
+      source_ref: `news-${run}`,
+      consent_text: "Yes, email me the newsletter. I can unsubscribe at any time.",
+      name: "Ola",
+      locale: "en",
+      confirmed: true,
+    });
     // A link works once.
     expect((await forms.confirmSignup(token)).location).not.toContain("newsletter=");
     expect(await emails(`liste-${run}@example.com`)).toHaveLength(1);
@@ -193,6 +214,8 @@ describe("forms (D93)", () => {
     expect(await emails(`rett-${run}@example.com`)).toHaveLength(0);
     const list = await emails(`liste-${run}@example.com`);
     expect(String(list.at(-1)!.text)).toContain(`rett-${run}@example.com`);
+    // Subscribed at once, and the list says it was never confirmed (the owner switched that off).
+    expect(await subscriber(`rett-${run}@example.com`)).toMatchObject({ status: "subscribed", source: "form", confirmed: false });
   });
 
   it("forgets sends after 30 days", async () => {

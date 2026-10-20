@@ -1365,7 +1365,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D93 forms email the owner (up to five recipients kept in the page) with double opt-in for sign-ups and a consent record in the email; `form_submissions` is a throttle and confirmation log (pruned after 30 days), not a subscriber list. No subscriber or customer record, no list in the admin, no tags or segments, no unsubscribe record.",
+    "gap": "D295: sign-ups feed the store's subscriber list with consent (words, time, source, language, double opt-in time), unsubscribe by the subscriber's own link or one-click, and are in the person's export and erasure. Still missing: contact messages in an admin inbox linked to the customer, and form tags selectable in segments.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1381,19 +1381,27 @@
         "src/components/form-section.tsx",
         "src/components/site-form.tsx",
         "src/app/api/forms/route.ts",
-        "src/app/api/forms/confirm/route.ts"
+        "src/app/api/forms/confirm/route.ts",
+        "src/lib/marketing-consent.ts",
+        "src/server/marketing-subscribers.ts",
+        "src/app/admin/(gated)/[store]/subscribers/page.tsx",
+        "src/app/s/[store]/[market]/account/news/[token]/page.tsx"
       ],
       "tests": [
         "src/lib/forms.test.ts",
         "src/server/forms.int.test.ts",
         "e2e/modals.spec.ts",
-        "e2e/ab-form-goal.spec.ts"
+        "e2e/ab-form-goal.spec.ts",
+        "src/db/marketing-subscribers.test.ts",
+        "src/server/marketing-subscribers.int.test.ts",
+        "e2e/signed-in/subscribers.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D93",
-      "D148"
+      "D148",
+      "D295"
     ],
     "history": []
   },

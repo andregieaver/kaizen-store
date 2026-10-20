@@ -21,6 +21,7 @@ import {
   type CompanySource,
   type ConsentRow,
   type CustomFieldRow,
+  type MarketingRow,
   type SupportRow,
   type DocumentRow,
   type EmailRow,
@@ -831,6 +832,29 @@ async function loadSupport(s: PrivacySubject): Promise<SupportRow[]> {
   });
 }
 
+/** The person's place on the subscriber list (D295), by the account or the subject's addresses, with its consent history. */
+async function loadMarketing(s: PrivacySubject): Promise<MarketingRow[]> {
+  const rows = await db().execute<Row>(sql`
+    select m.email, m.status, m.source, m.consent_text, m.consented_at, m.confirmed_at, m.unsubscribed_at, m.unsubscribe_source,
+      (select coalesce(json_agg(json_build_object('kind', e.kind, 'source', e.source, 'consentText', e.consent_text, 'at', e.created_at) order by e.id), '[]')
+         from commerce.marketing_consent_events e where e.store_id = m.store_id and e.subscriber_id = m.id) as history
+    from commerce.marketing_subscribers m
+    where m.store_id = ${s.storeId}::uuid and (m.customer_id = ${s.customerId}::uuid or lower(m.email) = any(${textList(s.addresses)}))
+    order by m.created_at, m.id
+  `);
+  return rows.map((r) => ({
+    email: strs(r.email),
+    status: strs(r.status),
+    source: strs(r.source),
+    consentText: strs(r.consent_text),
+    consentedAt: iso(r.consented_at) ?? "",
+    confirmedAt: iso(r.confirmed_at),
+    unsubscribedAt: iso(r.unsubscribed_at),
+    unsubscribeSource: str(r.unsubscribe_source),
+    history: ((r.history ?? []) as { kind: string; source: string; consentText: string | null; at: string }[]).map((h) => ({ ...h, at: iso(h.at) ?? "" })),
+  }));
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -881,7 +905,12 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support] = await Promise.all([loadConsents(s, orders), loadCustomFields(s, orders, store.mainLocale), loadSupport(s)]);
+  const [consents, customFields, support, marketing] = await Promise.all([
+    loadConsents(s, orders),
+    loadCustomFields(s, orders, store.mainLocale),
+    loadSupport(s),
+    loadMarketing(s),
+  ]);
   const today = now.toISOString().slice(0, 10);
   return {
     generatedAt: now,
@@ -911,6 +940,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     company,
     customFields,
     support,
+    marketing,
   };
 }
 

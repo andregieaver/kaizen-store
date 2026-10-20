@@ -2689,6 +2689,20 @@
       "when": 1792487766584,
       "tag": "20261020091606_payment_terms_order_index",
       "breakpoints": true
+    },
+    {
+      "idx": 384,
+      "version": "7",
+      "when": 1792503757477,
+      "tag": "20261020134237_marketing_subscribers",
+      "breakpoints": true
+    },
+    {
+      "idx": 385,
+      "version": "7",
+      "when": 1792503778187,
+      "tag": "20261020134258_marketing_subscribers_rules",
+      "breakpoints": true
     }
   ]
 }

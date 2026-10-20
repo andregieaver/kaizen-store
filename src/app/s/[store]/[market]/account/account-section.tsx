@@ -26,7 +26,9 @@ import { shopperBonus } from "@/server/bonus";
 import { companyOf } from "@/server/companies";
 import type { Store } from "@/server/stores";
 
-import { avatarAction } from "./actions";
+import { accountSubscription } from "@/server/marketing-subscribers";
+
+import { avatarAction, newsAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
 
 /**
@@ -56,7 +58,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine, bonus, referrals] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
     // from its emails keeps working.
@@ -65,6 +67,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     companyOf(store.id, customer.id),
     shopperBonus({ storeId: store.id, market }, customer.id),
     affiliateSite(store.id),
+    accountSubscription(store.id, customer.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -239,6 +242,20 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           hasPassword={customer.hasPassword}
           labels={{ newPassword: a.newPassword, rule: a.passwordRule, save: a.setPassword, remove: a.removePassword, saving: a.saving }}
         />
+      </section>
+
+      {/* Marketing email (D295): the customer's own consent, given or taken back in one press, with the words they agree to. */}
+      <section aria-labelledby="news-heading" className="flex flex-col gap-3">
+        <h2 id="news-heading" className="text-xl font-heading">{m.news.heading}</h2>
+        <p role="status" className="text-sm text-muted">
+          {news === "subscribed" ? m.news.on : news === "pending" ? m.news.pending : m.news.off}
+        </p>
+        <form action={newsAction.bind(null, store.slug, market.slug, news !== "subscribed")} className="flex flex-col gap-3">
+          {news !== "subscribed" && <p className="text-sm">{m.news.consent(store.name)}</p>}
+          <button type="submit" className="min-h-11 self-start rounded-button border border-border px-5">
+            {news === "subscribed" ? m.news.unsubscribe : m.news.subscribe}
+          </button>
+        </form>
       </section>
 
       <PrivacyCard text={shopperPrivacyText(market.lang)} storeName={store.name} href={`${base}/account/privacy`} />

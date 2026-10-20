@@ -673,6 +673,27 @@ export const nb: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfaller ${day}`,
   },
+  /** Markedsføring på e-post (D295): skrevet for hånd, aldri maskinoversatt (`ui:news.`), må gjennomgås juridisk. */
+  // legal: needs review
+  news: {
+    consent: (store: string) => `Send meg nyheter og tilbud fra ${store} på e-post. Jeg kan melde meg av når som helst.`,
+    heading: "E-post med nyheter og tilbud",
+    on: "Du får e-post med nyheter og tilbud.",
+    off: "Du får ikke e-post med nyheter og tilbud.",
+    pending: "Vi har sendt deg en e-post. Åpne lenken i den for å bekrefte.",
+    subscribe: "Meld meg på",
+    unsubscribe: "Meld meg av",
+    confirmSubject: (store: string) => `Bekreft e-post fra ${store}`,
+    confirmHeading: "Bekreft påmeldingen",
+    confirmText: (store: string) => `Du har bedt om e-post med nyheter og tilbud fra ${store}. Trykk på knappen for å bekrefte. Var det ikke deg, kan du se bort fra denne e-posten, så skjer det ingenting.`,
+    confirmButton: "Bekreft",
+    confirmValid: "Lenken virker i 7 dager.",
+    pageIntro: "Vil du bekrefte at du ønsker e-post med nyheter og tilbud fra denne butikken?",
+    confirmed: "Takk. Du er påmeldt.",
+    expired: "Vi fant ikke denne lenken. Den kan være for gammel eller allerede brukt.",
+    unsubscribeIntro: "Vil du slutte å få e-post med nyheter og tilbud fra denne butikken?",
+    unsubscribed: "Du er meldt av. Du får ikke flere e-poster med nyheter og tilbud fra oss.",
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Bedriften",

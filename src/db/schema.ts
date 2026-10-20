@@ -82,6 +82,7 @@ import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../
 import { RETURN_REASONS } from "../lib/withdrawal";
 import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from "../lib/notifications";
 import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
+import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
@@ -11320,5 +11321,94 @@ export const shipmentTracking = commerce.table(
     check("shipment_tracking_events", sql`jsonb_typeof(${t.events}) = 'array' and jsonb_array_length(${t.events}) <= 30`),
     check("shipment_tracking_failures", sql`${t.failures} >= 0`),
     check("shipment_tracking_carrier", sql`char_length(${t.carrier}) between 1 and 40`),
+  ],
+);
+
+/**
+ * The subscriber list (wave 5 unit A, D295, `docs/wave-5-marketing.md` 3): one row per store and address that asked for the store's marketing
+ * email, with what they agreed to, when and how. Only `src/server/marketing-subscribers.ts` writes it, and the database moves a status only as
+ * `commerce.marketing_subscribers_rules()` allows, writing each change into `marketing_consent_events`. Never copied (people's data).
+ */
+export const marketingSubscribers = commerce.table(
+  "marketing_subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** Lower case. */
+    email: text("email").notNull(),
+    /** The store's customer, only when a signed-in customer with a proven email subscribed; never matched from a typed address. */
+    customerId: uuid("customer_id"),
+    name: text("name").notNull().default(""),
+    locale: text("locale").notNull(),
+    marketCode: text("market_code"),
+    status: text("status").notNull(),
+    source: text("source").notNull(),
+    /** The form's block id, or the order's id. */
+    sourceRef: text("source_ref"),
+    /** The words the person agreed to, as shown. */
+    consentText: text("consent_text").notNull(),
+    consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
+    /** When they opened the confirmation link (double opt-in); null for a signed-in verified customer, or a form with confirmation off. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** sha256 of the confirmation link's token, hex; gone once used. */
+    confirmHash: text("confirm_hash"),
+    confirmUntil: timestamp("confirm_until", { withTimezone: true }),
+    /** The address's unsubscribe token, in every marketing email; it can only unsubscribe. */
+    token: text("token").notNull(),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    unsubscribeSource: text("unsubscribe_source"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("marketing_subscribers_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("marketing_subscribers_email_idx").on(t.storeId, sql`lower(${t.email})`),
+    uniqueIndex("marketing_subscribers_token_idx").on(t.token),
+    uniqueIndex("marketing_subscribers_confirm_idx").on(t.confirmHash),
+    index("marketing_subscribers_list_idx").on(t.storeId, t.status, t.createdAt),
+    index("marketing_subscribers_customer_idx").on(t.storeId, t.customerId),
+    index("marketing_subscribers_pending_idx").on(t.confirmUntil).where(sql`${t.status} = 'pending'`),
+    foreignKey({
+      name: "marketing_subscribers_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }),
+    check("marketing_subscribers_status", sql`${t.status} in (${sqlList(SUBSCRIBER_STATUSES)})`),
+    check("marketing_subscribers_source", sql`${t.source} in (${sqlList(SUBSCRIBE_SOURCES)})`),
+    check(
+      "marketing_subscribers_unsubscribe_source",
+      sql`${t.unsubscribeSource} is null or ${t.unsubscribeSource} in (${sqlList(UNSUBSCRIBE_SOURCES)})`,
+    ),
+    check("marketing_subscribers_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254 and position('@' in ${t.email}) > 1`),
+    check("marketing_subscribers_token", sql`${t.token} ~ '^[A-Za-z0-9_-]{43}$'`),
+    check("marketing_subscribers_confirm", sql`${t.confirmHash} is null or ${t.confirmHash} ~ '^[0-9a-f]{64}$'`),
+    check("marketing_subscribers_texts", sql`char_length(${t.consentText}) between 1 and 1000 and char_length(${t.name}) <= 200 and char_length(${t.locale}) <= 20`),
+  ],
+);
+
+/**
+ * A subscriber's consent history (D295): every change of status with its source and the words, written only by the subscribers' trigger and
+ * never changed; it goes only with its subscriber (an erasure, or a pending sign-up whose link ran out).
+ */
+export const marketingConsentEvents = commerce.table(
+  "marketing_consent_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id),
+    subscriberId: uuid("subscriber_id").notNull(),
+    kind: text("kind").notNull(),
+    /** A subscribe source, or an unsubscribe source. */
+    source: text("source").notNull(),
+    consentText: text("consent_text"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "marketing_consent_events_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    index("marketing_consent_events_subscriber_idx").on(t.storeId, t.subscriberId, t.createdAt),
+    check("marketing_consent_events_kind", sql`${t.kind} in (${sqlList(CONSENT_EVENT_KINDS)})`),
   ],
 );

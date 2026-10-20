@@ -23,7 +23,7 @@ type Row = Record<string, unknown>;
 /**
  * The customer export (D165, `docs/wave-2-data.md` 2.4, 2.5, 4.3, 6.3): one row per customer as the Customers page lists them (an account, or a guest
  * with a paid order), one per email whatever its case, nobody who is only in a copy's orders or an erased person's order, the custom fields staff
- * entered read for a whole batch in one query and equal to `customerFieldExport()`, `marketing_consent` always `not_recorded` (Kaizen records no consent
+ * entered read for a whole batch in one query and equal to `customerFieldExport()`, `marketing_consent` the subscriber list's (D295; none here
  * yet), the unsubscribe list as `email_opt_out`, nothing that opens an account, owner only, only the store's own.
  */
 
@@ -97,9 +97,10 @@ describe("the file of customers", () => {
     void copy;
   });
 
-  it("says plainly that no consent is recorded, and marks the people on the store's unsubscribe list", async () => {
+  it("says the address's place on the subscriber list (none without one), and marks the people on the store's unsubscribe list", async () => {
     const { rows } = await fileOf();
-    expect(new Set(rows.map((r) => r.marketing_consent))).toEqual(new Set(["not_recorded"]));
+    // Nobody in this store asked for its marketing email (D295).
+    expect(new Set(rows.map((r) => r.marketing_consent))).toEqual(new Set(["none"]));
     expect(rows.find((r) => r.email === subject.email)?.email_opt_out).toBe("true");
     expect(rows.find((r) => r.email === "guest.person@example.com" || r.email === "Guest.Person@Example.com")?.email_opt_out).toBe("false");
   });

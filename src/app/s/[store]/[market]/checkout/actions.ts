@@ -19,6 +19,7 @@ import { deliveryView } from "@/server/delivery-choice";
 import { db } from "@/db/client";
 import { chooseDelivery, deliveryReady, marketShipping, quoteDelivery, setDeliveryPostalCode } from "@/server/delivery-options";
 import { checkCodeForOrder, setCartCode } from "@/server/discounts";
+import { joinList, setAccountSubscription } from "@/server/marketing-subscribers";
 import { resolveSellingShop } from "@/server/shop";
 
 import { applyCreditsForm } from "../cart/bonus";
@@ -63,6 +64,40 @@ export async function checkoutRemindersAction(
     await captureCheckout(found.shop.store.id, found.shop.market, found.cartId, found.orderId, address.data);
   }
   return { optedOut: optOut };
+}
+
+/**
+ * The pay press with the box for news and offers ticked (D295): consent with the store's own words for this checkout's order. A signed-in
+ * customer's account decides (at once with a verified email); a guest's typed address gets the confirmation link and waits for it.
+ */
+export async function checkoutNewsAction(storeSlug: string, marketSlug: string, typed: string | null): Promise<void> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) return;
+  const { store, market } = found.shop;
+  const consent = t(market.lang).news.consent(store.name);
+  const customer = await getCustomer(store.id);
+  if (customer) {
+    await setAccountSubscription(store.id, customer.id, true, {
+      text: consent,
+      locale: market.locale,
+      marketCode: market.code,
+      source: "checkout",
+      sourceRef: found.orderId,
+    });
+    return;
+  }
+  const address = typed ? email.safeParse(typed.trim()) : null;
+  if (!address?.success) return;
+  await joinList({
+    storeId: store.id,
+    email: address.data,
+    locale: market.locale,
+    marketCode: market.code,
+    source: "checkout",
+    sourceRef: found.orderId,
+    consentText: consent,
+    proof: "link",
+  });
 }
 
 /** Why the code typed did not apply, and the code, to show it again. */

@@ -5,15 +5,14 @@
  * field NAME in the same shape as the product file's (`field-csv.ts`), read in one batch.
  *
  * The file never carries a password hash, an auth id, a session, a sign-in code, an avatar path, a referral code or a token: the input
- * has no field for any of them. `marketing_consent` is ALWAYS the word `not_recorded`: Kaizen records no consent to marketing yet (wave 5
- * builds the subscriber list with consent, source and date), and a blank or a `false` would claim one. `email_opt_out` is true when the
- * address is on the store's unsubscribe list (`commerce.email_opt_outs`). The file is not a mailing list; the page says so.
+ * has no field for any of them. `marketing_consent` is the address's place on the store's subscriber list (D295): `subscribed`, `pending`
+ * (waiting for its confirmation link), `unsubscribed`, or `none` for an address that never asked; never a guess from an order. `email_opt_out`
+ * is true when the address asked for no cart reminders (`commerce.email_opt_outs`). The file is not a mailing list; the page says so.
  */
 import { addressableFieldsOf, fieldCell } from "./field-csv-cells";
 import type { Cell } from "./csv";
 import type { FieldDef } from "./custom-fields";
-
-export const CONSENT_NOT_RECORDED = "not_recorded";
+import { consentColumn, type SubscriberStatus } from "./marketing-consent";
 
 export type CustomerRecord = {
   /** The customer's id; null for a guest (a paid order and no account). */
@@ -35,6 +34,8 @@ export type CustomerRecord = {
   companyRole: string | null;
   /** The address is on the store's unsubscribe list. */
   emailOptOut: boolean;
+  /** The address's place on the subscriber list (D295); null for none. */
+  marketing?: SubscriberStatus | null;
   /** The customer exists only in a copied store's history. */
   copied: boolean;
   /** Plain custom field values as cell text, by the field's name (translatable text is the primary language's). */
@@ -81,7 +82,7 @@ export function customerRows(customers: readonly CustomerRecord[], fields: reado
       company: text(c.company),
       company_role: text(c.companyRole),
       email_opt_out: c.emailOptOut ? "true" : "false",
-      marketing_consent: CONSENT_NOT_RECORDED,
+      marketing_consent: consentColumn(c.marketing),
       copied: c.copied ? "true" : "false",
     };
     for (const d of defs) cells[`field:${d.name}`] = fieldCell(d, c.fields?.[d.name] ?? "");

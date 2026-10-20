@@ -16,7 +16,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import (the owner-only customer export was built with wave 2's first run, D165, and is held in `platform.product-customer-and-order-csv`; its `marketing_consent` column says not_recorded until the subscriber list with consent, wave 5), no staff GDPR export or erasure; a customer can delete their own account (D28).",
+    "gap": "Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import (the owner-only customer export was built with wave 2's first run, D165, and is held in `platform.product-customer-and-order-csv`; its `marketing_consent` column is the address's place on the subscriber list since D295), no staff GDPR export or erasure; a customer can delete their own account (D28).",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -124,7 +124,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "Verified: only transactional email, cart reminders (D33) and the AI manager's one-customer `email_customer` (gated). D93 newsletter sign-ups are emailed to the owner and not stored; there is no subscriber list or marketing-consent field on customers, no composer, no send to a segment and no lifecycle automation beyond cart reminders (welcome, post-purchase, win-back).",
+    "gap": "D295 built the subscriber list with consent, unsubscribe by token and one-click POST, export and erasure. Still missing: a composer, sending to a segment, bounce and complaint suppression wired to sends, reports, and lifecycle automations beyond cart reminders (welcome, post-purchase, win-back): wave 5 units B to D.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -142,7 +142,9 @@
         "src/server/email.ts",
         "src/server/email-events.ts",
         "src/server/owner-tools.ts",
-        "src/app/api/cron/cart-reminders/route.ts"
+        "src/app/api/cron/cart-reminders/route.ts",
+        "src/lib/marketing-consent.ts",
+        "src/server/marketing-subscribers.ts"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
@@ -150,14 +152,16 @@
         "src/server/forms.int.test.ts",
         "src/server/email-events.int.test.ts",
         "src/server/email.test.ts",
-        "e2e/cart-reminders.spec.ts"
+        "e2e/cart-reminders.spec.ts",
+        "src/server/marketing-subscribers.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D33",
       "D93",
-      "D104"
+      "D104",
+      "D295"
     ],
     "history": [
       {
@@ -312,7 +316,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "D93 forms email the owner (up to five recipients kept in the page) with double opt-in for sign-ups and the consent in the email; D121 modal rows can hold a form and open on a timer, exit intent or click. `form_submissions` is a throttle and confirmation log pruned after 30 days, not a list: no subscriber record, no incentive discount, no tags.",
+    "gap": "D295: a confirmed newsletter sign-up (and checkout's box and My account's switch) now keeps a subscriber with the consent words, time, source form, language and confirmation time, listed at Marketing → Subscribers. Still missing: an incentive code for signing up, tags from a form, and a popup's own report (D121 modal rows already hold a form).",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -330,19 +334,27 @@
         "src/app/api/forms/route.ts",
         "src/app/api/forms/confirm/route.ts",
         "src/components/page-modal.tsx",
-        "src/lib/page-modal.ts"
+        "src/lib/page-modal.ts",
+        "src/lib/marketing-consent.ts",
+        "src/server/marketing-subscribers.ts",
+        "src/app/admin/(gated)/[store]/subscribers/page.tsx",
+        "src/app/s/[store]/[market]/account/news/[token]/page.tsx"
       ],
       "tests": [
         "src/lib/forms.test.ts",
         "src/server/forms.int.test.ts",
         "e2e/modals.spec.ts",
-        "e2e/ab-form-goal.spec.ts"
+        "e2e/ab-form-goal.spec.ts",
+        "src/db/marketing-subscribers.test.ts",
+        "src/server/marketing-subscribers.int.test.ts",
+        "e2e/signed-in/subscribers.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D93",
-      "D121"
+      "D121",
+      "D295"
     ],
     "history": []
   },

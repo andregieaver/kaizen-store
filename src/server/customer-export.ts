@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { isDialect, type Cell, type DialectId } from "@/lib/csv";
 import { customerColumns, customerRows, onePerEmail, type CustomerRecord } from "@/lib/customer-csv";
+import type { SubscriberStatus } from "@/lib/marketing-consent";
 
 import type { ExportReader } from "./data-export-run";
 import { customerCsvFields, customerFieldTexts } from "./field-entities";
@@ -83,7 +84,11 @@ async function readCustomers(store: Store, after: string | null, limit: number):
       a.email_verified_at is not null as verified, a.company_name, a.organisation_number, a.company_role,
       coalesce(t.name, ct.name) as customer_group, cc.name as company, a.copied_from is not null as copied,
       coalesce(b.orders, 0) as orders, b.last_order, b.ship,
-      exists (select 1 from commerce.email_opt_outs oo where oo.store_id = ${store.id}::uuid and lower(oo.email) = keys.k) as opted_out
+      exists (select 1 from commerce.email_opt_outs oo where oo.store_id = ${store.id}::uuid and lower(oo.email) = keys.k) as opted_out,
+      -- The address's place on the subscriber list (D295): the account's own subscriber, else the one with this address.
+      (select ms.status from commerce.marketing_subscribers ms
+        where ms.store_id = ${store.id}::uuid and (ms.customer_id = a.id or lower(ms.email) = keys.k)
+        order by (ms.customer_id = a.id) desc nulls last limit 1) as marketing
     from keys
     left join accounts a on a.k = keys.k
     left join by_email b on b.k = keys.k
@@ -120,6 +125,7 @@ async function readCustomers(store: Store, after: string | null, limit: number):
       company: text(r.company),
       companyRole: text(r.company_role),
       emailOptOut: r.opted_out === true,
+      marketing: r.marketing ? (String(r.marketing) as SubscriberStatus) : null,
       copied: r.copied === true,
       ...(id && fieldTexts.has(id) ? { fields: fieldTexts.get(id) } : {}),
     };
