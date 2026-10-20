@@ -10,7 +10,7 @@ import { emailText } from "@/lib/email-text";
 import { checkMessage, checkSignup, looksAutomated, returnPath, type Answer, type FormResponse } from "@/lib/forms";
 import { type FormRequest } from "@/lib/forms-schema";
 import { t, type Messages } from "@/lib/i18n";
-import { pageBlockSchema, type EmailFormBlock, type NewsletterBlock, type PageContent } from "@/lib/page-content";
+import { pageBlockSchema, withChildren, type EmailFormBlock, type NewsletterBlock, type PageContent } from "@/lib/page-content";
 import { storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
@@ -69,12 +69,14 @@ export async function findForm(storeId: string | null, blockId: string): Promise
   const rows = await db().execute<Row>(sql`
     select published from commerce.pages
     where store_id is not distinct from ${storeId}::uuid and published is not null
-      and jsonb_path_exists(published, '$.rows[*].columns[*].blocks[*] ? (@.id == $id)', jsonb_build_object('id', ${blockId}::text))
+      and (jsonb_path_exists(published, '$.rows[*].columns[*].blocks[*] ? (@.id == $id)', jsonb_build_object('id', ${blockId}::text))
+        -- In a Columns component's column (D294).
+        or jsonb_path_exists(published, '$.rows[*].columns[*].blocks[*].columns[*].blocks[*] ? (@.id == $id)', jsonb_build_object('id', ${blockId}::text)))
     order by published_at desc nulls last
     limit 1
   `);
   const page = rows[0]?.published as PageContent | undefined;
-  const raw = page?.rows?.flatMap((row) => row.columns.flatMap((column) => column.blocks)).find((block) => block.id === blockId);
+  const raw = page?.rows?.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks))).find((block) => block.id === blockId);
   const parsed = raw ? pageBlockSchema.safeParse(raw) : null;
   const block = parsed?.success ? parsed.data : null;
   if (!block || (block.type !== "emailForm" && block.type !== "newsletter") || block.recipients.length === 0) return null;

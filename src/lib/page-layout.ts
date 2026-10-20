@@ -11,6 +11,7 @@ import {
   type PageRow,
   type PageType,
   withChildren,
+  withParts,
 } from "./page-content";
 
 /**
@@ -49,7 +50,7 @@ export const pageLayoutSchema = z
   .superRefine((layout, ctx) => {
     const blocks = layoutBlocks(layout);
     if (blocks.length > BLOCKS_MAX) ctx.addIssue({ code: "custom", message: `It holds more than ${BLOCKS_MAX} blocks.` });
-    const ids = layout.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])]);
+    const ids = layout.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withParts(c.blocks).map((b) => b.id)])]);
     if (new Set(ids).size !== ids.length) {
       ctx.addIssue({ code: "custom", message: "Two parts have the same id. Reload the page and try again." });
     }

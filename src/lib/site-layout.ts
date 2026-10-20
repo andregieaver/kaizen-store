@@ -11,6 +11,7 @@ import {
   type MenuBlock,
   type SiteBlock,
   type SitePart,
+  withChildren,
 } from "./page-content";
 import { SIZES } from "./breakpoints";
 import { flowRows } from "./page-modal";
@@ -102,7 +103,7 @@ export const isSiteBlock = (block: PageBlock): block is SiteBlock => block.type 
 
 /** The site components a page holds; a page that is not a header or footer must hold none. */
 export const siteBlocks = (content: Pick<PageContent, "rows">): SiteBlock[] =>
-  content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.filter(isSiteBlock)));
+  content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks).filter(isSiteBlock)));
 
 /**
  * What a footer must show on every page (who runs the site, by e-commerce law; the cookie choices, D58; and in a store the

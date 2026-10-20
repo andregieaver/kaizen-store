@@ -12,6 +12,7 @@ import {
   pageParts,
   rowLayouts,
   type BlockType,
+  type ColumnsBlock,
   type PartBase,
   type PageBlock,
   type ProductPart,
@@ -123,6 +124,9 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       };
     case "newsletter":
       return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
+    case "columns":
+      // Two columns side by side (D294), as the Rows tab's first two-column row.
+      return { id: id(), type, layout: "2", columns: [{ id: id(), blocks: [] }, { id: id(), blocks: [] }] };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":
@@ -267,7 +271,7 @@ function placeInLines(lines: RowLine[], spot: ColumnSpot, column: PageColumn): R
  * column (of 100), written the way the column's own field would (`setAt()`: at Extra large the column's own, below it an
  * override where it differs from the size above). The shares of a line that does not have that many columns are not set.
  */
-export function setLineShares(rows: PageRow[], rowId: string, lineIndex: number, size: Size, shares: readonly number[]): PageRow[] {
+function setLineSharesOn(rows: PageRow[], rowId: string, lineIndex: number, size: Size, shares: readonly number[]): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId) return row;
     const lines = linesOf(row);
@@ -281,8 +285,8 @@ export function setLineShares(rows: PageRow[], rowId: string, lineIndex: number,
 }
 
 /** The shares of a row's first line (all of a row of one line). */
-export function setColumnShares(rows: PageRow[], rowId: string, size: Size, shares: readonly number[]): PageRow[] {
-  return setLineShares(rows, rowId, 0, size, shares);
+function setColumnSharesOn(rows: PageRow[], rowId: string, size: Size, shares: readonly number[]): PageRow[] {
+  return setLineSharesOn(rows, rowId, 0, size, shares);
 }
 
 /** A column without the share it was given at a size (at Extra large, the column's own). */
@@ -299,7 +303,7 @@ function withoutShareAt(column: PageColumn, size: Size): PageColumn {
 }
 
 /** Gives the layout's shares back to a line at a size: every column's own share there is taken away. */
-export function clearLineShares(rows: PageRow[], rowId: string, lineIndex: number, size: Size): PageRow[] {
+function clearLineSharesOn(rows: PageRow[], rowId: string, lineIndex: number, size: Size): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId) return row;
     const lines = linesOf(row);
@@ -310,7 +314,7 @@ export function clearLineShares(rows: PageRow[], rowId: string, lineIndex: numbe
 }
 
 /** Gives the layout's shares back at a size to every line of a row. */
-export function clearColumnShares(rows: PageRow[], rowId: string, size: Size): PageRow[] {
+function clearColumnSharesOn(rows: PageRow[], rowId: string, size: Size): PageRow[] {
   return rows.map((row) => (row.id === rowId ? { ...row, columns: row.columns.map((column) => withoutShareAt(column, size)) } : row));
 }
 
@@ -318,7 +322,7 @@ export function clearColumnShares(rows: PageRow[], rowId: string, size: Size): P
  * Gives one of a row's lines another layout. Its columns are kept in order; when there are fewer, the blocks of the columns
  * that go move to the new last column, so nothing written is lost. The other lines are as they were.
  */
-export function setLineLayout(rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId): PageRow[] {
+function setLineLayoutOn(rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId) return row;
     const lines = linesOf(row);
@@ -335,11 +339,11 @@ export function setLineLayout(rows: PageRow[], rowId: string, lineIndex: number,
 }
 
 /** Gives a row's first line (its only one, mostly) another layout. */
-export function setRowLayout(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
-  return setLineLayout(rows, rowId, 0, layout, id);
+function setRowLayoutOn(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
+  return setLineLayoutOn(rows, rowId, 0, layout, id);
 }
 
-function mapColumn(rows: PageRow[], columnId: string, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
+function mapColumnOn(rows: PageRow[], columnId: string, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
   return rows.map((row) =>
     row.columns.some((c) => c.id === columnId)
       ? { ...row, columns: row.columns.map((c) => (c.id === columnId ? { ...c, blocks: change(c.blocks) } : c)) }
@@ -347,7 +351,7 @@ function mapColumn(rows: PageRow[], columnId: string, change: (blocks: PageBlock
   );
 }
 
-export function findBlock(rows: PageRow[], blockId: string): (BlockPlace & { block: PageBlock; parent?: ChildPlace }) | null {
+function findBlockOn(rows: PageRow[], blockId: string): (BlockPlace & { block: PageBlock; parent?: ChildPlace }) | null {
   for (const row of rows) {
     for (const column of row.columns) {
       const index = column.blocks.findIndex((b) => b.id === blockId);
@@ -369,8 +373,8 @@ export function findBlock(rows: PageRow[], blockId: string): (BlockPlace & { blo
 export type ChildPlace = { blockId: string; itemId: string };
 
 /** An answer's components changed by `change` (D208); the rows as they are when the FAQ or its question is not found. */
-function mapChildren(rows: PageRow[], place: ChildPlace, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
-  return mapColumnBlocks(rows, (block) =>
+function mapChildrenOn(rows: PageRow[], place: ChildPlace, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
+  return mapColumnBlocksOn(rows, (block) =>
     block.id === place.blockId && block.type === "faq"
       ? {
           ...block,
@@ -387,14 +391,14 @@ function mapChildren(rows: PageRow[], place: ChildPlace, change: (blocks: PageBl
   );
 }
 
-function mapColumnBlocks(rows: PageRow[], change: (block: PageBlock) => PageBlock): PageRow[] {
+function mapColumnBlocksOn(rows: PageRow[], change: (block: PageBlock) => PageBlock): PageRow[] {
   return rows.map((row) => ({ ...row, columns: row.columns.map((column) => ({ ...column, blocks: column.blocks.map(change) })) }));
 }
 
 /** Puts a component in an FAQ's answer at `index` (D208), at most `FAQ_CHILDREN_MAX` and only of the kinds an answer holds. */
-export function insertChild(rows: PageRow[], place: ChildPlace, block: PageBlock, index: number): PageRow[] {
+function insertChildOn(rows: PageRow[], place: ChildPlace, block: PageBlock, index: number): PageRow[] {
   if (!isFaqChildType(block.type)) return rows;
-  return mapChildren(rows, place, (blocks) => {
+  return mapChildrenOn(rows, place, (blocks) => {
     if (blocks.length >= FAQ_CHILDREN_MAX) return blocks;
     const next = [...blocks];
     next.splice(clamp(index, blocks.length), 0, block);
@@ -403,45 +407,45 @@ export function insertChild(rows: PageRow[], place: ChildPlace, block: PageBlock
 }
 
 /** Moves a component in its answer to `index` (D208), counted after it has been taken out. */
-export function moveChild(rows: PageRow[], blockId: string, index: number): PageRow[] {
-  const place = findBlock(rows, blockId);
+function moveChildOn(rows: PageRow[], blockId: string, index: number): PageRow[] {
+  const place = findBlockOn(rows, blockId);
   if (!place?.parent) return rows;
-  return mapChildren(rows, place.parent, (blocks) => {
+  return mapChildrenOn(rows, place.parent, (blocks) => {
     const rest = blocks.filter((b) => b.id !== blockId);
     rest.splice(clamp(index, rest.length), 0, place.block);
     return rest;
   });
 }
 
-export function insertBlock(rows: PageRow[], columnId: string, block: PageBlock, index: number): PageRow[] {
-  return mapColumn(rows, columnId, (blocks) => {
+function insertBlockOn(rows: PageRow[], columnId: string, block: PageBlock, index: number): PageRow[] {
+  return mapColumnOn(rows, columnId, (blocks) => {
     const next = [...blocks];
     next.splice(clamp(index, blocks.length), 0, block);
     return next;
   });
 }
 
-export function removeBlock(rows: PageRow[], blockId: string): PageRow[] {
-  const place = findBlock(rows, blockId);
-  if (place?.parent) return mapChildren(rows, place.parent, (blocks) => blocks.filter((b) => b.id !== blockId));
-  return place ? mapColumn(rows, place.columnId, (blocks) => blocks.filter((b) => b.id !== blockId)) : rows;
+function removeBlockOn(rows: PageRow[], blockId: string): PageRow[] {
+  const place = findBlockOn(rows, blockId);
+  if (place?.parent) return mapChildrenOn(rows, place.parent, (blocks) => blocks.filter((b) => b.id !== blockId));
+  return place ? mapColumnOn(rows, place.columnId, (blocks) => blocks.filter((b) => b.id !== blockId)) : rows;
 }
 
 /**
  * Moves a block into a column (its own or another, in any row) at `index`,
  * counted after it has been taken out.
  */
-export function moveBlock(rows: PageRow[], blockId: string, columnId: string, index: number): PageRow[] {
-  const place = findBlock(rows, blockId);
-  // A component in an answer stays in it (D208): it moves there with `moveChild()`.
+function moveBlockOn(rows: PageRow[], blockId: string, columnId: string, index: number): PageRow[] {
+  const place = findBlockOn(rows, blockId);
+  // A component in an answer stays in it (D208): it moves there with `moveChildOn()`.
   if (!place || place.parent) return rows;
-  return insertBlock(removeBlock(rows, blockId), columnId, place.block, index);
+  return insertBlockOn(removeBlockOn(rows, blockId), columnId, place.block, index);
 }
 
-export function updateBlock(rows: PageRow[], blockId: string, change: (block: PageBlock) => PageBlock): PageRow[] {
-  const place = findBlock(rows, blockId);
-  if (place?.parent) return mapChildren(rows, place.parent, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b)));
-  return place ? mapColumn(rows, place.columnId, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b))) : rows;
+function updateBlockOn(rows: PageRow[], blockId: string, change: (block: PageBlock) => PageBlock): PageRow[] {
+  const place = findBlockOn(rows, blockId);
+  if (place?.parent) return mapChildrenOn(rows, place.parent, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b)));
+  return place ? mapColumnOn(rows, place.columnId, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b))) : rows;
 }
 
 /** The layout with `count` equal columns (1 to 6). */
@@ -482,8 +486,11 @@ function keepHtmlId<T extends PartBase>(part: T, taken: Set<string>): T {
 export const copyBlock = (block: PageBlock, id: NewId, taken = new Set<string>()): PageBlock =>
   block.global
     ? copyWithUses("block", structuredClone(block), id)
-    : // An answer's components (D208) are copied with ids of their own too.
-      mapChildBlocks(keepHtmlId(withFreshItems({ ...structuredClone(block), id: id() }, id), taken), (child) => copyBlock(child, id, taken));
+    : block.type === "columns"
+      ? // A Columns component's columns (D294) are copied with ids of their own, as a row's are.
+        { ...keepHtmlId({ ...structuredClone(block), id: id() }, taken), columns: block.columns.map((c) => copyColumn(c, id, taken)) }
+      : // An answer's components (D208) are copied with ids of their own too.
+        mapChildBlocks(keepHtmlId(withFreshItems({ ...structuredClone(block), id: id() }, id), taken), (child) => copyBlock(child, id, taken));
 
 /** A copy of a grid of custom items (D155) gives each item an id of its own, which keeps that item's texts' translations apart from the original's. */
 function withFreshItems<T extends PageBlock>(block: T, id: NewId): T {
@@ -524,13 +531,13 @@ export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow
 }
 
 /** A copy of the block right after it. */
-export function duplicateBlock(rows: PageRow[], blockId: string, id: NewId): PageRow[] {
-  const place = findBlock(rows, blockId);
-  if (place?.parent) return insertChild(rows, place.parent, copyBlock(place.block, id, htmlIds(rows)), place.index + 1);
-  return place ? insertBlock(rows, place.columnId, copyBlock(place.block, id, htmlIds(rows)), place.index + 1) : rows;
+function duplicateBlockOn(rows: PageRow[], blockId: string, id: NewId): PageRow[] {
+  const place = findBlockOn(rows, blockId);
+  if (place?.parent) return insertChildOn(rows, place.parent, copyBlock(place.block, id, htmlIds(rows)), place.index + 1);
+  return place ? insertBlockOn(rows, place.columnId, copyBlock(place.block, id, htmlIds(rows)), place.index + 1) : rows;
 }
 
-function findColumn(rows: PageRow[], columnId: string): { row: PageRow; index: number } | null {
+function findColumnOn(rows: PageRow[], columnId: string): { row: PageRow; index: number } | null {
   for (const row of rows) {
     const index = row.columns.findIndex((c) => c.id === columnId);
     if (index >= 0) return { row, index };
@@ -539,8 +546,8 @@ function findColumn(rows: PageRow[], columnId: string): { row: PageRow; index: n
 }
 
 /** Whether a column can be copied: a line holds at most six columns. */
-export function canDuplicateColumn(rows: PageRow[], columnId: string): boolean {
-  const found = findColumn(rows, columnId);
+function canDuplicateColumnOn(rows: PageRow[], columnId: string): boolean {
+  const found = findColumnOn(rows, columnId);
   const place = found ? locateColumn(found.row, columnId) : null;
   return Boolean(found && place && linesOf(found.row)[place.line].columns.length < LINE_COLUMNS_MAX);
 }
@@ -549,8 +556,8 @@ export function canDuplicateColumn(rows: PageRow[], columnId: string): boolean {
  * A copy of the column right after it, in its line. The line gets one more column, so its columns become equal (a sidebar
  * layout has a set number of columns).
  */
-export function duplicateColumn(rows: PageRow[], columnId: string, id: NewId): PageRow[] {
-  const found = findColumn(rows, columnId);
+function duplicateColumnOn(rows: PageRow[], columnId: string, id: NewId): PageRow[] {
+  const found = findColumnOn(rows, columnId);
   const place = found ? locateColumn(found.row, columnId) : null;
   if (!found || !place) return rows;
   const lines = linesOf(found.row);
@@ -562,8 +569,8 @@ export function duplicateColumn(rows: PageRow[], columnId: string, id: NewId): P
 }
 
 /** Takes a column and its blocks out; the rest of its line become equal, or the line goes if it was alone. A row keeps at least one column. */
-export function removeColumn(rows: PageRow[], columnId: string): PageRow[] {
-  const found = findColumn(rows, columnId);
+function removeColumnOn(rows: PageRow[], columnId: string): PageRow[] {
+  const found = findColumnOn(rows, columnId);
   const place = found ? locateColumn(found.row, columnId) : null;
   if (!found || !place || found.row.columns.length <= 1) return rows;
   const lines = linesOf(found.row).flatMap((line, i): RowLine[] => {
@@ -576,11 +583,11 @@ export function removeColumn(rows: PageRow[], columnId: string): PageRow[] {
 }
 
 /** Moves a column within its line; widths stay with the places, so it takes the width of its new place. */
-export function moveColumn(rows: PageRow[], columnId: string, to: number): PageRow[] {
-  const found = findColumn(rows, columnId);
+function moveColumnOn(rows: PageRow[], columnId: string, to: number): PageRow[] {
+  const found = findColumnOn(rows, columnId);
   const place = found ? locateColumn(found.row, columnId) : null;
   if (!found || !place) return rows;
-  return moveColumnAt(rows, columnId, { rowId: found.row.id, line: place.line, index: to });
+  return moveColumnAtOn(rows, columnId, { rowId: found.row.id, line: place.line, index: to });
 }
 
 /**
@@ -589,8 +596,8 @@ export function moveColumn(rows: PageRow[], columnId: string, to: number): PageR
  * width evenly again, the one it left going if it was alone, and the row it left going if that was its only column. A line
  * already holding six columns takes no more, nor a row with six lines another; the rows are then as they were.
  */
-export function moveColumnAt(rows: PageRow[], columnId: string, spot: ColumnSpot): PageRow[] {
-  const found = findColumn(rows, columnId);
+function moveColumnAtOn(rows: PageRow[], columnId: string, spot: ColumnSpot): PageRow[] {
+  const found = findColumnOn(rows, columnId);
   const target = rows.find((r) => r.id === spot.rowId);
   const place = found ? locateColumn(found.row, columnId) : null;
   if (!found || !target || !place) return rows;
@@ -636,19 +643,19 @@ export function moveColumnAt(rows: PageRow[], columnId: string, spot: ColumnSpot
  * Moves a column, with all its blocks, to `index` among another row's columns (or its own: then within its line, keeping the
  * layout). The line it joins is the one holding that place (the last, for a place past the end).
  */
-export function moveColumnTo(rows: PageRow[], columnId: string, rowId: string, index: number): PageRow[] {
-  const found = findColumn(rows, columnId);
+function moveColumnToOn(rows: PageRow[], columnId: string, rowId: string, index: number): PageRow[] {
+  const found = findColumnOn(rows, columnId);
   const target = rows.find((r) => r.id === rowId);
   if (!found || !target) return rows;
-  if (found.row.id === rowId) return moveColumn(rows, columnId, index);
-  return moveColumnAt(rows, columnId, spotAtIndex(target, index));
+  if (found.row.id === rowId) return moveColumnOn(rows, columnId, index);
+  return moveColumnAtOn(rows, columnId, spotAtIndex(target, index));
 }
 
 /**
  * Puts a column at a spot (D187): the line it joins shares its width evenly again, one more column in it, or it is alone on a
  * new line. A line holding six columns takes no more, nor a row with six lines another.
  */
-export function insertColumnAt(rows: PageRow[], spot: ColumnSpot, column: PageColumn): PageRow[] {
+function insertColumnAtOn(rows: PageRow[], spot: ColumnSpot, column: PageColumn): PageRow[] {
   const row = rows.find((r) => r.id === spot.rowId);
   if (!row) return rows;
   const lines = placeInLines(linesOf(row), spot, column);
@@ -656,27 +663,27 @@ export function insertColumnAt(rows: PageRow[], spot: ColumnSpot, column: PageCo
   return next ? rows.map((r) => (r.id === row.id ? next : r)) : rows;
 }
 
-/** Puts a column into a row at `index` among all its columns, in the line that holds that place: as `insertColumnAt()`. */
-export function insertColumn(rows: PageRow[], rowId: string, column: PageColumn, index: number): PageRow[] {
+/** Puts a column into a row at `index` among all its columns, in the line that holds that place: as `insertColumnAtOn()`. */
+function insertColumnOn(rows: PageRow[], rowId: string, column: PageColumn, index: number): PageRow[] {
   const row = rows.find((r) => r.id === rowId);
-  return row ? insertColumnAt(rows, spotAtIndex(row, index), column) : rows;
+  return row ? insertColumnAtOn(rows, spotAtIndex(row, index), column) : rows;
 }
 
 /**
  * A new empty column for the Column tile pressed rather than dragged (D187): after the column last pointed at, in its line;
  * else last in the page's last row; a full line gives it a line of its own under; with no row at all, a row of its own.
  */
-export function addColumn(rows: PageRow[], near: string | null, id: NewId): PageRow[] {
+function addColumnOn(rows: PageRow[], near: string | null, id: NewId): PageRow[] {
   const column: PageColumn = { id: id(), blocks: [] };
-  const found = near ? findColumn(rows, near) : null;
+  const found = near ? findColumnOn(rows, near) : null;
   const row = found?.row ?? rows[rows.length - 1];
   if (!row) return [{ ...newRow("1", id), columns: [column] }];
   const place = found ? locateColumn(row, near!) : null;
   const lines = linesOf(row);
   const line = place?.line ?? lines.length - 1;
   const index = place ? place.index + 1 : lines[line].columns.length;
-  if (lines[line].columns.length >= LINE_COLUMNS_MAX) return insertColumnAt(rows, { rowId: row.id, newLine: line + 1 }, column);
-  return insertColumnAt(rows, { rowId: row.id, line, index }, column);
+  if (lines[line].columns.length >= LINE_COLUMNS_MAX) return insertColumnAtOn(rows, { rowId: row.id, newLine: line + 1 }, column);
+  return insertColumnAtOn(rows, { rowId: row.id, line, index }, column);
 }
 
 /** A row, a column or a block, by id: what a settings dialog is for. */
@@ -719,7 +726,7 @@ export function patchRow(rows: PageRow[], rowId: string, patch: RowPatch): PageR
   return rows.map((row) => (row.id === rowId ? merge(row, patch) : row));
 }
 
-export function patchColumn(rows: PageRow[], columnId: string, patch: ColumnPatch): PageRow[] {
+function patchColumnOn(rows: PageRow[], columnId: string, patch: ColumnPatch): PageRow[] {
   return rows.map((row) =>
     row.columns.some((c) => c.id === columnId)
       ? { ...row, columns: row.columns.map((c) => (c.id === columnId ? merge(c, patch) : c)) }
@@ -727,30 +734,142 @@ export function patchColumn(rows: PageRow[], columnId: string, patch: ColumnPatc
   );
 }
 
-export function patchBlock<T extends PageBlock = PageBlock>(rows: PageRow[], blockId: string, patch: BlockPatch<T>): PageRow[] {
-  return updateBlock(rows, blockId, (block) => merge(block, patch));
+function patchBlockOn<T extends PageBlock = PageBlock>(rows: PageRow[], blockId: string, patch: BlockPatch<T>): PageRow[] {
+  return updateBlockOn(rows, blockId, (block) => merge(block, patch));
 }
 
 /** The row, column or block a target names. */
-export function partOf(rows: PageRow[], target: Styled): PageRow | PageColumn | PageBlock | undefined {
-  if (target.kind === "block") return findBlock(rows, target.id)?.block;
+function partOfOn(rows: PageRow[], target: Styled): PageRow | PageColumn | PageBlock | undefined {
+  if (target.kind === "block") return findBlockOn(rows, target.id)?.block;
   if (target.kind === "row") return rows.find((r) => r.id === target.id);
   return rows.flatMap((r) => r.columns).find((c) => c.id === target.id);
 }
 
 /** Changes the settings every part has: margin and padding, id and classes (D47, D48). */
-export function patchPart(rows: PageRow[], target: Styled, patch: Partial<PartBase>): PageRow[] {
-  if (target.kind === "block") return patchBlock(rows, target.id, patch);
+function patchPartOn(rows: PageRow[], target: Styled, patch: Partial<PartBase>): PageRow[] {
+  if (target.kind === "block") return patchBlockOn(rows, target.id, patch);
   if (target.kind === "row") return patchRow(rows, target.id, patch);
-  return patchColumn(rows, target.id, patch);
+  return patchColumnOn(rows, target.id, patch);
 }
 
 /** Gives a row, column or block its margin and padding (D47); none when both are left out. */
-export function setSpacing(rows: PageRow[], target: Styled, style: Spacing): PageRow[] {
-  return patchPart(rows, target, { style: style.margin || style.padding ? style : undefined });
+function setSpacingOn(rows: PageRow[], target: Styled, style: Spacing): PageRow[] {
+  return patchPartOn(rows, target, { style: style.margin || style.padding ? style : undefined });
 }
 
 /** The spacing a row, column or block has now. */
-export function spacingOf(rows: PageRow[], target: Styled): Spacing | undefined {
-  return partOf(rows, target)?.style;
+function spacingOfOn(rows: PageRow[], target: Styled): Spacing | undefined {
+  return partOfOn(rows, target)?.style;
 }
+
+// ---------------------------------------------------------------------------
+// Nested columns (D294)
+// ---------------------------------------------------------------------------
+
+/**
+ * The edits above work on a list of rows. A Columns component holds lines of columns as a row does, so each edit runs on the
+ * page's rows with every Columns component in them also as a row of its own (a *holder*, first in the list), and the components
+ * are then put back from their holders: a column moves into, out of or within a Columns component, takes a new line there, or
+ * shares its width, by the same functions as a row's. A holder left with no column takes its component with it.
+ */
+function asHolders(rows: PageRow[]): PageRow[] {
+  const nested = rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.filter((b): b is ColumnsBlock => b.type === "columns")));
+  const holders = nested.map((block) => ({ ...block, type: "row" }) as unknown as PageRow);
+  for (const holder of holders) untouched.add(holder);
+  return [...holders, ...rows];
+}
+
+/** Holders as `asHolders()` made them: an edit that leaves one so changed nothing in its columns, and the component in its row (edited or not) stands. */
+const untouched = new WeakSet<PageRow>();
+
+/** The page's rows from the holders an edit left, with each Columns component as its holder is; null where the edit would nest deeper than one level or lose a component. */
+function fromHolders(rows: PageRow[], holders: PageRow[]): PageRow[] | null {
+  const nestedIds = new Set(rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.flatMap((b) => (b.type === "columns" ? [b.id] : [])))));
+  const held = new Map(holders.filter((h) => nestedIds.has(h.id)).map((h) => [h.id, h]));
+  // One level deep: a nested column never holds another Columns component.
+  for (const holder of held.values()) if (holder.columns.some((c) => c.blocks.some((b) => b.type === "columns"))) return null;
+  const placed = new Set<string>();
+  const holdsNested = (row: PageRow) => row.columns.some((c) => c.blocks.some((b) => b.type === "columns"));
+  const next = holders
+    .filter((h) => !nestedIds.has(h.id))
+    .map((row) =>
+      !holdsNested(row)
+        ? row
+        : {
+            ...row,
+            columns: row.columns.map((column) =>
+              column.blocks.some((b) => b.type === "columns")
+                ? {
+                    ...column,
+                    blocks: column.blocks.flatMap((block): PageBlock[] => {
+                      if (block.type !== "columns" || !nestedIds.has(block.id)) return [block];
+                      const holder = held.get(block.id);
+                      // Its last column moved out: the component goes with it.
+                      if (!holder) return [];
+                      placed.add(block.id);
+                      // Its own settings are edited on the component, its columns on the holder.
+                      return untouched.has(holder) ? [block] : [{ ...holder, type: "columns" } as unknown as ColumnsBlock];
+                    }),
+                  }
+                : column,
+            ),
+          },
+    );
+  // A component whose columns changed but that is no longer in the page would lose them (one taken out is gone, as asked).
+  for (const [id, holder] of held) if (!placed.has(id) && !untouched.has(holder)) return null;
+  return next;
+}
+
+/** Runs an edit on the rows and their Columns components' holders; the rows as they were where it changes nothing or cannot be done. */
+function held(rows: PageRow[], edit: (holders: PageRow[]) => PageRow[]): PageRow[] {
+  const holders = asHolders(rows);
+  const edited = edit(holders);
+  // Nothing changed: the rows as they were, so a caller can tell.
+  if (edited === holders || (edited.length === holders.length && edited.every((h, i) => h === holders[i]))) return rows;
+  return fromHolders(rows, edited) ?? rows;
+}
+
+/** Whether a column is one of a Columns component's (D294). */
+export function isNestedColumn(rows: PageRow[], columnId: string): boolean {
+  return rows.some((row) => row.columns.some((column) => column.blocks.some((b) => b.type === "columns" && b.columns.some((c) => c.id === columnId))));
+}
+
+/** A row, or a Columns component as the row its columns are laid out in (D294), by id: what a column's settings read their row from. */
+export const findHolder = (rows: PageRow[], id: string): PageRow | undefined => asHolders(rows).find((holder) => holder.id === id);
+
+export function findBlock(rows: PageRow[], blockId: string): (BlockPlace & { block: PageBlock; parent?: ChildPlace }) | null {
+  return findBlockOn(asHolders(rows), blockId);
+}
+export const insertChild = (rows: PageRow[], place: ChildPlace, block: PageBlock, index: number) => held(rows, (h) => insertChildOn(h, place, block, index));
+export const moveChild = (rows: PageRow[], blockId: string, index: number) => held(rows, (h) => moveChildOn(h, blockId, index));
+/** Puts a block into a column at `index`; never a Columns component into a nested column (one level deep, D294). */
+export const insertBlock = (rows: PageRow[], columnId: string, block: PageBlock, index: number) =>
+  block.type === "columns" && isNestedColumn(rows, columnId) ? rows : held(rows, (h) => insertBlockOn(h, columnId, block, index));
+export const removeBlock = (rows: PageRow[], blockId: string) => held(rows, (h) => removeBlockOn(h, blockId));
+export const moveBlock = (rows: PageRow[], blockId: string, columnId: string, index: number) =>
+  findBlock(rows, blockId)?.block.type === "columns" && isNestedColumn(rows, columnId) ? rows : held(rows, (h) => moveBlockOn(h, blockId, columnId, index));
+export const updateBlock = (rows: PageRow[], blockId: string, change: (block: PageBlock) => PageBlock) => held(rows, (h) => updateBlockOn(h, blockId, change));
+export const duplicateBlock = (rows: PageRow[], blockId: string, id: NewId) => held(rows, (h) => duplicateBlockOn(h, blockId, id));
+export const canDuplicateColumn = (rows: PageRow[], columnId: string) => canDuplicateColumnOn(asHolders(rows), columnId);
+export const duplicateColumn = (rows: PageRow[], columnId: string, id: NewId) => held(rows, (h) => duplicateColumnOn(h, columnId, id));
+export const removeColumn = (rows: PageRow[], columnId: string) => held(rows, (h) => removeColumnOn(h, columnId));
+export const moveColumn = (rows: PageRow[], columnId: string, to: number) => held(rows, (h) => moveColumnOn(h, columnId, to));
+export const moveColumnAt = (rows: PageRow[], columnId: string, spot: ColumnSpot) => held(rows, (h) => moveColumnAtOn(h, columnId, spot));
+export const moveColumnTo = (rows: PageRow[], columnId: string, rowId: string, index: number) => held(rows, (h) => moveColumnToOn(h, columnId, rowId, index));
+export const insertColumnAt = (rows: PageRow[], spot: ColumnSpot, column: PageColumn) => held(rows, (h) => insertColumnAtOn(h, spot, column));
+export const insertColumn = (rows: PageRow[], rowId: string, column: PageColumn, index: number) => held(rows, (h) => insertColumnOn(h, rowId, column, index));
+/** A new empty column after the column last pointed at (in its row or Columns component), else last in the page's last row. */
+export const addColumn = (rows: PageRow[], near: string | null, id: NewId) => (rows.length === 0 ? addColumnOn(rows, near, id) : held(rows, (h) => addColumnOn(h, near, id)));
+export const setLineShares = (rows: PageRow[], rowId: string, lineIndex: number, size: Size, shares: readonly number[]) =>
+  held(rows, (h) => setLineSharesOn(h, rowId, lineIndex, size, shares));
+export const setColumnShares = (rows: PageRow[], rowId: string, size: Size, shares: readonly number[]) => held(rows, (h) => setColumnSharesOn(h, rowId, size, shares));
+export const clearLineShares = (rows: PageRow[], rowId: string, lineIndex: number, size: Size) => held(rows, (h) => clearLineSharesOn(h, rowId, lineIndex, size));
+export const clearColumnShares = (rows: PageRow[], rowId: string, size: Size) => held(rows, (h) => clearColumnSharesOn(h, rowId, size));
+export const setLineLayout = (rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId) => held(rows, (h) => setLineLayoutOn(h, rowId, lineIndex, layout, id));
+export const setRowLayout = (rows: PageRow[], rowId: string, layout: RowLayout, id: NewId) => held(rows, (h) => setRowLayoutOn(h, rowId, layout, id));
+export const patchColumn = (rows: PageRow[], columnId: string, patch: ColumnPatch) => held(rows, (h) => patchColumnOn(h, columnId, patch));
+export const patchBlock = <T extends PageBlock = PageBlock>(rows: PageRow[], blockId: string, patch: BlockPatch<T>) => held(rows, (h) => patchBlockOn<T>(h, blockId, patch));
+export const partOf = (rows: PageRow[], target: Styled) => partOfOn(asHolders(rows), target);
+export const patchPart = (rows: PageRow[], target: Styled, patch: Partial<PartBase>) => held(rows, (h) => patchPartOn(h, target, patch));
+export const setSpacing = (rows: PageRow[], target: Styled, style: Spacing) => held(rows, (h) => setSpacingOn(h, target, style));
+export const spacingOf = (rows: PageRow[], target: Styled) => spacingOfOn(asHolders(rows), target);

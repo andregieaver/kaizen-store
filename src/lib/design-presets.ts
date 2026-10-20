@@ -7,7 +7,9 @@ import {
   newPageContent,
   pageFonts,
   pageRowSchema,
+  withChildren,
   type PageBlock,
+  type PageColumn,
   type PageContent,
   type PageRow,
 } from "./page-content";
@@ -192,8 +194,11 @@ export function carriedCss(value: string): { css: string; dropped: boolean } {
 /** Blocks that show the store's own data by id and cannot mean anything in another store: custom fields (D118) and field loops (D120). */
 const STORE_DATA_BLOCKS: ReadonlySet<PageBlock["type"]> = new Set(["customField", "fieldLoop"]);
 
-const mapBlocks = (rows: PageRow[], fn: (blocks: PageBlock[]) => PageBlock[]): PageRow[] =>
-  rows.map((row) => ({ ...row, columns: row.columns.map((column) => ({ ...column, blocks: fn(column.blocks) })) }));
+const mapBlocks = (rows: PageRow[], fn: (blocks: PageBlock[]) => PageBlock[]): PageRow[] => {
+  // A Columns component's columns' blocks too (D294).
+  const column = (c: PageColumn): PageColumn => ({ ...c, blocks: fn(c.blocks).map((b) => (b.type === "columns" ? { ...b, columns: b.columns.map(column) } : b)) });
+  return rows.map((row) => ({ ...row, columns: row.columns.map(column) }));
+};
 
 /** What a snapshot of a layout left out, for the platform admin's message. */
 export type SnapshotNotes = { fieldBlocks: number; otherMenus: number; cssDropped: boolean; overlayDropped: boolean };
@@ -220,7 +225,7 @@ export function snapshotLayout(
     }),
   );
   const roles: Record<string, MenuRole> = {};
-  for (const block of rows.flatMap((row) => row.columns.flatMap((column) => column.blocks))) {
+  for (const block of rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks)))) {
     if (block.type !== "menu" || !block.menuId) continue;
     if (menus.header && block.menuId === menus.header) roles[block.id] = "header";
     else if (menus.footer && block.menuId === menus.footer) roles[block.id] = "footer";

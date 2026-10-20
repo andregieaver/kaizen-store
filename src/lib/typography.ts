@@ -416,6 +416,8 @@ export function textRoles(part: TypedPart): RoleDef[] {
     case "separator":
     case "video":
     case "html":
+    // A Columns component (D294): its columns carry the text's look, as a row's do.
+    case "columns":
       return [];
     default:
       // A column (no type), a shop component, and every other component: its text inherits what is set on it.

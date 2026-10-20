@@ -156,6 +156,7 @@ import {
   type DualButtonBlock,
   type DualButtonSide,
   type FontWeight,
+  type ColumnsBlock,
   type PageBlock,
   type SeparatorBlock,
   type TextAlign,
@@ -199,6 +200,7 @@ type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>>
 
 /** The components edited through the generic dialog. */
 export const BLOCK_EDITORS: Editors = {
+  columns: { title: "Columns", General: ColumnsFields },
   separator: { title: "Separator line", General: SeparatorFields },
   accordion: {
     title: "Accordion",
@@ -825,6 +827,43 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
       {(block.width ?? 100) < 100 && (
         <Choices legend="Position" options={optionsOf(SEPARATOR_POSITIONS)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
       )}
+    </>
+  );
+}
+
+/**
+ * A Columns component (D294): how its columns lie and how far apart. Its columns are arranged on the canvas as a row's are (drag one
+ * in, out or onto a line of its own; drag the edges between them), and each column has its own settings.
+ */
+function ColumnsFields({ block, onChange }: BlockEditorProps<ColumnsBlock>) {
+  const stacking = block.stack === undefined ? "phones" : block.stack ? "always" : "never";
+  return (
+    <>
+      <p className="text-sm text-muted">
+        Drag components into its columns, and columns into it, out of it or onto a line of their own. Each column has its own settings.
+      </p>
+      <Choices
+        legend="One under another"
+        options={[
+          { value: "phones", label: "On phones" },
+          { value: "never", label: "Never" },
+          { value: "always", label: "Always" },
+        ]}
+        value={stacking}
+        onChange={(value) => onChange({ stack: value === "phones" ? undefined : value === "always" })}
+      />
+      <NumberField label="Space between the columns" value={block.gap ?? 32} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
+      <Check label="Columns as tall as the tallest" checked={Boolean(block.equalHeight)} onChange={(equalHeight) => onChange({ equalHeight: equalHeight || undefined })} />
+      <Choices
+        legend="Where their content sits"
+        options={[
+          { value: "top", label: "Top" },
+          { value: "middle", label: "Middle" },
+          { value: "bottom", label: "Bottom" },
+        ]}
+        value={block.verticalAlign ?? "top"}
+        onChange={(verticalAlign) => onChange({ verticalAlign: verticalAlign === "top" ? undefined : verticalAlign })}
+      />
     </>
   );
 }

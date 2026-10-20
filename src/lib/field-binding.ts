@@ -77,7 +77,9 @@ export const hasStoreBindings = (content: Pick<PageContent, "rows">): boolean =>
   eachBlock(content, (block) => bindingOf(block)?.source === "store");
 
 function eachBlock(content: Pick<PageContent, "rows">, visit: (block: PageBlock) => boolean): boolean {
-  return content.rows.some((row) => row.columns.some((column) => column.blocks.some(visit)));
+  // A Columns component's columns' blocks too (D294).
+  const inColumn = (column: PageColumn): boolean => column.blocks.some((b) => visit(b) || (b.type === "columns" && b.columns.some(inColumn)));
+  return content.rows.some((row) => row.columns.some(inColumn));
 }
 
 /** Whether any block of the page takes its content from a field: only then are the thing's fields read. */
@@ -85,7 +87,14 @@ export const hasBindings = (content: Pick<PageContent, "rows">): boolean =>
   eachBlock(content, (block) => bindingOf(block) !== undefined);
 
 function mapBlocks<T extends Pick<PageContent, "rows">>(content: T, change: (block: PageBlock) => PageBlock | null): T {
-  const column = (c: PageColumn): PageColumn => ({ ...c, blocks: c.blocks.flatMap((b) => change(b) ?? []) });
+  const column = (c: PageColumn): PageColumn => ({
+    ...c,
+    blocks: c.blocks.flatMap((b): PageBlock[] => {
+      const next = change(b);
+      // A Columns component's columns (D294) are bound as a row's are.
+      return next === null ? [] : next.type === "columns" ? [{ ...next, columns: next.columns.map(column) }] : [next];
+    }),
+  });
   const row = (r: PageRow): PageRow => ({ ...r, columns: r.columns.map(column) });
   return { ...content, rows: content.rows.map(row) };
 }

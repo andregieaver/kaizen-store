@@ -1,4 +1,4 @@
-import { newPageContent, type PageBlock, type PageContent, type ProductBlock, type ProductPart } from "./page-content";
+import { newPageContent, withChildren, type PageBlock, type PageContent, type ProductBlock, type ProductPart } from "./page-content";
 
 /**
  * Product layouts (D79): a product's page is laid out by a layout the store
@@ -51,4 +51,4 @@ export const isProductBlock = (block: PageBlock): block is ProductBlock => block
 
 /** The product components a page holds; a page that is not a product layout must hold none. */
 export const productBlocks = (content: Pick<PageContent, "rows">): ProductBlock[] =>
-  content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.filter(isProductBlock)));
+  content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks).filter(isProductBlock)));

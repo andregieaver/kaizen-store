@@ -267,7 +267,16 @@ export function motionNeeds(rows: readonly PageRow[]): MotionNeeds {
       motionOf(column.motion, "column", first, flags);
       if (column.backgroundMotion && BACKGROUND_SCROLL.has(column.backgroundMotion.effect) && column.background)
         flags.js = true;
-      for (const block of column.blocks) motionOf(block.motion, blockTarget(block), first, flags);
+      for (const block of column.blocks) {
+        motionOf(block.motion, blockTarget(block), first, flags);
+        // A Columns component's columns and what they hold (D294).
+        if (block.type !== "columns") continue;
+        for (const inner of block.columns) {
+          motionOf(inner.motion, "column", first, flags);
+          if (inner.backgroundMotion && BACKGROUND_SCROLL.has(inner.backgroundMotion.effect) && inner.background) flags.js = true;
+          for (const child of inner.blocks) motionOf(child.motion, blockTarget(child), first, flags);
+        }
+      }
     }
   }
   // A staggered group's children take the parent's entrance: they wait exactly when the parent does (counted with it above).

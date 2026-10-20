@@ -148,7 +148,9 @@ import {
   pageBlocks,
   DEFAULT_GRID_RECOMMEND,
   ownProducts,
+  nestedColumns,
   pageParts,
+  columnsAsRow,
   richTextPlain,
   ALT_MAX,
   type RowBackground,
@@ -212,6 +214,7 @@ import {
   duplicateColumn,
   duplicateRow,
   findBlock,
+  findHolder,
   htmlIds,
   insertBlock,
   insertColumn,
@@ -378,9 +381,15 @@ const collision: CollisionDetection = (args) => {
   if (within.length > 0) {
     // The innermost says where: a block rather than its column, a column rather than its row.
     const kindOf = (hit: (typeof within)[number]) => (hit.data?.droppableContainer.data.current as DragData | undefined)?.kind;
-    for (const kind of ["line", "block", "column", "row"] as const) {
-      const hit = within.find((h) => kindOf(h) === kind);
-      if (hit) return [hit];
+    // Of one kind, the smallest: a Columns component's column (D294) rather than the row's column holding it.
+    const area = (hit: (typeof within)[number]) => {
+      const rect = hit.data?.droppableContainer.rect.current;
+      return rect ? rect.width * rect.height : Number.MAX_SAFE_INTEGER;
+    };
+    // A block lies in its column, so the smaller of the two says where; a Columns component's empty column is smaller than the component.
+    for (const kinds of [["line"], ["block", "column"], ["row"]] as const) {
+      const hits = within.filter((h) => (kinds as readonly string[]).includes(kindOf(h) ?? ""));
+      if (hits.length > 0) return [hits.reduce((a, b) => (area(b) < area(a) ? b : a))];
     }
     return within;
   }
@@ -413,7 +422,8 @@ function pointerOf({ active, activatorEvent, delta }: Move): { x: number; y: num
 
 /** A row's columns as they lie on the canvas now, line by line; null where one is not drawn. */
 function measureLines(row: PageRow): SlotLine[] | null {
-  const rowElement = document.querySelector(`[data-builder-item="row"][data-builder-id="${globalThis.CSS.escape(row.id)}"]`);
+  // A row, or a Columns component's box (D294).
+  const rowElement = document.querySelector(`[data-builder-holder="${globalThis.CSS.escape(row.id)}"]`);
   if (!rowElement) return null;
   const lines: SlotLine[] = [];
   for (const line of linesOf(row)) {
@@ -444,6 +454,7 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 
 const blockLabels: Record<BlockType, string> = {
   richText: "Rich text",
+  columns: "Columns",
   heading: "Heading",
   image: "Image",
   button: "Button",
@@ -474,10 +485,11 @@ const blockLabels: Record<BlockType, string> = {
   newsletter: "Newsletter",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
+  columns: "these columns and everything in them",
   heading: "this heading",
   image: "this picture",
   button: "this button",
@@ -892,7 +904,7 @@ export function PageBuilder({
    * the last of its line. Nothing where it is its own place (the column moved is already there).
    */
   const columnSlotTarget = (rowId: string, move: Move, own: { columnId: string; rowId: string; line: number } | null): { id: string; after: boolean } | null => {
-    const row = rows.find((r) => r.id === rowId);
+    const row = findHolder(rows, rowId);
     const found = row ? slotOnRow(row, move) : null;
     if (!row || !found?.anchor) return null;
     if (own && own.rowId === row.id && own.line === found.slot.line) {
@@ -918,7 +930,7 @@ export function PageBuilder({
   const columnSpotFor = (to: DragData, end: DragEndEvent, over: NonNullable<DragEndEvent["over"]>, own: { columnId: string; rowId: string; line: number } | null): ColumnSpot | null => {
     if (to.kind === "line") return { rowId: to.rowId, newLine: to.at };
     if (to.kind === "row") {
-      const row = rows.find((r) => r.id === to.rowId);
+      const row = findHolder(rows, to.rowId);
       if (!row) return null;
       // Where the pointer is among the columns (D189): between two, before the first, after the last, in the line it is in.
       const found = slotOnRow(row, end);
@@ -935,7 +947,7 @@ export function PageBuilder({
       return { rowId: row.id, line: lines.length - 1, index: Number.MAX_SAFE_INTEGER };
     }
     if (to.kind !== "column") return null;
-    const row = rows.find((r) => r.id === to.rowId);
+    const row = findHolder(rows, to.rowId);
     const place = row ? locateColumn(row, to.columnId) : null;
     if (!row || !place) return null;
     const sameLine = own !== null && own.rowId === row.id && own.line === place.line;
@@ -2027,6 +2039,8 @@ function ColumnPreview({ column }: { column: PageColumn | null }) {
 
 function BlockIcon({ type }: { type: BlockType }) {
   switch (type) {
+    case "columns":
+      return <LayoutPreview layout="2" />;
     case "image":
       return <ImageIcon />;
     case "heading":
@@ -2514,8 +2528,11 @@ function Tools({
   mark,
   tag,
   motion = false,
+  side = "left",
 }: {
   label: string;
+  /** Which top corner it sits at: a column's at the right, clear of its first component's at the left. */
+  side?: "left" | "right";
   /** A short word after the label: a modal row's "Modal" (D121). */
   tag?: string;
   /** The part has motion effects of its own (D128): a small wave says so. */
@@ -2538,7 +2555,7 @@ function Tools({
   return (
     <div
       data-builder-tools
-      className={`absolute top-0 left-0 z-20 flex -translate-y-full items-center gap-0.5 rounded-t-md px-1 text-white shadow ${
+      className={`absolute top-0 ${side === "right" ? "right-0" : "left-0"} z-20 flex -translate-y-full items-center gap-0.5 rounded-t-md px-1 text-white shadow ${
         mark?.kind === "global" ? "bg-violet-600" : mark?.kind === "local" ? "bg-teal-700" : "bg-blue-600"
       }`}
     >
@@ -2632,7 +2649,6 @@ function RowItem({
   });
   const remove = () => actions.onRows((rows) => removeRow(rows, row.id));
   const box = rowBox(row, "canvas");
-  const grid = rowGrid(row);
   const fx = canvasFx(actions.motionPreview, row.motion, "row", { firstRow: first });
   const frame = rowFrame(row);
   // Resizing (D182): dragging the row's side edges sets how wide its content may be, the edges between its columns how it is shared.
@@ -2640,11 +2656,6 @@ function RowItem({
   const resizable = !row.modal && !actions.translating;
   const widthLimited = row.width !== "full" || row.contentWidth !== "full";
   const contentMax = valueAt(row, "contentMax", size) ?? null;
-  const sideBySide = !stackAt(row, size);
-  // The columns by line (D187): a row of one line holds its columns in its grid; with more, each line is a box of its own.
-  const lines = linesOf(row);
-  const dragColumn = movesColumn(dragging);
-  const gapPx = valueAt(row, "gap", size) ?? 32;
   // The page's own row (the canvas draws it with the theme under it), so only what the person set is written.
   const ownRow = (rows: PageRow[]) => rows.find((r) => r.id === row.id);
   const setWidth = (px: number) =>
@@ -2663,6 +2674,7 @@ function RowItem({
       ref={setNodeRef}
       data-builder-item="row"
       data-builder-id={row.id}
+      data-builder-holder={row.id}
       data-builder-modal={row.modal ? "" : undefined}
       {...markAttributes(row)}
       tabIndex={0}
@@ -2716,52 +2728,82 @@ function RowItem({
           {resizable && widthLimited && row.width === "full" && (
             <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
           )}
-          <div className={`relative ${grid.className}`} style={grid.style}>
-            {lines.map((line, l) => {
-              const offset = lines.slice(0, l).reduce((n, earlier) => n + earlier.columns.length, 0);
-              const content = (
-                <SortableContext items={line.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
-                  {line.columns.map((column, i) => (
-                    <ColumnItem
-                      key={column.id}
-                      column={column}
-                      row={row}
-                      index={offset + i}
-                      lineIndex={l}
-                      lineCount={line.columns.length}
-                      name={`${name}, column ${offset + i + 1}`}
-                      dragging={dragging}
-                      target={target}
-                      actions={actions}
-                    />
-                  ))}
-                  {/* After the columns, so their places (`:nth-child`) are what they were. */}
-                  {resizable && sideBySide && line.columns.length > 1 && (
-                    <ColumnDividers
-                      count={line.columns.length}
-                      signature={line.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(row, "gap", size) ?? ""}`}
-                      label={lines.length > 1 ? `${name}, line ${l + 1}` : name}
-                      onShares={(shares) => actions.onRows((rows) => setLineShares(rows, row.id, l, size, shares))}
-                      onReset={() => actions.onRows((rows) => clearLineShares(rows, row.id, l, size))}
-                    />
-                  )}
-                  {/* While a column is dragged: where it can go on a line of its own, above the first line, between two, or under the last. */}
-                  {dragColumn && l === 0 && <NewLineZone rowId={row.id} at={0} place="before" height={20} />}
-                  {dragColumn && <NewLineZone rowId={row.id} at={l + 1} place="after" height={l === lines.length - 1 ? 20 : Math.min(Math.max(gapPx, 16), 48)} />}
-                </SortableContext>
-              );
-              return lines.length === 1 ? (
-                <Fragment key={l}>{content}</Fragment>
-              ) : (
-                <div key={line.columns[0]?.id ?? l} className="relative" data-builder-line={l}>
-                  {content}
-                </div>
-              );
-            })}
-          </div>
+          <ColumnLinesView holder={row} name={name} dragging={dragging} target={target} actions={actions} />
         </div>
       </div>
     </li>
+  );
+}
+
+/**
+ * A row's columns on the canvas, line by line (D187), with their dividers and, while a column is dragged, the strips for a new line;
+ * a Columns component's (D294) the same, its `holder` being the component drawn as a row (`columnsAsRow()`), so a column moves into,
+ * out of and within it, takes a new line there and shares its width by the same edits as a row's.
+ */
+function ColumnLinesView({
+  holder,
+  name,
+  dragging,
+  target,
+  actions,
+}: {
+  holder: PageRow;
+  name: string;
+  dragging: DragData | null;
+  target: { id: string; after: boolean } | null;
+  actions: Actions;
+}) {
+  const { size } = useSizeEdit();
+  const grid = rowGrid(holder);
+  const resizable = !holder.modal && !actions.translating;
+  const sideBySide = !stackAt(holder, size);
+  const lines = linesOf(holder);
+  const dragColumn = movesColumn(dragging);
+  const gapPx = valueAt(holder, "gap", size) ?? 32;
+  return (
+    <div className={`relative ${grid.className}`} style={grid.style}>
+      {lines.map((line, l) => {
+        const offset = lines.slice(0, l).reduce((n, earlier) => n + earlier.columns.length, 0);
+        const content = (
+          <SortableContext items={line.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
+            {line.columns.map((column, i) => (
+              <ColumnItem
+                key={column.id}
+                column={column}
+                row={holder}
+                index={offset + i}
+                lineIndex={l}
+                lineCount={line.columns.length}
+                name={`${name}, column ${offset + i + 1}`}
+                dragging={dragging}
+                target={target}
+                actions={actions}
+              />
+            ))}
+            {/* After the columns, so their places (`:nth-child`) are what they were. */}
+            {resizable && sideBySide && line.columns.length > 1 && (
+              <ColumnDividers
+                count={line.columns.length}
+                signature={line.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(holder, "gap", size) ?? ""}`}
+                label={lines.length > 1 ? `${name}, line ${l + 1}` : name}
+                onShares={(shares) => actions.onRows((rows) => setLineShares(rows, holder.id, l, size, shares))}
+                onReset={() => actions.onRows((rows) => clearLineShares(rows, holder.id, l, size))}
+              />
+            )}
+            {/* While a column is dragged: where it can go on a line of its own, above the first line, between two, or under the last. */}
+            {dragColumn && l === 0 && <NewLineZone rowId={holder.id} at={0} place="before" height={20} />}
+            {dragColumn && <NewLineZone rowId={holder.id} at={l + 1} place="after" height={l === lines.length - 1 ? 20 : Math.min(Math.max(gapPx, 16), 48)} />}
+          </SortableContext>
+        );
+        return lines.length === 1 ? (
+          <Fragment key={l}>{content}</Fragment>
+        ) : (
+          <div key={line.columns[0]?.id ?? l} className="relative" data-builder-line={l}>
+            {content}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -2852,6 +2894,7 @@ function ColumnItem({
         // Translating, a column has only its link's description to say (D55).
         column.link && (
           <Tools
+            side="right"
             label={name.replace(/^Row \d+, c/, "C")}
             onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
             editLabel="Translate"
@@ -2859,6 +2902,7 @@ function ColumnItem({
         )
       ) : (
       <Tools
+        side="right"
         label={name.replace(/^Row \d+, c/, "C")}
         motion={hasMotion(column)}
         mark={markOf(column, actions)}
@@ -2907,6 +2951,8 @@ function ColumnItem({
             parentEnter={column.motion?.enter}
             name={`${name}, ${blockLabels[block.type].toLowerCase()} ${index + 1}`}
             line={line(block.id)}
+            dragging={dragging}
+            target={target}
             actions={actions}
           />
         ))}
@@ -2942,6 +2988,8 @@ function BlockItem({
   parentEnter,
   name,
   line,
+  dragging,
+  target,
   actions,
 }: {
   block: PageBlock;
@@ -2952,6 +3000,9 @@ function BlockItem({
   parentEnter: EnterMotion | undefined;
   name: string;
   line: "before" | "after" | null;
+  /** What is dragged and where it would land: a Columns component's columns (D294) show it as a row's do. */
+  dragging: DragData | null;
+  target: { id: string; after: boolean } | null;
   actions: Actions;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -2990,7 +3041,11 @@ function BlockItem({
       tabIndex={0}
       role="group"
       aria-label={name}
-      onDoubleClick={edit}
+      // A double press on a part inside a Columns component (D294) is that part's.
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).closest("[data-builder-item]") !== event.currentTarget) return;
+        edit();
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.target === event.currentTarget) {
           event.preventDefault();
@@ -3067,6 +3122,10 @@ function BlockItem({
             onChange={(doc) => actions.onRows((rows) => patchBlock<RichTextBlock>(rows, block.id, { doc }))}
             onDone={endInline}
           />
+        ) : block.type === "columns" ? (
+          <div data-builder-holder={block.id}>
+            <ColumnLinesView holder={columnsAsRow(block)} name={name} dragging={dragging} target={target} actions={actions} />
+          </div>
         ) : !partFeatureOn(block, actions.grid.features) && !partDrawsWhenOff(block) ? (
           <SwitchedOffStandIn block={block} />
         ) : block.type === "contentGrid" ? (
@@ -3158,6 +3217,7 @@ function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Action
 
 /** What the canvas shows for a block with nothing to show yet. */
 const EMPTY_BLOCK: Record<BlockType, string> = {
+  columns: "Columns. Drag components into them.",
   richText: "Empty text. Click to write, or use the wrench for its settings.",
   heading: "Empty heading. Click to write it, or use the wrench for its settings.",
   image: "No picture yet. Double-click or use the wrench to choose one.",
@@ -3219,6 +3279,10 @@ function displayDialog(rows: PageRow[], id: string): Dialog {
     for (const column of row.columns) {
       if (column.id === id) return { kind: "edit-row", rowId: row.id, columnId: column.id };
       if (column.blocks.some((block) => block.id === id)) return { kind: "edit-block", blockId: id };
+      // A Columns component's column (D294).
+      for (const block of column.blocks) {
+        if (block.type === "columns" && block.columns.some((c) => c.id === id)) return { kind: "edit-row", rowId: block.id, columnId: id };
+      }
     }
   }
   return { kind: "edit-block", blockId: id };
@@ -3306,7 +3370,8 @@ function Dialogs({
   const editor = block ? editorFor(block) : undefined;
   /** Opens a component in an FAQ's answer in its own settings (D208). */
   const editPart = (blockId: string) => open({ kind: "edit-block", blockId });
-  const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
+  // A Columns component's column (D294) is set in the row its columns are laid out in.
+  const row = dialog?.kind === "edit-row" ? findHolder(rows, dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
   const layoutChoice = (row: PageRow) => (
@@ -4307,9 +4372,10 @@ function TranslateDialogs({
   const { name, mainName, source } = translate;
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const original = block ? findBlock(source, block.id)?.block : null;
-  const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
+  // A Columns component's column (D294) is set in the row its columns are laid out in.
+  const row = dialog?.kind === "edit-row" ? findHolder(rows, dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
-  const originalColumn = column ? source.flatMap((r) => r.columns).find((c) => c.id === column.id) : null;
+  const originalColumn = column ? [...source.flatMap((r) => r.columns), ...nestedColumns(source)].find((c) => c.id === column.id) : null;
   const set = <T extends PageBlock>(patch: Partial<T>) => {
     if (block) onRows((current) => updateBlock(current, block.id, (b) => ({ ...b, ...patch }) as PageBlock));
   };

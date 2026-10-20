@@ -443,11 +443,14 @@ function withShow<T extends WithVisibility>(part: T, fn: (show: Show | undefined
 
 /** Rows (and every column and block in them) with each display through `fn`. */
 export function mapShows(rows: PageRow[], fn: (show: Show | undefined) => Show | undefined): PageRow[] {
-  return rows.map((row) =>
-    withShow(
-      { ...row, columns: row.columns.map((column) => withShow({ ...column, blocks: column.blocks.map((block) => withShow(block, fn)) }, fn)) },
-      fn,
-    ),
+  return rows.map((row) => withShow({ ...row, columns: row.columns.map((column) => columnShows(column, fn)) }, fn));
+}
+
+/** A column and what it holds with each display through `fn`; a Columns component's columns too (D294). */
+function columnShows(column: PageColumn, fn: (show: Show | undefined) => Show | undefined): PageColumn {
+  return withShow(
+    { ...column, blocks: column.blocks.map((block) => withShow(block.type === "columns" ? { ...block, columns: block.columns.map((c) => columnShows(c, fn)) } : block, fn)) },
+    fn,
   );
 }
 
@@ -457,8 +460,9 @@ const isColumn = (part: Part): part is PageColumn => !("type" in part) && Array.
 /** A row, column or block with each display through `fn`, inside too. */
 export function mapPartShows<T extends Part>(part: T, fn: (show: Show | undefined) => Show | undefined): T {
   if (isRow(part)) return mapShows([part], fn)[0] as T;
-  if (isColumn(part)) return withShow({ ...part, blocks: part.blocks.map((block) => withShow(block, fn)) }, fn) as T;
-  return withShow(part, fn);
+  if (isColumn(part)) return columnShows(part, fn) as T;
+  const block = part as PageBlock;
+  return withShow(block.type === "columns" ? { ...block, columns: block.columns.map((c) => columnShows(c, fn)) } : block, fn) as T;
 }
 
 /** Every display on these rows, with the part it is on. */
@@ -466,10 +470,15 @@ export function partShows(rows: readonly PageRow[]): { part: Part; kind: "row" |
   const found: { part: Part; kind: "row" | "column" | "block"; show: Show }[] = [];
   for (const row of rows) {
     if (row.visibility?.show) found.push({ part: row, kind: "row", show: row.visibility.show });
-    for (const column of row.columns) {
+    const visit = (column: PageColumn) => {
       if (column.visibility?.show) found.push({ part: column, kind: "column", show: column.visibility.show });
-      for (const block of column.blocks) if (block.visibility?.show) found.push({ part: block, kind: "block", show: block.visibility.show });
-    }
+      for (const block of column.blocks) {
+        if (block.visibility?.show) found.push({ part: block, kind: "block", show: block.visibility.show });
+        // A Columns component's columns and what they hold (D294).
+        if (block.type === "columns") block.columns.forEach(visit);
+      }
+    };
+    row.columns.forEach(visit);
   }
   return found;
 }
@@ -501,7 +510,9 @@ const mustShow = (block: PageBlock): boolean =>
 
 /** Why a part cannot take a display other than Always, or null. */
 export function displayLocked(part: Part): string | null {
-  const blocks: PageBlock[] = isRow(part) ? part.columns.flatMap((c) => c.blocks) : isColumn(part) ? part.blocks : [part as PageBlock];
+  const top: PageBlock[] = isRow(part) ? part.columns.flatMap((c) => c.blocks) : isColumn(part) ? part.blocks : [part as PageBlock];
+  // And what a Columns component holds (D294).
+  const blocks = top.flatMap((b) => (b.type === "columns" ? [b, ...b.columns.flatMap((c) => c.blocks)] : [b]));
   if (blocks.some((b) => b.type === "site" && b.part === "withdrawal")) return "The withdrawal link is for every visitor, so it is always shown.";
   if (blocks.some(mustShow)) return "The checkout's payment form and terms are for every buyer, so they are always shown.";
   return null;
@@ -592,6 +603,14 @@ export const readByAnyone = (part: { visibility?: { show?: Show } }): boolean =>
 export function publicRows(rows: readonly PageRow[]): PageRow[] {
   return rows.filter(readByAnyone).map((row) => ({
     ...row,
-    columns: row.columns.filter(readByAnyone).map((column) => ({ ...column, blocks: column.blocks.filter(readByAnyone) })),
+    columns: row.columns.filter(readByAnyone).map(publicColumn),
   }));
+}
+
+/** A column as every visitor sees it, a Columns component's (D294) inside it too. */
+function publicColumn(column: PageColumn): PageColumn {
+  return {
+    ...column,
+    blocks: column.blocks.filter(readByAnyone).map((block) => (block.type === "columns" ? { ...block, columns: block.columns.filter(readByAnyone).map(publicColumn) } : block)),
+  };
 }

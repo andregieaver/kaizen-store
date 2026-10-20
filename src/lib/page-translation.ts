@@ -194,6 +194,20 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         first: { ...b.first, label: str("first.label", b.first.label, 100, "First button's text") },
         second: { ...b.second, label: str("second.label", b.second.label, 100, "Second button's text") },
       };
+    case "columns":
+      // A Columns component's columns (D294) keep their places as a row's do (`column.{id}.label`, `block.{id}.…`); their labels say which column.
+      return {
+        ...b,
+        columns: b.columns.map((c, index) => {
+          const inColumn: Visit = (k, value, max, label) => visit(k, value, max, `Column ${index + 1}: ${label ?? "text"}`);
+          const label = c.link && inColumn(`column.${c.id}.label`, c.link.label, 200, "link's description");
+          return {
+            ...c,
+            ...(c.link && { link: { ...c.link, label: typeof label === "string" ? label : c.link.label } }),
+            blocks: c.blocks.map((child) => mapBlockTexts(child, inColumn)),
+          };
+        }),
+      };
   }
 }
 

@@ -1251,19 +1251,81 @@ export type FaqChildType = (typeof FAQ_CHILD_TYPES)[number];
 export const FAQ_CHILDREN_MAX = 12;
 export const isFaqChildType = (type: BlockType): type is FaqChildType => (FAQ_CHILD_TYPES as readonly string[]).includes(type);
 
-/** The components a block holds inside it (an FAQ's answers', D208), item after item; none for every other block. */
+/**
+ * Columns inside a column (D294, Beaver Builder's nested columns): a component holding lines of columns of its own, laid out as a
+ * row's are (`layout` and `moreLines`, `stack`, `reverse`, `gap`, `equalHeight`, `align`, per size in `at`), each column a column
+ * like a row's with its own settings. One level deep: a nested column holds any component but another Columns, and it and what it
+ * holds are the page's own (never global).
+ */
+export type ColumnsBlock = PartBase & {
+  id: string;
+  type: "columns";
+  layout: RowLayout;
+  columns: PageColumn[];
+  moreLines?: RowLayout[];
+  /** One under another rather than side by side (per size in `at`): unless set, on Small only, as a row's. */
+  stack?: boolean;
+  reverse?: boolean;
+  /** Pixels between the columns (per size in `at`); 32 unless set. */
+  gap?: number;
+  equalHeight?: boolean;
+  /** Where the columns' content sits, top (the default), middle or bottom: a row's `align` (a block's `align` is its text's). */
+  verticalAlign?: VerticalAlign;
+};
+
+/** A Columns component's columns as a row lays them out (D294): what drawing and styling a row's columns reads. */
+export const columnsAsRow = (block: ColumnsBlock): PageRow => ({
+  id: block.id,
+  type: "row",
+  layout: block.layout,
+  columns: block.columns,
+  ...(block.moreLines && { moreLines: block.moreLines }),
+  ...(block.stack !== undefined && { stack: block.stack }),
+  ...(block.reverse !== undefined && { reverse: block.reverse }),
+  ...(block.gap !== undefined && { gap: block.gap }),
+  ...(block.equalHeight && { equalHeight: true }),
+  ...(block.verticalAlign && { align: block.verticalAlign }),
+  ...(block.at && { at: block.at }),
+});
+
+/** The columns a block holds (a Columns component's, D294); none for every other block. */
+export const innerColumns = (block: PageBlock): PageColumn[] => (block.type === "columns" ? block.columns : []);
+
+/** The components a block holds inside it (an FAQ's answers', D208; a Columns component's columns', D294), in order; none for every other block. */
 export function childBlocks(block: PageBlock): PageBlock[] {
+  if (block.type === "columns") return block.columns.flatMap((column) => column.blocks);
   return block.type === "faq" ? block.items.flatMap((item) => item.blocks ?? []) : [];
 }
 
-/** The block with each component it holds changed by `change` (D208); the block itself when it holds none. */
+/** The block with each component it holds changed by `change` (D208, D294); the block itself when it holds none. */
 export function mapChildBlocks(block: PageBlock, change: (child: PageBlock) => PageBlock): PageBlock {
+  if (block.type === "columns") return mapInnerColumns(block, (column) => ({ ...column, blocks: column.blocks.map(change) }));
   if (block.type !== "faq" || !block.items.some((item) => item.blocks?.length)) return block;
   return { ...block, items: block.items.map((item) => (item.blocks?.length ? { ...item, blocks: item.blocks.map(change) } : item)) };
 }
 
-/** A column's blocks with the components each holds after it (D208): every block a walker of the page must see. */
-export const withChildren = (blocks: PageBlock[]): PageBlock[] => blocks.flatMap((block) => [block, ...childBlocks(block)]);
+/** A Columns component with each of its columns changed by `change` (D294); any other block as it is. */
+export function mapInnerColumns(block: PageBlock, change: (column: PageColumn) => PageColumn): PageBlock {
+  return block.type === "columns" ? { ...block, columns: block.columns.map(change) } : block;
+}
+
+/**
+ * A column's blocks with the components each holds after it (D208, D294), at every depth: every block a walker of the page must
+ * see. A Columns component's own columns are not blocks: `withParts()` lists them too.
+ */
+export const withChildren = (blocks: PageBlock[]): PageBlock[] => blocks.flatMap((block) => [block, ...withChildren(childBlocks(block))]);
+
+/** A column's blocks, each followed by the nested columns and components it holds (D294), in page order: every part a walker must style or name. */
+export const withParts = (blocks: PageBlock[]): (PageColumn | PageBlock)[] =>
+  blocks.flatMap((block): (PageColumn | PageBlock)[] =>
+    block.type === "columns"
+      ? [block, ...block.columns.flatMap((column) => [column, ...withParts(column.blocks)])]
+      : [block, ...withChildren(childBlocks(block))],
+  );
+
+/** Every nested column on a page (D294), in page order. */
+export const nestedColumns = (rows: PageRow[]): PageColumn[] =>
+  rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.flatMap(innerColumns)));
 
 /** A question that shows: it has both its question and an answer (its text or a component with something to show). */
 export const faqShows = (item: FaqItem) =>
@@ -1745,7 +1807,8 @@ export type PageBlock =
   | BrandsBlock
   | GalleryBlock
   | EmailFormBlock
-  | NewsletterBlock;
+  | NewsletterBlock
+  | ColumnsBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -1959,6 +2022,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
+    case "columns":
+      // As a row: something in a column shows, or a column has a background of its own (D294).
+      return block.columns.some((c) => Boolean(c.background) || c.blocks.some(blockShowsUnbound));
   }
 }
 
@@ -1980,6 +2046,8 @@ export function blockText(block: PageBlock): string {
       return panelText(block.items);
     case "faq":
       return [panelText(block.items.filter(faqShows)), ...childBlocks(block).map(blockText)].filter(Boolean).join(" ");
+    case "columns":
+      return childBlocks(block).map(blockText).filter(Boolean).join(" ");
     case "video":
       return block.title;
     case "iconList":
@@ -2117,7 +2185,7 @@ export type PageTranslation = Record<string, PageText>;
 
 /** Every row, column and block, in page order. */
 export function pageParts(rows: PageRow[]): (PageRow | PageColumn | PageBlock)[] {
-  return rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withChildren(column.blocks)])]);
+  return rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withParts(column.blocks)])]);
 }
 
 /** A custom id used by more than one part, if any. */
@@ -3275,8 +3343,8 @@ const newsletterBlock = z.object({
   ...partBase,
 });
 
-/** The kinds of block, each as stored now (D179: `pageBlockSchema` reads older shapes into these). */
-export const pageBlockUnion = z.discriminatedUnion("type", [
+/** The kinds of block but the Columns component (D294), each as stored now: what a nested column holds. */
+const BLOCK_KINDS = [
   richTextBlock,
   imageBlock,
   headingBlock,
@@ -3306,7 +3374,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   galleryBlock,
   emailFormBlock,
   newsletterBlock,
-]);
+] as const;
 
 /**
  * What an FAQ's answer may hold (D208): a few kinds of component, never moving, global, bound to a field or shown only to some
@@ -3330,8 +3398,6 @@ const faqChildren = z
   .optional()
   .transform((blocks) => (blocks && blocks.length > 0 ? blocks : undefined));
 
-/** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer; one saved before D179 is read into the per-size shape. */
-export const pageBlockSchema = z.preprocess((value) => foldTypography(upgradeBlock(value)), pageBlockUnion);
 
 /**
  * A grid that no longer shows custom items (the owner chose Pages, Articles or Products after writing some) keeps them in the
@@ -3349,9 +3415,11 @@ export function withoutStrandedItems(block: unknown): unknown {
 
 const dropStrandedItems = (blocks: unknown): unknown => (Array.isArray(blocks) ? blocks.map(withoutStrandedItems) : blocks);
 
-export const pageColumnSchema = z.preprocess(upgradeColumn, z.object({
+/** A column as stored, holding blocks of `blocks`: a row's (any block) or a Columns component's (any but another Columns, D294). */
+function columnSchemaOf<B extends z.ZodType>(blocks: B) {
+  return z.preprocess(upgradeColumn, z.object({
   id: itemId,
-  blocks: z.preprocess(dropStrandedItems, z.array(pageBlockSchema)),
+  blocks: z.preprocess(dropStrandedItems, z.array(blocks)),
   background,
   backgroundMotion: backgroundMotionSchema,
   backdropBlur,
@@ -3370,6 +3438,44 @@ export const pageColumnSchema = z.preprocess(upgradeColumn, z.object({
   order: columnOrder,
   ...partBase,
 }));
+}
+
+const readBlock = (value: unknown) => foldTypography(upgradeBlock(value));
+
+/** A nested column (D294): any component but another Columns, and it and what it holds are the page's own. */
+const nestedColumnSchema = columnSchemaOf(z.preprocess(readBlock, z.discriminatedUnion("type", [...BLOCK_KINDS]))).superRefine((column, ctx) => {
+  if (column.global || column.blocks.some((block) => block.global)) {
+    ctx.addIssue({ code: "custom", message: "What is in a Columns component is the page's own: it cannot be global." });
+  }
+});
+
+/** The Columns component (D294): lines of columns of its own inside a column, as many as its layouts have. */
+const columnsBlock = z
+  .object({
+    id: itemId,
+    type: z.literal("columns"),
+    layout: z.enum(ROW_LAYOUT_KEYS, "A Columns component has an unknown layout."),
+    columns: z.array(nestedColumnSchema).min(1),
+    moreLines: z.array(z.enum(ROW_LAYOUT_KEYS, "A Columns component has an unknown layout.")).min(1).max(ROW_LINES_MAX - 1, `A Columns component has at most ${ROW_LINES_MAX} lines.`).optional(),
+    stack: z.boolean().optional(),
+    reverse: z.boolean().optional(),
+    gap: partGap,
+    equalHeight: z.boolean().optional(),
+    verticalAlign: z.enum(["top", "middle", "bottom"]).optional(),
+    ...partBase,
+  })
+  .refine((block) => !block.global, { message: "A Columns component cannot be global: make the row or column that holds it global instead." })
+  .refine((block) => block.columns.length === columnsOfLayouts(rowLayouts(block)), {
+    message: "A Columns component has the wrong number of columns for its layout. Reload the page and try again.",
+  });
+
+/** The kinds of block, each as stored now (D179: `pageBlockSchema` reads older shapes into these). */
+export const pageBlockUnion = z.discriminatedUnion("type", [...BLOCK_KINDS, columnsBlock]);
+
+/** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer; one saved before D179 is read into the per-size shape. */
+export const pageBlockSchema = z.preprocess(readBlock, pageBlockUnion);
+
+export const pageColumnSchema = columnSchemaOf(pageBlockSchema);
 
 /** A row as stored; one saved before D179 is read into the per-size shape (`upgradeRow()`). */
 export const pageRowSchema = z.preprocess(upgradeRow, z
@@ -3483,7 +3589,7 @@ export const pageInput = z.preprocess(
       if (pageBlocks(page).length > BLOCKS_MAX) {
         ctx.addIssue({ code: "custom", message: `A page takes at most ${BLOCKS_MAX} blocks.` });
       }
-      const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])]);
+      const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withParts(c.blocks).map((b) => b.id)])]);
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
       }

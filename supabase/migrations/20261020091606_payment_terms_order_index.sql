@@ -1,0 +1,1 @@
+CREATE INDEX "order_payment_terms_order_idx" ON "commerce"."order_payment_terms" USING btree ("store_id","order_id");

@@ -9632,6 +9632,7 @@ export const orderPaymentTerms = commerce.table(
       columns: [t.storeId, t.companyId],
       foreignColumns: [customerCompanies.storeId, customerCompanies.id],
     }),
+    index("order_payment_terms_order_idx").on(t.storeId, t.orderId),
     index("order_payment_terms_company_idx").on(t.storeId, t.companyId).where(sql`${t.paidAt} is null`),
     index("order_payment_terms_due_idx").on(t.dueOn).where(sql`${t.paidAt} is null`),
     check("order_payment_terms_terms", sql`${t.terms} in (${sqlList(PAYMENT_TERMS)})`),

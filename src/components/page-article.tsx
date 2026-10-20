@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, partFonts, rowShows, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
@@ -276,13 +276,14 @@ function RowMarkup({
   // Motion (D128): a row's effects, its columns' (which take the row's entrance when it staggers them) and its blocks'.
   const rowFx = partFx(row.motion, "row", { firstRow: first });
   const lines = columnLines(row);
-  const renderColumn = (column: PageColumn, columnIndex: number) => {
-    const col = columnBox(column, row, "site");
+  // `holder` is the row, or a Columns component drawn as one (D294), whose own column `outer` is in the row.
+  const renderColumn = (column: PageColumn, columnIndex: number, holder: PageRow = row, outer?: PageColumn): ReactNode => {
+    const col = columnBox(column, holder, "site");
     const colFx = partFx(column.motion, "column", {
       firstRow: first,
       index: columnIndex,
-      parentStagger: row.motion?.enter?.stagger,
-      parentEnter: row.motion?.enter,
+      parentStagger: holder.motion?.enter?.stagger,
+      parentEnter: holder.motion?.enter,
     });
     return (
       <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
@@ -303,13 +304,15 @@ function RowMarkup({
           const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
           if (own === null || themePartLeftOut(block, place)) return null;
           // A heading or text of the page's own that signed-in staff may edit where it stands (D192): marked for them, never on a preview.
-          const mark = editable && !preview && place.pageId ? inlineMarkOf({ row, column, block }, inPanel) : null;
+          const mark = editable && !preview && place.pageId ? inlineMarkOf({ row, column: outer ?? column, block }, inPanel) : null;
           return (
             <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
             <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs} {...(mark && { "data-kz-edit": mark, "data-kz-block": block.id })}>
               <FontLinks families={blockFonts(block)} />
               {own !== undefined ? (
                 own
+              ) : block.type === "columns" ? (
+                renderNested(block, column)
               ) : block.type === "contentGrid" ? (
                 <ContentGridSection block={block} place={place} eager={eager} />
               ) : block.type === "menu" ? (
@@ -344,6 +347,21 @@ function RowMarkup({
       </VisiblePart>
     );
   };
+  /** A Columns component (D294): its lines of columns laid out as a row's, each drawn as a row's column is. */
+  const renderNested = (block: ColumnsBlock, outer: PageColumn): ReactNode => {
+    const holder = columnsAsRow(block);
+    const nestedGrid = rowGrid(holder);
+    const nestedLines = columnLines(holder);
+    return (
+      <div className={nestedGrid.className} style={nestedGrid.style}>
+        {nestedLines.length === 1
+          ? holder.columns.map((c, i) => renderColumn(c, i, holder, outer))
+          : nestedLines.map((line, l) => (
+              <div key={line[0]?.id ?? l}>{line.map((c, i) => renderColumn(c, nestedLines.slice(0, l).reduce((n, earlier) => n + earlier.length, 0) + i, holder, outer))}</div>
+            ))}
+      </div>
+    );
+  };
   return (
     <div
       className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}
@@ -355,7 +373,7 @@ function RowMarkup({
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {lines.length === 1
-              ? row.columns.map(renderColumn)
+              ? row.columns.map((column, i) => renderColumn(column, i))
               : // A row of several lines (D187): each line is a box of its own in the row's grid.
                 lines.map((line, l) => (
                   <div key={line[0]?.id ?? l}>{line.map((column, i) => renderColumn(column, lines.slice(0, l).reduce((n, earlier) => n + earlier.length, 0) + i))}</div>

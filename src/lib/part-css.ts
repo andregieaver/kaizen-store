@@ -15,7 +15,9 @@ import {
   type Sides,
   type Spacing,
   type VerticalAlign,
+  columnsAsRow,
   withChildren,
+  withParts,
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
 import { colourCss } from "./colour";
@@ -627,7 +629,12 @@ export function gridListStyle(block: ContentGridBlock): ElementStyle {
 
 /** Every rule of these blocks: their boxes, and a content grid's list. */
 export function blockRules(blocks: PageBlock[], mode: PartsMode): PartRule[] {
-  return blocks.flatMap((block) => [...blockStyle(block, mode).rules, ...(block.type === "contentGrid" ? gridListStyle(block).rules : [])]);
+  return blocks.flatMap((block) => [
+    ...blockStyle(block, mode).rules,
+    ...(block.type === "contentGrid" ? gridListStyle(block).rules : []),
+    // A Columns component (D294): its columns laid out as a row's, and each column's own box (what they hold is in `blocks` too).
+    ...(block.type === "columns" ? [...rowGridStyle(columnsAsRow(block)).rules, ...block.columns.flatMap((column) => columnStyle(column, mode).rules)] : []),
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -723,7 +730,7 @@ const quoted = (value: string) => `"${value.replace(/["\\]/g, "\\$&")}"`;
  * queries on the canvas (`kz-page`), so they follow the size being edited; the canvas's items carry `data-builder-id`.
  */
 export function canvasHiddenCss(rows: PageRow[], breakpoints: Breakpoints, hide: boolean): string {
-  const parts: PartBase[] = rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withChildren(column.blocks)])]);
+  const parts: PartBase[] = rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withParts(column.blocks)])]);
   const byQuery = new Map<string, string[]>();
   for (const part of parts as (PartBase & { id: string })[]) {
     const sizes = SIZES.filter((size) => hiddenAt(part, size));

@@ -1,4 +1,4 @@
-import { withChildren, type Background, type PageContent, type RowBackground } from "./page-content";
+import { innerColumns, mapInnerColumns, withChildren, type Background, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
 
 /**
@@ -61,7 +61,9 @@ export function backgroundImageUrls(content: PageContent): string[] {
   const urls = new Set<string>();
   for (const row of content.rows) {
     if (row.background?.type === "image") urls.add(row.background.image.url);
-    for (const column of row.columns) if (column.background?.type === "image") urls.add(column.background.image.url);
+    for (const column of [...row.columns, ...row.columns.flatMap((c) => c.blocks.flatMap(innerColumns))]) {
+      if (column.background?.type === "image") urls.add(column.background.image.url);
+    }
   }
   return [...urls];
 }
@@ -83,7 +85,14 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
   const rows = content.rows.map((row) => ({
     ...row,
     background: fill(row.background),
-    columns: row.columns.map((column) => ({ ...column, background: fill(column.background) })),
+    columns: row.columns.map((column) => ({
+      ...column,
+      background: fill(column.background),
+      // A Columns component's columns (D294) are given theirs too.
+      blocks: column.blocks.some((b) => b.type === "columns")
+        ? column.blocks.map((b) => mapInnerColumns(b, (inner) => ({ ...inner, background: fill(inner.background) })))
+        : column.blocks,
+    })),
   }));
   return changed ? { ...content, rows } : content;
 }

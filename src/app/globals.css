@@ -354,6 +354,14 @@ body:has([data-product-bar]) [data-default-bar] {
   opacity: 1;
   pointer-events: auto;
 }
+/*
+ * A column's tools (its drag handle, settings, copy and delete) show whenever anything in it is pointed at, at its top-right: a
+ * column whose first component starts at its top edge would otherwise never show them, the component's own tools taking the place.
+ */
+[data-builder-item="column"]:is(:hover, :focus-within) > [data-builder-tools] {
+  opacity: 1;
+  pointer-events: auto;
+}
 [data-builder-dragging] [data-builder-tools] {
   display: none;
 }

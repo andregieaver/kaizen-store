@@ -2682,6 +2682,13 @@
       "when": 1792455407171,
       "tag": "20261020001647_payment_terms_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 383,
+      "version": "7",
+      "when": 1792487766584,
+      "tag": "20261020091606_payment_terms_order_index",
+      "breakpoints": true
     }
   ]
 }

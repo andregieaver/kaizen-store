@@ -1,5 +1,5 @@
 import type { TargetKind } from "./ab-site";
-import { blockText, type PageBlock, type PageColumn, type PageContent, type PageRow, type PageTranslation } from "./page-content";
+import { blockText, withChildren, withParts, type PageBlock, type PageColumn, type PageContent, type PageRow, type PageTranslation } from "./page-content";
 import type { RowModal } from "./page-modal";
 
 /**
@@ -37,10 +37,9 @@ const blockWord = (type: string) => BLOCK_WORDS[type] ?? `${type[0].toUpperCase(
 export function findPart(rows: readonly PageRow[], id: string): { kind: PartKind; node: PartNode } | null {
   for (const row of rows) {
     if (row.id === id) return { kind: "row", node: row };
-    for (const column of row.columns) {
-      if (column.id === id) return { kind: "column", node: column };
-      const block = column.blocks.find((b) => b.id === id);
-      if (block) return { kind: "block", node: block };
+    // A Columns component's columns and blocks (D294) are parts too.
+    for (const part of row.columns.flatMap((column) => [column, ...withParts(column.blocks)])) {
+      if (part.id === id) return "type" in part ? { kind: "block", node: part } : { kind: "column", node: part };
     }
   }
   return null;
@@ -48,14 +47,14 @@ export function findPart(rows: readonly PageRow[], id: string): { kind: PartKind
 
 /** The ids of a part and of everything inside it. */
 export function idsWithin(kind: PartKind, node: PartNode): string[] {
-  if (kind === "block") return [node.id];
-  if (kind === "column") return [node.id, ...(node as PageColumn).blocks.map((b) => b.id)];
+  if (kind === "block") return withParts([node as PageBlock]).map((p) => p.id);
+  if (kind === "column") return [node.id, ...withParts((node as PageColumn).blocks).map((p) => p.id)];
   const row = node as PageRow;
-  return [row.id, ...row.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])];
+  return [row.id, ...row.columns.flatMap((c) => [c.id, ...withParts(c.blocks).map((p) => p.id)])];
 }
 
 const blocksWithin = (kind: PartKind, node: PartNode): PageBlock[] =>
-  kind === "block" ? [node as PageBlock] : kind === "column" ? (node as PageColumn).blocks : (node as PageRow).columns.flatMap((c) => c.blocks);
+  withChildren(kind === "block" ? [node as PageBlock] : kind === "column" ? (node as PageColumn).blocks : (node as PageRow).columns.flatMap((c) => c.blocks));
 
 /** The buttons inside a part, for a test that counts clicks on one: each block's id and its text. */
 export function buttonsWithin(kind: PartKind, node: PartNode): { id: string; label: string }[] {

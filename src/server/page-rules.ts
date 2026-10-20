@@ -1,6 +1,6 @@
 import "server-only";
 
-import { pageBlocks, type PageContent, type PageType } from "@/lib/page-content";
+import { pageBlocks, withChildren, type PageContent, type PageType } from "@/lib/page-content";
 import { pageIssues, refusedIssues } from "@/lib/page-a11y";
 import { productBlocks } from "@/lib/product-layout";
 import { siteLayoutProblem } from "@/lib/site-layout";
@@ -88,7 +88,7 @@ function productLayoutProblem(owner: PageOwner, type: PageType, content: PageCon
  * market; Kaizen's name the store and market.
  */
 function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string | null {
-  for (const block of rows.flatMap((r) => r.columns.flatMap((c) => c.blocks))) {
+  for (const block of rows.flatMap((r) => r.columns.flatMap((c) => withChildren(c.blocks)))) {
     if (block.type !== "contentGrid" || block.source.type !== "products") continue;
     if (owner === null && (!block.source.storeId || !block.source.market)) {
       return "Choose the store and market for each content grid of products.";

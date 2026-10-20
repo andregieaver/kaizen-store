@@ -56,6 +56,14 @@ export function locateBlock(rows: readonly PageRow[], blockId: string): BlockPla
     for (const column of row.columns) {
       const block = column.blocks.find((candidate) => candidate.id === blockId);
       if (block) return { row, column, block };
+      // In a Columns component's column (D294): the row's column holding the component is the one that says whether it is shared.
+      for (const holder of column.blocks) {
+        if (holder.type !== "columns") continue;
+        for (const inner of holder.columns) {
+          const found = inner.blocks.find((candidate) => candidate.id === blockId);
+          if (found) return { row, column, block: found };
+        }
+      }
     }
   }
   return null;
@@ -112,7 +120,16 @@ export function applyBlockEdit(content: PageContent, blockId: string, edit: Bloc
       ...content,
       rows: content.rows.map((row) => ({
         ...row,
-        columns: row.columns.map((column) => ({ ...column, blocks: column.blocks.map((block) => (block.id === blockId ? changed : block)) })),
+        columns: row.columns.map((column) => ({
+          ...column,
+          blocks: column.blocks.map((block) =>
+            block.id === blockId
+              ? changed
+              : block.type === "columns"
+                ? { ...block, columns: block.columns.map((inner) => ({ ...inner, blocks: inner.blocks.map((b) => (b.id === blockId ? changed : b)) })) }
+                : block,
+          ),
+        })),
       })),
     },
   };

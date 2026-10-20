@@ -31,6 +31,7 @@ export const TEMPLATE_MEDIA_BYTES_MAX = 80 * 1024 * 1024;
 /** What a block is called in a template's summary. */
 export const BLOCK_WORDS: Record<BlockType, string> = {
   richText: "text",
+  columns: "columns",
   heading: "heading",
   image: "picture",
   button: "button",
@@ -142,8 +143,9 @@ type Edits = {
 /** A part with each block, column and row passed through `edits`, the inner ones first. */
 function editPart(kind: SavedPartKind, content: PartContent, edits: Edits): PartContent {
   // An FAQ's answers' components (D208) are blocks too, passed through first.
+  // A Columns component's columns (D294) are columns, passed through as a row's are.
   const block = (b: PageBlock): PageBlock => {
-    const inner = mapChildBlocks(b, block);
+    const inner = b.type === "columns" ? { ...b, columns: b.columns.map(column) } : mapChildBlocks(b, block);
     return edits.block ? edits.block(inner) : inner;
   };
   const column = (c: PageColumn) => {

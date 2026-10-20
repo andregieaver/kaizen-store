@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { PageModal } from "@/components/page-modal";
 import { PageBlockView } from "@/components/page-block";
@@ -16,7 +16,7 @@ import {
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { t } from "@/lib/i18n";
-import { blockHasContent, blockOwnContent, columnLines, rowShows, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
+import { blockHasContent, blockOwnContent, columnLines, columnsAsRow, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
 import { MODAL_LEFT_OUT, modalSummary } from "@/lib/page-modal";
 
 /**
@@ -67,8 +67,8 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
   const box = rowBox(row, "canvas", true);
   const grid = rowGrid(row);
   const lines = columnLines(row);
-  const renderColumn = (column: PageColumn) => {
-    const col = columnBox(column, row, "canvas");
+  const renderColumn = (column: PageColumn, holder: PageRow = row): ReactNode => {
+    const col = columnBox(column, holder, "canvas");
     return (
       <div key={column.id} className={col.className} style={col.style}>
         <PartBackground background={column.background} />
@@ -76,7 +76,7 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
           const b = blockBox(block, "canvas");
           return (
             <div key={block.id} className={b.className || undefined} style={b.style}>
-              <PreviewBlock block={block} lang={lang} />
+              {block.type === "columns" ? <PreviewNested block={block} renderColumn={renderColumn} /> : <PreviewBlock block={block} lang={lang} />}
             </div>
           );
         })}
@@ -89,10 +89,24 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
       <div className={rowInnerClass(row, "canvas")}>
         <div className={grid.className} style={grid.style}>
           {lines.length === 1
-            ? row.columns.map(renderColumn)
-            : lines.map((line, l) => <div key={line[0]?.id ?? l}>{line.map(renderColumn)}</div>)}
+            ? row.columns.map((column) => renderColumn(column))
+            : lines.map((line, l) => <div key={line[0]?.id ?? l}>{line.map((column) => renderColumn(column))}</div>)}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** A Columns component (D294) in the panel: its lines of columns as a row's. */
+function PreviewNested({ block, renderColumn }: { block: ColumnsBlock; renderColumn: (column: PageColumn, holder: PageRow) => ReactNode }) {
+  const holder = columnsAsRow(block);
+  const grid = rowGrid(holder);
+  const lines = columnLines(holder);
+  return (
+    <div className={grid.className} style={grid.style}>
+      {lines.length === 1
+        ? holder.columns.map((column) => renderColumn(column, holder))
+        : lines.map((line, l) => <div key={line[0]?.id ?? l}>{line.map((column) => renderColumn(column, holder))}</div>)}
     </div>
   );
 }
