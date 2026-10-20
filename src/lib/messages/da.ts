@@ -687,6 +687,7 @@ export const da: Messages = {
     expired: "Vi kunne ikke finde dette link. Det kan være for gammelt eller allerede brugt.",
     unsubscribeIntro: "Vil du holde op med at få e-mails med nyheder og tilbud fra denne butik?",
     unsubscribed: "Du er afmeldt. Du får ikke flere e-mails med nyheder og tilbud fra os.",
+    emailReason: (store: string) => `Du får denne e-mail, fordi du har bedt om nyheder og tilbud fra ${store}.`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

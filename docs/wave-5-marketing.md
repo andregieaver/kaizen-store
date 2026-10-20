@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units B to J are outlined in section 4.
+section is written here before it is built; units D to J are outlined in section 6.
 
 ## 2. Rules for every unit
 
@@ -187,13 +187,105 @@ Unit: `matches()` for every condition and both matches, `describeCondition()`, t
 and one without a rate; RFM groups match `rfm()`; tags (normalised, limit, another store's never seen); saving, the limit and names; one store's
 segment never sees another's people. A signed-in e2e makes a segment and opens it.
 
-## 5. Units C to J, outlined
+## 5. Unit C (D297): broadcasts
 
-- **C, broadcasts (D297).** `commerce.broadcasts` (draft, scheduled, sending, sent, cancelled), its content as email blocks per language
-  (`renderEmail()`), a test to staff, a send that freezes the recipients at its start into `broadcast_recipients` (one row per address, the
-  idempotency key `broadcast:{id}:{subscriber}`), sent in batches by the five-minute job within the provider's rate, `List-Unsubscribe`. Bounces and
-  complaints unsubscribe (3.3). The report counts sent, delivered, bounced, unsubscribed after it; no open tracking pixel, clicks only through a
-  redirect that keeps no person.
+### 5.1 A broadcast
+
+`commerce.broadcasts`, one row per email the store writes once and sends to many:
+
+| Column | Meaning |
+|---|---|
+| `title` | The staff's own name for it (1 to 80 characters), never shown to subscribers. |
+| `audience`, `segment_id` | `everyone` (every address on the list that is `subscribed`) or `segment` (that segment's people who are `subscribed`). A deleted segment leaves `segment_id` null and the broadcast cannot be sent until another is chosen. |
+| `content` | Per language of the store (`{ [locale]: { subject, preview, blocks } }`, `broadcastContentSchema` in `src/lib/broadcasts.ts`). The store's main language is required to send; the others are optional. |
+| `status` | `draft`, `scheduled` (with `scheduled_for`), `sending`, `sent`, `cancelled`. |
+| `audience_words`, `recipient_count`, `started_at`, `finished_at` | Written when the send starts: who it went to in words (the segment's name and rules then) and how many addresses were frozen. |
+| `schedule_problem` | Why a scheduled send could not start (it is back to `draft`). |
+| `counts` | The report's figures, frozen when the recipients are pruned (5.6). |
+
+The database's rules (`broadcasts_rules()`): the status moves only `draft → scheduled | sending`, `scheduled → draft | sending`, `sending → sent |
+cancelled`; `scheduled` needs `scheduled_for`, `sending` needs `started_at`, `sent` and `cancelled` need `finished_at`; the title, audience and content
+change only while `draft` or `scheduled`; only a `draft` is deleted, so a send's report stays.
+
+**Content** is blocks, as Kaizena Flow's own emails are (`renderEmail()`, plain HTML that works in every mail app): a heading, a paragraph (plain
+text, line breaks kept), a button (words and an address), a picture (from the store's media library, with its alt text, optionally linked) and a
+divider; at most 40 blocks, each text with its limit. An address is `https://…` or a path of the store (`/products`, `/category/x`), written under the
+recipient's market when sent (`marketPath()`). A picture is accepted only when its address is one of the store's own `media` rows, so no third
+party's pixel rides along; pictures for email are uploaded as JPEG (never WebP or AVIF, which some mail apps cannot show). There are no
+placeholders in this unit (names are often missing, and an empty greeting reads worse than none).
+
+### 5.2 Who gets it
+
+A recipient gets the language of their subscriber row when the broadcast has it, else the main language. The email is the store's: its name as the
+sender and its contact address for replies (D26), the store's details at the foot (`emailFooter()`), a line *You get this email because you asked
+for news and offers from {store}* and *Unsubscribe* with the subscriber's own token (`/unsubscribe/{token}`), and the headers `List-Unsubscribe`
+(the one-click address) and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Every button is sent through the click address (5.5).
+
+### 5.3 Testing and sending
+
+- **Send a test** (`marketing:write`): to the staff member's own address, in a language they choose, the subject marked `[Test]`, its buttons
+  straight to their targets and its unsubscribe link to the test page; email kind `marketing.broadcast.test` (staff). It counts nowhere.
+- **Send now** or **Schedule** (`marketing:write`): refused while the store is not open or is a store template, without the main language's
+  subject and a block, with a segment that is gone, or when nobody would get it. Starting a send is one transaction under the broadcast's lock: it
+  reads the audience (`segmentPeople()` and `matches()` for a segment; the subscriber list for everyone), freezes the addresses that are
+  `subscribed` at that moment into `broadcast_recipients` (one row per address, with the subscriber, its language and market), writes the count and
+  the audience in words, and sets `sending`. A segment over `SEGMENT_CAP` people is refused (it would not be every one of them). A scheduled
+  broadcast is started by the every-minute job (`/api/cron/broadcasts`) once its time has come, with the same checks; one it cannot start goes back to `draft` with the
+  reason in `schedule_problem`.
+- **Sending** (`runBroadcasts()`, from `after()` the press and the every-minute job, never throws): recipients are claimed a batch at a time
+  (`for update skip locked`, a claim that runs out), each checked again (an address unsubscribed since the start is `skipped`), kept in
+  `email_messages` with the idempotency key `broadcast:{id}:{subscriber}` (so a retried batch never sends twice) and handed to Resend's batch
+  endpoint, 100 at a time, paced under its rate, within the run's time. A broadcast with nobody left queued is `sent`. Without email settings, the
+  emails are only kept (`logged`), as every email is.
+- **Stop** (`marketing:write`) a broadcast while it sends: `cancelled`, and the addresses not yet sent are `skipped`. A store that closes while a
+  broadcast sends stops it the same way.
+
+Audit (`marketing`): `broadcast.saved`, `broadcast.deleted`, `broadcast.scheduled`, `broadcast.unscheduled`, `broadcast.started` (with the
+recipient count), `broadcast.stopped`; never an address.
+
+### 5.4 Bounces and complaints
+
+Resend's events (`applyEmailEvent()`): a hard bounce (`Permanent`) of any email a store sent unsubscribes that address from the store's list with
+`bounce`; a complaint (marked as spam) with `complaint` (3.3). A soft bounce changes nothing.
+
+### 5.5 Clicks
+
+A button's address in a sent email is `/api/marketing/c/{broadcast}/{link}?m={market}`: the route looks the link up in the broadcast's own content
+(so it never redirects anywhere the store did not write), adds one to `broadcast_link_clicks` (the broadcast, the link and a count: no person, no
+time, no address) and redirects to it. There is no open-tracking pixel. The report says plainly that a count includes mail apps that open links to
+check them.
+
+### 5.6 The report
+
+A sent broadcast's page shows: how many it went to, sent (accepted by the email service), delivered, bounced, marked as spam, failed and skipped,
+the addresses that unsubscribed since it started, and the presses per button. While it sends, how many are left. Counts are counted from the
+recipients and their emails; `pruneBroadcastRecipients()` (daily) freezes them into `counts` and deletes the recipients 90 days after the send ended,
+and the report reads the frozen figures after that.
+
+### 5.7 Written with AI
+
+*Write with AI* (`marketing:write`, feature `marketing_email`) takes the staff's few words about what to say and the language, and suggests a subject,
+a preview line, a heading, up to four paragraphs and a button's words; the model gets the store's name, the words and the language, never prices,
+products or people. Every text passes `findClaims()`; a suggestion with a claim is refused with what was found. A suggestion is put into the editor,
+never saved or sent: the person reads it, adds the button's address and saves.
+
+### 5.8 Personal data and copies
+
+`broadcast_recipients` is personal data (`PERSONAL_DATA`: by the address; the export's `marketing` section lists which broadcasts went to it and
+when; erasure deletes them); `broadcasts` and `broadcast_link_clicks` are `NOT_PERSONAL` (the store's own words and counts). None is copied
+(`COPY_RULES`: `never`). Email kinds: `marketing.broadcast` (shopper), `marketing.broadcast.test` (staff).
+
+### 5.9 Tests
+
+PGlite: the status rules, content fixed once sending, only drafts deleted, recipients unique. Unit: the content schema (limits, addresses, a picture
+needs a library address), rendering per language and the fallback, the click link, the AI suggestion's parser and claims. Integration
+(`broadcasts.int.test.ts`): a send to a segment freezes only subscribed addresses, sends each once across two runs (a retried batch is a duplicate),
+skips an address unsubscribed since, stops; a schedule starts when due and goes back to draft when it cannot; a hard bounce and a complaint
+unsubscribe; the click route counts and redirects only to the content's link; another store's broadcast is never read; erasure removes the
+recipients. A signed-in e2e writes a broadcast, sends a test and sends it.
+
+## 6. Units D to J, outlined
+
 - **D, automations (D298).** Welcome (after subscribing), after a purchase (days after delivery), win-back (no order in N days), each a switch with
   its email per language, firing once per person and trigger (`automation_sends` keys); back in stock: a notify-me form on a sold-out variant (an
   address, consent, double opt-in), one email per waiting address when stock rises above zero by any path (the inventory movement trigger queues it).

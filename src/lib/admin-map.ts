@@ -453,6 +453,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["segment", "audience", "customer list", "rfm", "vip", "win-back", "target group", "målgruppe"],
     tasks: ["Make a segment of my best customers", "See how many customers have not ordered for six months"],
   }),
+  store("broadcasts", "/broadcasts", "Broadcasts", "Sales", "Broadcasts: emails with news and offers written once in the store's languages and sent to the people on the subscriber list who want them, everyone or a segment's, once each, with an unsubscribe link. Draft, test to yourself, send now or schedule, stop, and see what happened (sent, delivered, bounced, unsubscribed, presses on links). Write with AI suggests the words.", {
+    keywords: ["newsletter", "email campaign", "email marketing", "mailing", "send email to customers", "nyhetsbrev"],
+    tasks: ["Send a newsletter to everyone who wants my emails", "Email my best customers about the autumn collection"],
+  }),
+  store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
+  store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),
   store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),
   store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules."),
   store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {

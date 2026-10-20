@@ -855,6 +855,15 @@ async function loadMarketing(s: PrivacySubject): Promise<MarketingRow[]> {
   }));
 }
 
+/** The broadcasts sent to the person's addresses (D297): the name staff gave each and when it went. */
+async function loadBroadcasts(s: PrivacySubject): Promise<{ broadcast: string; sentAt: string | null }[]> {
+  const rows = await db().execute<Row>(sql`
+    select b.title, r.sent_at from commerce.broadcast_recipients r join commerce.broadcasts b on b.store_id = r.store_id and b.id = r.broadcast_id
+    where r.store_id = ${s.storeId}::uuid and r.status = 'sent' and r.email = any(${textList(s.addresses)}) order by r.sent_at
+  `);
+  return rows.map((r) => ({ broadcast: strs(r.title), sentAt: r.sent_at ? new Date(String(r.sent_at)).toISOString() : null }));
+}
+
 /** Staff's tags on the person (D296), by the subject's addresses. */
 async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
@@ -913,12 +922,13 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
     loadMarketing(s),
     loadCustomerTags(s),
+    loadBroadcasts(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -951,6 +961,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     support,
     marketing,
     customerTags,
+    broadcasts,
   };
 }
 

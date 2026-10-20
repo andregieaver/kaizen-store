@@ -37,6 +37,7 @@ export const AI_FEATURES = {
   page_translation: "Page translation",
   ui_translation: "Interface translation",
   product_writer: "Product writer",
+  marketing_email: "Marketing emails",
   support_tone: "Support tone",
   support_summary: "Support summaries",
   support_partner: "Support partner",

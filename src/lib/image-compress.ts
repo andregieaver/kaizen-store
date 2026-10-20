@@ -61,18 +61,27 @@ async function canvasType(canvas: HTMLCanvasElement): Promise<"image/webp" | "im
 
 type Try = { blob: Blob; likeness: Likeness };
 
-export async function compressPicture(file: Blob, maxSize: number, options: { avif?: boolean } = {}): Promise<CompressedPicture> {
+/**
+ * `jpeg` writes a JPEG on white whatever the browser could write, for pictures that leave the site in an email (D297): some mail apps show no
+ * WebP or AVIF.
+ */
+export async function compressPicture(file: Blob, maxSize: number, options: { avif?: boolean; jpeg?: boolean } = {}): Promise<CompressedPicture> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const { canvas, context } = canvasOf(width, height);
   context.imageSmoothingQuality = "high";
+  if (options.jpeg) {
+    // A JPEG has no transparency: what is see-through becomes white, as a mail app's background is.
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+  }
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
   const reference = context.getImageData(0, 0, width, height);
 
-  const type = await canvasType(canvas);
+  const type = options.jpeg ? "image/jpeg" : await canvasType(canvas);
   const attempt = async (quality: number): Promise<Try> => {
     const blob = await written(canvas, type, quality);
     if (!blob) throw new Error("The picture could not be converted.");
@@ -90,7 +99,7 @@ export async function compressPicture(file: Blob, maxSize: number, options: { av
     likeness: chosen.result.likeness,
   };
 
-  if (options.avif) {
+  if (options.avif && !options.jpeg) {
     const avif = await tryAvif(reference, width, height, best.blob.size * AVIF_GAIN).catch(() => null);
     if (avif && avif.blob.size < best.blob.size * AVIF_GAIN) best = { ...best, ...avif, type: "image/avif" };
   }

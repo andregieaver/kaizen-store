@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -28,7 +30,7 @@ export { emailSettings, emailSetup, type EmailSettings } from "@/lib/email-setti
 const RESEND = "https://api.resend.com/emails";
 const TRIES = 3;
 
-type Delivery = { ok: true; id: string } | { ok: false; error: string };
+export type Delivery = { ok: true; id: string } | { ok: false; error: string };
 
 /**
  * One email to Resend. The kept email's id is the idempotency key, so a
@@ -41,26 +43,7 @@ export async function deliver(
   message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments">,
   fetcher: typeof fetch = fetch,
 ): Promise<Delivery> {
-  const body = JSON.stringify({
-    from: `"${senderName(message.fromName)}" <${settings.from}>`,
-    to: [message.to],
-    subject: message.email.subject,
-    html: message.email.html,
-    text: message.email.text,
-    ...(message.replyTo && { reply_to: [message.replyTo] }),
-    ...(message.headers && { headers: message.headers }),
-    ...(message.attachments?.length && {
-      attachments: message.attachments.map((file) => ({
-        filename: file.filename,
-        content: file.encoding === "base64" ? file.content : Buffer.from(file.content, "utf8").toString("base64"),
-        content_type: file.contentType,
-      })),
-    }),
-    tags: [
-      { name: "kind", value: message.kind.replace(/[^A-Za-z0-9_-]/g, "_") },
-      { name: "store", value: message.storeId ?? "kaizen" },
-    ],
-  });
+  const body = JSON.stringify(resendEmail(settings, message));
   let error = "unknown";
   for (let attempt = 0; attempt < TRIES; attempt++) {
     let wait = 250 * 2 ** attempt;
@@ -87,6 +70,81 @@ export async function deliver(
     if (attempt < TRIES - 1) await new Promise((resolve) => setTimeout(resolve, wait));
   }
   return { ok: false, error };
+}
+
+type ResendMessage = Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments">;
+
+/** One email as Resend's API takes it. */
+function resendEmail(settings: EmailSettings, message: ResendMessage) {
+  return {
+    from: `"${senderName(message.fromName)}" <${settings.from}>`,
+    to: [message.to],
+    subject: message.email.subject,
+    html: message.email.html,
+    text: message.email.text,
+    ...(message.replyTo && { reply_to: [message.replyTo] }),
+    ...(message.headers && { headers: message.headers }),
+    ...(message.attachments?.length && {
+      attachments: message.attachments.map((file) => ({
+        filename: file.filename,
+        content: file.encoding === "base64" ? file.content : Buffer.from(file.content, "utf8").toString("base64"),
+        content_type: file.contentType,
+      })),
+    }),
+    tags: [
+      { name: "kind", value: message.kind.replace(/[^A-Za-z0-9_-]/g, "_") },
+      { name: "store", value: message.storeId ?? "kaizen" },
+    ],
+  };
+}
+
+const RESEND_BATCH = "https://api.resend.com/emails/batch";
+/** Resend's batch endpoint takes at most this many emails a call. */
+export const BATCH_MAX = 100;
+
+/**
+ * Up to `BATCH_MAX` kept emails to Resend in one call (D297's broadcasts), with no attachments; one result per email, in order. The batch's
+ * idempotency key is made from the kept emails' ids, so a retry never sends them twice. Busy (429) and server errors are tried again, briefly; a
+ * batch Resend refuses as a whole (one bad address fails every email in it) is sent one email at a time instead, so only the bad one fails.
+ */
+export async function deliverBatch(
+  settings: EmailSettings,
+  items: { id: string; message: ResendMessage }[],
+  fetcher: typeof fetch = fetch,
+): Promise<Delivery[]> {
+  if (items.length === 0) return [];
+  if (items.length > BATCH_MAX) throw new Error(`At most ${BATCH_MAX} emails a batch.`);
+  const body = JSON.stringify(items.map((item) => resendEmail(settings, { ...item.message, attachments: undefined })));
+  const key = createHash("sha256").update(items.map((item) => item.id).join(",")).digest("hex").slice(0, 48);
+  let error = "unknown";
+  for (let attempt = 0; attempt < TRIES; attempt++) {
+    let wait = 250 * 2 ** attempt;
+    try {
+      const response = await fetcher(RESEND_BATCH, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${settings.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `batch-${key}` },
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      const result = (await response.json().catch(() => ({}))) as { data?: { id?: string }[]; message?: string; name?: string };
+      if (response.ok && Array.isArray(result.data) && result.data.length === items.length && result.data.every((d) => d.id)) {
+        return result.data.map((d) => ({ ok: true as const, id: String(d.id) }));
+      }
+      error = `${response.status} ${result.name ?? ""}: ${result.message ?? response.statusText}`.slice(0, 500);
+      if (response.status !== 429 && response.status < 500) break;
+      const after = Number(response.headers.get("retry-after"));
+      if (after > 0) wait = Math.min(after * 1000, 2000);
+    } catch (thrown) {
+      error = thrown instanceof Error ? thrown.message.slice(0, 500) : "network error";
+      // A batch that may have reached Resend is not sent again one by one (its key stops a resend of the same batch).
+      if (attempt === TRIES - 1) return items.map(() => ({ ok: false as const, error }));
+    }
+    if (attempt < TRIES - 1) await new Promise((resolve) => setTimeout(resolve, wait));
+  }
+  if (/^(429|5\d\d)/.test(error)) return items.map(() => ({ ok: false as const, error }));
+  const one: Delivery[] = [];
+  for (const item of items) one.push(await deliver(settings, item.id, item.message, fetcher));
+  return one;
 }
 
 /** A display name safe in an email header: no quotes, line breaks or angle brackets. */

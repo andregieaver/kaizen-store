@@ -84,6 +84,7 @@ import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from
 import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
+import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
   ESTIMATE_DAYS_MAX,
@@ -11462,5 +11463,114 @@ export const customerTags = commerce.table(
     check("customer_tags_key", sql`char_length(${t.key}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.key} = btrim(${t.key})`),
     check("customer_tags_label", sql`char_length(${t.label}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.label} = btrim(${t.label})`),
     check("customer_tags_label_chars", sql`${t.label} !~ '[,\\x01-\\x1f\\x7f\\u202a-\\u202e\\u2066-\\u2069]'`),
+  ],
+);
+
+/**
+ * A broadcast (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5.1): an email the store writes once, per language, and sends to its subscribed
+ * addresses (everyone, or a segment's). `content` is `broadcastContentSchema`; the status moves only as `commerce.broadcasts_rules()` allows, and
+ * the title, audience and content are fixed once a send starts. Only a draft is deleted. Written only by `src/server/broadcasts.ts`. Not personal
+ * (the store's own words); never copied.
+ */
+export const broadcasts = commerce.table(
+  "broadcasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    title: text("title").notNull(),
+    audience: text("audience").notNull().default("everyone"),
+    /** The segment for `audience = 'segment'`; null when it was deleted, and the broadcast cannot be sent until another is chosen. */
+    segmentId: uuid("segment_id").references(() => segments.id, { onDelete: "set null" }),
+    content: jsonb("content").notNull().default({}),
+    status: text("status").notNull().default("draft"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    /** Why a scheduled send could not start (it went back to draft). */
+    scheduleProblem: text("schedule_problem"),
+    /** Who it went to, in words, as the audience was when the send started. */
+    audienceWords: text("audience_words"),
+    recipientCount: integer("recipient_count"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** The report's figures, frozen when the recipients were pruned. */
+    counts: jsonb("counts"),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("broadcasts_store_id_key").on(t.storeId, t.id),
+    index("broadcasts_list_idx").on(t.storeId, t.createdAt),
+    index("broadcasts_due_idx").on(t.scheduledFor).where(sql`${t.status} = 'scheduled'`),
+    index("broadcasts_sending_idx").on(t.status).where(sql`${t.status} = 'sending'`),
+    index("broadcasts_segment_idx").on(t.segmentId),
+    index("broadcasts_created_by_idx").on(t.createdBy),
+    check("broadcasts_title", sql`char_length(${t.title}) between 1 and 80 and ${t.title} = btrim(${t.title})`),
+    check("broadcasts_audience", sql`${t.audience} in (${sqlList(BROADCAST_AUDIENCES)})`),
+    check("broadcasts_status", sql`${t.status} in (${sqlList(BROADCAST_STATUSES)})`),
+    check("broadcasts_content", sql`jsonb_typeof(${t.content}) = 'object'`),
+  ],
+);
+
+/**
+ * The addresses a broadcast went to (D297, 5.3), frozen when its send started: one row per address (the subscriber's own, its language and market),
+ * claimed a batch at a time and sent once (`email_messages`' key `broadcast:{id}:{subscriber}`). Personal data (the address): in the export's
+ * `marketing` section, deleted on erasure and 90 days after the send ended (its figures kept on the broadcast). Never copied.
+ */
+export const broadcastRecipients = commerce.table(
+  "broadcast_recipients",
+  {
+    storeId: storeId().references(() => stores.id),
+    broadcastId: uuid("broadcast_id").notNull(),
+    subscriberId: uuid("subscriber_id").notNull(),
+    /** Lower case. */
+    email: text("email").notNull(),
+    locale: text("locale").notNull(),
+    marketCode: text("market_code"),
+    status: text("status").notNull().default("queued"),
+    /** Why it was skipped: the address left the list after the start, or the send was stopped. */
+    skipReason: text("skip_reason"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    emailMessageId: uuid("email_message_id").references(() => emailMessages.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.broadcastId, t.subscriberId] }),
+    foreignKey({
+      name: "broadcast_recipients_broadcast_fk",
+      columns: [t.storeId, t.broadcastId],
+      foreignColumns: [broadcasts.storeId, broadcasts.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "broadcast_recipients_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    index("broadcast_recipients_queue_idx").on(t.broadcastId, t.status),
+    index("broadcast_recipients_email_idx").on(t.storeId, t.email),
+    index("broadcast_recipients_message_idx").on(t.emailMessageId),
+    check("broadcast_recipients_status", sql`${t.status} in (${sqlList(RECIPIENT_STATUSES)})`),
+    check("broadcast_recipients_skip", sql`${t.skipReason} is null or ${t.skipReason} in ('unsubscribed', 'stopped')`),
+    check("broadcast_recipients_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
+  ],
+);
+
+/** Presses on a broadcast's links (D297, 5.5): the link's key and a count, nothing of who pressed or when. Not personal; never copied. */
+export const broadcastLinkClicks = commerce.table(
+  "broadcast_link_clicks",
+  {
+    storeId: storeId().references(() => stores.id),
+    broadcastId: uuid("broadcast_id").notNull(),
+    link: text("link").notNull(),
+    clicks: integer("clicks").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.broadcastId, t.link] }),
+    foreignKey({
+      name: "broadcast_link_clicks_broadcast_fk",
+      columns: [t.storeId, t.broadcastId],
+      foreignColumns: [broadcasts.storeId, broadcasts.id],
+    }).onDelete("cascade"),
+    check("broadcast_link_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
   ],
 );

@@ -693,6 +693,7 @@ export const nb: Messages = {
     expired: "Vi fant ikke denne lenken. Den kan være for gammel eller allerede brukt.",
     unsubscribeIntro: "Vil du slutte å få e-post med nyheter og tilbud fra denne butikken?",
     unsubscribed: "Du er meldt av. Du får ikke flere e-poster med nyheter og tilbud fra oss.",
+    emailReason: (store: string) => `Du får denne e-posten fordi du har bedt om nyheter og tilbud fra ${store}.`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

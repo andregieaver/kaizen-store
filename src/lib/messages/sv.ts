@@ -687,6 +687,7 @@ export const sv: Messages = {
     expired: "Vi hittade inte den här länken. Den kan vara för gammal eller redan använd.",
     unsubscribeIntro: "Vill du sluta få e-post med nyheter och erbjudanden från den här butiken?",
     unsubscribed: "Din prenumeration är avslutad. Du får inga fler e-postmeddelanden med nyheter och erbjudanden från oss.",
+    emailReason: (store: string) => `Du får det här e-postmeddelandet för att du har bett om nyheter och erbjudanden från ${store}.`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

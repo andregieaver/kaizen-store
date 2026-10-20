@@ -83,6 +83,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "subscribers.": "marketing",
   // Segments (D296): saved and deleted, with the name and how many conditions, never people.
   "segment.": "marketing",
+  "broadcast.": "marketing",
   "recommendations.": "marketing",
   "experiment.": "marketing",
   "search_test.": "marketing",

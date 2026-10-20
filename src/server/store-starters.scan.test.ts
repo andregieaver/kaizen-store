@@ -22,6 +22,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/ai-usage.ts": "real",
   "src/server/auth.ts": "real",
   "src/server/billing.ts": "both",
+  // Broadcasts (D297): a template or demo store sends no marketing email.
+  "src/server/broadcasts.ts": "real",
   "src/server/content-grid.ts": "real",
   // Design profiles (D176): the Standard store a preview is drawn on, and the default template named among the stores a snapshot is taken from.
   "src/server/design-presets.ts": "template",

@@ -887,12 +887,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No marketing email. Only email_customer exists: the assistant drafts one email to one of the store's own customers, shown whole in the approval and kept for the owner's yes, with AI text through the claims filter. There is no audience, no campaign, no template or design, no consent list to send to and no broadcast to write for; that waits for wave 5 broadcasts.",
+    "gap": "D297: the broadcast editor's Write with AI suggests a subject, preview, heading, paragraphs and a button's words in the chosen language from the staff's own words, every text through findClaims() (a claim refuses the suggestion), never saved or sent: the person reads it and sends with their own press, only to subscribed addresses with an unsubscribe link. Still missing: writing from the store's own facts through tools (products, campaigns) and for a chosen segment, and the AI manager drafting a broadcast.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -905,16 +905,21 @@
         "src/server/owner-tools.ts",
         "src/lib/owner-tools.ts",
         "src/lib/claims.ts",
-        "src/server/email.ts"
+        "src/server/email.ts",
+        "src/server/broadcasts.ts",
+        "src/lib/broadcasts.ts",
+        "src/components/admin/broadcast-editor.tsx"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
-        "src/lib/claims.test.ts"
+        "src/lib/claims.test.ts",
+        "src/lib/broadcasts.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D104"
+      "D104",
+      "D297"
     ],
     "history": [
       {
@@ -928,6 +933,12 @@
         "from": "partial",
         "to": "missing",
         "why": "email_customer is a one-customer gated mail, not a marketing email; no criterion holds"
+      },
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns."
       }
     ]
   },

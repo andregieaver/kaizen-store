@@ -140,7 +140,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "D295 built the subscriber list with consent, unsubscribe by token and one-click POST, export and erasure. Still missing: a composer, sending to a segment, bounce and complaint suppression wired to sends, reports, and lifecycle automations beyond cart reminders (welcome, post-purchase, win-back): wave 5 units B to D.",
+    "gap": "D295 built the subscriber list and D297 broadcasts: written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each (frozen recipients, idempotency key), in batches, with List-Unsubscribe, hard bounces and complaints unsubscribing, and a report (sent, delivered, bounced, unsubscribed, presses per link; no opens). Still missing: templates and product blocks in emails, and lifecycle automations beyond cart reminders (welcome, post-purchase, win-back): wave 5 unit D.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -160,7 +160,14 @@
         "src/server/owner-tools.ts",
         "src/app/api/cron/cart-reminders/route.ts",
         "src/lib/marketing-consent.ts",
-        "src/server/marketing-subscribers.ts"
+        "src/server/marketing-subscribers.ts",
+        "src/lib/broadcasts.ts",
+        "src/server/broadcasts.ts",
+        "src/components/admin/broadcast-editor.tsx",
+        "src/components/admin/broadcast-send.tsx",
+        "src/app/admin/(gated)/[store]/broadcasts/[broadcastId]/page.tsx",
+        "src/app/api/marketing/c/[broadcast]/[link]/route.ts",
+        "src/app/api/cron/broadcasts/route.ts"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
@@ -169,7 +176,11 @@
         "src/server/email-events.int.test.ts",
         "src/server/email.test.ts",
         "e2e/cart-reminders.spec.ts",
-        "src/server/marketing-subscribers.int.test.ts"
+        "src/server/marketing-subscribers.int.test.ts",
+        "src/lib/broadcasts.test.ts",
+        "src/db/broadcasts.test.ts",
+        "src/server/broadcasts.int.test.ts",
+        "e2e/signed-in/broadcasts.spec.ts"
       ],
       "untested": false
     },
@@ -177,7 +188,8 @@
       "D33",
       "D93",
       "D104",
-      "D295"
+      "D295",
+      "D297"
     ],
     "history": [
       {

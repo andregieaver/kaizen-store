@@ -331,6 +331,8 @@ export type ExportInput = {
   marketing?: MarketingRow[];
   /** Staff's tags on the person (D296); absent is none. */
   customerTags?: string[];
+  /** The broadcasts sent to the person (D297): staff's name for each and when; absent is none. */
+  broadcasts?: { broadcast: string; sentAt: string | null }[];
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -690,7 +692,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     company: (input.company.company ? 1 : 0) + input.company.invites.length,
     customFields: input.customFields.length,
     support: (input.support ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0),
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.broadcasts ?? []).length,
   };
 }
 
@@ -770,6 +772,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       history: m.history.map((h) => ({ kind: h.kind, source: h.source, consentText: text(h.consentText), at: iso(h.at) })),
       })),
       ...((input.customerTags ?? []).length > 0 ? [{ kind: "tags", tags: [...(input.customerTags ?? [])] }] : []),
+      ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
     ],
   };
   return {

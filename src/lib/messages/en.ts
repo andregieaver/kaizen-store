@@ -697,6 +697,7 @@ export const en = {
     expired: "We could not find this link. It may be too old or already used.",
     unsubscribeIntro: "Stop getting emails with news and offers from this store?",
     unsubscribed: "You are unsubscribed. You will get no more emails with news and offers from us.",
+    emailReason: (store: string) => `You get this email because you asked for news and offers from ${store}.`,
   },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {

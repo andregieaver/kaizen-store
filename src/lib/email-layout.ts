@@ -10,6 +10,8 @@ export type EmailBlock =
   | { type: "button"; text: string; url: string }
   | { type: "lines"; rows: EmailLine[] }
   | { type: "code"; text: string }
+  /** A picture at the email's width (a full address), optionally a link (D297's broadcasts). */
+  | { type: "image"; url: string; alt: string; href?: string | null }
   | { type: "divider" };
 
 /** A row of a list of lines: a product with its picture (a full address), or a total. */
@@ -52,6 +54,10 @@ function blockHtml(block: EmailBlock): string {
       return `<p style="margin:0 0 16px;font-size:32px;letter-spacing:6px;font-weight:700;font-family:ui-monospace,Menlo,monospace;color:#171717">${escapeHtml(block.text)}</p>`;
     case "divider":
       return `<hr style="border:none;border-top:1px solid #e5e5e5;margin:8px 0 16px">`;
+    case "image": {
+      const picture = `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:8px">`;
+      return `<p style="margin:0 0 16px">${block.href ? `<a href="${escapeHtml(block.href)}">${picture}</a>` : picture}</p>`;
+    }
     case "lines": {
       // With pictures, a column for them; rows without one (totals) leave it empty, so the titles line up.
       const pictures = block.rows.some((row) => row.image);
@@ -77,6 +83,8 @@ function blockText(block: EmailBlock): string {
       return block.text;
     case "divider":
       return "----";
+    case "image":
+      return [block.alt && `[${block.alt}]`, block.href].filter(Boolean).join(" ");
     case "lines":
       return block.rows.map((row) => `${row.label}: ${row.value}`).join("\n");
   }

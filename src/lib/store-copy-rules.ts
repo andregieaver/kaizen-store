@@ -151,6 +151,9 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_roles: derived("The new store gets the role templates from ensureStoreRoles() (wave 1, 1f); custom roles name people's powers and are not copied."),
 
   // Never ------------------------------------------------------------------------------------------------------
+  broadcasts: never("A store's broadcasts are sent to its own list (D297); a copy starts without them."),
+  broadcast_recipients: never("The addresses a broadcast went to (D297): people's data."),
+  broadcast_link_clicks: never("A sent broadcast's counts (D297)."),
   segments: never("Segments name the store's own customer groups and tags (D296); a copy starts without them."),
   customer_tags: never("Staff's tags on the store's people (D296)."),
   marketing_subscribers: never("People who asked for the store's marketing email: their consent was given to that store (D295)."),
