@@ -873,3 +873,38 @@ export const partOf = (rows: PageRow[], target: Styled) => partOfOn(asHolders(ro
 export const patchPart = (rows: PageRow[], target: Styled, patch: Partial<PartBase>) => held(rows, (h) => patchPartOn(h, target, patch));
 export const setSpacing = (rows: PageRow[], target: Styled, style: Spacing) => held(rows, (h) => setSpacingOn(h, target, style));
 export const spacingOf = (rows: PageRow[], target: Styled) => spacingOfOn(asHolders(rows), target);
+
+/** A new Columns component (D294) of a layout, its columns empty, or holding `columns` (as many as the layout has). */
+export function newColumnsBlock(layout: RowLayout, id: NewId, columns?: PageColumn[]): ColumnsBlock {
+  return { id: id(), type: "columns", layout, columns: columns ?? ROW_LAYOUTS[layout].widths.map(() => ({ id: id(), blocks: [] })) };
+}
+
+/** The rows with a column taken out of its line, which is shared evenly again or goes, and its row (or holder) with it when empty. */
+function takeColumnOn(rows: PageRow[], columnId: string): PageRow[] {
+  const found = findColumnOn(rows, columnId);
+  const place = found ? locateColumn(found.row, columnId) : null;
+  if (!found || !place) return rows;
+  const lines = linesOf(found.row).flatMap((line, i): RowLine[] => {
+    if (i !== place.line) return [line];
+    const rest = line.columns.filter((c) => c.id !== columnId);
+    return rest.length === 0 ? [] : [evenLine(rest)];
+  });
+  const next = rowOf(found.row, lines);
+  return rows.flatMap((row) => (row.id !== found.row.id ? [row] : next ? [next] : []));
+}
+
+/**
+ * Nests a column (D294): it moves, with all it holds, into a new Columns component put in another column at `index` among its
+ * components. Refused where that would nest deeper than one level: into a column of a Columns component, into itself, or a column
+ * that holds a Columns component of its own.
+ */
+export function nestColumn(rows: PageRow[], columnId: string, targetColumnId: string, index: number, id: NewId): PageRow[] {
+  if (columnId === targetColumnId || isNestedColumn(rows, targetColumnId)) return rows;
+  const holders = asHolders(rows);
+  const found = findColumnOn(holders, columnId);
+  if (!found) return rows;
+  const column = found.row.columns[found.index];
+  if (column.blocks.some((b) => b.type === "columns")) return rows;
+  const block = newColumnsBlock("1", id, [column]);
+  return held(rows, (h) => insertBlockOn(takeColumnOn(h, columnId), targetColumnId, block, index));
+}

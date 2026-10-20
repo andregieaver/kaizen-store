@@ -35,6 +35,7 @@ import {
   useDraggable,
   useDroppable,
   useSensor,
+  MeasuringStrategy,
   useSensors,
   type Active,
   type CollisionDetection,
@@ -215,6 +216,8 @@ import {
   duplicateRow,
   findBlock,
   findHolder,
+  nestColumn,
+  newColumnsBlock,
   htmlIds,
   insertBlock,
   insertColumn,
@@ -343,10 +346,12 @@ type DragData =
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "palette-column" }
-  | { kind: "column"; columnId: string; rowId: string; line: number }
+  | { kind: "column"; columnId: string; rowId: string; line: number; holdsColumns?: boolean }
   | { kind: "saved"; partId: string; part: SavedPartKind }
   /** The place for a column on a line of its own in a row (D187): above the first line, between two, or under the last (`at` counts the lines as they are). */
   | { kind: "line"; rowId: string; at: number }
+  /** The place to nest columns in a column (D294): a new Columns component above its components or below them. */
+  | { kind: "nest"; columnId: string; at: "start" | "end" }
   | { kind: "canvas-end" };
 
 const dataOf = (item: Active | Over | null): DragData | null => (item?.data.current as DragData | undefined) ?? null;
@@ -355,6 +360,9 @@ const movesRows = (data: DragData | null) =>
 /** A component: from the palette, on the page, or a saved one. */
 const movesBlock = (data: DragData | null) =>
   data?.kind === "palette-block" || data?.kind === "block" || (data?.kind === "saved" && data.part === "block");
+/** What can be nested in a column (D294): a column, a new one, a saved one, or a row's layout from the sidebar (its columns). */
+const nestsColumns = (data: DragData | null) =>
+  data?.kind === "palette-row" || (data?.kind === "column" && !data.holdsColumns) || data?.kind === "palette-column" || (data?.kind === "saved" && data.part === "column");
 /** A column on the page, or a saved one on its way to the page. */
 const movesColumn = (data: DragData | null) =>
   data?.kind === "column" || data?.kind === "palette-column" || (data?.kind === "saved" && data.part === "column");
@@ -369,11 +377,12 @@ const collision: CollisionDetection = (args) => {
   const targets = args.droppableContainers.filter((container) => {
     const data = container.data.current as DragData | undefined;
     if (container.id === args.active.id || !data) return false;
-    if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end";
-    // A column lands beside another, last in a row, or on a line of its own (D187).
-    if (active?.kind === "column") return data.kind === "column" || data.kind === "row" || data.kind === "line";
+    // A row's layout from the sidebar can also be nested in a column, as a Columns component (D294).
+    if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end" || (active?.kind === "palette-row" && data.kind === "nest");
+    // A column lands beside another, last in a row, on a line of its own (D187), or nested in a column (D294).
+    if (active?.kind === "column") return data.kind === "column" || data.kind === "row" || data.kind === "line" || data.kind === "nest";
     // A new column (the sidebar's, or a saved one) can also start a row of its own, last.
-    if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "line" || data.kind === "canvas-end";
+    if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "line" || data.kind === "nest" || data.kind === "canvas-end";
     // A component can also start a row of its own: on a row's edge, between rows, or after the last.
     return data.kind === "block" || data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
   });
@@ -387,14 +396,20 @@ const collision: CollisionDetection = (args) => {
       return rect ? rect.width * rect.height : Number.MAX_SAFE_INTEGER;
     };
     // A block lies in its column, so the smaller of the two says where; a Columns component's empty column is smaller than the component.
-    for (const kinds of [["line"], ["block", "column"], ["row"]] as const) {
+    for (const kinds of [["line", "nest"], ["block", "column"], ["row"]] as const) {
       const hits = within.filter((h) => (kinds as readonly string[]).includes(kindOf(h) ?? ""));
       if (hits.length > 0) return [hits.reduce((a, b) => (area(b) < area(a) ? b : a))];
     }
     return within;
   }
-  // Away from every place, the nearest one counts, but never a line's thin strip: a new line is asked for by pointing at it.
-  return closestCenter({ ...args, droppableContainers: targets.filter((container) => (container.data.current as DragData | undefined)?.kind !== "line") });
+  // Away from every place, the nearest one counts, but never a thin strip: a new line, or nesting, is asked for by pointing at it.
+  return closestCenter({
+    ...args,
+    droppableContainers: targets.filter((container) => {
+      const kind = (container.data.current as DragData | undefined)?.kind;
+      return kind !== "line" && kind !== "nest";
+    }),
+  });
 };
 
 type Move = { active: Active; over: Over | null; activatorEvent: Event; delta: { x: number; y: number } };
@@ -818,7 +833,17 @@ export function PageBuilder({
    */
   const placeSaved = (
     saved: SavedPart,
-    place: { index?: number; rowId?: string; columnIndex?: number; spot?: ColumnSpot; columnId?: string | null; blockIndex?: number; blockRow?: number } = {},
+    place: {
+      index?: number;
+      rowId?: string;
+      columnIndex?: number;
+      spot?: ColumnSpot;
+      columnId?: string | null;
+      blockIndex?: number;
+      blockRow?: number;
+      /** Nested in a column, in a Columns component of its own (D294). */
+      nestIn?: { columnId: string; index: number };
+    } = {},
     foreign = false,
   ) => {
     // A page layout (D127) is placed as a whole, by asking how (`applyLayout`), never as a row, column or component.
@@ -837,6 +862,11 @@ export function PageBuilder({
     } else if (part.kind === "column") {
       const column = copy(part.content, (c) => copyColumn(c, newId, htmlIds(rows)));
       onRows((current) => {
+        // Nested (D294): never a column that holds a Columns component of its own, which would nest two levels.
+        if (place.nestIn) {
+          if (column.blocks.some((b) => b.type === "columns")) return current;
+          return insertBlock(current, place.nestIn.columnId, newColumnsBlock("1", newId, [column]), place.nestIn.index);
+        }
         if (place.spot) return insertColumnAt(current, place.spot, column);
         if (place.rowId) return insertColumn(current, place.rowId, column, place.columnIndex ?? Number.MAX_SAFE_INTEGER);
         return insertRow(current, { id: newId(), type: "row", layout: "1", columns: [column] }, current.length);
@@ -963,6 +993,21 @@ export function PageBuilder({
     if (!from || !to || !over) return;
     const after = below(end, over);
 
+    // Nested in a column (D294): a new Columns component there, holding the column moved, a new one or the layout's columns.
+    if (to.kind === "nest") {
+      const index = to.at === "start" ? 0 : Number.MAX_SAFE_INTEGER;
+      if (from.kind === "column") onRows((current) => nestColumn(current, from.columnId, to.columnId, index, newId));
+      else if (blocksFull) return;
+      else if (from.kind === "palette-row") onRows((current) => insertBlock(current, to.columnId, newColumnsBlock(from.layout, newId), index));
+      else if (from.kind === "palette-column") onRows((current) => insertBlock(current, to.columnId, newColumnsBlock("1", newId), index));
+      else if (from.kind === "saved") {
+        const part = findPart(from.partId);
+        if (part?.kind === "column") placeSaved(part, { nestIn: { columnId: to.columnId, index } });
+      }
+      setLastColumn(to.columnId);
+      return;
+    }
+
     if (from.kind === "saved") {
       const part = findPart(from.partId);
       if (!part || part.kind === "page") return;
@@ -1051,6 +1096,7 @@ export function PageBuilder({
     const row = rows.findIndex((r) => r.id === key);
     if (row >= 0) return `row ${row + 1}`;
     if (key === "palette:column") return "a new column";
+    if (key.startsWith("nest:")) return "nested in a column";
     // A line's strip is named by its row: `line:{row}:{place}` (D187).
     const strip = /^line:(.+):(\d+)$/.exec(key);
     if (strip) {
@@ -1104,6 +1150,8 @@ export function PageBuilder({
         id="page-builder"
         sensors={sensors}
         collisionDetection={collision}
+        // Measured as the drag goes, not once at its start: the strips shown while dragging (a new line, nesting) move what is below them.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={({ active }) => setDragging(dataOf(active))}
         onDragMove={onDragMove}
         onDragEnd={onDragEnd}
@@ -2742,12 +2790,15 @@ function RowItem({
  */
 function ColumnLinesView({
   holder,
+  nested = false,
   name,
   dragging,
   target,
   actions,
 }: {
   holder: PageRow;
+  /** A Columns component's columns (D294), in which nothing more is nested. */
+  nested?: boolean;
   name: string;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -2774,6 +2825,7 @@ function ColumnLinesView({
                 index={offset + i}
                 lineIndex={l}
                 lineCount={line.columns.length}
+                nested={nested}
                 name={`${name}, column ${offset + i + 1}`}
                 dragging={dragging}
                 target={target}
@@ -2837,6 +2889,7 @@ function ColumnItem({
   index,
   lineIndex,
   lineCount,
+  nested,
   name,
   dragging,
   target,
@@ -2844,6 +2897,8 @@ function ColumnItem({
 }: {
   column: PageColumn;
   row: PageRow;
+  /** One of a Columns component's columns (D294): nothing is nested in it. */
+  nested: boolean;
   /** Its place in the row, for a row's stagger (D128). */
   index: number;
   /** Its line in the row (D187), and how many columns that line holds. */
@@ -2860,10 +2915,12 @@ function ColumnItem({
   const fx = canvasFx(actions.motionPreview, column.motion, "column", { index, parentStagger: row.motion?.enter?.stagger, parentEnter: row.motion?.enter });
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
-    data: { kind: "column", columnId: column.id, rowId, line: lineIndex } satisfies DragData,
+    data: { kind: "column", columnId: column.id, rowId, line: lineIndex, holdsColumns: column.blocks.some((b) => b.type === "columns") } satisfies DragData,
     disabled: actions.translating,
   });
   const droppingBlock = dragging?.kind === "palette-block" || dragging?.kind === "block";
+  // While columns or a row's layout are dragged, a column of the page (never a nested one, nor the one dragged) takes them nested (D294).
+  const nestHere = !nested && !actions.translating && nestsColumns(dragging) && !(dragging?.kind === "column" && dragging.columnId === column.id);
   const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
   const columnLine = target?.id === `column:${column.id}` ? (target.after ? "after" : "before") : null;
   // A block from its own column shows its new place by moving; anything else by a line.
@@ -2940,6 +2997,7 @@ function ColumnItem({
           Links to {column.link.href || "…"}
         </span>
       )}
+      {nestHere && column.blocks.length > 0 && <NestZone columnId={column.id} at="start" />}
       <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem
@@ -2975,7 +3033,28 @@ function ColumnItem({
           </button>
         </div>
       )}
+      {nestHere && <NestZone columnId={column.id} at="end" />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Where columns dragged onto a column are nested (D294): above its components or below them, a strip shown while columns, a new
+ * column or a row's layout are dragged. Dropped there, they go into a new Columns component at that place.
+ */
+function NestZone({ columnId, at }: { columnId: string; at: "start" | "end" }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `nest:${columnId}:${at}`, data: { kind: "nest", columnId, at } satisfies DragData });
+  return (
+    <div
+      ref={setNodeRef}
+      aria-hidden
+      data-builder-nest={at}
+      className={`flex min-h-10 items-center justify-center rounded-md border-2 border-dashed px-2 text-xs ${
+        isOver ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200" : "border-blue-400/70 text-muted"
+      }`}
+    >
+      Nest columns here
     </div>
   );
 }
@@ -3124,7 +3203,7 @@ function BlockItem({
           />
         ) : block.type === "columns" ? (
           <div data-builder-holder={block.id}>
-            <ColumnLinesView holder={columnsAsRow(block)} name={name} dragging={dragging} target={target} actions={actions} />
+            <ColumnLinesView holder={columnsAsRow(block)} nested name={name} dragging={dragging} target={target} actions={actions} />
           </div>
         ) : !partFeatureOn(block, actions.grid.features) && !partDrawsWhenOff(block) ? (
           <SwitchedOffStandIn block={block} />

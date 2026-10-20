@@ -11,7 +11,9 @@ import {
   insertColumnAt,
   moveBlock,
   moveColumnAt,
+  nestColumn,
   newBlock,
+  newColumnsBlock,
   patchBlock,
   patchColumn,
   removeBlock,
@@ -184,5 +186,36 @@ describe("editing nested columns", () => {
     const copy = copyRow(page()[0], id);
     const ids = pageParts([copy]).map((p) => p.id);
     expect(ids.some((value) => ["nest", "n1", "n2", "h1", "h2"].includes(value))).toBe(false);
+  });
+
+  it("nests a row's column into another column, in a Columns component of its own, at the place it is dropped", () => {
+    const nested = nestColumn(page(), "c2", "c1", 1, id);
+    expect(nested[0].columns.map((c) => c.id)).toEqual(["c1"]);
+    expect(nested[0].layout).toBe("1");
+    const blocks = nested[0].columns[0].blocks;
+    expect(blocks.map((b) => b.type)).toEqual(["heading", "columns", "columns"]);
+    expect((blocks[1] as ColumnsBlock).columns.map((c) => c.id)).toEqual(["c2"]);
+    expect(pageInput.safeParse({ ...newPageContent(), title: "T", slug: "t", rows: nested }).success).toBe(true);
+  });
+
+  it("nests a column from another row, taking that row away when it was its only column", () => {
+    const rows: PageRow[] = [...page(), { id: "r2", type: "row", layout: "1", columns: [{ id: "lone", blocks: [heading("hl", "Lone")] }] }];
+    const nested = nestColumn(rows, "lone", "c2", 0, id);
+    expect(nested.map((r) => r.id)).toEqual(["row"]);
+    expect((nested[0].columns[1].blocks[0] as ColumnsBlock).columns[0].blocks.map((b) => b.id)).toEqual(["hl"]);
+  });
+
+  it("never nests deeper than one level", () => {
+    const rows = page();
+    expect(nestColumn(rows, "c2", "n1", 0, id)).toBe(rows);
+    expect(nestColumn(rows, "c1", "c2", 0, id)).toBe(rows);
+    expect(nestColumn(rows, "c2", "c2", 0, id)).toBe(rows);
+  });
+
+  it("puts new nested columns in a column, as many as the layout has, but never in a nested column", () => {
+    const added = insertBlock(page(), "c2", newColumnsBlock("3", id), 0);
+    expect((added[0].columns[1].blocks[0] as ColumnsBlock).columns).toHaveLength(3);
+    const rows = page();
+    expect(insertBlock(rows, "n1", newColumnsBlock("2", id), 0)).toBe(rows);
   });
 });
