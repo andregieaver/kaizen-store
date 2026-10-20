@@ -50,7 +50,7 @@ test("the page counts who wants the store's emails and lists them, newest first"
 
 test("one subscriber shows the words they agreed to, and Unsubscribe ends it", async ({ page }) => {
   await page.goto(`/admin/${STORE}/subscribers/${id}`);
-  await expect(page.getByText("Send meg nyheter og tilbud.")).toBeVisible();
+  await expect(page.getByText("Send meg nyheter og tilbud.", { exact: true })).toBeVisible();
   await expect(page.getByText("No: the form's confirmation was switched off")).toBeVisible();
   await page.getByRole("button", { name: "Unsubscribe" }).click();
   await expect(page.getByText("Staff, for them", { exact: false }).first()).toBeVisible();
