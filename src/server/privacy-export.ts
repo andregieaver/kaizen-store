@@ -855,6 +855,14 @@ async function loadMarketing(s: PrivacySubject): Promise<MarketingRow[]> {
   }));
 }
 
+/** Staff's tags on the person (D296), by the subject's addresses. */
+async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
+  const rows = await db().execute<Row>(sql`
+    select label from commerce.customer_tags where store_id = ${s.storeId}::uuid and email = any(${textList(s.addresses)}) order by created_at, key
+  `);
+  return rows.map((r) => strs(r.label));
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -905,11 +913,12 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
     loadMarketing(s),
+    loadCustomerTags(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -941,6 +950,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     customFields,
     support,
     marketing,
+    customerTags,
   };
 }
 

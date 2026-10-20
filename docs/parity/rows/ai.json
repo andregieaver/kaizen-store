@@ -716,12 +716,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "None of the criteria holds. Customers are grouped as counts and advice (six RFM groups, cohorts, LTV in analytics; customer_insights tool, D104, D152) and discount groups are assigned by hand (D108). No segment builder: no saved segments, no rules on orders, spend, dates, country, group or RFM, no member list and nothing to send to.",
+    "gap": "D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, the count and list worked out in code, store-owned, never readable on the shopper's side. Still missing: the AI manager turning a sentence into a rule set, and a segment as the audience of a broadcast or a discount.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -736,18 +736,28 @@
         "src/server/analytics-tools.ts",
         "src/lib/analytics-customers.ts",
         "src/server/customer-tiers.ts",
-        "src/lib/customer-tiers.ts"
+        "src/lib/customer-tiers.ts",
+        "src/lib/segments.ts",
+        "src/server/segments.ts",
+        "src/app/admin/(gated)/[store]/segments/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
+        "src/components/admin/segment-editor.tsx"
       ],
       "tests": [
         "src/server/owner-insights.int.test.ts",
-        "src/server/analytics-tools.int.test.ts"
+        "src/server/analytics-tools.int.test.ts",
+        "src/lib/segments.test.ts",
+        "src/db/segments.test.ts",
+        "src/server/segments.int.test.ts",
+        "e2e/signed-in/segments.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D104",
       "D108",
-      "D152"
+      "D152",
+      "D296"
     ],
     "history": [
       {
@@ -755,6 +765,12 @@
         "from": "partial",
         "to": "missing",
         "why": "No criterion holds; RFM counts are credited in analytics.rfm-segments-and-customer-lists, and there is no segment builder for the assistant to fill"
+      },
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
       }
     ]
   },

@@ -24,11 +24,12 @@ import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 import { privacyCard } from "@/server/privacy-admin";
+import { tagsOf } from "@/server/segments";
 import { CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
-import { adjustBonusAction, saveCustomerFieldsAction } from "./actions";
+import { addCustomerTagAction, adjustBonusAction, removeCustomerTagAction, saveCustomerFieldsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -52,13 +53,15 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails, groups, privacy] = await Promise.all([
+  const [customer, emails, groups, privacy, tags] = await Promise.all([
     getCustomerDetail(store.id, ref),
     listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
     listTiers(store.id),
     // What the store holds about the person, and the open privacy request if staff logged one (D162).
     privacyCard(store.id, ref.key),
+    tagsOf(store.id, ref.email),
   ]);
+  const mayTag = memberCan(member, "customers:write");
   if (!customer) notFound();
   const access = customer.customerId ? await customerAccess(store.id, customer.customerId) : null;
   // Bonus credits (D130) belong to the account, so a guest has none; hidden while the bonus program's feature is off (D178).
@@ -259,6 +262,34 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                     ))}
                 </address>
               </>
+            )}
+          </section>
+          {/* Staff's tags on the person (D296): words segments can choose people by. */}
+          <section aria-labelledby="tags" className={`${card} text-sm`}>
+            <h2 id="tags" className="mb-2 text-title text-ink">Tags</h2>
+            {tags.length === 0 ? (
+              <p className="text-muted">No tags yet.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2" aria-label="Tags">
+                {tags.map((tag) => (
+                  <li key={tag.key} className="inline-flex items-center gap-1 rounded-pill bg-sunken px-3 py-1">
+                    {tag.label}
+                    {mayTag && (
+                      <form action={removeCustomerTagAction.bind(null, store.slug, ref.key, tag.key)}>
+                        <button type="submit" aria-label={`Remove the tag ${tag.label}`} className="rounded-pill px-1 text-muted hover:text-ink">
+                          ×
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {mayTag && (
+              <form action={addCustomerTagAction.bind(null, store.slug, ref.key)} className="mt-3 flex gap-2">
+                <input name="tag" maxLength={40} required aria-label="New tag" placeholder="Add a tag" className="min-h-10 min-w-0 flex-1 rounded-md border border-line px-3" />
+                <SubmitButton>Add</SubmitButton>
+              </form>
             )}
           </section>
           {customer.customerId && (

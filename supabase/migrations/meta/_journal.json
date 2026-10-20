@@ -2703,6 +2703,20 @@
       "when": 1792503778187,
       "tag": "20261020134258_marketing_subscribers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 386,
+      "version": "7",
+      "when": 1792518556645,
+      "tag": "20261020174916_segments",
+      "breakpoints": true
+    },
+    {
+      "idx": 387,
+      "version": "7",
+      "when": 1792518571253,
+      "tag": "20261020174931_segments_rules",
+      "breakpoints": true
     }
   ]
 }

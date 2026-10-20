@@ -81,6 +81,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "cart_reminders.": "marketing",
   // The subscriber list (D295): an export, and staff unsubscribing a person.
   "subscribers.": "marketing",
+  // Segments (D296): saved and deleted, with the name and how many conditions, never people.
+  "segment.": "marketing",
   "recommendations.": "marketing",
   "experiment.": "marketing",
   "search_test.": "marketing",

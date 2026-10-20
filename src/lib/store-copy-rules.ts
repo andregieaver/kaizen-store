@@ -151,6 +151,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_roles: derived("The new store gets the role templates from ensureStoreRoles() (wave 1, 1f); custom roles name people's powers and are not copied."),
 
   // Never ------------------------------------------------------------------------------------------------------
+  segments: never("Segments name the store's own customer groups and tags (D296); a copy starts without them."),
+  customer_tags: never("Staff's tags on the store's people (D296)."),
   marketing_subscribers: never("People who asked for the store's marketing email: their consent was given to that store (D295)."),
   marketing_consent_events: never("A subscriber's consent history (D295)."),
   abandoned_checkouts: never("Carts left behind by shoppers, with their emails."),

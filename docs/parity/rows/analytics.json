@@ -849,7 +849,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Six RFM groups as counts and advice (`SEGMENT_COPY`); no list of members to open, filter or act on. Shopify's RFM report opens an RFM customer list per group.",
+    "gap": "D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers with last order and orders; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, CSV of a segment, and a test that the counts agree.",
     "history": [],
     "bucket": "A",
     "wave": 5,
@@ -862,17 +862,27 @@
       "files": [
         "src/lib/analytics-customers.ts",
         "src/server/analytics-customers-data.ts",
-        "src/components/admin/analytics/customers-view.tsx"
+        "src/components/admin/analytics/customers-view.tsx",
+        "src/lib/segments.ts",
+        "src/server/segments.ts",
+        "src/app/admin/(gated)/[store]/segments/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
+        "src/components/admin/segment-editor.tsx"
       ],
       "tests": [
         "src/lib/analytics-customers.test.ts",
         "src/server/analytics-customers-data.int.test.ts",
-        "src/components/admin/analytics/customers-view.test.ts"
+        "src/components/admin/analytics/customers-view.test.ts",
+        "src/lib/segments.test.ts",
+        "src/db/segments.test.ts",
+        "src/server/segments.int.test.ts",
+        "e2e/signed-in/segments.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D296"
     ]
   },
   {
@@ -887,13 +897,20 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No rule-based segment builder: no saved segments, no filter on orders, spend, dates, country, group or RFM.",
-    "history": [],
+    "gap": "D296: a segment builder from a closed list of conditions (orders, spend, first and last order, country, customer group, RFM group, consent, tags, account, company), saved per store, counted from live data and never another store's people; its member list needs customers:read. Still missing: a segment as the audience of a broadcast or automation (units C and D).",
+    "history": [
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
+      }
+    ],
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -905,15 +922,25 @@
     "evidence": {
       "files": [
         "src/lib/analytics-customers.ts",
-        "src/server/analytics-customers-data.ts"
+        "src/server/analytics-customers-data.ts",
+        "src/lib/segments.ts",
+        "src/server/segments.ts",
+        "src/app/admin/(gated)/[store]/segments/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
+        "src/components/admin/segment-editor.tsx"
       ],
       "tests": [
-        "src/server/analytics-customers-data.int.test.ts"
+        "src/server/analytics-customers-data.int.test.ts",
+        "src/lib/segments.test.ts",
+        "src/db/segments.test.ts",
+        "src/server/segments.int.test.ts",
+        "e2e/signed-in/segments.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D296"
     ]
   },
   {

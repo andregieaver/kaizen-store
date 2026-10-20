@@ -65,11 +65,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": "partial"
+      "was": "missing"
     },
-    "gap": "Nothing here is a segment or a tag. RFM groups, cohorts and lifetime value are computed as counts and advice in analytics (D152) and discount groups (D108) are assigned by hand. No customer tags, no saved rule-based segment, no member list, and nothing (discounts, campaigns, emails) can target a segment.",
+    "gap": "D296: staff tag people one by one on the customer page (by address, so guests too), and save segments from rules (orders, money spent, first and last order, RFM group, country, language, customer group, company, account, tag, email consent) joined by all or any, with a live count and a member list. Still missing: bulk tagging and a tag filter on the Customers list, a test that a segment's RFM count equals the analytics page's, and a segment as the audience of a campaign, discount or email (units C and E).",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -84,19 +84,29 @@
         "src/server/analytics-customers-data.ts",
         "src/components/admin/analytics/customers-view.tsx",
         "src/lib/customer-tiers.ts",
-        "src/server/customer-tiers.ts"
+        "src/server/customer-tiers.ts",
+        "src/lib/segments.ts",
+        "src/server/segments.ts",
+        "src/app/admin/(gated)/[store]/segments/page.tsx",
+        "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx",
+        "src/components/admin/segment-editor.tsx"
       ],
       "tests": [
         "src/lib/analytics-customers.test.ts",
         "src/server/analytics-customers-data.int.test.ts",
         "src/components/admin/analytics/customers-view.test.ts",
-        "src/lib/customer-tiers.test.ts"
+        "src/lib/customer-tiers.test.ts",
+        "src/lib/segments.test.ts",
+        "src/db/segments.test.ts",
+        "src/server/segments.int.test.ts",
+        "e2e/signed-in/segments.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D108",
-      "D152"
+      "D152",
+      "D296"
     ],
     "history": [
       {
@@ -104,6 +114,12 @@
         "from": "partial",
         "to": "missing",
         "why": "Skeptic recheck: no tags, no saved segments and no audience; RFM counts are the analytics rows and discount groups are assigned by hand; same capability is missing in analytics.dynamic-segments-for-marketing."
+      },
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed)."
       }
     ]
   },

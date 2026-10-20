@@ -11412,3 +11412,55 @@ export const marketingConsentEvents = commerce.table(
     check("marketing_consent_events_kind", sql`${t.kind} in (${sqlList(CONSENT_EVENT_KINDS)})`),
   ],
 );
+
+/**
+ * A saved segment (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4.2): a name and rules over the store's people (`segmentRulesSchema`), never a
+ * list of people; it is counted when read. At most `SEGMENTS_MAX` a store (a trigger), names unique per store. Written only by
+ * `src/server/segments.ts`. The column is `title`, not `name`, so the privacy detector does not read it as a person's name.
+ */
+export const segments = commerce.table(
+  "segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    title: text("title").notNull(),
+    rules: jsonb("rules").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("segments_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("segments_title_idx").on(t.storeId, sql`lower(${t.title})`),
+    index("segments_created_by_idx").on(t.createdBy),
+    check("segments_title", sql`char_length(${t.title}) between 1 and 80 and ${t.title} = btrim(${t.title})`),
+    check("segments_rules", sql`jsonb_typeof(${t.rules}) = 'object' and jsonb_typeof(${t.rules} -> 'conditions') = 'array' and jsonb_array_length(${t.rules} -> 'conditions') <= 20`),
+  ],
+);
+
+/**
+ * A staff tag on a person (D296, `docs/wave-5-marketing.md` 4.3): one row per address and tag, so a guest can be tagged too. `key` is the tag
+ * trimmed and case-folded, `label` its first spelling, as D173's order tags. At most 50 per person (a trigger). Written only by
+ * `src/server/segments.ts`; personal data (the address), deleted on erasure, never copied.
+ */
+export const customerTags = commerce.table(
+  "customer_tags",
+  {
+    storeId: storeId().references(() => stores.id),
+    /** Lower case. */
+    email: text("email").notNull(),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.email, t.key] }),
+    index("customer_tags_key_idx").on(t.storeId, t.key),
+    index("customer_tags_created_by_idx").on(t.createdBy),
+    check("customer_tags_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
+    check("customer_tags_key", sql`char_length(${t.key}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.key} = btrim(${t.key})`),
+    check("customer_tags_label", sql`char_length(${t.label}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.label} = btrim(${t.label})`),
+    check("customer_tags_label_chars", sql`${t.label} !~ '[,\\x01-\\x1f\\x7f\\u202a-\\u202e\\u2066-\\u2069]'`),
+  ],
+);

@@ -10,14 +10,16 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 68.6%** (first report 59.5%), **must-have 80.0%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +7.6 points from the 71 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 69.2%** (first report 59.5%), **must-have 80.0%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +8.3 points from the 74 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (49):
+Rated higher (52):
 
+- AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Payouts and reconciliation (Analytics): missing to full. Wave 4 unit C (D290): each Stripe payout of the store's own connected account is kept from the payout webhook events and a daily read, with its balance transactions as lines tied to the payment, refund or dispute and so the order each sett…
 - Payments reports by method (Analytics): missing to full. Wave 4 unit A (D288): a captured Stripe payment's method, wallet and card brand are read from its charge once (in after() the payment, and the five-minute job for any missed) and kept on the payment as Stripe gave them; one never read is U…
+- Dynamic segments for marketing (Analytics): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Returns and refund analytics (Analytics): partial to full. D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds…
 - Export reports to CSV (Analytics): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Sell when out of stock (Catalogue): missing to partial. Wave 3 run 1 (docs/wave-3-inventory.md, D172 proposed, tree not committed).
@@ -36,6 +38,7 @@ Rated higher (49):
 - OSS and IOSS support (Checkout): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran tax-profile, ioss, vat-engine and vat-money-review tests: the OSS and IOSS registration is stored with format and market rules, and an order of at most 150 EUR from outside the EU is mar…
 - B2B VAT ID, reverse charge, exemption (Checkout): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran vat-treatment, vies, vat-engine, vat-security and vat-money-review tests and e2e/vat-reverse-charge.spec.ts against the final tree: a valid VIES number for the delivery country takes the…
 - B2B payment terms (Checkout): missing to partial. Payment terms for company accounts (D293): placed unpaid with a due date and its invoice, reminded, overdue in the control center and Finance, paid by a link or recorded, in tests.
+- Customer segments and tags (Customers): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - IOSS (International): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, abov…
 - Legal page templates and policy generator (International): missing to partial. Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.tes…
 - EU withdrawal function and self-service returns (International): partial to full. D153 shipped the function: /withdraw in two steps with a confirmation (unconfirmed requests expire in 24 hours), the same reply for a wrong email or order number, an acknowledgement email on a durable medium (stored in email_messages, retr…
@@ -102,7 +105,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **68.6%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **80.0%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 64.9% overall and 79.8% for must-haves. Counting app-only features gives 67.8%; counting Plus-only as well gives 67.4%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on customers, marketing and loyalty (48.5%), platform, extensibility and operations (52.9%), ai and automation (56.8%). Of the 221 core features, 95 are full, 97 partial and 29 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **69.2%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **80.0%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 65.6% overall and 79.8% for must-haves. Counting app-only features gives 68.4%; counting Plus-only as well gives 68.0%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on customers, marketing and loyalty (50.7%), platform, extensibility and operations (52.9%), ai and automation (59.3%). Of the 221 core features, 95 are full, 100 partial and 26 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -112,10 +115,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **68.6%** | 64.9% | 95 / 97 / 29 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **69.2%** | 65.6% | 95 / 100 / 26 |
 | Must-have (core, weight 4 or 5) | 89 | **80.0%** | 79.8% | 53 / 36 / 0 |
-| Core plus app-only features | 246 | 67.8% | 64.6% | 105 / 108 / 33 |
-| Everything, including Plus-only | 252 | 67.4% | 63.9% | 106 / 110 / 36 |
+| Core plus app-only features | 246 | 68.4% | 65.2% | 105 / 111 / 30 |
+| Everything, including Plus-only | 252 | 68.0% | 64.5% | 106 / 113 / 33 |
 
 <!-- parity:generated:end headline -->
 
@@ -131,12 +134,12 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Storefront, themes and content | 33 | 22 | 9 | 2 | 85.0% | 15 | 97.0% |
 | Checkout and payments | 21 | 8 | 13 | 0 | 68.2% | 12 | 66.3% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
-| Customers, marketing and loyalty | 20 | 2 | 14 | 4 | 48.5% | 8 | 63.2% |
-| Analytics, reporting and finance | 26 | 13 | 9 | 4 | 71.3% | 11 | 80.4% |
+| Customers, marketing and loyalty | 20 | 2 | 15 | 3 | 50.7% | 8 | 63.2% |
+| Analytics, reporting and finance | 26 | 13 | 10 | 3 | 73.2% | 11 | 80.4% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 4 | 13 | 5 | 52.9% | 7 | 72.4% |
-| AI and automation | 23 | 9 | 7 | 7 | 56.8% | 2 | 100.0% |
-| **Total** | **221** | **95** | **97** | **29** | **68.6%** | **89** | **80.0%** |
+| AI and automation | 23 | 9 | 8 | 6 | 59.3% | 2 | 100.0% |
+| **Total** | **221** | **95** | **100** | **26** | **69.2%** | **89** | **80.0%** |
 
 <!-- parity:generated:end domains -->
 
@@ -157,7 +160,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 101 | 89 | 21.8 |
+| A | Build in-house | 101 | 89 | 21.2 |
 | B | Build, live only with a third party | 19 | 16 | 4.4 |
 | C | Strategy decision first | 12 | 9 | 2.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -170,15 +173,15 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **68.6%** core, 80.0% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **69.2%** core, 80.0% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 70.7% | 83.2% | +2.1 | 70.0% | 82.2% |
-| 2 | Data in and out | 3 (1) | 70.9% | 83.2% | +0.2 | 70.2% | 82.2% |
-| 3 | Inventory and orders | 14 (13) | 73.9% | 85.5% | +3.0 | 71.6% | 83.4% |
-| 4 | Payments | 8 (6) | 75.3% | 87.0% | +1.4 | 71.9% | 83.4% |
-| 5 | Customers and marketing | 30 (26) | 82.9% | 93.2% | +7.6 | 78.4% | 89.5% |
+| 1 | Compliance and money | 11 (8) | 71.4% | 83.2% | +2.1 | 70.6% | 82.2% |
+| 2 | Data in and out | 3 (1) | 71.6% | 83.2% | +0.2 | 70.8% | 82.2% |
+| 3 | Inventory and orders | 14 (13) | 74.5% | 85.5% | +3.0 | 72.2% | 83.4% |
+| 4 | Payments | 8 (6) | 75.9% | 87.0% | +1.4 | 72.5% | 83.4% |
+| 5 | Customers and marketing | 30 (26) | 82.9% | 93.2% | +6.9 | 78.4% | 89.5% |
 | 6 | Catalogue | 13 (12) | 85.8% | 94.4% | +2.9 | 81.3% | 90.7% |
 | 7 | Storefront and international | 17 (16) | 89.3% | 95.4% | +3.5 | 84.6% | 91.8% |
 | 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.5 | 88.5% | 92.4% |
@@ -429,7 +432,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Feature | Shopify | Kaizena Flow | W | Plan | Gap and evidence |
 | --- | --- | --- | ---: | --- | --- |
 | Customer profiles, notes, CSV import and export | Native. [page](https://help.shopify.com/en/manual/customers/manage-customers) | Partial | 4 | A, wave 5 | Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import (the owner-only customer export was built with wave 2's first run, D165, and is held in `platform.product-customer-and-order-csv`; its `marketing_consent` column is the address's place on the subscriber list since D295), no staff GDPR export or erasure; a customer can delete their own account (D28). Code: `src/server/customer-admin.ts`, `src/app/admin/(gated)/[store]/customers/page.tsx`. |
-| Customer segments and tags | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Missing (was partial) | 3 | A, wave 5 | Nothing here is a segment or a tag. RFM groups, cohorts and lifetime value are computed as counts and advice in analytics (D152) and discount groups (D108) are assigned by hand. No customer tags, no saved rule-based segment, no member list, and nothing (discounts, campaigns, emails) can target a segment. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
+| Customer segments and tags | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Partial (was missing) | 3 | A, wave 5 | D296: staff tag people one by one on the customer page (by address, so guests too), and save segments from rules (orders, money spent, first and last order, RFM group, country, language, customer group, company, account, tag, email consent) joined by all or any, with a live count and a member list. Still missing: bulk tagging and a tag filter on the Customers list, a test that a segment's RFM count equals the analytics page's, and a segment as the audience of a campaign, discount or email (units C and E). Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
 | Email marketing: broadcasts and lifecycle automations | Native. [page](https://apps.shopify.com/shopify-email) | Partial (was missing) | 4 | A, wave 5 | D295 built the subscriber list with consent, unsubscribe by token and one-click POST, export and erasure. Still missing: a composer, sending to a segment, bounce and complaint suppression wired to sends, reports, and lifecycle automations beyond cart reminders (welcome, post-purchase, win-back): wave 5 units B to D. Code: `src/server/cart-reminders.ts`, `src/lib/cart-reminders.ts`. |
 | Workflow automation (Flow) | Native. [page](https://help.shopify.com/en/manual/shopify-flow) | Partial | 2 | A, wave 9 | Outbound event webhooks to Zapier and Make (D41) and event messages to Slack (D101), with a queue and retries, are the only automation. No trigger-condition-action builder in the product, no inbound triggers, no internal actions (tag a customer, create a task). Code: `src/server/integrations.ts`, `src/lib/integrations.ts`. |
 | Abandoned checkout recovery emails | Native. [page](https://help.shopify.com/en/manual/orders/abandoned-checkouts) | Full | 4 |  | Caveat, not a gap: email only, like the article. Whether a reminder is marketing needs each store's own consent decision (D33 gives the notice and the opt-out). Evidence: `src/server/cart-reminders.ts`, `src/lib/cart-reminders.ts`, `src/app/admin/(gated)/[store]/cart-reminders/page.tsx` and 3 more; 3 test files; D33. |
@@ -480,8 +483,8 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Partial (was missing) | 2 | A, wave 5 | Outstanding bonus credit is shown at `/admin/{store}/bonus` (`outstandingMinor`), not in Analytics or Finance; no gift cards exist yet; no roll-forward of issued, used and expired credit. Code: `src/server/bonus.ts`, `src/lib/bonus.ts`. |
 | Customer reports: cohorts, repeat rate | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Full | 4 |  | Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | Customer lifetime value | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation/predicted-spend-tier) | Full | 3 |  | Residual: store and cohort level only (historic and predicted); no per-customer predicted value (Shopify's predicted spend tier is per customer). Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
-| RFM segments and customer lists | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Partial | 3 | A, wave 5 | Six RFM groups as counts and advice (`SEGMENT_COPY`); no list of members to open, filter or act on. Shopify's RFM report opens an RFM customer list per group. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
-| Dynamic segments for marketing | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Missing | 3 | A, wave 5 | No rule-based segment builder: no saved segments, no filter on orders, spend, dates, country, group or RFM. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
+| RFM segments and customer lists | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Partial | 3 | A, wave 5 | D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers with last order and orders; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, CSV of a segment, and a test that the counts agree. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
+| Dynamic segments for marketing | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Partial (was missing) | 3 | A, wave 5 | D296: a segment builder from a closed list of conditions (orders, spend, first and last order, country, customer group, RFM group, consent, tags, account, company), saved per store, counted from live data and never another store's people; its member list needs customers:read. Still missing: a segment as the audience of a broadcast or automation (units C and D). Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |
 | Inventory reports | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/inventory-reports) | Full | 3 |  | Evidence: `src/lib/analytics-inventory.ts`, `src/server/analytics-inventory-data.ts`, `src/components/admin/analytics/inventory-view.tsx` and 1 more; 3 test files; D152. |
 | Returns and refund analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report) | Full (was partial) | 3 |  | Residual: refunds made only in the Stripe Dashboard and returns made without Kaizen's withdrawal or return request are not seen (no refund webhook; the pages say so). Evidence: `src/lib/analytics-returns.ts`, `src/server/analytics-returns-data.ts`, `src/components/admin/analytics/returns-view.tsx` and 5 more; 5 test files; D152, D153. |
 | Subscription analytics | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report) | Full | 2 |  | Residual: subscription expansion, contraction and reactivation are not tracked (no status history). Evidence: `src/lib/analytics-subscriptions.ts`, `src/server/analytics-subscriptions-data.ts`, `src/components/admin/analytics/subscriptions-view.tsx` and 1 more; 3 test files; D152, D102. |
@@ -589,7 +592,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | AI page and theme generation | Native. [page](https://changelog.shopify.com/posts/ai-block-generation-for-all-theme-store-themes) | Partial | 2 | A, wave 8 | Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme ("make the hero shorter", "use warmer colours"), and a whole-store redesign. Since D283 the builder's picture fields make and remake a picture from a description in the site's look; that is pictures, not edits of the page or the theme. Code: `src/lib/page-ai.ts`, `src/server/page-ai.ts`. |
 | AI translation | Native. [page](https://apps.shopify.com/translate-and-adapt) | Full | 4 |  | Evidence: `src/server/store-translate.ts`, `src/lib/store-translate.ts`, `src/lib/ui-catalog.ts` and 6 more; 6 test files; D55, D110, D111. |
 | Natural-language analytics and custom reports | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial | 3 | A, wave 8 | The assistant answers from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights and restock_suggestions (D104, D152). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; that rests on the analytics report builder, which is missing. Code: `src/server/analytics-tools.ts`, `src/server/owner-tools.ts`. |
-| AI or rule-based customer segmentation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Missing (was partial) | 3 | A, wave 5 | None of the criteria holds. Customers are grouped as counts and advice (six RFM groups, cohorts, LTV in analytics; customer_insights tool, D104, D152) and discount groups are assigned by hand (D108). No segment builder: no saved segments, no rules on orders, spend, dates, country, group or RFM, no member list and nothing to send to. Code: `src/server/owner-insights.ts`, `src/server/analytics-tools.ts`. |
+| AI or rule-based customer segmentation | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Partial (was missing) | 3 | A, wave 5 | D296: rule-based segments (orders, spend, dates, country, group, RFM class, tags) saved per store, the count and list worked out in code, store-owned, never readable on the shopper's side. Still missing: the AI manager turning a sentence into a rule set, and a segment as the audience of a broadcast or a discount. Code: `src/server/owner-insights.ts`, `src/server/analytics-tools.ts`. |
 | Workflow builder with AI generation | Native. [page](https://help.shopify.com/en/manual/shopify-flow/create/create-workflow) | Missing (was partial) | 3 | A, wave 9 | No trigger, condition and action builder, so nothing for the AI to generate. Outbound event webhooks to Zapier and Make with a queue and retries (D41), Slack messages (D101) and fixed cron jobs are credited in platform.outgoing-webhooks and platform.workflow-automation-flow, not here. Waits for the wave 9 Flow engine. Code: `src/server/integrations.ts`, `src/lib/integrations.ts`. |
 | Create discounts and campaigns from a prompt | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Full | 2 |  | Evidence: `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`, `src/server/campaigns.ts` and 2 more; 3 test files; D31, D94, D114, D115. |
 | AI-written marketing email | Native. [page](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content) | Missing (was partial) | 3 | A, wave 8 | No marketing email. Only email_customer exists: the assistant drafts one email to one of the store's own customers, shown whole in the approval and kept for the owner's yes, with AI text through the claims filter. There is no audience, no campaign, no template or design, no consent list to send to and no broadcast to write for; that waits for wave 5 broadcasts. Code: `src/server/owner-tools.ts`, `src/lib/owner-tools.ts`. |

@@ -126,6 +126,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid))::int as marketing_subscribers,
         (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
            where m.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as marketing_consent_events,
+        (select count(*) from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses}))::int as customer_tags,
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
            where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
@@ -189,6 +190,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       form_submissions: n(c.form_submissions),
       marketing_subscribers: n(c.marketing_subscribers),
       marketing_consent_events: n(c.marketing_consent_events),
+      customer_tags: n(c.customer_tags),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
       field_values: n(c.field_values),
@@ -663,6 +665,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     delete from commerce.company_invites where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+  // Staff's tags on the person (D296).
+  await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The subscriber list (D295): the person's place on it and its history go (before the account, which it may name).
   await tx.execute(sql`
     delete from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)

@@ -449,6 +449,12 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
+  store("segments", "/segments", "Segments", "Sales", "Segments: groups of the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", {
+    keywords: ["segment", "audience", "customer list", "rfm", "vip", "win-back", "target group", "målgruppe"],
+    tasks: ["Make a segment of my best customers", "See how many customers have not ordered for six months"],
+  }),
+  store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),
+  store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules."),
   store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
     keywords: ["newsletter", "mailing list", "email list", "marketing consent", "opt-in", "double opt-in", "unsubscribe", "nyhetsbrev", "abonnenter"],
     tasks: ["See who subscribed to the newsletter", "Export the subscriber list", "Unsubscribe a person"],

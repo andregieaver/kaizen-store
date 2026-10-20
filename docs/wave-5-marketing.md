@@ -126,12 +126,69 @@ sign-up pending then subscribed; confirm-off subscribes at once; checkout as a g
 and off; the unsubscribe token from the page and one-click; a store cannot read or unsubscribe another's; re-subscribing writes new consent;
 export and erasure; the customer CSV's column. Unit: the CSV's columns, the token's shape. A signed-in e2e opens the Subscribers page.
 
-## 4. Units B to J, outlined
+## 4. Unit B (D296): segments and customer tags
 
-- **B, segments (D296).** `commerce.segments` (store, name, `rules` JSON from a closed list: has ordered, orders count, money spent in the main
-  currency from D152's `PAID`, last order before or after, RFM group from `src/lib/analytics-customers.ts`, country, language, customer group, company,
-  tag, consent status), counted live by one SQL builder (like `orderListWhere()`), never a stored member list; a segment of subscribers is the
-  segment's people whose address is `subscribed`. Customer tags (`customer_tags`, like D173's order tags). The AI manager proposes rules only.
+### 4.1 Who a segment is about
+
+A **person** is one email address of the store, as the Customers page counts them (D35): everyone with an account, every guest with a paid order,
+and, new here, every address on the subscriber list (D295). Their facts are read by one reader, `segmentPeople()` (`src/server/segments.ts`), in one
+query keyed by the lower-case address: the account (id, verified, language, customer group, company), the paid orders (D152's `PAID`: count, first
+and last order day, net revenue without VAT per currency, the country of the last one, copied and host orders never counted), the subscriber row
+(status, language, market) and the person's tags. Revenue is converted to the store's main currency in code (`toMain()`); a person with revenue in a
+currency without a rate has `spentMinor = null` and matches no money condition, and the page says how many were left out. The RFM group is
+`rfm()` of D152 over these people (customers with a paid order only, so a store's figures and its segments agree); under `RFM_MIN_CUSTOMERS` the
+groups are not offered (*not enough customers yet*). The reader stops at `SEGMENT_CAP` (100,000) people and says so.
+
+### 4.2 A segment
+
+`commerce.segments` (store, name, rules, who made it, times; at most `SEGMENTS_MAX` 100 a store, names unique per store). Its `rules` are
+`{ match: "all" | "any", conditions: Condition[] }` with at most 20 conditions from a closed list (`src/lib/segments.ts`, checked by
+`segmentRulesSchema`, read only through `matches()`):
+
+| Condition | Means |
+|---|---|
+| `consent` (statuses) | Their place on the subscriber list: `subscribed`, `pending`, `unsubscribed`, or `none`. |
+| `orders` (at least / at most / exactly n) | Paid orders. |
+| `spent` (at least / at most an amount) | Net revenue without VAT, in the main currency (minor units). |
+| `lastOrder` (within n days / more than n days ago / never) | Their last paid order, in whole days at the store's today. |
+| `firstOrder` (within n days / more than n days ago) | Their first paid order. |
+| `rfm` (groups) | D152's group. |
+| `country` (codes) | The country of their last paid order, else their subscriber row's market. |
+| `language` (codes) | The account's language, else the subscriber row's, as a two-letter code. |
+| `group` (customer group ids) | Their customer group (D108), their own or their company's. |
+| `company` (yes / no) | They belong to a company account. |
+| `account` (yes / no) | They have an account. |
+| `tag` (any of tags) | Staff tagged them. |
+
+A segment is never a stored list of people: it is counted when read, so it is always current. Its page shows how many people match, how many of them
+want the store's emails (`subscribed`), and the first 100 by last order. *Preview* counts a rule set before it is saved. The words of every rule are
+`describeCondition()` (English, staff), so the list reads as sentences (*Ordered at least 2 times · Last order more than 90 days ago*).
+
+Starting points: *New segment* offers a few ready rule sets (`SEGMENT_STARTERS`: people who want your emails, VIPs, at risk, one order only, no order
+in 180 days, never bought but subscribed), each a normal segment once saved.
+
+### 4.3 Customer tags
+
+`commerce.customer_tags` (store, the person's lower-case address, the words as typed, a case-folded key; `normaliseTag()` of D173: 40 code points,
+at most 50 per person), added and removed on the customer's page by staff with `customers:write`, audited as `customer.tag_added`/
+`customer.tag_removed` with the words but never the address. A tag belongs to the address, so a guest can be tagged too. Tags are personal data: in
+the export's `marketing` section, deleted on erasure, never copied.
+
+### 4.4 Who may
+
+The Segments pages are Marketing (`marketing:read`, saving and deleting `marketing:write`, audited `segment.saved`/`segment.deleted` with the name and
+rule count, never people). Showing the people of a segment shows addresses, as the Customers page does, so it also needs `customers:read`; without it
+the page shows the counts only.
+
+### 4.5 Tests
+
+Unit: `matches()` for every condition and both matches, `describeCondition()`, the schema's limits and the starters. Integration
+(`segments.int.test.ts`): the reader's facts for an account, a guest, a subscriber only and a copied order (never counted); money in two currencies
+and one without a rate; RFM groups match `rfm()`; tags (normalised, limit, another store's never seen); saving, the limit and names; one store's
+segment never sees another's people. A signed-in e2e makes a segment and opens it.
+
+## 5. Units C to J, outlined
+
 - **C, broadcasts (D297).** `commerce.broadcasts` (draft, scheduled, sending, sent, cancelled), its content as email blocks per language
   (`renderEmail()`), a test to staff, a send that freezes the recipients at its start into `broadcast_recipients` (one row per address, the
   idempotency key `broadcast:{id}:{subscriber}`), sent in batches by the five-minute job within the provider's rate, `List-Unsubscribe`. Bounces and

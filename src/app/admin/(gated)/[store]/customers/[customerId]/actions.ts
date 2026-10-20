@@ -6,7 +6,9 @@ import { z } from "zod";
 import type { BonusResult } from "@/lib/bonus";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { adjustBonus } from "@/server/bonus";
+import { findCustomer } from "@/server/customer-admin";
 import { saveStaffFields } from "@/server/field-entities";
+import { addTag, removeTag } from "@/server/segments";
 import type { SaveResult } from "@/server/settings";
 
 /**
@@ -35,4 +37,23 @@ export async function adjustBonusAction(storeSlug: string, customerId: string, a
   const result = await adjustBonus(member.account, member.store.id, customerId, amountMinor, String(note ?? ""));
   if (result.ok) refresh();
   return result;
+}
+
+/** Tags the person (D296), found by the page's own key; the address is read on the server, never sent by the browser. */
+export async function addCustomerTagAction(storeSlug: string, key: string, form: FormData): Promise<void> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member || !z.uuid().safeParse(key).success) return;
+  const ref = await findCustomer(member.store.id, key);
+  if (!ref) return;
+  await addTag(member.store.id, member.account.id, ref.email, String(form.get("tag") ?? ""));
+  refresh();
+}
+
+export async function removeCustomerTagAction(storeSlug: string, key: string, tag: string): Promise<void> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member || !z.uuid().safeParse(key).success) return;
+  const ref = await findCustomer(member.store.id, key);
+  if (!ref) return;
+  await removeTag(member.store.id, member.account.id, ref.email, tag);
+  refresh();
 }
