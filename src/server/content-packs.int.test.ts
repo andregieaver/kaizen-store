@@ -298,7 +298,7 @@ describe("a pack's pictures", () => {
     }) as never;
     let remaining = slots.length;
     while (remaining > 0) {
-      const next = await packs.makeNextPackPicture(admin, "ceramics", { connection, make: shoot });
+      const next = await packs.makeNextPackPicture(admin, "ceramics", { connection, make: shoot, apply: deps.apply });
       if (!next.ok) throw new Error(next.problems.join(" "));
       remaining = next.remaining;
     }

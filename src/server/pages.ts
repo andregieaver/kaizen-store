@@ -216,6 +216,7 @@ export async function savePage(
     type = "page",
     variantOf = null,
     acknowledgedIssues,
+    fonts = installFonts,
   }: {
     publish: boolean;
     type?: PageType;
@@ -223,6 +224,8 @@ export async function savePage(
     variantOf?: PageType | null;
     /** The checker's blocking issues the owner has seen and chosen to publish with: issue ids (`image_alt:{block}`) or rule ids (`image_alt`). */
     acknowledgedIssues?: readonly string[];
+    /** How the page's fonts are installed: from Google Fonts (the default), or as a caller that set them up already needs (a test). */
+    fonts?: (families: string[]) => Promise<{ ok: true } | { ok: false; problem: string }>;
   },
 ): Promise<PageResult> {
   // What a page is shaped like: its own type, or the one a version of it stands in for.
@@ -243,7 +246,7 @@ export async function savePage(
   const families = pageFonts(parsed.data);
   const unknown = families.filter((family) => !findFont(family));
   if (unknown.length > 0) return { ok: false, problems: unknown.map((family) => `${family} is not in Google Fonts.`) };
-  const installed = await installFonts(families);
+  const installed = await fonts(families);
   if (!installed.ok) return { ok: false, problems: [installed.problem] };
   // Only the owner's page (or article) categories and tags; one deleted meanwhile is left out.
   const scope = { storeId: owner, contentType: termContentOf(type) } as const;

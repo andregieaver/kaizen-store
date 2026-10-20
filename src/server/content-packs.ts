@@ -343,7 +343,7 @@ async function writePack(admin: Account, row: PackRow, pack: ContentPack, deps: 
   // Its own art (a signature theme's, `docs/signature-themes.md`) in its library first; the rest are the pictures made so far.
   const pictures = await placeArt(admin, row, pack, deps);
   for (const product of pack.products) await writeProduct(store, editor, admin, pack, product, pictures[`product:${product.handle}`] ?? null);
-  await writePages(admin, row.storeId, pack, pictures);
+  await writePages(admin, row.storeId, pack, pictures, deps);
   await db().execute(sql`update commerce.store_starters set pack_version = ${pack.version}, updated_by = ${admin.id}::uuid where id = ${row.starterId}::uuid`);
 }
 
@@ -468,14 +468,16 @@ async function writeMenus(tx: Tx, storeId: string, pack: ContentPack): Promise<v
  * The pack's home page (its front page), its about page and its All products page, published, through the builder's save: the pages its
  * theme designed for it (`PACK_DESIGNS`), else the common ones.
  */
-async function writePages(admin: Account, storeId: string, pack: ContentPack, pictures: Record<string, StoredPicture>): Promise<void> {
+async function writePages(admin: Account, storeId: string, pack: ContentPack, pictures: Record<string, StoredPicture>, deps: PackDeps): Promise<void> {
+  // The pages' fonts are installed as dressing the store installs the theme's (`deps.apply`).
+  const fonts = deps.apply?.installFonts;
   const picture = (slot: string): PackPicture | null => {
     const found = pictures[slot];
     return found ? { url: found.url, width: found.width, height: found.height, alt: found.alt } : null;
   };
   const save = async (slug: string, content: unknown) => {
     const [page] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${storeId}::uuid and type = 'page' and slug = ${slug}`);
-    const saved = await savePage(admin, storeId, page ? String(page.id) : null, content, { publish: true });
+    const saved = await savePage(admin, storeId, page ? String(page.id) : null, content, { publish: true, ...(fonts && { fonts }) });
     if (!saved.ok) throw new Error(`Its ${slug} page could not be saved: ${saved.problems.join(" ")}`);
     return saved.id;
   };
@@ -485,7 +487,7 @@ async function writePages(admin: Account, storeId: string, pack: ContentPack, pi
   await db().execute(sql`update commerce.stores set front_page_id = ${home}::uuid where id = ${storeId}::uuid`);
   // The All products page (D83): the template's is in its own language, so the pack writes its own.
   const [products] = await db().execute<Row>(sql`select products_page_id as id from commerce.stores where id = ${storeId}::uuid`);
-  const saved = await savePage(admin, storeId, products?.id ? String(products.id) : null, packProductsPage(pack), { publish: true });
+  const saved = await savePage(admin, storeId, products?.id ? String(products.id) : null, packProductsPage(pack), { publish: true, ...(fonts && { fonts }) });
   if (!saved.ok) throw new Error(`Its All products page could not be saved: ${saved.problems.join(" ")}`);
   if (!products?.id) await db().execute(sql`update commerce.stores set products_page_id = ${saved.id}::uuid where id = ${storeId}::uuid`);
 }
@@ -499,7 +501,7 @@ async function writePages(admin: Account, storeId: string, pack: ContentPack, pi
 export async function makeNextPackPicture(
   admin: Account,
   key: string,
-  deps: { make?: typeof makePicture; connection?: Awaited<ReturnType<typeof aiFor>> } = {},
+  deps: { make?: typeof makePicture; connection?: Awaited<ReturnType<typeof aiFor>>; apply?: PackDeps["apply"] } = {},
 ): Promise<{ ok: true; made: string | null; remaining: number; store: { id: string; slug: string } } | { ok: false; problems: string[] }> {
   if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
   const pack = contentPack(key);
@@ -545,7 +547,7 @@ export async function makeNextPackPicture(
     if (!store) return { ok: false, problems: ["The pack's store could not be read."] };
     await setProductPicture(store, admin, product, picture);
   } else {
-    await writePages(admin, row.storeId, pack, { ...row.pictures, [slot]: picture });
+    await writePages(admin, row.storeId, pack, { ...row.pictures, [slot]: picture }, { apply: deps.apply });
   }
   // Kept last: a picture that could not be placed is made again next time.
   await db().execute(sql`
