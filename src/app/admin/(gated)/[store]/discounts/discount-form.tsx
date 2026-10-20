@@ -3,7 +3,9 @@ import type { StoreDiscount } from "@/lib/discounts";
 import { formatPriceInput } from "@/lib/product-input";
 import { mainCurrency } from "@/lib/markets";
 import type { Store } from "@/server/stores";
-import { listProductChoices } from "@/server/discounts";
+import { customerEmailsOf, listProductChoices } from "@/server/discounts";
+import { listTerms } from "@/server/taxonomy";
+import { listTiers } from "@/server/customer-tiers";
 
 import { saveDiscountAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
@@ -24,7 +26,12 @@ function osloLocal(iso: string | null): string {
 
 /** The editor for a new code or an existing one, with the store's markets and products. */
 export async function DiscountForm({ store, discount }: { store: Store; discount: (StoreDiscount & { used: number }) | null }) {
-  const products = await listProductChoices(store.id, store.markets[0]?.locale ?? "nb-NO");
+  const [products, terms, tiers, emails] = await Promise.all([
+    listProductChoices(store.id, store.markets[0]?.locale ?? "nb-NO"),
+    listTerms({ storeId: store.id, contentType: "product" }),
+    listTiers(store.id),
+    customerEmailsOf(store.id, discount?.customerIds ?? []),
+  ]);
   const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
   const texts = (values: Record<string, number>) =>
     Object.fromEntries(Object.entries(values).map(([code, minor]) => [code, formatPriceInput(minor, currency(code))]));
@@ -42,6 +49,11 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         usageLimit: discount.usageLimit === null ? "" : String(discount.usageLimit),
         oncePerCustomer: discount.oncePerCustomer,
         active: discount.active,
+        termIds: discount.termIds,
+        minQuantity: discount.minQuantity === null ? "" : String(discount.minQuantity),
+        tierIds: discount.tierIds,
+        customerEmails: emails.join("\n"),
+        uniqueCodes: discount.uniqueCodes,
       }
     : {
         code: "",
@@ -56,12 +68,19 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         usageLimit: "",
         oncePerCustomer: false,
         active: true,
+        termIds: [],
+        minQuantity: "",
+        tierIds: [],
+        customerEmails: "",
+        uniqueCodes: false,
       };
   return (
     <DiscountEditor
       initial={initial}
       markets={store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency }))}
       products={products}
+      terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind, parentId: t.parentId }))}
+      tiers={tiers.map((t) => ({ id: t.id, name: t.name, active: t.active }))}
       used={discount?.used ?? 0}
       save={saveDiscountAction.bind(null, store.slug, discount?.id ?? null)}
       back={`/admin/${store.slug}/discounts`}

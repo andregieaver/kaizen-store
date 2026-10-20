@@ -21,7 +21,16 @@ export type DiscountDraft = {
   usageLimit: string;
   oncePerCustomer: boolean;
   active: boolean;
+  /** Categories and tags it reaches (D299 E1). */
+  termIds: string[];
+  minQuantity: string;
+  tierIds: string[];
+  /** The named customers' emails, one per line. */
+  customerEmails: string;
+  uniqueCodes: boolean;
 };
+
+type Who = "everyone" | "groups" | "customers";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -40,7 +49,11 @@ export function DiscountEditor({
   save,
   back,
   subscriptions = true,
+  terms = [],
+  tiers = [],
 }: {
+  terms?: { id: string; name: string; kind: "category" | "tag"; parentId: string | null }[];
+  tiers?: { id: string; name: string; active: boolean }[];
   /** Subscriptions is on (D178): only then is "keep it on every renewal" offered (a code that already has it keeps the tick). */
   subscriptions?: boolean;
   initial: DiscountDraft;
@@ -56,6 +69,16 @@ export function DiscountEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof DiscountDraft>(key: K, value: DiscountDraft[K]) => setD((current) => ({ ...current, [key]: value }));
+  const [some, setSome] = useState(initial.productIds !== null || initial.termIds.length > 0);
+  const [who, setWho] = useState<Who>(initial.customerEmails.trim() ? "customers" : initial.tierIds.length > 0 ? "groups" : "everyone");
+  const chosen = d.productIds ?? [];
+  const categories = terms.filter((term) => term.kind === "category");
+  const tags = terms.filter((term) => term.kind === "tag");
+  // A subcategory is shown under its parent's name, so "Shoes › Sneakers" reads as it is.
+  const path = (term: { name: string; parentId: string | null }): string => {
+    const parent = term.parentId ? terms.find((t) => t.id === term.parentId) : null;
+    return parent ? `${path(parent)} › ${term.name}` : term.name;
+  };
 
   const submit = () =>
     startSaving(async () => {
@@ -65,12 +88,18 @@ export function DiscountEditor({
         percent: d.percent,
         amounts: d.amounts,
         minSubtotals: d.minSubtotals,
-        productIds: d.productIds,
+        // Some: the chosen products, or none (null) when only categories and tags are chosen.
+        productIds: some ? (chosen.length > 0 || d.termIds.length === 0 ? chosen : null) : null,
+        termIds: some ? d.termIds : [],
+        minQuantity: d.minQuantity || null,
+        tierIds: who === "groups" ? d.tierIds : [],
+        customerEmails: who === "customers" ? d.customerEmails : "",
+        uniqueCodes: d.uniqueCodes,
         recurring: d.kind === "percent" && d.recurring,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
-        usageLimit: d.usageLimit || null,
-        oncePerCustomer: d.oncePerCustomer,
+        usageLimit: d.uniqueCodes ? null : d.usageLimit || null,
+        oncePerCustomer: !d.uniqueCodes && d.oncePerCustomer,
         active: d.active,
       } as StoreDiscountInput);
       if (result.ok) {
@@ -201,44 +230,71 @@ export function DiscountEditor({
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">Products</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
-            <input type="radio" name="scope" checked={d.productIds === null} onChange={() => set("productIds", null)} className="size-4" />
+            <input type="radio" name="scope" checked={!some} onChange={() => setSome(false)} className="size-4" />
             Everything in the store
           </label>
           <label className="flex min-h-10 items-center gap-3 text-sm">
-            <input
-              type="radio"
-              name="scope"
-              checked={d.productIds !== null}
-              onChange={() => set("productIds", d.productIds ?? [])}
-              className="size-4"
-            />
-            Only some products
+            <input type="radio" name="scope" checked={some} onChange={() => setSome(true)} className="size-4" />
+            Only some products, categories or tags
           </label>
         </fieldset>
-        {d.productIds !== null && (
-          <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
-            {products.map((product) => (
-              <li key={product.id}>
-                <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
-                  <input
-                    type="checkbox"
-                    checked={d.productIds!.includes(product.id)}
-                    onChange={(event) =>
-                      set(
-                        "productIds",
-                        event.target.checked
-                          ? [...d.productIds!, product.id]
-                          : d.productIds!.filter((id) => id !== product.id),
-                      )
-                    }
-                    className="size-4"
-                  />
-                  {product.title}
-                </label>
-              </li>
-            ))}
-          </ul>
+        {some && (
+          <div className="flex flex-col gap-4">
+            {categories.length + tags.length > 0 && (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="text-sm font-medium">Categories and tags</legend>
+                <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
+                  {[...categories, ...tags].map((term) => (
+                    <li key={term.id}>
+                      <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
+                        <input
+                          type="checkbox"
+                          checked={d.termIds.includes(term.id)}
+                          onChange={(event) => set("termIds", event.target.checked ? [...d.termIds, term.id] : d.termIds.filter((id) => id !== term.id))}
+                          className="size-4"
+                        />
+                        {term.kind === "tag" ? `#${term.name}` : path(term)}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <p className={hint}>A category takes in the products in its subcategories.</p>
+              </fieldset>
+            )}
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-sm font-medium">Products</legend>
+              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
+                {products.map((product) => (
+                  <li key={product.id}>
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
+                      <input
+                        type="checkbox"
+                        checked={chosen.includes(product.id)}
+                        onChange={(event) => set("productIds", event.target.checked ? [...chosen, product.id] : chosen.filter((id) => id !== product.id))}
+                        className="size-4"
+                      />
+                      {product.title}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          </div>
         )}
+        <label className={`${label} max-w-56`}>
+          Minimum number of items (optional)
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={d.minQuantity}
+            onChange={(event) => set("minQuantity", event.target.value)}
+            placeholder="None"
+            inputMode="numeric"
+            className={input}
+          />
+          <span className={hint}>Of what it applies to, bought once (not subscriptions).</span>
+        </label>
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">Minimum order (optional)</p>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -259,6 +315,61 @@ export function DiscountEditor({
         </div>
       </section>
 
+      <section aria-labelledby="who-heading" className={card}>
+        <h2 id="who-heading" className="text-title text-ink">
+          Who can use it
+        </h2>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">Who can use it</legend>
+          <label className="flex min-h-10 items-center gap-3 text-sm">
+            <input type="radio" name="who" checked={who === "everyone"} onChange={() => setWho("everyone")} className="size-4" />
+            Every shopper who has the code
+          </label>
+          {tiers.length > 0 && (
+            <label className="flex min-h-10 items-center gap-3 text-sm">
+              <input type="radio" name="who" checked={who === "groups"} onChange={() => setWho("groups")} className="size-4" />
+              Only customers in these groups
+            </label>
+          )}
+          <label className="flex min-h-10 items-center gap-3 text-sm">
+            <input type="radio" name="who" checked={who === "customers"} onChange={() => setWho("customers")} className="size-4" />
+            Only these customers
+          </label>
+        </fieldset>
+        {who === "groups" && (
+          <ul className="grid gap-1 rounded-md border border-line p-2 sm:grid-cols-2">
+            {tiers.map((tier) => (
+              <li key={tier.id}>
+                <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
+                  <input
+                    type="checkbox"
+                    checked={d.tierIds.includes(tier.id)}
+                    onChange={(event) => set("tierIds", event.target.checked ? [...d.tierIds, tier.id] : d.tierIds.filter((id) => id !== tier.id))}
+                    className="size-4"
+                  />
+                  {tier.name}
+                  {!tier.active && <span className={hint}> (switched off)</span>}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {who === "customers" && (
+          <label className={label}>
+            Their emails
+            <textarea
+              value={d.customerEmails}
+              onChange={(event) => set("customerEmails", event.target.value)}
+              rows={4}
+              placeholder="kari@example.com"
+              className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
+            />
+            <span className={hint}>One per line, at most 100. Each must be a customer of the store.</span>
+          </label>
+        )}
+        {who !== "everyone" && <p className={hint}>Shoppers must be signed in to My account. A company&apos;s employees are in its group.</p>}
+      </section>
+
       <section aria-labelledby="limits-heading" className={card}>
         <h2 id="limits-heading" className="text-title text-ink">
           When and how often
@@ -274,6 +385,15 @@ export function DiscountEditor({
           </label>
         </div>
         <p className={hint}>Norwegian time. Without dates, the code works while it is switched on.</p>
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={d.uniqueCodes} onChange={(event) => set("uniqueCodes", event.target.checked)} className="mt-0.5 size-4" />
+          <span>
+            Hand out single-use codes instead
+            <span className={`block ${hint}`}>Shoppers use codes you make on the next page, each once. The code above is then its name only.</span>
+          </span>
+        </label>
+        {!d.uniqueCodes && (
+        <>
         <label className={`${label} max-w-56`}>
           Uses in all (optional)
           <input
@@ -298,6 +418,8 @@ export function DiscountEditor({
             <span className={`block ${hint}`}>Shoppers must sign in to My account to use it, so Kaizena Flow knows who they are.</span>
           </span>
         </label>
+        </>
+        )}
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
           Switched on

@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units E to J are outlined in section 7.
+section is written here before it is built; units F to J are outlined in section 8.
 
 ## 2. Rules for every unit
 
@@ -390,11 +390,54 @@ a back-in-stock request from a typed address waits for its link, a verified cust
 email per waiting address and only once, an unoffered product sends nothing; another store's requests are never read; erasure removes sends and
 requests. A signed-in e2e switches on the welcome email; the storefront e2e asks for a sold-out variant.
 
-## 7. Units E to J, outlined
+## 7. Unit E (D299): discounts in depth
 
-- **E, discounts (D299).** Extends `discounts` (D31) and campaigns (D114) without a second engine: scope by category and tag, customer groups and
-  named customers, minimum quantity, several codes per order under each code's stacking choice, bulk generation of single-use codes, tiered and
-  volume rules, automatic discounts as code-less campaigns; `cartSummary()` and `placeOrder()` keep agreeing (`checkout-kinds.int.test.ts`).
+Codes (D31) and campaigns (D114 to D116) get what the parity rows miss, without a second engine: the arithmetic stays `applyDiscount()` and
+`evaluateCampaigns()`, used by both `cartSummary()` and `placeOrder()`, and every new rule has a scenario in `checkout-kinds.int.test.ts`
+(one in euro). The fixed order of what comes off stays as it is unless a step below changes it: campaigns, the group's discount (D108), the
+friend's welcome discount (D131), codes, then bonus credits (D130). Built in four steps, each its own commit and migration:
+
+| Step | What |
+|---|---|
+| E1 | Codes in depth: reach by category and tag, a minimum quantity, limited to customer groups or named customers, and generated single-use codes with their CSV |
+| E2 | Several codes on one order under each code's combination choice; the best for the shopper when two cannot combine, and the cart says why |
+| E3 | Campaigns in depth: an amount off and free shipping without a code, and tiers by quantity or spend (the highest reached applies), with the ladder on the product page and how far the next tier is in the cart |
+| E4 | Buy X get Y: a buy set (a quantity or an amount of chosen products, categories or tags) and a get set that is free, a percentage or an amount off, cheapest first, with a limit of uses per order |
+
+### 7.1 E1: codes in depth
+
+`discount_codes` gains:
+
+| Column | Meaning |
+|---|---|
+| `term_ids` | Product categories and tags it reaches (a category reaches the ones under it), beside `product_ids`; with neither, everything. A line is reached when its product is chosen or has one of the terms, read by `termsOfProducts()` as campaigns read them. |
+| `min_quantity` | The least number of units of what it reaches, bought once (1 to 1000; null for none), beside the minimum amount. Short of it the code is refused as `minimum_quantity`. |
+| `tier_ids`, `customer_ids` | Only signed-in customers in one of these customer groups (theirs or their company's, `customerTierIds()`), or one of these named customers (at most 100). Not signed in: `sign_in`; signed in and outside: `not_eligible`. Customers are chosen by their email on the form and kept by id; an email the store does not know is refused on save. |
+| `unique_codes` | The code's own text is its name only and is not accepted at checkout; shoppers use its generated codes. |
+
+**Generated codes** are `commerce.discount_code_items` (store, discount, code, batch, made at): each works once (on an order not cancelled and
+not copied, as a code's uses are counted), is looked up when the text is no code of the store's own, and is locked with its code when an order
+is placed, so two checkouts cannot take it at once. A code's text is unique across the store's codes and generated codes (a trigger). *Generate
+codes* (`marketing:write`) makes 1 to 10,000 at a time (100,000 a code), each a prefix the owner chooses (optional) and eight characters from
+an alphabet without look-alikes (no 0, O, 1, I or L), as many as asked; *Download codes* gives the CSV (`writeCsv()`: code, used, made on).
+An order keeps which generated code it used (`orders.discount_code_item_id`) beside the code itself. A code with generated codes ignores its
+total limit and once per customer (each generated code is once).
+
+The words for a refusal are `m.codeProblems.not_eligible` and `minimum_quantity` (nb, sv, da, en by hand). Audit: `discount.codes_generated`
+with the count, `discount.codes_exported`; never a code's text in the log beyond the discount's own.
+
+**Tests.** Unit: reach by term, the minimum quantity, eligibility, the generator's alphabet and uniqueness. PGlite: a generated code unique
+against codes and the other way, the new checks. Integration: a code reaching a category reaches a product in a child category and not
+another; a group-only code refuses a guest (`sign_in`) and an outsider (`not_eligible`); a generated code works once, and two orders taking
+it at once leave one; `checkout-kinds.int.test.ts` holds the cart and the order together for a category code in NOK and a generated code in
+euro.
+
+### 7.2 E2 to E4
+
+Each is written here in full before it is built.
+
+## 8. Units F to J, outlined
+
 - **F, gift cards (D300).** A product kind `gift_card` sold in a currency, issued at payment (codes kept as hashes, the last four shown), emailed to
   the buyer or a recipient, spent at checkout as a payment (never a discount: VAT is charged when goods are bought, not when the card is sold), a
   ledger like the bonus program's, and the liability report (outstanding balance per currency).

@@ -350,6 +350,8 @@ export const da: Messages = {
     already_used: "Du har allerede brugt koden.",
     market: "Koden gælder ikke i dette land.",
     minimum: "Køb lidt mere for at bruge koden.",
+    minimum_quantity: "Læg et par varer mere i kurven for at bruge koden.",
+    not_eligible: "Koden gælder ikke for din konto.",
     not_applicable: "Koden gælder ikke for det, der ligger i kurven.",
   },
   minimumFor: "Koden gælder, når varerne koster mindst",

@@ -478,6 +478,17 @@ const scenarios: Scenario[] = [
     code: `TI${run}`.toUpperCase(),
     bookings: 2,
   },
+  {
+    // A code for the Home category, asking for two of its items (D299 E1): the mugs are lowered, the lamp is not.
+    name: "goods and a download with a category code for two items",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-LAMP", 1);
+    },
+    consent: { digital: true },
+    code: `KAT${run}`.toUpperCase(),
+    bookings: 0,
+  },
   { name: "goods for a customer in a discount group", fill: () => add("DEMO-MUG-WHITE", 3), buyer: "group", bookings: 0 },
   {
     name: "a stay, a massage and a mug with a code, for a company's employee",
@@ -601,6 +612,8 @@ const euroScenarios: Scenario[] = [
     bookings: 2,
   },
   { name: "a bike for three hours, shown in euro", fill: () => addRental("DEMO-SYKKEL-TIME", "hour", 3), euro: true, bookings: 1 },
+  // A single-use code from a code that hands them out (D299 E1), in euro.
+  { name: "goods with a single-use code, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), code: `GEN${run}-ABCDEFGH`.toUpperCase(), euro: true, bookings: 0 },
 ];
 
 /**
@@ -671,6 +684,15 @@ describe("checkout for every kind of product", () => {
     await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
     const made = await saveDiscount(member, null, { code: `TI${run}`.toUpperCase(), kind: "percent", percent: 10 });
     if (!made.ok) throw new Error(made.problems.join(" "));
+    const category = await saveDiscount(member, null, { code: `KAT${run}`.toUpperCase(), kind: "percent", percent: 15, termIds: [homeCategory], minQuantity: 2 });
+    if (!category.ok) throw new Error(category.problems.join(" "));
+    const generated = await saveDiscount(member, null, { code: `GEN${run}`.toUpperCase(), kind: "fixed", amounts: { NO: "50" }, uniqueCodes: true });
+    if (!generated.ok) throw new Error(generated.problems.join(" "));
+    // The one generated code the euro scenario types, with a text the test knows.
+    await db().execute(sql`
+      insert into commerce.discount_code_items (store_id, discount_id, code, batch)
+      values (${storeId}::uuid, ${generated.id!}::uuid, ${`GEN${run}-ABCDEFGH`.toUpperCase()}, 1)
+    `);
     const [tier] = await db().execute<Row>(sql`
       insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id
     `);

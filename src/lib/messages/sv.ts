@@ -350,6 +350,8 @@ export const sv: Messages = {
     already_used: "Du har redan använt koden.",
     market: "Koden gäller inte i det här landet.",
     minimum: "Handla för lite mer för att använda koden.",
+    minimum_quantity: "Lägg till några fler varor för att använda koden.",
+    not_eligible: "Koden gäller inte för ditt konto.",
     not_applicable: "Koden gäller inte för det som ligger i varukorgen.",
   },
   minimumFor: "Koden gäller när varorna kostar minst",

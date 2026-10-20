@@ -5934,6 +5934,43 @@ describe("the chat agent's picture frame (D233)", () => {
   });
 });
 
+describe("discount codes in a duplicated store (D299 E1)", () => {
+  it("carry their categories and groups as the copy's, and never their customers or generated codes", async () => {
+    const owner = await createAccount("codes-copier@example.com");
+    const src = await createStore("codes-copy-source", ["DE"]);
+    const { id: term } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'category', 'Bags', 'bags') returning id",
+      [src],
+    );
+    const { id: tier } = await one<{ id: string }>("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'VIP', 5) returning id", [src]);
+    const { id: handed } = await one<{ id: string }>(
+      `insert into commerce.discount_codes (store_id, code, kind, percent, term_ids, tier_ids, min_quantity, unique_codes)
+       values ($1, 'BAGS', 'percent', 10, $2::jsonb, $3::jsonb, 2, true) returning id`,
+      [src, JSON.stringify([term]), JSON.stringify([tier])],
+    );
+    await db.query("insert into commerce.discount_code_items (store_id, discount_id, code, batch) values ($1, $2, 'BAGS-ABCDEFGH', 1)", [src, handed]);
+    await db.query("insert into commerce.discount_codes (store_id, code, kind, percent, customer_ids) values ($1, 'KARI', 'percent', 10, $2::jsonb)", [
+      src,
+      JSON.stringify(["00000000-0000-4000-8000-000000000001"]),
+    ]);
+    const { id: copy } = await one<{ id: string }>("select commerce.duplicate_store($1, 'codes-copy', 'Copy', $2) as id", [src, owner]);
+    const { rows: copied } = await db.query(
+      "select code, active, term_ids, tier_ids, customer_ids, min_quantity, unique_codes from commerce.discount_codes where store_id = $1 order by code",
+      [copy],
+    );
+    const [copiedTerm, copiedTier] = await Promise.all([
+      one<{ id: string }>("select id from commerce.terms where store_id = $1 and slug = 'bags'", [copy]),
+      one<{ id: string }>("select id from commerce.customer_tiers where store_id = $1", [copy]),
+    ]);
+    expect(copied).toEqual([
+      { code: "BAGS", active: true, term_ids: [copiedTerm.id], tier_ids: [copiedTier.id], customer_ids: [], min_quantity: 2, unique_codes: true },
+      // A code for named customers is copied for nobody, and off: it would otherwise be for everyone.
+      { code: "KARI", active: false, term_ids: [], tier_ids: [], customer_ids: [], min_quantity: null, unique_codes: false },
+    ]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.discount_code_items where store_id = $1", [copy])).n).toBe(0);
+  });
+});
+
 describe("the theme migration's runs (D243)", () => {
   it("keep what they recorded: only undone_at changes, once", async () => {
     const store = await createStore("detach-runs", ["DE"]);

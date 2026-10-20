@@ -73,6 +73,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   customer_tiers: settings("Customer groups and their discounts (D108)."),
   delivery_schedules: settings("Subscription boxes' delivery days (lists and deliveries are not copied)."),
   discount_codes: settings("Codes, with the products they name that were copied; used counts start again."),
+  discount_code_items: never("Generated single-use codes (D299): handed out by the original store; a copy makes its own."),
   economic_operators: settings("Manufacturers and responsible persons (product safety)."),
   field_groups: settings("Custom field groups (D118); category and tag ids in their rules are the copies'."),
   inventory_locations: settings("Stock locations."),

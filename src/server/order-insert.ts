@@ -39,6 +39,8 @@ export type OrderInsert = {
   digitalConsentAt?: "now" | string | null;
   customerId?: string | null;
   discountCodeId?: string | null;
+  /** The generated single-use code used (D299 E1). */
+  discountCodeItemId?: string | null;
   discountCode?: string | null;
   companyName?: string | null;
   organisationNumber?: string | null;
@@ -96,7 +98,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
     insert into commerce.orders (
       store_id, number, market_code, currency, locale, cart_id, email, status,
       subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-      billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
+      billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code_item_id, discount_code,
       company_name, organisation_number, balance_minor, host_id,
       member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
       referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
@@ -108,7 +110,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
       ${input.subtotalMinor}, ${input.shippingMinor}, ${input.discountMinor}, ${input.taxMinor}, ${input.totalMinor},
       ${JSON.stringify(input.billingAddress ?? {})}::jsonb, ${JSON.stringify(input.shippingAddress ?? {})}::jsonb,
-      ${consent}, ${input.customerId ?? null}::uuid, ${input.discountCodeId ?? null}::uuid, ${input.discountCode ?? null},
+      ${consent}, ${input.customerId ?? null}::uuid, ${input.discountCodeId ?? null}::uuid, ${input.discountCodeItemId ?? null}::uuid, ${input.discountCode ?? null},
       ${input.companyName ?? null}, ${input.organisationNumber ?? null}, ${input.balanceMinor ?? 0}, ${input.hostId ?? null}::uuid,
       ${input.memberDiscountMinor ?? 0}, ${input.memberLabel ?? null}, ${input.memberPercent ?? null},
       ${input.campaignDiscountMinor ?? 0}, ${input.campaignLabel ?? null}, ${input.creditMinor ?? 0},

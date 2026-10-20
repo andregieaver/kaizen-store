@@ -19,6 +19,11 @@ const draft = (over: Partial<DiscountDraft> = {}): DiscountDraft => ({
   usageLimit: "",
   oncePerCustomer: false,
   active: true,
+  termIds: [],
+  minQuantity: "",
+  tierIds: [],
+  customerEmails: "",
+  uniqueCodes: false,
   ...over,
 });
 

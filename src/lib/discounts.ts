@@ -41,6 +41,15 @@ export type StoreDiscount = {
   /** Only signed-in customers, once each (the email is not known before payment otherwise). */
   oncePerCustomer: boolean;
   active: boolean;
+  /** Categories and tags it reaches (D299 E1), beside `productIds`; with neither, everything. */
+  termIds: string[];
+  /** The least units of what it reaches, bought once; null for none. */
+  minQuantity: number | null;
+  /** Only signed-in customers in one of these groups, or these named customers; both empty for everyone. */
+  tierIds: string[];
+  customerIds: string[];
+  /** Its own text is a name only; shoppers use its generated codes. */
+  uniqueCodes: boolean;
 };
 
 export type DiscountProblem =
@@ -53,19 +62,40 @@ export type DiscountProblem =
   | "already_used"
   | "market"
   | "minimum"
+  | "minimum_quantity"
+  | "not_eligible"
   | "not_applicable";
 
 /** Whether a code can be used at all right now, before looking at the basket. */
 export function availability(
   discount: StoreDiscount,
-  context: { now: Date; used: number; usedByCustomer: number; signedIn: boolean; marketCode: string },
+  context: {
+    now: Date;
+    used: number;
+    usedByCustomer: number;
+    signedIn: boolean;
+    marketCode: string;
+    /** A generated code (D299 E1): how often that one was used; it works once, and the code's own limits do not apply. */
+    itemUsed?: number;
+    /** The signed-in customer's own id and groups (theirs or their company's), for a code limited to some. */
+    customer?: { id: string; tierIds: string[] } | null;
+  },
 ): DiscountProblem | null {
   if (!discount.active) return "inactive";
   if (discount.startsAt && new Date(discount.startsAt) > context.now) return "not_started";
   if (discount.endsAt && new Date(discount.endsAt) <= context.now) return "ended";
-  if (discount.usageLimit !== null && context.used >= discount.usageLimit) return "used_up";
-  if (discount.oncePerCustomer && !context.signedIn) return "sign_in";
-  if (discount.oncePerCustomer && context.usedByCustomer > 0) return "already_used";
+  if (context.itemUsed !== undefined) {
+    if (context.itemUsed > 0) return "used_up";
+  } else {
+    if (discount.usageLimit !== null && context.used >= discount.usageLimit) return "used_up";
+    if (discount.oncePerCustomer && !context.signedIn) return "sign_in";
+    if (discount.oncePerCustomer && context.usedByCustomer > 0) return "already_used";
+  }
+  if (discount.tierIds.length > 0 || discount.customerIds.length > 0) {
+    const customer = context.customer ?? null;
+    if (!customer) return "sign_in";
+    if (!discount.customerIds.includes(customer.id) && !discount.tierIds.some((id) => customer.tierIds.includes(id))) return "not_eligible";
+  }
   if (discount.kind === "fixed" && !(discount.amounts[context.marketCode] > 0)) return "market";
   return null;
 }
@@ -102,14 +132,23 @@ export type AppliedDiscount = {
  */
 export function applyDiscount(
   discount: StoreDiscount,
-  basket: { marketCode: string; lines: DiscountLine[]; shippingMinor: number },
-): { ok: true; applied: AppliedDiscount } | { ok: false; problem: "minimum" | "not_applicable" | "market" } {
+  basket: {
+    marketCode: string;
+    lines: DiscountLine[];
+    shippingMinor: number;
+    /** The basket's products in one of the code's categories or tags (or one under them), read by the server (D299 E1). */
+    reached?: ReadonlySet<string>;
+  },
+): { ok: true; applied: AppliedDiscount } | { ok: false; problem: "minimum" | "minimum_quantity" | "not_applicable" | "market" } {
   const subtotal = basket.lines.reduce((sum, line) => sum + line.todayMinor, 0);
   const minimum = discount.minSubtotals[basket.marketCode] ?? 0;
   if (subtotal < minimum) return { ok: false, problem: "minimum" };
-  const eligible = basket.lines.filter(
-    (line) => discount.productIds === null || discount.productIds.includes(line.productId),
-  );
+  const eligible = basket.lines.filter((line) => reaches(discount, line.productId, basket.reached));
+  // The least units of what it reaches, bought once: a subscription and a line costing nothing today do not count.
+  if (discount.minQuantity !== null) {
+    const units = eligible.filter((line) => !line.recurring && line.todayMinor > 0).reduce((sum, line) => sum + line.quantity, 0);
+    if (units < discount.minQuantity) return { ok: false, problem: "minimum_quantity" };
+  }
   const applied: AppliedDiscount = { lines: {}, shippingMinor: 0, totalMinor: 0, renewalUnits: {} };
 
   if (discount.kind === "free_shipping") {
@@ -153,6 +192,12 @@ export function applyDiscount(
 
   applied.totalMinor = Object.values(applied.lines).reduce((sum, off) => sum + off, 0) + applied.shippingMinor;
   return { ok: true, applied };
+}
+
+/** Whether a code reaches a product: everything when it names neither products nor terms; else a chosen product or one in a chosen term. */
+export function reaches(discount: Pick<StoreDiscount, "productIds" | "termIds">, productId: string, reached?: ReadonlySet<string>): boolean {
+  if (discount.productIds === null && discount.termIds.length === 0) return true;
+  return Boolean(discount.productIds?.includes(productId)) || Boolean(reached?.has(productId));
 }
 
 /** What a store's code gives, in English for the admin: "20 % off", "NOK 50.00 off", "Free shipping". */
@@ -209,15 +254,54 @@ export const storeDiscountInput = z
     usageLimit: z.coerce.number().int().min(1, "Allow at least one use, or no limit.").max(1_000_000).nullable().default(null),
     oncePerCustomer: z.boolean().default(false),
     active: z.boolean().default(true),
+    termIds: z.array(z.uuid()).max(100).default([]),
+    minQuantity: z.coerce.number().int().min(1, "Ask for at least one item, or no minimum.").max(1000, "Ask for at most 1,000 items.").nullable().default(null),
+    tierIds: z.array(z.uuid()).max(50).default([]),
+    /** The named customers' emails, one per line or separated by commas; the server finds them. */
+    customerEmails: z.string().max(20_000).default(""),
+    uniqueCodes: z.boolean().default(false),
   })
-  .refine((input) => input.productIds === null || input.productIds.length > 0, {
-    message: "Choose at least one product, or let the code apply to everything.",
+  .refine((input) => input.productIds === null || input.productIds.length > 0 || input.termIds.length > 0, {
+    message: "Choose at least one product, category or tag, or let the code apply to everything.",
   })
   .refine((input) => !input.startsAt || !input.endsAt || new Date(input.startsAt) < new Date(input.endsAt), {
     message: "The code must end after it starts.",
   });
 
 export type StoreDiscountInput = z.input<typeof storeDiscountInput>;
+
+// ---------------------------------------------------------------------------
+// Generated single-use codes (D299 E1)
+// ---------------------------------------------------------------------------
+
+/** Characters of a generated code: capitals and digits without look-alikes (no 0, O, 1, I or L). */
+export const GENERATED_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const GENERATED_LENGTH = 8;
+export const GENERATE_MAX = 10_000;
+export const CODE_ITEMS_MAX = 100_000;
+
+/** One generated code: the prefix (if any), a dash and eight random characters, from `random` (crypto's in the server). */
+export function generatedCode(prefix: string, random: (n: number) => Uint8Array): string {
+  const bytes = random(GENERATED_LENGTH * 2);
+  let out = "";
+  // Bytes over the largest multiple of the alphabet's length are skipped, so every character is equally likely.
+  const limit = 256 - (256 % GENERATED_ALPHABET.length);
+  for (let i = 0; out.length < GENERATED_LENGTH; i++) {
+    const byte = i < bytes.length ? bytes[i] : random(1)[0];
+    if (byte < limit) out += GENERATED_ALPHABET[byte % GENERATED_ALPHABET.length];
+  }
+  const head = normalizeCode(prefix);
+  return head ? `${head}-${out}` : out;
+}
+
+export const generateCodesInput = z.object({
+  count: z.coerce.number().int().min(1, "Make at least one code.").max(GENERATE_MAX, `Make at most ${GENERATE_MAX.toLocaleString("en-GB")} at a time.`),
+  prefix: z
+    .string()
+    .transform(normalizeCode)
+    .refine((value) => value === "" || /^[\p{Lu}\p{N}][\p{Lu}\p{N}_]{0,19}$/u.test(value), "Use up to 20 letters, digits or _ for the prefix.")
+    .default(""),
+});
 
 // ---------------------------------------------------------------------------
 // Kaizen's codes for plans

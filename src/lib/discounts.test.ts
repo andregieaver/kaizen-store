@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   applyDiscount,
   availability,
+  GENERATED_ALPHABET,
+  generatedCode,
+  reaches,
   normalizeCode,
   platformDiscountSummary,
   storeDiscountInput,
@@ -24,6 +27,11 @@ const base: StoreDiscount = {
   usageLimit: null,
   oncePerCustomer: false,
   active: true,
+  termIds: [],
+  minQuantity: null,
+  tierIds: [],
+  customerIds: [],
+  uniqueCodes: false,
 };
 
 const line = (key: string, unitMinor: number, quantity = 1, extra: Partial<DiscountLine> = {}): DiscountLine => ({
@@ -164,3 +172,55 @@ describe("a percentage code on a line a campaign has reduced (D114)", () => {
   });
 });
 
+
+describe("codes in depth (D299 E1)", () => {
+  const now = new Date();
+  const ctx = { now, used: 0, usedByCustomer: 0, signedIn: true, marketCode: "NO" };
+
+  it("reach a product by its terms, beside chosen products, and everything with neither", () => {
+    expect(reaches(base, "p1")).toBe(true);
+    const byTerm = { ...base, productIds: null, termIds: ["t1"] };
+    expect(reaches(byTerm, "p1", new Set(["p1"]))).toBe(true);
+    expect(reaches(byTerm, "p2", new Set(["p1"]))).toBe(false);
+    const both = { ...base, productIds: ["p3"], termIds: ["t1"] };
+    expect(reaches(both, "p3", new Set())).toBe(true);
+    const applied = applyDiscount(byTerm, { marketCode: "NO", lines: [line("a", 10000, 1, { productId: "p1" }), line("b", 10000, 1, { productId: "p2" })], shippingMinor: 0, reached: new Set(["p1"]) });
+    expect(applied.ok && applied.applied.lines).toEqual({ a: 2000 });
+  });
+
+  it("need the least units of what they reach, bought once", () => {
+    const three = { ...base, minQuantity: 3 };
+    expect(applyDiscount(three, { marketCode: "NO", lines: [line("a", 10000, 2)], shippingMinor: 0 })).toEqual({ ok: false, problem: "minimum_quantity" });
+    expect(applyDiscount(three, { marketCode: "NO", lines: [line("a", 10000, 2), line("b", 5000, 1)], shippingMinor: 0 }).ok).toBe(true);
+    // A subscription does not count towards it.
+    expect(applyDiscount(three, { marketCode: "NO", lines: [line("a", 10000, 2), line("s", 5000, 1, { recurring: true })], shippingMinor: 0 })).toEqual({ ok: false, problem: "minimum_quantity" });
+  });
+
+  it("are for chosen groups or customers only, telling a guest to sign in and anyone else it is not theirs", () => {
+    const groups = { ...base, tierIds: ["g1"] };
+    expect(availability(groups, { ...ctx, signedIn: false, customer: null })).toBe("sign_in");
+    expect(availability(groups, { ...ctx, customer: { id: "c1", tierIds: ["g2"] } })).toBe("not_eligible");
+    expect(availability(groups, { ...ctx, customer: { id: "c1", tierIds: ["g1"] } })).toBeNull();
+    const named = { ...base, customerIds: ["c9"] };
+    expect(availability(named, { ...ctx, customer: { id: "c9", tierIds: [] } })).toBeNull();
+    expect(availability(named, { ...ctx, customer: { id: "c1", tierIds: [] } })).toBe("not_eligible");
+  });
+
+  it("make a generated code work once, whatever the code's own limits", () => {
+    const limited = { ...base, uniqueCodes: true, usageLimit: 1, oncePerCustomer: true };
+    expect(availability(limited, { ...ctx, used: 5, signedIn: false, itemUsed: 0 })).toBeNull();
+    expect(availability(limited, { ...ctx, itemUsed: 1 })).toBe("used_up");
+  });
+
+  it("generate codes from an alphabet without look-alikes, after the prefix", () => {
+    const random = (n: number) => crypto.getRandomValues(new Uint8Array(n));
+    const codes = new Set(Array.from({ length: 200 }, () => generatedCode("sommer", random)));
+    for (const code of codes) {
+      expect(code).toMatch(/^SOMMER-[A-Z2-9]{8}$/);
+      expect([...code.slice(7)].every((c) => GENERATED_ALPHABET.includes(c))).toBe(true);
+      expect(code.slice(7)).not.toMatch(/[01OIL]/);
+    }
+    expect(codes.size).toBeGreaterThan(190);
+    expect(generatedCode("", random)).toMatch(/^[A-Z2-9]{8}$/);
+  });
+});

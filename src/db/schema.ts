@@ -2575,11 +2575,24 @@ export const discountCodes = commerce.table(
     usageLimit: integer("usage_limit"),
     oncePerCustomer: boolean("once_per_customer").notNull().default(false),
     active: boolean("active").notNull().default(true),
+    /** Product categories and tags it reaches (a category the ones under it too), beside `product_ids` (D299 E1). */
+    termIds: jsonb("term_ids").notNull().default([]),
+    /** The least number of units of what it reaches, bought once; null for none. */
+    minQuantity: integer("min_quantity"),
+    /** Only signed-in customers in one of these customer groups, or one of these named customers; none of either for everyone. */
+    tierIds: jsonb("tier_ids").notNull().default([]),
+    customerIds: jsonb("customer_ids").notNull().default([]),
+    /** Its own text is a name only: shoppers use its generated single-use codes (`discount_code_items`). */
+    uniqueCodes: boolean("unique_codes").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("discount_codes_store_id_key").on(t.storeId, t.id),
+    check("discount_codes_min_quantity", sql`${t.minQuantity} is null or ${t.minQuantity} between 1 and 1000`),
+    check("discount_codes_term_ids", sql`jsonb_typeof(${t.termIds}) = 'array'`),
+    check("discount_codes_tier_ids", sql`jsonb_typeof(${t.tierIds}) = 'array'`),
+    check("discount_codes_customer_ids", sql`jsonb_typeof(${t.customerIds}) = 'array' and jsonb_array_length(${t.customerIds}) <= 100`),
     unique("discount_codes_store_code_key").on(t.storeId, t.code),
     check("discount_codes_kind", sql`${t.kind} in ('percent', 'fixed', 'free_shipping')`),
     check(
@@ -2589,6 +2602,36 @@ export const discountCodes = commerce.table(
     check("discount_codes_recurring", sql`not ${t.recurring} or ${t.kind} = 'percent'`),
     check("discount_codes_usage_limit", sql`${t.usageLimit} is null or ${t.usageLimit} > 0`),
     check("discount_codes_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
+  ],
+);
+
+/**
+ * A code's generated single-use codes (D299 E1, `docs/wave-5-marketing.md` 7.1): each works once, on an order not cancelled or copied; its text
+ * is unique across the store's codes and generated codes (a trigger). Deleted with its code; an order keeps the text it used. Not personal.
+ */
+export const discountCodeItems = commerce.table(
+  "discount_code_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    discountId: uuid("discount_id").notNull(),
+    /** In capitals. */
+    code: text("code").notNull(),
+    batch: integer("batch").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("discount_code_items_store_id_key").on(t.storeId, t.id),
+    unique("discount_code_items_store_code_key").on(t.storeId, t.code),
+    index("discount_code_items_discount_idx").on(t.storeId, t.discountId, t.batch),
+    foreignKey({
+      name: "discount_code_items_discount_fk",
+      columns: [t.storeId, t.discountId],
+      foreignColumns: [discountCodes.storeId, discountCodes.id],
+    }).onDelete("cascade"),
+    check("discount_code_items_batch", sql`${t.batch} > 0`),
   ],
 );
 
@@ -3429,6 +3472,8 @@ export const orders = commerce.table(
     /** The discount code used, and its text as the shopper saw it (D31). */
     discountCodeId: uuid("discount_code_id"),
     discountCode: text("discount_code"),
+    /** The generated single-use code used (D299 E1); its text is in `discount_code`. No foreign key: a deleted code's orders keep the text. */
+    discountCodeItemId: uuid("discount_code_item_id"),
     /** The company the order was placed for (B2B), shown on the order and its invoice. */
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
@@ -3606,6 +3651,7 @@ export const orders = commerce.table(
     index("orders_host_idx").on(t.storeId, t.hostId),
     unique("orders_store_id_key").on(t.storeId, t.id),
     index("orders_discount_code_idx").on(t.storeId, t.discountCodeId),
+    index("orders_discount_code_item_idx").on(t.storeId, t.discountCodeItemId).where(sql`${t.discountCodeItemId} is not null`),
     foreignKey({
       name: "orders_discount_code_fk",
       columns: [t.storeId, t.discountCodeId],

@@ -356,6 +356,8 @@ export const en = {
     already_used: "You have already used this code.",
     market: "The code does not apply in this country.",
     minimum: "Add a little more to use the code.",
+    minimum_quantity: "Add a few more items to use the code.",
+    not_eligible: "The code is not for your account.",
     not_applicable: "The code does not apply to what is in your cart.",
   },
   minimumFor: "The code applies when the items come to at least",

@@ -2745,6 +2745,20 @@
       "when": 1792530641861,
       "tag": "20261020211041_automations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 392,
+      "version": "7",
+      "when": 1792536695238,
+      "tag": "20261020225135_discount_codes_depth",
+      "breakpoints": true
+    },
+    {
+      "idx": 393,
+      "version": "7",
+      "when": 1792536723827,
+      "tag": "20261020225203_discount_codes_depth_rules",
+      "breakpoints": true
     }
   ]
 }

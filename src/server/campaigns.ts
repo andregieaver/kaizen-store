@@ -292,7 +292,7 @@ export async function runningCampaigns(
 }
 
 /** Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers". */
-async function termsOfProducts(runner: Runner, storeId: string, productIds: string[]): Promise<Map<string, string[]>> {
+export async function termsOfProducts(runner: Runner, storeId: string, productIds: string[]): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>();
   if (productIds.length === 0) return out;
   const rows = await runner.execute<Row>(sql`

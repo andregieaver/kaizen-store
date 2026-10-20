@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { StoreDiscountInput } from "@/lib/discounts";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
-import { deleteDiscount, saveDiscount } from "@/server/discounts";
+import { deleteDiscount, generateCodes, saveDiscount } from "@/server/discounts";
 import type { SaveResult } from "@/server/settings";
 
 /** Creates a code (id null) or changes one (D31). */
@@ -30,5 +30,19 @@ export async function deleteDiscountAction(storeSlug: string, id: string): Promi
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown code."] };
   const result = await deleteDiscount(member, id);
   if (result.ok) redirect(`/admin/${member.store.slug}/discounts`);
+  return result;
+}
+
+/** Makes single-use codes for a code that hands them out (D299 E1). */
+export async function generateCodesAction(
+  storeSlug: string,
+  id: string,
+  input: unknown,
+): Promise<{ ok: true; made: number } | { ok: false; problem: string }> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
+  if (!z.uuid().safeParse(id).success) return { ok: false, problem: "Unknown code." };
+  const result = await generateCodes(member, id, input);
+  if (result.ok) refresh();
   return result;
 }

@@ -48,7 +48,7 @@ vi.mock("./stripe", () => ({
 }));
 
 const { cancelUnpaidOrder, placeOrder, startCheckout } = await import("./checkout");
-const { checkCodeForOrder, deleteDiscount, saveDiscount } = await import("./discounts");
+const { checkCodeForOrder, codeItemCounts, deleteDiscount, exportCodeItems, generateCodes, saveDiscount } = await import("./discounts");
 
 const run = Date.now().toString(36);
 const slug = `disc-${run}`;
@@ -286,5 +286,81 @@ describe("paying with a code", () => {
     expect(coupon.options).toMatchObject({ stripeAccount: `acct_disc${run}` });
     const session = fake.sessions.at(-1)!;
     expect(session.discounts).toEqual([{ coupon: `coupon_${fake.coupons.length}` }]);
+  });
+});
+
+describe("codes in depth (D299 E1)", () => {
+  it("reaches a category's products only, and asks for a number of items", async () => {
+    const [term] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug) values (${storeId}::uuid, 'product', 'category', 'Vesker', ${`vesker-${run}`})
+      returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.product_terms (store_id, product_id, term_id, content_type)
+      select store_id, product_id, ${String(term.id)}::uuid, 'product' from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-TOTE'
+    `);
+    expect(await saveDiscount(member, null, { code: "UKJENT-KAT", kind: "percent", percent: 10, termIds: ["00000000-0000-4000-8000-000000000000"] })).toMatchObject({
+      ok: false,
+    });
+    await code({ code: "VESKER", kind: "percent", percent: 10, termIds: [String(term.id)], minQuantity: 2 });
+    // One tote is below the two items asked for.
+    expect(await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 1, null]], "VESKER"))).toEqual({ ok: false, problem: "discount" });
+    const result = await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 2, null], ["DEMO-NOTEBOOK-LINED", 1, null]], "VESKER"));
+    if (!result.ok) throw new Error(result.problem);
+    // 10 % of the two totes (398,00) only; the notebook is in no category the code names.
+    expect(result.order.discount).toEqual({ code: "VESKER", couponMinor: 3980 });
+  });
+
+  it("is for a customer group or named customers only", async () => {
+    const [tier] = await db().execute<Row>(sql`
+      insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'VIP', 1) returning id
+    `);
+    await code({ code: "GRUPPE", kind: "fixed", amounts: { NO: "20" }, tierIds: [String(tier.id)] });
+    const lines: [string, number, null][] = [["DEMO-TOTE", 1, null]];
+    const shop = { storeId, market: no };
+    // A guest is asked to sign in; a customer outside the group is refused.
+    expect(await placeOrder(shop, await cart(lines, "GRUPPE"))).toEqual({ ok: false, problem: "discount" });
+    expect(await placeOrder(shop, await cart(lines, "GRUPPE"), {}, { customerId })).toEqual({ ok: false, problem: "discount" });
+    await db().execute(sql`update commerce.customers set tier_id = ${String(tier.id)}::uuid where id = ${customerId}::uuid`);
+    const inGroup = await placeOrder(shop, await cart(lines, "GRUPPE"), {}, { customerId });
+    // The group's own 1 % (1,99) rides in the same coupon as the code's 20,00.
+    expect(inGroup.ok && inGroup.order.discount).toEqual({ code: "GRUPPE + VIP", couponMinor: 2199 });
+    await db().execute(sql`update commerce.customers set tier_id = null where id = ${customerId}::uuid`);
+
+    expect(await saveDiscount(member, null, { code: "NAVN-FEIL", kind: "percent", percent: 5, customerEmails: "ingen@example.com" })).toMatchObject({ ok: false });
+    await code({ code: "KARI", kind: "percent", percent: 5, customerEmails: `KARI-${run}@example.com` });
+    const kari = await placeOrder(shop, await cart(lines, "KARI"), {}, { customerId });
+    expect(kari.ok).toBe(true);
+    expect(await placeOrder(shop, await cart(lines, "KARI"))).toEqual({ ok: false, problem: "discount" });
+  });
+
+  it("hands out single-use codes, each good for one order, also when two pay at once", async () => {
+    const id = await code({ code: "KAMPANJE", kind: "percent", percent: 10, uniqueCodes: true });
+    expect(await generateCodes(member, id, { count: 3, prefix: "vår!" })).toMatchObject({ ok: false });
+    expect(await generateCodes(member, id, { count: 3, prefix: "VAAR" })).toEqual({ ok: true, made: 3 });
+    const items = await db().execute<Row>(sql`select code from commerce.discount_code_items where discount_id = ${id}::uuid order by code`);
+    expect(items).toHaveLength(3);
+    for (const item of items) expect(String(item.code)).toMatch(/^VAAR-[A-HJKMNP-Z2-9]{8}$/);
+    const shop = { storeId, market: no };
+    const lines: [string, number, null][] = [["DEMO-TOTE", 1, null]];
+    // The code's own text is no code once it hands out codes of its own.
+    expect(await placeOrder(shop, await cart(lines, "KAMPANJE"))).toEqual({ ok: false, problem: "discount" });
+    const [one, two] = await Promise.all([
+      placeOrder(shop, await cart(lines, String(items[0].code).toLowerCase())),
+      placeOrder(shop, await cart(lines, String(items[0].code))),
+    ]);
+    expect([one.ok, two.ok].filter(Boolean)).toHaveLength(1);
+    const won = (one.ok ? one : two) as Extract<typeof one, { ok: true }>;
+    expect(won.order.discount).toEqual({ code: String(items[0].code), couponMinor: 1990 });
+    const [row] = await db().execute<Row>(sql`select discount_code, discount_code_item_id is not null as item from commerce.orders where id = ${won.order.orderId}::uuid`);
+    expect(row).toEqual({ discount_code: String(items[0].code), item: true });
+    // Another of the codes still works.
+    expect((await placeOrder(shop, await cart(lines, String(items[1].code)))).ok).toBe(true);
+    expect(await codeItemCounts(storeId, id)).toEqual({ made: 3, used: 2 });
+    const file = await exportCodeItems(member, id);
+    expect(file?.csv.split("\n")[0]).toMatch(/^code,used,made_on/);
+    expect(file?.csv).toContain(`${String(items[0].code)},yes,`);
+    // A generated code's text can never be a code of the store's own.
+    expect(await saveDiscount(member, null, { code: String(items[2].code), kind: "percent", percent: 5 })).toMatchObject({ ok: false });
   });
 });

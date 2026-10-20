@@ -18,7 +18,6 @@ import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { campaignLabel, memberOffAfterCampaign } from "@/lib/campaigns";
 import type { OrderVatTreatment, VatKind } from "@/lib/vat-treatment";
-import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { cleanPayer, type PayerDetails } from "@/lib/mollie";
@@ -44,7 +43,7 @@ import { checkoutProviderOf } from "./mollie";
 import { mollieProvider, openMolliePayment } from "./payment-providers/mollie";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
-import { findUsableDiscount } from "./discounts";
+import { applyCode, findUsableDiscount } from "./discounts";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
 import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
@@ -518,7 +517,7 @@ export async function placeOrder(
 
     // The cart's discount code (D31), checked again here under a lock, so
     // two checkouts cannot both take a code's last use.
-    let discount: { id: string; code: string } | null = null;
+    let discount: { id: string; code: string; itemId: string | null } | null = null;
     let shippingDiscount = 0;
     const lowered = new Set<number>();
     if (cart.discount_code) {
@@ -528,7 +527,7 @@ export async function placeOrder(
         lock: true,
       });
       const result = found.ok
-        ? applyDiscount(found.discount, {
+        ? await applyCode(tx, storeId, found.discount, {
             marketCode: market.code,
             lines: priced.map((p, i) => ({
               key: String(i),
@@ -556,7 +555,7 @@ export async function placeOrder(
       });
       if (lowered.size > 0) basket = shippingFor();
       shippingDiscount = applied.shippingMinor;
-      discount = { id: found.discount.id, code: found.discount.code };
+      discount = { id: found.discount.id, code: found.item?.code ?? found.discount.code, itemId: found.item?.id ?? null };
     }
     const shipping = basket.first;
     // The cheapest standard delivery on offer, kept with the order (D153): a withdrawal of the whole order gives back no
@@ -674,6 +673,7 @@ export async function placeOrder(
       digitalConsentAt: digital ? "now" : null,
       customerId,
       discountCodeId: discount?.id ?? null,
+      discountCodeItemId: discount?.itemId ?? null,
       discountCode: discount?.code ?? null,
       companyName: orderCompany?.name ?? null,
       organisationNumber: orderCompany?.number ?? null,

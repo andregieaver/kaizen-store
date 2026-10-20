@@ -350,6 +350,8 @@ export const nb: Messages = {
     already_used: "Du har allerede brukt denne koden.",
     market: "Koden gjelder ikke i dette landet.",
     minimum: "Handle for litt mer for å bruke koden.",
+    minimum_quantity: "Legg til noen flere varer for å bruke koden.",
+    not_eligible: "Koden gjelder ikke for kontoen din.",
     not_applicable: "Koden gjelder ikke for det som ligger i handlekurven.",
   },
   minimumFor: "Koden gjelder når varene koster minst",
