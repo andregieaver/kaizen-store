@@ -65,12 +65,10 @@ function newBlock(type: BroadcastBlock["type"]): BroadcastBlock {
  */
 export function BroadcastEditor(props: Props) {
   const { storeSlug } = props;
-  const main = props.locales[0]?.code ?? "nb-NO";
   const [title, setTitle] = useState(props.initial.title);
   const [audience, setAudience] = useState<BroadcastAudience>(props.initial.audience);
   const [segmentId, setSegmentId] = useState<string | null>(props.initial.segmentId ?? props.segments[0]?.id ?? null);
   const [content, setContent] = useState<BroadcastContent>(props.initial.content);
-  const [locale, setLocale] = useState(main);
   const [people, setPeople] = useState<string>("Counting…");
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -91,18 +89,6 @@ export function BroadcastEditor(props: Props) {
     };
   }, [audience, segmentId, count, storeSlug]);
 
-  const current: LanguageContent = content[locale] ?? emptyContent();
-  const setCurrent = (next: LanguageContent) => {
-    setSaved(false);
-    setContent((c) => ({ ...c, [locale]: next }));
-  };
-  const setBlock = (index: number, block: BroadcastBlock) => setCurrent({ ...current, blocks: current.blocks.map((b, i) => (i === index ? block : b)) });
-  const move = (index: number, by: number) => {
-    const blocks = [...current.blocks];
-    const [b] = blocks.splice(index, 1);
-    blocks.splice(index + by, 0, b);
-    setCurrent({ ...current, blocks });
-  };
 
   const submit = () =>
     startSave(async () => {
@@ -149,6 +135,62 @@ export function BroadcastEditor(props: Props) {
         </p>
       </fieldset>
 
+      <EmailContentFields
+        storeSlug={storeSlug}
+        locales={props.locales}
+        content={content}
+        onChange={(next) => {
+          setSaved(false);
+          setContent(next);
+        }}
+        aiReady={props.aiReady}
+        suggest={props.suggest}
+        upload={props.upload}
+      />
+
+      {problem && (
+        <p role="alert" className="text-body text-danger-text">
+          {problem}
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <Button kind="main" onClick={submit} disabled={saving}>
+          {saving ? "Saving…" : props.broadcastId ? "Save" : "Save draft"}
+        </Button>
+        {saved && (
+          <span role="status" className="text-body text-positive-text">
+            Saved.
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The words of an email per language (D297 5.1, reused by D298's automations): a subject, a preview line and blocks, and *Write with AI*. */
+export function EmailContentFields(props: {
+  storeSlug: string;
+  /** The store's languages, main first. */
+  locales: { code: string; name: string }[];
+  content: BroadcastContent;
+  onChange: (content: BroadcastContent) => void;
+  aiReady: boolean;
+  suggest: Props["suggest"];
+  upload: Props["upload"];
+}) {
+  const { storeSlug, content } = props;
+  const [locale, setLocale] = useState(props.locales[0]?.code ?? "nb-NO");
+  const current: LanguageContent = content[locale] ?? emptyContent();
+  const setCurrent = (next: LanguageContent) => props.onChange({ ...content, [locale]: next });
+  const setBlock = (index: number, block: BroadcastBlock) => setCurrent({ ...current, blocks: current.blocks.map((b, i) => (i === index ? block : b)) });
+  const move = (index: number, by: number) => {
+    const blocks = [...current.blocks];
+    const [b] = blocks.splice(index, 1);
+    blocks.splice(index + by, 0, b);
+    setCurrent({ ...current, blocks });
+  };
+  return (
+    <>
       {props.locales.length > 1 && (
         <div role="tablist" aria-label="Language" className="flex flex-wrap gap-2">
           {props.locales.map((l, i) => (
@@ -218,22 +260,7 @@ export function BroadcastEditor(props: Props) {
         )}
       </div>
 
-      {problem && (
-        <p role="alert" className="text-body text-danger-text">
-          {problem}
-        </p>
-      )}
-      <div className="flex items-center gap-3">
-        <Button kind="main" onClick={submit} disabled={saving}>
-          {saving ? "Saving…" : props.broadcastId ? "Save" : "Save draft"}
-        </Button>
-        {saved && (
-          <span role="status" className="text-body text-positive-text">
-            Saved.
-          </span>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 

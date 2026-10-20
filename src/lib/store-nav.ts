@@ -116,6 +116,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop" }),
           item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop" }),
           item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better."),
+          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock."),
           item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after."),
           item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them."),
           item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when."),

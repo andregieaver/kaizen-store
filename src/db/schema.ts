@@ -85,6 +85,7 @@ import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
+import { AUTOMATION_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
   ESTIMATE_DAYS_MAX,
@@ -11572,5 +11573,125 @@ export const broadcastLinkClicks = commerce.table(
       foreignColumns: [broadcasts.storeId, broadcasts.id],
     }).onDelete("cascade"),
     check("broadcast_link_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
+  ],
+);
+
+/**
+ * A store's automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6.1): one row per kind, made on the first save. `enabled_at` is when it
+ * was last switched on: only what happens after it starts an email. `content` is the email per language (a broadcast's shape), null exactly for
+ * back in stock, whose words are Kaizena Flow's. The store's own settings and words (`NOT_PERSONAL`). Written only by `src/server/automations.ts`.
+ */
+export const automations = commerce.table(
+  "automations",
+  {
+    storeId: storeId().references(() => stores.id),
+    kind: text("kind").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    enabledAt: timestamp("enabled_at", { withTimezone: true }),
+    delayDays: integer("delay_days"),
+    content: jsonb("content"),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.kind] }),
+    check("automations_kind", sql`${t.kind} in (${sqlList(AUTOMATION_KINDS)})`),
+    check("automations_enabled_at", sql`not ${t.enabled} or ${t.enabledAt} is not null`),
+    check("automations_content", sql`(${t.kind} = 'back_in_stock') = (${t.content} is null)`),
+    check(
+      "automations_delay",
+      sql`case ${t.kind} when 'welcome' then ${t.delayDays} between 0 and 30 when 'after_purchase' then ${t.delayDays} between 1 and 90 when 'win_back' then ${t.delayDays} between 30 and 730 else ${t.delayDays} is null end`,
+    ),
+  ],
+);
+
+/**
+ * One automation email to one subscriber (D298, 6.2), written before the email goes, so a key (`welcome:{subscriber}`, `after_purchase:{order}`,
+ * `win_back:{subscriber}:{order}`) is never sent twice. Personal data (by the subscriber): in the export's `marketing` section, deleted on erasure
+ * (with the subscriber) and after 90 days. Never copied.
+ */
+export const automationSends = commerce.table(
+  "automation_sends",
+  {
+    storeId: storeId().references(() => stores.id),
+    key: text("key").notNull(),
+    kind: text("kind").notNull(),
+    subscriberId: uuid("subscriber_id").notNull(),
+    orderId: uuid("order_id"),
+    outcome: text("outcome"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.key] }),
+    foreignKey({
+      name: "automation_sends_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "automation_sends_order_fk",
+      columns: [t.storeId, t.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }),
+    index("automation_sends_report_idx").on(t.storeId, t.kind, t.createdAt),
+    index("automation_sends_subscriber_idx").on(t.storeId, t.subscriberId),
+    index("automation_sends_order_idx").on(t.storeId, t.orderId),
+    check("automation_sends_kind", sql`${t.kind} in ('welcome', 'after_purchase', 'win_back')`),
+    check("automation_sends_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
+  ],
+);
+
+/**
+ * A shopper's request to hear once when a sold-out variant is back (D298, 6.4): the address (lower case), confirmed by its owner unless a signed-in
+ * customer with a verified email asked; one open request per store, variant and address. `visitor` is a key that changes every day (as forms',
+ * never an IP address). Personal data: exported, erased, pruned (6.5). Never copied. Written only by `src/server/stock-requests.ts`.
+ */
+export const stockRequests = commerce.table(
+  "stock_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    variantId: uuid("variant_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    email: text("email").notNull(),
+    customerId: uuid("customer_id"),
+    locale: text("locale").notNull(),
+    marketCode: text("market_code"),
+    status: text("status").notNull(),
+    /** sha256 of the confirmation link's token, hex; gone once used. */
+    confirmHash: text("confirm_hash"),
+    confirmUntil: timestamp("confirm_until", { withTimezone: true }),
+    confirmSentAt: timestamp("confirm_sent_at", { withTimezone: true }),
+    visitor: text("visitor"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "stock_requests_variant_fk",
+      columns: [t.storeId, t.variantId],
+      foreignColumns: [productVariants.storeId, productVariants.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "stock_requests_product_fk",
+      columns: [t.storeId, t.productId],
+      foreignColumns: [products.storeId, products.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "stock_requests_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    uniqueIndex("stock_requests_open_idx").on(t.storeId, t.variantId, t.email).where(sql`${t.status} in ('pending', 'waiting')`),
+    uniqueIndex("stock_requests_confirm_idx").on(t.confirmHash),
+    index("stock_requests_waiting_idx").on(t.storeId, t.variantId).where(sql`${t.status} = 'waiting'`),
+    index("stock_requests_email_idx").on(t.storeId, t.email),
+    index("stock_requests_customer_idx").on(t.storeId, t.customerId),
+    index("stock_requests_product_idx").on(t.storeId, t.productId),
+    check("stock_requests_status", sql`${t.status} in (${sqlList(STOCK_REQUEST_STATUSES)})`),
+    check("stock_requests_email", sql`${t.email} = lower(${t.email})`),
   ],
 );

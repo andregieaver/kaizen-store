@@ -2731,6 +2731,20 @@
       "when": 1792524199357,
       "tag": "20261020192319_broadcasts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 390,
+      "version": "7",
+      "when": 1792530601891,
+      "tag": "20261020211001_automations",
+      "breakpoints": true
+    },
+    {
+      "idx": 391,
+      "version": "7",
+      "when": 1792530641861,
+      "tag": "20261020211041_automations_rules",
+      "breakpoints": true
     }
   ]
 }

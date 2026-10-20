@@ -864,6 +864,30 @@ async function loadBroadcasts(s: PrivacySubject): Promise<{ broadcast: string; s
   return rows.map((r) => ({ broadcast: strs(r.title), sentAt: r.sent_at ? new Date(String(r.sent_at)).toISOString() : null }));
 }
 
+/** The automation emails sent to the person (D298): which kind and when, by the subject's subscriber rows. */
+async function loadAutomations(s: PrivacySubject): Promise<{ automation: string; sentAt: string | null }[]> {
+  const rows = await db().execute<Row>(sql`
+    select x.kind, x.created_at from commerce.automation_sends x
+    join commerce.marketing_subscribers m on m.store_id = x.store_id and m.id = x.subscriber_id
+    where x.store_id = ${s.storeId}::uuid and (lower(m.email) = any(${textList(s.addresses)}) or m.customer_id = ${s.customerId}::uuid)
+    order by x.created_at
+  `);
+  return rows.map((r) => ({ automation: strs(r.kind), sentAt: r.created_at ? new Date(String(r.created_at)).toISOString() : null }));
+}
+
+/** The person's back-in-stock requests (D298): the product's name, the status and when. */
+async function loadStockRequests(s: PrivacySubject): Promise<{ product: string; status: string; askedAt: string | null; notifiedAt: string | null }[]> {
+  const rows = await db().execute<Row>(sql`
+    select r.status, r.created_at, r.notified_at,
+      coalesce((select t.title from commerce.product_translations t where t.store_id = r.store_id and t.product_id = r.product_id order by t.locale = r.locale desc, t.locale limit 1), '') as title
+    from commerce.stock_requests r
+    where r.store_id = ${s.storeId}::uuid and (r.email = any(${textList(s.addresses)}) or r.customer_id = ${s.customerId}::uuid)
+    order by r.created_at
+  `);
+  const at = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
+  return rows.map((r) => ({ product: strs(r.title), status: strs(r.status), askedAt: at(r.created_at), notifiedAt: at(r.notified_at) }));
+}
+
 /** Staff's tags on the person (D296), by the subject's addresses. */
 async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
@@ -922,13 +946,15 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
     loadMarketing(s),
     loadCustomerTags(s),
     loadBroadcasts(s),
+    loadAutomations(s),
+    loadStockRequests(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -962,6 +988,8 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     marketing,
     customerTags,
     broadcasts,
+    automations,
+    stockRequests,
   };
 }
 

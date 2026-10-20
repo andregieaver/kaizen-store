@@ -140,7 +140,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "D295 built the subscriber list and D297 broadcasts: written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each (frozen recipients, idempotency key), in batches, with List-Unsubscribe, hard bounces and complaints unsubscribing, and a report (sent, delivered, bounced, unsubscribed, presses per link; no opens). Still missing: templates and product blocks in emails, and lifecycle automations beyond cart reminders (welcome, post-purchase, win-back): wave 5 unit D.",
+    "gap": "D295 built the subscriber list, D297 broadcasts (written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each, in batches, with List-Unsubscribe, hard bounces and complaints unsubscribing, and a report) and D298 lifecycle automations: welcome, after a delivered purchase and win-back, each switched on per store with its days and words per language (hand-written starters), sent once per person and trigger to subscribed addresses only, and only for what happened after it was switched on. Still missing: templates and product blocks in emails, drip sequences of several emails, browse abandonment, and click counts for automation emails.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -167,7 +167,14 @@
         "src/components/admin/broadcast-send.tsx",
         "src/app/admin/(gated)/[store]/broadcasts/[broadcastId]/page.tsx",
         "src/app/api/marketing/c/[broadcast]/[link]/route.ts",
-        "src/app/api/cron/broadcasts/route.ts"
+        "src/app/api/cron/broadcasts/route.ts",
+        "src/lib/automations.ts",
+        "src/lib/automation-starters.ts",
+        "src/server/automations.ts",
+        "src/server/marketing-email.ts",
+        "src/components/admin/automation-editor.tsx",
+        "src/app/admin/(gated)/[store]/automations/page.tsx",
+        "src/app/admin/(gated)/[store]/automations/[kind]/page.tsx"
       ],
       "tests": [
         "src/server/cart-reminders.int.test.ts",
@@ -180,7 +187,11 @@
         "src/lib/broadcasts.test.ts",
         "src/db/broadcasts.test.ts",
         "src/server/broadcasts.int.test.ts",
-        "e2e/signed-in/broadcasts.spec.ts"
+        "e2e/signed-in/broadcasts.spec.ts",
+        "src/db/automations.test.ts",
+        "src/lib/automation-starters.test.ts",
+        "src/server/automations.int.test.ts",
+        "e2e/signed-in/automations.spec.ts"
       ],
       "untested": false
     },
@@ -189,7 +200,8 @@
       "D93",
       "D104",
       "D295",
-      "D297"
+      "D297",
+      "D298"
     ],
     "history": [
       {
@@ -1116,11 +1128,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "None: no notify-me form, no waiting list and no restock trigger (verified: no back-in-stock code under `src`).",
+    "gap": "D298: a sold-out physical variant that does not keep selling shows *Email me when it is back* while the store has back in stock on; a typed address confirms from its link first (a verified signed-in customer's waits at once), one open request per store, variant and address, limited per visitor key and address. Every run, the waiting requests whose variant is in stock again by any path (read through `variant_availability`) and still offered get one email each, claimed before it goes so none is sent twice; requests are store-scoped, exported, erased and pruned (unconfirmed after 7 days, waiting after 180, sent after 30). Staff see how many wait and the products most asked for. Still missing: the live price in the email, a link to cancel a waiting request, and the AI manager reading the count.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1130,12 +1142,37 @@
       "Staff see how many are waiting per product, and an AI-manager or analytics reading of demand uses the same count."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/stock-requests.ts",
+        "src/lib/stock-request-check.ts",
+        "src/components/back-in-stock.tsx",
+        "src/components/variant-choice.tsx",
+        "src/components/product-parts.tsx",
+        "src/app/api/stock-requests/route.ts",
+        "src/app/s/[store]/[market]/account/stock/[token]/page.tsx",
+        "src/server/automations.ts",
+        "src/app/admin/(gated)/[store]/automations/page.tsx"
+      ],
+      "tests": [
+        "src/db/automations.test.ts",
+        "src/server/automations.int.test.ts",
+        "e2e/back-in-stock.spec.ts",
+        "e2e/signed-in/automations.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D172",
+      "D298"
+    ],
+    "history": [
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "D298 built the notify-me form with double opt-in, one email per waiting address when stock returns by any path, store scope, export, erasure and pruning, and the staff's waiting counts; the email does not show the live price, a waiting request has no cancel link, and the AI manager does not read the count."
+      }
+    ]
   },
   {
     "id": "customers.customer-accounts",

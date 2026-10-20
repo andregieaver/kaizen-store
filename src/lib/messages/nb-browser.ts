@@ -103,4 +103,17 @@ form: {
     counter: (left: number) => `${left} tegn igjen`,
     failed: "Ønsket kunne ikke sendes. Prøv igjen om litt.",
   },
+  // legal: needs review. Back in stock (D298, docs/wave-5-marketing.md 6.4): the request on a sold-out variant.
+  backInStock: {
+    prompt: "Få en e-post når den er tilbake",
+    label: "E-postadressen din",
+    button: "Send meg en e-post når den er tilbake",
+    working: "Et øyeblikk …",
+    waiting: "Vi sender deg én e-post når den er tilbake.",
+    check: "Vi har sendt deg en e-post. Åpne lenken i den for å bekrefte, så sier vi fra når den er tilbake.",
+    invalid: "Skriv en hel e-postadresse.",
+    busy: "For mange forsøk. Prøv igjen senere.",
+    failed: "Det gikk ikke. Prøv igjen.",
+    note: "Vi sender deg bare én e-post om dette produktet, ikke noe annet.",
+  },
 };

@@ -129,6 +129,9 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses}))::int as customer_tags,
         (select count(*) from commerce.broadcast_recipients r join commerce.marketing_subscribers m on m.store_id = r.store_id and m.id = r.subscriber_id
            where r.store_id = ${sid}::uuid and (r.email = any(${addresses}) or lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as broadcast_recipients,
+        (select count(*) from commerce.automation_sends x join commerce.marketing_subscribers m on m.store_id = x.store_id and m.id = x.subscriber_id
+           where x.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as automation_sends,
+        (select count(*) from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid))::int as stock_requests,
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
            where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
@@ -194,6 +197,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       marketing_consent_events: n(c.marketing_consent_events),
       customer_tags: n(c.customer_tags),
       broadcast_recipients: n(c.broadcast_recipients),
+      automation_sends: n(c.automation_sends),
+      stock_requests: n(c.stock_requests),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
       field_values: n(c.field_values),
@@ -672,6 +677,12 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The broadcasts sent to the person (D297): their addresses go (the subscriber's own go with it below too); the broadcasts' figures stay.
   await tx.execute(sql`delete from commerce.broadcast_recipients where store_id = ${sid}::uuid and email = any(${addresses})`);
+  // The automation emails sent to the person and their back-in-stock requests (D298).
+  await tx.execute(sql`
+    delete from commerce.automation_sends x using commerce.marketing_subscribers m
+    where x.store_id = ${sid}::uuid and m.store_id = x.store_id and m.id = x.subscriber_id and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid)
+  `);
+  await tx.execute(sql`delete from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid)`);
   // The subscriber list (D295): the person's place on it and its history go (before the account, which it may name).
   await tx.execute(sql`
     delete from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)

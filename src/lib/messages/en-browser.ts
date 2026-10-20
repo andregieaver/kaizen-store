@@ -105,6 +105,19 @@ form: {
     counter: (left: number) => `${left} characters left`,
     failed: "Your wish could not be sent. Try again in a moment.",
   },
+  // legal: needs review. Back in stock (D298, docs/wave-5-marketing.md 6.4): the request on a sold-out variant.
+  backInStock: {
+    prompt: "Get an email when it is back",
+    label: "Your email",
+    button: "Email me when it is back",
+    working: "One moment …",
+    waiting: "We will email you once when it is back.",
+    check: "We sent you an email. Open its link to confirm, and we will tell you when it is back.",
+    invalid: "Write a whole email address.",
+    busy: "Too many tries. Try again later.",
+    failed: "It did not work. Try again.",
+    note: "We email you once about this product, nothing else.",
+  },
 };
 
 export type BrowserMessages = typeof enBrowser;

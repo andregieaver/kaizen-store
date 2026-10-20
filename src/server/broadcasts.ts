@@ -7,9 +7,7 @@ import { db } from "@/db/client";
 import {
   broadcastContentSchema,
   broadcastInput,
-  buildBroadcastEmail,
   emptyCounts,
-  languageFor,
   linksOf,
   linkTarget,
   parseSuggestion,
@@ -23,12 +21,8 @@ import {
   type BroadcastSuggestion,
 } from "@/lib/broadcasts";
 import { CLAIM_LABELS } from "@/lib/claims";
-import { renderEmail } from "@/lib/email-layout";
-import { emailText } from "@/lib/email-text";
-import { t } from "@/lib/i18n";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
 import { siteUrl } from "@/lib/site";
 
@@ -36,8 +30,9 @@ import { AiError, aiFor, completeText } from "./ai";
 import { audit } from "./auth";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
+import { emailPictureProblem, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentPeople } from "./segments";
-import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
+import { storeById, type EmailStore } from "./shopper-emails";
 
 type Row = Record<string, unknown>;
 
@@ -115,22 +110,6 @@ export async function getBroadcast(storeId: string, id: string): Promise<Broadca
 
 export type SaveBroadcastResult = { ok: true; id: string } | { ok: false; problem: string };
 
-/** The pictures of the content that are not the store's own JPEG, PNG or GIF in its media library (5.1). */
-async function pictureProblems(storeId: string, content: BroadcastContent): Promise<string | null> {
-  const urls = [...new Set(Object.values(content).flatMap((c) => c.blocks.flatMap((b) => (b.type === "image" ? [b.url] : []))))];
-  if (urls.length === 0) return null;
-  const rows = await db().execute<Row>(sql`
-    select url, content_type from commerce.media where store_id = ${storeId}::uuid and url in (select jsonb_array_elements_text(${JSON.stringify(urls)}::jsonb))
-  `);
-  const known = new Map(rows.map((r) => [String(r.url), String(r.content_type)]));
-  for (const url of urls) {
-    const type = known.get(url);
-    if (!type) return "A picture is not in your media library. Upload it here.";
-    if (!/^image\/(jpeg|png|gif)$/.test(type)) return "Pictures in emails must be JPEG, PNG or GIF: some mail apps cannot show WebP or AVIF. Upload the picture here.";
-  }
-  return null;
-}
-
 /** Saves a draft or scheduled broadcast (`marketing:write`); a sent one is refused by the database. */
 export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization">, accountId: string, id: string | null, input: unknown): Promise<SaveBroadcastResult> {
   const parsed = broadcastInput.safeParse(input);
@@ -138,7 +117,7 @@ export async function saveBroadcast(store: Pick<EmailStore, "id" | "localization
   const value = parsed.data;
   const kept = new Set(store.localization.keptLocales);
   const content = Object.fromEntries(Object.entries(value.content).filter(([locale]) => kept.has(locale)));
-  const picture = await pictureProblems(store.id, content);
+  const picture = await emailPictureProblem(store.id, content);
   if (picture) return { ok: false, problem: picture };
   const segmentId = value.audience === "segment" ? value.segmentId : null;
   if (segmentId && !(await getSegment(store.id, segmentId))) return { ok: false, problem: "That segment is gone. Choose another." };
@@ -192,43 +171,18 @@ function errorText(error: unknown): string {
 // The email
 // ---------------------------------------------------------------------------
 
-/** The address a link in the email goes to: a store path under the recipient's market, a full address as written. */
-function resolver(store: EmailStore, marketSlug: string) {
-  const origin = storeSiteUrl(store.slug);
-  return (url: string) => (url.startsWith("/") ? `${origin}${marketPath(store.slug, marketSlug, url)}` : url);
-}
-
-function homeMarketSlug(store: EmailStore, code: string | null): string {
-  const market = (code && store.markets.find((m) => m.code === code)) || store.markets[0];
-  return (market?.code ?? "").toLowerCase();
-}
-
-type Rendered = { subject: string; html: string; text: string; headers?: Record<string, string> };
+type Rendered = MarketingEmail;
 
 /** One recipient's email: their language, their market's links, their own unsubscribe token. A test (`token` null) links straight to targets. */
 function emailFor(store: EmailStore, broadcast: Pick<Broadcast, "id" | "content">, locale: string | null, marketCode: string | null, token: string | null): Rendered | null {
-  const main = store.localization.locales[0];
-  const language = languageFor(broadcast.content, locale, main);
-  const content = broadcast.content[language];
-  if (!content) return null;
-  const lang = language.slice(0, 2);
-  const m = t(lang);
-  const marketSlug = homeMarketSlug(store, marketCode);
-  const base = `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug)}`;
-  const email = renderEmail(
-    buildBroadcastEmail({
-      content,
-      locale: language,
-      footer: emailFooter(store, emailText(lang)),
-      unsubscribe: { text: m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
-      resolve: resolver(store, marketSlug),
-      link: (key, target) => (token ? clickUrl(broadcast.id, key, marketSlug) : target),
-    }),
-  );
-  return {
-    ...email,
-    headers: token ? { "List-Unsubscribe": `<${siteUrl()}/api/unsubscribe/${token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined,
-  };
+  return marketingEmail({
+    store,
+    content: broadcast.content,
+    locale,
+    marketCode,
+    token,
+    link: token ? (key, _target, marketSlug) => clickUrl(broadcast.id, key, marketSlug) : undefined,
+  });
 }
 
 /** The click address of a link (5.5): it names only the broadcast, the link and the market. */
@@ -641,12 +595,12 @@ export async function recordClick(broadcastId: string, key: string, marketSlug: 
   if (!target) return null;
   const store = await storeById(String(row.store_id));
   if (!store) return null;
-  const market = marketSlug && store.markets.some((m) => m.code.toLowerCase() === marketSlug) ? marketSlug : homeMarketSlug(store, null);
+  const market = marketSlug && store.markets.some((m) => m.code.toLowerCase() === marketSlug) ? marketSlug : marketSlugFor(store, null);
   await db().execute(sql`
     insert into commerce.broadcast_link_clicks (store_id, broadcast_id, link, clicks) values (${String(row.store_id)}::uuid, ${broadcastId}::uuid, ${key}, 1)
     on conflict (broadcast_id, link) do update set clicks = commerce.broadcast_link_clicks.clicks + 1
   `);
-  return resolver(store, market)(target);
+  return resolverFor(store, market)(target);
 }
 
 export type BroadcastReport = {

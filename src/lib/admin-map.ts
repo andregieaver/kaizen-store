@@ -457,6 +457,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["newsletter", "email campaign", "email marketing", "mailing", "send email to customers", "nyhetsbrev"],
     tasks: ["Send a newsletter to everyone who wants my emails", "Email my best customers about the autumn collection"],
   }),
+  store("email-automations", "/automations", "Email automations", "Sales", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", {
+    keywords: ["automation", "flow", "welcome email", "win-back", "winback", "back in stock", "notify me", "restock", "lifecycle email", "velkomstmail"],
+    tasks: ["Send a welcome email to new subscribers", "Tell customers when a sold-out product is back"],
+  }),
+  store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
   store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),
   store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),

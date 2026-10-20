@@ -699,6 +699,22 @@ export const en = {
     unsubscribed: "You are unsubscribed. You will get no more emails with news and offers from us.",
     emailReason: (store: string) => `You get this email because you asked for news and offers from ${store}.`,
   },
+  // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.
+  stockNotice: {
+    confirmSubject: (store: string) => `Confirm your request to ${store}`,
+    confirmHeading: "Tell me when it is back",
+    confirmText: (store: string, product: string) => `You asked ${store} to email you once when ${product} is back in stock. Press the button to confirm. If it was not you, ignore this email and nothing happens.`,
+    confirmButton: "Confirm",
+    confirmValid: "The link works for 7 days.",
+    pageIntro: (product: string) => `Confirm that you want one email when ${product} is back in stock?`,
+    confirmed: "Thank you. We will email you once when it is back.",
+    expired: "We could not find this link. It may be too old or already used.",
+    backSubject: (product: string, store: string) => `${product} is back at ${store}`,
+    backHeading: (product: string) => `${product} is back`,
+    backText: "You asked us to tell you when it was available again. It is in stock now.",
+    backButton: "See it",
+    backReason: (date: string) => `You get this email once, because you asked for it on ${date}.`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Your company",

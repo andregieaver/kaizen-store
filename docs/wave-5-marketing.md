@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units D to J are outlined in section 6.
+section is written here before it is built; units E to J are outlined in section 7.
 
 ## 2. Rules for every unit
 
@@ -284,11 +284,114 @@ skips an address unsubscribed since, stops; a schedule starts when due and goes 
 unsubscribe; the click route counts and redirects only to the content's link; another store's broadcast is never read; erasure removes the
 recipients. A signed-in e2e writes a broadcast, sends a test and sends it.
 
-## 6. Units D to J, outlined
+## 6. Unit D (D298): automations
 
-- **D, automations (D298).** Welcome (after subscribing), after a purchase (days after delivery), win-back (no order in N days), each a switch with
-  its email per language, firing once per person and trigger (`automation_sends` keys); back in stock: a notify-me form on a sold-out variant (an
-  address, consent, double opt-in), one email per waiting address when stock rises above zero by any path (the inventory movement trigger queues it).
+Four emails a store switches on once and that then go by themselves: three to people on the list (welcome, after a purchase, win-back) and one
+to people who asked about a sold-out variant (back in stock). Each is a switch, words and, for the three, a number of days. Nothing here sends to
+anyone who did not ask: the three lifecycle emails go only to addresses that are `subscribed` (rule 1), and back in stock only to an address that
+asked for that variant and confirmed it.
+
+### 6.1 The settings
+
+`commerce.automations`, one row per store and kind (`welcome`, `after_purchase`, `win_back`, `back_in_stock`), made when the owner first saves one:
+
+| Column | Meaning |
+|---|---|
+| `enabled`, `enabled_at` | Whether it runs, and since when (set each time it is switched on, null while off). **Only what happens after `enabled_at` starts an email**: switching one on never writes to everyone who subscribed, bought or lapsed before. |
+| `delay_days` | Welcome: days after subscribing (0 to 30, default 0: at the next run). After a purchase: days after delivery (1 to 90, default 7). Win-back: days without an order (30 to 730, default 90). Null for back in stock. |
+| `content` | The email per language, as a broadcast's (`broadcastContentSchema`, 5.1: subject, preview, blocks, pictures from the library only); null for back in stock, whose words are Kaizena Flow's (6.5). |
+
+A lifecycle automation is switched on only with the main language's subject and a block (`sendProblems()`); its words start from hand-written
+starters per language (`AUTOMATION_STARTERS`, `src/lib/automation-starters.ts`, nb, sv, da and en, in `HAND_WRITTEN_ONLY`'s spirit: never machine
+translated), which the owner edits before saving. The database: `enabled` needs `enabled_at`, `delay_days` within its kind's range, `content` null
+exactly for `back_in_stock`. Switching and saving are `marketing:write`; audit `marketing_automation.saved`, `marketing_automation.switched` (area `marketing`).
+
+### 6.2 Who gets which, once
+
+The runner (`runAutomations()`, from the every-minute marketing job beside broadcasts, `/api/cron/broadcasts`, never throws; only stores that are
+open, `commerce.store_is_active()`, and never a store template) finds, per enabled automation:
+
+| Kind | Who | Key (once each) |
+|---|---|---|
+| `welcome` | A subscriber `subscribed` whose subscribing moment (`confirmed_at`, else `consented_at`) is after `enabled_at` and at least `delay_days` ago | `welcome:{subscriber}` |
+| `after_purchase` | A paid order (D152's `PAID`: captured payment, never copied or host; status `paid`, `fulfilled` or `closed`, not restricted or anonymised) delivered (`delivered_at`) after `enabled_at` and at least `delay_days` ago, whose email is a `subscribed` address on the list | `after_purchase:{order}` |
+| `win_back` | A `subscribed` subscriber whose address's latest paid order (as above, by lower-case address, as segments match, D296) was placed `delay_days` ago or more, that moment being after `enabled_at` | `win_back:{subscriber}:{latest order}` (so a new order and a new lapse may send it again) |
+
+Each moment must also be within the last seven days (`CATCH_UP_DAYS`): a store whose job was down for longer does not send old news, and the
+keys only need keeping that long. An order with no delivery date (downloads, services, bookings, pickup not marked collected) is not after a
+delivery and starts nothing in this unit.
+
+A send is a row of `commerce.automation_sends` (store, kind, key, subscriber, order, outcome, time; primary key store and key) written first, so a
+key is never sent twice even by two runs at once; then the email through `sendEmail()` with the idempotency key `automation:{store}:{key}`. A
+failed email is recorded `failed` and not tried again. Up to `AUTOMATION_BATCH` (200) a kind a run, within the run's time.
+
+### 6.3 The email
+
+The subscriber's language when the automation has it, else the main language, links under their market (5.1), the store as the sender, its footer,
+*You get this email because you asked for news and offers from {store}*, the subscriber's own unsubscribe link and `List-Unsubscribe` with
+`List-Unsubscribe-Post` (rule 3). Links go straight to their targets (no click counting in this unit). Email kinds `marketing.automation`
+(shopper) and `marketing.automation.test` (staff; *Send a test* to the staff member's own address, subject marked `[Test]`, counted nowhere).
+
+### 6.4 Back in stock: the request
+
+When the store has back in stock on and the shop on, the product page offers *Email me when it's back* under a chosen variant that is sold out
+(physical, not digital, stock policy `deny`, offered to this shopper). The shopper types an address (a signed-in customer's is filled in) and
+presses once; `/api/stock-requests` (same site only, a resolved selling shop, the variant the store's and offered) keeps
+`commerce.stock_requests`: the store, the variant and its product, the address (lower case), language, market, the customer when signed in, a
+status, a confirmation hash and expiry, an own token, and a visitor key that changes every day (as forms', D93, never an IP address).
+
+- A **signed-in customer whose email is verified** asking for their own address is `waiting` at once (the account is the proof, rule 2).
+- **Anyone else** gets one email, *Confirm that {store} may email you when {product} is back* (`stock.confirm`), whose link opens
+  `/account/stock/{token}` with a button (acting from a page, never from opening the link); pressing it makes the request `waiting`. The link
+  works for seven days; an unconfirmed request is deleted after that.
+- Asking again for the same variant and address while one is open answers the same, and sends no second confirmation within a day. A visitor
+  key makes at most 10 requests a store a day, an address at most 5 open confirmations a store; over that the answer is *Try again later*.
+- The answer never says whether the address was known.
+
+The status moves only `pending → waiting | cancelled` and `waiting → sent | cancelled` (`stock_requests_rules()`); one open request per store,
+variant and address (a unique index over `pending` and `waiting`).
+
+### 6.5 Back in stock: the email
+
+Every run (6.2) the waiting requests whose variant is in stock again (`commerce.variant_availability`'s `in_stock` > 0, read the one way, D172),
+whose product is offered (active, the shop on, its kind's feature on) and whose store has back in stock on are sent one email each, *{product} is
+back at {store}* (`stock.back_in_stock`): the product's and variant's name, a button to its page in the request's market (no picture: product pictures are WebP, which some mail
+apps cannot show), and *You
+get this email once, because you asked for it on {date}.* The request is `sent` before the email goes (claimed under `for update skip locked`), so
+it is never sent twice. When the variant has fewer units than people waiting, every one is still told (the email promises nothing about how many
+there are). Its words are hand-written (`m.backInStock`, nb, sv, da, en, in `HAND_WRITTEN_ONLY` until a legal review). A request does not
+subscribe anyone to marketing.
+
+Switching back in stock off hides the form and sends nothing; waiting requests are kept and the page says how many people would not hear. A request
+waiting longer than 180 days is deleted; a sent or cancelled one 30 days after.
+
+### 6.6 What the owner sees
+
+*Email automations* under Marketing (beside, and apart from, Settings → Automation's order rules): four cards, each saying what it does in words (*Welcomes people who join your list*), whether it is on, how many it
+sent in the last 30 days, and one main action (*Switch on*, or *Edit*). A lifecycle automation's page has its days, its words per language (the
+broadcast editor's fields), *Send a test* and the switch. Back in stock's card shows how many requests wait and the products most asked for, and its
+switch.
+
+### 6.7 Personal data and copies
+
+`automation_sends` is personal data (by the subscriber; the marketing export lists which automations wrote to the address and when; erasure deletes
+them; kept 90 days, `pruneAutomations()`); `stock_requests` too (by the address and the customer; exported in the marketing section with the product
+and status; erased; pruned as 6.5 says). `automations` is `NOT_PERSONAL` (the store's own settings and words). None is copied (`COPY_RULES`:
+`never`: a copied store writes its own). Email kinds: `marketing.automation`, `marketing.automation.test`,
+`stock.confirm`, `stock.back_in_stock`.
+
+### 6.8 Tests
+
+PGlite: the settings' checks, the request status rules and the one-open-request index. Unit: the starters exist for every kind and language and pass
+`findClaims()`; the delay ranges; the request's address check. Integration (`automations.int.test.ts`): a welcome goes once to a subscriber who joined
+after switching on and never to one before, nor to a pending or unsubscribed one; an after-purchase email goes once per delivered paid order to a
+subscribed address only, never for a copied order; win-back goes after the lapse and again only after a new order lapses; nothing for a closed store;
+a back-in-stock request from a typed address waits for its link, a verified customer's waits at once, stock rising (through a stock change) sends one
+email per waiting address and only once, an unoffered product sends nothing; another store's requests are never read; erasure removes sends and
+requests. A signed-in e2e switches on the welcome email; the storefront e2e asks for a sold-out variant.
+
+## 7. Units E to J, outlined
+
 - **E, discounts (D299).** Extends `discounts` (D31) and campaigns (D114) without a second engine: scope by category and tag, customer groups and
   named customers, minimum quantity, several codes per order under each code's stacking choice, bulk generation of single-use codes, tiered and
   volume rules, automatic discounts as code-less campaigns; `cartSummary()` and `placeOrder()` keep agreeing (`checkout-kinds.int.test.ts`).

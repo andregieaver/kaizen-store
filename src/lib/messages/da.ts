@@ -689,6 +689,22 @@ export const da: Messages = {
     unsubscribed: "Du er afmeldt. Du får ikke flere e-mails med nyheder og tilbud fra os.",
     emailReason: (store: string) => `Du får denne e-mail, fordi du har bedt om nyheder og tilbud fra ${store}.`,
   },
+  // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.
+  stockNotice: {
+    confirmSubject: (store: string) => `Bekræft din anmodning til ${store}`,
+    confirmHeading: "Sig til, når den er tilbage",
+    confirmText: (store: string, product: string) => `Du bad ${store} sende dig én e-mail, når ${product} er på lager igen. Tryk på knappen for at bekræfte. Var det ikke dig, kan du se bort fra denne e-mail, så sker der ingenting.`,
+    confirmButton: "Bekræft",
+    confirmValid: "Linket virker i 7 dage.",
+    pageIntro: (product: string) => `Vil du have én e-mail, når ${product} er på lager igen?`,
+    confirmed: "Tak. Vi sender dig én e-mail, når den er tilbage.",
+    expired: "Vi kunne ikke finde dette link. Det kan være for gammelt eller allerede brugt.",
+    backSubject: (product: string, store: string) => `${product} er tilbage hos ${store}`,
+    backHeading: (product: string) => `${product} er tilbage`,
+    backText: "Du bad os sige til, når den var tilgængelig igen. Nu er den på lager.",
+    backButton: "Se den",
+    backReason: (date: string) => `Du får denne e-mail én gang, fordi du bad om det ${date}.`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Virksomheden",

@@ -108,6 +108,9 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:backorder.",
   // Wave 5 unit A (D295): the marketing consent words, the confirmation email and the pages its links open, until the legal review clears them.
   "ui:news.",
+  // Wave 5 unit D (D298): the back-in-stock request, its confirmation and the email when stock is back.
+  "ui:backInStock.",
+  "ui:stockNotice.",
   "email:backorder.",
   // Wave 3, run 2 (D173): what is done with a buyer's gift text and the third party it names, the page of a pay link and its email. The plain labels of the gift box
   // (`ui:gift.title`, `to`, `from`, `message`, `counter`) are interface text and may be translated.

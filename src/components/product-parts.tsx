@@ -48,6 +48,7 @@ import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/se
 import { relatedProducts } from "@/server/listing";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
+import { backInStockOn } from "@/server/stock-requests";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
 import { featureOn, type FeatureSource } from "@/lib/store-features";
@@ -659,6 +660,16 @@ async function MemberNotice({ store, m }: { store: Store; m: Messages }) {
   return discount ? <p className="mb-2 text-sm">{m.companyAccount.memberNotice(percentText(discount.percent))}</p> : null;
 }
 
+/** The sold-out variants a shopper may ask to hear about (D298), with a signed-in customer's address filled in. */
+async function notifyOffer(store: Store, product: ProductDetail, availability: Awaited<ReturnType<typeof getVariantStock>>, m: Messages) {
+  const variants = product.variants
+    .filter((v) => v.delivery === "physical" && availability.get(v.id)?.stockPolicy !== "continue" && !canOffer(availability.get(v.id)))
+    .map((v) => v.id);
+  if (variants.length === 0) return undefined;
+  const customer = await getCustomer(store.id);
+  return { variants, email: customer?.email ?? "", labels: m.backInStock };
+}
+
 async function VariantsWithStock({
   store,
   product,
@@ -683,10 +694,13 @@ async function VariantsWithStock({
     );
   }
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
-  const availability = await getVariantStock(
-    store.id,
-    product.variants.map((v) => v.id),
-  );
+  const [availability, notifyOn] = await Promise.all([
+    getVariantStock(
+      store.id,
+      product.variants.map((v) => v.id),
+    ),
+    backInStockOn(store.id),
+  ]);
   // Units in stock, or a variant that keeps selling at zero with its days stated (a backorder is bought, never "sold out").
   const available = (variant: ProductDetail["variants"][number]) => variant.delivery === "digital" || canOffer(availability.get(variant.id));
   // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
@@ -767,7 +781,10 @@ async function VariantsWithStock({
             tryAgain: m.tryAgain,
             goToCart: m.goToCart,
             chooseVariant: m.chooseVariantLabel,
-          }}          // Weekly deliveries (D102): the store's own goods to ship, bought once, can go on a list.
+          }}
+          // Back in stock (D298, 6.4): a sold-out physical variant that does not keep selling, while the store has it on.
+          notify={notifyOn ? await notifyOffer(store, product, availability, m) : undefined}
+          // Weekly deliveries (D102): the store's own goods to ship, bought once, can go on a list.
           delivery={
             store.deliveriesOn && product.kind === "goods" && !product.subscriptionOnly
               ? {

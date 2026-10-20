@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import { AddToCart, type AddToCartLabels } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
+import { BackInStock, type BackInStockLabels } from "./back-in-stock";
 import { Dropdown } from "./dropdown";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
 import { announceVariant } from "./variant-selected";
@@ -71,6 +72,7 @@ export function VariantPurchase({
   openCart,
   labels,
   delivery,
+  notify,
 }: {
   variants: OfferedVariant[];
   store: string;
@@ -80,6 +82,8 @@ export function VariantPurchase({
   labels: AddToCartLabels & { chooseVariant: string };
   /** Weekly deliveries (D102): the variants that can go on the list, and where the list is. */
   delivery?: { variants: string[]; listHref: string; labels: AddToDeliveryLabels };
+  /** Back in stock (D298): the sold-out variants a shopper may ask to hear about, the signed-in customer's address, and the words. */
+  notify?: { variants: string[]; email: string; labels: BackInStockLabels };
 }) {
   const [chosen, setChosen] = useVariantChoice(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
@@ -132,6 +136,9 @@ export function VariantPurchase({
           )}
         </div>
       </div>
+      {!variant.available && notify?.variants.includes(variant.id) && (
+        <BackInStock key={`notify-${variant.id}`} store={store} market={market} variantId={variant.id} email={notify.email} labels={notify.labels} />
+      )}
     </div>
   );
 }
