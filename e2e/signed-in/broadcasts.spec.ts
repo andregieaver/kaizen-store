@@ -47,8 +47,8 @@ test("a broadcast is written, saved, tested and sent, and its page then says wha
 
   await page.getByRole("button", { name: "Send now" }).click();
   await page.getByRole("button", { name: "Yes, send it" }).click();
-  await expect(page.getByRole("status").filter({ hasText: /^Sending to/ })).toBeVisible();
-
+  // The page becomes the send's report at once.
+  await expect(page.getByText("Went to")).toBeVisible();
   await page.reload();
   await expect(page.getByText("Went to")).toBeVisible();
   await expect(page.getByText("Presses on its links")).toBeVisible();
