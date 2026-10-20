@@ -22,6 +22,8 @@ test.beforeAll(async () => {
       await sql`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Automations', null)`;
     }
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()), status = 'active' where slug = ${STORE}`;
+    // Every run starts with nothing set up.
+    await sql`delete from commerce.automations where store_id = (select id from commerce.stores where slug = ${STORE})`;
   } finally {
     await sql.end();
   }

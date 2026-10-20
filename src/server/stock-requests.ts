@@ -71,10 +71,12 @@ async function askable(storeId: string, variantId: string): Promise<{ productId:
   return row ? { productId: String(row.product_id) } : null;
 }
 
-/** Whether a store offers the request at all (the product page asks before drawing the form). */
+/** Whether a store offers the request at all (the product page asks before drawing the form): on, and a real open store, as `askable()` asks. */
 export async function backInStockOn(storeId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
-    select 1 from commerce.automations where store_id = ${storeId}::uuid and kind = 'back_in_stock' and enabled
+    select 1 from commerce.automations a join commerce.stores s on s.id = a.store_id
+    where a.store_id = ${storeId}::uuid and a.kind = 'back_in_stock' and a.enabled
+      and commerce.store_is_active(a.store_id) and not (s.is_template or s.starter)
   `);
   return Boolean(row);
 }
