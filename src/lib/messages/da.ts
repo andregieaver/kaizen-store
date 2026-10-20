@@ -645,6 +645,28 @@ export const da: Messages = {
     note: "Du betaler på Mollies sikre side bagefter.",
     problem: "Udfyld navn og e-mail, og leveringsadressen, hvis bestillingen sendes til dig.",
   },
+  /** Betalingsbetingelser for virksomhedskonti (D293): skrevet i hånden, aldrig maskinoversat (`ui:paymentTerms.`), skal gennemgås juridisk. */
+  // legal: needs review
+  paymentTerms: {
+    choice: "Betal med faktura",
+    choiceNote: (company, days, day) => `${company} har ${days} dages betalingsfrist. Fakturaen forfalder ${day}.`,
+    legend: "Faktureringsoplysninger",
+    address: "Faktureringsadresse",
+    place: "Afgiv bestillingen",
+    note: "Der betales intet nu. Fakturaen kommer på e-mail og ligger på ordresiden.",
+    problem: "Betaling med faktura er ikke mulig for denne bestilling.",
+    heading: "Betal med faktura",
+    due: (amount, day) => `${amount} forfalder ${day}.`,
+    overdue: (amount, day) => `${amount} forfaldt ${day} og er ikke betalt endnu.`,
+    paid: "Fakturaen er betalt. Tak.",
+    cancelled: "Fakturaen blev krediteret.",
+    payNow: "Betal nu",
+    payNowNote: "Betal med kort eller en anden metode på betalingssiden.",
+    payAsInvoice: "Betal som fakturaen angiver.",
+    payProblem: "Betalingssiden kunne ikke åbnes. Prøv igen om lidt.",
+    stripeLine: (number) => `Faktura for ordre ${number}`,
+    dueShort: (day) => `Forfalder ${day}`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Virksomheden",

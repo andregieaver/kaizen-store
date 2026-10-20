@@ -29,6 +29,8 @@ import { getOrderTags } from "./order-tags";
 import { isDeliveryOrder } from "./standing-orders";
 import { applyRestock, orderStockHistory, planRestock } from "./stock-restock";
 import { PaymentProviderRefusal, providerOf } from "./payment-providers";
+import { owesOnTerms, voidTerms } from "./payment-terms";
+import { settleOrderSessions } from "./draft-sessions";
 
 type Row = Record<string, unknown>;
 
@@ -165,7 +167,8 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       from commerce.refunds r
       join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
       left join commerce.accounts a on a.id = r.created_by
-      where r.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid
+      -- The cancelled invoice of an order on terms (D293, a void) moved no money: its credit note is among the order's documents.
+      where r.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and r.kind <> 'void'
       order by r.created_at
     `),
     db().execute<Row>(sql`
@@ -1022,7 +1025,20 @@ export async function cancelOrder(
   const restock = order.lines
     .filter((l) => l.variantId && l.delivery === "physical" && l.restockable > 0)
     .map((l) => ({ lineId: l.id, quantity: l.restockable }));
-  if (order.refundableMinor > 0 || restock.length > 0) {
+  // An order on payment terms not yet paid (D293): nothing was paid, so nothing is refunded. A payment page the customer opened is closed first (one found
+  // paid means the order is paid: it is refunded instead), the goods go back in stock as a restock alone, and the invoice is cancelled (`voidTerms()`: a
+  // `void` with its credit note, under the order's lock, so a payment arriving in between refuses it).
+  const onTerms = await owesOnTerms(db(), storeId, orderId);
+  if (onTerms) {
+    const settled = await settleOrderSessions(storeId, orderId);
+    if (settled === "paid") return { ok: false, problem: "The customer has just paid this order: refund it instead." };
+    if (settled === "processing") return { ok: false, problem: "A payment for this order is being processed: wait for it before cancelling." };
+    if (restock.length > 0) {
+      const restocked = await refundOrder(storeId, orderId, { amountMinor: 0, reason, restock }, accountId, { outside: true });
+      if (!restocked.ok) return restocked;
+    }
+    if (!(await voidTerms(storeId, orderId, reason, accountId))) return { ok: false, problem: "The customer has just paid this order: refund it instead." };
+  } else if (order.refundableMinor > 0 || restock.length > 0) {
     const refunded = await refundOrder(storeId, orderId, { amountMinor: order.refundableMinor, reason, restock }, accountId);
     if (!refunded.ok) return refunded;
   }
@@ -1033,8 +1049,8 @@ export async function cancelOrder(
     update commerce.order_downloads set expires_at = now()
     where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and (expires_at is null or expires_at > now())
   `);
-  await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: order.refundableMinor }, "staff");
-  return { ok: true, refundId: "", amountMinor: order.refundableMinor };
+  await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: onTerms ? 0 : order.refundableMinor }, "staff");
+  return onTerms ? { ok: true, refundId: "", amountMinor: 0, unpaid: true } : { ok: true, refundId: "", amountMinor: order.refundableMinor };
 }
 
 // ---------------------------------------------------------------------------
@@ -1081,10 +1097,12 @@ export async function markBalancePaid(
   accountId: string | null,
 ): Promise<boolean> {
   return db().transaction(async (tx) => {
+    // An order on payment terms (D293) owes its balance as an invoice, not at a venue: it is recorded paid through `recordTermsPaidOutside()`.
     const [order] = await tx.execute<Row>(sql`
-      select balance_minor, currency from commerce.orders
+      select balance_minor, currency from commerce.orders o
       where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status in ('paid', 'fulfilled') and balance_minor > 0
         and copied_from is null
+        and not exists (select 1 from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id)
       for update
     `);
     if (!order) return false;

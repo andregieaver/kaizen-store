@@ -38,6 +38,7 @@ export const PLACEHOLDERS: Record<PlaceholderName, { label: string }> = {
   return_number: { label: "The return's number" },
   pickup_place: { label: "The place to collect from" },
   change_number: { label: "The change's number" },
+  due_date: { label: "The day the payment is due, in the customer's language" },
 };
 
 /** The values of a notification's placeholders for one email; null where it is not known. Money is already formatted in the order's currency. */

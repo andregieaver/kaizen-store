@@ -3,9 +3,12 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 
 import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
+import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
 import type { VatNumberMessage } from "@/lib/vat-text";
 import type { CheckoutProblem } from "@/server/checkout";
 
+import { CheckoutTerms } from "./checkout-terms";
+import { termsKey, useTicked } from "./terms-choice";
 import { VatNumberField, type VatNumberFieldLabels } from "./vat-number-field";
 
 export type CheckoutLabels = {
@@ -89,6 +92,32 @@ export type CheckoutPayerFields = {
 };
 
 /**
+ * Buying on the company's payment terms (D293): offered to a signed-in owner or employee of a company with terms, as a choice beside paying now (or as
+ * the only way when the store takes no payments now). Chosen, who pays is asked with the billing address the invoice needs, the store's terms of sale
+ * are shown as the checkout shows them, and the button places the order with nothing paid.
+ */
+export type CheckoutTermsChoice = {
+  onlyWay: boolean;
+  /** "Fjord AS has 30 days to pay. The invoice is due on 19 November 2026." */
+  note: string;
+  payNow: string;
+  name: string;
+  email: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  postalCode: string;
+  city: string;
+  phoneNeeded: boolean;
+  labels: { choice: string; legend: string; address: string; place: string; note: string };
+  payerLabels: CheckoutPayerFields["labels"];
+  /** The store's terms of sale (D158), or null when it shows none. */
+  display: TermsDisplay | null;
+  template: string;
+  newTab: string;
+};
+
+/**
  * Sends the shopper to payment; stays put and explains if that is not
  * possible. With `consents`, the shopper first ticks each one: that
  * downloads start at once and end the right of withdrawal, and the terms of
@@ -104,6 +133,7 @@ export function CheckoutButton({
   contact,
   payer,
   vat,
+  terms,
 }: {
   store: string;
   market: string;
@@ -118,7 +148,27 @@ export function CheckoutButton({
   payer?: CheckoutPayerFields;
   /** Where the cart offers a business's EU VAT number (D157); only with `company.ask`. */
   vat?: CheckoutVat;
+  /** Where the signed-in buyer's company may buy on payment terms (D293). */
+  terms?: CheckoutTermsChoice;
 }) {
+  const [way, setWay] = useState<"now" | "terms">(terms?.onlyWay ? "terms" : "now");
+  const onTerms = Boolean(terms) && way === "terms";
+  // On terms, who pays is asked with the billing address, whatever the store's provider would have asked.
+  const shownPayer: CheckoutPayerFields | undefined =
+    onTerms && terms
+      ? {
+          needs: { address: true, phone: terms.phoneNeeded },
+          name: terms.name,
+          email: terms.email,
+          phone: terms.phone,
+          line1: terms.line1,
+          line2: terms.line2,
+          postalCode: terms.postalCode,
+          city: terms.city,
+          labels: { ...terms.payerLabels, legend: terms.labels.legend, address: terms.labels.address, note: terms.labels.note },
+        }
+      : payer;
+  const ticked = useTicked(termsKey(store, market));
   // Kept as typed: a form action resets its fields, and a mistyped number should not be lost.
   const [companyName, setCompanyName] = useState(company?.name ?? "");
   const [companyNumber, setCompanyNumber] = useState(company?.number ?? "");
@@ -162,7 +212,7 @@ export function CheckoutButton({
               phone: String(form.get("contactPhone") ?? ""),
             }
           : null,
-        payer
+        shownPayer
           ? {
               name: String(form.get("payerName") ?? ""),
               email: String(form.get("payerEmail") ?? ""),
@@ -173,6 +223,7 @@ export function CheckoutButton({
               city: String(form.get("payerCity") ?? ""),
             }
           : null,
+        onTerms ? { termsTicked: ticked } : null,
       );
     },
     { problem: null },
@@ -184,18 +235,41 @@ export function CheckoutButton({
   }, [to]);
   const [who, setWho] = useState({ name: contact?.name ?? "", email: contact?.email ?? "", phone: contact?.phone ?? "" });
   // Kept as typed: a form action resets its fields.
+  const filled = payer ?? terms;
   const [pays, setPays] = useState({
-    name: payer?.name ?? "",
-    email: payer?.email ?? "",
-    phone: payer?.phone ?? "",
-    line1: payer?.line1 ?? "",
-    line2: payer?.line2 ?? "",
-    postalCode: payer?.postalCode ?? "",
-    city: payer?.city ?? "",
+    name: filled?.name ?? "",
+    email: filled?.email ?? "",
+    phone: filled?.phone ?? "",
+    line1: filled?.line1 ?? "",
+    line2: filled?.line2 ?? "",
+    postalCode: filled?.postalCode ?? "",
+    city: filled?.city ?? "",
   });
   const field = "min-h-11 w-full rounded-md border border-border bg-background px-3";
   return (
     <form action={action} className="flex flex-col gap-3">
+      {terms && !terms.onlyWay && (
+        <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
+          <legend className="sr-only">{terms.labels.choice}</legend>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="way" value="now" checked={way === "now"} onChange={() => setWay("now")} className="mt-0.5 size-4 shrink-0" />
+            {terms.payNow}
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="way" value="terms" checked={way === "terms"} onChange={() => setWay("terms")} className="mt-0.5 size-4 shrink-0" />
+            <span>
+              <span className="font-medium">{terms.labels.choice}</span>
+              <span className="block text-muted">{terms.note}</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
+      {terms?.onlyWay && (
+        <p className="text-sm">
+          <span className="font-medium">{terms.labels.choice}</span>
+          <span className="block text-muted">{terms.note}</span>
+        </p>
+      )}
       {company?.ask && (
         <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">{company.labels.legend}</legend>
@@ -266,14 +340,14 @@ export function CheckoutButton({
           ))}
         </fieldset>
       )}
-      {payer && (
+      {shownPayer && (
         <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">{payer.labels.legend}</legend>
+          <legend className="mb-1 font-medium">{shownPayer.labels.legend}</legend>
           {(
             [
-              ["name", "payerName", payer.labels.name, "text", "name", true, 120],
-              ["email", "payerEmail", payer.labels.email, "email", "email", true, 200],
-              ["phone", "payerPhone", payer.needs.phone ? payer.labels.phone : payer.labels.phoneOptional, "tel", "tel", payer.needs.phone, 40],
+              ["name", "payerName", shownPayer.labels.name, "text", "name", true, 120],
+              ["email", "payerEmail", shownPayer.labels.email, "email", "email", true, 200],
+              ["phone", "payerPhone", shownPayer.needs.phone ? shownPayer.labels.phone : shownPayer.labels.phoneOptional, "tel", "tel", shownPayer.needs.phone, 40],
             ] as const
           ).map(([key, name, text, type, autoComplete, required, max]) => (
             <label key={key} className="flex flex-col gap-1">
@@ -290,15 +364,15 @@ export function CheckoutButton({
               />
             </label>
           ))}
-          {payer.needs.address && (
+          {shownPayer.needs.address && (
             <>
-              <p className="mt-2 font-medium">{payer.labels.address}</p>
+              <p className="mt-2 font-medium">{shownPayer.labels.address}</p>
               {(
                 [
-                  ["line1", "payerLine1", payer.labels.line1, "address-line1", true, 200],
-                  ["line2", "payerLine2", payer.labels.line2, "address-line2", false, 200],
-                  ["postalCode", "payerPostalCode", payer.labels.postalCode, "postal-code", true, 20],
-                  ["city", "payerCity", payer.labels.city, "address-level2", true, 100],
+                  ["line1", "payerLine1", shownPayer.labels.line1, "address-line1", true, 200],
+                  ["line2", "payerLine2", shownPayer.labels.line2, "address-line2", false, 200],
+                  ["postalCode", "payerPostalCode", shownPayer.labels.postalCode, "postal-code", true, 20],
+                  ["city", "payerCity", shownPayer.labels.city, "address-level2", true, 100],
                 ] as const
               ).map(([key, name, text, autoComplete, required, max]) => (
                 <label key={key} className="flex flex-col gap-1">
@@ -316,7 +390,7 @@ export function CheckoutButton({
               ))}
             </>
           )}
-          <p className="text-muted">{payer.labels.note}</p>
+          <p className="text-muted">{shownPayer.labels.note}</p>
         </fieldset>
       )}
       {(["subscription", "digital"] as const).map(
@@ -328,12 +402,13 @@ export function CheckoutButton({
             </label>
           ),
       )}
+      {onTerms && terms?.display && <CheckoutTerms store={store} market={market} display={terms.display} template={terms.template} newTab={terms.newTab} />}
       <button
         type="submit"
-        disabled={disabled || pending || Boolean(to)}
+        disabled={disabled || pending || Boolean(to) || (onTerms && payHeld(terms?.display ?? null, ticked))}
         className="min-h-12 button-primary px-4 font-medium disabled:opacity-40"
       >
-        {pending || to ? labels.startingPayment : labels.checkout}
+        {pending || to ? labels.startingPayment : onTerms && terms ? terms.labels.place : labels.checkout}
       </button>
       <p role="status" aria-live="polite" className="text-sm">
         {state.problem && labels.problems[state.problem]}

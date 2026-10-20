@@ -40,11 +40,12 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
     `select o.*, o.total_minor::text as total_t, to_char(commerce.store_day(o.store_id, o.placed_at), 'YYYY-MM-DD') as placed_on,
             to_char(commerce.store_day(o.store_id, (select min(e.created_at) from commerce.order_events e where e.order_id = o.id and e.type = 'order.paid')), 'YYYY-MM-DD') as paid_on,
             commerce.vat_rate(o.market_code, 'standard', o.placed_at)::text as market_rate,
-            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider not in ('venue', 'exchange') and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
+            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider not in ('venue', 'exchange', 'terms') and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
             (select sum(p.amount_minor)::text from commerce.payments p where p.order_id = o.id and p.provider = 'exchange' and p.status not in ('failed', 'cancelled')) as settled_minor,
             (select jsonb_build_object('returnNumber', rt.number, 'orderNumber', oo.number) from commerce.return_exchanges x
                join commerce.returns rt on rt.id = x.return_id join commerce.orders oo on oo.id = x.order_id where x.id = o.exchange_id) as settled_from,
-            (select p.method from commerce.payments p where p.order_id = o.id and p.provider = 'manual' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_method
+            (select p.method from commerce.payments p where p.order_id = o.id and p.provider = 'manual' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_method,
+            (select jsonb_build_object('terms', t.terms, 'dueOn', to_char(t.due_on, 'YYYY-MM-DD')) from commerce.order_payment_terms t where t.order_id = o.id) as payment_terms
        from commerce.orders o where o.id = $1`,
     [orderId],
   );
@@ -79,6 +80,7 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
       organisationNumber: o.organisation_number, balanceMinor: num(o.balance_minor)!, billingAddress: o.billing_address, shippingAddress: o.shipping_address,
       deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe", onlineMethod: o.online_method ?? null,
       settledByReturn: o.settled_minor ? { amountMinor: Number(o.settled_minor), returnNumber: o.settled_from?.returnNumber ?? null, orderNumber: o.settled_from?.orderNumber ?? null } : null,
+      terms: o.payment_terms ?? null,
     },
     lines: lines.map((l) => ({
       id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPriceMinor: num(l.unit_price_minor)!, totalMinor: num(l.total_minor)!, taxMinor: num(l.tax_minor)!,
@@ -220,6 +222,15 @@ describe("the invoice's snapshot: SQL and the oracle agree", () => {
       expect(snap.lines[0].kind).toBe("booking");
       expect(snap.lines[0].serviceDate).toBe("2026-10-12");
       expect(snap.payments.map((p) => p.kind)).toEqual(["paid_online", "pay_at_venue"]);
+    });
+  });
+
+  it("an order bought on payment terms (D293): its whole total is due by its day, on its terms, never left for a venue", async () => {
+    // An order on terms takes the store's mode, as a venue booking does: only a live store's gets an invoice number.
+    await db.query("insert into commerce.payment_providers (store_id, provider, enabled, active_mode) values ($1, 'stripe', true, 'live') on conflict (store_id, provider) do update set active_mode = 'live'", [no]);
+    const company = await scalar<string>(db, "insert into commerce.customer_companies (store_id, name, organisation_number, payment_terms) values ($1, 'Parity AS', '923456789', 'net_30') returning id", [no]);
+    await expectParity(no, { lines: [{ sku: "TERMS-A", unit: 24900, quantity: 2, rate: 0.25 }, { sku: "TERMS-B", unit: 4950, rate: 0.15, category: "food" }], shipping: 9900, terms: { company, terms: "net_30", dueOn: "2026-11-19" } }, (snap) => {
+      expect(snap.payments).toEqual([{ kind: "due", amountMinor: snap.totals.grossMinor, provider: "terms", dueOn: "2026-11-19", terms: "net_30" }]);
     });
   });
 

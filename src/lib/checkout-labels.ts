@@ -28,6 +28,7 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       host_mix: m.stay.problemHosts,
       host_payments_off: m.stay.problemHostPayments,
       payer: m.payer.problem,
+      terms: m.paymentTerms.problem,
     },
   };
 }

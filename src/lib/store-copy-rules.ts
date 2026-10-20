@@ -234,6 +234,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   page_redirects: never("Old addresses of the original's pages."),
   payment_credentials: never("Payment keys are secrets and are the store's own."),
   payments: never("Copied orders have no payments."),
+  order_payment_terms: never("When the original's orders on payment terms are due (D293): copied orders are history, never owed or reminded."),
   payment_disputes: never("Copied orders have no payments, so no disputes (D288)."),
   payouts: never("A store's payouts are its own Stripe account's money (D290); a copy has none."),
   payout_lines: never("What a payout settled belongs to that payout (D290)."),

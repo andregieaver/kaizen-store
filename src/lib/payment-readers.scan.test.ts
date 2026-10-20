@@ -47,7 +47,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   },
   "src/server/order-edit-emails.ts": { count: 1, reason: "the change email says the store pays a refund back itself when the refunded payment was taken outside Kaizena Flow (manual)" },
   "src/server/order-export.ts": { count: 1, reason: "flags a venue payment made in Stripe's test mode in the order file; a manual payment is never a test payment (`payments_manual_real`)" },
-  "src/server/orders.ts": { count: 4, reason: "the order page's key reads stripe, mollie, venue and manual payments; the other three read `payment_providers` (whether payments are on, Stripe's or Mollie's, D292)" },
+  "src/server/orders.ts": { count: 4, reason: "the order page's key reads stripe, mollie, venue, manual, exchange and terms (D293) payments; the other three read `payment_providers` (whether payments are on, Stripe's or Mollie's, D292)" },
   "src/server/booking-changes.ts": { count: 1, reason: "the order page's key: stripe, venue and manual" },
   "src/server/withdrawals.ts": { count: 3, reason: "the order page's key as the withdrawal function's proof: stripe, venue and manual" },
   "src/server/withdraw-link.ts": { count: 1, reason: "the order page's key in the confirmation email's withdrawal link: stripe, venue and manual" },
@@ -57,6 +57,11 @@ const READERS: Record<string, { count: number; reason: string }> = {
   },
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
+  "src/server/payment-terms.ts": {
+    count: 5,
+    reason:
+      "payment terms (D293): the terms payment (never money) that is the order page's key and is ended or voided, the Stripe session of a balance (counted per press, settled when paid, ended when it lapses), the order's cash recorded outside Kaizena Flow for the cash ceiling, and its pending sessions before money paid outside is recorded",
+  },
   "src/server/payment-facts.ts": { count: 3, reason: "what a payment was, and its real fee (D290), is read from its Stripe charge (D288); a manual, venue or exchange payment keeps its own method and has no charge" },
   "src/server/payment-methods.ts": { count: 1, reason: "a bank payment on its way is a Stripe session waiting for the bank (D291); no other provider's payment waits so" },
   "src/server/payouts.ts": { count: 1, reason: "a Stripe payout's charge is tied to the Stripe payment it settles (D290); no other provider's payment is in a Stripe payout" },

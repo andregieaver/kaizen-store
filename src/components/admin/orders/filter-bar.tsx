@@ -36,6 +36,8 @@ const PAY_LABELS: Record<(typeof PAY_FILTERS)[number], string> = {
   disputed: "Disputed",
   elevated_risk: "Elevated risk (Stripe)",
   authorized: "Card held, to capture",
+  terms_due: "Invoice due (payment terms)",
+  terms_overdue: "Invoice overdue (payment terms)",
 };
 const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
   to_send: "To send",

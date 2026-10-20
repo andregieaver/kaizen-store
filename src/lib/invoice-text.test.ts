@@ -67,8 +67,8 @@ describe("the wording of invoices and credit notes", () => {
     expect(source).toContain("LEGAL TEXT");
     expect(source).toContain("legal: needs review");
     for (const file of ["src/lib/i18n.ts", "src/lib/ui-catalog.ts"]) expect(readFileSync(path.join(process.cwd(), file), "utf8")).not.toContain("invoice-text");
-    // The one function that takes arguments for a statutory sentence takes an IOSS number; the others take numbers and dates.
+    // The one function that takes arguments for a statutory sentence takes an IOSS number; the others take numbers and dates (the terms' days and the due day, D293).
     const withText = Object.entries(documentText("en")).filter(([, v]) => typeof v === "function").map(([k]) => k).sort();
-    expect(withText).toEqual(["creditNoteLink", "invoiceLink", "ioss", "reasonReturn", "refersTo", "vatHome"]);
+    expect(withText).toEqual(["creditNoteLink", "invoiceLink", "ioss", "reasonReturn", "refersTo", "termsDays", "toPayBy", "vatHome"]);
   });
 });

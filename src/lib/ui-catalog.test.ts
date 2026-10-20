@@ -296,3 +296,11 @@ describe("the parcel emails and tracking words (D238)", () => {
     expect(isHandWrittenOnly("ui:tracking.trouble")).toBe(true);
   });
 });
+
+describe("the payment terms words (D293)", () => {
+  it("are never machine-translated while they wait for legal review", () => {
+    for (const prefix of ["ui:paymentTerms.", "email:terms."]) expect(HAND_WRITTEN_ONLY).toContain(prefix);
+    expect(isHandWrittenOnly("ui:paymentTerms.choiceNote")).toBe(true);
+    expect(isHandWrittenOnly("email:terms.overdueIntro")).toBe(true);
+  });
+});

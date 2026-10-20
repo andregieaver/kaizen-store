@@ -5,11 +5,14 @@
 import { earnedText, type OrderBonus } from "./bonus-shopper";
 import { registeredEmail } from "./ui-registry";
 import { EXCHANGE_EMAIL_TEXT } from "./exchange-email-text";
+import { TERMS_EMAIL_TEXT } from "./terms-email-text";
 
 const text = {
   nb: {
     // Exchanges and return labels (D239): `exchange`, `returnLabel`; hand-written, needs legal review.
     ...EXCHANGE_EMAIL_TEXT.nb,
+    // Payment terms (D293): `terms`; hand-written, needs legal review.
+    ...TERMS_EMAIL_TEXT.nb,
     deliveries: {
       startedSubject: (store: string) => `Abonnementsboksen din fra ${store} er klar`,
       startedHeading: "Abonnementsboksen din er klar",
@@ -306,6 +309,8 @@ const text = {
   sv: {
     // Exchanges and return labels (D239): `exchange`, `returnLabel`; hand-written, needs legal review.
     ...EXCHANGE_EMAIL_TEXT.sv,
+    // Payment terms (D293): `terms`; hand-written, needs legal review.
+    ...TERMS_EMAIL_TEXT.sv,
     deliveries: {
       startedSubject: (store: string) => `Din prenumerationsbox från ${store} är klar`,
       startedHeading: "Din prenumerationsbox är klar",
@@ -602,6 +607,8 @@ const text = {
   da: {
     // Exchanges and return labels (D239): `exchange`, `returnLabel`; hand-written, needs legal review.
     ...EXCHANGE_EMAIL_TEXT.da,
+    // Payment terms (D293): `terms`; hand-written, needs legal review.
+    ...TERMS_EMAIL_TEXT.da,
     deliveries: {
       startedSubject: (store: string) => `Din abonnementsboks fra ${store} er klar`,
       startedHeading: "Din abonnementsboks er klar",
@@ -898,6 +905,8 @@ const text = {
   en: {
     // Exchanges and return labels (D239): `exchange`, `returnLabel`; hand-written, needs legal review.
     ...EXCHANGE_EMAIL_TEXT.en,
+    // Payment terms (D293): `terms`; hand-written, needs legal review.
+    ...TERMS_EMAIL_TEXT.en,
     deliveries: {
       startedSubject: (store: string) => `Your subscription box from ${store} is set up`,
       startedHeading: "Your subscription box is set up",

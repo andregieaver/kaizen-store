@@ -20,6 +20,7 @@ import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
 import { parseAttribution } from "@/lib/recommendations-schema";
+import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
 
@@ -146,6 +147,8 @@ export async function checkoutAction(
   contact: { name: string; email: string; phone: string } | null = null,
   /** Who pays and where the goods go, as typed, when the store's checkout is Mollie's (D292); checked by `startCheckout()`. */
   payer: Partial<Record<"name" | "email" | "phone" | "line1" | "line2" | "postalCode" | "city", string>> | null = null,
+  /** Bought on the company's payment terms (D293), with whether the store's terms of sale were ticked (in `checkbox` mode). */
+  onTerms: { termsTicked: boolean } | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -168,6 +171,9 @@ export async function checkoutAction(
   const who = contact ? contactInput.safeParse(contact) : null;
   if (who && !who.success) return { problem: "contact" };
 
+  // The store's terms of sale (D158) are accepted here when no payment page follows: in `checkbox` mode, only ticked.
+  if (onTerms && shop.store.termsAtCheckout === "checkbox" && !onTerms.termsTicked) return { problem: "consent" };
+
   const header = (await headers()).get("origin");
   const origin = header ? new URL(header).origin : siteUrl();
   const result = await startCheckout(
@@ -177,7 +183,13 @@ export async function checkoutAction(
     t(shop.market.lang).shipping,
     { digital: consent.digital === true, subscription: consent.subscription === true },
     // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
-    { customerId: (await getCustomer(shop.store.id))?.id ?? null, contact: who?.success ? who.data : null, payer },
+    {
+      customerId: (await getCustomer(shop.store.id))?.id ?? null,
+      contact: who?.success ? who.data : null,
+      payer,
+      onTerms: onTerms !== null,
+      ...(onTerms && { recordTerms: (orderId: string) => recordTermsForOrder(shop.store, shop.market, orderId) }),
+    },
   );
   if (result.ok) return { problem: null, to: result.url };
   refresh();

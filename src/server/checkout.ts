@@ -22,6 +22,7 @@ import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { cleanPayer, type PayerDetails } from "@/lib/mollie";
+import type { PaymentTerms } from "@/lib/payment-terms";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
@@ -46,6 +47,7 @@ import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
+import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -112,6 +114,8 @@ export type PlacedOrder = {
   discount: { code: string; couponMinor: number } | null;
   /** The host whose listings these are (D71), paid on their own Stripe account; null for the store's own. */
   hostId: string | null;
+  /** Bought on the buyer's company's payment terms (D293): nothing is paid now, the whole total is the balance, due on `dueOn`. */
+  terms?: { terms: PaymentTerms; dueOn: string } | null;
 };
 
 export type CheckoutProblem =
@@ -135,7 +139,9 @@ export type CheckoutProblem =
   | "host_mix"
   | "host_payments_off"
   /** On Mollie (D292): who pays, or where the goods go, is missing or not right. */
-  | "payer";
+  | "payer"
+  /** Payment terms (D293) were asked for an order they are not offered for: the buyer's company, the basket or the credit limit. */
+  | "terms";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -197,8 +203,11 @@ export async function placeOrder(
     customerId = null,
     noBackorder = false,
     flatRateOnly = false,
+    terms = false,
   }: {
     customerId?: string | null;
+    /** Bought on the buyer's company's payment terms (D293): checked again here under the company's lock; refused as `terms`. */
+    terms?: boolean;
     /** Never sells past stock, whatever a variant's policy says: a weekly box is filled from free stock only (wave 3, D172). */
     noBackorder?: boolean;
     /** Pays the market's flat rate, never one of the store's own methods (D237 1.4 decision 1, 2.8): a weekly box, as its estimate says. */
@@ -629,6 +638,25 @@ export async function placeOrder(
     const tax = taxOutcome.taxMinor;
     const total = subtotal + shipping - discountAll;
 
+    // Payment terms (D293): the company's terms and credit limit, read under its lock so two orders of one company are counted one after the other, and only
+    // for goods bought once (no booking, subscription, deposit or venue part, no host's listing). The whole total is then the balance, and the order is the
+    // company's: its name and number on the order and the invoice.
+    let onTerms: { companyId: string; terms: PaymentTerms; dueOn: string; company: { name: string; number: string } } | null = null;
+    if (terms) {
+      const facts = await termsFacts(tx, storeId, customerId, { lock: true });
+      const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => p.line.kind === "goods" && !p.startsAt);
+      const offer = decideTerms(facts, { goodsOnly, totalMinor: total, currency: market.currency });
+      if (!offer.ok || !facts.company) return { ok: false, problem: "terms" };
+      onTerms = {
+        companyId: facts.company.id,
+        terms: offer.terms,
+        dueOn: offer.dueOn,
+        company: { name: facts.company.name, number: facts.company.organisationNumber || company?.number || "" },
+      };
+    }
+    const orderCompany = onTerms ? onTerms.company : company;
+    const orderBalance = onTerms ? total : balance;
+
     // The order is numbered and written in `insertOrder()`, the one place that does (D141, `src/server/order-insert.ts`). The buyer's
     // gift (D173) is copied from the cart when the store has gift messages on; a store with the switch off ignores whatever the cart holds.
     const gift: GiftFields = cart.gift_on ? giftOfRow(cart) : NO_GIFT;
@@ -647,9 +675,9 @@ export async function placeOrder(
       customerId,
       discountCodeId: discount?.id ?? null,
       discountCode: discount?.code ?? null,
-      companyName: company?.name ?? null,
-      organisationNumber: company?.number ?? null,
-      balanceMinor: balance,
+      companyName: orderCompany?.name ?? null,
+      organisationNumber: orderCompany?.number ?? null,
+      balanceMinor: orderBalance,
       hostId,
       memberDiscountMinor: memberTotal,
       memberLabel: memberTotal > 0 ? member!.label : null,
@@ -671,6 +699,8 @@ export async function placeOrder(
       vatCheckId: taxFacts.buyerCheck?.id ?? null,
       gift,
     });
+
+    if (onTerms) await recordOrderTerms(tx, storeId, orderId, onTerms.companyId, onTerms);
 
     for (const [i, p] of priced.entries()) {
       // What the variant holds when it is sold (D160), with the base in effect in this market: frozen on the line, so the
@@ -820,7 +850,7 @@ export async function placeOrder(
             unitPriceMinor: p.recurring ? p.renewUnit : p.unit,
             quantity: p.quantity,
             recurring: p.recurring,
-            dueNowMinor: p.total - venue[i],
+            dueNowMinor: onTerms ? 0 : p.total - venue[i],
             deposit: venue[i] > 0 && venue[i] < p.total,
           })),
           ...fees.map((fee) => ({
@@ -846,9 +876,9 @@ export async function placeOrder(
         shippingReliefMinor: shippingRelief,
         treatment: taxOutcome.treatment,
         totalMinor: total,
-        dueNowMinor: total - balance,
-        balanceMinor: balance,
-        company,
+        dueNowMinor: total - orderBalance,
+        balanceMinor: orderBalance,
+        company: orderCompany,
         // Stripe takes it as a one-time coupon: everything off today that is
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
@@ -870,6 +900,7 @@ export async function placeOrder(
               }
             : null,
         hostId,
+        terms: onTerms ? { terms: onTerms.terms, dueOn: onTerms.dueOn } : null,
       },
     };
   });
@@ -913,6 +944,28 @@ async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: Chec
     await sendOrderConfirmation(storeId, order.orderId);
     await sendBookingStaffNotices(storeId, order.orderId);
   };
+  try {
+    after(notify);
+  } catch {
+    // Not in a request (scripts, tests).
+    await notify();
+  }
+  return token;
+}
+
+/**
+ * Confirms an order bought on payment terms (D293), as a venue booking is confirmed (D66): a pending `terms` payment as its record (never money: the key
+ * to its order page, and what a cancellation before payment voids), then `complete_order_payment()`, so the order is paid as a shop status (stock drawn,
+ * the goods may be sent) and its invoice is issued with the payment line `due`. It is a sale only when its balance arrives. Returns the order page's key.
+ */
+async function confirmOnTerms(storeId: string, order: PlacedOrder): Promise<string> {
+  const token = `terms_${randomBytes(18).toString("base64url")}`;
+  await db().execute(sql`
+    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+    values (${storeId}::uuid, ${order.orderId}::uuid, 'terms', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
+  `);
+  await completeOrderPayment(order.orderId, token);
+  const notify = () => sendOrderConfirmation(storeId, order.orderId);
   try {
     after(notify);
   } catch {
@@ -997,8 +1050,17 @@ export async function startCheckout(
     customerId = null,
     contact = null,
     payer = null,
+    onTerms = false,
+    recordTerms,
   }: {
     customerId?: string | null;
+    /**
+     * Bought on the buyer's company's payment terms (D293): nothing is paid now, so no provider is needed; who pays is given as `payer`, with the billing
+     * address the invoice needs.
+     */
+    onTerms?: boolean;
+    /** Records the store's terms of sale for the order before it is confirmed on terms (D158; no payment page follows to record them). False stops it. */
+    recordTerms?: (orderId: string) => Promise<{ ok: boolean }>;
     /** Who books when nothing is paid online (D66): Stripe asks everyone else. */
     contact?: CheckoutContact | null;
     /** Who pays and where the goods go, as typed, for a store whose checkout is Mollie's (D292): Mollie's page asks for neither. */
@@ -1010,13 +1072,15 @@ export async function startCheckout(
   // The store's checkout provider for the mode it is in (D292): Mollie while chosen and connected, else Stripe.
   const mollieMode = await mollieCheckoutMode(shop.storeId);
   const connected = await paymentConnection(shop.storeId);
-  if (!connected && !mollieMode) return { ok: false, problem: "payments_off" };
+  if (!onTerms && !connected && !mollieMode) return { ok: false, problem: "payments_off" };
+  if (onTerms && !customerId) return { ok: false, problem: "terms" };
   const ui = await getCheckoutUi();
-  // Mollie's page asks for no address: who pays is checked before the order is placed, for what the basket needs.
+  // Mollie's page asks for no address: who pays is checked before the order is placed, for what the basket needs. On terms (D293) no provider's page asks
+  // anything, and a business's invoice needs its full address (Art. 226 point 5): asked always.
   let cleanedPayer: PayerDetails | null = null;
-  if (mollieMode) {
+  if (mollieMode || onTerms) {
     const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market);
-    const needs = { address: resolved?.delivery != null && resolved.method !== "pickup", phone: resolved?.method === "local" };
+    const needs = { address: onTerms || (resolved?.delivery != null && resolved.method !== "pickup"), phone: resolved?.method === "local" };
     const cleaned = payer ? cleanPayer(payer, needs) : null;
     if (cleaned?.ok) cleanedPayer = cleaned.payer;
   }
@@ -1060,17 +1124,28 @@ export async function startCheckout(
     }
     await cancelUnpaidOrder(orderId, "replaced by a new checkout");
   }
-  // On Mollie, who pays must be given before anything is placed (D292); a booking paid wholly at the venue gives its contact instead (D66).
-  if (mollieMode && !cleanedPayer && (payer || !contact)) return { ok: false, problem: "payer" };
+  // On Mollie, who pays must be given before anything is placed (D292); a booking paid wholly at the venue gives its contact instead (D66). On terms always.
+  if ((mollieMode || onTerms) && !cleanedPayer && (onTerms || payer || !contact)) return { ok: false, problem: "payer" };
 
   // A VAT number checked more than 24 hours ago (or that VIES could not answer) is asked again here, before the order is
   // placed, and never while it is (D157); a failure only means VAT is charged. Never stops the checkout.
   await refreshStaleCartCheck({ storeId: shop.storeId, market: shop.market }, cartId);
-  const placed = await placeOrder(shop, cartId, consent, { customerId });
+  const placed = await placeOrder(shop, cartId, consent, { customerId, terms: onTerms });
   if (!placed.ok) return placed;
   const { order } = placed;
   // A checkout of an enrolled visitor (D148): counted in the tests they were shown; never fails the checkout.
   await recordExperimentCart(shop.storeId, cartId, "checkout");
+  // On the company's payment terms (D293): who pays is kept on the order, and it is confirmed at once with nothing paid.
+  if (order.terms) {
+    if (recordTerms && !(await recordTerms(order.orderId)).ok) {
+      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      return { ok: false, problem: "consent" };
+    }
+    await writePayer(shop.storeId, order.orderId, cleanedPayer!, shop.market.code);
+    const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+    const token = await confirmOnTerms(shop.storeId, order);
+    return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
+  }
   // Everything is paid at the venue (D66): no payment now, the booking is confirmed at once.
   if (order.dueNowMinor === 0 && order.balanceMinor > 0) {
     if (!contact) {

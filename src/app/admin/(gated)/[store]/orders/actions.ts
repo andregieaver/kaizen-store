@@ -25,6 +25,7 @@ import {
   undoShipment,
 } from "@/server/order-admin";
 import { sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped } from "@/server/shopper-emails";
+import { recordTermsPaidOutside } from "@/server/payment-terms";
 import { audit } from "@/server/auth";
 import { FULFILMENT_AUDIT_ACTIONS } from "@/lib/order-ops-events";
 import { undoneMessage } from "@/lib/shipment-undo";
@@ -215,6 +216,40 @@ export async function markBalancePaidAction(
   }
   refresh();
   return done("Marked as paid.");
+}
+
+/** Records the invoice of an order on payment terms as paid outside Kaizena Flow (D293): the method, the day received and a reference. */
+export async function recordTermsPaidAction(
+  storeSlug: string,
+  orderId: string,
+  _previous: OrderActionState,
+  form: FormData,
+): Promise<OrderActionState> {
+  const found = await orderFor(storeSlug, orderId);
+  if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
+  const text = (name: string) => String(form.get(name) ?? "").trim();
+  const result = await recordTermsPaidOutside(
+    found.member.store.id,
+    orderId,
+    { method: text("method"), ...(text("receivedOn") ? { receivedOn: text("receivedOn") } : {}), ...(text("reference") ? { reference: text("reference") } : {}) },
+    found.member.account.id,
+  );
+  if (!result.ok) {
+    return failed(
+      {
+        invalid: "Choose how it was paid, and a day in the form 2026-10-20.",
+        not_allowed: "Only the owner can record money paid outside Kaizena Flow, unless the owner has allowed staff to.",
+        not_found: "This order is not waiting for its invoice to be paid.",
+        received_on: "The day it was received is not in the future and at most 90 days back.",
+        processing: "A card payment for this order is being processed: wait for it.",
+        already_paid: "The customer has just paid this order online.",
+        cash_limit: "Cash at or above the country's limit cannot be recorded.",
+      }[result.problem],
+    );
+  }
+  refresh();
+  return done(result.cashWarning ? "Recorded as paid. The cash is close to the country's limit for one sale." : "Recorded as paid.");
 }
 
 /** Corrects the customer's email or delivery address. */

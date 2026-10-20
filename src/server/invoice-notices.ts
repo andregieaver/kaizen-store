@@ -146,7 +146,8 @@ export async function sendPendingDocumentNotices(limit = 50): Promise<number> {
         and (
           (c.source = 'refund'
            and not exists (select 1 from commerce.returns rt where rt.store_id = c.store_id and rt.refund_id = c.refund_id)
-           and (r.created_by is null or c.issued_at > r.created_at + make_interval(mins => ${LATE_MINUTES})
+           -- The cancelled invoice of an order on payment terms (D293, a void) has no refund email to carry its credit note: it goes on its own.
+           and (r.created_by is null or r.kind = 'void' or c.issued_at > r.created_at + make_interval(mins => ${LATE_MINUTES})
                 or exists (select 1 from commerce.email_messages e where e.store_id = c.store_id and e.idempotency_key = 'order-refunded:' || c.refund_id::text)
                 or ${refundEmailOffSql(sql`c.store_id`, "order")}))
           -- A refund email the store switched off (D238) never carries the credit note, so the document goes on its own: a notification switch

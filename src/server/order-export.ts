@@ -141,10 +141,10 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
       exists (
         select 1 from commerce.payments tp
         where tp.store_id = o.store_id and tp.order_id = o.id and tp.status not in ('failed', 'cancelled')
-          and ((tp.provider not in ('venue', 'mollie') and tp.provider_account is not null and exists (
+          and ((tp.provider not in ('venue', 'mollie', 'terms') and tp.provider_account is not null and exists (
                   select 1 from commerce.connected_accounts a where a.store_id = o.store_id and a.account_id = tp.provider_account and a.mode = 'test'))
-            -- A venue payment and a Mollie payment keep their mode on the row (D292).
-            or (tp.provider in ('venue', 'mollie') and tp.test_mode))
+            -- A venue payment, a Mollie payment and an order's payment terms keep their mode on the row (D292, D293).
+            or (tp.provider in ('venue', 'mollie', 'terms') and tp.test_mode))
       ) as test_payment,
       (o.restricted_at is not null or o.anonymised_at is not null) as erased,
       o.archived_at is not null as archived, o.source as order_source, o.is_gift, o.gift_to, o.gift_from, o.gift_message,
@@ -166,8 +166,9 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
     left join lateral (
       select coalesce(sum(r.amount_minor), 0) as amount, count(*) as n, max(r.created_at) as last_at
       from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-      -- The refund of an order change's lower total is not a refund here (D174, docs/analytics.md): the order's total is already the changed one.
-      where r.store_id = o.store_id and p.order_id = o.id and r.status = 'succeeded' and r.order_edit_id is null
+      -- The refund of an order change's lower total is not a refund here (D174, docs/analytics.md): the order's total is already the changed one; nor is the
+      -- cancelled invoice of an order on payment terms (D293, a void), which moved no money.
+      where r.store_id = o.store_id and p.order_id = o.id and r.status = 'succeeded' and r.order_edit_id is null and r.kind <> 'void'
     ) ref on true
     where ${filterOf(store, o)} ${pos ? sql`and (o.placed_at, o.id) > (${pos.at}::timestamptz, ${pos.id}::uuid)` : sql``}
     order by o.placed_at, o.id limit ${limit + 1}

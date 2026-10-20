@@ -21,7 +21,7 @@ describe("what becomes of an order from a provider's answer (D292)", () => {
   });
 
   it("settles a change's or an exchange's difference only, never the order", () => {
-    for (const purpose of ["edit", "exchange"] as const) {
+    for (const purpose of ["edit", "exchange", "terms"] as const) {
       expect(paymentFate("paid", purpose, order)).toEqual({ kind: "settle_change", outcome: "pay" });
       expect(paymentFate("failed", purpose, order)).toEqual({ kind: "settle_change", outcome: "failed" });
       expect(paymentFate("expired", purpose, order)).toEqual({ kind: "settle_change", outcome: "cancelled" });

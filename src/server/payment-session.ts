@@ -148,6 +148,11 @@ export type PaymentSessionOptions = {
    * completes the order another way; no Stripe invoice (the exchange order's invoice is Kaizen's, D159).
    */
   exchangeId?: string;
+  /**
+   * The session pays the balance of an order bought on payment terms (D293): the order is paid as a shop status already and its invoice issued, so no
+   * Stripe invoice is made; `applySession()` settles the terms (`settleTerms()`) and never completes the order again.
+   */
+  termsBalance?: boolean;
 };
 
 /** The session's own failures: the caller decides what becomes of the order. */
@@ -209,7 +214,14 @@ export async function openPaymentSession(
   // Back to the store's own host once it has one (P7), whichever host the request came from.
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
-  const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId, ...(options.orderEditId ? { order_edit_id: options.orderEditId } : {}), ...(options.exchangeId ? { exchange_id: options.exchangeId } : {}) };
+  const metadata = {
+    order_id: order.orderId,
+    order_number: order.number,
+    store_id: shop.storeId,
+    ...(options.orderEditId ? { order_edit_id: options.orderEditId } : {}),
+    ...(options.exchangeId ? { exchange_id: options.exchangeId } : {}),
+    ...(options.termsBalance ? { terms_balance: "1" } : {}),
+  };
   const sellerLine = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
     .filter(Boolean)
     .join(" · ");
@@ -334,6 +346,7 @@ export async function openPaymentSession(
           !kaizenInvoices &&
           !options.orderEditId &&
           !options.exchangeId &&
+          !options.termsBalance &&
           !order.subscription &&
           !partial &&
           !order.hostId && {

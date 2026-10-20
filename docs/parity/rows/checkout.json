@@ -1147,12 +1147,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 2,
-    "gap": "Every store order is paid online at checkout. D66 lets an appointment be paid at the venue or with a deposit, which is not payment terms: no due date, no invoice, no reminder.",
+    "gap": "Built (D293): a company has payment terms (15, 30 or 60 days) and an optional credit limit; its accounts choose Pay by invoice at checkout, the order is confirmed with nothing paid, its stock drawn and its invoice issued with the due date; reminders go three days before and the day after, staff get an overdue alert, the control center and Finance show what is due and overdue, and the order is paid from its page on Stripe's hosted page or recorded as paid outside. Left: a paid order is dated by the day it was placed, as every order in Kaizena Flow's figures is, not the day it was paid (criterion 3); a balance cannot be paid in part; a store on Mollie alone has no Pay now; no browser test of the checkout choice yet.",
     "bucket": "A",
     "wave": 4,
     "criteria": [
@@ -1163,16 +1163,38 @@
     ],
     "evidence": {
       "files": [
-        "src/server/companies.ts",
-        "src/server/order-admin.ts"
+        "src/lib/payment-terms.ts",
+        "src/server/payment-terms.ts",
+        "src/server/checkout.ts",
+        "src/server/payment-outcome.ts",
+        "src/server/order-admin.ts",
+        "src/components/checkout-button.tsx",
+        "src/app/s/[store]/[market]/order/terms-actions.ts",
+        "src/components/admin/analytics/terms-owed-view.tsx",
+        "supabase/migrations/20261020001647_payment_terms_rules.sql"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/payment-terms.test.ts",
+        "src/db/payment-terms.test.ts",
+        "src/server/payment-terms.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/components/documents/order-document-view.test.ts",
+        "src/components/admin/analytics/terms-owed-view.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D66"
+      "D66",
+      "D293"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-20",
+        "from": "missing",
+        "to": "partial",
+        "why": "Payment terms for company accounts (D293): placed unpaid with a due date and its invoice, reminded, overdue in the control center and Finance, paid by a link or recorded, in tests. Sales are dated by the order day, not the payment day."
+      }
+    ]
   },
   {
     "id": "checkout.abandoned-checkout-recovery",

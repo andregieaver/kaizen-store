@@ -6,10 +6,13 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
+import { mainCurrency } from "@/lib/markets";
+import { parsePrice } from "@/lib/product-input";
 import { featureOn } from "@/lib/store-features";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
 import { addMainAccount, createInvites, deleteCompany, removeMember, revokeInvite, saveCompany, staffEmailMarket } from "@/server/companies";
+import { saveCompanyTerms } from "@/server/payment-terms";
 import type { SaveResult } from "@/server/settings";
 
 const id = z.uuid();
@@ -53,6 +56,23 @@ export async function saveCompanyAction(storeSlug: string, companyId: string | n
     redirect(`/admin/${member.store.slug}/companies/${result.id}`);
   }
   return toState(result, "Saved.");
+}
+
+/** Sets a company's payment terms and credit limit (D293), the limit typed in the store's main currency. */
+export async function saveCompanyTermsAction(storeSlug: string, companyId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!featureOn(member.store, "business")) return BUSINESS_OFF;
+  if (!id.safeParse(companyId).success) return bad("company");
+  const currency = mainCurrency(member.store);
+  const terms = String(form.get("terms") ?? "");
+  const typed = String(form.get("creditLimit") ?? "").trim();
+  const limit = typed === "" ? null : parsePrice(typed, currency);
+  if (typed !== "" && limit === null) return { status: "error", messages: [`"${typed}" is not an amount in ${currency}.`] };
+  const result = await saveCompanyTerms(member, companyId, { terms: terms || null, creditLimitMinor: limit }, currency);
+  if (!result.ok) return { status: "error", messages: [result.problem] };
+  refresh();
+  return { status: "ok", messages: ["Saved."] };
 }
 
 export async function deleteCompanyAction(storeSlug: string, companyId: string): Promise<FormState> {

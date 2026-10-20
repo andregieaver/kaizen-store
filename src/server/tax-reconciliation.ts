@@ -209,7 +209,9 @@ async function refundComparison(store: Store, range: TaxRange, read: SetBasedRea
   const notes = await read<Row>(sql`
       select c.currency::text as currency, count(*)::int as n, coalesce(sum(c.net_minor), 0)::bigint as net
       from commerce.credit_notes c
+      -- The credit note of a cancelled invoice on payment terms (D293, a void) is no refund in Finance's figures (NOT_EDIT_REFUND): left out on both sides.
       where c.store_id = ${id}::uuid and c.source = 'refund' and c.issued_on >= ${range.from}::date and c.issued_on < ${range.to}::date
+        and not exists (select 1 from commerce.refunds vr where vr.store_id = c.store_id and vr.id = c.refund_id and vr.kind = 'void')
       group by c.currency
     `);
   const currencies = [...new Set([...finance.map((r) => String(r.currency).trim()), ...notes.map((r) => String(r.currency).trim())])].sort();

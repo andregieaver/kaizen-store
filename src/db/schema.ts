@@ -82,6 +82,7 @@ import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../
 import { RETURN_REASONS } from "../lib/withdrawal";
 import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from "../lib/notifications";
 import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
+import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
   ESTIMATE_DAYS_MAX,
@@ -2953,11 +2954,21 @@ export const customerCompanies = commerce.table(
     maxMembers: integer("max_members").notNull().default(25),
     /** Switched off: its members get no discount and it invites no one. */
     active: boolean("active").notNull().default(true),
+    /** Payment terms (D293): its members may buy now and pay within `net_15`, `net_30` or `net_60` days; null pays at once. Staff set it. */
+    paymentTerms: text("payment_terms"),
+    /** The most it may owe on terms at once (D293), in `credit_currency` (the store's main currency when it was set); null is no limit. */
+    creditLimitMinor: bigint("credit_limit_minor", { mode: "number" }),
+    creditCurrency: char("credit_currency", { length: 3 }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("customer_companies_store_id_key").on(t.storeId, t.id),
+    check("customer_companies_terms", sql`${t.paymentTerms} is null or ${t.paymentTerms} in (${sqlList(PAYMENT_TERMS)})`),
+    check(
+      "customer_companies_credit",
+      sql`(${t.creditLimitMinor} is null) = (${t.creditCurrency} is null) and (${t.creditLimitMinor} is null or ${t.creditLimitMinor} >= 0)`,
+    ),
     uniqueIndex("customer_companies_store_name_idx").on(t.storeId, sql`lower(${t.name})`),
     foreignKey({
       name: "customer_companies_tier_fk",
@@ -4241,7 +4252,10 @@ export const refunds = commerce.table(
      * `return_exchange` credit note covers them).
      */
     exchangeId: uuid("exchange_id"),
-    /** `money` (a refund through the provider or recorded outside) or `transfer` (the credit moved to an exchange order: no provider call, created `succeeded`). */
+    /**
+     * `money` (a refund through the provider or recorded outside), `transfer` (the credit moved to an exchange order: no provider call, created `succeeded`),
+     * `release` (D289) or `void` (D293: an unpaid order on terms cancelled, only its credit note); `REFUND_KINDS`.
+     */
     kind: text("kind").notNull().default("money"),
     createdAt: createdAt(),
   },
@@ -4261,6 +4275,7 @@ export const refunds = commerce.table(
       sql`${t.kind} <> 'transfer' or (${t.exchangeId} is not null and ${t.providerReference} is null and ${t.status} = 'succeeded')`,
     ),
     check("refunds_release", sql`${t.kind} <> 'release' or (${t.providerReference} is null and ${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
+    check("refunds_void", sql`${t.kind} <> 'void' or (${t.providerReference} is null and ${t.status} = 'succeeded' and ${t.exchangeId} is null and ${t.orderEditId} is null)`),
     foreignKey({
       name: "refunds_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -9588,6 +9603,38 @@ export const orderTerms = commerce.table(
     index("order_terms_store_idx").on(t.storeId, t.acceptedAt),
     check("order_terms_mode", sql`${t.mode} in ('link', 'checkbox')`),
     check("order_terms_snapshots", sql`jsonb_typeof(${t.snapshots}) = 'array' and jsonb_array_length(${t.snapshots}) between 1 and 2`),
+  ],
+);
+
+/**
+ * An order bought on payment terms (wave 4 unit F, D293, `docs/wave-4-payments.md` 8): the company it was bought for, its terms and the day its money
+ * is due. Written by `placeOrder()` in the order's own transaction (before the order is paid, so the bonus and referral triggers see it) and afterwards
+ * only by `src/server/payment-terms.ts` (the reminder's and the overdue notice's claims, `paid_at`). The order's `balance_minor` is what is owed; it is
+ * 0 once paid or cancelled. `company_id` is nulled when the company is deleted, which is refused while it owes anything.
+ */
+export const orderPaymentTerms = commerce.table(
+  "order_payment_terms",
+  {
+    orderId: uuid("order_id").primaryKey(),
+    storeId: storeId().references(() => stores.id),
+    companyId: uuid("company_id"),
+    terms: text("terms").notNull(),
+    dueOn: date("due_on", { mode: "string" }).notNull(),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    overdueSentAt: timestamp("overdue_sent_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    orderRef("order_payment_terms_order_fk", t),
+    foreignKey({
+      name: "order_payment_terms_company_fk",
+      columns: [t.storeId, t.companyId],
+      foreignColumns: [customerCompanies.storeId, customerCompanies.id],
+    }),
+    index("order_payment_terms_company_idx").on(t.storeId, t.companyId).where(sql`${t.paidAt} is null`),
+    index("order_payment_terms_due_idx").on(t.dueOn).where(sql`${t.paidAt} is null`),
+    check("order_payment_terms_terms", sql`${t.terms} in (${sqlList(PAYMENT_TERMS)})`),
   ],
 );
 

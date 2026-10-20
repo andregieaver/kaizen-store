@@ -6,7 +6,7 @@
  */
 import type { PermissionKey } from "./permission-keys";
 
-export const STAFF_ALERT_EVENTS = ["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute"] as const;
+export const STAFF_ALERT_EVENTS = ["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue"] as const;
 export type StaffAlertEvent = (typeof STAFF_ALERT_EVENTS)[number];
 export const isStaffAlertEvent = (value: unknown): value is StaffAlertEvent => (STAFF_ALERT_EVENTS as readonly unknown[]).includes(value);
 
@@ -19,6 +19,7 @@ export const ALERT_NEEDS: Record<StaffAlertEvent, PermissionKey> = {
   summary: "analytics:read",
   automation: "orders:read",
   dispute: "orders:read",
+  payment_overdue: "orders:read",
 };
 
 /** The columns of the staff alerts page. */
@@ -30,6 +31,7 @@ export const ALERT_LABELS: Record<StaffAlertEvent, string> = {
   summary: "Summary",
   automation: "Automation",
   dispute: "Dispute",
+  payment_overdue: "Payment overdue",
 };
 
 /** The area named in *Needs {area} access* when a member's role does not hold the key. */
@@ -41,6 +43,7 @@ export const ALERT_AREA_WORDS: Record<StaffAlertEvent, string> = {
   summary: "Analytics",
   automation: "Orders",
   dispute: "Orders",
+  payment_overdue: "Orders",
 };
 
 /** A member as the server read them: active, not expired, in an open store (anyone else is not passed in), with what their role holds. */
@@ -64,14 +67,14 @@ export const memberMayReceive = (member: AlertMember, event: StaffAlertEvent): b
   member.owner || member.permissions.includes(ALERT_NEEDS[event]);
 
 /**
- * The defaults while the owner has not saved the page (4.7): owners get new orders, returns requested, low stock and disputes (D288); refunds overdue go to the contact
+ * The defaults while the owner has not saved the page (4.7): owners get new orders, returns requested, low stock, disputes (D288) and overdue payments on terms (D293); refunds overdue go to the contact
  * address, or to the owners when there is none (today's behaviour of D153 and D172); nobody gets the summary or automation emails.
  */
 export function defaultRecipients(members: readonly AlertMember[], hasContact: boolean): { accounts: Map<string, StaffAlertEvent[]>; contact: StaffAlertEvent[] } {
   const accounts = new Map<string, StaffAlertEvent[]>();
   for (const m of members) {
     if (!m.owner) continue;
-    const events: StaffAlertEvent[] = ["new_order", "return_requested", "low_stock", "dispute"];
+    const events: StaffAlertEvent[] = ["new_order", "return_requested", "low_stock", "dispute", "payment_overdue"];
     if (!hasContact) events.push("refund_overdue");
     accounts.set(m.accountId, events);
   }

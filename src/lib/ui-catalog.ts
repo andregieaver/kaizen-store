@@ -133,6 +133,9 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:returnLabel.",
   "email:exchange.",
   "email:returnLabel.",
+  // Wave 4 unit F (D293): payment terms on the checkout, the order pages and the reminder emails, until the legal review clears them.
+  "ui:paymentTerms.",
+  "email:terms.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

@@ -42,12 +42,12 @@ export type PaymentAnswer = {
   shopper: ShopperDetails | null;
 };
 
-/** What the payment is for: an order's own payment, an order change's difference (D174) or an exchange's difference (D239). */
-export type PaymentPurpose = "order" | "edit" | "exchange";
+/** What a payment pays: the order itself, an order change's difference (D174), an exchange's (D239), or the balance of an order bought on payment terms (D293). */
+export type PaymentPurpose = "order" | "edit" | "exchange" | "terms";
 
 /**
  * What becomes of the order, decided from the answer alone:
- * - `settle_change`: an order change's or an exchange's difference is paid (`pay`) or ended (`failed`, `cancelled`); nothing else is touched.
+ * - `settle_change`: an order change's or an exchange's difference, or the balance of an order on terms, is paid (`pay`) or ended (`failed`, `cancelled`); nothing else is touched.
  * - `unsettled`: hold the card or wait for the bank, as the provider can tell which.
  * - `paid`: complete the order.
  * - `ended`: the payment row ends (`failed` or `cancelled`) and the order is cancelled unless it is a weekly delivery or a staff-made order (`cancel`).

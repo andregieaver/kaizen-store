@@ -90,6 +90,8 @@ export type StoreFigures = {
    * place (the Orders page's *To hand over*) and local deliveries not delivered yet (*Local deliveries*). They are not in `toSend`. Counts only.
    */
   handOver?: HandOverFigures;
+  /** Invoices on payment terms past their due day and not paid (D293), only when some are and only for a member who may read orders. A count only. */
+  termsOverdue?: number;
 };
 
 /** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
@@ -197,6 +199,15 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         text: `${s.name}: ${plural(returns.requested, "return request is", "return requests are")} waiting for an answer.`,
         href: `${base}/returns?status=requested`,
         action: "Answer",
+      });
+    }
+    // Invoices on payment terms not paid by their due day (D293): the customer was sent a notice; money that came outside Kaizena Flow is recorded on the order.
+    if (s.termsOverdue && s.termsOverdue > 0 && !hidden(s, "sales")) {
+      items.push({
+        text: `${s.name}: ${plural(s.termsOverdue, "invoice on payment terms is", "invoices on payment terms are")} overdue.`,
+        href: `${base}/orders?pay=terms_overdue`,
+        action: "See orders",
+        urgent: true,
       });
     }
     // Draft orders sent to a customer and not yet paid (D173): the stock they hold is released when the link ends, so the ones about to end are said apart.

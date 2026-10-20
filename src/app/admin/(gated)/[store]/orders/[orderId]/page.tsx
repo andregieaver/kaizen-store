@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import {
   BalanceForm,
+  TermsPaidForm,
   CancelForm,
   ContactForm,
   NoteForm,
@@ -75,6 +76,7 @@ import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
 import { CARRIERS, getOrderAdmin, liveShipments } from "@/server/order-admin";
+import { dayWords, TERMS_LABELS, TERMS_STATE_LABELS } from "@/lib/payment-terms";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { exchangeOrdersOfReturns } from "@/server/exchange-admin";
 import { orderPrivacy } from "@/server/privacy-pages";
@@ -494,7 +496,26 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} />}
 
-          {order.balanceMinor > 0 && order.status !== "cancelled" && (
+          {order.paymentTerms && (
+            // Bought on payment terms (D293): what is owed and by when; money that arrived outside Kaizena Flow is recorded here.
+            <section aria-labelledby="payment-terms" className={card} data-payment-terms={order.paymentTerms.state}>
+              <h2 id="payment-terms" className="mb-1 text-title text-ink">
+                Pay by invoice · {TERMS_LABELS[order.paymentTerms.terms]}
+              </h2>
+              <p className="mb-3 text-sm text-muted">
+                {order.paymentTerms.state === "paid"
+                  ? `Paid ${when(order.paymentTerms.paidAt!)}. It is a sale from then on.`
+                  : order.paymentTerms.state === "cancelled"
+                    ? "Cancelled before it was paid: the invoice has a credit note."
+                    : `${TERMS_STATE_LABELS[order.paymentTerms.state]}: ${money(order.balanceMinor)} on ${dayWords(order.paymentTerms.dueOn, "en-GB")}. Not a sale until it is paid; the customer can pay from the order page, and is reminded three days before and the day after.`}
+              </p>
+              {order.balanceMinor > 0 && order.paymentTerms.state !== "cancelled" && !order.paymentTerms.paidAt && mayRecordOutside && (
+                <TermsPaidForm {...ids} amountLabel={money(order.balanceMinor)} today={todayIn(store.timeZone)} />
+              )}
+            </section>
+          )}
+
+          {order.balanceMinor > 0 && order.status !== "cancelled" && !order.paymentTerms && (
             <section aria-labelledby="balance" className={card}>
               <h2 id="balance" className="mb-1 text-title text-ink">To pay at the appointment</h2>
               <p className="mb-3 text-sm text-muted">

@@ -98,6 +98,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("order_edits", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A change staff made to an order after purchase (D174): amounts, ids and dates, no personal field (staff's note is only in the history event's data.note, which anonymising removes; the pay link is kept only as a hash). " + KEEP_ORDER),
   entry("order_edit_lines", "shopper", via("order", "order_edit_id"), ["order_edit_id"], "orders", "keep", "The items a change added or took off (D174): titles, SKUs, quantities and amounts, no personal field. " + KEEP_ORDER),
   entry("unsent_closures", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "Units of an order line staff took off what was still to send (D174): ids, quantities and the staff account that did it, no personal field of the shopper. " + KEEP_ORDER),
+  entry("order_payment_terms", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "An order bought on payment terms (D293): the company's id, the terms, the day it is due and when reminders went and it was paid; no personal field. " + KEEP_ORDER),
   entry("order_terms", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "The record of which terms were accepted and when; no personal field. " + KEEP_ORDER, { also: ["consents"] }),
   entry("legal_snapshots", "none", none, [], null, "none", "The store's own page text as it stood when accepted, never a person's data."),
   entry("order_events", "shopper", via("order", "order_id"), ["data.reason", "data.note", "data.priced", "data.address"], "orders", "keep", "Events hold types, ids and dates, except the free text staff typed (data.reason of a cancellation or refund, data.note of a note) and the two postal codes of an order.delivery_mismatch event (data.priced, the one a delivery was priced for, and data.address, the address's; D237). The free text is exported as the event's; the two postal codes are copies of the order's delivery.postalCode and shipping address, exported with the order. All four are removed when the order is anonymised, which the append-only rule allows for those keys only (the postal codes of that event only).", {}),
@@ -345,6 +346,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "order.sent": "shopper",
   "order.refunded": "shopper",
   "order.cancelled": "shopper",
+  // Payment terms (D293): the reminder before the due day and the notice after it, to the order's own address.
+  "order.payment_due": "shopper",
+  "order.payment_overdue": "shopper",
   "order.parcel_out_for_delivery": "shopper",
   "order.parcel_delivered": "shopper",
   "return.approved": "shopper",
@@ -391,6 +395,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "staff.dispute_due": "staff",
   /** A held card's deadline is near (D289): the order's number and amount, never who the customer is. */
   "staff.capture_due": "staff",
+  "staff.payment_overdue": "staff",
   "staff.summary": "staff",
   "staff.test": "staff",
   "automation.notify": "staff",

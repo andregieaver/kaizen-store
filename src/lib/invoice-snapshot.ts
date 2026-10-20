@@ -17,6 +17,7 @@
  * Every rule that comes from a law says where, and is marked needs review by an accountant or lawyer in the spec (section 8).
  */
 import { minorUnitDigits } from "./money";
+import type { PaymentTerms } from "./payment-terms";
 
 export const SNAPSHOT_VERSION = 1 as const;
 
@@ -180,18 +181,21 @@ export type SnapshotTreatment = {
 
 /**
  * How the sale was paid: `paid_online` (Stripe), `paid_outside` (money the seller took outside Kaizen and recorded, wave 3, D173: `provider` is `manual` and `method` says
- * how) or `pay_at_venue` (the balance left for the venue). `method` is set only on `paid_outside`. On a change's additional invoice (D174), `settled_by_order`
- * is the part settled against what the customer had already paid for the order's own invoice (`invoiceNumber`, `provider` `order`). On an exchange order's invoice
+ * how), `pay_at_venue` (the balance left for the venue) or `due` (the balance of an order bought on payment terms, D293, with `dueOn` and `terms`). `method` is set
+ * only on `paid_outside`. On a change's additional invoice (D174), `settled_by_order` is the part settled against what the customer had already paid for the order's own invoice (`invoiceNumber`, `provider` `order`). On an exchange order's invoice
  * (wave 3, D239), `settled_by_return` is the part paid with the credit of a return (`provider` `exchange`, the return's and its order's numbers), listed first.
  */
 export type SnapshotPayment = {
-  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "settled_by_order" | "settled_by_return";
+  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "due" | "settled_by_order" | "settled_by_return";
   amountMinor: number;
   provider: string;
   method?: "cash" | "bank_transfer" | "other" | null;
   invoiceNumber?: string;
   returnNumber?: string | null;
   orderNumber?: string | null;
+  /** On `due` (D293): the day the balance is due and the terms it was bought on. */
+  dueOn?: string;
+  terms?: PaymentTerms;
 };
 
 export type SnapshotNote = "buyer_incomplete" | "unit_price_rounded" | "trial_deferred";
@@ -277,6 +281,8 @@ export type InvoiceOrderFacts = {
   onlineMethod?: string | null;
   /** An exchange order's part paid with a return's credit (its `exchange` payments, D239), with the return's and the original order's numbers; null otherwise. */
   settledByReturn?: { amountMinor: number; returnNumber: string | null; orderNumber: string | null } | null;
+  /** An order bought on payment terms (D293, `order_payment_terms`): its terms and the day its balance is due; null otherwise. */
+  terms?: { terms: PaymentTerms; dueOn: string } | null;
 };
 
 export type InvoiceLineFacts = {
@@ -624,7 +630,14 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
             : { kind: "paid_online" as const, amountMinor: online, provider: order.onlineProvider },
         ]
       : []),
-    ...(order.balanceMinor > 0 ? [{ kind: "pay_at_venue" as const, amountMinor: order.balanceMinor, provider: "venue" }] : []),
+    // The balance of an order bought on terms (D293) is due by its day; any other balance is left for the venue (D66).
+    ...(order.balanceMinor > 0
+      ? [
+          order.terms
+            ? { kind: "due" as const, amountMinor: order.balanceMinor, provider: "terms", dueOn: order.terms.dueOn, terms: order.terms.terms }
+            : { kind: "pay_at_venue" as const, amountMinor: order.balanceMinor, provider: "venue" },
+        ]
+      : []),
   ];
 
   const buyer = buyerOf(order, treatment.buyerVatNumber);

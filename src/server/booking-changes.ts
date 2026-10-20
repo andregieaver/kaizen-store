@@ -33,7 +33,7 @@ async function canAccess(storeId: string, orderId: string, access: ShopperAccess
   const [row] = await db().execute<Row>(sql`
     select 1 from commerce.payments
     where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
-      and provider in ('stripe', 'mollie', 'venue', 'manual') and provider_reference = ${access.sessionId}
+      and provider in ('stripe', 'mollie', 'venue', 'manual', 'terms') and provider_reference = ${access.sessionId}
   `);
   return Boolean(row);
 }

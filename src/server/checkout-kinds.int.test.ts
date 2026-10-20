@@ -3268,3 +3268,61 @@ describe("checkout with the store's own shipping methods, pickup and local deliv
     await expectDocuments(open!.orderId, { euro: scenario.euro });
   });
 });
+
+describe("an order on the company's payment terms (D293)", () => {
+  let termsCompany: string;
+  beforeAll(async () => {
+    const [company] = await db().execute<Row>(sql`
+      insert into commerce.customer_companies (store_id, name, organisation_number, payment_terms) values (${storeId}::uuid, ${`Terms ${run} AS`}, '912345670', 'net_30') returning id
+    `);
+    termsCompany = String(company.id);
+  });
+
+  it.each([{ euro: false }, { euro: true }])("is placed with nothing paid at the cart's total, then its balance alone is paid on Stripe's page (euro: $euro)", async ({ euro }) => {
+    jar.clear();
+    view = euro ? noInEuro : no;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    const customerId = await preRegisterCustomer(storeId, `terms-${euro}-${Date.now()}-${run}@example.com`);
+    await db().execute(sql`update commerce.customers set company_id = ${termsCompany}::uuid, company_role = 'employee' where id = ${customerId}::uuid`);
+    await startSession(storeId, customerId);
+    await add("DEMO-MUG-WHITE", 2);
+    const cart = await getCart(shop());
+    const summary = await cartSummary(shop(), cart);
+    expect(cart.currency).toBe(euro ? "EUR" : "NOK");
+    const sessions = fake.created.length;
+
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {
+      customerId,
+      onTerms: true,
+      payer: { name: "Kari Nordmann", email: `kari-${run}@example.com`, line1: "Storgata 1", postalCode: "0155", city: "Oslo" },
+    });
+    expect(started).toMatchObject({ ok: true, url: expect.stringContaining(`/s/${slug}/${view.slug}/order/`) });
+    // Nothing went to Stripe at checkout: the order is the cart's total, all of it owed, in the currency shown.
+    expect(fake.created).toHaveLength(sessions);
+    const orderId = new URL((started as { url: string }).url).pathname.split("/").at(-1)!;
+    const order = (await getOrder(storeId, orderId))!;
+    expect({ total: order.totalMinor, vat: order.taxMinor, balance: order.balanceMinor, currency: order.currency, status: order.status }).toEqual({
+      total: summary.total,
+      vat: summary.vat,
+      balance: summary.total,
+      currency: euro ? "EUR" : "NOK",
+      status: "paid",
+    });
+    expect(order.paymentTerms).toMatchObject({ terms: "net_30", state: "due", paidAt: null });
+    await expectUnitPrices(cart, order, { euro });
+
+    // Pay now: Stripe's hosted page for the balance alone, in the order's own currency.
+    const { startTermsPayment } = await import("./payment-terms");
+    const pay = await startTermsPayment({ store: { id: storeId, slug } as unknown as Store, market: view }, orderId, origin);
+    expect(pay).toMatchObject({ ok: true });
+    const { params } = fake.created.at(-1)!;
+    expect(chargedNow(params)).toBe(order.balanceMinor);
+    expect(JSON.stringify(params)).toContain(euro ? '"currency":"eur"' : '"currency":"nok"');
+    const sessionId = [...fake.sessions.keys()].at(-1)!;
+    fake.sessions.set(sessionId, { status: "complete", payment_status: "paid", mode: "payment", payment_intent: `pi_${sessionId}` });
+    const paid = await getShopperOrder(storeId, orderId, sessionId);
+    expect({ balance: paid?.balanceMinor, state: paid?.paymentTerms?.state }).toEqual({ balance: 0, state: "paid" });
+    const [payment] = await db().execute<Row>(sql`select amount_minor, currency from commerce.payments where order_id = ${orderId}::uuid and provider = 'stripe' and status = 'captured'`);
+    expect({ amount: Number(payment.amount_minor), currency: String(payment.currency).trim() }).toEqual({ amount: summary.total, currency: euro ? "EUR" : "NOK" });
+  });
+});

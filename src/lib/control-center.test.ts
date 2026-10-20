@@ -300,3 +300,15 @@ describe("support waiting (D216, step 14)", () => {
     expect(attentionFor([store()])).toEqual([]);
   });
 });
+
+describe("the control center and invoices on payment terms (D293)", () => {
+  const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)]).map((i) => `${i.text} -> ${i.href}`);
+
+  it("says how many invoices are overdue, urgent, and links to them; nothing when none are or to a member who may not read orders", () => {
+    expect(texts({ termsOverdue: 2 })).toEqual(["Kaffe: 2 invoices on payment terms are overdue. -> /admin/kaffe/orders?pay=terms_overdue"]);
+    expect(texts({ termsOverdue: 1 })).toEqual(["Kaffe: 1 invoice on payment terms is overdue. -> /admin/kaffe/orders?pay=terms_overdue"]);
+    expect(attentionFor([store({ termsOverdue: 1 })])[0].urgent).toBe(true);
+    expect(texts({ termsOverdue: 0 })).toEqual([]);
+    expect(texts({ termsOverdue: 3, hides: ["sales"] })).toEqual([]);
+  });
+});

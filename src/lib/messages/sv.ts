@@ -645,6 +645,28 @@ export const sv: Messages = {
     note: "Du betalar på Mollies säkra sida i nästa steg.",
     problem: "Fyll i namn och e-post, och leveransadressen om beställningen skickas till dig.",
   },
+  /** Betalningsvillkor för företagskonton (D293): skrivna för hand, aldrig maskinöversatta (`ui:paymentTerms.`), behöver juridisk granskning. */
+  // legal: needs review
+  paymentTerms: {
+    choice: "Betala mot faktura",
+    choiceNote: (company, days, day) => `${company} har ${days} dagars betalningsvillkor. Fakturan förfaller ${day}.`,
+    legend: "Faktureringsuppgifter",
+    address: "Faktureringsadress",
+    place: "Lägg beställningen",
+    note: "Inget betalas nu. Fakturan kommer via mejl och finns på ordersidan.",
+    problem: "Betalning mot faktura är inte tillgänglig för den här beställningen.",
+    heading: "Betala mot faktura",
+    due: (amount, day) => `${amount} förfaller ${day}.`,
+    overdue: (amount, day) => `${amount} förföll ${day} och är inte betalt än.`,
+    paid: "Fakturan är betald. Tack.",
+    cancelled: "Fakturan krediterades.",
+    payNow: "Betala nu",
+    payNowNote: "Betala med kort eller ett annat sätt på betalningssidan.",
+    payAsInvoice: "Betala som fakturan anger.",
+    payProblem: "Betalningssidan kunde inte öppnas. Försök igen om en stund.",
+    stripeLine: (number) => `Faktura för order ${number}`,
+    dueShort: (day) => `Förfaller ${day}`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Företaget",

@@ -8,6 +8,11 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
+import { companyOwes } from "@/server/payment-terms";
+import { mainCurrency } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
+import { PAYMENT_TERMS, TERMS_LABELS } from "@/lib/payment-terms";
+import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -18,6 +23,7 @@ import {
   removeCompanyMemberAction,
   revokeCompanyInviteAction,
   saveCompanyAction,
+  saveCompanyTermsAction,
   searchRegisterCompaniesAction,
   setMainAccountAction,
 } from "../actions";
@@ -36,7 +42,8 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();
-  const [groups, members, invites] = await Promise.all([listTiers(store.id), listMembers(store.id, company.id), listInvites(store.id, company.id)]);
+  const [groups, members, invites, owes] = await Promise.all([listTiers(store.id), listMembers(store.id, company.id), listInvites(store.id, company.id), companyOwes(store.id, company.id)]);
+  const currency = mainCurrency(store);
   const base = `/admin/${store.slug}`;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
@@ -63,6 +70,53 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           />
           <div>
             <SubmitButton>Save</SubmitButton>
+          </div>
+        </ActionForm>
+      </section>
+
+      <section aria-labelledby="terms" className={card}>
+        <h2 id="terms" className="text-title text-ink">
+          Payment terms
+        </h2>
+        <p className="text-sm text-muted">
+          With terms, the company&apos;s accounts can choose <em>Pay by invoice</em> at checkout: the order is confirmed at once and the invoice is due after
+          the days you choose. Reminders go three days before and the day after.
+        </p>
+        {owes.length > 0 && (
+          <p className="text-sm text-ink">
+            Owes now:{" "}
+            {owes
+              .map((o) => `${formatMoney(o.owedMinor, o.currency, locale)} on ${o.orders} ${o.orders === 1 ? "order" : "orders"}${o.overdueMinor > 0 ? `, ${formatMoney(o.overdueMinor, o.currency, locale)} overdue` : ""}`)
+              .join("; ")}
+          </p>
+        )}
+        <ActionForm action={saveCompanyTermsAction.bind(null, store.slug, company.id)} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Terms
+            <select name="terms" defaultValue={company.paymentTerms ?? ""} className={`${control} max-w-xs`}>
+              <option value="">No payment terms</option>
+              {PAYMENT_TERMS.map((terms) => (
+                <option key={terms} value={terms}>
+                  {TERMS_LABELS[terms]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Credit limit ({currency}, optional)
+            <input
+              name="creditLimit"
+              inputMode="decimal"
+              defaultValue={company.creditLimitMinor === null ? "" : formatPriceInput(company.creditLimitMinor, company.creditCurrency ?? currency)}
+              className={`${control} max-w-xs`}
+            />
+            <span className="font-normal text-muted">
+              What the company may owe at once. Leave empty for no limit.
+              {company.creditCurrency && company.creditCurrency !== currency ? ` Kept in ${company.creditCurrency}.` : ""}
+            </span>
+          </label>
+          <div>
+            <SubmitButton>Save terms</SubmitButton>
           </div>
         </ActionForm>
       </section>

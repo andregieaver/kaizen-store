@@ -35,11 +35,14 @@ import { shopperFulfilment } from "@/server/fulfilment";
 import { parcelTrackingFor } from "@/server/shipment-tracking";
 import { exchangeOfOrder } from "@/server/exchanges";
 import { getOrderDocuments } from "@/server/invoices";
-import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
+import { getCheckoutInfo, getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
 import { perRequest } from "@/server/request-memo";
 import type { Store } from "@/server/stores";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
+import { dayWords } from "@/lib/payment-terms";
+
+import { payOnTermsAction } from "../terms-actions";
 
 type Shop = { store: Store; market: Market; orderId: string; query: Promise<StoreQuery> };
 type OrderView = Awaited<ReturnType<typeof loadOrderView>>;
@@ -75,7 +78,13 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
     // The exchange this order was made for (D239 2.1), so its page names the return; the original order's page is never linked (its key is another).
     exchangeOfOrder(store.id, order.id),
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange };
+  // Bought on payment terms (D293): whether the balance can be paid here (Stripe connected; a Mollie-only store has none) and whether a press failed.
+  const termsPay =
+    order.paymentTerms && !order.paymentTerms.paidAt && order.status !== "cancelled"
+      ? await getCheckoutInfo(store.id, order.marketCode).then((info) => info.paymentsOn && info.provider === "stripe")
+      : false;
+  const payFailed = (await query).pay === "failed";
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange, termsPay, payFailed };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -149,6 +158,42 @@ export async function OrderLines(shop: Shop) {
   );
 }
 
+/**
+ * An order bought on payment terms (D293): what is owed and by when (or that it is paid or was cancelled), with *Pay now* where the store takes payments
+ * on Stripe: a plain form, so it works without script, and the press leaves the page for Stripe's own.
+ */
+function termsPaymentBlock({ store, market, order, sessionId, m, money, termsPay, payFailed }: OrderView) {
+  const t = order.paymentTerms;
+  if (!t) return null;
+  const day = dayWords(t.dueOn, market.locale);
+  const words = m.paymentTerms;
+  const line =
+    t.state === "paid" ? words.paid : t.state === "cancelled" ? words.cancelled : t.state === "overdue" ? words.overdue(money(order.balanceMinor), day) : words.due(money(order.balanceMinor), day);
+  return (
+    <section aria-labelledby="terms-payment" className={FRAME} data-payment-terms={t.state}>
+      <h2 id="terms-payment" className="font-heading text-lg">
+        {words.heading}
+      </h2>
+      <p className="mt-1">{line}</p>
+      {termsPay ? (
+        <form action={payOnTermsAction.bind(null, store.slug, market.slug, order.id, sessionId)} className="mt-3 flex flex-col items-start gap-2">
+          <button type="submit" className="inline-flex min-h-11 items-center justify-center button-primary px-5 font-medium">
+            {words.payNow}
+          </button>
+          <span className="text-sm text-muted">{words.payNowNote}</span>
+          {payFailed && (
+            <span role="alert" className="text-sm">
+              {words.payProblem}
+            </span>
+          )}
+        </form>
+      ) : (
+        t.state !== "paid" && t.state !== "cancelled" && <p className="mt-1 text-sm text-muted">{words.payAsInvoice}</p>
+      )}
+    </section>
+  );
+}
+
 /** The order's shipping, discounts, total and VAT (D117). */
 export async function OrderTotals(shop: Shop) {
   const view = await orderView(shop);
@@ -190,7 +235,8 @@ export async function OrderContinue(shop: Shop) {
   return continueLink(await orderView(shop));
 }
 
-function statusBlock({ order, m, exchange }: OrderView) {
+function statusBlock(view: OrderView) {
+  const { order, m, exchange } = view;
   return (
     <>
       {/* A bank payment takes days (D291): the page does not keep asking. */}
@@ -211,6 +257,7 @@ function statusBlock({ order, m, exchange }: OrderView) {
           <p data-exchange-order>{m.exchange.orderLine(exchange.returnNumber, exchange.orderNumber)}</p>
         )}
       </div>
+      {termsPaymentBlock(view)}
     </>
   );
 }
@@ -349,7 +396,7 @@ function totalsList({ order, m, money, store, market }: OrderView) {
         <dd>{money(order.totalMinor)}</dd>
       </div>
       <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
-      {order.balanceMinor > 0 && (
+      {order.balanceMinor > 0 && !order.paymentTerms && (
         // Paid at the appointment (D66): what is still to pay there.
         <div className="flex justify-between">
           <dt>{m.booking.atVenue}</dt>

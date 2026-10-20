@@ -28,6 +28,8 @@ describe("the notification catalogue (docs/wave-3-notifications.md 4.1)", () => 
       "order.parcel_delivered",
       "order.refunded",
       "order.cancelled",
+      "order.payment_due",
+      "order.payment_overdue",
       "order.ready_for_pickup",
       "order.out_for_delivery",
       "return.acknowledgement",

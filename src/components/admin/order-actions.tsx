@@ -1,5 +1,6 @@
 "use client";
 
+import { MANUAL_METHOD_LABELS, MANUAL_PAYMENT_METHODS } from "@/lib/draft-input";
 import { useActionState, useRef, useState, type ReactNode } from "react";
 
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
@@ -7,6 +8,7 @@ import {
   addNoteAction,
   cancelOrderAction,
   markBalancePaidAction,
+  recordTermsPaidAction,
   refundOrderAction,
   resendConfirmationAction,
   updateContactAction,
@@ -253,6 +255,41 @@ export function BalanceForm({ storeSlug, orderId, amountLabel }: Ids & { amountL
         {pending ? "Saving …" : `Mark ${amountLabel} as paid`}
       </button>
       <Result state={state} />
+    </form>
+  );
+}
+
+/** Records the invoice of an order on payment terms as paid outside Kaizena Flow (D293): how, the day it arrived and a reference. */
+export function TermsPaidForm({ storeSlug, orderId, amountLabel, today }: Ids & { amountLabel: string; today: string }) {
+  const [state, action, pending] = useActionState(recordTermsPaidAction.bind(null, storeSlug, orderId), initial);
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className={label}>
+          Paid by
+          <select name="method" defaultValue="bank_transfer" className={input}>
+            {MANUAL_PAYMENT_METHODS.map((method) => (
+              <option key={method} value={method}>
+                {MANUAL_METHOD_LABELS[method]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={label}>
+          Received on
+          <input type="date" name="receivedOn" defaultValue={today} max={today} className={input} />
+        </label>
+        <label className={`${label} min-w-48 flex-1`}>
+          Reference (optional)
+          <input name="reference" maxLength={200} className={input} />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className={primary}>
+          {pending ? "Saving …" : `Record ${amountLabel} as paid`}
+        </button>
+        <Result state={state} />
+      </div>
     </form>
   );
 }

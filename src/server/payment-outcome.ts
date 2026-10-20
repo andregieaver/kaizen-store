@@ -36,19 +36,27 @@ export type AnswerHooks = {
  */
 export async function applyPaymentAnswer(storeId: string, answer: PaymentAnswer, hooks: AnswerHooks = {}): Promise<void> {
   const [payment] = await db().execute<Row>(sql`
-    select order_id, order_edit_id, exchange_id from commerce.payments
-    where store_id = ${storeId}::uuid and provider = ${answer.provider} and provider_reference = ${answer.reference}
+    select p.order_id, p.order_edit_id, p.exchange_id,
+      exists (select 1 from commerce.order_payment_terms t where t.store_id = p.store_id and t.order_id = p.order_id) as on_terms
+    from commerce.payments p
+    where p.store_id = ${storeId}::uuid and p.provider = ${answer.provider} and p.provider_reference = ${answer.reference}
   `);
   if (!payment) return; // Not a payment this store started.
   const orderId = String(payment.order_id);
-  const purpose: PaymentPurpose = payment.order_edit_id ? "edit" : payment.exchange_id ? "exchange" : "order";
+  // An order on payment terms (D293) was confirmed without a payment: any payment made on it later is its balance.
+  const purpose: PaymentPurpose = payment.order_edit_id ? "edit" : payment.exchange_id ? "exchange" : payment.on_terms ? "terms" : "order";
 
   // The difference of an order change (D174) on a paid order: the change is applied (or the money given back), the order is never completed again and never
-  // cancelled, and its addresses are never taken from this payment. An exchange's difference (D239) the same. A payment that lapses or fails marks only its row.
+  // cancelled, and its addresses are never taken from this payment. An exchange's difference (D239) the same, and the balance of an order on terms (D293).
+  // A payment that lapses or fails marks only its row.
   if (purpose !== "order") {
     const fate = paymentFate(answer.state, purpose, { delivery: false, draft: false });
     if (fate.kind !== "settle_change") return;
-    if (purpose === "edit") {
+    if (purpose === "terms") {
+      const { endTermsSession, settleTerms } = await import("./payment-terms");
+      if (fate.outcome !== "pay") await endTermsSession(storeId, answer.reference, fate.outcome);
+      else if ((await settleTerms(storeId, answer.reference)) && hooks.afterPaid) await hooks.afterPaid({ orderId, delivery: false });
+    } else if (purpose === "edit") {
       if (fate.outcome === "pay") await completeEditPayment(storeId, answer.reference);
       else await markEditSessionEnded(storeId, answer.reference, fate.outcome);
     } else {

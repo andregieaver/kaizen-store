@@ -156,6 +156,11 @@ export type OrderSpec = {
   account?: string | null;
   /** When the payment happened (the `order.paid` event); default now. */
   paidAt?: string;
+  /**
+   * Bought on payment terms (D293) for a company of the store: the whole total is the balance, the terms row is written while the order is pending, and
+   * the payment is the `terms` placeholder, left pending (never money). The store must be live for the invoice to be issued.
+   */
+  terms?: { company: string; terms: "net_15" | "net_30" | "net_60"; dueOn: string };
 };
 
 export type PlacedOrder = {
@@ -270,7 +275,7 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
       spec.email ?? "shopper@example.com", subtotal, shipping, discount, tax, total,
       JSON.stringify(spec.billing ?? { name: "Kari Nordmann", line1: "Storgata 5", line2: null, postalCode: "0182", city: "Oslo", country: market }),
       JSON.stringify(spec.shipTo ?? { name: "Kari Nordmann", line1: "Storgata 5", line2: null, postalCode: "0182", city: "Oslo", country: market }),
-      spec.company?.name ?? null, spec.company?.number ?? null, spec.balance ?? 0,
+      spec.company?.name ?? null, spec.company?.number ?? null, spec.terms ? total : (spec.balance ?? 0),
       sum("member"), sum("member") > 0 ? (spec.memberLabel ?? "Gold") : null, sum("campaign"), sum("campaign") > 0 ? (spec.campaignLabel ?? "Autumn sale") : null,
       sum("bonus"), sum("referral"), spec.discountCode ?? null, spec.vatKind ?? "standard", relief, shippingRate, treatment ? JSON.stringify(treatment) : null,
       spec.deliveryLabel ? JSON.stringify({ label: spec.deliveryLabel }) : null, hostId, copiedFrom, spec.copied ? "paid" : "pending_payment",
@@ -309,7 +314,27 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
 
   let invoiceId: string | null = null;
   if (spec.copied) await db.query("select set_config('commerce.copying', '', false)");
-  if (spec.pay !== false && !spec.copied) {
+  if (spec.terms && spec.pay !== false && !spec.copied) {
+    await db.query("insert into commerce.order_payment_terms (store_id, order_id, company_id, terms, due_on) values ($1, $2, $3, $4, $5::date)", [
+      store,
+      order.id,
+      spec.terms.company,
+      spec.terms.terms,
+      spec.terms.dueOn,
+    ]);
+    await db.query("insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'terms', $3, $4, $5, 'pending')", [
+      store,
+      order.id,
+      `terms_fx_${n}`,
+      total,
+      currency,
+    ]);
+    if (spec.pay !== "pending-only") {
+      await db.query("select commerce.complete_order_payment($1::uuid, $2)", [order.id, `terms_fx_${n}`]);
+      if (spec.paidAt) await db.query("update commerce.order_events set created_at = $2 where order_id = $1 and type = 'order.paid'", [order.id, spec.paidAt]).catch(() => undefined);
+      invoiceId = (await one<{ id: string }>(db, "select id from commerce.invoices where order_id = $1", [order.id]))?.id ?? null;
+    }
+  } else if (spec.pay !== false && !spec.copied) {
     const account = spec.account === undefined ? null : spec.account;
     const manual = spec.provider === "manual";
     const recorder = manual ? (await one<{ id: string }>(db, "insert into commerce.accounts (email) values ($1) returning id", [`recorder${n}@example.com`])).id : null;

@@ -2668,6 +2668,20 @@
       "when": 1792449325087,
       "tag": "20261019223525_mollie_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 381,
+      "version": "7",
+      "when": 1792455315716,
+      "tag": "20261020001515_payment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 382,
+      "version": "7",
+      "when": 1792455407171,
+      "tag": "20261020001647_payment_terms_rules",
+      "breakpoints": true
     }
   ]
 }

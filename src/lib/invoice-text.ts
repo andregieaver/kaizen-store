@@ -27,6 +27,13 @@ export type DocumentText = {
   supplyDateNote: string;
   /** The same for an invoice with nothing paid online (a booking paid at the venue): there is no payment day to date the supply by. */
   supplyDateNoteVenue: string;
+  /** The same for an invoice of an order bought on payment terms (D293): the goods were supplied when it was placed, before it is paid. */
+  supplyDateNoteTerms: string;
+  /** An invoice on payment terms (D293): its due date, its terms ("30 days net") and its payment row ("To pay by …"). */
+  dueDate: string;
+  paymentTermsLabel: string;
+  termsDays: (days: number) => string;
+  toPayBy: (day: string) => string;
   orderNumber: string;
   orderedOn: string;
   paidOn: string;
@@ -128,6 +135,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     supplyDate: "Leveringsdato",
     supplyDateNote: "Leveringsdato er betalingsdagen; bestilte tjenester viser sine egne datoer.",
     supplyDateNoteVenue: "Bestilte tjenester viser sine egne datoer.",
+    supplyDateNoteTerms: "Leveringsdato er bestillingsdagen.",
+    dueDate: "Forfallsdato",
+    paymentTermsLabel: "Betalingsbetingelser",
+    termsDays: (days) => `${days} dager netto`,
+    toPayBy: (day) => `Å betale innen ${day}`,
     orderNumber: "Ordrenummer",
     orderedOn: "Bestilt",
     paidOn: "Betalt på nett",
@@ -201,6 +213,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     supplyDate: "Leveransdatum",
     supplyDateNote: "Leveransdatum är betalningsdagen; bokade tjänster visar sina egna datum.",
     supplyDateNoteVenue: "Bokade tjänster visar sina egna datum.",
+    supplyDateNoteTerms: "Leveransdatum är beställningsdagen.",
+    dueDate: "Förfallodatum",
+    paymentTermsLabel: "Betalningsvillkor",
+    termsDays: (days) => `${days} dagar netto`,
+    toPayBy: (day) => `Att betala senast ${day}`,
     orderNumber: "Ordernummer",
     orderedOn: "Beställd",
     paidOn: "Betalt online",
@@ -274,6 +291,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     supplyDate: "Leveringsdato",
     supplyDateNote: "Leveringsdatoen er betalingsdagen; bookede ydelser viser deres egne datoer.",
     supplyDateNoteVenue: "Bookede ydelser viser deres egne datoer.",
+    supplyDateNoteTerms: "Leveringsdatoen er bestillingsdagen.",
+    dueDate: "Forfaldsdato",
+    paymentTermsLabel: "Betalingsbetingelser",
+    termsDays: (days) => `${days} dage netto`,
+    toPayBy: (day) => `Betales senest ${day}`,
     orderNumber: "Ordrenummer",
     orderedOn: "Bestilt",
     paidOn: "Betalt online",
@@ -347,6 +369,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     supplyDate: "Date of supply",
     supplyDateNote: "The date of supply is the payment date; booked services show their own dates.",
     supplyDateNoteVenue: "Booked services show their own dates.",
+    supplyDateNoteTerms: "The date of supply is the order date.",
+    dueDate: "Due date",
+    paymentTermsLabel: "Payment terms",
+    termsDays: (days) => `${days} days net`,
+    toPayBy: (day) => `To pay by ${day}`,
     orderNumber: "Order number",
     orderedOn: "Ordered",
     paidOn: "Paid online",

@@ -655,6 +655,28 @@ export const en = {
     note: "You pay on Mollie's secure page next.",
     problem: "Fill in your name and email, and the delivery address if the order is sent to you.",
   },
+  /** Payment terms for company accounts (D293): hand-written, never machine-translated (`ui:paymentTerms.`), needs legal review. */
+  // legal: needs review
+  paymentTerms: {
+    choice: "Pay by invoice",
+    choiceNote: (company: string, days: number, day: string) => `${company} has ${days} days to pay. The invoice is due on ${day}.`,
+    legend: "Billing details",
+    address: "Billing address",
+    place: "Place the order",
+    note: "Nothing is paid now. The invoice comes by email and is on the order page.",
+    problem: "Pay by invoice is not available for this order.",
+    heading: "Pay by invoice",
+    due: (amount: string, day: string) => `${amount} is due on ${day}.`,
+    overdue: (amount: string, day: string) => `${amount} was due on ${day} and is not paid yet.`,
+    paid: "The invoice is paid. Thank you.",
+    cancelled: "The invoice was cancelled.",
+    payNow: "Pay now",
+    payNowNote: "Pay by card or another method on the payment page.",
+    payAsInvoice: "Pay as the invoice says.",
+    payProblem: "The payment page could not be opened. Try again in a moment.",
+    stripeLine: (number: string) => `Invoice for order ${number}`,
+    dueShort: (day: string) => `Due ${day}`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Your company",

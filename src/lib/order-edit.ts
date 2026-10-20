@@ -37,6 +37,7 @@ export const EDIT_BLOCKS = {
   weekly_box: "A subscription box delivery cannot be changed here: change the customer's list instead.",
   booking: "An order with a booked time, stay or rental cannot be changed: move or cancel the booking instead.",
   venue_balance: "Part of this order is paid at the venue, so it cannot be changed.",
+  terms_unpaid: "This order is bought on payment terms and its invoice is not paid yet, so it cannot be changed. Cancel it and place a new one, or change it once it is paid.",
   vat_kind: "This order carries reverse charge or IOSS, which a change could alter, so it cannot be changed.",
   return: "This order has a withdrawal or a return, so its items cannot be changed.",
   unsent_closed: "Units of this order were taken off what is still to send (refunded or put back as not sent), so its items cannot be changed.",
@@ -60,6 +61,8 @@ export type EditFacts = {
   weeklyBox: boolean;
   booking: boolean;
   balanceMinor: number;
+  /** Bought on payment terms and not paid yet (D293); absent is false. Its balance is its invoice, not a venue's part. */
+  termsUnpaid?: boolean;
   vatKind: "standard" | "reverse_charge" | "ioss";
   /** A withdrawal request was confirmed, or a return exists that is not cancelled. */
   returnOrWithdrawal: boolean;
@@ -81,6 +84,7 @@ export function editBlock(f: EditFacts): EditBlockReason | null {
   if (f.subscription) return "subscription";
   if (f.weeklyBox) return "weekly_box";
   if (f.booking) return "booking";
+  if (f.termsUnpaid) return "terms_unpaid";
   if (f.balanceMinor > 0) return "venue_balance";
   if (f.vatKind !== "standard") return "vat_kind";
   if (f.returnOrWithdrawal) return "return";

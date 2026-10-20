@@ -25,6 +25,7 @@ import { siteUrl } from "@/lib/site";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
 import type { PlaceholderValues } from "@/lib/email-template";
 import { notificationOf } from "@/lib/notifications";
+import { dayWords } from "@/lib/payment-terms";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
@@ -124,8 +125,8 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange')
-    -- An exchange order (D239) paid wholly by its return's credit has only its exchange payment to open its page by.
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms')
+    -- An exchange order (D239) paid wholly by its return's credit has only its exchange payment to open its page by; an order on payment terms (D293) opens by its terms payment, its first.
     order by (provider = 'exchange'), created_at limit 1
   `);
   if (!payment) return null;
@@ -170,8 +171,12 @@ function orderLines(
       ...orderVatReliefRows(order.locale.split("-")[0], order, money),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
-      // Paid at the appointment (D66): what is still to pay there.
-      ...(order.balanceMinor > 0 ? [{ label: m.booking.atVenue, value: money(order.balanceMinor) }] : []),
+      // Bought on payment terms (D293): what is owed and the day it is due. Paid at the appointment (D66): what is still to pay there.
+      ...(order.balanceMinor > 0 && order.paymentTerms
+        ? [{ label: m.paymentTerms.dueShort(dayWords(order.paymentTerms.dueOn, order.locale)), value: money(order.balanceMinor) }]
+        : order.balanceMinor > 0
+          ? [{ label: m.booking.atVenue, value: money(order.balanceMinor) }]
+          : []),
       // Bought for a business (B2B): the total without VAT too.
       ...(order.company ? [{ label: m.totalExclVat, value: money(order.totalMinor - order.taxMinor), muted: true }] : []),
     ],
@@ -707,6 +712,39 @@ export function sendCancelled(storeId: string, orderId: string, amountMinor: num
     // Its appointments come out of the shopper's calendar too (D65).
     attachments: calendarAttachment(bookedLines(order, "cancelled").map((line) => bookingEvent(line, store, m, true))),
   }));
+}
+
+/**
+ * The reminder three days before an order on payment terms is due (`order.payment_due`) and the notice the day after (`order.payment_overdue`) (D293), once
+ * each per order, to the order's own address in its language, with the order page's link (where *Pay now* is) and the invoice (`documents`). Only while
+ * the order still owes; never for a copied one (`orderNotice()`), a restricted or anonymised one or a store template's (`sendEmail()`).
+ */
+export async function sendTermsNotice(storeId: string, orderId: string, kind: "due" | "overdue"): Promise<SendOutcome | null> {
+  const [terms] = await db().execute<Row>(sql`
+    select t.due_on::text as due_on from commerce.order_payment_terms t
+    where t.store_id = ${storeId}::uuid and t.order_id = ${orderId}::uuid and t.paid_at is null
+  `);
+  if (!terms) return null;
+  const notification = kind === "due" ? "order.payment_due" : "order.payment_overdue";
+  return orderNotice(
+    storeId,
+    orderId,
+    notification,
+    `${kind === "due" ? "order-terms-due" : "order-terms-overdue"}:${orderId}`,
+    ({ order, text, money, store }) => {
+      const day = dayWords(String(terms.due_on), order.locale);
+      const amount = money(order.balanceMinor);
+      return {
+        subject: kind === "due" ? text.terms.dueSubject(store.name, order.number) : text.terms.overdueSubject(store.name, order.number),
+        heading: kind === "due" ? text.terms.dueHeading : text.terms.overdueHeading,
+        intro: kind === "due" ? text.terms.dueIntro(order.number, amount, day) : text.terms.overdueIntro(order.number, amount, day),
+        introTail: text.terms.howToPay,
+        extra: [{ type: "paragraph", text: text.terms.alreadyPaid }],
+        values: { order_total: amount, due_date: day },
+      };
+    },
+    { want: { invoice: true }, switchable: true },
+  );
 }
 
 /** A six-digit sign-in code for My account (D28). */

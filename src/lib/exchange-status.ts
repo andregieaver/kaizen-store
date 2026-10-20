@@ -84,7 +84,9 @@ export type LabelSource = (typeof LABEL_SOURCES)[number];
 
 /**
  * `refunds.kind`: an ordinary refund (`money`), the credit of a return moved to an exchange order (`transfer`, no provider call), or the part of a
- * held card payment staff did not capture (`release`, D289: never charged, so no provider call; the sale is reduced and it gets a credit note).
+ * held card payment staff did not capture (`release`, D289: never charged, so no provider call; the sale is reduced and it gets a credit note), or the
+ * invoice of an order on payment terms cancelled before it was paid (`void`, D293: no money and no provider call, only its credit note; never a refund in
+ * the figures, `NOT_EDIT_REFUND`).
  */
-export const REFUND_KINDS = ["money", "transfer", "release"] as const;
+export const REFUND_KINDS = ["money", "transfer", "release", "void"] as const;
 export type RefundKind = (typeof REFUND_KINDS)[number];

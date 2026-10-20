@@ -232,6 +232,34 @@ describe("a booking, a deferred trial line and a venue balance", () => {
   });
 });
 
+describe("an order bought on payment terms (D293)", () => {
+  it("states the supply date, the due date and the terms, and what is to pay by when, never a payment that was not made", () => {
+    const mug = line("m", "Krus", 25000, 4, 0.25);
+    const snap = buildInvoiceSnapshot(facts([mug], { balanceMinor: 100000 + 9900, terms: { terms: "net_30", dueOn: "2026-11-19" } }), ctx);
+    expect(snap.payments.map((p) => p.kind)).toEqual(["due"]);
+    const text = words(render(snap));
+    const nb = documentText("nb");
+    expect(text).toContain(nb.dueDate);
+    expect(text).toContain("19.11.2026");
+    expect(text).toContain(`${nb.paymentTermsLabel} 30 dager netto`);
+    expect(text).toContain(nb.toPayBy("19.11.2026"));
+    expect(text).toContain(nb.supplyDate);
+    expect(text).toContain(nb.supplyDateNoteTerms);
+    expect(text).not.toContain(nb.paidOn);
+    expect(text).not.toContain(nb.paidOnline);
+    expect(text).not.toContain(nb.payAtVenue);
+  });
+
+  it("has the words in every document language", () => {
+    for (const lang of DOCUMENT_LANGUAGES) {
+      const t = documentText(lang);
+      expect(t.dueDate.length).toBeGreaterThan(2);
+      expect(t.termsDays(30)).toContain("30");
+      expect(t.toPayBy("x")).toContain("x");
+    }
+  });
+});
+
 describe("a booking left wholly for the venue", () => {
   it("asserts no payment: no paid date, no supply date equal to a payment day, no \"to pay\" total", () => {
     const room = line("r", "Rom", 180000, 1, 0.12, { delivery: "service", bookedCount: 2, booking: { startsAt: "2026-10-12T14:00", endsAt: "2026-10-14T11:00" } });

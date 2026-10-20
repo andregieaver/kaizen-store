@@ -14,9 +14,11 @@ import {
   type InviteProblem,
   type InviteStatus,
 } from "@/lib/customer-tiers";
+import { isPaymentTerms, type PaymentTerms } from "@/lib/payment-terms";
 
 import { audit, type Membership } from "./auth";
 import { claimOrders, preRegisterCustomer, sha256, normalEmail } from "./customers";
+import { releaseCompanyTerms } from "./payment-terms";
 import type { SaveResult } from "./settings";
 import { sendCompanyEnded, sendCompanyInvite, sendCompanyJoined, type EmailMarket } from "./shopper-emails";
 
@@ -51,6 +53,10 @@ export type Company = {
   /** Accounts in it: main accounts and employees. */
   members: number;
   pendingInvites: number;
+  /** Payment terms (D293): the days it may pay in, or null; a limit in `creditCurrency`, or null for none. */
+  paymentTerms: PaymentTerms | null;
+  creditLimitMinor: number | null;
+  creditCurrency: string | null;
 };
 
 const toCompany = (row: Row): Company => ({
@@ -66,6 +72,9 @@ const toCompany = (row: Row): Company => ({
   active: Boolean(row.active),
   members: Number(row.members ?? 0),
   pendingInvites: Number(row.pending_invites ?? 0),
+  paymentTerms: isPaymentTerms(row.payment_terms) ? row.payment_terms : null,
+  creditLimitMinor: row.credit_limit_minor === null || row.credit_limit_minor === undefined ? null : Number(row.credit_limit_minor),
+  creditCurrency: row.credit_currency ? String(row.credit_currency).trim() : null,
 });
 
 const companyQuery = (where: ReturnType<typeof sql>) => sql`
@@ -131,6 +140,8 @@ export async function deleteCompany({ account, store }: Membership, id: string):
   const company = await getCompany(store.id, id);
   if (!company) return { ok: true };
   if (company.members > 0) return { ok: false, problems: ["Accounts belong to this company. Remove them first, or switch the company off."] };
+  // Orders on payment terms (D293) name the company until paid: one that still owes keeps the company; paid ones forget it.
+  if (!(await releaseCompanyTerms(store.id, id))) return { ok: false, problems: ["This company still owes for orders on payment terms. Switch it off instead."] };
   await db().execute(sql`delete from commerce.customer_companies where store_id = ${store.id}::uuid and id = ${id}::uuid`);
   await audit(account.id, store.id, "company.deleted", { name: company.name });
   return { ok: true };

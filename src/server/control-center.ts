@@ -89,7 +89,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -206,6 +206,15 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         and o.status in ('paid', 'fulfilled')
       group by o.store_id
     `),
+    // Invoices on payment terms past their due day (D293), not yet paid: counts only, never a customer or a company.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select t.store_id, count(*)::int as overdue
+      from commerce.order_payment_terms t
+      join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id and o.copied_from is null
+      where t.store_id in (${idList(orderIds)}) and t.paid_at is null and o.status in ('paid', 'fulfilled') and o.balance_minor > 0
+        and t.due_on < commerce.store_day(t.store_id, now())
+      group by t.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -222,6 +231,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
+  const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -272,6 +282,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         ? { handOver: { pickup: Number(handBy.get(id)!.pickup), oldestPickupAt: handBy.get(id)!.oldest_pickup ? new Date(String(handBy.get(id)!.oldest_pickup)).toISOString() : null, local: Number(handBy.get(id)!.local) } }
         : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
+      ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
     };
   });
 

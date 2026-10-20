@@ -26,6 +26,11 @@ import { getCart, getCartGift } from "@/server/cart";
 import { perRequest } from "@/server/request-memo";
 import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
+import { termsForBasket } from "@/server/payment-terms";
+import { termsDisplayFor } from "@/server/checkout-terms";
+import { termsTemplate } from "@/lib/checkout-terms";
+import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
+import { featureOn } from "@/lib/store-features";
 import type { Store } from "@/server/stores";
 
 import { setCartCreditsAction, updateCartLine } from "./actions";
@@ -62,8 +67,27 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const net = (minor: number, rate = checkout.vatRate) => money(business ? withoutVat(minor, rate) : minor);
   const sumNet = (parts: { minor: number; rate: number }[]) =>
     money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
-  // A signed-in customer's saved company and details fill the fields in.
-  const saved = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" ? await getCustomer(store.id) : null;
+  // A signed-in customer's saved company and details fill the fields in. A company's account may also buy on its payment terms (D293).
+  const businessOn = featureOn(store, "business");
+  const customer = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" || businessOn ? await getCustomer(store.id) : null;
+  const saved = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" ? customer : null;
+  // Goods bought once only: no booking, subscription, venue part or host's listing (`placeOrder()` checks the same under the company's lock).
+  const goodsOnly = summary.balance === 0 && cart.lines.every((line) => !line.plan && !line.booking && !line.hostId && !line.payment);
+  const termsOffer =
+    businessOn && customer && !summary.blocked
+      ? await termsForBasket(store.id, customer.id, { goodsOnly, totalMinor: summary.total, currency: cart.currency })
+      : null;
+  // No payment page follows an order on terms: the store's terms of sale (D158) are shown here instead, as the checkout shows them.
+  const termsDisplay = termsOffer?.ok ? await termsDisplayFor(store, market) : null;
+  const onTerms =
+    termsOffer?.ok && customer
+      ? {
+          note: m.paymentTerms.choiceNote(termsOffer.companyName ?? "", TERMS_DAYS[termsOffer.terms], dayWords(termsOffer.dueOn, market.locale)),
+          customer,
+          display: termsDisplay,
+          template: termsDisplay ? termsTemplate(m.terms, termsDisplay) : "",
+        }
+      : null;
   const companyNeeded = companyRequired(
     store.audience,
     cart.lines.map((line) => line.audience),
@@ -99,6 +123,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     company,
     terms,
     vatWords,
+    onTerms,
   };
 }
 
@@ -610,7 +635,7 @@ function creditsForm({ store, market, m, view }: Draw) {
 }
 
 function checkoutAction({ store, market, m, view }: Draw) {
-  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords } = view;
+  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords, onTerms } = view;
   const { checkout, blocked, atVenueOnly, digital, renewal, plan, tax } = summary;
   const asksCompany = business || companyNeeded;
   // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
@@ -647,7 +672,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
         : undefined;
   return (
     <>
-      {checkout.paymentsOn ? (
+      {checkout.paymentsOn || onTerms ? (
         <CheckoutButton
           store={store.slug}
           market={market.slug}
@@ -684,6 +709,29 @@ function checkoutAction({ store, market, m, view }: Draw) {
                   postalCode: saved?.address.postalCode ?? "",
                   city: saved?.address.city ?? "",
                   labels: m.payer,
+                }
+              : undefined
+          }
+          terms={
+            // Payment terms (D293): the company's account chooses between paying now and an invoice; who pays, with the billing address, is asked then.
+            onTerms && !atVenueOnly
+              ? {
+                  onlyWay: !checkout.paymentsOn,
+                  note: onTerms.note,
+                  payNow: m.paymentTerms.payNow,
+                  name: onTerms.customer.name,
+                  email: onTerms.customer.email,
+                  phone: onTerms.customer.phone,
+                  line1: onTerms.customer.address.line1 ?? "",
+                  line2: onTerms.customer.address.line2 ?? "",
+                  postalCode: onTerms.customer.address.postalCode ?? "",
+                  city: onTerms.customer.address.city ?? "",
+                  phoneNeeded: summary.deliveryState?.method === "local",
+                  labels: m.paymentTerms,
+                  payerLabels: m.payer,
+                  display: onTerms.display,
+                  template: onTerms.template,
+                  newTab: m.terms.newTab,
                 }
               : undefined
           }

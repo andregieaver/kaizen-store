@@ -3,6 +3,7 @@ import type { CreditNoteSnapshot, CreditRow } from "@/lib/credit-allocation";
 import type { EditInvoiceSnapshot, OrderInvoiceSnapshot, SnapshotBucket, SnapshotLine, SnapshotPayment, SnapshotShipping, SnapshotVatHome } from "@/lib/invoice-snapshot";
 import { documentText, editDocumentText, treatmentStatements, type DocumentText, type EditDocumentText } from "@/lib/invoice-text";
 import { editLabel } from "@/lib/order-edit-status";
+import { TERMS_DAYS } from "@/lib/payment-terms";
 import { minorUnitDigits } from "@/lib/money";
 import { addressLines, countryText, dayText, moneyText, percentText, printLocale, rateText } from "@/lib/work-invoice-print";
 
@@ -97,9 +98,18 @@ function Head({ doc, t, e, locale }: { doc: Doc; t: DocumentText; e: EditDocumen
   const edit = isEditInvoice(doc);
   const paid = !credit && paidOnline(doc);
   const paidDay = edit ? doc.supplyDate : doc.order.paidOn;
+  // Bought on payment terms (D293): the goods were supplied when it was placed, and the invoice says when it is due and on what terms.
+  const due = credit ? undefined : doc.payments.find((p) => p.kind === "due" && p.dueOn);
+  const supplyDay = credit ? null : doc.supplyDate;
   const facts: [string, string][] = [
     [t.issueDate, dayText(doc.issuedOn, locale)],
-    ...(paid || edit ? ([[t.supplyDate, dayText(doc.supplyDate, locale)]] as [string, string][]) : []),
+    ...((paid || edit || due) && supplyDay ? ([[t.supplyDate, dayText(supplyDay, locale)]] as [string, string][]) : []),
+    ...(due?.dueOn
+      ? ([
+          [t.dueDate, dayText(due.dueOn, locale)],
+          ...(due.terms ? [[t.paymentTermsLabel, t.termsDays(TERMS_DAYS[due.terms])]] : []),
+        ] as [string, string][])
+      : []),
     [t.orderNumber, doc.order.number],
     // "Paid online" only when Stripe took the money; a payment the seller recorded outside Kaizen is dated in its own words (D173).
     ...(paid
@@ -400,8 +410,10 @@ function Statements({ doc, t, lang }: { doc: Doc; t: DocumentText; lang: string 
 }
 
 /** A payment row's words. `settled_by_order` (a change's additional invoice) is settled against the original's payment: never "to pay at the venue". */
-function paymentWords(p: SnapshotPayment, doc: OrderInvoiceSnapshot, t: DocumentText, e: EditDocumentText): string {
+function paymentWords(p: SnapshotPayment, doc: OrderInvoiceSnapshot, t: DocumentText, e: EditDocumentText, locale: string): string {
   if (p.kind === "paid_online") return t.paidOnline;
+  // The balance of an order on payment terms (D293): owed by its due day, never "to pay at the venue".
+  if (p.kind === "due") return p.dueOn ? t.toPayBy(dayText(p.dueOn, locale)) : t.dueDate;
   if (p.kind === "paid_outside") return `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`;
   if (p.kind === "settled_by_order") return e.settledByOrder(p.invoiceNumber ?? (isEditInvoice(doc) ? doc.refersTo.invoiceNumber : ""));
   // An exchange order's part paid with a return's credit (D239): never "to pay at the venue".
@@ -417,7 +429,7 @@ function Payments({ doc, t, e, locale }: { doc: OrderInvoiceSnapshot; t: Documen
       <dl>
         {doc.payments.map((p, i) => (
           <div key={i} style={{ display: "contents" }}>
-            <dt>{paymentWords(p, doc, t, e)}</dt>
+            <dt>{paymentWords(p, doc, t, e, locale)}</dt>
             <dd className="wd-num">{moneyText(p.amountMinor, doc.currency, locale)}</dd>
           </div>
         ))}
@@ -540,7 +552,17 @@ export function OrderDocumentView({ snapshot }: { snapshot: OrderInvoiceSnapshot
           <Deferred doc={doc} t={t} />
           <section className="wd-block wd-notes" aria-label={t.supplyDate}>
             <ul>
-              <li>{isEditInvoice(doc) ? (paidOnline(doc) ? e.supplyDatePaid : e.supplyDateSettled) : paidOnline(doc) ? t.supplyDateNote : t.supplyDateNoteVenue}</li>
+              <li>
+                {isEditInvoice(doc)
+                  ? paidOnline(doc)
+                    ? e.supplyDatePaid
+                    : e.supplyDateSettled
+                  : paidOnline(doc)
+                    ? t.supplyDateNote
+                    : doc.payments.some((p) => p.kind === "due")
+                      ? t.supplyDateNoteTerms
+                      : t.supplyDateNoteVenue}
+              </li>
               {doc.notes.includes("unit_price_rounded") && <li>{t.unitRounded}</li>}
             </ul>
           </section>

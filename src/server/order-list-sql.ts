@@ -89,8 +89,14 @@ function payCondition(filter: OrderListParams["pay"][number]): SQL {
       return sql`(${REFUNDED_SQL} > 0 and ${REFUNDED_SQL} < ${CAPTURED_SQL})`;
     case "refunded":
       return sql`(${CAPTURED_SQL} > 0 and ${REFUNDED_SQL} >= ${CAPTURED_SQL})`;
+    // At the venue (D66): an order on payment terms owes its invoice instead (D293, `terms_due`/`terms_overdue`).
     case "balance_due":
-      return sql`(o.balance_minor > 0 and o.status in ('paid', 'fulfilled'))`;
+      return sql`(o.balance_minor > 0 and o.status in ('paid', 'fulfilled') and not exists (select 1 from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id))`;
+    case "terms_due":
+    case "terms_overdue":
+      return sql`exists (select 1 from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id and t.paid_at is null
+        and o.balance_minor > 0 and o.status in ('paid', 'fulfilled')
+        and t.due_on ${filter === "terms_overdue" ? sql`<` : sql`>=`} commerce.store_day(t.store_id, now()))`;
     case "unpaid":
       return UNFINISHED;
     // D288: a dispute still open, or lost; a dispute closed in the store's favour no longer marks the order.

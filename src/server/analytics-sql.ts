@@ -60,10 +60,11 @@ export const OWED_UNITS = sql`least(ol.backorder_quantity, commerce.line_to_send
 
 /**
  * A refund `r` (a `commerce.refunds` row) that is a refund in the figures (D174, docs/analytics.md "Refunds"): not the refund of an order change's lower
- * total (`refunds.order_edit_id`), which the change already took off the order's own total. Every refund reader of the analytics and the AI manager adds it,
- * or the sale would be taken off twice.
+ * total (`refunds.order_edit_id`), which the change already took off the order's own total, and not the cancelled invoice of an order on payment terms
+ * (`kind = 'void'`, D293), which moved no money of an order that was never a sale. Every refund reader of the analytics and the AI manager adds it, or the
+ * sale would be taken off twice.
  */
-export const NOT_EDIT_REFUND = sql`(r.order_edit_id is null)`;
+export const NOT_EDIT_REFUND = sql`(r.order_edit_id is null and r.kind <> 'void')`;
 
 /** Revenue of an order without VAT: goods after discounts plus shipping income. */
 export const REVENUE_EX_VAT = sql`(o.total_minor - o.tax_minor)`;

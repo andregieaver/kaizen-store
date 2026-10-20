@@ -115,6 +115,8 @@ export type OrderRow = {
   changes?: { label: string; status: string; createdAt: Ts; appliedAt: Ts; differenceMinor: number; currency: string }[];
   downloads: { fileName: string | null; downloads: number }[];
   terms: { mode: string; acceptedAt: Ts; locale: string | null } | null;
+  /** Bought on payment terms for the buyer's company (D293): the terms, the day it was due, the reminders' days and when it was paid. */
+  paymentTerms?: { terms: string; dueOn: string; reminderSentAt: Ts; overdueSentAt: Ts; paidAt: Ts } | null;
   events: { type: string; createdAt: Ts; reason: string | null; note: string | null }[];
 };
 

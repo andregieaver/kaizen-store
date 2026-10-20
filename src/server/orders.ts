@@ -10,6 +10,7 @@ import { readDelivery, readOrderDelivery, type AnyOrderDelivery, type OrderDeliv
 import { shown, type Market } from "@/lib/markets";
 import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
+import { isPaymentTerms, termsState, type PaymentTerms, type TermsState } from "@/lib/payment-terms";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
@@ -114,6 +115,11 @@ export type OrderView = {
   wasPaid: boolean;
   /** A bank payment is on its way (D291, SEPA Direct Debit): the shopper paid, the money arrives in a few days. */
   awaitingBank: boolean;
+  /**
+   * Bought on payment terms for the buyer's company (D293): the terms, the day the money is due (the store's day), when it was paid, and where it stands
+   * today; null for every other order. Until it is paid the order's `balanceMinor` is what is owed.
+   */
+  paymentTerms: OrderPaymentTerms | null;
   shippingAddress: Address;
   billingAddress: Address;
   lines: {
@@ -231,6 +237,17 @@ function shopperVat(value: unknown): OrderView["vat"] {
   };
 }
 
+export type OrderPaymentTerms = { terms: PaymentTerms; dueOn: string; paidAt: string | null; state: TermsState };
+
+/** An order's payment terms as `getOrder()` reads them (`payment_terms`: the row with the store's day). */
+function paymentTermsOf(row: Row): OrderPaymentTerms | null {
+  const t = row.payment_terms as { terms?: unknown; dueOn?: unknown; paidAt?: unknown; today?: unknown } | null | undefined;
+  if (!t || !isPaymentTerms(t.terms)) return null;
+  const paidAt = t.paidAt ? new Date(String(t.paidAt)).toISOString() : null;
+  const dueOn = String(t.dueOn);
+  return { terms: t.terms, dueOn, paidAt, state: termsState({ dueOn, today: String(t.today), paid: paidAt !== null, cancelled: row.status === "cancelled" }) };
+}
+
 const toOrder = (row: Row, lines: Row[]): OrderView => ({
   id: String(row.id),
   number: String(row.number),
@@ -276,6 +293,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   balanceMinor: Number(row.balance_minor ?? 0),
   wasPaid: Boolean(row.was_paid),
   awaitingBank: row.status === "pending_payment" && row.awaiting_bank_since != null,
+  paymentTerms: paymentTermsOf(row),
   shippingAddress: (row.shipping_address ?? {}) as Address,
   billingAddress: (row.billing_address ?? {}) as Address,
   lines: lines.map((line) => ({
@@ -330,7 +348,9 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
   const [[order], lines] = await Promise.all([
     db().execute<Row>(sql`
       select o.*, coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as shipping_vat_rate,
-        exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid') as was_paid
+        exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid') as was_paid,
+        (select jsonb_build_object('terms', t.terms, 'dueOn', t.due_on::text, 'paidAt', t.paid_at, 'today', commerce.store_day(o.store_id, now())::text)
+           from commerce.order_payment_terms t where t.store_id = o.store_id and t.order_id = o.id) as payment_terms
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
@@ -428,17 +448,19 @@ export async function getShopperOrder(
   sessionId: string,
 ): Promise<OrderView | null> {
   const [payment] = await db().execute<Row>(sql`
-    select pay.id, pay.provider, pay.provider_account, a.mode
+    select pay.id, pay.provider, pay.provider_account, pay.status, a.mode
     from commerce.payments pay
     left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
-      -- An exchange order (D239) paid wholly by its return's credit opens by its exchange payment's reference.
-      and pay.provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange') and pay.provider_reference = ${sessionId}
+      -- An exchange order (D239) paid wholly by its return's credit opens by its exchange payment's reference; an order on payment terms (D293) by its terms one.
+      and pay.provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms') and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 
   const order = await getOrder(storeId, orderId);
-  if (order?.status !== "pending_payment") return order;
+  // The balance of an order on terms (D293), paid on Stripe's page after the order: asked for as an order waiting for payment is, until the webhook arrives.
+  const termsBalance = Boolean(order?.paymentTerms && !order.paymentTerms.paidAt && payment.provider === "stripe" && payment.status === "pending");
+  if (order?.status !== "pending_payment" && !termsBalance) return order;
 
   // The payment's own provider is asked (D292); unreachable or slow, the webhook will follow.
   const provider = providerOf(payment.provider);

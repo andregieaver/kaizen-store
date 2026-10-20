@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
+import { dayWords } from "@/lib/payment-terms";
 import { DISPUTE_STATUS_WORDS, disputeDashboardUrl, disputeNeedsResponse, disputeReasonWords, dueWords, type DisputeStatus } from "@/lib/payment-facts";
 import { permissionsOf } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
@@ -585,6 +586,39 @@ export async function sendCaptureDueAlert(storeId: string, orderId: string, send
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+/**
+ * An order on payment terms was not paid by its due day (D293): to the alert's recipients (owners by default), once per order and recipient; the order's
+ * number, the amount owed and the day it was due, never who the customer or the company is.
+ */
+export async function sendTermsOverdueAlert(storeId: string, orderId: string, send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
+  const [[row], store, targets] = await Promise.all([
+    db().execute<Row>(sql`
+      select o.number, o.balance_minor, o.currency, t.due_on::text as due_on, o.copied_from is not null as copied
+        from commerce.orders o join commerce.order_payment_terms t on t.store_id = o.store_id and t.order_id = o.id
+       where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and t.paid_at is null
+    `),
+    storeById(storeId),
+    alertRecipients(storeId, "payment_overdue"),
+  ]);
+  if (!row || row.copied || !store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  const amount = formatMoney(Number(row.balance_minor), String(row.currency).trim(), "en-GB");
+  const due = dayWords(String(row.due_on), "en-GB");
+  const email = renderEmail({
+    subject: `Order ${String(row.number)} is overdue: ${amount} was due on ${due}`,
+    preview: `The invoice for order ${String(row.number)} was not paid by its due day.`,
+    lang: "en",
+    footer: emailFooter(store, en()),
+    blocks: [
+      { type: "heading", text: "A payment on terms is overdue" },
+      { type: "paragraph", text: `${amount} for order ${String(row.number)} was due on ${due} and has not been recorded as paid. The customer has been sent a notice. When the money arrives outside Kaizena Flow, record it on the order.` },
+      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${orderId}`) },
+    ],
+  });
+  const result = await sendToAll(storeId, store.name, ALERT_EMAIL_KINDS.payment_overdue, targets, email, (r) => `staff-terms-overdue:${orderId}:${r.kind === "contact" ? "contact" : r.accountId}`, orderId, send);
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
 // ---------------------------------------------------------------------------
 // The queue
 // ---------------------------------------------------------------------------
@@ -869,4 +903,5 @@ export const ALERT_EMAIL_KINDS: Record<StaffAlertEvent, string> = {
   summary: "staff.summary",
   automation: "automation.notify",
   dispute: "staff.dispute",
+  payment_overdue: "staff.payment_overdue",
 };

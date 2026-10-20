@@ -152,18 +152,22 @@ export async function runPaymentJobs(): Promise<{
   reminders: number;
   holds: { warned: number; ended: number; captured: number };
   payouts: { stores: number; payouts: number; lines: number; failed: number };
+  terms: { reminded: number; overdue: number };
 }> {
   const { runCaptureJobs } = await import("./payment-capture");
   const { runPayoutJobs } = await import("./payouts");
-  const [facts, reminders, holds, payouts] = await Promise.all([
+  const { runTermsJobs } = await import("./payment-terms");
+  const [facts, reminders, holds, payouts, terms] = await Promise.all([
     readMissingPaymentFacts().catch(() => ({ read: 0 })),
     sendDueDisputeReminders().catch(() => ({ sent: 0 })),
     // Held cards (D289): staff told a day before a hold ends, and a hold past its deadline settled from what Stripe says.
     runCaptureJobs(),
     // Payouts (D290): each store's read back once a day, a few stores a run, and paid payouts whose lines are unread.
     runPayoutJobs(),
+    // Payment terms (D293): the reminder three days before an invoice is due and the notice the day after.
+    runTermsJobs().catch(() => ({ reminded: 0, overdue: 0 })),
   ]);
-  return { facts: facts.read, reminders: reminders.sent, holds, payouts };
+  return { facts: facts.read, reminders: reminders.sent, holds, payouts, terms };
 }
 
 export type OrderPaymentView = {

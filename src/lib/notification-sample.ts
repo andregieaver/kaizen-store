@@ -6,6 +6,7 @@
  */
 import { formatMoney, minorUnitDigits } from "./money";
 import type { PlaceholderValues } from "./email-template";
+import { dayWords, termsDueOn } from "./payment-terms";
 
 export type SampleLine = { title: string; quantity: number; unitMinor: number; totalMinor: number };
 
@@ -26,6 +27,8 @@ export type SampleOrder = {
   changeNumber: string;
   pickupPlace: string;
   placedAt: string;
+  /** The day an order on 30 days' terms (D293) placed then would be due. */
+  dueOn: string;
 };
 
 /** Whole units of the currency, so the sample reads as a price in it (100 NOK, 100 EUR, 10 000 HUF are all ordinary). */
@@ -55,6 +58,7 @@ export function sampleOrder(input: { storeName: string; currency: string; locale
     changeNumber: "E1",
     pickupPlace: input.storeName,
     placedAt: (input.now ?? new Date()).toISOString(),
+    dueOn: termsDueOn((input.now ?? new Date()).toISOString().slice(0, 10), "net_30"),
   };
 }
 
@@ -72,5 +76,6 @@ export function samplePlaceholders(sample: SampleOrder, storeName: string): Requ
     return_number: sample.returnNumber,
     pickup_place: sample.pickupPlace,
     change_number: sample.changeNumber,
+    due_date: dayWords(sample.dueOn, sample.locale),
   };
 }

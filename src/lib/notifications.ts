@@ -39,6 +39,7 @@ export const PLACEHOLDER_NAMES = [
   "return_number",
   "pickup_place",
   "change_number",
+  "due_date",
 ] as const;
 export type PlaceholderName = (typeof PLACEHOLDER_NAMES)[number];
 
@@ -109,6 +110,13 @@ export const NOTIFICATIONS: readonly NotificationDef[] = [
   }),
   def("order.refunded", "orders", "Refund", "When an order is refunded in full or in part.", { own: ["refund_amount"] }),
   def("order.cancelled", "orders", "Order cancelled", "When staff cancel an order."),
+  // Payment terms for company accounts (wave 4 unit F, D293, docs/wave-4-payments.md 8).
+  def("order.payment_due", "orders", "Payment due soon (terms)", "Three days before an order bought on payment terms is due, while it is not paid.", {
+    own: ["order_total", "due_date"],
+  }),
+  def("order.payment_overdue", "orders", "Payment overdue (terms)", "The day after an order bought on payment terms was due, while it is not paid.", {
+    own: ["order_total", "due_date"],
+  }),
   def("order.ready_for_pickup", "pickup", "Ready for pickup", "When staff mark a pickup order ready to collect.", { own: ["pickup_place"] }),
   def("order.out_for_delivery", "pickup", "Out for delivery (your driver)", "When the store's own driver takes a local delivery out."),
   def("return.acknowledgement", "returns", "Withdrawal acknowledgement", "When a customer withdraws from a purchase with the withdrawal button.", {

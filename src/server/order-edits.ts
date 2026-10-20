@@ -130,6 +130,7 @@ async function loadOrder(runner: Runner, storeId: string, orderId: string, optio
         (exists (select 1 from commerce.withdrawal_requests w where w.store_id = ${storeId}::uuid and w.order_id = ${orderId}::uuid)
           or exists (select 1 from commerce.returns r where r.store_id = ${storeId}::uuid and r.order_id = ${orderId}::uuid and r.status::text <> 'cancelled')) as returned,
         exists (select 1 from commerce.unsent_closures c where c.store_id = ${storeId}::uuid and c.order_id = ${orderId}::uuid) as unsent_closed,
+        exists (select 1 from commerce.order_payment_terms t where t.store_id = ${storeId}::uuid and t.order_id = ${orderId}::uuid and t.paid_at is null) as terms_unpaid,
         (select count(*)::int from commerce.order_edits e where e.store_id = ${storeId}::uuid and e.order_id = ${orderId}::uuid) as edits,
         (select json_build_object('id', e.id, 'seq', e.seq, 'expiresAt', e.expires_at) from commerce.order_edits e
            where e.store_id = ${storeId}::uuid and e.order_id = ${orderId}::uuid and e.status = 'awaiting_payment') as awaiting,
@@ -213,6 +214,7 @@ async function loadOrder(runner: Runner, storeId: string, orderId: string, optio
       vatKind: (String(o.vat_kind) as "standard" | "reverse_charge" | "ioss") ?? "standard",
       returnOrWithdrawal: Boolean(facts?.returned),
       unsentClosed: Boolean(facts?.unsent_closed),
+      termsUnpaid: Boolean(facts?.terms_unpaid),
       restricted: Boolean(o.restricted),
       editPending: Boolean(awaiting),
       editCount: Number(facts?.edits ?? 0),

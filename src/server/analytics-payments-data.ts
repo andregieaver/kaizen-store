@@ -30,7 +30,7 @@ export async function paymentMethodsReport(store: Store, period: AnalyticsPeriod
     refunded as (
       select r.payment_id, sum(r.amount_minor) as amount
         from commerce.refunds r
-       where r.store_id = ${id}::uuid and r.status = 'succeeded' and r.order_edit_id is null and ${inPeriod(store, sql`r.created_at`, period)}
+       where r.store_id = ${id}::uuid and r.status = 'succeeded' and r.order_edit_id is null and r.kind <> 'void' and ${inPeriod(store, sql`r.created_at`, period)}
          and r.payment_id in (select id from pay)
        group by 1
     )

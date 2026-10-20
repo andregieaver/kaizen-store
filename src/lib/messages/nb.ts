@@ -651,6 +651,28 @@ export const nb: Messages = {
     note: "Du betaler på Mollies sikre side etterpå.",
     problem: "Fyll inn navn og e-post, og leveringsadressen hvis bestillingen sendes til deg.",
   },
+  /** Betalingsbetingelser for bedriftskontoer (D293): skrevet for hånd, aldri maskinoversatt (`ui:paymentTerms.`), må gjennomgås juridisk. */
+  // legal: needs review
+  paymentTerms: {
+    choice: "Betal med faktura",
+    choiceNote: (company, days, day) => `${company} har ${days} dagers betalingsfrist. Fakturaen forfaller ${day}.`,
+    legend: "Fakturaopplysninger",
+    address: "Fakturaadresse",
+    place: "Fullfør bestillingen",
+    note: "Ingenting betales nå. Fakturaen kommer på e-post og ligger på ordresiden.",
+    problem: "Betaling med faktura er ikke tilgjengelig for denne bestillingen.",
+    heading: "Betal med faktura",
+    due: (amount, day) => `${amount} forfaller ${day}.`,
+    overdue: (amount, day) => `${amount} forfalt ${day} og er ikke betalt ennå.`,
+    paid: "Fakturaen er betalt. Takk.",
+    cancelled: "Fakturaen ble kreditert.",
+    payNow: "Betal nå",
+    payNowNote: "Betal med kort eller en annen metode på betalingssiden.",
+    payAsInvoice: "Betal slik fakturaen sier.",
+    payProblem: "Betalingssiden kunne ikke åpnes. Prøv igjen om litt.",
+    stripeLine: (number) => `Faktura for ordre ${number}`,
+    dueShort: (day) => `Forfaller ${day}`,
+  },
   /** A business's details at checkout (B2B), and its prices without VAT. */
   company: {
     legend: "Bedriften",

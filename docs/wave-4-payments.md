@@ -263,6 +263,53 @@ day it is paid (cash basis, as PAID is defined), and the invoice is not issued a
 (*Due* and *Overdue* totals). Only businesses (`effectiveAudience()`), only goods and services (not bookings, subscriptions or boxes), and a credit limit
 per company stops a new order beyond it.
 
+### As built: F, payment terms (D293)
+
+- **Terms and a limit.** A company (D108) has `payment_terms` (`net_15`, `net_30`, `net_60`, or none) and an optional credit limit
+  (`credit_limit_minor` in `credit_currency`, the store's main currency when it was set), edited on the company's page by staff who hold
+  `customers:write` and audited (`company.terms_changed`, the customers area). Who may buy on terms is only `termsOffer()` (`src/lib/payment-terms.ts`, pure): the
+  store's `business` feature on and selling to businesses, a signed-in owner or employee of an active company with terms, a basket of goods only
+  (no booking, subscription, deposit, weekly box or host's listing), something to pay, and the limit (when set) not passed by what the company
+  already owes plus this order, converted at the store's rates (`inMain()`; a currency with no rate refuses rather than guesses).
+- **Not a new status.** The spec's `awaiting_payment` was not made: an order on terms is placed as a venue booking is (D66): `placeOrder({ terms })`
+  checks `termsOffer()` again under a lock on the company row, writes `commerce.order_payment_terms` (company, terms, `due_on` = the store's day
+  plus the days) and the whole total as `balance_minor`; `confirmOnTerms()` then adds a pending `terms` payment (never money: the key to the order
+  page and the anchor of a void) and calls `complete_order_payment()`, so the order is `paid` as a shop status (stock drawn, the goods may be sent,
+  bookings none) and its invoice is issued at once with the payment line `due` (amount, `dueOn`, terms) instead of `pay_at_venue`. `status = 'paid'`
+  is read in about a hundred places; a new status would have been a new state in each.
+- **Not a sale until paid.** `PAID` (a captured payment) is unchanged, so an order on terms counts in no figure until its money arrives, and is then
+  dated by `placed_at` like every order (a held card captured later is the same, D289): a period's figures grow when an order placed in it is
+  paid. The tax reports date its invoice by its supply date, the day it was placed; until it is paid the reconciliation names it `not_captured`
+  (already a cause, for venue bookings). *Due* and *Overdue* (Finance and the control center) are what is owed: the balance of orders on terms
+  not yet paid, by whether `due_on` has passed in the store's day.
+- **Paying.** The shopper pays from the order page (its link is in the confirmation and both reminders): *Pay now* opens Stripe's hosted page for
+  the balance (`startTermsPayment()`, one session per press with an idempotency key, as a draft's pay link, D173), and `applySession()` settles it
+  (`settleTerms()`: the Stripe payment captured, the balance 0, `paid_at`, event `order.terms_paid`). Staff record money received outside
+  Kaizena Flow (`recordTermsPaidOutside()`: D173's `manual` payment with its method and day, owner-only unless `staff_mark_paid`, cash ceilings).
+  Either way the `terms` payment becomes `cancelled` and the invoice is not issued again. A store without Stripe (Mollie only) has no *Pay now*:
+  the order page says to pay as the invoice says, and staff record it.
+- **Cancelled before it is paid.** `cancelOrder()` of an unpaid order on terms writes a refund of kind `void` on the `terms` payment (no money, no
+  provider), so the deferred trigger issues its credit note (D159) and the VAT report nets it; a `void` is no refund in the figures
+  (`NOT_EDIT_REFUND`) and emits no `order.refunded` integration event. Refunds, returns' refunds and order changes wait until an order on terms is
+  paid (`editBlock()`, `refundOrder()` find nothing captured); it can be cancelled whole before it is sent.
+- **Reminders and overdue.** The five-minute job `runTermsJobs()` sends, once each (claimed by `reminder_sent_at`/`overdue_sent_at`), the customer
+  notifications `order.payment_due` (three days before) and `order.payment_overdue` (the day after `due_on`), switchable by the owner, with the
+  order page's link; staff get the staff alert *Payment overdue* (`payment_overdue`, owners by default), never with the customer's name or address.
+  The words are hand-written in nb, sv, da and en (`HAND_WRITTEN_ONLY`) and need legal review.
+- **Earns nothing.** A balance on terms, like a venue's, earns no bonus credits and no referral reward (`bonus_order_paid()`,
+  `affiliate_order_paid()`); used credits come back when it is cancelled, as for any paid order.
+- **Where it shows.** The cart offers *Pay by invoice* beside paying now (`CheckoutButton`'s `terms`, the choice's note naming the company, the days and the
+  due day) and then asks who pays with the billing address the invoice needs and shows the store's terms of sale, recorded before the order is confirmed
+  (`recordTerms`; in `checkbox` mode only when ticked). The order page shows what is owed and by when, or that it is paid or cancelled, and *Pay now* where the
+  store takes payments on Stripe (`payOnTermsAction()`, a plain form: no script needed); the confirmation email's totals end with *Due {day}*. The admin's order
+  page has a *Pay by invoice* card with the state and *Record as paid* (`TermsPaidForm`), the venue's card is not shown, an order change says why it cannot
+  be made (`terms_unpaid`), the Orders list filters `pay=terms_due` and `pay=terms_overdue` (the venue's `balance_due` leaves orders on terms out), the control
+  center says how many are overdue (urgent), Finance has *Invoices on payment terms* (`termsOwedReport()`, `TermsOwedView`), and the company's page has its
+  terms, limit and what it owes. The export of a person's data carries an order's terms (`paymentTerms`).
+- **Known gaps, said here.** A venue booking cancelled before its balance is paid still has no credit note (older than this unit, not changed here); a sent order on terms that is never paid cannot be written off (there is no bad-debt step);
+  a partly paid balance cannot be recorded (the whole balance, or nothing); Mollie stores have no *Pay now*; the supply date of an invoice on terms
+  (the day it was placed) needs an accountant's review against each country's chargeable event.
+
 ## 9. Where things are today (read 2026-10-19)
 
 - A session is made only in `openPaymentSession()` (`src/server/payment-session.ts`), called by `startCheckout()` and the three pay links; the store's
