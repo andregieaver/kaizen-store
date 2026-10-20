@@ -55,6 +55,8 @@ export function BackInStock({
   return (
     <form
       data-back-in-stock
+      // The page's own check speaks the shopper's language; the browser's would not match it.
+      noValidate
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
