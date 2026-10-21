@@ -28,6 +28,23 @@ export const daReviews: ReviewMessages = {
   sentWaiting: "Tak. Din anmeldelse venter på at blive tjekket af butikken.",
   sentShown: "Tak. Din anmeldelse er offentliggjort.",
   deleted: "Din anmeldelse er slettet.",
+  // The product page (G2): the summary, each review and *How reviews are checked* (`checked`, hand-written only: Directive 2005/29/EC Art. 7(6)).
+  heading: "Anmeldelser",
+  count: (n: number) => (n === 1 ? "1 anmeldelse" : `${n} anmeldelser`),
+  average: (average: string) => `${average} af 5`,
+  verified: "Bekræftet køb",
+  imported: (source: string) => `Hentet fra ${source}`,
+  bought: (what: string) => `Købt: ${what}`,
+  more: "Vis flere anmeldelser",
+  failed: "Anmeldelserne kunne ikke indlæses. Prøv igen.",
+  checked: {
+    heading: "Sådan tjekkes anmeldelserne",
+    buyers: "Kun dem, der har købt et produkt i denne butik og modtaget det, kan anmelde det, fra deres konto.",
+    afterCheck: "Butikken læser hver anmeldelse, før den vises. Den viser ikke en anmeldelse, der ikke handler om produktet, er krænkende, indeholder personoplysninger eller er spam, og skjuler aldrig en anmeldelse, fordi den er negativ.",
+    atOnce: "Anmeldelserne vises, så snart de er skrevet. Butikken skjuler en anmeldelse, der ikke handler om produktet, er krænkende, indeholder personoplysninger eller er spam, og aldrig en, fordi den er negativ.",
+    reward: "Ingen får betaling eller belønning for en anmeldelse.",
+    imported: "En anmeldelse markeret som hentet er skrevet på en anden tjeneste og er ikke tjekket mod et køb her.",
+  },
   problem: {
     rating: "Vælg fra en til fem stjerner.",
     title: "Overskriften er for lang: højst 120 tegn.",

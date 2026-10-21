@@ -17,6 +17,7 @@ import { featureOn } from "@/lib/store-features";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
 import { campaignNotices } from "@/server/campaign-notices";
+import { reviewFacts } from "@/server/review-facts";
 import { productsPageOf } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { productLayoutForVisitor } from "@/server/product-layouts";
@@ -122,15 +123,17 @@ export default async function ProductPage({ params }: Props) {
   const back = productsPage
     ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
     : null;
-  const [chosen, header, campaigns, recommendations] = await Promise.all([
+  const [chosen, header, campaigns, recommendations, reviews] = await Promise.all([
     productLayoutForVisitor(store.id, product.id, ab),
     siteLayoutFor(store.id, "header"),
     campaignNotices(store.id, market),
     getRecommendSettings(store.id),
+    // The product's published reviews (D301), a cached read like the catalogue's, while the store has reviews on.
+    featureOn(store, "reviews") ? reviewFacts(store.id, product.id) : Promise.resolve(null),
   ]);
   // The layout the product uses, or the built-in one; the visitor's version of it while it is under an A/B test (D148).
   const layout = chosen?.content ?? DEFAULT_PRODUCT_LAYOUT;
-  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns };
+  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns, reviews };
   // A header over every page (D80) lies over a product page whose layout starts with a background.
   const over = headerOverlays(header?.content.overlay, { front: false, categories: [], tags: [], rows: layout.rows });
 
@@ -151,7 +154,7 @@ export default async function ProductPage({ params }: Props) {
         />
       )}
       <Suspense fallback={null}>
-        <ProductJsonLdSection store={store} market={market} product={product} />
+        <ProductJsonLdSection store={store} market={market} product={product} reviews={reviews} />
       </Suspense>
     </div>
   );

@@ -56,6 +56,7 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
   },
   "ui:search.results": { template: "{0, plural, one {# result for “{1}”} other {# results for “{1}”}}" },
   "ui:listing.count": { template: plural("# product", "# products") },
+  "ui:reviews.count": { template: plural("# review", "# reviews") },
   "ui:wishlist.added": { template: plural("# item added to your cart.", "# items added to your cart.") },
   "ui:wishlist.moved": { template: "{0, plural, one {# item moved to {1}.} other {# items moved to {1}.}}" },
   "ui:account.hello": { template: "{1, select, named {Hello, {0}!} other {Hello!}}", prepare: ([name]) => [name, name ? "named" : "anon"] },

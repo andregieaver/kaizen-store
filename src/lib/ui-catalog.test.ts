@@ -56,6 +56,7 @@ describe("a template gives the English message", () => {
     "ui:planEvery": [["week", 1], ["week", 2], ["month", 1], ["month", 3], ["year", 1], ["year", 2]],
     "ui:search.results": [[1, "tea"], [4, "tea"]],
     "ui:listing.count": count,
+    "ui:reviews.count": count,
     "ui:wishlist.added": count,
     "ui:wishlist.moved": [[1, "Wishlist"], [3, "Wishlist"]],
     "ui:account.hello": [["Kari"], [""]],

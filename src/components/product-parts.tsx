@@ -51,11 +51,14 @@ import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/se
 import { relatedProducts } from "@/server/listing";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
+import type { ReviewFacts } from "@/server/review-facts";
 import { backInStockOn } from "@/server/stock-requests";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
 import { featureOn, type FeatureSource } from "@/lib/store-features";
 import { themeLayersOf } from "@/lib/section-styles";
+
+import { ProductRating, ProductReviews } from "./product-reviews";
 
 /**
  * The parts of a product's page (D79), each drawn where a product layout
@@ -78,6 +81,8 @@ export type ProductPageContext = {
   back?: { href: string; title: string } | null;
   /** The store's campaigns (D115), announced on the page and on its related products' cards. */
   campaigns?: Notices;
+  /** The product's published reviews (D301), while the store has reviews on; null or absent draws no review part. */
+  reviews?: ReviewFacts | null;
 };
 
 export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
@@ -146,6 +151,20 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       );
     case "campaigns":
       return <CampaignNotices notices={noticesFor(ctx.campaigns, product.id)} market={market} m={m} />;
+    case "rating":
+      return ctx.reviews ? <ProductRating facts={ctx.reviews} m={m} locale={market.locale} anchor={`reviews-${product.id}`} /> : null;
+    case "reviews":
+      return ctx.reviews ? (
+        <ProductReviews
+          facts={ctx.reviews}
+          m={m}
+          locale={market.locale}
+          store={store.name}
+          endpoint={`/api/reviews?store=${encodeURIComponent(store.slug)}&market=${encodeURIComponent(market.slug)}&product=${product.id}`}
+          id={`reviews-${product.id}`}
+          heading={block.showHeading === false ? null : block.heading || null}
+        />
+      ) : null;
     case "notice":
       // Sold only to businesses (B2B): a private shopper is told so, and can switch.
       if (product.audience !== "businesses") return null;
@@ -357,12 +376,22 @@ function galleryImages(product: ProductDetail): ProductDetail["images"] {
 }
 
 /** Whether a part has anything to show for this product; one that has not is left out, space and all. */
-export function productPartShows(block: ProductBlock, product: ProductDetail, campaigns?: Notices, features?: FeatureSource): boolean {
+export function productPartShows(
+  block: ProductBlock,
+  product: ProductDetail,
+  campaigns?: Notices,
+  features?: FeatureSource,
+  reviews?: ReviewFacts | null,
+): boolean {
   // A part of a store feature that is off draws nothing (D178).
   if (!partFeatureOn(block, features)) return false;
   switch (block.part) {
     case "campaigns":
       return noticesFor(campaigns, product.id).length > 0;
+    case "rating":
+    case "reviews":
+      // Drawn only with a published review (D301): no empty stars, and never a word of one not published.
+      return (reviews?.summary.count ?? 0) > 0;
     case "gallery":
       return galleryImages(product).length > 0;
     case "notice":
@@ -461,14 +490,14 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
 }
 
 /** The page's structured data (JSON-LD), with stock, per request: drawn once, whatever the layout holds. */
-export async function ProductJsonLdSection({ store, market, product }: Omit<ProductPageContext, "m">) {
-  if (product.kind !== "goods") return <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />;
+export async function ProductJsonLdSection({ store, market, product, reviews }: Omit<ProductPageContext, "m">) {
+  if (product.kind !== "goods") return <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable reviews={reviews} />;
   await connection();
   const availability = await getVariantStock(
     store.id,
     product.variants.map((v) => v.id),
   );
-  return <ProductJsonLd store={store} market={market} product={product} availability={availability} />;
+  return <ProductJsonLd store={store} market={market} product={product} availability={availability} reviews={reviews} />;
 }
 
 /** The price beside the title: the cheapest, or the best subscriber's price when only subscriptions are sold. */
@@ -889,6 +918,7 @@ export async function ProductJsonLd({
   product,
   availability,
   bookable = false,
+  reviews = null,
 }: {
   store: Store;
   market: Market;
@@ -897,6 +927,8 @@ export async function ProductJsonLd({
   availability: Map<string, VariantStock>;
   /** An appointment with times to book (D65): offered as in stock. */
   bookable?: boolean;
+  /** The product's published reviews (D301): its rating and newest reviews, only when there is one. */
+  reviews?: ReviewFacts | null;
 }) {
   const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
@@ -932,6 +964,11 @@ export async function ProductJsonLd({
           return bookable || (stock && stock.inStock > 0) ? "in_stock" : stock && canOffer(stock) ? "backorder" : "out_of_stock";
         },
         shipping,
+        // Only published reviews of this product (D301), and only when there is one.
+        reviews:
+          reviews && reviews.summary.count > 0 && reviews.summary.average !== null
+            ? { average: reviews.summary.average, count: reviews.summary.count, latest: reviews.latest.slice(0, 5) }
+            : null,
       })}
     />
   );
@@ -953,7 +990,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
       place={{ pageId: null, owner: store.id, market: market.slug, product: product.id, theme: themeLayersOf(store.theme.settings) }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
-        block.type === "product" && productPartShows(block, product, ctx.campaigns, store) ? <ProductPartView block={block} ctx={ctx} /> : null
+        block.type === "product" && productPartShows(block, product, ctx.campaigns, store, ctx.reviews) ? <ProductPartView block={block} ctx={ctx} /> : null
       }
     />
   );

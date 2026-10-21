@@ -28,6 +28,23 @@ export const svReviews: ReviewMessages = {
   sentWaiting: "Tack. Din recension väntar på att granskas av butiken.",
   sentShown: "Tack. Din recension är publicerad.",
   deleted: "Din recension är raderad.",
+  // The product page (G2): the summary, each review and *How reviews are checked* (`checked`, hand-written only: Directive 2005/29/EC Art. 7(6)).
+  heading: "Recensioner",
+  count: (n: number) => (n === 1 ? "1 recension" : `${n} recensioner`),
+  average: (average: string) => `${average} av 5`,
+  verified: "Verifierat köp",
+  imported: (source: string) => `Hämtad från ${source}`,
+  bought: (what: string) => `Köpt: ${what}`,
+  more: "Visa fler recensioner",
+  failed: "Recensionerna kunde inte laddas. Försök igen.",
+  checked: {
+    heading: "Så granskas recensionerna",
+    buyers: "Bara den som har köpt en produkt i den här butiken och fått den kan recensera den, från sitt konto.",
+    afterCheck: "Butiken läser varje recension innan den visas. Den visar inte en recension som inte handlar om produkten, är kränkande, innehåller personuppgifter eller är spam, och döljer aldrig en recension för att den är negativ.",
+    atOnce: "Recensionerna visas så snart de är skrivna. Butiken döljer en recension som inte handlar om produkten, är kränkande, innehåller personuppgifter eller är spam, och aldrig en för att den är negativ.",
+    reward: "Ingen får betalt eller belöning för en recension.",
+    imported: "En recension som är märkt som hämtad skrevs på en annan tjänst och har inte kontrollerats mot ett köp här.",
+  },
   problem: {
     rating: "Välj från en till fem stjärnor.",
     title: "Rubriken är för lång: högst 120 tecken.",

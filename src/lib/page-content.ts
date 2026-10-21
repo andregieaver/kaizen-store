@@ -847,6 +847,8 @@ export const PRODUCT_PARTS = {
   title: "Title",
   price: "Price",
   campaigns: "Campaigns",
+  rating: "Rating",
+  reviews: "Reviews",
   notice: "Business-only notice",
   host: "Host",
   buy: "Buy",
@@ -869,6 +871,9 @@ export const PRODUCT_PART_FEATURES: Partial<Record<ProductPart, FeatureRequireme
   notice: "business",
   // A stay's or rental's host (D71): hosts are part of Stays and rentals.
   host: "bookings",
+  // Product reviews (D301): the stars by the title and the reviews themselves.
+  rating: "reviews",
+  reviews: "reviews",
 };
 
 /** How custom fields (D118) are drawn: a specification table, `label: value` lines or small cards. */

@@ -10,6 +10,7 @@ import { buildPlan, isEmptyPlan, summarisePlan, type ErasurePlan, type MoneyByCu
 import { EVIDENCE_EMAIL_KINDS } from "@/lib/personal-data";
 import { erasedEmailKey } from "@/lib/privacy-request";
 import { erasureConfirmationEmail, privacyLanguage } from "@/lib/privacy-text";
+import { reviewsTag } from "@/lib/reviews";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
@@ -24,6 +25,7 @@ import { textList, uuidList } from "./sql-arrays";
 import { platformStripe } from "./stripe";
 import { closeSession, completeOrderPayment } from "./checkout";
 import { getCheckoutAccount } from "./settings";
+import { refreshTag } from "./refresh";
 import { buyerKeysOf } from "./reviews";
 import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
@@ -527,6 +529,8 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
     return { ok: false, problem: "failed", message: "The erasure could not be finished. Nothing is lost: try again, or it is resumed tonight.", requestId: request.id };
   }
   await markStep(request.id, { database: "done", avatarPath: avatar ?? request.steps.avatarPath ?? null, counts });
+  // The person's reviews went with the rest (D301): the product pages that may have shown them are drawn again.
+  refreshTag(reviewsTag(storeId));
 
   // 3. Files after the commit: the picture. A failure is kept for the daily job.
   const remover = deps.avatarRemover ?? removeAvatarFiles;

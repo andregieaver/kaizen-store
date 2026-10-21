@@ -28,6 +28,23 @@ export const nbReviews: ReviewMessages = {
   sentWaiting: "Takk. Omtalen din venter på å bli sjekket av butikken.",
   sentShown: "Takk. Omtalen din er publisert.",
   deleted: "Omtalen din er slettet.",
+  // The product page (G2): the summary, each review and *How reviews are checked* (`checked`, hand-written only: Directive 2005/29/EC Art. 7(6)).
+  heading: "Omtaler",
+  count: (n: number) => (n === 1 ? "1 omtale" : `${n} omtaler`),
+  average: (average: string) => `${average} av 5`,
+  verified: "Bekreftet kjøp",
+  imported: (source: string) => `Hentet fra ${source}`,
+  bought: (what: string) => `Kjøpt: ${what}`,
+  more: "Vis flere omtaler",
+  failed: "Omtalene kunne ikke lastes. Prøv igjen.",
+  checked: {
+    heading: "Slik sjekkes omtalene",
+    buyers: "Bare de som har kjøpt et produkt i denne butikken og mottatt det, kan skrive omtale av det, fra kontoen sin.",
+    afterCheck: "Butikken leser hver omtale før den vises. Den viser ikke en omtale som ikke handler om produktet, er krenkende, inneholder personopplysninger eller er spam, og skjuler aldri en omtale fordi den er negativ.",
+    atOnce: "Omtalene vises så snart de er skrevet. Butikken skjuler en omtale som ikke handler om produktet, er krenkende, inneholder personopplysninger eller er spam, og aldri en omtale fordi den er negativ.",
+    reward: "Ingen får betalt eller belønning for en omtale.",
+    imported: "En omtale merket som hentet er skrevet på en annen tjeneste og er ikke sjekket mot et kjøp her.",
+  },
   problem: {
     rating: "Velg fra én til fem stjerner.",
     title: "Tittelen er for lang: høyst 120 tegn.",

@@ -28,6 +28,23 @@ export const enReviews = {
   sentWaiting: "Thank you. Your review is waiting to be checked by the store.",
   sentShown: "Thank you. Your review is published.",
   deleted: "Your review is deleted.",
+  // The product page (G2): the summary, each review and *How reviews are checked* (`checked`, hand-written only: Directive 2005/29/EC Art. 7(6)).
+  heading: "Reviews",
+  count: (n: number) => (n === 1 ? "1 review" : `${n} reviews`),
+  average: (average: string) => `${average} out of 5`,
+  verified: "Verified purchase",
+  imported: (source: string) => `Imported from ${source}`,
+  bought: (what: string) => `Bought: ${what}`,
+  more: "Show more reviews",
+  failed: "The reviews could not be loaded. Try again.",
+  checked: {
+    heading: "How reviews are checked",
+    buyers: "Only people who bought a product in this store and received it can review it, from their account.",
+    afterCheck: "The store reads each review before it is shown. It does not show a review that is not about the product, is offensive, holds personal details or is spam, and never hides one because it is negative.",
+    atOnce: "Reviews are shown as soon as they are written. The store hides a review that is not about the product, is offensive, holds personal details or is spam, and never one because it is negative.",
+    reward: "No one is paid or rewarded for a review.",
+    imported: "A review marked as imported was written on another service and has not been checked against a purchase here.",
+  },
   problem: {
     rating: "Choose from one to five stars.",
     title: "The title is too long: at most 120 characters.",

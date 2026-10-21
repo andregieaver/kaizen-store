@@ -46,8 +46,9 @@ const variant = (id: string, options: Record<string, string>, amountMinor = 2490
   price: { amountMinor, currency: "NOK" },
 });
 
-const build = (facts: ProductFacts, freeOverMinor: number | null = null, returns?: ReturnPolicyFacts) =>
+const build = (facts: ProductFacts, freeOverMinor: number | null = null, returns?: ReturnPolicyFacts, reviews: Parameters<typeof productJsonLd>[0]["reviews"] = null) =>
   productJsonLd({
+    reviews,
     product: facts,
     url: "https://x.test/s/kopp/no/p/kopp",
     origin: "https://x.test",
@@ -85,6 +86,25 @@ describe("storeNode", () => {
 });
 
 describe("productJsonLd", () => {
+  it("carries the rating and the newest reviews only when there is a published review (D301)", () => {
+    const [none] = build(product([variant("a", {})]));
+    expect(none).not.toHaveProperty("aggregateRating");
+    expect(none).not.toHaveProperty("review");
+    const [rated] = build(product([variant("a", {})]), null, undefined, {
+      average: 4.5,
+      count: 12,
+      latest: [
+        { id: "r1", rating: 5, title: "Fin", body: "God kopp.", authorName: "Kari N.", locale: "nb-NO", writtenOn: "2026-10-01", bought: null, verified: true, importedFrom: null, answer: null },
+      ],
+    });
+    expect(rated).toMatchObject({
+      aggregateRating: { "@type": "AggregateRating", ratingValue: 4.5, reviewCount: 12, bestRating: 5, worstRating: 1 },
+      review: [{ "@type": "Review", author: { "@type": "Person", name: "Kari N." }, datePublished: "2026-10-01", reviewRating: { ratingValue: 5 }, name: "Fin", reviewBody: "God kopp." }],
+    });
+    const [zero] = build(product([variant("a", {})]), null, undefined, { average: 0, count: 0, latest: [] });
+    expect(zero).not.toHaveProperty("aggregateRating");
+  });
+
   it("makes one product with an absolute picture, brand, shipping and returns", () => {
     const [node, trail] = build(product([variant("a", {})]));
     expect(node).toMatchObject({

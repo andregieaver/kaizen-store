@@ -7507,6 +7507,8 @@ const PART_HELP: Record<ProductPart, string> = {
   title: "The product's name, the page's main heading, with the heart that saves it to a wishlist.",
   price: "The product's price, from the cheapest variant, with VAT as the shopper sees prices.",
   campaigns: "The store's running campaigns that reach this product: 20 % off, 3 for 2, a free product over an amount, and until when. Nothing shows when none does.",
+  rating: "The product's stars, its average and how many reviews it has, linking to the reviews. Nothing shows before a review is published.",
+  reviews: "The product's published reviews: the average, how many gave each number of stars, the newest ten with Show more, and how reviews are checked. Nothing shows before a review is published.",
   notice: "For products sold only to businesses: tells a private shopper so, and lets them switch.",
   host: "Who hosts a stay or rental listed for an outside host.",
   buy: "Buying it: the variants with stock and Add to cart for goods, free times for appointments, dates for stays and rentals.",
@@ -7518,7 +7520,7 @@ const PART_HELP: Record<ProductPart, string> = {
   field: "One custom field of the product, such as its material or warranty. It draws nothing for a product with no value for it.",
   loop: "The rows of one of the product's repeater fields (features, ingredients, sizes), each as a card, line or column. It draws nothing for a product with no rows.",
 };
-const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like" };
+const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like", reviews: "Reviews" };
 
 function ProductIcon() {
   return (
@@ -7653,6 +7655,16 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
           <span className="block rounded-lg bg-accent p-3 text-sm text-accent-foreground">
             <span className="block font-medium">Summer sale: 3 for 2</span>
             <span className="block opacity-90">The offer is taken off in the cart. (Shown while a campaign reaches the product.)</span>
+          </span>
+        );
+      case "rating":
+        return <span className="block text-sm">★★★★☆ 4.3 out of 5 (12 reviews). (Shown once the product has a published review.)</span>;
+      case "reviews":
+        return (
+          <span className="block rounded-lg border border-border p-4 text-sm">
+            <span className="block font-medium">Reviews</span>
+            <span className="block">★★★★★ Fits well, good fabric. Kari N. · Verified purchase</span>
+            <span className="block opacity-80">The product&apos;s published reviews, newest first. (Shown once there is one.)</span>
           </span>
         );
       case "notice":

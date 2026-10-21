@@ -30,6 +30,7 @@ export const DEFAULT_PRODUCT_LAYOUT: PageContent = {
           id: "product-details",
           blocks: [
             part("product-title", "title"),
+            part("product-rating", "rating"),
             part("product-price", "price"),
             part("product-campaigns", "campaigns"),
             part("product-notice", "notice"),
@@ -39,6 +40,7 @@ export const DEFAULT_PRODUCT_LAYOUT: PageContent = {
             part("product-fields", "fields"),
             part("product-withdrawal", "withdrawal"),
             part("product-safety", "safety"),
+            part("product-reviews", "reviews"),
           ],
         },
       ],

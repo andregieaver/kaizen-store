@@ -3,6 +3,7 @@ import { minorUnitDigits } from "./money";
 import { absoluteUrl, schemaPrice, schemaProperty, type JsonLd, type StoreSeo } from "./seo";
 import { SCHEMA_AVAILABILITY, type Availability } from "./stock-availability";
 import { baseQuantity, measureQuantity, type ShownMeasure } from "./unit-price";
+import type { ShownReview } from "./review-view";
 
 /**
  * Schema.org data for search engines and AI assistants (decision D21):
@@ -216,6 +217,7 @@ export function productJsonLd({
   marketHome,
   availability,
   shipping,
+  reviews = null,
 }: {
   product: ProductFacts;
   url: string;
@@ -226,6 +228,8 @@ export function productJsonLd({
   /** What each variant can be bought as (D172): `backorder` is a variant that keeps selling past zero, stated with its days on the page. */
   availability: (variantId: string) => Availability;
   shipping: ShippingFacts;
+  /** The product's published reviews (D301): the average and count of all of them and the newest few; null without one. */
+  reviews?: { average: number; count: number; latest: ShownReview[] } | null;
 }): JsonLd {
   const seller = { "@id": storeNodeId(store.url) };
   const policy = store.returns ?? DEFAULT_RETURN_POLICY;
@@ -285,6 +289,19 @@ export function productJsonLd({
     ...(product.properties &&
       product.properties.length > 0 && {
         additionalProperty: product.properties.map((property) => ({ "@type": "PropertyValue", name: property.name, value: property.value })),
+      }),
+    ...(reviews &&
+      reviews.count > 0 && {
+        aggregateRating: { "@type": "AggregateRating", ratingValue: reviews.average, reviewCount: reviews.count, bestRating: 5, worstRating: 1 },
+        review: reviews.latest.map((r) => ({
+          "@type": "Review",
+          author: { "@type": "Person", name: r.authorName },
+          datePublished: r.writtenOn,
+          reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+          ...(r.title && { name: r.title }),
+          ...(r.body && { reviewBody: r.body }),
+          inLanguage: r.locale,
+        })),
       }),
   };
 

@@ -1100,11 +1100,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "None: no reviews table, form or rating (verified); only a Google Places testimonials component for the business's own Google reviews (D91, `google-reviews.ts`), which is neither product reviews nor user-submitted content. One row for the one Shopify feature (it replaces catalogue.product-reviews-and-ratings).",
+    "gap": "Buyers review what they bought and received (goods delivered, downloads paid, bookings ended) from My account, so every written review is a verified purchase; reviews wait in Products → Reviews unless the owner publishes at once, are published, hidden with a reason or answered by staff, who can never change a word or a star (the database refuses it), and the product page shows the stars, the average, the newest reviews and how reviews are checked, with aggregateRating in the JSON-LD from published reviews only. Not yet: the review-request email after delivery, CSV import, pictures, stars on product cards.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1115,18 +1115,35 @@
     ],
     "evidence": {
       "files": [
-        "src/server/google-reviews.ts",
-        "src/lib/google-reviews.ts"
+        "src/server/reviews.ts",
+        "src/server/reviews-admin.ts",
+        "src/server/review-facts.ts",
+        "src/lib/reviews.ts",
+        "src/components/product-reviews.tsx",
+        "src/app/admin/(gated)/[store]/reviews/page.tsx",
+        "src/app/s/[store]/[market]/account/reviews/page.tsx",
+        "supabase/migrations/20261021220512_product_reviews_rules.sql"
       ],
       "tests": [
-        "src/server/google-reviews.int.test.ts"
+        "src/server/reviews.int.test.ts",
+        "src/db/reviews.test.ts",
+        "src/lib/reviews.test.ts",
+        "src/lib/structured-data.test.ts"
       ],
       "untested": false
     },
     "decisions": [
+      "D301",
       "D91"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-21",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 5 unit G steps 1 and 2 (D301): verified-purchase reviews written from My account, checked and answered in the admin, shown with the rating and in the JSON-LD; the request email, imports and pictures follow."
+      }
+    ]
   },
   {
     "id": "customers.wishlists",

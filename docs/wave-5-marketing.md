@@ -841,6 +841,16 @@ staff cannot change the words; the average counts published only; erasure delete
 subscribed address, never for a copy; the token page writes for its order only. e2e: a buyer writes a review and staff publish it, and the
 product page shows it.
 
+### 9.9 As built
+
+- **G1** (D301): as 9.1 to 9.3. A product deleted or a customer deleted takes their reviews with it (the database's own cascade, the only delete
+  besides the author's and erasure). The account's Reviews page lists one line per product, the newest receipt of it; buying it again lets the
+  buyer edit the review they wrote, never add a second.
+- **G2** (D301): the queue, the decisions and the publish setting are one page, Products → Reviews, each review with its buttons; a review's page
+  of its own was not needed. *Rating* sits under the title and *Reviews* at the end of the details column of the default layout, both drawing
+  nothing without a published review, so a store's pages are unchanged until it has one. The browser e2e of a buyer writing and staff publishing
+  comes with G3, whose token page lets a test write without a shopper's sign-in.
+
 ## 10. Units H to J, outlined
 
 - **H, feeds (D302).** One normalised feed per store and market (title, description, price as shown with VAT, availability, GTIN/brand from custom

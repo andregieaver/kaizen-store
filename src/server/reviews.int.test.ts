@@ -4,10 +4,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
 const rv = await import("./reviews");
 const { eraseSubject } = await import("./privacy-erasure");
 const { exportCustomerData } = await import("./privacy-export");
+const admin = await import("./reviews-admin");
+const { reviewFacts, moreReviews } = await import("./review-facts");
 
 type Row = Record<string, unknown>;
 
@@ -191,5 +194,43 @@ describe("personal data", () => {
     const erased = await eraseSubject(storeId, { customerId: kari }, { channel: "staff", accountId: null });
     expect(erased.ok).toBe(true);
     expect(await status(written.reviewId)).toBe("undefined");
+  });
+});
+
+describe("checking and showing (G2)", () => {
+  it("shows only published reviews of the product, averaged and counted, and staff decide without touching a word", async () => {
+    const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid limit 1`);
+    const staff = String(owner.account_id);
+    const p = await product(storeId);
+    const ids: string[] = [];
+    for (const [i, rating] of [5, 4, 2].entries()) {
+      const who = await customer(storeId, `shown${i}-${run}@example.com`);
+      const b = await order(storeId, who, p.variantId, { delivered: true });
+      const w = await rv.writeReview(storeId, who, b.lineId, { ...words, rating }, "nb-NO");
+      if (!w.ok) throw new Error("not written");
+      ids.push(w.reviewId);
+    }
+    // Nothing is shown before staff publish.
+    expect((await reviewFacts(storeId, p.productId)).summary.count).toBe(0);
+    expect(await admin.publishReview(storeId, staff, ids[0])).toEqual({ ok: true });
+    expect(await admin.publishReview(storeId, staff, ids[1])).toEqual({ ok: true });
+    expect(await admin.hideReview(storeId, staff, ids[2], "because")).toEqual({ ok: false, problem: "reason" });
+    expect(await admin.hideReview(storeId, staff, ids[2], "spam")).toEqual({ ok: true });
+    expect(await admin.publishReview(storeId, staff, ids[0])).toEqual({ ok: false, problem: "state" });
+    expect(await admin.answerReview(storeId, staff, ids[0], "Thank you!")).toEqual({ ok: true });
+    const facts = await reviewFacts(storeId, p.productId);
+    expect(facts.summary).toEqual({ count: 2, average: 4.5, counts: [1, 1, 0, 0, 0] });
+    expect(facts.latest.map((r) => r.id).sort()).toEqual([ids[0], ids[1]].sort());
+    expect(facts.latest.find((r) => r.id === ids[0])).toMatchObject({ answer: "Thank you!", verified: true, bought: "Shirt, M", title: "Good" });
+    // Staff's answer never changed the buyer's words.
+    const [row] = await db().execute<Row>(sql`select rating, body from commerce.product_reviews where id = ${ids[0]}::uuid`);
+    expect(row).toMatchObject({ rating: 5, body: "Fits well." });
+    // Another store never reads them, and the next page after the last shown is empty.
+    expect((await reviewFacts(otherId, p.productId)).summary.count).toBe(0);
+    const last = facts.latest[facts.latest.length - 1];
+    expect(await moreReviews(storeId, p.productId, { id: last.id })).toEqual({ reviews: [], more: false });
+    expect(await admin.reviewCounts(storeId)).toMatchObject({ hidden: expect.any(Number), published: expect.any(Number) });
+    const queue = await admin.listReviews(storeId, { status: "hidden", query: "", stars: null, before: null });
+    expect(queue.rows.find((r) => r.id === ids[2])).toMatchObject({ hiddenReason: "spam", source: "buyer" });
   });
 });

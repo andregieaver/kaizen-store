@@ -229,6 +229,11 @@ const PAGES: readonly AdminPage[] = [
   store("gift-card", "/gift-cards/[cardId]", "Gift card", "Main", "One gift card: its value and what is left, when it expires, how it came to be, its whole history in words and the orders it paid for; change its balance with a reason or deactivate it.", {
     feature: "gift_cards",
   }),
+  store("reviews", "/reviews", "Reviews", "Main", "Product reviews written by buyers from what they bought and received (verified purchases) and reviews imported from elsewhere: the ones waiting to be checked first, then all by state, searched by product or words and filtered by stars. Publish a review, hide one with a reason (never because it is negative), answer it under the review, and choose whether new reviews wait for a check or are published at once.", {
+    tasks: ["Check new product reviews", "Publish a review", "Hide a review", "Answer a review", "Publish reviews without checking them first"],
+    keywords: ["reviews", "product reviews", "ratings", "stars", "moderation", "verified purchase", "answer review", "omtaler", "anmeldelser", "recensioner", "testimonials"],
+    feature: "reviews",
+  }),
   store("inventory.history", "/inventory/history", "Stock history", "Main", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
     tasks: ["See why a stock figure changed", "Find the order or return behind a change", "Filter the history by SKU, location, reason or dates"],
     keywords: ["stock history", "inventory history", "movements", "adjustment history", "audit", "who changed the stock", "lagerhistorikk"],

@@ -17,6 +17,7 @@ describe("product layouts (D79)", () => {
       "back",
       "gallery",
       "title",
+      "rating",
       "price",
       "campaigns",
       "notice",
@@ -26,6 +27,7 @@ describe("product layouts (D79)", () => {
       "fields",
       "withdrawal",
       "safety",
+      "reviews",
     ]);
   });
 
@@ -35,7 +37,7 @@ describe("product layouts (D79)", () => {
     );
     expect(ok.success).toBe(true);
     expect((ok.data as PageContent).rows[0].columns[0].blocks[0]).toMatchObject({ heading: "Mer i stil" });
-    expect(pageInput.safeParse(withBlocks([{ id: "a", type: "product", part: "reviews" }])).success).toBe(false);
+    expect(pageInput.safeParse(withBlocks([{ id: "a", type: "product", part: "opinions" }])).success).toBe(false);
     expect(pageInput.safeParse(withBlocks([{ id: "a", type: "product", part: "related", limit: 50 }])).success).toBe(false);
   });
 
