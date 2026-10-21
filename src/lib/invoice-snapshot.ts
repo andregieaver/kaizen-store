@@ -186,13 +186,15 @@ export type SnapshotTreatment = {
  * (wave 3, D239), `settled_by_return` is the part paid with the credit of a return (`provider` `exchange`, the return's and its order's numbers), listed first.
  */
 export type SnapshotPayment = {
-  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "due" | "settled_by_order" | "settled_by_return";
+  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "due" | "settled_by_order" | "settled_by_return" | "paid_gift_card";
   amountMinor: number;
   provider: string;
   method?: "cash" | "bank_transfer" | "other" | null;
   invoiceNumber?: string;
   returnNumber?: string | null;
   orderNumber?: string | null;
+  /** On `paid_gift_card` (D300 F3): the last four characters of each card's code, in the order the cards paid. */
+  cards?: string[];
   /** On `due` (D293): the day the balance is due and the terms it was bought on. */
   dueOn?: string;
   terms?: PaymentTerms;
@@ -281,6 +283,8 @@ export type InvoiceOrderFacts = {
   onlineMethod?: string | null;
   /** An exchange order's part paid with a return's credit (its `exchange` payments, D239), with the return's and the original order's numbers; null otherwise. */
   settledByReturn?: { amountMinor: number; returnNumber: string | null; orderNumber: string | null } | null;
+  /** What gift cards paid (D300 F3, its `gift_card` payments), with each card's last four; null when none did. */
+  giftCards?: { amountMinor: number; last4: string[] } | null;
   /** An order bought on payment terms (D293, `order_payment_terms`): its terms and the day its balance is due; null otherwise. */
   terms?: { terms: PaymentTerms; dueOn: string } | null;
 };
@@ -618,11 +622,14 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
   }
 
   const settled = order.settledByReturn && order.settledByReturn.amountMinor > 0 ? order.settledByReturn : null;
-  const online = order.totalMinor - order.balanceMinor - (settled?.amountMinor ?? 0);
+  // Gift cards (D300 F3) are a payment of their own, never a discount: the rest is what was paid online or outside.
+  const cards = order.giftCards && order.giftCards.amountMinor > 0 ? order.giftCards : null;
+  const online = order.totalMinor - order.balanceMinor - (settled?.amountMinor ?? 0) - (cards?.amountMinor ?? 0);
   const payments: SnapshotPayment[] = [
     ...(settled
       ? [{ kind: "settled_by_return" as const, amountMinor: settled.amountMinor, provider: "exchange", returnNumber: settled.returnNumber, orderNumber: settled.orderNumber }]
       : []),
+    ...(cards ? [{ kind: "paid_gift_card" as const, amountMinor: cards.amountMinor, provider: "gift_card", cards: cards.last4 }] : []),
     ...(online > 0
       ? [
           order.onlineProvider === "manual"

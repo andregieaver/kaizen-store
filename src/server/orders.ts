@@ -460,7 +460,7 @@ export async function getShopperOrder(
     left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
       -- An exchange order (D239) paid wholly by its return's credit opens by its exchange payment's reference; an order on payment terms (D293) by its terms one.
-      and pay.provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms') and pay.provider_reference = ${sessionId}
+      and pay.provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms', 'gift_card') and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 

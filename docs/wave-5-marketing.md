@@ -665,6 +665,13 @@ spending a card with F3: a store should not switch gift cards on before F3.
   draft order (D173), another store, another currency (a card in NOK is not spent in a euro view: the view is changed, or the field says
   *This gift card is in NOK*).
 
+**As built (F3):** cards are kept on the cart by id (`cart_gift_cards`) and found by hash; the hold is written by a trigger on the `gift_card` payment
+row itself (not by `placeOrder()` calling the ledger), and spending and releasing follow the order's status by trigger (`complete_order_payment()` and
+`cancel_unpaid_order()` are unchanged). A rest smaller than the provider's smallest charge is left for it (the cards pay less). Stripe gets the rest as
+one line of the order with the shipping inside. An order the cards pay in full is placed from the cart, which asks who pays (as for Mollie) with the
+terms of sale; the checkout's field sends the shopper back there in that case. Refunds give the shopper's money back first and the cards' last. An
+order paid after it was cancelled does not take its cards again (`gift_card.unpaid` for staff). Order changes and exchanges do not yet refund to a card.
+
 ### 8.4 F4: the owner's screens and figures
 
 - **Products → Gift cards** (`products:read`; writing `products:write`, issuing by hand and adjusting `owner` or a role with `orders:write`

@@ -10,13 +10,16 @@ import type { PaymentProviderId } from "./payment-providers";
 
 export type RefundablePayment = {
   id: string;
-  /** A provider's (refunded through that provider, D292) or `manual` (money taken outside Kaizen: the refund is recorded, D173). */
-  provider: PaymentProviderId | "manual";
+  /**
+   * A provider's (refunded through that provider, D292), `manual` (money taken outside Kaizen: the refund is recorded, D173) or `gift_card` (back on the
+   * card, recorded, D300 F3).
+   */
+  provider: PaymentProviderId | "manual" | "gift_card";
   /** What the payment took less its refunds that did not fail. */
   leftMinor: number;
 };
 
-export type RefundPart = { paymentId: string; provider: PaymentProviderId | "manual"; amountMinor: number };
+export type RefundPart = { paymentId: string; provider: PaymentProviderId | "manual" | "gift_card"; amountMinor: number };
 
 /**
  * The parts of a refund of `amountMinor` over `payments` (already in the order they were made). Null when they have less left than the amount (the caller

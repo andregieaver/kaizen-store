@@ -40,10 +40,13 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
     `select o.*, o.total_minor::text as total_t, to_char(commerce.store_day(o.store_id, o.placed_at), 'YYYY-MM-DD') as placed_on,
             to_char(commerce.store_day(o.store_id, (select min(e.created_at) from commerce.order_events e where e.order_id = o.id and e.type = 'order.paid')), 'YYYY-MM-DD') as paid_on,
             commerce.vat_rate(o.market_code, 'standard', o.placed_at)::text as market_rate,
-            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider not in ('venue', 'exchange', 'terms') and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
+            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider not in ('venue', 'exchange', 'terms', 'gift_card') and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
             (select sum(p.amount_minor)::text from commerce.payments p where p.order_id = o.id and p.provider = 'exchange' and p.status not in ('failed', 'cancelled')) as settled_minor,
             (select jsonb_build_object('returnNumber', rt.number, 'orderNumber', oo.number) from commerce.return_exchanges x
                join commerce.returns rt on rt.id = x.return_id join commerce.orders oo on oo.id = x.order_id where x.id = o.exchange_id) as settled_from,
+            (select jsonb_build_object('amountMinor', sum(p.amount_minor), 'last4', jsonb_agg(g.last4 order by p.created_at, p.id)) from commerce.payments p
+               join commerce.gift_cards g on g.id = p.gift_card_id where p.order_id = o.id and p.provider = 'gift_card' and p.status not in ('failed', 'cancelled')
+             having count(*) > 0) as gift_cards,
             (select p.method from commerce.payments p where p.order_id = o.id and p.provider = 'manual' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_method,
             (select jsonb_build_object('terms', t.terms, 'dueOn', to_char(t.due_on, 'YYYY-MM-DD')) from commerce.order_payment_terms t where t.order_id = o.id) as payment_terms
        from commerce.orders o where o.id = $1`,
@@ -81,6 +84,7 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
       deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe", onlineMethod: o.online_method ?? null,
       settledByReturn: o.settled_minor ? { amountMinor: Number(o.settled_minor), returnNumber: o.settled_from?.returnNumber ?? null, orderNumber: o.settled_from?.orderNumber ?? null } : null,
       terms: o.payment_terms ?? null,
+      giftCards: o.gift_cards ? { amountMinor: Number(o.gift_cards.amountMinor), last4: o.gift_cards.last4 } : null,
     },
     lines: lines.map((l) => ({
       id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPriceMinor: num(l.unit_price_minor)!, totalMinor: num(l.total_minor)!, taxMinor: num(l.tax_minor)!,

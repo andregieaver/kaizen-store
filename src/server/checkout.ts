@@ -16,6 +16,8 @@ import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { giftCardRecipientOfRow } from "@/lib/gift-card-line";
+import { giftCardsPay } from "@/lib/gift-cards";
+import { minChargeMinor } from "@/lib/bonus";
 import { formatMoney } from "@/lib/money";
 import { BOOKED_KINDS, GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { campaignLabel, memberOffAfterCampaign } from "@/lib/campaigns";
@@ -29,6 +31,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
 
 import { holdAppointment } from "./appointments";
+import { cartGiftCards } from "./gift-card-cart";
 import { allocateStock, insertOrder, insertOrderLine, reserveStock, type StockHold } from "./order-insert";
 import { holdRange, linePrice, rangePricing } from "./ranges";
 import { recordExperimentCart } from "./experiments";
@@ -103,9 +106,10 @@ export type PlacedOrder = {
   shippingReliefMinor: number;
   treatment: OrderVatTreatment | null;
   totalMinor: number;
-  /** What is paid now, and what is left to pay at the venue (D66); they add up to the total. */
+  /** What is paid now through the provider, what is left to pay at the venue (D66) and what gift cards pay (D300 F3); they add up to the total. */
   dueNowMinor: number;
   balanceMinor: number;
+  giftCardsMinor?: number;
   /** The company it is bought for (B2B), put on the invoice. */
   company: { name: string; number: string } | null;
   /**
@@ -848,6 +852,30 @@ export async function placeOrder(
       `);
       subscription = { id: subscriptionId, ...rhythm, shippingMinor: basket.renewal };
     }
+    // Gift cards (D300 F3) pay first, in the order the cart added them, up to what is due online without the order's own gift cards: each part is a
+    // pending `gift_card` payment, held on its card by the database as it is written (under the cards' locks, taken in id order), spent when the order
+    // is paid and released if it is cancelled unpaid. Never for a subscription, a host's listing or an order on terms. `cartSummary()` takes the same.
+    let giftCardsMinor = 0;
+    if (!rhythm && !hostId && !onTerms) {
+      const cards = await cartGiftCards(tx, storeId, cartId, { currency: market.currency, lock: true });
+      if (cards.length > 0) {
+        const voucherMinor = priced.filter((p) => p.voucher).reduce((sum, p) => sum + p.total, 0);
+        const paying = giftCardsPay(
+          cards.map((card) => ({ id: card.id, balanceMinor: card.balanceMinor, usable: card.problem === null })),
+          total - orderBalance - voucherMinor,
+          minChargeMinor(market.currency),
+        );
+        for (const part of paying.parts) {
+          if (part.amountMinor <= 0) continue;
+          await tx.execute(sql`
+            insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, gift_card_id, created_at)
+            values (${storeId}::uuid, ${orderId}::uuid, 'gift_card', ${`gc_${randomBytes(18).toString("base64url")}`}, ${part.amountMinor}, ${market.currency},
+                    'pending', ${part.id}::uuid, clock_timestamp())
+          `);
+        }
+        giftCardsMinor = paying.paidMinor;
+      }
+    }
     await reserveStock(tx, storeId, orderId, allocations, { minutes: CHECKOUT_MINUTES + 5 });
     // The credits are held against the order while it waits for payment: paying keeps them used, cancelling gives them back.
     if (creditTotal > 0) {
@@ -916,8 +944,9 @@ export async function placeOrder(
         shippingReliefMinor: shippingRelief,
         treatment: taxOutcome.treatment,
         totalMinor: total,
-        dueNowMinor: total - orderBalance,
+        dueNowMinor: total - orderBalance - giftCardsMinor,
         balanceMinor: orderBalance,
+        giftCardsMinor,
         company: orderCompany,
         // Stripe takes it as a one-time coupon: everything off today that is
         // not already in a lowered subscriber's price. In a subscription,
@@ -984,6 +1013,29 @@ async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: Chec
     await sendOrderConfirmation(storeId, order.orderId);
     await sendBookingStaffNotices(storeId, order.orderId);
   };
+  try {
+    after(notify);
+  } catch {
+    // Not in a request (scripts, tests).
+    await notify();
+  }
+  return token;
+}
+
+/**
+ * Confirms an order its gift cards pay in full (D300 F3), as a venue booking is confirmed (D66): `complete_order_payment()` makes it paid, which
+ * captures its held gift card payments (spending them on their cards, by the database's trigger) and issues its invoice. The first card's payment
+ * reference is the order page's key, as a Stripe session's id is. Returns it.
+ */
+async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Promise<string> {
+  const [first] = await db().execute<Row>(sql`
+    select provider_reference from commerce.payments
+    where store_id = ${storeId}::uuid and order_id = ${order.orderId}::uuid and provider = 'gift_card' and status = 'pending'
+    order by created_at, id limit 1
+  `);
+  const token = String(first.provider_reference);
+  await completeOrderPayment(order.orderId, token);
+  const notify = () => sendOrderConfirmation(storeId, order.orderId);
   try {
     after(notify);
   } catch {
@@ -1112,13 +1164,15 @@ export async function startCheckout(
   // The store's checkout provider for the mode it is in (D292): Mollie while chosen and connected, else Stripe.
   const mollieMode = await mollieCheckoutMode(shop.storeId);
   const connected = await paymentConnection(shop.storeId);
-  if (!onTerms && !connected && !mollieMode) return { ok: false, problem: "payments_off" };
+  // Who pays given with no provider on: gift cards may pay it all (D300 F3); if they do not, the order is refused below as `payments_off`.
+  if (!onTerms && !connected && !mollieMode && !payer) return { ok: false, problem: "payments_off" };
   if (onTerms && !customerId) return { ok: false, problem: "terms" };
   const ui = await getCheckoutUi();
   // Mollie's page asks for no address: who pays is checked before the order is placed, for what the basket needs. On terms (D293) no provider's page asks
   // anything, and a business's invoice needs its full address (Art. 226 point 5): asked always.
   let cleanedPayer: PayerDetails | null = null;
-  if (mollieMode || onTerms) {
+  // An order gift cards pay in full (D300 F3) has no provider's page either: who pays is asked on the cart and given here, checked the same way.
+  if (mollieMode || onTerms || payer) {
     const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market);
     const needs = { address: onTerms || (resolved?.delivery != null && resolved.method !== "pickup"), phone: resolved?.method === "local" };
     const cleaned = payer ? cleanPayer(payer, needs) : null;
@@ -1186,14 +1240,30 @@ export async function startCheckout(
     const token = await confirmOnTerms(shop.storeId, order);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
-  // Everything is paid at the venue (D66): no payment now, the booking is confirmed at once.
+  // Everything is paid at the venue (D66), with gift cards for any part due now (D300 F3): no payment now, the booking is confirmed at once.
   if (order.dueNowMinor === 0 && order.balanceMinor > 0) {
+    contact = contact ?? (cleanedPayer ? { name: cleanedPayer.name, email: cleanedPayer.email, phone: cleanedPayer.phone } : null);
     if (!contact) {
       await cancelUnpaidOrder(order.orderId, "no contact details");
       return { ok: false, problem: "contact" };
     }
     const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
     const token = await confirmAtVenue(shop.storeId, order, contact);
+    return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
+  }
+  // Gift cards pay it all (D300 F3): no provider is asked; who pays is kept on the order, the store's terms recorded, and it is paid at once.
+  if (order.dueNowMinor === 0 && (order.giftCardsMinor ?? 0) > 0) {
+    if (!cleanedPayer) {
+      await cancelUnpaidOrder(order.orderId, "who pays was not given");
+      return { ok: false, problem: "payer" };
+    }
+    if (recordTerms && !(await recordTerms(order.orderId)).ok) {
+      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      return { ok: false, problem: "consent" };
+    }
+    await writePayer(shop.storeId, order.orderId, cleanedPayer, shop.market.code);
+    const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+    const token = await confirmPaidByGiftCards(shop.storeId, order);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
   // On Mollie (D292), an order Mollie can take: what Stripe alone does stays Stripe's (a subscription's renewals, a deposit's saved card, a host's account).

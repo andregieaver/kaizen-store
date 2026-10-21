@@ -134,6 +134,7 @@ export function CheckoutButton({
   payer,
   vat,
   terms,
+  cardsPayAll,
 }: {
   store: string;
   market: string;
@@ -150,6 +151,8 @@ export function CheckoutButton({
   vat?: CheckoutVat;
   /** Where the signed-in buyer's company may buy on payment terms (D293). */
   terms?: CheckoutTermsChoice;
+  /** Gift cards pay it all (D300 F3): no payment page follows, so the store's terms of sale are shown here and the button places the order. */
+  cardsPayAll?: { display: TermsDisplay | null; template: string; newTab: string; place: string };
 }) {
   const [way, setWay] = useState<"now" | "terms">(terms?.onlyWay ? "terms" : "now");
   const onTerms = Boolean(terms) && way === "terms";
@@ -224,6 +227,7 @@ export function CheckoutButton({
             }
           : null,
         onTerms ? { termsTicked: ticked } : null,
+        cardsPayAll && !onTerms ? { termsTicked: ticked } : null,
       );
     },
     { problem: null },
@@ -403,12 +407,21 @@ export function CheckoutButton({
           ),
       )}
       {onTerms && terms?.display && <CheckoutTerms store={store} market={market} display={terms.display} template={terms.template} newTab={terms.newTab} />}
+      {!onTerms && cardsPayAll?.display && (
+        <CheckoutTerms store={store} market={market} display={cardsPayAll.display} template={cardsPayAll.template} newTab={cardsPayAll.newTab} />
+      )}
       <button
         type="submit"
-        disabled={disabled || pending || Boolean(to) || (onTerms && payHeld(terms?.display ?? null, ticked))}
+        disabled={
+          disabled ||
+          pending ||
+          Boolean(to) ||
+          (onTerms && payHeld(terms?.display ?? null, ticked)) ||
+          (!onTerms && Boolean(cardsPayAll) && payHeld(cardsPayAll?.display ?? null, ticked))
+        }
         className="min-h-12 button-primary px-4 font-medium disabled:opacity-40"
       >
-        {pending || to ? labels.startingPayment : onTerms && terms ? terms.labels.place : labels.checkout}
+        {pending || to ? labels.startingPayment : onTerms && terms ? terms.labels.place : cardsPayAll ? cardsPayAll.place : labels.checkout}
       </button>
       <p role="status" aria-live="polite" className="text-sm">
         {state.problem && labels.problems[state.problem]}

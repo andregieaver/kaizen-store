@@ -129,7 +129,7 @@ export type PaymentFacts = {
 
 /**
  * The report's group of a payment (D288 3): a wallet over its card (*Apple Pay*), a method by name, a payment staff recorded by its own method
- * (*Recorded by staff: Cash*), the credit an exchange moved, a venue payment, and *Unknown* for a provider payment whose facts were never read.
+ * (*Recorded by staff: Cash*), the credit an exchange moved, a venue payment, a gift card (D300 F3), and *Unknown* for a provider payment whose facts were never read.
  */
 export function methodGroup(p: PaymentFacts): { key: string; label: string } {
   if (p.provider === "manual") {
@@ -138,6 +138,7 @@ export function methodGroup(p: PaymentFacts): { key: string; label: string } {
   }
   if (p.provider === "exchange") return { key: "exchange", label: "Credit from a return" };
   if (p.provider === "venue") return { key: "venue", label: "At the venue" };
+  if (p.provider === "gift_card") return { key: "gift_card", label: "Gift card" };
   if (p.wallet) return { key: `wallet:${p.wallet}`, label: WALLET_WORDS[p.wallet] ?? spaced(p.wallet) };
   if (p.methodType) return { key: `method:${p.methodType}`, label: METHOD_WORDS[p.methodType] ?? spaced(p.methodType) };
   return { key: "unknown", label: "Unknown" };

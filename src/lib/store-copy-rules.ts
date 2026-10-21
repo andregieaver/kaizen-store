@@ -169,6 +169,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
   gift_cards: never("Gift cards (D300) are money customers hold with the original store, like their payments."),
   gift_card_entries: never("A gift card's ledger (D300): part of the card, never copied."),
+  cart_gift_cards: never("The gift cards a shopper's cart will pay with (D300 F3): the original store's cards, like its carts."),
   bonus_entries: never("Customers' bonus credits (D130) are their balance with the original store, like their orders' payments."),
   affiliates: never("Customers' referral codes (D131) belong to the original store's customers; a copied customer makes theirs again when they open Refer a friend."),
   affiliate_attributions: never("Which order came through whose link, and what it earned (D131), is history of the original store: a copied order never carries a referral."),

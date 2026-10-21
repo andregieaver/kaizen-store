@@ -412,6 +412,7 @@ function Statements({ doc, t, lang }: { doc: Doc; t: DocumentText; lang: string 
 /** A payment row's words. `settled_by_order` (a change's additional invoice) is settled against the original's payment: never "to pay at the venue". */
 function paymentWords(p: SnapshotPayment, doc: OrderInvoiceSnapshot, t: DocumentText, e: EditDocumentText, locale: string): string {
   if (p.kind === "paid_online") return t.paidOnline;
+  if (p.kind === "paid_gift_card") return t.paidGiftCard(p.cards ?? []);
   // The balance of an order on payment terms (D293): owed by its due day, never "to pay at the venue".
   if (p.kind === "due") return p.dueOn ? t.toPayBy(dayText(p.dueOn, locale)) : t.dueDate;
   if (p.kind === "paid_outside") return `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`;

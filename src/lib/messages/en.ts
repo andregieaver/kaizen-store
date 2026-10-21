@@ -1266,6 +1266,29 @@ export const en = {
   storeSummary: (name: string, country: string) => `${name}: online store delivering in ${country}. Prices include VAT.`,
   options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted", rental: "Rental", day: "Whole days", halfDay: "Half day", hour: "By the hour" },
   // Gift cards (D300 F2). legal: needs review (the withdrawal sentence).
+  // Paying with a gift card at the cart and checkout (D300 F3): a payment, never a discount.
+  giftCardPay: {
+    heading: "Gift card",
+    field: "Gift card code",
+    apply: "Use",
+    applying: "Checking…",
+    remove: "Remove",
+    card: (last4: string) => `Gift card ••••${last4}`,
+    left: (amount: string) => `Left on the card after this order: ${amount}`,
+    coverAll: "Your gift cards pay for everything. Tell us who you are and place the order.",
+    place: "Place order",
+    paidWith: "Gift cards",
+    restLine: (number: string) => `Order ${number}`,
+    problems: {
+      unusable: "This gift card can't be used.",
+      currency: (currency: string) => `This gift card is in ${currency}.`,
+      subscription: "A gift card can't pay for a subscription.",
+      host: "A gift card can't pay for this booking.",
+      limit: "Too many tries. Try again in an hour.",
+      full: "Up to three gift cards per order.",
+      none: "Your cart has expired. Start again from the cart.",
+    },
+  },
   giftCardLine: {
     sentTo: (to: string, day: string) => `Emailed to ${to} on ${day}`,
     toYou: "Emailed to you once you have paid",

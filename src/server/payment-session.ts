@@ -203,6 +203,8 @@ export async function openPaymentSession(
     `);
   }
   const partial = order.balanceMinor > 0;
+  const paidByCards = (order.giftCardsMinor ?? 0) > 0;
+  const cardsRestLabel = (number: string) => t(shop.market.lang).giftCardPay.restLine(number);
   // Kaizen's own invoice and credit notes (D159) are made by the database when the order is paid: Stripe's invoice option is then not used.
   const kaizenInvoices = await kaizenInvoicingOn(shop.storeId);
   // Reverse charge (D157): Stripe is sent the order's own net amounts, each line at its amount due, no coupon (the discounts
@@ -238,7 +240,7 @@ export async function openPaymentSession(
     // A discount code (D31) reaches Stripe as a coupon for this checkout alone.
     // With a part paid at the venue, each line is sent as what is due now, discount included.
     const coupon =
-      !partial && !reverse && !exact && order.discount && order.discount.couponMinor > 0
+      !partial && !reverse && !exact && !paidByCards && order.discount && order.discount.couponMinor > 0
         ? await stripe.coupons.create(
             {
               amount_off: order.discount.couponMinor,
@@ -258,7 +260,10 @@ export async function openPaymentSession(
         metadata,
         ...(coupon && { discounts: [{ coupon: coupon.id }] }),
         integration_identifier: INTEGRATION_IDENTIFIER,
-        line_items: partial || reverse || exact
+        line_items: paidByCards
+          ? // Gift cards paid part of it (D300 F3): Stripe is sent the rest, as one line of the order, no coupon (the cards are a payment, not a discount).
+            [{ quantity: 1, price_data: { currency, unit_amount: order.dueNowMinor, product_data: { name: cardsRestLabel(order.number) } } }]
+          : partial || reverse || exact
           ? order.lines
               .filter((line) => line.dueNowMinor > 0)
               .map((line) => ({
@@ -321,8 +326,10 @@ export async function openPaymentSession(
           },
         }),
         // Downloads only: no address to ask for and nothing to ship (D24).
+        // Paid in part with gift cards (D300 F3), the one line of the rest holds the shipping too.
         ...(order.ships &&
-          !order.subscription && {
+          !order.subscription &&
+          !paidByCards && {
             shipping_options: [
               {
                 shipping_rate_data: {

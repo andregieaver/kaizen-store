@@ -176,8 +176,9 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
              -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizena Flow (D173, refunded by being recorded), can be refunded here.
              -- An exchange order's credit (D239, provider exchange) is refunded at the original order's payment, so it is refundable here too.
              -- A Mollie payment (D292) is refunded through Mollie.
-             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'mollie', 'manual', 'exchange')), 0)::bigint as online,
-             bool_or(status = 'captured' and (provider_account is not null or provider = 'exchange')) as connect,
+             -- A gift card's part (D300 F3) goes back on the card, with no provider to ask.
+             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'mollie', 'manual', 'exchange', 'gift_card')), 0)::bigint as online,
+             bool_or(status = 'captured' and (provider_account is not null or provider in ('exchange', 'gift_card'))) as connect,
              bool_or(status = 'captured' and provider = 'manual') as manual,
              (array_agg(method order by created_at) filter (where provider = 'manual' and status = 'captured'))[1] as manual_method,
              min(created_at) filter (where provider = 'manual' and status = 'captured') as manual_at
@@ -749,16 +750,21 @@ export async function refundOrder(
         left join commerce.payments src on src.store_id = tr.store_id and src.id = tr.payment_id
         left join commerce.connected_accounts sa on sa.store_id = src.store_id and sa.account_id = src.provider_account
         where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured'
-          and (p.provider in ('manual', 'mollie') or (p.provider = 'stripe' and a.mode is not null)
+          and (p.provider in ('manual', 'mollie', 'gift_card') or (p.provider = 'stripe' and a.mode is not null)
                or (p.provider = 'exchange' and (src.provider in ('manual', 'mollie') or (src.provider = 'stripe' and sa.mode is not null))))
           and (${options.paymentId ?? null}::uuid is null or p.id = ${options.paymentId ?? null}::uuid)
-        order by (p.provider = 'exchange'), p.created_at, p.id
+        -- Money goes back first and a gift card's part last (D300 F3): a partial refund pays the shopper back rather than the card.
+        order by (p.provider = 'gift_card'), (p.provider = 'exchange'), p.created_at, p.id
       `);
   const byId = new Map(payments.map((p) => [String(p.id), p]));
   const parts = options.outside
     ? []
     : splitRefund(
-        payments.map((p) => ({ id: String(p.id), provider: p.provider === "manual" ? ("manual" as const) : isPaymentProvider(p.provider) ? p.provider : ("stripe" as const), leftMinor: Number(p.left_minor) })),
+        payments.map((p) => ({
+          id: String(p.id),
+          provider: p.provider === "manual" || p.provider === "gift_card" ? p.provider : isPaymentProvider(p.provider) ? p.provider : ("stripe" as const),
+          leftMinor: Number(p.left_minor),
+        })),
         input.amountMinor,
       );
   if (!options.outside && payments.length === 0) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
@@ -775,6 +781,11 @@ export async function refundOrder(
     const payment = byId.get(part.paymentId)!;
     if (part.provider === "manual") {
       made.push({ part, providerReference: `manual_refund_${randomUUID()}`, status: "succeeded", recorded: true });
+      continue;
+    }
+    // A gift card's part goes back on the card (D300 F3): recorded here, and the database's trigger writes it on the card's ledger.
+    if (part.provider === "gift_card") {
+      made.push({ part, providerReference: `gift_card_refund_${randomUUID()}`, status: "succeeded", recorded: true });
       continue;
     }
     try {
@@ -973,7 +984,8 @@ async function writeRefunds(
       `);
     }
     // A refund recorded outside Kaizen (D173) also says so in the order's history, in words that name no one: `data.note` is the reason (the one free-text key the erasure removes).
-    const outsideAmount = manual.reduce((sum, m) => sum + m.part.amountMinor, 0);
+    // A gift card's part (D300 F3) went back on the card: never money the store paid back itself.
+    const outsideAmount = manual.filter((m) => m.part.provider === "manual").reduce((sum, m) => sum + m.part.amountMinor, 0);
     if (outsideAmount > 0) {
       await tx.execute(sql`
         insert into commerce.order_events (store_id, order_id, type, data, actor)

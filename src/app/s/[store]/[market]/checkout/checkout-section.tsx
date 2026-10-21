@@ -7,6 +7,7 @@ import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { CheckoutForm } from "@/components/lazy/shop";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
+import { GiftCardForm } from "@/components/gift-card-form";
 import { GiftNote } from "@/components/gift-note";
 import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
@@ -36,13 +37,15 @@ import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
 import { orderCodeOutcomes, type CodeOutcome } from "@/server/discounts";
 import { codeProblemText } from "@/lib/code-words";
+import { shownCartGiftCards } from "@/lib/gift-card-words";
+import { checkoutGiftCards } from "@/server/gift-card-cart";
 import { getOrder } from "@/server/orders";
 import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
 import type { Store } from "@/server/stores";
 
 import { readCartBonus } from "../cart/bonus";
-import { checkoutCreditsAction } from "./actions";
+import { checkoutCreditsAction, checkoutGiftCardAction, checkoutRemoveGiftCardAction } from "./actions";
 
 type CheckoutView = NonNullable<Awaited<ReturnType<typeof loadCheckoutView>>>;
 
@@ -59,7 +62,9 @@ async function loadCheckoutView(store: Store, market: Market) {
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;
   const bonus = await readCartBonus(store, market, cartId);
-  return { m, base, cartId, open, order, bonus, timeZone: store.timeZone };
+  // The gift cards the order is paid with (D300 F3), as the order holds them.
+  const giftCards = await checkoutGiftCards(store.id, cartId, open.orderId, market.currency);
+  return { m, base, cartId, open, order, bonus, giftCards, timeZone: store.timeZone };
 }
 
 /** The checkout's view, or back to the cart when no order is waiting for payment. */
@@ -226,7 +231,8 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
   const { m } = view;
   const money = moneyOf(view, market);
   return (
-    <CheckoutCodeForm
+    <div className="flex flex-col gap-3">
+      <CheckoutCodeForm
       store={store.slug}
       market={market.slug}
       codes={(codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
@@ -239,6 +245,14 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
         applying: m.savingChange,
       }}
     />
+      <GiftCardForm
+        cards={shownCartGiftCards(view.giftCards, m, money)}
+        full={m.giftCardPay.problems.full}
+        apply={checkoutGiftCardAction.bind(null, store.slug, market.slug)}
+        remove={checkoutRemoveGiftCardAction.bind(null, store.slug, market.slug)}
+        labels={{ field: m.giftCardPay.field, apply: m.giftCardPay.apply, applying: m.giftCardPay.applying, remove: m.giftCardPay.remove }}
+      />
+    </div>
   );
 }
 
@@ -259,6 +273,8 @@ function creditsBlock(store: Store, market: Market, view: CheckoutView) {
 function totalsList(view: CheckoutView, market: Market) {
   const { m, order, open } = view;
   const money = moneyOf(view, market);
+  // What the order's gift cards pay (D300 F3), as it holds them.
+  const cardsPaid = view.giftCards.reduce((sum, card) => sum + card.amountMinor, 0);
   // A subscription's terms, repeated where the shopper pays (D25).
   const renewal = open.subscription
     ? m.renewsEvery(
@@ -369,17 +385,24 @@ function totalsList(view: CheckoutView, market: Market) {
             )}
           </>
         )}
+        {cardsPaid > 0 && (
+          // Gift cards (D300 F3): a payment after the total, never a discount before it.
+          <div className="flex justify-between">
+            <dt>{m.giftCardPay.paidWith}</dt>
+            <dd>−{money(cardsPaid)}</dd>
+          </div>
+        )}
+        {(order.balanceMinor > 0 || cardsPaid > 0) && (
+          <div className="flex justify-between">
+            <dt>{m.booking.dueNow}</dt>
+            <dd>{money(order.totalMinor - order.balanceMinor - cardsPaid)}</dd>
+          </div>
+        )}
         {order.balanceMinor > 0 && (
-          <>
-            <div className="flex justify-between">
-              <dt>{m.booking.dueNow}</dt>
-              <dd>{money(order.totalMinor - order.balanceMinor)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt>{m.booking.atVenue}</dt>
-              <dd>{money(order.balanceMinor)}</dd>
-            </div>
-          </>
+          <div className="flex justify-between">
+            <dt>{m.booking.atVenue}</dt>
+            <dd>{money(order.balanceMinor)}</dd>
+          </div>
         )}
       </dl>
       <VatNotes

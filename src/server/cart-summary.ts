@@ -3,6 +3,8 @@ import "server-only";
 import { cartSubtotal } from "@/lib/cart";
 import { NO_CART_AFFILIATE } from "@/lib/affiliates";
 import { memberOffAfterCampaign } from "@/lib/campaigns";
+import { minChargeMinor } from "@/lib/bonus";
+import { giftCardsPay } from "@/lib/gift-cards";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
 
@@ -16,6 +18,7 @@ import { memberDiscountFor } from "./customer-tiers";
 import { resolveDelivery } from "./delivery-options";
 import { getCustomer } from "./customers";
 import { previewCartCodes } from "./discounts";
+import { cartGiftCards } from "./gift-card-cart";
 import { getCheckoutInfo } from "./orders";
 import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 
@@ -215,6 +218,30 @@ export async function cartSummary(
   const bonus = cartBonusOf(shop.market, program, credits, creditPlan, customerId !== null, paidOnlineGoods, !sellerIsHost);
   // Nothing to pay online: the shopper tells who books instead of Stripe asking.
   const atVenueOnly = balance > 0 && balance === total;
+  // Gift cards on the cart (D300 F3) pay what is due online, first and in the order added, as `placeOrder()` takes them: a payment, never a
+  // discount, so the total and its VAT stay as they are. They never pay for a gift card, a subscription's order or a host's listing.
+  const voucherMinor = payable.filter(voucher).reduce((sum, line) => sum + today(line), 0);
+  const cardsBlocked: "subscription" | "host" | null = plan ? "subscription" : sellerIsHost ? "host" : null;
+  const cards = cartId ? await cartGiftCards(db(), storeId, cartId, { currency: market.currency }) : [];
+  const cardsPaid = giftCardsPay(
+    cards.map((card) => ({ id: card.id, balanceMinor: card.balanceMinor, usable: card.problem === null && cardsBlocked === null })),
+    cards.length > 0 && cardsBlocked === null ? total - balance - voucherMinor : 0,
+    minChargeMinor(market.currency),
+  );
+  const giftCards = {
+    /** Each card on the cart, in the order added, with what it pays here and holds after, or why it cannot pay (a key of `m.giftCardPay.problems`). */
+    cards: cards.map((card, i) => ({
+      id: card.id,
+      last4: card.last4,
+      currency: card.currency,
+      amountMinor: cardsPaid.parts[i]?.amountMinor ?? 0,
+      afterMinor: cardsPaid.parts[i]?.afterMinor ?? card.balanceMinor,
+      problem: card.problem ?? cardsBlocked,
+    })),
+    paidMinor: cardsPaid.paidMinor,
+    /** Nothing is left to pay online: no payment page follows, so who pays is asked on the cart (as for Mollie). */
+    coverAll: cardsPaid.paidMinor > 0 && total - balance - cardsPaid.paidMinor === 0,
+  };
   return {
     payable,
     blocked,
@@ -275,7 +302,9 @@ export async function cartSummary(
     reliefLine,
     balance,
     atVenueOnly,
-    /** What Stripe is asked for: all but the part left for the venue. */
-    dueNowMinor: total - balance,
+    /** What gift cards pay (D300 F3), card by card. */
+    giftCards,
+    /** What Stripe is asked for: all but the part left for the venue and what gift cards pay. */
+    dueNowMinor: total - balance - cardsPaid.paidMinor,
   };
 }

@@ -4285,6 +4285,11 @@ export const payments = commerce.table(
     /** For `provider = 'exchange'`: the original order's `transfer` refund it is paid from (equal in amount and currency, checked at commit). */
     transferRefundId: uuid("transfer_refund_id"),
     /**
+     * For `provider = 'gift_card'` (D300 F3): the card that pays. Held by a trigger when the row is made (`gift_card_hold()`), spent when it is captured with
+     * its order, released when it ends unpaid; a refund of it goes back on the card. No provider is asked: the card's ledger is the money.
+     */
+    giftCardId: uuid("gift_card_id"),
+    /**
      * What a Stripe payment was (wave 4 unit A, D288), read once from its charge after capture (`src/server/payment-facts.ts`) and kept as Stripe gave
      * it: the method (`payment_method_details.type`), the card's wallet and brand, the risk outcome and the charge's id. All null until read, and for any
      * other provider; `facts_read_at` says the read was made (a value Stripe did not give stays null and is *Unknown*).
@@ -4337,6 +4342,15 @@ export const payments = commerce.table(
     index("payments_order_edit_idx")
       .on(t.storeId, t.orderEditId)
       .where(sql`${t.orderEditId} is not null`),
+    foreignKey({
+      name: "payments_gift_card_fk",
+      columns: [t.storeId, t.giftCardId],
+      foreignColumns: [giftCards.storeId, giftCards.id],
+    }),
+    index("payments_gift_card_idx")
+      .on(t.storeId, t.giftCardId)
+      .where(sql`${t.giftCardId} is not null`),
+    check("payments_gift_card", sql`(${t.provider} = 'gift_card') = (${t.giftCardId} is not null) and (${t.provider} <> 'gift_card' or ${t.providerAccount} is null)`),
     check("payments_received_manual", sql`${t.receivedOn} is null or ${t.provider} = 'manual'`),
     index("payments_recorded_by_idx").on(t.recordedBy),
     check("payments_manual_method", sql`(${t.provider} = 'manual') = (${t.method} is not null) and (${t.method} is null or ${t.method} in ('cash', 'bank_transfer', 'other'))`),
@@ -8959,6 +8973,26 @@ export const giftCardEntries = commerce.table(
     // A person adjusts; a card is voided by a person, or by its order's withdrawal (D300 F2, with the order).
     check("gift_card_entries_staff", sql`(${t.kind} <> 'adjust' or ${t.accountId} is not null) and (${t.kind} <> 'void' or ${t.accountId} is not null or ${t.orderId} is not null)`),
     check("gift_card_entries_note", sql`length(${t.note}) <= 500 and (${t.kind} <> 'adjust' or length(trim(${t.note})) > 0)`),
+  ],
+);
+
+/**
+ * The gift cards a cart will pay with (D300 F3): found by their code at the cart or checkout (`findGiftCard()`, by hash; the code is never kept here), in the
+ * order added, at most three. Nothing is held until the order is placed; what each pays is worked out again each time (`giftCardsPay()`).
+ */
+export const cartGiftCards = commerce.table(
+  "cart_gift_cards",
+  {
+    storeId: storeId(),
+    cartId: uuid("cart_id").notNull(),
+    cardId: uuid("card_id").notNull(),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.cartId, t.cardId] }),
+    cartRef("cart_gift_cards_cart_fk", t).onDelete("cascade"),
+    foreignKey({ name: "cart_gift_cards_card_fk", columns: [t.storeId, t.cardId], foreignColumns: [giftCards.storeId, giftCards.id] }),
+    index("cart_gift_cards_card_idx").on(t.storeId, t.cardId),
   ],
 );
 

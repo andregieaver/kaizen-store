@@ -149,7 +149,7 @@ export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id
       (${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid) as by_customer,
       (${key}::text is not null and exists (
         select 1 from commerce.payments p
-        where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'mollie', 'venue', 'manual', 'terms') and p.provider_reference = ${key}
+        where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'mollie', 'venue', 'manual', 'terms', 'gift_card') and p.provider_reference = ${key}
       )) as by_key
     from commerce.orders o
     left join commerce.customers c on c.store_id = o.store_id and c.id = o.customer_id
@@ -160,7 +160,7 @@ export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id
         or (${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid)
         or (${key}::text is not null and exists (
           select 1 from commerce.payments p
-          where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'mollie', 'venue', 'manual', 'terms') and p.provider_reference = ${key}
+          where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'mollie', 'venue', 'manual', 'terms', 'gift_card') and p.provider_reference = ${key}
         ))
       )
     limit 1
@@ -188,7 +188,7 @@ export async function shopperCanAccessOrder(storeId: string, orderId: string, ac
         `)
       : await db().execute<Row>(sql`
           select 1 from commerce.payments
-          where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'terms')
+          where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'terms', 'gift_card')
             and provider_reference = ${access.sessionId}
         `);
   return Boolean(row);

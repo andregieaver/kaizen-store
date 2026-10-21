@@ -1255,6 +1255,29 @@ export const sv: Messages = {
   storeSummary: (name: string, country: string) => `${name}: webbutik med leverans i ${country}. Priser inklusive moms.`,
   options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad", rental: "Hyra", day: "Hela dagar", halfDay: "Halvdag", hour: "Per timme" },
   // Presentkort (D300 F2). legal: needs review (ångerrättsmeningen).
+  // Paying with a gift card at the cart and checkout (D300 F3): a payment, never a discount.
+  giftCardPay: {
+    heading: "Presentkort",
+    field: "Presentkortskod",
+    apply: "Använd",
+    applying: "Kontrollerar …",
+    remove: "Ta bort",
+    card: (last4: string) => `Presentkort ••••${last4}`,
+    left: (amount: string) => `Kvar på kortet efter den här beställningen: ${amount}`,
+    coverAll: "Dina presentkort betalar allt. Berätta vem du är och slutför beställningen.",
+    place: "Slutför beställningen",
+    paidWith: "Presentkort",
+    restLine: (number: string) => `Beställning ${number}`,
+    problems: {
+      unusable: "Det här presentkortet kan inte användas.",
+      currency: (currency: string) => `Det här presentkortet är i ${currency}.`,
+      subscription: "Ett presentkort kan inte betala för en prenumeration.",
+      host: "Ett presentkort kan inte betala för den här bokningen.",
+      limit: "För många försök. Försök igen om en timme.",
+      full: "Upp till tre presentkort per beställning.",
+      none: "Din varukorg har gått ut. Börja om från varukorgen.",
+    },
+  },
   giftCardLine: {
     sentTo: (to: string, day: string) => `Mejlas till ${to} ${day}`,
     toYou: "Mejlas till dig när du har betalat",

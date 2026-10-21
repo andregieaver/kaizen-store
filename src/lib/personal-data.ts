@@ -145,6 +145,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("wishlist_cart_adds", "shopper", via("customer", "customer_id", "wishlist_id"), ["customer_id", "wishlist_name"], "wishlists", "anonymise", "What was added to a cart from a list; the person and the list's name are removed."),
   entry("carts", "shopper", via("customer", "customer_id"), ["customer_id", "company_name", "organisation_number", "vat_number", "vat_check_id", "affiliate_code", "gift_to", "gift_from", "gift_message", "delivery_postal_code", "delivery_note"], "carts", "anonymise", "The cart row stays (an order may point at it); the person and the company details are cleared, and so are the postal code a delivery was priced for and the note for the driver (D237).", { until: "carts" }),
   entry("cart_lines", "shopper", via("cart", "cart_id"), ["cart_id"], "carts", "keep", "Product lines of a cart; no personal field."),
+  entry("cart_gift_cards", "shopper", via("cart", "cart_id"), ["cart_id"], "carts", "keep", "The gift cards a cart will pay with (D300 F3), by the card's id alone (never its code); no personal field."),
   entry("delivery_quotes", "shopper", via("cart", "cart_id"), ["postal_code", "pickup_points"], "carts", "anonymise", "The postal code a delivery was priced for is removed.", { until: "delivery_quotes" }),
   entry("abandoned_checkouts", "shopper", via("cart", "cart_id", "email"), ["email", "lines"], "carts", "anonymise", "The email and the lines are cleared; the opt-out record stays.", { also: ["consents"] }),
 

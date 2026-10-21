@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -125,6 +127,11 @@ const { chooseDelivery, deliveryOptionsFor, quoteDelivery } = await import("./de
 const { orderNumberAudit } = await import("./order-numbers");
 const { issueWaitingInvoices } = await import("./invoice-issue");
 const documentFixture = await import("./invoice-test-fixture");
+// Gift card codes (D300) are kept as hashes with a key of their own.
+process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
+const { addCartGiftCard } = await import("./gift-card-cart");
+const { newGiftCode } = await import("./gift-card-codes");
+const { storePaymentMode } = await import("./host-payments");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -288,7 +295,19 @@ function chargedNow(params: Record<string, unknown>): number {
  * and this store's account is a test one like every new store's: it is switched to live for the one call that issues the waiting invoice, and
  * back, which is the same function, called later.
  */
-async function expectDocuments(orderId: string, scenario: { euro?: boolean; gifts?: number }) {
+async function expectDocuments(orderId: string, scenario: { euro?: boolean; gifts?: number; giftCards?: number[] }) {
+  // A gift card payment keeps the mode the store was in (D300 F3): paid in part with a test card, the order is a test, and no invoice is numbered,
+  // whatever its Stripe account says now. (The invoice's gift card line is held in `src/db/gift-cards.test.ts`.)
+  if (scenario.giftCards) {
+    await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
+    try {
+      await issueWaitingInvoices(storeId);
+    } finally {
+      await db().execute(sql`update commerce.stripe_accounts set mode = 'test' where store_id = ${storeId}::uuid`);
+    }
+    expect(await documentFixture.invoiceOf(storeId, orderId)).toBeNull();
+    return;
+  }
   await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
   try {
     expect(await issueWaitingInvoices(storeId)).toBeGreaterThanOrEqual(1);
@@ -443,7 +462,21 @@ type Scenario = {
   backorder?: { sku: string; stock: number; quantity: number; days: number };
   /** A gift message on the cart (wave 3, D173): the store has gift messages on, the buyer ticked it and wrote the words; they reach the order and change no money. */
   gift?: { to: string; from: string; message: string };
+  /** Gift cards on the cart (D300 F3), of these amounts in the currency shown: they pay part of it, and Stripe is asked only for the rest. */
+  giftCards?: number[];
 };
+
+/** A gift card of the store, issued by a person, delivered, in its current mode: its code, as the email would carry it. */
+async function issueCard(amountMinor: number, currency: string): Promise<string> {
+  const test = (await storePaymentMode(storeId)) === "test";
+  const [card] = await db().execute<Row>(sql`
+    select commerce.gift_card_issue(${storeId}::uuid, 'staff', ${currency}, ${amountMinor}, null, null, null, ${member.account.id}::uuid, ${test}, null, null, null, null, null, 'Test') as id
+  `);
+  const code = newGiftCode()!;
+  await db().execute(sql`select commerce.gift_card_set_code(${storeId}::uuid, ${String(card.id)}::uuid, ${code.hash}, ${code.last4})`);
+  await db().execute(sql`select commerce.gift_card_mark_sent(${storeId}::uuid, ${String(card.id)}::uuid)`);
+  return code.code;
+}
 
 /** Puts a variant at a level and lets it keep selling past zero for `days`, as the owner's Inventory page does. */
 async function shortOf(sku: string, stock: number, days: number) {
@@ -803,6 +836,22 @@ const giftCardScenarios: Scenario[] = [
   },
 ];
 
+/**
+ * Gift cards spent (D300 F3): a payment, never a discount: the order's total and VAT are the cart's without them, the cards pay first (held when the
+ * order is placed, spent when it is paid) and Stripe is asked only for the rest. In kroner, and two cards in euro beside a code.
+ */
+const giftCardSpendScenarios: Scenario[] = [
+  { name: "goods paid partly with a gift card", fill: () => add("DEMO-MUG-WHITE", 2), giftCards: [10_000], bookings: 0 },
+  {
+    name: "goods paid partly with two gift cards and a code, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    code: `TI${run}`.toUpperCase(),
+    euro: true,
+    giftCards: [500, 700],
+    bookings: 0,
+  },
+];
+
 /** Posten / Bring's services chosen at checkout (D135): the price the shopper saw is the price of the order and of Stripe's charge. */
 const deliveryScenarios: Scenario[] = [
   { name: "goods delivered to a pickup point", fill: () => add("DEMO-MUG-WHITE", 2), delivery: "pickup", bookings: 0 },
@@ -866,7 +915,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios, ...giftCardSpendScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).
@@ -893,6 +942,10 @@ describe("checkout for every kind of product", () => {
     if (scenario.gift) {
       expect(await getCartGift(shop())).toMatchObject({ enabled: true });
       expect(await setCartGift(shop(), { isGift: true, ...scenario.gift })).toMatchObject({ ok: true });
+    }
+    // Gift cards typed at the cart (D300 F3), by their codes.
+    for (const amount of scenario.giftCards ?? []) {
+      expect(await addCartGiftCard(shop(), await issueCard(amount, scenario.euro ? "EUR" : "NOK"), { clientKey: null })).toMatchObject({ ok: true });
     }
     // The shopper asked for Bring's services for a postal code and chose one (D135).
     let chosenLabel: string | null = null;
@@ -925,6 +978,10 @@ describe("checkout for every kind of product", () => {
     expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");
     if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
     else expect(summary.member).toBeNull();
+    // The cards pay what they hold, first, and the rest is due now; the total is what it would be without them.
+    const cardsTotal = (scenario.giftCards ?? []).reduce((sum, amount) => sum + amount, 0);
+    expect(summary.giftCards.paidMinor).toBe(Math.min(cardsTotal, summary.total - summary.balance));
+    expect(summary.dueNowMinor).toBe(summary.total - summary.balance - summary.giftCards.paidMinor);
 
     if (scenario.delivery) {
       expect(summary.delivery?.delivery).toMatchObject({ carrier: "bring", label: chosenLabel, postalCode: "0150" });
@@ -1014,6 +1071,12 @@ describe("checkout for every kind of product", () => {
       select amount_minor from commerce.payments where order_id = ${open!.orderId}::uuid and provider = 'stripe'
     `);
     expect(Number(payment.amount_minor)).toBe(summary.dueNowMinor);
+    // Each card's part is a held gift card payment of the order, in the currency shown, together what the cart said.
+    const cardPayments = await db().execute<Row>(sql`
+      select amount_minor, currency, status from commerce.payments where order_id = ${open!.orderId}::uuid and provider = 'gift_card' order by created_at, id
+    `);
+    expect(cardPayments.reduce((sum, row) => sum + Number(row.amount_minor), 0)).toBe(summary.giftCards.paidMinor);
+    expect(cardPayments.every((row) => row.status === "pending" && String(row.currency).trim() === (scenario.euro ? "EUR" : "NOK"))).toBe(true);
 
     // Paid: the order page shows it paid, with its times booked, and the checkout is over.
     fake.sessions.set(open!.sessionId, {
@@ -1034,6 +1097,11 @@ describe("checkout for every kind of product", () => {
       // Put the shelf back for the scenarios after it.
       await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null where store_id = ${storeId}::uuid and id = ${variant[wanted.sku]}::uuid`);
       await db().execute(sql`update commerce.inventory_levels set on_hand = 500 where store_id = ${storeId}::uuid and variant_id = ${variant[wanted.sku]}::uuid`);
+    }
+    // Paid: the cards' holds are spent with the order.
+    if (scenario.giftCards) {
+      const statuses = await db().execute<Row>(sql`select status from commerce.payments where order_id = ${open!.orderId}::uuid and provider = 'gift_card'`);
+      expect(statuses.map((row) => row.status)).toEqual(statuses.map(() => "captured"));
     }
     const booked = paid?.lines.filter((l) => l.booking) ?? [];
     expect(booked.map((l) => l.booking?.status)).toEqual(Array(scenario.bookings).fill("confirmed"));

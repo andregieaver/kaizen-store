@@ -312,3 +312,109 @@ describe("gift cards sold", () => {
     expect(await balance(card.id)).toBe(100000);
   });
 });
+
+describe("gift cards spent (D300 F3)", () => {
+  /** An unpaid order of goods for `unit` (NOK), with its lines' ids. */
+  const goodsOrder = async (unit: number) => placeOrder(db, store, { lines: [{ sku: `GS-${unit}`, unit }], pay: false, shipping: 0 });
+  /** A card in the store's own mode (its Stripe is in test mode unless said), with a code as delivered. */
+  const liveCard = async (amount: number) => {
+    const card = await staffCard(amount, "NOK", false);
+    await db.query("update commerce.gift_cards set sent_at = now() where id = $1", [card]);
+    return card;
+  };
+  const cardPays = (orderId: string, card: string, amount: number, status = "pending") =>
+    db.query(
+      "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, gift_card_id) values ($1, $2, 'gift_card', $3, $4, 'NOK', $5::commerce.payment_status, $6) returning id",
+      [store, orderId, `gc_${orderId}_${card}`, amount, status, card],
+    ).then((r) => (r.rows[0] as { id: string }).id);
+  const kinds = (card: string) => db.query<{ kind: string; amount: string }>("select kind, amount_minor::text as amount from commerce.gift_card_entries where card_id = $1 order by created_at, id", [card]).then((r) => r.rows.map((e) => `${e.kind}:${e.amount}`));
+
+  beforeAll(async () => {
+    // Real money: the store takes live payments, as a real card is spent only for real.
+    await db.query("update commerce.payment_providers set active_mode = 'live' where store_id = $1", [store]);
+  });
+
+  it("are held when the order is placed and spent when it is paid, the rest paid online, both on the invoice", async () => {
+    const card = await liveCard(30000);
+    const o = await goodsOrder(100000);
+    await cardPays(o.id, card, 30000);
+    expect(await balance(card)).toBe(0);
+    await db.query(
+      "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'stripe', $3, 70000, 'NOK', 'pending')",
+      [store, o.id, `pi_gcs_${o.id}`],
+    );
+    await db.query("select commerce.complete_order_payment($1::uuid, 'ref')", [o.id]);
+    await db.query("update commerce.payments set status = 'captured' where order_id = $1 and provider = 'stripe'", [o.id]);
+    expect(await scalar("select status from commerce.payments where order_id = $1 and provider = 'gift_card'", [o.id])).toBe("captured");
+    expect(await kinds(card)).toEqual(["issue:30000", "hold:-30000", "spend:0"]);
+    const payments = await scalar<{ kind: string; amountMinor: number; cards?: string[] }[]>("select snapshot -> 'payments' from commerce.invoices where order_id = $1", [o.id]);
+    expect(payments.map((p) => [p.kind, p.amountMinor, p.cards ?? null])).toEqual([
+      ["paid_gift_card", 30000, ["AB12"]],
+      ["paid_online", 70000, null],
+    ]);
+  });
+
+  it("go back on the card when the order is cancelled unpaid", async () => {
+    const card = await liveCard(50000);
+    const o = await goodsOrder(40000);
+    await cardPays(o.id, card, 40000);
+    expect(await balance(card)).toBe(10000);
+    await db.query("select commerce.cancel_unpaid_order($1::uuid, 'test')", [o.id]);
+    expect(await scalar("select status from commerce.payments where order_id = $1 and provider = 'gift_card'", [o.id])).toBe("cancelled");
+    expect(await balance(card)).toBe(50000);
+    // An order paid after it was cancelled does not take its cards again: it says what they no longer pay.
+    await db.query("select commerce.complete_order_payment($1::uuid, 'late')", [o.id]);
+    expect(await balance(card)).toBe(50000);
+    expect(await scalar("select data ->> 'amountMinor' from commerce.order_events where order_id = $1 and type = 'gift_card.unpaid'", [o.id])).toBe("40000");
+  });
+
+  it("take a refund back on the card, never more than the card paid", async () => {
+    const card = await liveCard(20000);
+    const o = await goodsOrder(20000);
+    const payment = await cardPays(o.id, card, 20000);
+    await db.query("select commerce.complete_order_payment($1::uuid, 'ref')", [o.id]);
+    const refundOf = (amount: number, status = "succeeded") =>
+      db.query("insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status) values ($1, $2, $3, 'test', $4, $5::commerce.refund_status)", [
+        store,
+        payment,
+        amount,
+        `gc_refund_${amount}_${Math.random()}`,
+        status,
+      ]);
+    await refundOf(5000, "pending");
+    expect(await balance(card)).toBe(0);
+    await refundOf(15000);
+    expect(await balance(card)).toBe(15000);
+    await expect(refundOf(10000)).rejects.toThrow(/over_payment|refund/);
+    expect(await balance(card)).toBe(15000);
+  });
+
+  it("pay at most what the order costs online, never for a gift card, and stay as made", async () => {
+    const card = await liveCard(100000);
+    const o = await goodsOrder(30000);
+    await expect(cardPays(o.id, card, 30001)).rejects.toThrow(/gift_card_over/);
+    const payment = await cardPays(o.id, card, 30000);
+    await rejects("update commerce.payments set amount_minor = 1 where id = $1", [payment], /gift_card_fixed/);
+    await rejects("update commerce.payments set status = 'authorized' where id = $1", [payment], /gift_card_status/);
+    // A gift card line is never paid with a card.
+    const product = await scalar<string>("select id from commerce.products where store_id = $1 and kind = 'gift_card' limit 1", [store]);
+    const variant = await scalar<string>("select id from commerce.product_variants where product_id = $1 limit 1", [product]);
+    const g = await placeOrder(db, store, { lines: [{ sku: "GC-LINE", unit: 50000, rate: 0, delivery: "digital" }], pay: false, shipping: 0 });
+    await db.query("update commerce.order_lines set variant_id = $2 where id = $1", [g.lineIds[0], variant]);
+    await expect(cardPays(g.id, card, 1000)).rejects.toThrow(/gift_card_over/);
+  });
+
+  it("are spent only in the store's own mode: a test card while it is live is refused", async () => {
+    const testCard = await staffCard(10000, "NOK", true);
+    await db.query("update commerce.gift_cards set sent_at = now() where id = $1", [testCard]);
+    const o = await goodsOrder(10000);
+    await expect(cardPays(o.id, testCard, 10000)).rejects.toThrow(/gift_cards.mode/);
+    await db.query("update commerce.payment_providers set active_mode = 'test' where store_id = $1", [store]);
+    try {
+      await cardPays(o.id, testCard, 10000);
+      expect(await scalar("select test_mode from commerce.payments where order_id = $1 and provider = 'gift_card'", [o.id])).toBe(true);
+    } finally {
+      await db.query("update commerce.payment_providers set active_mode = 'live' where store_id = $1", [store]);
+    }
+  });
+});

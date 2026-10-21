@@ -112,6 +112,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   total: 8500,
   vat: 1700,
   balance: 0,
+  giftCards: { cards: [], paidMinor: 0, coverAll: false },
   bonusMinor: 0,
   referralMinor: 0,
   referral: { state: "none", percent: 0, discountMinor: 0 },

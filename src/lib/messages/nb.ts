@@ -1259,6 +1259,29 @@ export const nb: Messages = {
   storeSummary: (name: string, country: string) => `${name}: nettbutikk med levering i ${country}. Priser inkludert mva.`,
   options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket", rental: "Leie", day: "Hele dager", halfDay: "Halv dag", hour: "Per time" },
   // Gavekort (D300 F2). legal: needs review (angrerettsetningen).
+  // Paying with a gift card at the cart and checkout (D300 F3): a payment, never a discount.
+  giftCardPay: {
+    heading: "Gavekort",
+    field: "Gavekortkode",
+    apply: "Bruk",
+    applying: "Sjekker …",
+    remove: "Fjern",
+    card: (last4: string) => `Gavekort ••••${last4}`,
+    left: (amount: string) => `Igjen på kortet etter denne bestillingen: ${amount}`,
+    coverAll: "Gavekortene dine betaler alt. Fortell oss hvem du er, og fullfør bestillingen.",
+    place: "Fullfør bestillingen",
+    paidWith: "Gavekort",
+    restLine: (number: string) => `Bestilling ${number}`,
+    problems: {
+      unusable: "Dette gavekortet kan ikke brukes.",
+      currency: (currency: string) => `Dette gavekortet er i ${currency}.`,
+      subscription: "Et gavekort kan ikke betale for et abonnement.",
+      host: "Et gavekort kan ikke betale for denne bookingen.",
+      limit: "For mange forsøk. Prøv igjen om en time.",
+      full: "Opptil tre gavekort per bestilling.",
+      none: "Handlekurven din har utløpt. Begynn på nytt fra handlekurven.",
+    },
+  },
   giftCardLine: {
     sentTo: (to: string, day: string) => `Sendes på e-post til ${to} ${day}`,
     toYou: "Sendes på e-post til deg når du har betalt",

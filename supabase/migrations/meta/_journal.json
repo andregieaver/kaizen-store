@@ -2843,6 +2843,20 @@
       "when": 1792595899654,
       "tag": "20261021151819_gift_card_selling_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 406,
+      "version": "7",
+      "when": 1792604256276,
+      "tag": "20261021173736_gift_card_spending",
+      "breakpoints": true
+    },
+    {
+      "idx": 407,
+      "version": "7",
+      "when": 1792604357277,
+      "tag": "20261021173917_gift_card_spending_rules",
+      "breakpoints": true
     }
   ]
 }

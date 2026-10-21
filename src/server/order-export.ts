@@ -141,10 +141,10 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
       exists (
         select 1 from commerce.payments tp
         where tp.store_id = o.store_id and tp.order_id = o.id and tp.status not in ('failed', 'cancelled')
-          and ((tp.provider not in ('venue', 'mollie', 'terms') and tp.provider_account is not null and exists (
+          and ((tp.provider not in ('venue', 'mollie', 'terms', 'gift_card') and tp.provider_account is not null and exists (
                   select 1 from commerce.connected_accounts a where a.store_id = o.store_id and a.account_id = tp.provider_account and a.mode = 'test'))
             -- A venue payment, a Mollie payment and an order's payment terms keep their mode on the row (D292, D293).
-            or (tp.provider in ('venue', 'mollie', 'terms') and tp.test_mode))
+            or (tp.provider in ('venue', 'mollie', 'terms', 'gift_card') and tp.test_mode))
       ) as test_payment,
       (o.restricted_at is not null or o.anonymised_at is not null) as erased,
       o.archived_at is not null as archived, o.source as order_source, o.is_gift, o.gift_to, o.gift_from, o.gift_message,

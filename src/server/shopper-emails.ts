@@ -125,9 +125,9 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms')
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms', 'gift_card')
     -- An exchange order (D239) paid wholly by its return's credit has only its exchange payment to open its page by; an order on payment terms (D293) opens by its terms payment, its first.
-    order by (provider = 'exchange'), created_at limit 1
+    order by (provider = 'exchange'), (provider = 'gift_card'), created_at limit 1
   `);
   if (!payment) return null;
   return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;

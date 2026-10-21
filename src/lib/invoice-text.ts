@@ -74,6 +74,8 @@ export type DocumentText = {
   paidOnline: string;
   /** A payment the seller took outside the online checkout (wave 3, D173): said as it is, with how it was received, never as "paid online". */
   paidOutside: string;
+  /** What gift cards paid (D300 F3), by the last four characters of each card's code: a payment, never a discount. */
+  paidGiftCard: (last4: string[]) => string;
   paymentMethods: Record<"cash" | "bank_transfer" | "other", string>;
   payAtVenue: string;
   discountsGiven: string;
@@ -176,6 +178,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     payment: "Betaling",
     paidOnline: "Betalt på nett",
     paidOutside: "Betalt utenfor nettbutikken",
+    paidGiftCard: (last4) => `Betalt med gavekort ${last4.map((c) => `••••${c}`).join(", ")}`,
     paymentMethods: { cash: "kontant", bank_transfer: "bankoverføring", other: "på annen måte" },
     payAtVenue: "Betales på stedet",
     discountsGiven: "Rabatter gitt (inkl. mva.)",
@@ -254,6 +257,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     payment: "Betalning",
     paidOnline: "Betalt online",
     paidOutside: "Betalt utanför webbutiken",
+    paidGiftCard: (last4) => `Betalt med presentkort ${last4.map((c) => `••••${c}`).join(", ")}`,
     paymentMethods: { cash: "kontant", bank_transfer: "banköverföring", other: "på annat sätt" },
     payAtVenue: "Betalas på plats",
     discountsGiven: "Rabatter som getts (inkl. moms)",
@@ -332,6 +336,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     payment: "Betaling",
     paidOnline: "Betalt online",
     paidOutside: "Betalt uden for webshoppen",
+    paidGiftCard: (last4) => `Betalt med gavekort ${last4.map((c) => `••••${c}`).join(", ")}`,
     paymentMethods: { cash: "kontant", bank_transfer: "bankoverførsel", other: "på anden måde" },
     payAtVenue: "Betales på stedet",
     discountsGiven: "Givne rabatter (inkl. moms)",
@@ -410,6 +415,7 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     payment: "Payment",
     paidOnline: "Paid online",
     paidOutside: "Paid outside the online checkout",
+    paidGiftCard: (last4) => `Paid with gift card ${last4.map((c) => `••••${c}`).join(", ")}`,
     paymentMethods: { cash: "cash", bank_transfer: "bank transfer", other: "another way" },
     payAtVenue: "To pay at the venue",
     discountsGiven: "Discounts given (incl. VAT)",

@@ -9,6 +9,8 @@ vi.mock("../cart/bonus", () => ({ readCartBonus: async () => bonusNow }));
 vi.mock("./actions", () => ({
   checkoutCreditsAction: async () => ({ status: "idle", message: "" }),
   checkoutCodeAction: async () => undefined,
+  checkoutGiftCardAction: async () => ({ problem: null }),
+  checkoutRemoveGiftCardAction: async () => undefined,
 }));
 vi.mock("@/server/cart", () => ({ readCartId: async () => "cart-1" }));
 vi.mock("@/server/checkout", () => ({ getOpenCheckout: async () => ({ orderId: "o1", subscription: null }) }));
@@ -17,6 +19,8 @@ vi.mock("@/server/orders", () => ({ getOrder: (...a: unknown[]) => getOrder(...a
 vi.mock("@/server/cart-reminders", () => ({ cartRemindersOn: async () => false, checkoutOptedOut: async () => false }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
 vi.mock("@/server/discounts", () => ({ orderCodeOutcomes: async () => null }));
+vi.mock("@/server/gift-card-cart", () => ({ checkoutGiftCards: async () => [] }));
+vi.mock("@/components/gift-card-form", () => ({ GiftCardForm: () => null }));
 const stripeNow = vi.hoisted(() => ({ key: null as string | null }));
 vi.mock("@/server/stripe", () => ({ platformPublishableKey: () => stripeNow.key }));
 // The terms the store shows at checkout (wave 1, 1e): replaced by what the store has chosen.

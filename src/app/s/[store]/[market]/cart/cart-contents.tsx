@@ -5,6 +5,8 @@ import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { GiftCardForm } from "@/components/gift-card-form";
+import { shownCartGiftCards } from "@/lib/gift-card-words";
 import { codeProblemText } from "@/lib/code-words";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
@@ -35,7 +37,7 @@ import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
 import { featureOn } from "@/lib/store-features";
 import type { Store } from "@/server/stores";
 
-import { setCartCreditsAction, updateCartLine } from "./actions";
+import { applyGiftCardAction, removeGiftCardAction, setCartCreditsAction, updateCartLine } from "./actions";
 import { readCartBonus } from "./bonus";
 import { GiftBox } from "./cart-gift";
 
@@ -71,8 +73,10 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
   // A signed-in customer's saved company and details fill the fields in. A company's account may also buy on its payment terms (D293).
   const businessOn = featureOn(store, "business");
-  const customer = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" || businessOn ? await getCustomer(store.id) : null;
-  const saved = (business && !cart.company) || summary.atVenueOnly || checkout.provider === "mollie" ? customer : null;
+  // Who pays is asked here when no payment page follows: a booking paid at the venue, Mollie's page, or gift cards that pay it all (D300 F3).
+  const asksPayer = summary.atVenueOnly || checkout.provider === "mollie" || summary.giftCards.coverAll;
+  const customer = (business && !cart.company) || asksPayer || businessOn ? await getCustomer(store.id) : null;
+  const saved = (business && !cart.company) || asksPayer ? customer : null;
   // Goods bought once only: no booking, subscription, venue part or host's listing (`placeOrder()` checks the same under the company's lock).
   const goodsOnly = summary.balance === 0 && cart.lines.every((line) => !line.plan && !line.booking && !line.hostId && !line.payment);
   const termsOffer =
@@ -80,7 +84,11 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
       ? await termsForBasket(store.id, customer.id, { goodsOnly, totalMinor: summary.total, currency: cart.currency })
       : null;
   // No payment page follows an order on terms: the store's terms of sale (D158) are shown here instead, as the checkout shows them.
-  const termsDisplay = termsOffer?.ok ? await termsDisplayFor(store, market) : null;
+  const termsDisplay = termsOffer?.ok || summary.giftCards.coverAll ? await termsDisplayFor(store, market) : null;
+  // Gift cards that pay it all (D300 F3): no payment page follows either, so the terms of sale are shown with the button here.
+  const cardsPayAll = summary.giftCards.coverAll
+    ? { display: termsDisplay, template: termsDisplay ? termsTemplate(m.terms, termsDisplay) : "", newTab: m.terms.newTab, place: m.giftCardPay.place }
+    : null;
   const onTerms =
     termsOffer?.ok && customer
       ? {
@@ -126,6 +134,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     terms,
     vatWords,
     onTerms,
+    cardsPayAll,
   };
 }
 
@@ -204,7 +213,12 @@ export async function CartSummary({ store, market, m }: { store: Store; market: 
 /** The cart's field for a discount code (D117); nothing for an empty cart. */
 export async function CartCode({ store, market, m }: { store: Store; market: Market; m: Messages }) {
   const view = await cartView(store, market, m);
-  return view.empty ? null : codeForm({ store, market, m, view });
+  return view.empty ? null : (
+    <div className="flex flex-col gap-3">
+      {codeForm({ store, market, m, view })}
+      {giftCardForm({ store, market, m, view })}
+    </div>
+  );
 }
 
 /** The cart's bonus credits (D130, D117): use them, or what this order earns; nothing for an empty cart or a store without the program. */
@@ -567,19 +581,27 @@ function summaryList({ store, market, m, view }: Draw) {
           <dt>{business ? m.toPay : m.total}</dt>
           <dd>{money(total)}</dd>
         </div>
+        {summary.giftCards.paidMinor > 0 && (
+          // Gift cards (D300 F3) pay part of the total: a payment, after the total, never a discount before it.
+          <div className="flex justify-between gap-4">
+            <dt>{m.giftCardPay.paidWith}</dt>
+            <dd>−{money(summary.giftCards.paidMinor)}</dd>
+          </div>
+        )}
+        {(balance > 0 || summary.giftCards.paidMinor > 0) && (
+          <div className="flex justify-between gap-4">
+            <dt>{m.booking.dueNow}</dt>
+            <dd>{money(summary.dueNowMinor)}</dd>
+          </div>
+        )}
         {balance > 0 && (
-          <>
-            <div className="flex justify-between gap-4">
-              <dt>{m.booking.dueNow}</dt>
-              <dd>{money(total - balance)}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt>{m.booking.atVenue}</dt>
-              <dd>{money(balance)}</dd>
-            </div>
-          </>
+          <div className="flex justify-between gap-4">
+            <dt>{m.booking.atVenue}</dt>
+            <dd>{money(balance)}</dd>
+          </div>
         )}
       </dl>
+      {summary.giftCards.coverAll && <p className="text-sm">{m.giftCardPay.coverAll}</p>}
       {summary.campaignNext.length > 0 && (
         // How far a campaign's next step is (D299 E3), worked out on the same lines checkout counts.
         <ul className="flex flex-col gap-1 text-sm" data-campaign-next>
@@ -620,6 +642,19 @@ function summaryList({ store, market, m, view }: Draw) {
   );
 }
 
+function giftCardForm({ store, market, m, view }: Draw) {
+  const { money, summary } = view;
+  return (
+    <GiftCardForm
+      cards={shownCartGiftCards(summary.giftCards.cards, m, money)}
+      full={m.giftCardPay.problems.full}
+      apply={applyGiftCardAction.bind(null, store.slug, market.slug)}
+      remove={removeGiftCardAction.bind(null, store.slug, market.slug)}
+      labels={{ field: m.giftCardPay.field, apply: m.giftCardPay.apply, applying: m.giftCardPay.applying, remove: m.giftCardPay.remove }}
+    />
+  );
+}
+
 function codeForm({ store, market, m, view }: Draw) {
   const { code } = view.summary;
   const { money } = view;
@@ -655,7 +690,7 @@ function creditsForm({ store, market, m, view }: Draw) {
 }
 
 function checkoutAction({ store, market, m, view }: Draw) {
-  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords, onTerms } = view;
+  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords, onTerms, cardsPayAll } = view;
   const { checkout, blocked, atVenueOnly, digital, renewal, plan, tax } = summary;
   const asksCompany = business || companyNeeded;
   // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
@@ -714,8 +749,9 @@ function checkoutAction({ store, market, m, view }: Draw) {
               : undefined
           }
           payer={
-            // Mollie's page asks for no address (D292): who pays, and where the goods go, are asked here first.
-            checkout.provider === "mollie" && !atVenueOnly
+            // Mollie's page asks for no address (D292), and an order gift cards pay in full (D300 F3) has no payment page at all: who pays,
+            // and where the goods go, are asked here first.
+            (checkout.provider === "mollie" || summary.giftCards.coverAll) && !atVenueOnly
               ? {
                   needs: {
                     address: summary.ships && summary.deliveryState?.method !== "pickup",
@@ -755,6 +791,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
                 }
               : undefined
           }
+          cardsPayAll={cardsPayAll && !atVenueOnly ? cardsPayAll : undefined}
           company={{
             // Asked of businesses, and of anyone whose order needs it.
             ask: asksCompany,

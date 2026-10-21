@@ -42,3 +42,40 @@ export const formatGiftCode = (code: string): string => (code.match(/.{1,4}/g) ?
 
 /** The last four characters people see in lists and on the receipt. */
 export const giftCodeLast4 = (code: string): string => code.slice(-4);
+
+/** A card on a cart, as the cart read it: what it holds now, and whether it can pay for this basket at all (`usable`). */
+export type CardForBasket = { id: string; balanceMinor: number; usable: boolean };
+
+/** What one card pays, and what it holds after. */
+export type CardPart = { id: string; amountMinor: number; afterMinor: number };
+
+/** What the cards pay together, and what is left for the shopper to pay another way. */
+export type CardsPayment = { parts: CardPart[]; paidMinor: number; restMinor: number };
+
+/**
+ * What the cards on a basket pay (D300 F3, `docs/wave-5-marketing.md` 8.3): a payment, never a discount. The cards pay first, in the order they
+ * were added, each never more than it holds nor more than is left of `payableMinor` (what is due online now, without what a gift card line
+ * costs, since a gift card never pays for a gift card). A card that cannot pay for the basket pays nothing and keeps its balance; so does one
+ * the others have already covered. A rest under `minRestMinor` (the provider's smallest charge) is raised to it, the cards paying less, since
+ * it could not be charged. `cartSummary()` and `placeOrder()` both use this, so they agree.
+ */
+export function giftCardsPay(cards: readonly CardForBasket[], payableMinor: number, minRestMinor = 0): CardsPayment {
+  let rest = Math.max(0, Math.trunc(payableMinor));
+  const parts: CardPart[] = [];
+  for (const card of cards) {
+    const balance = Math.max(0, Math.trunc(card.balanceMinor));
+    const amount = card.usable ? Math.min(balance, rest) : 0;
+    rest -= amount;
+    parts.push({ id: card.id, amountMinor: amount, afterMinor: balance - amount });
+  }
+  // A rest smaller than the provider's smallest charge cannot be paid: the cards leave that much instead, the last card giving back first.
+  let back = rest > 0 && rest < minRestMinor ? Math.min(minRestMinor, Math.max(0, Math.trunc(payableMinor))) - rest : 0;
+  for (let i = parts.length - 1; i >= 0 && back > 0; i--) {
+    const give = Math.min(parts[i].amountMinor, back);
+    parts[i] = { ...parts[i], amountMinor: parts[i].amountMinor - give, afterMinor: parts[i].afterMinor + give };
+    rest += give;
+    back -= give;
+  }
+  const paidMinor = parts.reduce((sum, p) => sum + p.amountMinor, 0);
+  return { parts, paidMinor, restMinor: rest };
+}

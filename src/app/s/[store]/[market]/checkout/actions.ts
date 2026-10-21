@@ -19,6 +19,8 @@ import { deliveryView } from "@/server/delivery-choice";
 import { db } from "@/db/client";
 import { chooseDelivery, deliveryReady, marketShipping, quoteDelivery, setDeliveryPostalCode } from "@/server/delivery-options";
 import { addCartCode, checkCodeForOrder, removeCartCode } from "@/server/discounts";
+import { addCartGiftCard, removeCartGiftCard } from "@/server/gift-card-cart";
+import { viesClientKey } from "@/server/vat-checks";
 import { codeProblemText } from "@/lib/code-words";
 import { joinList, setAccountSubscription } from "@/server/marketing-subscribers";
 import { resolveSellingShop } from "@/server/shop";
@@ -161,6 +163,60 @@ export async function checkoutCodeAction(
   );
   // On a problem (stock ran out meanwhile, ...) the cart says what.
   redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+}
+
+/** What the checkout's gift card field shows after a code was typed: why it was not added; nothing when it was (the checkout then starts again). */
+export type CheckoutGiftCardState = { problem: string | null };
+
+/**
+ * A gift card typed at checkout, or one taken off (D300 F3): it goes on the cart (`addCartGiftCard()`, which never keeps the code) and the order
+ * is placed again with it, with the consent to downloads the shopper already gave, as a discount code does. When the cards then pay it all, no
+ * payment page follows: the shopper is sent back to the cart, which asks who pays and places the order. A subscription's order takes no card.
+ */
+export async function checkoutGiftCardAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: CheckoutGiftCardState,
+  form: FormData,
+): Promise<CheckoutGiftCardState> {
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
+  if (!shop) return { problem: null };
+  const m = t(shop.market.lang);
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  const cartId = await readCartId(cartShop);
+  const open = cartId ? await getOpenCheckout(shop.store.id, cartId) : null;
+  if (!cartId || !open) {
+    refresh();
+    return { problem: null };
+  }
+  const removing = String(form.get("remove") ?? "");
+  if (removing) await removeCartGiftCard(cartShop, removing);
+  else {
+    const code = String(form.get("giftCard") ?? "").slice(0, 40);
+    if (!code.trim()) return { problem: null };
+    const added = await addCartGiftCard(cartShop, code, { clientKey: viesClientKey(shop.store.id, await headers()) });
+    if (!added.ok) return { problem: added.problem === "currency" ? m.giftCardPay.problems.currency(added.currency) : m.giftCardPay.problems[added.problem] };
+  }
+  if (open.subscription) {
+    refresh();
+    return { problem: null };
+  }
+  const header = (await headers()).get("origin");
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    header ? new URL(header).origin : siteUrl(),
+    m.shipping,
+    { digital: open.digital, subscription: false },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+  );
+  // Paid in full by the cards (`payer`), or a problem (stock ran out meanwhile, ...): the cart says what to do next.
+  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+}
+
+/** A gift card taken off at checkout (the field's Remove): the order is placed again without it. */
+export async function checkoutRemoveGiftCardAction(storeSlug: string, marketSlug: string, form: FormData): Promise<void> {
+  await checkoutGiftCardAction(storeSlug, marketSlug, { problem: null }, form);
 }
 
 /**

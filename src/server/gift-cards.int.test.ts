@@ -162,3 +162,92 @@ describe("selling gift cards", () => {
     expect(await changeLine(shop, await variantId(store.storeId, "DEMO-GAVEKORT-500"), 1, "add")).toMatchObject({ outcome: "unavailable" });
   });
 });
+
+const { addCartGiftCard, cartGiftCards, GIFT_CARD_TRIES_PER_CART_PER_HOUR } = await import("./gift-card-cart");
+const { startCheckout, cancelUnpaidOrder } = await import("./checkout");
+const { getShopperOrder } = await import("./orders");
+const { refundOrder } = await import("./order-admin");
+const { newGiftCode } = await import("./gift-card-codes");
+const { storePaymentMode } = await import("./host-payments");
+
+describe("spending gift cards (D300 F3)", () => {
+  /** A card of the store, issued by its owner and delivered, in the store's mode: its code. */
+  async function cardOf(store: { storeId: string; accountId: string }, amountMinor: number, currency = "NOK"): Promise<{ code: string; id: string }> {
+    const test = (await storePaymentMode(store.storeId)) === "test";
+    const [card] = await db().execute<Row>(sql`
+      select commerce.gift_card_issue(${store.storeId}::uuid, 'staff', ${currency}, ${amountMinor}, null, null, null, ${store.accountId}::uuid, ${test}, null, null, null, null, null, 'Test') as id
+    `);
+    const code = newGiftCode()!;
+    await db().execute(sql`select commerce.gift_card_set_code(${store.storeId}::uuid, ${String(card.id)}::uuid, ${code.hash}, ${code.last4})`);
+    await db().execute(sql`select commerce.gift_card_mark_sent(${store.storeId}::uuid, ${String(card.id)}::uuid)`);
+    return { code: code.code, id: String(card.id) };
+  }
+  const balanceOf = async (id: string) => Number((await db().execute<Row>(sql`select commerce.gift_card_balance(${id}::uuid) as b`))[0].b);
+  const payer = { name: "Kari Nordmann", email: "kari@example.com", phone: "", line1: "Storgata 1", line2: "", postalCode: "0155", city: "Oslo" };
+
+  it("are put on a cart by their code: never a wrong one, another store's or another currency's, three at most, tries counted", async () => {
+    const store = await giftCardStore("gc-spend-cart");
+    const elsewhere = await giftCardStore("gc-spend-other");
+    const shop = { storeId: store.storeId, market: no };
+    await changeLine(shop, await variantId(store.storeId, "DEMO-MUG-WHITE"), 1, "add");
+    const cartId = (await readCartId(shop))!;
+    // A code that is no card, and another store's card, say the same: it can't be used.
+    expect(await addCartGiftCard(shop, "AAAA-BBBB-CCCC-DDDD", { clientKey: null })).toEqual({ ok: false, problem: "unusable" });
+    expect(await addCartGiftCard(shop, (await cardOf(elsewhere, 10_000)).code, { clientKey: null })).toEqual({ ok: false, problem: "unusable" });
+    // A card in another currency says which, so the shopper can change the view.
+    expect(await addCartGiftCard(shop, (await cardOf(store, 1_000, "EUR")).code, { clientKey: null })).toEqual({ ok: false, problem: "currency", currency: "EUR" });
+    const cards = [await cardOf(store, 1_000), await cardOf(store, 2_000), await cardOf(store, 3_000), await cardOf(store, 4_000)];
+    for (const card of cards.slice(0, 3)) expect(await addCartGiftCard(shop, card.code, { clientKey: null })).toMatchObject({ ok: true });
+    expect(await addCartGiftCard(shop, cards[3].code, { clientKey: null })).toEqual({ ok: false, problem: "full" });
+    expect((await cartGiftCards(db(), store.storeId, cartId, { currency: "NOK" })).map((c) => c.id)).toEqual(cards.slice(0, 3).map((c) => c.id));
+    // The cart's tries are counted, right or wrong.
+    await db().execute(sql`update commerce.chat_usage set count = ${GIFT_CARD_TRIES_PER_CART_PER_HOUR} where store_id = ${store.storeId}::uuid and bucket = ${`giftcard:k:${cartId}`}`);
+    expect(await addCartGiftCard(shop, cards[3].code, { clientKey: null })).toEqual({ ok: false, problem: "limit" });
+  });
+
+  it("pay an order in full with no provider: who pays kept, the order paid, the card spent, and a refund back on it", async () => {
+    const store = await giftCardStore("gc-spend-all");
+    const shop = { storeId: store.storeId, market: no };
+    await changeLine(shop, await variantId(store.storeId, "DEMO-MUG-WHITE"), 1, "add");
+    const cartId = (await readCartId(shop))!;
+    const card = await cardOf(store, 100_000_00);
+    await addCartGiftCard(shop, card.code, { clientKey: null });
+    const summary = await cartSummary(shop, await getCart(shop));
+    expect(summary.giftCards).toMatchObject({ paidMinor: summary.total, coverAll: true });
+    expect(summary.dueNowMinor).toBe(0);
+
+    const checkoutShop = { ...shop, storeSlug: store.slug };
+    // No one given for the order: nothing is placed, and the card holds what it held.
+    expect(await startCheckout(checkoutShop, cartId, "https://shop.example", "Frakt", {})).toMatchObject({ ok: false, problem: "payments_off" });
+    expect(await balanceOf(card.id)).toBe(100_000_00);
+    const started = await startCheckout(checkoutShop, cartId, "https://shop.example", "Frakt", {}, { payer });
+    if (!started.ok) throw new Error(started.problem);
+    const key = new URL(started.url).searchParams.get("session_id")!;
+    expect(key).toMatch(/^gc_/);
+    const orderId = new URL(started.url).pathname.split("/").at(-1)!;
+    const order = (await getShopperOrder(store.storeId, orderId, key))!;
+    expect(order.status).toBe("paid");
+    expect(order.email).toBe("kari@example.com");
+    expect(await balanceOf(card.id)).toBe(100_000_00 - order.totalMinor);
+
+    // Refunded: the card's part goes back on it, recorded, with no provider asked.
+    const refunded = await refundOrder(store.storeId, orderId, { amountMinor: 5_000, reason: "Test", restock: [] }, store.accountId);
+    expect(refunded).toMatchObject({ ok: true, status: "succeeded" });
+    expect(await balanceOf(card.id)).toBe(100_000_00 - order.totalMinor + 5_000);
+  });
+
+  it("give back their hold when the checkout is left unpaid", async () => {
+    const store = await giftCardStore("gc-spend-cancel");
+    const shop = { storeId: store.storeId, market: no };
+    await changeLine(shop, await variantId(store.storeId, "DEMO-MUG-WHITE"), 2, "add");
+    const card = await cardOf(store, 5_000);
+    await addCartGiftCard(shop, card.code, { clientKey: null });
+    const placed = await placeOrder(shop, (await readCartId(shop))!, {});
+    if (!placed.ok) throw new Error(placed.problem);
+    expect(placed.order.giftCardsMinor).toBe(5_000);
+    expect(placed.order.dueNowMinor).toBe(placed.order.totalMinor - 5_000);
+    expect(await balanceOf(card.id)).toBe(0);
+    await cancelUnpaidOrder(placed.order.orderId, "test");
+    expect(await balanceOf(card.id)).toBe(5_000);
+  });
+});

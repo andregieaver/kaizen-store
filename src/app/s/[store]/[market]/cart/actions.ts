@@ -18,6 +18,7 @@ import { changeLine, readCartId, setCartCompany, setCartGift, setCartVatNumber }
 import { viesClientKey } from "@/server/vat-checks";
 import { getCustomer } from "@/server/customers";
 import { addCartCode, removeCartCode } from "@/server/discounts";
+import { addCartGiftCard, removeCartGiftCard, type AddGiftCardOutcome } from "@/server/gift-card-cart";
 import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
@@ -172,6 +173,8 @@ export async function checkoutAction(
   payer: Partial<Record<"name" | "email" | "phone" | "line1" | "line2" | "postalCode" | "city", string>> | null = null,
   /** Bought on the company's payment terms (D293), with whether the store's terms of sale were ticked (in `checkbox` mode). */
   onTerms: { termsTicked: boolean } | null = null,
+  /** Gift cards pay it all (D300 F3): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
+  paidByCards: { termsTicked: boolean } | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -195,7 +198,8 @@ export async function checkoutAction(
   if (who && !who.success) return { problem: "contact" };
 
   // The store's terms of sale (D158) are accepted here when no payment page follows: in `checkbox` mode, only ticked.
-  if (onTerms && shop.store.termsAtCheckout === "checkbox" && !onTerms.termsTicked) return { problem: "consent" };
+  const accepted = onTerms ?? paidByCards;
+  if (accepted && shop.store.termsAtCheckout === "checkbox" && !accepted.termsTicked) return { problem: "consent" };
 
   const header = (await headers()).get("origin");
   const origin = header ? new URL(header).origin : siteUrl();
@@ -211,7 +215,7 @@ export async function checkoutAction(
       contact: who?.success ? who.data : null,
       payer,
       onTerms: onTerms !== null,
-      ...(onTerms && { recordTerms: (orderId: string) => recordTermsForOrder(shop.store, shop.market, orderId) }),
+      ...(accepted && { recordTerms: (orderId: string) => recordTermsForOrder(shop.store, shop.market, orderId) }),
     },
   );
   if (result.ok) return { problem: null, to: result.url };
@@ -277,6 +281,37 @@ export async function applyCodeAction(
   const saved = await addCartCode({ storeId: shop.store.id, market: shop.market }, code);
   refresh();
   return { tried: code, full: saved === "full" };
+}
+
+/** What the gift card field shows after a code was typed: why it was not added, in the shopper's words; nothing when it was. */
+export type GiftCardFormState = { problem: string | null };
+
+/** The words for a code that was not added (D300 F3): never whether the card exists. */
+function giftCardProblemText(lang: string, outcome: AddGiftCardOutcome): string | null {
+  if (outcome.ok) return null;
+  const words = t(lang).giftCardPay.problems;
+  return outcome.problem === "currency" ? words.currency(outcome.currency) : words[outcome.problem];
+}
+
+/**
+ * Puts a gift card on the cart by its code (D300 F3): found by its hash, counted against the cart's and the client's tries. What it pays is
+ * shown by the cart, which works it out against the basket every time, as checkout will. The code itself is never kept.
+ */
+export async function applyGiftCardAction(storeSlug: string, marketSlug: string, _state: GiftCardFormState, form: FormData): Promise<GiftCardFormState> {
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
+  const code = String(form.get("giftCard") ?? "").slice(0, 40);
+  if (!shop || !code.trim()) return { problem: null };
+  const outcome = await addCartGiftCard({ storeId: shop.store.id, market: shop.market }, code, { clientKey: viesClientKey(shop.store.id, await headers()) });
+  refresh();
+  return { problem: giftCardProblemText(shop.market.lang, outcome) };
+}
+
+/** Takes a gift card off the cart, by its id (`remove`; the cart never holds a code). */
+export async function removeGiftCardAction(storeSlug: string, marketSlug: string, form: FormData): Promise<void> {
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
+  if (!shop) return;
+  await removeCartGiftCard({ storeId: shop.store.id, market: shop.market }, String(form.get("remove") ?? ""));
+  refresh();
 }
 
 /** Takes one discount code off the cart. */
