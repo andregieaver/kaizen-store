@@ -530,7 +530,12 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
   }
   await markStep(request.id, { database: "done", avatarPath: avatar ?? request.steps.avatarPath ?? null, counts });
   // The person's reviews went with the rest (D301): the product pages that may have shown them are drawn again.
-  refreshTag(reviewsTag(storeId));
+  // Never stops the erasure: outside a request (a job or a test) there may be no cache to refresh.
+  try {
+    refreshTag(reviewsTag(storeId));
+  } catch (error) {
+    console.error("[privacy] the product pages' reviews could not be refreshed after an erasure", error);
+  }
 
   // 3. Files after the commit: the picture. A failure is kept for the daily job.
   const remover = deps.avatarRemover ?? removeAvatarFiles;

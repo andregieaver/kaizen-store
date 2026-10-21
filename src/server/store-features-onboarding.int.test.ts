@@ -260,7 +260,7 @@ describe("the AI manager's feature tools (D178 step 6)", () => {
     const website = await membershipOf(store.slug, store.account);
     const listed = (await runOwnerTool(ctx(store.account, website.store), "list_features", {})) as { features: Row[] };
     const byId = Object.fromEntries(listed.features.map((f) => [f.id, f]));
-    expect(listed.features).toHaveLength(12);
+    expect(listed.features).toHaveLength(13);
     expect(byId.shop).toMatchObject({ state: "off", needs: [] });
     expect(byId.bonus).toMatchObject({ state: "asleep", waiting_for: ["the online shop"], needs: ["the online shop"] });
     expect(byId.appointments).toMatchObject({ state: "off", in_use: true });
