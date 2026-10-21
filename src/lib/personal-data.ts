@@ -149,6 +149,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("abandoned_checkouts", "shopper", via("cart", "cart_id", "email"), ["email", "lines"], "carts", "anonymise", "The email and the lines are cleared; the opt-out record stays.", { also: ["consents"] }),
 
   // Loyalty ---------------------------------------------------------------------------------------------------------------------------
+  entry("gift_cards", "shopper", via("customer", "customer_id"), ["customer_id", "recipient_email", "recipient_name", "message"], "orders", "anonymise", "A gift card (D300) is money the card holds: erasure clears who bought it and whom it was for, and the words with it, and keeps the card and its balance, which the holder of the code may still spend."),
+  entry("gift_card_entries", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A gift card's ledger (D300): amounts and the orders they paid, no personal field. " + KEEP_ORDER),
   entry("bonus_entries", "shopper", via("customer", "customer_id"), ["customer_id", "note"], "bonus", "delete", "The ledger is deleted with the account: credits are forfeited (said before the person confirms)."),
   entry("bonus_allocations", "shopper", via("customer", "entry_id"), ["entry_id"], "bonus", "delete", "Which credits paid for what; deleted with the ledger."),
   entry("affiliates", "shopper", via("customer", "customer_id"), ["customer_id", "code", "blocked_reason"], "referrals", "delete", "The referral code and its record are deleted with the account."),

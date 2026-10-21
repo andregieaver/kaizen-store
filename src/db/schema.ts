@@ -638,7 +638,7 @@ export const stores = commerce.table(
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
       "stores_features",
-      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals']::text[]`,
+      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards']::text[]`,
     ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
@@ -8827,6 +8827,115 @@ export const bonusEntries = commerce.table(
     check("bonus_entries_lot", sql`${t.amountMinor} < 0 or ${t.availableAt} is not null`),
     check("bonus_entries_note", sql`length(${t.note}) <= 500`),
   ],
+);
+
+/**
+ * Gift cards (wave 5 unit F, D300, `docs/wave-5-marketing.md` 8): money paid now for someone to spend later in the same store, a
+ * multi-purpose voucher (no VAT when sold). A card's balance is only `commerce.gift_card_balance()` over its ledger, which only the
+ * `gift_card_*` SQL functions write. The code is never stored: `code_hash` is its HMAC, `last4` what people see.
+ */
+export const giftCards = commerce.table(
+  "gift_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** HMAC-SHA-256 of the normalised code; null only between the card's row and its code being made. */
+    codeHash: text("code_hash"),
+    last4: text("last4"),
+    currency: char("currency", { length: 3 }).notNull(),
+    initialMinor: bigint("initial_minor", { mode: "number" }).notNull(),
+    /** `order` (bought) or `staff` (issued by hand). */
+    source: text("source").notNull(),
+    orderId: uuid("order_id"),
+    orderLineId: uuid("order_line_id"),
+    /** Which of the line's units this card is (1, 2, …): a line of three cards issues three, once each. */
+    unitIndex: integer("unit_index"),
+    issuedBy: uuid("issued_by").references(() => accounts.id),
+    note: text("note").notNull().default(""),
+    /** `active` or `deactivated`; spent and expired are read from the balance and the date. */
+    status: text("status").notNull().default("active"),
+    /** A card issued for a Stripe test-mode payment: never spent in live mode. */
+    testMode: boolean("test_mode").notNull().default(false),
+    /** Who it was issued to when they were signed in (cleared by erasure). */
+    customerId: uuid("customer_id"),
+    recipientEmail: text("recipient_email"),
+    recipientName: text("recipient_name"),
+    message: text("message"),
+    sendAt: timestamp("send_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    deactivatedBy: uuid("deactivated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("gift_cards_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("gift_cards_code_key").on(t.storeId, t.codeHash).where(sql`${t.codeHash} is not null`),
+    uniqueIndex("gift_cards_order_line_key").on(t.storeId, t.orderLineId, t.unitIndex).where(sql`${t.orderLineId} is not null`),
+    foreignKey({ name: "gift_cards_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    index("gift_cards_order_idx").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
+    index("gift_cards_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+    index("gift_cards_issued_by_idx").on(t.issuedBy),
+    index("gift_cards_deactivated_by_idx").on(t.deactivatedBy),
+    index("gift_cards_to_send_idx").on(t.sendAt).where(sql`${t.sentAt} is null and ${t.codeHash} is not null`),
+    check("gift_cards_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("gift_cards_initial", sql`${t.initialMinor} > 0`),
+    check("gift_cards_source", sql`(${t.source} = 'order' and ${t.orderId} is not null and ${t.orderLineId} is not null and ${t.unitIndex} >= 1) or (${t.source} = 'staff' and ${t.orderId} is null and ${t.orderLineId} is null and ${t.unitIndex} is null and ${t.issuedBy} is not null)`),
+    check("gift_cards_status", sql`${t.status} in ('active', 'deactivated') and ((${t.status} = 'deactivated') = (${t.deactivatedAt} is not null))`),
+    check("gift_cards_code", sql`(${t.codeHash} is null) = (${t.last4} is null) and (${t.last4} is null or ${t.last4} ~ '^[A-Z0-9]{4}$')`),
+    check("gift_cards_recipient", sql`(${t.recipientEmail} is null or length(${t.recipientEmail}) <= 254) and (${t.recipientName} is null or length(${t.recipientName}) <= 80) and (${t.message} is null or length(${t.message}) <= 500)`),
+    check("gift_cards_note", sql`length(${t.note}) <= 500`),
+  ],
+);
+
+/** A gift card's ledger (D300): append-only, written only by the `gift_card_*` functions, each once per key. */
+export const giftCardEntries = commerce.table(
+  "gift_card_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    cardId: uuid("card_id").notNull(),
+    /** `issue`, `hold`, `release`, `spend`, `refund`, `adjust`, `expire` or `void`. */
+    kind: text("kind").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    orderId: uuid("order_id"),
+    accountId: uuid("account_id").references(() => accounts.id),
+    note: text("note").notNull().default(""),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("gift_card_entries_key").on(t.storeId, t.cardId, t.idempotencyKey),
+    foreignKey({ name: "gift_card_entries_card_fk", columns: [t.storeId, t.cardId], foreignColumns: [giftCards.storeId, giftCards.id] }),
+    foreignKey({ name: "gift_card_entries_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    index("gift_card_entries_card_idx").on(t.storeId, t.cardId, t.createdAt),
+    index("gift_card_entries_order_idx").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
+    index("gift_card_entries_account_idx").on(t.accountId),
+    check("gift_card_entries_kind", sql`${t.kind} in ('issue', 'hold', 'release', 'spend', 'refund', 'adjust', 'expire', 'void')`),
+    check(
+      "gift_card_entries_sign",
+      sql`(${t.kind} in ('issue', 'release', 'refund') and ${t.amountMinor} > 0) or (${t.kind} in ('hold', 'expire', 'void') and ${t.amountMinor} < 0)
+        or (${t.kind} = 'spend' and ${t.amountMinor} = 0) or (${t.kind} = 'adjust' and ${t.amountMinor} <> 0)`,
+    ),
+    check("gift_card_entries_order", sql`${t.kind} not in ('hold', 'release', 'spend', 'refund') or ${t.orderId} is not null`),
+    check("gift_card_entries_staff", sql`${t.kind} not in ('adjust', 'void') or ${t.accountId} is not null`),
+    check("gift_card_entries_note", sql`length(${t.note}) <= 500 and (${t.kind} <> 'adjust' or length(trim(${t.note})) > 0)`),
+  ],
+);
+
+/** A store's gift card rules (D300): how long a card lasts, fixed on each card when it is issued. */
+export const giftCardSettings = commerce.table(
+  "gift_card_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    /** Months a card lasts from its issue; null: it never expires. */
+    expiryMonths: integer("expiry_months").default(36),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check("gift_card_settings_expiry", sql`${t.expiryMonths} is null or ${t.expiryMonths} between 12 and 120`)],
 );
 
 /** What of a lot a negative entry took (D130): the lot's remaining credits are its amount less these. Append-only. */

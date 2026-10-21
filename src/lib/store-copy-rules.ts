@@ -49,6 +49,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   booking_resources: settings(
     "Staff, rooms and rental items (a host's stay with the original; a calendar's secret address is made again).",
   ),
+  gift_card_settings: settings("How long the store's gift cards last (D300); the cards themselves are never copied."),
   bonus_settings: settings("The bonus program's rules (D130): percentages, waits and expiry; balances are not copied."),
   affiliate_settings: settings("The store's referral program's rules (D131): the friend's discount, the reward, limits and cookie days; its customers' links and earnings are not copied."),
   booking_seasons: catalogue("A stay's or rental's seasonal prices; go with the product."),
@@ -166,6 +167,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   abandoned_plan_checkouts: never("Plan checkouts of accounts."),
   access_requests: never("Sign-up requests belong to the platform."),
   bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
+  gift_cards: never("Gift cards (D300) are money customers hold with the original store, like their payments."),
+  gift_card_entries: never("A gift card's ledger (D300): part of the card, never copied."),
   bonus_entries: never("Customers' bonus credits (D130) are their balance with the original store, like their orders' payments."),
   affiliates: never("Customers' referral codes (D131) belong to the original store's customers; a copied customer makes theirs again when they open Refer a friend."),
   affiliate_attributions: never("Which order came through whose link, and what it earned (D131), is history of the original store: a copied order never carries a referral."),

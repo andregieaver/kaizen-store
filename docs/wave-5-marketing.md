@@ -583,7 +583,7 @@ Built in four steps, each its own commit:
 
 | Step | What |
 |---|---|
-| F1 | The model: `gift_cards` and their append-only ledger `gift_card_entries`, written only by SQL functions; codes kept as hashes; the feature switch `gift_cards`; PGlite tests |
+| F1 | The model: `gift_cards` and their append-only ledger `gift_card_entries`, written only by SQL functions; codes kept as hashes; the database allows the feature `gift_cards` (the switch reaches the Features page with F2, which gives it something to sell); PGlite tests |
 | F2 | Selling one: a product of kind `gift_card` with its amounts per country, bought in the cart like goods; at payment one card per unit is issued and emailed to the buyer or a recipient on a chosen day |
 | F3 | Spending one: a *Gift card* field at checkout, up to three cards on an order as payments (never a discount), held when the order is placed, captured with the order, back on the card when the order is cancelled or refunded |
 | F4 | The owner's screens and figures: Gift cards (issued, balances, a card's history, issue one by hand, adjust, deactivate), the liability report, the CSV, the AI manager's read-only tool; docs and parity |

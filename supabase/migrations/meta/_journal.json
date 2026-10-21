@@ -2815,6 +2815,20 @@
       "when": 1792588904074,
       "tag": "20261021132144_page_versions_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 402,
+      "version": "7",
+      "when": 1792591007815,
+      "tag": "20261021135647_gift_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 403,
+      "version": "7",
+      "when": 1792591021210,
+      "tag": "20261021135701_gift_cards_rules",
+      "breakpoints": true
     }
   ]
 }
