@@ -75,6 +75,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags.", { feature: "shop" }),
           item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files.", { feature: "shop" }),
+          item("/gift-cards", "Gift cards", "Cards customers buy or you issue: what they hold, each card's history, issuing and changing one.", { feature: "gift_cards" }),
           item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop" }),
           item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more."),
         ],

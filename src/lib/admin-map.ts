@@ -218,6 +218,17 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["inventory", "stock", "stock levels", "on hand", "committed", "available", "backorder", "sell when out of stock", "oversell", "low stock", "count", "recount", "adjust stock", "received", "damaged", "lager", "lagerbeholdning", "restordre"],
     feature: "shop",
   }),
+  store("gift-cards", "/gift-cards", "Gift cards", "Main", "The store's gift cards: what customers hold on them now per currency, each card with its value, what is left, whether it is active, not sent yet, spent, expired or deactivated, and how it came to be (bought with an order, or issued by staff). Search by the last four of a card, an order number or who it was for, open one for its history and the orders it paid for. Issue a card by hand (the code is shown once and can be emailed), change a card's balance with a reason, deactivate one, and set how long new cards last.", {
+    tasks: ["See what customers hold on gift cards", "Issue a gift card by hand", "Find a gift card by its last four", "Change a gift card's balance", "Deactivate a gift card", "Set how long gift cards last"],
+    keywords: ["gift cards", "gift card", "voucher", "vouchers", "store credit", "gavekort", "presentkort", "gift card balance", "issue gift card", "expiry", "liability"],
+    feature: "gift_cards",
+  }),
+  store("gift-cards.new", "/gift-cards/new", "Issue a gift card", "Main", "Issue a gift card by hand: an amount in a currency the store sells in, and optionally who it is for, their email and a message. The code is shown once and emailed when an address is given. Needs the right to change products.", {
+    feature: "gift_cards",
+  }),
+  store("gift-card", "/gift-cards/[cardId]", "Gift card", "Main", "One gift card: its value and what is left, when it expires, how it came to be, its whole history in words and the orders it paid for; change its balance with a reason or deactivate it.", {
+    feature: "gift_cards",
+  }),
   store("inventory.history", "/inventory/history", "Stock history", "Main", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
     tasks: ["See why a stock figure changed", "Find the order or return behind a change", "Filter the history by SKU, location, reason or dates"],
     keywords: ["stock history", "inventory history", "movements", "adjustment history", "audit", "who changed the stock", "lagerhistorikk"],

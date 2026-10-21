@@ -32,8 +32,8 @@ export type DeliveryRun = { sent: number; failed: number };
 /** How many cards one run delivers at most, so a run stays short; the next takes the rest. */
 const PER_RUN = 50;
 
-/** The cards to deliver now: of an order, or of every open store; bought, active, unsent, their day come. */
-async function dueCards(orderId: string | null): Promise<Row[]> {
+/** The cards to deliver now: of an order, one card, or of every open store; bought, active, unsent, their day come. */
+async function dueCards(orderId: string | null, cardId: string | null): Promise<Row[]> {
   return db().execute<Row>(sql`
     select g.id, g.store_id, g.currency, g.initial_minor, g.expires_at, g.recipient_email, g.recipient_name, g.message,
       o.email as buyer_email, o.locale, o.market_code, ol.gift_card_from, s.time_zone
@@ -46,16 +46,17 @@ async function dueCards(orderId: string | null): Promise<Row[]> {
       and o.status in ('paid', 'fulfilled') and o.restricted_at is null and o.anonymised_at is null
       and commerce.store_is_active(g.store_id)
       and (${orderId}::uuid is null or g.order_id = ${orderId}::uuid)
+      and (${cardId}::uuid is null or g.id = ${cardId}::uuid)
     order by g.send_at nulls first, g.issued_at, g.id
     limit ${PER_RUN}
   `);
 }
 
-/** Delivers the cards whose time has come: an order's (right after it is paid), or every store's (the job). Never throws. */
-export async function deliverGiftCards(options: { orderId?: string; deadline?: number } = {}): Promise<DeliveryRun> {
+/** Delivers the cards whose time has come: an order's (right after it is paid), one card (staff's *Try again*), or every store's (the job). Never throws. */
+export async function deliverGiftCards(options: { orderId?: string; cardId?: string; deadline?: number } = {}): Promise<DeliveryRun> {
   const run: DeliveryRun = { sent: 0, failed: 0 };
   try {
-    const cards = await dueCards(options.orderId ?? null);
+    const cards = await dueCards(options.orderId ?? null, options.cardId ?? null);
     const stores = new Map<string, EmailStore | null>();
     for (const card of cards) {
       if (options.deadline && Date.now() > options.deadline) break;
@@ -76,6 +77,70 @@ export async function deliverGiftCards(options: { orderId?: string; deadline?: n
   return run;
 }
 
+/** The email that carries a card's code: its amount, who it is from and their words, the code, how long it lasts and the store's link. */
+function cardEmail(
+  store: EmailStore,
+  card: { code: string; amount: string; lang: string; locale: string; marketCode: string | null; expiresAt: string | null; timeZone: string; from: string | null; message: string | null },
+) {
+  const m = t(card.lang);
+  const slug = marketSlugFor(store, card.marketCode);
+  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, slug, "/")}`;
+  const until = card.expiresAt ? new Date(card.expiresAt).toLocaleDateString(card.locale, { dateStyle: "long", timeZone: card.timeZone }) : null;
+  const blocks: EmailBlock[] = [
+    { type: "heading", text: m.giftCardEmail.heading(card.amount, store.name) },
+    ...(card.from || card.message
+      ? ([{ type: "paragraph", text: [card.from ? m.giftCardEmail.from(card.from) : null, card.message].filter(Boolean).join("\n") }] satisfies EmailBlock[])
+      : []),
+    { type: "code", text: formatGiftCode(card.code) },
+    { type: "paragraph", text: m.giftCardEmail.useIt(store.name) },
+    { type: "paragraph", text: until ? m.giftCardEmail.validUntil(until) : m.giftCardEmail.noExpiry },
+    { type: "paragraph", text: m.giftCardEmail.keepIt },
+    { type: "button", text: m.giftCardEmail.visit(store.name), url: link },
+  ];
+  return renderEmail({
+    subject: m.giftCardEmail.subject(store.name),
+    preview: m.giftCardEmail.heading(card.amount, store.name),
+    blocks,
+    footer: emailFooter(store, emailText(card.lang)),
+    lang: card.lang,
+  });
+}
+
+/**
+ * A card staff issued by hand (D300 F4) emailed to the person it is for, with the code staff were shown: once, by the card's id. The card was
+ * marked delivered when its code was shown, so a failed email changes nothing on it; staff still have the code to pass on.
+ */
+export async function sendIssuedCard(
+  storeId: string,
+  card: { id: string; code: string; amountMinor: number; currency: string; to: string; lang: string; expiresAt: string | null; message: string | null },
+): Promise<SendOutcome> {
+  const store = await storeById(storeId);
+  if (!store) return "failed";
+  const [zone] = await db().execute<Row>(sql`select coalesce(time_zone, 'UTC') as tz from commerce.stores where id = ${storeId}::uuid`);
+  const locale = store.markets.find((market) => market.locale.startsWith(card.lang))?.locale ?? card.lang;
+  const email = cardEmail(store, {
+    code: card.code,
+    amount: formatMoney(card.amountMinor, card.currency, locale),
+    lang: card.lang,
+    locale,
+    marketCode: null,
+    expiresAt: card.expiresAt,
+    timeZone: String(zone?.tz ?? "UTC"),
+    from: null,
+    message: card.message,
+  });
+  return sendEmail({
+    storeId,
+    kind: "gift_card.issued",
+    to: card.to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail ?? null,
+    idempotencyKey: `gift-card:${card.id}:staff`,
+    secrets: [formatGiftCode(card.code), card.code],
+  });
+}
+
 /** One card: a code, its email, and the card marked sent once the email is out. */
 async function deliverOne(store: EmailStore, card: Row): Promise<"sent" | "failed"> {
   const storeId = store.id;
@@ -92,29 +157,16 @@ async function deliverOne(store: EmailStore, card: Row): Promise<"sent" | "faile
   const amount = formatMoney(Number(card.initial_minor), String(card.currency).trim(), String(card.locale || "en"));
   const recipient = card.recipient_email ? String(card.recipient_email) : null;
   const to = recipient ?? String(card.buyer_email);
-  const slug = marketSlugFor(store, card.market_code ? String(card.market_code) : null);
-  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, slug, "/")}`;
-  const until = card.expires_at
-    ? new Date(String(card.expires_at)).toLocaleDateString(String(card.locale || "en"), { dateStyle: "long", timeZone: String(card.time_zone || "UTC") })
-    : null;
-  const from = card.gift_card_from ? String(card.gift_card_from) : null;
-  const blocks: EmailBlock[] = [
-    { type: "heading", text: m.giftCardEmail.heading(amount, store.name) },
-    ...(recipient && (from || card.message)
-      ? ([{ type: "paragraph", text: [from ? m.giftCardEmail.from(from) : null, card.message ? String(card.message) : null].filter(Boolean).join("\n") }] satisfies EmailBlock[])
-      : []),
-    { type: "code", text: formatGiftCode(code.code) },
-    { type: "paragraph", text: m.giftCardEmail.useIt(store.name) },
-    { type: "paragraph", text: until ? m.giftCardEmail.validUntil(until) : m.giftCardEmail.noExpiry },
-    { type: "paragraph", text: m.giftCardEmail.keepIt },
-    { type: "button", text: m.giftCardEmail.visit(store.name), url: link },
-  ];
-  const email = renderEmail({
-    subject: m.giftCardEmail.subject(store.name),
-    preview: m.giftCardEmail.heading(amount, store.name),
-    blocks,
-    footer: emailFooter(store, emailText(lang)),
+  const email = cardEmail(store, {
+    code: code.code,
+    amount,
     lang,
+    locale: String(card.locale || "en"),
+    marketCode: card.market_code ? String(card.market_code) : null,
+    expiresAt: card.expires_at ? String(card.expires_at) : null,
+    timeZone: String(card.time_zone || "UTC"),
+    from: recipient && card.gift_card_from ? String(card.gift_card_from) : null,
+    message: recipient && card.message ? String(card.message) : null,
   });
   const outcome: SendOutcome = await sendEmail({
     storeId,

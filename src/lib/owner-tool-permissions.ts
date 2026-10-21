@@ -16,6 +16,8 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // Gift cards (D300 F4): the Gift cards page is the Products section's.
+  gift_card_overview: "products:read",
   // Looking (the page's `read`)
   store_overview: "owner",
   sales_summary: "analytics:read",

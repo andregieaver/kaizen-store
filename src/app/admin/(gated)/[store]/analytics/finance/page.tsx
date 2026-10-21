@@ -4,6 +4,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { FinanceView, type FinancePeriodData } from "@/components/admin/analytics/finance-view";
+import { GiftCardsView } from "@/components/admin/analytics/gift-cards-view";
 import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { TermsOwedView } from "@/components/admin/analytics/terms-owed-view";
 import { queryText } from "@/lib/analytics-export";
@@ -14,6 +15,7 @@ import { analyticsContext, type AnalyticsContext } from "@/server/analytics-cont
 import { paymentMethodsReport } from "@/server/analytics-payments-data";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { periodTotals, seriesByBucket } from "@/server/analytics-totals";
+import { giftCardLiability } from "@/server/gift-cards-admin";
 import { termsOwedReport } from "@/server/payment-terms";
 
 export const metadata: Metadata = { title: "Finance" };
@@ -39,7 +41,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
 
-  const [current, comparison, series, comparisonSeries, setup, payments, owed] = await Promise.all([
+  const [current, comparison, series, comparisonSeries, setup, payments, owed, giftCards] = await Promise.all([
     periodData(ctx, period),
     against ? periodData(ctx, against) : Promise.resolve(null),
     seriesByBucket(store, period, bucket, settings),
@@ -50,6 +52,8 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
     paymentMethodsReport(store, period, settings),
     // What companies owe on payment terms today (D293): not a figure of the period.
     termsOwedReport(store),
+    // What customers hold on gift cards (D300 F4): money owed, never a sale; each currency on its own.
+    giftCardLiability(store, period),
   ]);
 
   return (
@@ -75,6 +79,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
         />
         <PaymentsView currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} report={payments} />
         <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} owed={owed} />
+        <GiftCardsView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} lines={giftCards.lines} />
       </div>
     </ExportScope>
   );

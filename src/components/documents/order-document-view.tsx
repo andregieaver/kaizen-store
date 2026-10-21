@@ -240,6 +240,7 @@ function InvoiceLines({ doc, t, e, locale }: { doc: OrderInvoiceSnapshot; t: Doc
               <th scope="row" className="wd-left wd-lines">
                 {line.title}
                 {service && <span className="wd-line-note">{`${t.booked}: ${service}`}</span>}
+                {line.voucher && <span className="wd-line-note">{t.voucherLine}</span>}
               </th>
               <td className="wd-num">{line.quantity}</td>
               <td className="wd-num">{money(line.unitNetMinor)}</td>

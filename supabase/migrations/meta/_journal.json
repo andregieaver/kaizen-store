@@ -2857,6 +2857,13 @@
       "when": 1792604357277,
       "tag": "20261021173917_gift_card_spending_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 408,
+      "version": "7",
+      "when": 1792613202244,
+      "tag": "20261021200642_gift_card_admin",
+      "breakpoints": true
     }
   ]
 }

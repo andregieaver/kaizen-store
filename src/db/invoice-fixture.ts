@@ -180,9 +180,22 @@ async function variantFor(db: Db, store: string, category: string, plan: boolean
   if (!found) {
     const n = next();
     const productId = (
-      await one<{ id: string }>(db, "insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, $2, 'txcd_99999999', $3) returning id", [store, `fx-${category}-${n}`, category])
+      // A `voucher` line is a gift card's (D300): the category is a gift card product's only, its amounts delivered by email.
+      await one<{ id: string }>(db, "insert into commerce.products (store_id, handle, tax_code, vat_category, kind) values ($1, $2, 'txcd_99999999', $3, $4) returning id", [
+        store,
+        `fx-${category}-${n}`,
+        category,
+        category === "voucher" ? "gift_card" : "goods",
+      ])
     ).id;
-    const variantId = (await one<{ id: string }>(db, "insert into commerce.product_variants (store_id, product_id, sku) values ($1, $2, $3) returning id", [store, productId, `FX-${category}-${n}`])).id;
+    const variantId = (
+      await one<{ id: string }>(db, "insert into commerce.product_variants (store_id, product_id, sku, delivery) values ($1, $2, $3, $4) returning id", [
+        store,
+        productId,
+        `FX-${category}-${n}`,
+        category === "voucher" ? "digital" : "physical",
+      ])
+    ).id;
     found = { variantId, productId };
     products.set(key, found);
   }

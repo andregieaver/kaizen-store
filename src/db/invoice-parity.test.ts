@@ -139,6 +139,22 @@ describe("the invoice's snapshot: SQL and the oracle agree", () => {
     });
   });
 
+  it("a gift card line is marked as a voucher, with no VAT, beside goods (D300 F4)", async () => {
+    await expectParity(no, {
+      lines: [
+        { sku: "GC", unit: 50000, rate: 0, category: "voucher", delivery: "digital" },
+        { sku: "A", unit: 12500, rate: 0.25 },
+      ],
+      shipping: 4900,
+      shippingRate: 0.25,
+    }, (snap) => {
+      const voucher = snap.lines.find((l) => l.sku.startsWith("FX-voucher") || l.voucher);
+      expect(voucher?.voucher).toBe(true);
+      expect(voucher?.vatMinor).toBe(0);
+      expect(snap.lines.filter((l) => l.voucher)).toHaveLength(1);
+    });
+  });
+
   it("discounts of every kind, with free shipping", async () => {
     await expectParity(no, {
       lines: [

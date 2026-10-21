@@ -684,6 +684,14 @@ order paid after it was cancelled does not take its cards again (`gift_card.unpa
 - **AI manager**: `gift_card_overview` (read-only, `products:read`): counts and the outstanding per currency, never a code or a recipient.
 - **Parity**: `customers.gift-cards` and `analytics.liabilities-gift-card-and-store-credit`.
 
+**As built (F4):** issuing, changing, deactivating and the settings need the right to change products (the page is the Products section's, and a
+page's key is its section's, `permissions.scan.test.ts`); a card issued
+by hand is in the store's payment mode, shown once and marked delivered at once (its code is then fixed), and emailed when an address is given. A
+delivered code can never be sent again: *Send again* is for a bought card whose email failed. The liability report counts the cards of the store's
+payment mode now (a store still testing sees its test cards), and an order of gift cards only is no order in Finance; a refund of a mixed order is
+shared by its goods. The invoice's words come with a `voucher` mark on its gift card lines (migration `gift_card_admin`). Not built: a custom amount,
+opening and closing balances, and a card's refund from an order change or an exchange.
+
 ### 8.5 Tests
 
 PGlite: the ledger's functions (balance never below zero, idempotent, currency fixed, refused on a deactivated or expired card, release and

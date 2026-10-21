@@ -710,7 +710,7 @@
       "was": "missing"
     },
     "weight": 2,
-    "gap": "Outstanding bonus credit is shown at `/admin/{store}/bonus` (`outstandingMinor`), not in Analytics or Finance; no gift cards exist yet; no roll-forward of issued, used and expired credit.",
+    "gap": "Gift cards are a liability report of their own on Finance (D300 F4): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies; gift cards sold are left out of sales. Outstanding bonus credit is still shown only at `/admin/{store}/bonus` (`outstandingMinor`), not in Finance, and neither has an opening and closing roll-forward.",
     "history": [
       {
         "on": "2026-10-02",
@@ -732,15 +732,20 @@
         "src/server/bonus.ts",
         "src/lib/bonus.ts",
         "docs/bonus.md",
-        "src/app/admin/(gated)/[store]/bonus/page.tsx"
+        "src/app/admin/(gated)/[store]/bonus/page.tsx",
+        "src/server/gift-cards-admin.ts",
+        "src/components/admin/analytics/gift-cards-view.tsx"
       ],
       "tests": [
-        "src/server/bonus.int.test.ts"
+        "src/server/bonus.int.test.ts",
+        "src/server/gift-cards.int.test.ts",
+        "src/components/admin/analytics/gift-cards-view.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D130"
+      "D130",
+      "D300"
     ]
   },
   {

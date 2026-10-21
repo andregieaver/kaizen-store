@@ -40,6 +40,7 @@ import { timeReport } from "./analytics-time-data";
 import { overviewHead, periodTotals, seriesByBucket, topProducts, type SeriesPoint } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport } from "./analytics-traffic-data";
 import { audit, type Membership } from "./auth";
+import { giftCardLiability } from "./gift-cards-admin";
 import { memberCan } from "./permissions";
 
 /**
@@ -179,6 +180,23 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
         currency: p.currency,
       })),
       leftOut: { orders: r.unconverted, currencies: r.missingCurrencies },
+    };
+  },
+  "finance.gift_cards": async (x) => {
+    const r = await giftCardLiability(x.ctx.store, x.period);
+    return {
+      rows: r.lines.map((l) => ({
+        outstanding: l.outstandingMinor,
+        cards: l.cards,
+        issued: l.issuedMinor,
+        spent: l.spentMinor,
+        refunded: l.refundedMinor,
+        adjusted: l.adjustedMinor,
+        expired: l.expiredMinor,
+        voided: l.voidedMinor,
+        currency: l.currency,
+      })),
+      leftOut: { orders: 0, currencies: [] },
     };
   },
   "finance.payment_methods": async (x) => {

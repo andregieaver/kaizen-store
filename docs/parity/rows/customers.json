@@ -744,11 +744,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No gift cards: no card product, code, balance or liability. `docs/bonus.md` lists credits as gift cards among what the bonus program does not do. One row for the one Shopify feature (it replaces catalogue.gift-cards).",
+    "gap": "Gift cards are sold in fixed amounts (a product of kind gift_card, its variants the amounts), delivered by email to the buyer or a recipient on a chosen day with their message, spent at checkout as up to three payments (never a discount; NOK and euro scenarios agree to the minor unit), refunded back to the card, issued by hand, changed, deactivated and expired by the ledger's functions, and reported per currency on Finance with its CSV. Not yet: a custom amount the shopper chooses, a card sent again after delivery (codes are kept only as hashes), refunds of order changes and exchanges back to a card; the voucher VAT treatment and the expiry rules wait for an accountant's and a lawyer's review.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -758,14 +758,35 @@
       "A liability report shows the outstanding balance per currency and equals the ledger's sum (test); expiry is never sooner than the law allows and the VAT treatment is written in the spec."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/gift-cards.ts",
+        "src/server/gift-card-cart.ts",
+        "src/server/gift-card-delivery.ts",
+        "src/server/gift-cards-admin.ts",
+        "src/lib/gift-card-admin.ts",
+        "src/app/admin/(gated)/[store]/gift-cards/page.tsx",
+        "supabase/migrations/20261021135701_gift_cards_rules.sql"
+      ],
+      "tests": [
+        "src/server/gift-cards.int.test.ts",
+        "src/db/gift-cards.test.ts",
+        "src/lib/gift-cards.test.ts",
+        "src/lib/gift-card-admin.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D130"
+      "D130",
+      "D300"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-21",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 5 unit F (D300): gift cards sold, spent, issued by hand and reported; a custom amount is not built."
+      }
+    ]
   },
   {
     "id": "customers.loyalty-and-rewards",

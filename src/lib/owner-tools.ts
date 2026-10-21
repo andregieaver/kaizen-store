@@ -812,6 +812,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "gift_card_overview",
+    "The store's gift cards in figures: how many are active, not sent yet, spent, expired and deactivated, and what customers hold on live cards now, per currency, never added across currencies. A card sold is money the store owes until it is spent: not a sale. Never a code, a card's number or who has one. Read-only.",
+    z.object({}),
+  ),
+  tool(
     "list_support_conversations",
     "The store's support conversations, most recent first: each one's title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Never the words of a conversation: to read one, give the link. Read-only.",
     z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),

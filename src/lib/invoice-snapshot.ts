@@ -144,6 +144,8 @@ export type SnapshotLine = {
   serviceDate: string | null;
   service: { startsAt: string; endsAt: string; count: number | null } | null;
   wouldHaveRate: number | null;
+  /** A gift card (D300 F4): a multi-purpose voucher, no VAT when sold; the document says so. Only on invoices issued since F4. */
+  voucher?: true;
 };
 
 export type SnapshotShipping = {
@@ -541,6 +543,7 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
       serviceDate: l.booking ? l.booking.startsAt.slice(0, 10) : null,
       service: l.booking ? { startsAt: l.booking.startsAt, endsAt: l.booking.endsAt, count: l.bookedCount } : null,
       wouldHaveRate: rc ? l.taxRate : null,
+      ...(l.vatCategory === "voucher" ? { voucher: true as const } : {}),
     });
   }
 

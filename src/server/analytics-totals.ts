@@ -32,7 +32,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-settings";
-import { dayKey, dayOf, dayStart, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { dayKey, dayOf, dayStart, GIFT_CARD_LINE, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, VOUCHER_NET, type Row } from "./analytics-sql";
 import type { Store } from "./stores";
 
 /**
@@ -312,6 +312,9 @@ async function loadBundles(
       select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.source, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
         coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
         (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk,
+        -- Gift cards sold on the order (D300 F4) are not sales, and what gift cards paid is no card payment to estimate a fee on.
+        ${VOUCHER_NET} as voucher_rev,
+        coalesce((select sum(gc.amount_minor) from commerce.payments gc where gc.store_id = o.store_id and gc.order_id = o.id and gc.provider = 'gift_card' and gc.status = 'captured'), 0) as gc_paid,
         -- Stripe's real fee is known for the order (D290): it has a captured Stripe payment and every one has its fee, in a currency the store converts.
         (exists (select 1 from commerce.payments fp where fp.store_id = o.store_id and fp.order_id = o.id and fp.provider = 'stripe' and fp.status = 'captured')
           and not exists (select 1 from commerce.payments fp where fp.store_id = o.store_id and fp.order_id = o.id and fp.provider = 'stripe' and fp.status = 'captured'
@@ -333,7 +336,7 @@ async function loadBundles(
         (ol.delivery = 'physical') as physical
       from po0
       join commerce.order_lines ol on ol.order_id = po0.id
-      where po0.ok and ol.store_id = ${id}::uuid
+      where po0.ok and ol.store_id = ${id}::uuid and not ${GIFT_CARD_LINE}
     ),
     -- Each order's lines once: an order's discount beyond its lines' is a discount of its shipping (a free-shipping code), taken
     -- with VAT off the total and off the shipping's VAT (placeOrder()), so shipping income must be worked out around it.
@@ -341,15 +344,16 @@ async function loadBundles(
       select id, sum(raw_disc) as line_disc, sum(line_relief) as line_relief from pl group by id
     ),
     by_order as (
-      select bk, currency::text as currency, count(*) as orders, count(*) filter (where source = 'checkout') as checkout_orders, sum(tax_minor) as vat, sum(total_minor - tax_minor) as revenue,
+      select bk, currency::text as currency, count(*) as orders, count(*) filter (where source = 'checkout') as checkout_orders, sum(tax_minor) as vat, sum(total_minor - tax_minor - voucher_rev) as revenue,
         sum(shipping_minor) as shipping_in, sum(ship_disc) as ship_disc, sum(ship_relief) as ship_relief, sum(round(ship_disc::numeric / (1 + ship_rate))) as ship_disc_ex,
-        sum(case when has_lines then 0 else total_minor - tax_minor end) as lineless_rev
+        sum(case when has_lines then 0 else total_minor - tax_minor - voucher_rev end) as lineless_rev
       from (
         select po0.*, (lo.id is not null) as has_lines,
           least(po0.shipping_minor, greatest(0, po0.discount_minor - po0.vat_relief_minor - coalesce(lo.line_disc, 0))) as ship_disc,
           po0.vat_relief_minor - coalesce(lo.line_relief, 0) as ship_relief
         from po0 left join lo on lo.id = po0.id
-        where po0.ok
+        -- An order of gift cards only is no sale, so it is no order here either.
+        where po0.ok and not (lo.id is null and po0.voucher_rev > 0)
       ) o
       group by bk, currency
     ),
@@ -401,7 +405,7 @@ async function loadBundles(
     ) t
     ${
       feesOn
-        ? sql`union all select 'fees', to_jsonb(t) from (select bk, currency::text as currency, total_minor, count(*) as n from po0 where ok and not fee_known group by bk, currency, total_minor) t`
+        ? sql`union all select 'fees', to_jsonb(t) from (select bk, currency::text as currency, total_minor - gc_paid as total_minor, count(*) as n from po0 where ok and not fee_known group by bk, currency, total_minor - gc_paid) t`
         : sql``
     }
     union all select 'customers', to_jsonb(t) from (
@@ -415,7 +419,8 @@ async function loadBundles(
   const refundDay = dayOf(store, sql`r.created_at`);
   const refunds = setBased<Row>(sql`
     select (${bucketOf(grain, period, refundDay)})::text as bk, rp.currency::text as currency, (rp.currency = any(${known})) as converts, count(*) as n,
-      sum(round(r.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0))) as amount
+      -- An order's gift cards are not in its revenue (D300 F4), so a refund of it is shared by the rest.
+      sum(round(r.amount_minor::numeric * greatest(o.total_minor - o.tax_minor - ${VOUCHER_NET}, 0) / nullif(o.total_minor, 0))) as amount
     from commerce.refunds r
     join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
     join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id

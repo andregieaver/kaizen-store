@@ -68,6 +68,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "product_layout.": "products",
   "products.": "products",
   "store.product_layout_": "products",
+  // Gift cards (D300 F4): issued by hand, changed, deactivated, the expiry setting; ids and amounts, never a code.
+  "gift_card.": "products",
   // Customers
   "customer.": "customers",
   // Privacy requests, exports and erasures (D162); the retention schedule belongs to the platform.

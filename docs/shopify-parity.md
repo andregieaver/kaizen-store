@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 69.9%** (first report 59.5%), **must-have 80.5%** (first report 69.1%), over 221 core rows (first report 232).
-- Where the change comes from: +8.9 points from the 77 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
+- **Headline now 70.1%** (first report 59.5%), **must-have 80.5%** (first report 69.1%), over 221 core rows (first report 232).
+- Where the change comes from: +9.2 points from the 78 rating moves on core rows recorded below, and +1.5 points because the re-read changed which rows count as core (the tracker has 252 rows, the first report 232 core ones).
 - 251 of 252 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (56):
+Rated higher (57):
 
 - AI or rule-based customer segmentation (AI): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - AI-written marketing email (AI): missing to partial. D297: Write with AI in the broadcast editor suggests the email's words through the claims filter, as a suggestion only; it does not yet read the store's products or campaigns.
@@ -42,6 +42,7 @@ Rated higher (56):
 - Customer segments and tags (Customers): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Automatic discounts (Customers): partial to full. D299 E3: campaigns of an amount off per market (with an optional threshold), free shipping (with an optional threshold) and tiers by items or spend, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, announced f…
 - Buy X get Y (Customers): partial to full. D299 E4: a buy X get Y campaign (a buy set by items or an amount per market, a get set of its own or the same, free, a percentage or an amount off per unit, cheapest first, never a unit counted as bought, uses per order), on its own order…
+- Gift cards (Customers): missing to partial. Wave 5 unit F (D300): gift cards sold, spent, issued by hand and reported; a custom amount is not built.
 - Back-in-stock notifications (Customers, not core): missing to partial. D298 built the notify-me form with double opt-in, one email per waiting address when stock returns by any path, store scope, export, erasure and pruning, and the staff's waiting counts; the email does not show the live price, a waiting req…
 - IOSS (International): missing to partial. Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, abov…
 - Legal page templates and policy generator (International): missing to partial. Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.tes…
@@ -109,7 +110,7 @@ Rated lower (27):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **69.9%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **80.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 66.3% overall and 80.3% for must-haves. Counting app-only features gives 69.2%; counting Plus-only as well gives 68.8%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), customers, marketing and loyalty (56.0%), ai and automation (61.9%). Of the 221 core features, 97 are full, 99 partial and 25 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **70.1%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 221 core features weighted by importance to an EU small or mid-size merchant, and **80.5%** on the must-haves (the 89 features with weight 4 or 5). The unweighted figures are 66.5% overall and 80.3% for must-haves. Counting app-only features gives 69.4%; counting Plus-only as well gives 69.0%. Kaizena Flow is strongest on storefront, themes and content (85.0%) and weakest on platform, extensibility and operations (52.9%), customers, marketing and loyalty (58.2%), ai and automation (61.9%). Of the 221 core features, 97 are full, 100 partial and 24 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -119,10 +120,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 221 | **69.9%** | 66.3% | 97 / 99 / 25 |
+| Headline: core (Shopify native, Basic to Advanced) | 221 | **70.1%** | 66.5% | 97 / 100 / 24 |
 | Must-have (core, weight 4 or 5) | 89 | **80.5%** | 80.3% | 54 / 35 / 0 |
-| Core plus app-only features | 246 | 69.2% | 66.1% | 107 / 111 / 28 |
-| Everything, including Plus-only | 252 | 68.8% | 65.3% | 108 / 113 / 31 |
+| Core plus app-only features | 246 | 69.4% | 66.3% | 107 / 112 / 27 |
+| Everything, including Plus-only | 252 | 69.0% | 65.5% | 108 / 114 / 30 |
 
 <!-- parity:generated:end headline -->
 
@@ -138,12 +139,12 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Storefront, themes and content | 33 | 22 | 9 | 2 | 85.0% | 15 | 97.0% |
 | Checkout and payments | 21 | 8 | 13 | 0 | 68.2% | 12 | 66.3% |
 | Orders, shipping, fulfilment and returns | 28 | 17 | 10 | 1 | 81.5% | 14 | 90.2% |
-| Customers, marketing and loyalty | 20 | 4 | 13 | 3 | 56.0% | 8 | 69.1% |
+| Customers, marketing and loyalty | 20 | 4 | 14 | 2 | 58.2% | 8 | 69.1% |
 | Analytics, reporting and finance | 26 | 13 | 10 | 3 | 73.2% | 11 | 80.4% |
 | International, compliance and trust | 20 | 7 | 13 | 0 | 68.8% | 12 | 72.1% |
 | Platform, extensibility and operations | 22 | 4 | 13 | 5 | 52.9% | 7 | 72.4% |
 | AI and automation | 23 | 9 | 9 | 5 | 61.9% | 2 | 100.0% |
-| **Total** | **221** | **97** | **99** | **25** | **69.9%** | **89** | **80.5%** |
+| **Total** | **221** | **97** | **100** | **24** | **70.1%** | **89** | **80.5%** |
 
 <!-- parity:generated:end domains -->
 
@@ -164,7 +165,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `checkout.abandoned-checkout-reco
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 99 | 87 | 20.5 |
+| A | Build in-house | 99 | 87 | 20.2 |
 | B | Build, live only with a third party | 19 | 16 | 4.4 |
 | C | Strategy decision first | 12 | 9 | 2.1 |
 | D | Not reachable by code | 14 | 12 | 3.1 |
@@ -177,15 +178,15 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **69.9%** core, 80.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
+Now: **70.1%** core, 80.5% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 15 rows (12 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 11 (8) | 72.1% | 83.8% | +2.1 | 71.3% | 82.7% |
-| 2 | Data in and out | 3 (1) | 72.3% | 83.8% | +0.2 | 71.5% | 82.7% |
-| 3 | Inventory and orders | 14 (13) | 75.2% | 86.0% | +3.0 | 72.9% | 83.9% |
-| 4 | Payments | 8 (6) | 76.6% | 87.6% | +1.4 | 73.2% | 83.9% |
-| 5 | Customers and marketing | 28 (24) | 83.1% | 93.2% | +6.4 | 78.6% | 89.5% |
+| 1 | Compliance and money | 11 (8) | 72.3% | 83.8% | +2.1 | 71.5% | 82.7% |
+| 2 | Data in and out | 3 (1) | 72.5% | 83.8% | +0.2 | 71.7% | 82.7% |
+| 3 | Inventory and orders | 14 (13) | 75.5% | 86.0% | +3.0 | 73.1% | 83.9% |
+| 4 | Payments | 8 (6) | 76.8% | 87.6% | +1.4 | 73.4% | 83.9% |
+| 5 | Customers and marketing | 28 (24) | 83.1% | 93.2% | +6.2 | 78.6% | 89.5% |
 | 6 | Catalogue | 13 (12) | 86.0% | 94.4% | +2.9 | 81.5% | 90.7% |
 | 7 | Storefront and international | 17 (16) | 89.5% | 95.4% | +3.5 | 84.8% | 91.8% |
 | 8 | Analytics and AI | 20 (20) | 93.8% | 96.1% | +4.3 | 88.5% | 92.4% |
@@ -447,7 +448,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Tiered and volume discounts | App. [page](https://help.shopify.com/en/manual/discounts/discount-types) | Partial (was missing) | 3 | A, wave 5 | D299 E3: a tiered campaign (two to five steps, by items or by spend per market, the highest reached applies) with its ladder on the product page and how far the next step is in the cart, held in NOK and euro scenarios. A step gives a percentage only, never an amount. Code: `src/lib/campaigns.ts`, `src/server/campaigns.ts`. |
 | Discount stacking and customer-targeted discounts | Native. [page](https://help.shopify.com/en/manual/discounts/discount-combinations) | Partial | 3 | A, wave 5 | The order is fixed in code: campaigns, then group discount (D108), then referral welcome discount (D131), then one code (D31), then bonus credits (D130). The owner cannot choose which discounts combine, only one code applies, and codes are not limited to groups or segments. Campaigns can be limited per group and per customer (D115, D116). Code: `src/lib/discounts.ts`, `src/lib/campaigns.ts`. |
 | Omnibus 30-day lowest-price reference | App. [page](https://apps.shopify.com/omnibus-price) | Full | 4 |  | Caveat: the reference shows only where the current price is below the lowest price in the previous 30 days of that market (`prior_30d_minor`); campaign and code discounts are not advertised against a was-price, so they raise no reference-price question. Evidence: `src/lib/pricing.ts`, `src/components/price.tsx`, `src/server/catalog.ts` and 1 more; 2 test files. |
-| Gift cards | Native. [page](https://www.shopify.com/pricing) | Missing | 3 | A, wave 5 | No gift cards: no card product, code, balance or liability. `docs/bonus.md` lists credits as gift cards among what the bonus program does not do. One row for the one Shopify feature (it replaces catalogue.gift-cards). |
+| Gift cards | Native. [page](https://www.shopify.com/pricing) | Partial (was missing) | 3 | A, wave 5 | Gift cards are sold in fixed amounts (a product of kind gift_card, its variants the amounts), delivered by email to the buyer or a recipient on a chosen day with their message, spent at checkout as up to three payments (never a discount; NOK and euro scenarios agree to the minor unit), refunded back to the card, issued by hand, changed, deactivated and expired by the ledger's functions, and reported per currency on Finance with its CSV. Not yet: a custom amount the shopper chooses, a card sent again after delivery (codes are kept only as hashes), refunds of order changes and exchanges back to a card; the voucher VAT treatment and the expiry rules wait for an accountant's and a lawyer's review. Code: `src/lib/gift-cards.ts`, `src/server/gift-card-cart.ts`. |
 | Loyalty and rewards | App. [page](https://apps.shopify.com/smile-io) | Partial (was full) | 3 | A, wave 5 | The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Missing next to a loyalty app: VIP tiers or tier multipliers (listed as not built in `docs/bonus.md`), points for actions (account creation, birthday, review, sign-up) and reward kinds beyond a price reduction (free shipping, free product). Code: `src/lib/bonus.ts`, `src/server/bonus.ts`. |
 | Customer referral program | App. [page](https://apps.shopify.com/refertech) | Full | 2 |  | Caveat: rewards are bonus credits, not cash; the friend's welcome discount applies to the first paid order of a signed-in customer; the program works only while the bonus program is on. Evidence: `src/lib/affiliates.ts`, `src/server/affiliates.ts`, `src/server/affiliate-emails.ts` and 5 more; 6 test files; D131. |
 | Affiliate and creator programme | Native. [page](https://apps.shopify.com/collabs) | Partial | 2 | A, wave 5 | D131's store program is customers referring friends for a welcome discount and bonus credits, with no approval. Missing: a creator or affiliate application and approval, per-affiliate commission rates paid in money, a commission ledger with payouts, and a dashboard of clicks and sales for the creator. Code: `src/lib/affiliates.ts`, `src/server/affiliates.ts`. |
@@ -483,7 +484,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Tax and VAT reports by rate and jurisdiction | Native. [page](https://help.shopify.com/en/manual/taxes/tax-reports) | Partial | 5 | D, no wave yet | The four criteria are built and held by tests (see the evidence), but an accountant has not read the part-assignment rules of classify(), the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (docs/wave-1c-reports.md section 8), so this is held at Partial like the other tax and legal rows. No browser has opened the page with data (the admin needs a sign-in; e2e/admin.spec.ts only checks the signed-out refusal). The migrations are not yet in production and the daily ECB rate job has not run there. Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause. Code: `src/server/analytics-sql.ts`, `src/lib/tax-periods.ts`. |
 | Payouts and reconciliation | Native. [page](https://help.shopify.com/en/manual/payments/shopify-payments/payouts/payout-reconciliation-report) | Full (was missing) | 4 |  | Evidence: `src/lib/payouts.ts`, `src/server/payouts.ts`, `src/server/payouts-report.ts` and 6 more; 6 test files; D17, D152, D290. |
 | Payments reports by method | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Full (was missing) | 2 |  | Evidence: `src/db/schema.ts`, `src/server/stripe-webhooks.ts`, `src/lib/analytics-payments.ts` and 3 more; 4 test files; D23, D288. |
-| Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Partial (was missing) | 2 | A, wave 5 | Outstanding bonus credit is shown at `/admin/{store}/bonus` (`outstandingMinor`), not in Analytics or Finance; no gift cards exist yet; no roll-forward of issued, used and expired credit. Code: `src/server/bonus.ts`, `src/lib/bonus.ts`. |
+| Liabilities: gift card and store credit | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report) | Partial (was missing) | 2 | A, wave 5 | Gift cards are a liability report of their own on Finance (D300 F4): what customers hold now per currency and the period's issued, spent, refunded back, changed, expired and deactivated, with its CSV, never converted or added across currencies; gift cards sold are left out of sales. Outstanding bonus credit is still shown only at `/admin/{store}/bonus` (`outstandingMinor`), not in Finance, and neither has an opening and closing roll-forward. Code: `src/server/bonus.ts`, `src/lib/bonus.ts`. |
 | Customer reports: cohorts, repeat rate | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Full | 4 |  | Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | Customer lifetime value | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation/predicted-spend-tier) | Full | 3 |  | Residual: store and cohort level only (historic and predicted); no per-customer predicted value (Shopify's predicted spend tier is per customer). Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 1 more; 3 test files; D152. |
 | RFM segments and customer lists | Native. [page](https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports) | Partial | 3 | A, wave 5 | D296: an RFM group is a segment condition (the same `rfm()` as the Customers page, over paid orders), so a segment of one group lists its customers with last order and orders; money outside the converted currencies is counted, not judged. Still missing: a click-through from the analytics group to its list, a paged list beyond the first 100, CSV of a segment, and a test that the counts agree. Code: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`. |

@@ -251,3 +251,128 @@ describe("spending gift cards (D300 F3)", () => {
     expect(await balanceOf(card.id)).toBe(5_000);
   });
 });
+
+const { getStore } = await import("./stores");
+const { periodTotals } = await import("./analytics-totals");
+const { findGiftCard } = await import("./gift-card-cart");
+const admin = await import("./gift-cards-admin");
+const { customPeriod } = await import("@/lib/analytics-period");
+
+describe("the owner's screens and figures (D300 F4)", () => {
+  const storeOf = async (fx: { slug: string }) => (await getStore(fx.slug))!;
+  const today = async (storeId: string) =>
+    String((await db().execute<Row>(sql`select to_char(commerce.store_day(${storeId}::uuid, now()), 'YYYY-MM-DD') as d`))[0].d);
+  const balanceOf = async (id: string) => Number((await db().execute<Row>(sql`select commerce.gift_card_balance(${id}::uuid) as b`))[0].b);
+
+  it("issue a card by hand that can be spent at once, its code shown once and never kept, then change and deactivate it with reasons", async () => {
+    const fx = await giftCardStore("gc-admin-issue");
+    const store = await storeOf(fx);
+    // Only a currency the store sells in.
+    expect(await admin.issueGiftCard(store, fx.accountId, { amountMinor: 10_000, currency: "JPY", recipientEmail: null, recipientName: null, message: null, lang: "nb", note: "" })).toEqual({ ok: false, problem: "currency" });
+    const issued = await admin.issueGiftCard(store, fx.accountId, {
+      amountMinor: 25_000,
+      currency: "NOK",
+      recipientEmail: "ola@example.com",
+      recipientName: "Ola",
+      message: "Takk for hjelpen",
+      lang: "nb",
+      note: "Make-good",
+    });
+    if (!issued.ok) throw new Error(issued.problem);
+    expect(issued.emailed).toBe("sent");
+    const test = (await storePaymentMode(store.id)) === "test";
+    const found = await findGiftCard(db(), store.id, issued.code, { currency: "NOK", testMode: test });
+    expect(found).toEqual({ ok: true, id: issued.cardId });
+    // Its email has the code in place of nothing the log can spend; the audit keeps ids and amounts only.
+    const [mail] = await emailsOf(null, "gift_card.issued", "ola@example.com");
+    expect(String(mail.text)).toContain("[code]");
+    expect(String(mail.text)).toContain("Takk for hjelpen");
+    const [entry] = await db().execute<Row>(sql`select details from commerce.audit_log where store_id = ${store.id}::uuid and action = 'gift_card.issued'`);
+    expect(JSON.stringify(entry.details)).not.toContain(issued.code.replace(/-/g, "").slice(0, 8));
+
+    const detail = (await admin.giftCardDetail(store.id, issued.cardId, { people: true }))!;
+    expect(detail).toMatchObject({ state: "active", balanceMinor: 25_000, source: "staff", recipientEmail: "ola@example.com", issuedBy: expect.any(String) });
+    expect((await admin.giftCardDetail(store.id, issued.cardId))!.recipientEmail).toBeNull();
+
+    // Changed with a reason, never below zero.
+    expect(await admin.adjustGiftCard(store.id, fx.accountId, issued.cardId, 5_000, " ")).toEqual({ ok: false, problem: "reason" });
+    expect(await admin.adjustGiftCard(store.id, fx.accountId, issued.cardId, 5_000, "Goodwill")).toEqual({ ok: true });
+    expect(await admin.adjustGiftCard(store.id, fx.accountId, issued.cardId, -40_000, "Too much")).toEqual({ ok: false, problem: "below_zero" });
+    expect(await balanceOf(issued.cardId)).toBe(30_000);
+
+    // The list finds it by its last four, and by the person only for staff who may read customers.
+    const last4 = issued.code.slice(-4);
+    expect((await admin.listGiftCards(store.id, { query: last4 })).rows.map((r) => r.id)).toEqual([issued.cardId]);
+    expect((await admin.listGiftCards(store.id, { query: "ola@example" })).rows).toEqual([]);
+    expect((await admin.listGiftCards(store.id, { query: "ola@example", people: true })).rows.map((r) => r.id)).toEqual([issued.cardId]);
+
+    // Deactivated: what was left goes, and it is changed and spent no more.
+    expect(await admin.deactivateGiftCard(store.id, fx.accountId, issued.cardId, "Lost")).toEqual({ ok: true });
+    expect(await balanceOf(issued.cardId)).toBe(0);
+    expect(await admin.adjustGiftCard(store.id, fx.accountId, issued.cardId, 1_000, "Again")).toEqual({ ok: false, problem: "inactive" });
+    expect((await findGiftCard(db(), store.id, issued.code, { currency: "NOK", testMode: test })).ok).toBe(false);
+    expect((await admin.giftCardDetail(store.id, issued.cardId))!.entries.map((e) => e.kind)).toEqual(["issue", "adjust", "void"]);
+  });
+
+  it("expire what is left on a card past its date, once, and keep the store's expiry for new cards", async () => {
+    const fx = await giftCardStore("gc-admin-expire");
+    expect(await admin.saveGiftCardSettings(fx.storeId, fx.accountId, 6)).toBe(false);
+    expect(await admin.saveGiftCardSettings(fx.storeId, fx.accountId, 24)).toBe(true);
+    expect(await admin.giftCardSettings(fx.storeId)).toEqual({ expiryMonths: 24 });
+    // A card whose date has passed (written as the ledger writes one, with its date in the past).
+    const [card] = await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('kaizen.gift_card_ledger', 'on', true)`);
+      const rows = await tx.execute<Row>(sql`
+        insert into commerce.gift_cards (store_id, currency, initial_minor, source, issued_by, issued_at, expires_at)
+        values (${fx.storeId}::uuid, 'NOK', 7000, 'staff', ${fx.accountId}::uuid, now() - interval '3 years', now() - interval '1 day') returning id
+      `);
+      await tx.execute(sql`select commerce.gift_card_entry(${fx.storeId}::uuid, ${String(rows[0].id)}::uuid, 'issue', 7000, null, ${fx.accountId}::uuid, '', 'issue')`);
+      return rows;
+    });
+    const id = String(card.id);
+    expect(await admin.expireGiftCards()).toBeGreaterThanOrEqual(1);
+    expect(await balanceOf(id)).toBe(0);
+    expect(await admin.expireGiftCards()).toBe(0);
+    const [entries] = await db().execute<Row>(sql`select count(*)::int as n from commerce.gift_card_entries where card_id = ${id}::uuid and kind = 'expire'`);
+    expect(Number(entries.n)).toBe(1);
+  });
+
+  it("leave gift cards sold out of Finance's sales and count what they buy, and report what customers hold per currency", async () => {
+    const fx = await giftCardStore("gc-admin-finance");
+    const store = await storeOf(fx);
+    const issued = await admin.issueGiftCard(store, fx.accountId, { amountMinor: 30_000, currency: "NOK", recipientEmail: null, recipientName: null, message: null, lang: "nb", note: "" });
+    if (!issued.ok) throw new Error(issued.problem);
+    const shop = { storeId: fx.storeId, market: no };
+    await changeLine(shop, await variantId(fx.storeId, "DEMO-MUG-WHITE"), 1, "add");
+    await changeLine(shop, await variantId(fx.storeId, "DEMO-GAVEKORT-500"), 1, "add");
+    await addCartGiftCard(shop, issued.code, { clientKey: null });
+    const placed = await placeOrder(shop, (await readCartId(shop))!, {});
+    if (!placed.ok) throw new Error(placed.problem);
+    const paidByCard = placed.order.giftCardsMinor ?? 0;
+    const rest = placed.order.totalMinor - paidByCard;
+    await db().execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
+      values (${fx.storeId}::uuid, ${placed.order.orderId}::uuid, 'stripe', ${`cs_${placed.order.orderId}`}, ${fx.account}, ${rest}, 'NOK', 'captured')
+    `);
+    const { completeOrderPayment } = await import("./checkout");
+    await completeOrderPayment(placed.order.orderId, `cs_${placed.order.orderId}`);
+
+    const [o] = await db().execute<Row>(sql`select total_minor, tax_minor from commerce.orders where id = ${placed.order.orderId}::uuid`);
+    const day = await today(fx.storeId);
+    const { totals } = await periodTotals(store, customPeriod(day, day));
+    // The gift card bought (500 kr, no VAT) is not a sale; the mug paid partly with a card is.
+    expect(totals.orders).toBe(1);
+    expect(totals.revenueMinor).toBe(Number(o.total_minor) - Number(o.tax_minor) - 50_000);
+
+    const { lines } = await admin.giftCardLiability(store, customPeriod(day, day));
+    expect(lines).toHaveLength(1);
+    const nok = lines[0];
+    expect(nok.currency).toBe("NOK");
+    expect(nok.issuedMinor).toBe(30_000 + 50_000);
+    expect(nok.spentMinor).toBe(paidByCard);
+    // The new card is not delivered until its email goes, so what is held now is the issued card's rest.
+    expect(nok.outstandingMinor).toBe(30_000 - paidByCard);
+    const overview = await admin.giftCardOverview(fx.storeId);
+    expect(overview.outstanding).toEqual([{ currency: "NOK", amountMinor: 30_000 - paidByCard, cards: 30_000 > paidByCard ? 1 : 0 }]);
+  });
+});

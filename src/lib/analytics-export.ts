@@ -105,6 +105,17 @@ const REGISTRY: AnalyticsTable[] = [
     money: true,
     rowCurrency: true,
   },
+  // Gift cards (D300 F4): each currency on its own row, never converted; held now, and the period's movements.
+  {
+    id: "finance.gift_cards",
+    page: "finance",
+    view: "gift-cards-view.tsx",
+    shape: "table",
+    caption: "Gift cards per currency: held now and the period's movements",
+    columns: [amount("outstanding", "held_now"), int("cards"), amount("issued"), amount("spent"), amount("refunded", "refunded_back"), amount("adjusted", "changed_by_staff"), amount("expired"), amount("voided", "deactivated")],
+    money: true,
+    rowCurrency: true,
+  },
   table("finance.payment_methods", "finance", "payments-view.tsx", "Payments by method", [text("method"), int("payments"), amount("received", "received_with_vat"), pct("share", "share_of_received"), amount("refunded", "refunded_with_vat"), amount("fees", "fees_estimated")], true),
 
   // Customers

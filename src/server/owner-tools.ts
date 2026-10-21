@@ -56,6 +56,7 @@ import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
 import { listSupportConversationsTool, supportOverviewTool } from "./support-manager-tools";
+import { giftCardOverview } from "./gift-cards-admin";
 import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
@@ -151,6 +152,20 @@ export type OwnerToolContext = {
    */
   holder?: PermissionHolder;
 };
+
+/**
+ * `gift_card_overview` (D300 F4): the cards by state and what customers hold per currency, the amounts written by `formatMoney` in each card's own
+ * currency and never added across currencies. A card sold is owed, not a sale. Never a code, a card's last four or a person.
+ */
+async function giftCardOverviewTool(ctx: OwnerToolContext) {
+  const { counts, outstanding } = await giftCardOverview(ctx.store.id);
+  return {
+    cards: counts,
+    held_by_customers: outstanding.map((o) => ({ currency: o.currency, amount: money(ctx.store, o.amountMinor, o.currency), cards_with_money: o.cards })),
+    note: "Gift cards sold are money the store owes until they are spent; they are not sales. What customers hold counts the cards of the store's payment mode now (test cards while it takes test payments).",
+    link: `/admin/${ctx.store.slug}/gift-cards`,
+  };
+}
 
 /** Refuses, in the assistant's words, a tool the member's role does not hold the permission for. */
 function requireToolPermission(ctx: OwnerToolContext, name: string): void {
@@ -1985,6 +2000,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
+  gift_card_overview: giftCardOverviewTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,

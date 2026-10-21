@@ -66,6 +66,17 @@ export const OWED_UNITS = sql`least(ol.backorder_quantity, commerce.line_to_send
  */
 export const NOT_EDIT_REFUND = sql`(r.order_edit_id is null and r.kind <> 'void')`;
 
+/**
+ * A gift card line (D300 F4, docs/analytics.md "Gift cards"): an order line of a product of kind `gift_card`. Selling one is not a sale (a
+ * multi-purpose voucher, money the store owes until it is spent), so the totals leave it out; spending one is a sale like any. `ol` is the line.
+ */
+export const GIFT_CARD_LINE = sql`exists (select 1 from commerce.product_variants gv join commerce.products gp on gp.store_id = gv.store_id and gp.id = gv.product_id
+  where gv.store_id = ol.store_id and gv.id = ol.variant_id and gp.kind = 'gift_card')`;
+
+/** What an order's gift card lines came to (they carry no VAT), for the order `o`: the part of its total that is not a sale. */
+export const VOUCHER_NET = sql`coalesce((select sum(ol.total_minor - ol.tax_minor) from commerce.order_lines ol
+  where ol.store_id = o.store_id and ol.order_id = o.id and ${GIFT_CARD_LINE}), 0)`;
+
 /** Revenue of an order without VAT: goods after discounts plus shipping income. */
 export const REVENUE_EX_VAT = sql`(o.total_minor - o.tax_minor)`;
 
