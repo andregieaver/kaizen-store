@@ -6,6 +6,7 @@
 import { enBrowser } from "./en-browser";
 import { enReturns } from "./en-returns";
 import { enExchange, enReturnLabel } from "./en-exchange";
+import { enReviews } from "./en-reviews";
 
 export const en = {
   ...enBrowser,
@@ -13,6 +14,8 @@ export const en = {
   // Exchanges and return labels (D239): hand-written, needs legal review (`en-exchange.ts`).
   exchange: enExchange,
   returnLabel: enReturnLabel,
+  // Product reviews (D301): hand-written (`en-reviews.ts`).
+  reviews: enReviews,
   deliveries: {
     title: "Subscription box",
     intro: "Keep a list of what you want in your box. We deliver it on your delivery day: change it until the cutoff, and we charge your card when the delivery is on its way.",

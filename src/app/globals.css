@@ -1322,3 +1322,11 @@ html:has(dialog.kz-lightbox[open]) {
     transition: none;
   }
 }
+
+/* A review's stars to choose (D301, `ReviewForm`): drawn five to one so the chosen star and those after it in the markup, the ones before it on the screen, fill. */
+.kz-star-choice:has(input:checked) > span[aria-hidden],
+.kz-star-choice:has(input:checked) ~ .kz-star-choice > span[aria-hidden],
+.kz-star-choice:hover > span[aria-hidden],
+.kz-star-choice:hover ~ .kz-star-choice > span[aria-hidden] {
+  color: var(--color-amber-500, #f59e0b);
+}

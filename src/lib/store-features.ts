@@ -23,6 +23,7 @@ export const FEATURE_IDS = [
   "business",
   "bonus",
   "referrals",
+  "reviews",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -168,11 +169,20 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     needs: ["shop", "bonus"],
     setupPath: "/affiliates",
   },
+  {
+    id: "reviews",
+    group: "customers",
+    label: "Product reviews",
+    words: "Customers review what they bought and received; you check them before they show, and the product page shows the stars.",
+    offWords: "Reviews stop showing and customers cannot write new ones, and Reviews leaves the admin. Every review is kept for when you switch it on again.",
+    needs: ["shop"],
+    setupPath: "/reviews",
+  },
 ];
 
 export const FEATURES_BY_ID: Record<FeatureId, StoreFeature> = Object.fromEntries(STORE_FEATURES.map((f) => [f.id, f])) as Record<FeatureId, StoreFeature>;
 
-/** The features that count on the Features page ("N of 11 on"): every one but the shop's own switch. */
+/** The features that count on the Features page ("N of 12 on"): every one but the shop's own switch. */
 export const COUNTED_FEATURES: readonly FeatureId[] = FEATURE_IDS.filter((id) => id !== "shop");
 
 /** What a new store starts with: the shop, nothing else (D178). */
@@ -350,6 +360,8 @@ export type FeatureFacts = {
   /** Gift cards (D300): products of the kind not archived, and cards sold or issued that still hold money (live ones). */
   giftCardProducts: number;
   giftCardsHeld: number;
+  /** Product reviews (D301): published ones, which stop showing while the feature is off. */
+  publishedReviews: number;
 };
 
 export const NO_FACTS: FeatureFacts = {
@@ -387,6 +399,7 @@ export const NO_FACTS: FeatureFacts = {
   pendingReferrals: 0,
   giftCardProducts: 0,
   giftCardsHeld: 0,
+  publishedReviews: 0,
 };
 
 /** A reason a feature cannot be switched off, with the admin page (after the store's address) where it is dealt with. */
@@ -503,6 +516,9 @@ export function featureWarnings(id: FeatureId, f: FeatureFacts, features: Featur
       if (f.giftCardProducts > 0) out.push(`${many(f.giftCardProducts, "gift card product", "gift card products")} can no longer be bought.`);
       if (f.giftCardsHeld > 0) out.push(`${many(f.giftCardsHeld, "gift card still holds", "gift cards still hold")} money. ${f.giftCardsHeld === 1 ? "It" : "They"} can still be used and refunded.`);
       break;
+    case "reviews":
+      if (f.publishedReviews > 0) out.push(`${many(f.publishedReviews, "published review stops", "published reviews stop")} showing on your product pages. Nothing is deleted.`);
+      break;
   }
   if (asleep.length > 0) {
     const labels = asleep.map((dep) => FEATURES_BY_ID[dep].label);
@@ -538,6 +554,8 @@ export function featureInUse(id: FeatureId, f: FeatureFacts): boolean {
       return f.referralsEnabled || f.referrers > 0;
     case "gift_cards":
       return f.giftCardProducts > 0 || f.giftCardsHeld > 0;
+    case "reviews":
+      return f.publishedReviews > 0;
   }
 }
 

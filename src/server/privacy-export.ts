@@ -33,6 +33,7 @@ import {
   type ProfileRow,
   type ReferralSource,
   type ReturnRow,
+  type ReviewExportRow,
   type StandingListRow,
   type SubscriptionRow,
   type WishlistAddRow,
@@ -43,6 +44,7 @@ import { privacyLanguage } from "@/lib/privacy-text";
 
 import { audit } from "./auth";
 import { getFieldData, listFieldGroups } from "./custom-fields";
+import { buyerKeysOf } from "./reviews";
 import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } from "./privacy-subject";
 
@@ -103,6 +105,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.carts where store_id = ${store}::uuid and id = any(${carts})) +
       (select count(*) from commerce.draft_orders where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.support_conversations where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null) +
+      (select count(*) from commerce.product_reviews where store_id = ${store}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(s.customerId, s.addresses))})) +
       (select count(*) from commerce.abandoned_checkouts where store_id = ${store}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${carts}))) +
       ${s.orderIds.length}::bigint + ${s.subscriptionIds.length}::bigint as n
   `);
@@ -888,6 +891,28 @@ async function loadStockRequests(s: PrivacySubject): Promise<{ product: string; 
   return rows.map((r) => ({ product: strs(r.title), status: strs(r.status), askedAt: at(r.created_at), notifiedAt: at(r.notified_at) }));
 }
 
+/** The person's product reviews (D301): by their account or their addresses' buyer keys, with the product's name. */
+async function loadReviews(s: PrivacySubject): Promise<ReviewExportRow[]> {
+  const rows = await db().execute<Row>(sql`
+    select r.rating, r.title, r.body, r.author_name, r.status, r.created_at, r.edited_at, r.answer,
+      coalesce((select t.title from commerce.product_translations t where t.store_id = r.store_id and t.product_id = r.product_id order by t.locale = r.locale desc, t.locale limit 1), '') as product
+    from commerce.product_reviews r
+    where r.store_id = ${s.storeId}::uuid and r.source = 'buyer' and r.buyer_key = any(${textList(buyerKeysOf(s.customerId, s.addresses))})
+    order by r.created_at
+  `);
+  return rows.map((r) => ({
+    product: strs(r.product),
+    rating: Number(r.rating),
+    title: (r.title as string | null) ?? null,
+    body: (r.body as string | null) ?? null,
+    name: strs(r.author_name),
+    status: strs(r.status),
+    writtenAt: r.created_at as string,
+    editedAt: (r.edited_at as string | null) ?? null,
+    answer: (r.answer as string | null) ?? null,
+  }));
+}
+
 /** Staff's tags on the person (D296), by the subject's addresses. */
 async function loadCustomerTags(s: PrivacySubject): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
@@ -946,7 +971,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, broadcasts, automations, stockRequests, reviews] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -955,6 +980,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadBroadcasts(s),
     loadAutomations(s),
     loadStockRequests(s),
+    loadReviews(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -990,6 +1016,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     broadcasts,
     automations,
     stockRequests,
+    reviews,
   };
 }
 

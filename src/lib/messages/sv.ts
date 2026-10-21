@@ -2,6 +2,7 @@
 import { svBrowser } from "./sv-browser";
 import { svReturns } from "./sv-returns";
 import { svExchange, svReturnLabel } from "./sv-exchange";
+import { svReviews } from "./sv-reviews";
 import type { Messages } from "./en";
 
 export const sv: Messages = {
@@ -10,6 +11,8 @@ export const sv: Messages = {
   // Exchanges and return labels (D239): hand-written, needs legal review (`sv-exchange.ts`).
   exchange: svExchange,
   returnLabel: svReturnLabel,
+  // Product reviews (D301): hand-written (`sv-reviews.ts`).
+  reviews: svReviews,
   deliveries: {
     title: "Prenumerationsbox",
     intro: "Håll en lista över det du vill ha i boxen. Vi levererar den på din leveransdag: ändra den fram till stopptiden, så drar vi ditt kort när leveransen är på väg.",

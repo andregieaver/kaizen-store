@@ -115,7 +115,8 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
       (select count(*)::int from commerce.affiliate_attributions a where a.store_id = ${storeId}::uuid and a.status = 'pending') as pending_referrals,
       (select count(*)::int from commerce.products p where p.store_id = ${storeId}::uuid and p.kind = 'gift_card' and p.status <> 'archived') as gift_card_products,
       (select count(*)::int from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.status = 'active' and not g.test_mode
-        and commerce.gift_card_balance(g.id) > 0) as gift_cards_held
+        and commerce.gift_card_balance(g.id) > 0) as gift_cards_held,
+      (select count(*)::int from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.status = 'published') as published_reviews
   `);
   return {
     paidUnshipped: obligations.paidUnshipped,
@@ -152,6 +153,7 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
     pendingReferrals: n(row?.pending_referrals),
     giftCardProducts: n(row?.gift_card_products),
     giftCardsHeld: n(row?.gift_cards_held),
+    publishedReviews: n(row?.published_reviews),
   };
 }
 

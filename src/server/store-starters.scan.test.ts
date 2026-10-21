@@ -26,6 +26,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/broadcasts.ts": "real",
   "src/server/automations.ts": "real",
   "src/server/stock-requests.ts": "real",
+  "src/server/reviews.ts": "real",
   "src/server/content-grid.ts": "real",
   // Design profiles (D176): the Standard store a preview is drawn on, and the default template named among the stores a snapshot is taken from.
   "src/server/design-presets.ts": "template",

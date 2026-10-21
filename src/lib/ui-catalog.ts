@@ -145,6 +145,9 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   // Wave 5 unit F (D300): the gift card's withdrawal sentence and its email, until the legal review clears them.
   "ui:giftCardLine.withdrawal",
   "ui:giftCardEmail.",
+  // Wave 5 unit G (D301): what the store says about how reviews are written and checked (Directive 2005/29/EC Art. 7(6)), until the legal review clears it.
+  "ui:reviews.intro",
+  "ui:reviews.checked.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

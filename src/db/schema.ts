@@ -86,6 +86,7 @@ import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIB
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
 import { AUTOMATION_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
+import { HIDE_REASONS, PUBLISH_MODES, REQUEST_DAYS_DEFAULT, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_SOURCES, REVIEW_STATUSES } from "../lib/review-status";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
 import {
   ESTIMATE_DAYS_MAX,
@@ -648,7 +649,7 @@ export const stores = commerce.table(
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
       "stores_features",
-      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards']::text[]`,
+      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews']::text[]`,
     ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
@@ -12029,5 +12030,101 @@ export const stockRequests = commerce.table(
     index("stock_requests_product_idx").on(t.storeId, t.productId),
     check("stock_requests_status", sql`${t.status} in (${sqlList(STOCK_REQUEST_STATUSES)})`),
     check("stock_requests_email", sql`${t.email} = lower(${t.email})`),
+  ],
+);
+
+/**
+ * A product review (D301, `docs/wave-5-marketing.md` 9.1): a buyer's stars and words about a product they bought and received (`source = 'buyer'`, from
+ * an order line, so a verified purchase), or one imported from another service (`import`, never verified). Staff publish, hide with a reason and
+ * answer; the rating and words change only in the author's write (`product_reviews_rules()`, the transaction setting `kaizen.review_author`), and a
+ * review is deleted only where `kaizen.review_delete` is set (the author, erasure). Written only by `src/server/reviews.ts`. Personal data; never copied.
+ */
+export const productReviews = commerce.table(
+  "product_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    productId: uuid("product_id").notNull(),
+    /** The variant bought (*Size M*); null for an import. */
+    variantId: uuid("variant_id"),
+    source: text("source").notNull(),
+    orderId: uuid("order_id"),
+    orderLineId: uuid("order_line_id"),
+    /** Who wrote it, for one review per product and buyer: `c:{customer}`, or `e:{sha256 of the order's email}` for a guest (G3). */
+    buyerKey: text("buyer_key"),
+    customerId: uuid("customer_id"),
+    /** Where an import was written (*Trustpilot*), and on which day. */
+    importedFrom: text("imported_from"),
+    writtenOn: date("written_on", { mode: "string" }),
+    authorName: text("author_name").notNull(),
+    rating: smallint("rating").notNull(),
+    title: text("title"),
+    body: text("body"),
+    /** The language it was written in (a market's locale). */
+    locale: text("locale").notNull(),
+    status: text("status").notNull().default("pending"),
+    hiddenReason: text("hidden_reason"),
+    moderatedAt: timestamp("moderated_at", { withTimezone: true }),
+    moderatedBy: uuid("moderated_by").references(() => accounts.id),
+    /** The store's answer, shown under the review. */
+    answer: text("answer"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    answeredBy: uuid("answered_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("product_reviews_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "product_reviews_product_fk", columns: [t.storeId, t.productId], foreignColumns: [products.storeId, products.id] }).onDelete("cascade"),
+    foreignKey({
+      name: "product_reviews_variant_fk",
+      columns: [t.storeId, t.variantId],
+      foreignColumns: [productVariants.storeId, productVariants.id],
+    }).onDelete("cascade"),
+    foreignKey({ name: "product_reviews_order_fk", columns: [t.storeId, t.orderId], foreignColumns: [orders.storeId, orders.id] }),
+    foreignKey({ name: "product_reviews_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }).onDelete("cascade"),
+    uniqueIndex("product_reviews_line_key").on(t.storeId, t.orderLineId).where(sql`${t.orderLineId} is not null`),
+    uniqueIndex("product_reviews_buyer_key").on(t.storeId, t.productId, t.buyerKey).where(sql`${t.source} = 'buyer'`),
+    index("product_reviews_shown_idx").on(t.storeId, t.productId, t.createdAt).where(sql`${t.status} = 'published'`),
+    index("product_reviews_queue_idx").on(t.storeId, t.status, t.createdAt),
+    index("product_reviews_order_idx").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
+    index("product_reviews_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+    index("product_reviews_variant_idx").on(t.storeId, t.variantId).where(sql`${t.variantId} is not null`),
+    index("product_reviews_moderated_by_idx").on(t.moderatedBy),
+    index("product_reviews_answered_by_idx").on(t.answeredBy),
+    check("product_reviews_source", sql`${t.source} in (${sqlList(REVIEW_SOURCES)})`),
+    check(
+      "product_reviews_origin",
+      sql`(${t.source} = 'buyer' and ${t.orderId} is not null and ${t.orderLineId} is not null and ${t.variantId} is not null and ${t.buyerKey} ~ '^(c:[0-9a-f-]{36}|e:[0-9a-f]{64})$' and ${t.importedFrom} is null and ${t.writtenOn} is null)
+        or (${t.source} = 'import' and ${t.orderId} is null and ${t.orderLineId} is null and ${t.buyerKey} is null and ${t.customerId} is null and length(trim(${t.importedFrom})) between 1 and 80 and ${t.writtenOn} is not null)`,
+    ),
+    check("product_reviews_rating", sql`${t.rating} between 1 and 5`),
+    check(
+      "product_reviews_words",
+      sql`length(trim(${t.authorName})) between 1 and 60 and (${t.title} is null or length(trim(${t.title})) between 1 and 120) and (${t.body} is null or length(trim(${t.body})) between 1 and 5000)`,
+    ),
+    check("product_reviews_status", sql`${t.status} in (${sqlList(REVIEW_STATUSES)})`),
+    check("product_reviews_hidden", sql`(${t.status} = 'hidden') = (${t.hiddenReason} is not null) and (${t.hiddenReason} is null or ${t.hiddenReason} in (${sqlList(HIDE_REASONS)}))`),
+    check("product_reviews_answer", sql`(${t.answer} is null) = (${t.answeredAt} is null) and (${t.answer} is null or length(trim(${t.answer})) between 1 and 2000)`),
+  ],
+);
+
+/** A store's review rules (D301 9.1): whether new reviews wait for staff, and (G3) the request email after receipt. */
+export const reviewSettings = commerce.table(
+  "review_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    publish: text("publish").notNull().default("after_check"),
+    requestsOn: boolean("requests_on").notNull().default(false),
+    requestsEnabledAt: timestamp("requests_enabled_at", { withTimezone: true }),
+    requestDays: integer("request_days").notNull().default(REQUEST_DAYS_DEFAULT),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("review_settings_publish", sql`${t.publish} in (${sqlList(PUBLISH_MODES)})`),
+    check("review_settings_days", sql.raw(`request_days between ${REQUEST_DAYS_MIN} and ${REQUEST_DAYS_MAX}`)),
+    check("review_settings_requests", sql`not ${t.requestsOn} or ${t.requestsEnabledAt} is not null`),
   ],
 );

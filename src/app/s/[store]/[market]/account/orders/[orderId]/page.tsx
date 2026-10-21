@@ -24,6 +24,7 @@ import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { featureOn } from "@/lib/store-features";
 import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
 import { shopperFulfilment } from "@/server/fulfilment";
@@ -32,6 +33,7 @@ import { getOrderDocuments } from "@/server/invoices";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
+import { reviewableLines } from "@/server/reviews";
 import { resolveAfterSaleShop } from "@/server/shop";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
 
@@ -73,6 +75,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
     parcelTrackingFor(store.id, orderId),
   ]);
   if (!order) notFound();
+  // What of this order the customer may review now (D301 9.2): the lines it is the newest receipt of a product on.
+  const reviewable = featureOn(store, "reviews") ? new Set((await reviewableLines(store.id, customer.id)).filter((l) => l.orderId === orderId).map((l) => l.lineId)) : new Set<string>();
   // An exchange order (D239) names its return and the original order; the original is linked only when it is this customer's own too.
   const exchangeOriginal = order.exchange && (await ownsOrder(store.id, customer.id, order.exchange.originalOrderId)) ? order.exchange.originalOrderId : null;
   const m = t(market.lang);
@@ -150,6 +154,11 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                   m={m}
                 />
                 <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
+                {reviewable.has(line.id) && (
+                  <Link href={`${base}/account/reviews/${line.id}`} className="block text-sm underline underline-offset-2">
+                    {m.reviews.write}
+                  </Link>
+                )}
               </span>
               <span className="whitespace-nowrap">
                 {line.gift ? (

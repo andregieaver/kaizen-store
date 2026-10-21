@@ -49,6 +49,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   booking_resources: settings(
     "Staff, rooms and rental items (a host's stay with the original; a calendar's secret address is made again).",
   ),
+  review_settings: settings("Whether the store's reviews wait for staff and when it asks for one (D301); the reviews themselves are never copied."),
   gift_card_settings: settings("How long the store's gift cards last (D300); the cards themselves are never copied."),
   bonus_settings: settings("The bonus program's rules (D130): percentages, waits and expiry; balances are not copied."),
   affiliate_settings: settings("The store's referral program's rules (D131): the friend's discount, the reward, limits and cookie days; its customers' links and earnings are not copied."),
@@ -167,6 +168,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   abandoned_plan_checkouts: never("Plan checkouts of accounts."),
   access_requests: never("Sign-up requests belong to the platform."),
   bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
+  product_reviews: never("Product reviews (D301) are buyers' own words about the original store's sales: a copy gathers its own."),
   gift_cards: never("Gift cards (D300) are money customers hold with the original store, like their payments."),
   gift_card_entries: never("A gift card's ledger (D300): part of the card, never copied."),
   cart_gift_cards: never("The gift cards a shopper's cart will pay with (D300 F3): the original store's cards, like its carts."),

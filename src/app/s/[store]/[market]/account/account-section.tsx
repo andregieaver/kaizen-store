@@ -120,6 +120,20 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         </Link>
       )}
 
+      {/* Product reviews (D301): the buyer's own, from what they received; only while the store has reviews on. */}
+      {featureOn(store, "reviews") && (
+        <Link
+          href={`${base}/account/reviews`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">{m.reviews.cardTitle}</span>
+            <span className="block text-sm text-muted">{m.reviews.cardIntro}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
       <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} />
       <ReferralCard enabled={referrals.on} m={m} base={base} />
 

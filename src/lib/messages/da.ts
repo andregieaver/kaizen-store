@@ -2,6 +2,7 @@
 import { daBrowser } from "./da-browser";
 import { daReturns } from "./da-returns";
 import { daExchange, daReturnLabel } from "./da-exchange";
+import { daReviews } from "./da-reviews";
 import type { Messages } from "./en";
 
 export const da: Messages = {
@@ -10,6 +11,8 @@ export const da: Messages = {
   // Exchanges and return labels (D239): hand-written, needs legal review (`da-exchange.ts`).
   exchange: daExchange,
   returnLabel: daReturnLabel,
+  // Product reviews (D301): hand-written (`da-reviews.ts`).
+  reviews: daReviews,
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det, du vil have i boksen. Vi leverer den på din leveringsdag: ændr den indtil fristen, så trækker vi dit kort, når leveringen er på vej.",

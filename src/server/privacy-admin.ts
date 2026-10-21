@@ -40,6 +40,7 @@ export const SECTION_LABELS: Record<(typeof EXPORT_SECTIONS)[number], string> = 
   company: "company records",
   customFields: "custom fields",
   support: "support conversations",
+  reviews: "product reviews",
   marketing: "subscriber records",
 };
 

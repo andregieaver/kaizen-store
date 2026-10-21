@@ -2,6 +2,7 @@
 import { nbBrowser } from "./nb-browser";
 import { nbReturns } from "./nb-returns";
 import { nbExchange, nbReturnLabel } from "./nb-exchange";
+import { nbReviews } from "./nb-reviews";
 import type { Messages } from "./en";
 
 export const nb: Messages = {
@@ -10,6 +11,8 @@ export const nb: Messages = {
   // Exchanges and return labels (D239): hand-written, needs legal review (`nb-exchange.ts`).
   exchange: nbExchange,
   returnLabel: nbReturnLabel,
+  // Product reviews (D301): hand-written (`nb-reviews.ts`).
+  reviews: nbReviews,
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det du vil ha i boksen. Vi leverer den på leveringsdagen din: endre den frem til fristen, så trekker vi kortet ditt når leveringen er på vei.",
