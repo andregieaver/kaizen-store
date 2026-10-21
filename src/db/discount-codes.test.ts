@@ -1,7 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createInvoiceStore, scalar as q0 } from "./invoice-fixture";
+import { createInvoiceStore, placeOrder, scalar as q0 } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
 
 /** Codes in depth (wave 5 unit E1, D299, `docs/wave-5-marketing.md` 7.1): the columns' checks and a code's text being one store's once. */
@@ -55,5 +55,38 @@ describe("discount codes in depth", () => {
     await db.query("update commerce.discount_code_items set batch = 2 where store_id = $1", [store]);
     await db.query("delete from commerce.discount_codes where id = $1", [discount]);
     expect(Number(await scalar("select count(*) from commerce.discount_code_items where store_id = $1", [store]))).toBe(0);
+  });
+});
+
+describe("several codes on one order (D299 E2)", () => {
+  it("keep a code's combinations to the three classes", async () => {
+    await rejects(
+      "insert into commerce.discount_codes (store_id, code, kind, percent, combines_with) values ($1, 'C1', 'percent', 10, '[\"everything\"]')",
+      [store],
+      /discount_codes_combines_with/,
+    );
+    await rejects("insert into commerce.discount_codes (store_id, code, kind, percent, combines_with) values ($1, 'C2', 'percent', 10, '{}')", [store], /discount_codes_combines_with/);
+    await db.query(
+      "insert into commerce.discount_codes (store_id, code, kind, percent, combines_with) values ($1, 'C3', 'percent', 10, '[\"products\", \"shipping\"]')",
+      [store],
+    );
+  });
+
+  it("keep an order's codes in five places, as they were used", async () => {
+    const order = await placeOrder(db, store, { lines: [{ sku: "DC-1", unit: 10_000 }], pay: false });
+    const row = (position: number, amount = 1000) =>
+      db.query("insert into commerce.order_discount_codes (store_id, order_id, position, code, amount_minor) values ($1, $2, $3, 'C3', $4)", [
+        store,
+        order.id,
+        position,
+        amount,
+      ]);
+    await expect(row(0)).rejects.toThrow(/order_discount_codes_position/);
+    await expect(row(6)).rejects.toThrow(/order_discount_codes_position/);
+    await expect(row(1, -1)).rejects.toThrow(/order_discount_codes_amount/);
+    await row(1);
+    await expect(row(1)).rejects.toThrow(/duplicate key/);
+    await rejects("update commerce.order_discount_codes set amount_minor = 0 where order_id = $1", [order.id], /stay as they were used/);
+    await rejects("delete from commerce.order_discount_codes where order_id = $1", [order.id], /stay as they were used/);
   });
 });

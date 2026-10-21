@@ -432,7 +432,51 @@ another; a group-only code refuses a guest (`sign_in`) and an outsider (`not_eli
 it at once leave one; `checkout-kinds.int.test.ts` holds the cart and the order together for a category code in NOK and a generated code in
 euro.
 
-### 7.2 E2 to E4
+### 7.2 E2: several codes on one order
+
+**A code's class and its combinations.** Every code is of one class, worked out from what it is (`codeClass()`): `shipping` for free shipping,
+`products` for a code that names products, categories or tags, `order` for one on everything. `discount_codes.combines_with` (a set of classes,
+empty by default, so every code there today keeps working alone) says which classes it may be used with. Two codes are used together only when each
+allows the other's class (`combines()`), and never two of the same code (two generated codes of one code are one code). The editor asks it as
+*Can be used with* and three boxes: other product codes, other order codes, free shipping codes.
+
+**The cart holds up to five codes** (`CODES_MAX`): `carts.discount_code` is the first entered and `carts.more_codes` the rest in the order typed
+(the old column stays the first, so the code running until the deploy finishes reads what it always read). Applying a code adds it; one already
+there is not added twice; a sixth is refused (`codes_full`). Each can be taken off by itself; the restore link of a cart reminder adds its code.
+
+**The best for the shopper.** Which of the cart's codes apply is only `stackCodes()` (`src/lib/discounts.ts`, pure), which `cartSummary()`,
+`placeOrder()` and the checkout's code field all use: from the codes that can be used at all (`availability()`, as today), every set whose members
+all combine with each other is tried, its codes applied one after another (products codes first, then order codes, then free shipping; within a
+class in the order typed), each counting what the ones before it left (a line's price after them; a recurring percentage's lowered unit), and a set
+counts only if every code in it still applies. The set that takes the most off wins; on a tie, the one holding the codes typed first. No line ever
+goes below zero. Each code not used says why: its own reason when it does not apply alone, `not_combinable` with the code it cannot be used with
+(*Can't be used together with SOMMER*), or its reason after the others (most often the minimum). Five codes give 31 sets at most, so this is cheap
+and exact.
+
+**The order.** `orders.discount_code` keeps the codes used, joined by ` + ` (one code: as today), so invoices, emails, exports, integrations and
+Stripe's coupon name need nothing new; `discount_code_id` and `discount_code_item_id` are the first code's. Every code used is a row of
+`commerce.order_discount_codes` (store, order, position, code, discount, generated code, amount off in the order's currency), written by
+`insertOrder()` with the order; a code's uses and a generated code's use count these rows as well as the order's own column (orders placed before).
+`orders.entered_codes` keeps every code the cart held, so the check for a changed cart compares what the cart holds now with what it held, not with
+what applied. All the codes are locked in one statement, in id order, before any is checked, so two checkouts never wait on each other in a circle.
+Stripe still gets one coupon for the sum.
+
+**Analytics.** *Discount codes used in the period* (D152) counts each code of an order from `order_discount_codes`, with its own amount, and orders
+placed before from the order's columns as today; an order with two codes is one order in the totals.
+
+**Words.** `m.codeProblems.not_combinable` (*Can't be used together with {code}.*) and `codes_full` (*You can use up to five codes.*), nb, sv, da
+and en by hand. The cart lists each code with *Remove* and its reason when it does not apply; the checkout's field the same.
+
+**Copying.** `duplicate_store()` carries `combines_with`. `order_discount_codes` is `never` in `COPY_RULES` (a copied order keeps its codes' words in
+`discount_code`).
+
+**Tests.** Unit: `codeClass()`, `combines()`, `stackCodes()` (two that combine add up; two that cannot keep the better one with the other's reason;
+the tie keeps the first typed; a second percentage counts what the first left; a minimum that fails after another code; no line below zero; free
+shipping beside a product code). PGlite: the new checks (`combines_with` classes, `order_discount_codes` position). Integration: a cart with two
+codes that combine places an order with both rows and the joined text; two that cannot keep the better one in the cart and the order alike; a
+code's uses count its second place; `checkout-kinds.int.test.ts` holds two codes in NOK and in euro.
+
+### 7.3 E3 and E4
 
 Each is written here in full before it is built.
 

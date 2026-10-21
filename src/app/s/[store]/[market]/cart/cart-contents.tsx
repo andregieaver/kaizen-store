@@ -5,6 +5,7 @@ import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { codeProblemText } from "@/lib/code-words";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { discountNote } from "@/lib/customer-tiers";
@@ -486,7 +487,7 @@ function summaryList({ store, market, m, view }: Draw) {
                   memberDiscountMinor,
                   memberLabel: member?.label ?? null,
                   memberPercent: member?.percent ?? null,
-                  discountCode: applied ? (code?.code ?? null) : null,
+                  discountCode: applied ? (code?.label ?? null) : null,
                   campaignDiscountMinor,
                   campaignLabel: campaignLabel(campaignNames),
                 })}
@@ -601,14 +602,8 @@ function codeForm({ store, market, m, view }: Draw) {
     <DiscountCodeForm
       store={store.slug}
       market={market.slug}
-      code={code?.code ?? null}
-      problem={
-        code && !code.ok
-          ? code.problem === "minimum" && code.minimumMinor
-            ? `${m.minimumFor} ${money(code.minimumMinor)}.`
-            : m.codeProblems[code.problem]
-          : null
-      }
+      codes={(code?.codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
+      full={m.codeProblems.codes_full}
       labels={{
         code: m.discountCode,
         apply: m.applyCode,

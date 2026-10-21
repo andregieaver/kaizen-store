@@ -15,7 +15,7 @@ import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { resolveDelivery } from "./delivery-options";
 import { getCustomer } from "./customers";
-import { previewCartDiscount } from "./discounts";
+import { previewCartCodes } from "./discounts";
 import { getCheckoutInfo } from "./orders";
 import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 
@@ -110,8 +110,8 @@ export async function cartSummary(
     : { totalMinor: 0, lines: payable.map(() => 0) };
   const referralOff = welcome.lines;
   const referralMinor = welcome.totalMinor;
-  // The discount code, checked against this basket as checkout will (D31).
-  const code = await previewCartDiscount(
+  // The discount codes, checked against this basket as checkout will (D31); the best of them that may be used together (D299 E2).
+  const code = await previewCartCodes(
     { storeId, market },
     {
       lines: payable.map((line, i) => ({
@@ -126,7 +126,7 @@ export async function cartSummary(
       shippingMinor: shipping ?? 0,
     },
   );
-  const applied = code?.ok ? code.applied : null;
+  const applied = code?.applied ?? null;
   const codeDiscountMinor = applied?.totalMinor ?? 0;
   const discountMinor = codeDiscountMinor + memberDiscountMinor + campaignDiscountMinor;
   // A recurring percentage lowers what each renewal costs, and so its shipping.
@@ -218,6 +218,7 @@ export async function cartSummary(
      */
     deliveryState: resolved,
     shippingAt,
+    /** The cart's codes and what became of each (D299 E2): those used, why the others were not, and their label. */
     code,
     applied,
     discountMinor,

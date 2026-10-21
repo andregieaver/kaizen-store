@@ -50,6 +50,8 @@ export type StoreDiscount = {
   customerIds: string[];
   /** Its own text is a name only; shoppers use its generated codes. */
   uniqueCodes: boolean;
+  /** The classes of other codes it may be used with on one order (D299 E2); empty: alone. */
+  combinesWith: CodeClass[];
 };
 
 export type DiscountProblem =
@@ -64,7 +66,10 @@ export type DiscountProblem =
   | "minimum"
   | "minimum_quantity"
   | "not_eligible"
-  | "not_applicable";
+  | "not_applicable"
+  | "not_combinable"
+  /** The cart holds five codes already (D299 E2). */
+  | "codes_full";
 
 /** Whether a code can be used at all right now, before looking at the basket. */
 export function availability(
@@ -194,6 +199,142 @@ export function applyDiscount(
   return { ok: true, applied };
 }
 
+// ---------------------------------------------------------------------------
+// Several codes on one order (D299 E2)
+// ---------------------------------------------------------------------------
+
+/** What kind of code it is, for combining: free shipping, a code on chosen products (or categories and tags), or one on everything. */
+export const CODE_CLASSES = ["products", "order", "shipping"] as const;
+export type CodeClass = (typeof CODE_CLASSES)[number];
+
+/** The most codes a cart holds. */
+export const CODES_MAX = 5;
+
+export function codeClass(discount: Pick<StoreDiscount, "kind" | "productIds" | "termIds">): CodeClass {
+  if (discount.kind === "free_shipping") return "shipping";
+  return discount.productIds !== null || discount.termIds.length > 0 ? "products" : "order";
+}
+
+/** Whether two codes may be used together: each allows the other's class, and they are not the same code. */
+export function combines(a: Pick<StoreDiscount, "id" | "kind" | "productIds" | "termIds" | "combinesWith">, b: typeof a): boolean {
+  return a.id !== b.id && a.combinesWith.includes(codeClass(b)) && b.combinesWith.includes(codeClass(a));
+}
+
+export type StackCandidate = {
+  /** The code as typed (or the generated code), which says why it was not used. */
+  key: string;
+  discount: StoreDiscount;
+  /** The basket's products in its categories or tags. */
+  reached?: ReadonlySet<string>;
+};
+
+export type StackRefusal = {
+  problem: Exclude<DiscountProblem, "unknown" | "inactive" | "not_started" | "ended" | "used_up" | "sign_in" | "already_used" | "not_eligible" | "codes_full">;
+  /** The code it cannot be used with, for `not_combinable`. */
+  with: string | null;
+  /** It does not apply even on its own (so the shopper should look at it), rather than beside the others. */
+  alone: boolean;
+};
+
+export type StackResult = {
+  /** The codes used, in the order they were applied, each with what it took off. */
+  used: { key: string; discount: StoreDiscount; applied: AppliedDiscount }[];
+  /** All of them together. */
+  applied: AppliedDiscount;
+  /** Why each candidate not used was left out, by key. */
+  refused: Record<string, StackRefusal>;
+};
+
+type StackBasket = { marketCode: string; lines: DiscountLine[]; shippingMinor: number };
+
+const CLASS_ORDER: Record<CodeClass, number> = { products: 0, order: 1, shipping: 2 };
+
+/** Applies codes one after another, each on what the ones before it left; null when one of them no longer applies. */
+function applyInTurn(
+  set: StackCandidate[],
+  basket: StackBasket,
+): { used: StackResult["used"]; applied: AppliedDiscount } | { failed: StackCandidate; problem: StackRefusal["problem"] } {
+  let lines = basket.lines.map((line) => ({ ...line }));
+  let shipping = basket.shippingMinor;
+  const total: AppliedDiscount = { lines: {}, shippingMinor: 0, totalMinor: 0, renewalUnits: {} };
+  const used: StackResult["used"] = [];
+  for (const candidate of set) {
+    const result = applyDiscount(candidate.discount, { marketCode: basket.marketCode, lines, shippingMinor: shipping, reached: candidate.reached });
+    if (!result.ok) return { failed: candidate, problem: result.problem };
+    // Never more off a line than it still costs today, nor off shipping than is left of it.
+    const applied: AppliedDiscount = { lines: {}, shippingMinor: Math.min(result.applied.shippingMinor, shipping), totalMinor: 0, renewalUnits: result.applied.renewalUnits };
+    for (const line of lines) {
+      const off = Math.min(result.applied.lines[line.key] ?? 0, Math.max(0, line.todayMinor));
+      if (off > 0) applied.lines[line.key] = off;
+    }
+    applied.totalMinor = Object.values(applied.lines).reduce((sum, off) => sum + off, 0) + applied.shippingMinor;
+    used.push({ key: candidate.key, discount: candidate.discount, applied });
+    lines = lines.map((line) => ({
+      ...line,
+      unitMinor: applied.renewalUnits[line.key] ?? line.unitMinor,
+      todayMinor: line.todayMinor - (applied.lines[line.key] ?? 0),
+    }));
+    shipping -= applied.shippingMinor;
+    for (const [key, off] of Object.entries(applied.lines)) total.lines[key] = (total.lines[key] ?? 0) + off;
+    total.shippingMinor += applied.shippingMinor;
+    Object.assign(total.renewalUnits, applied.renewalUnits);
+  }
+  total.totalMinor = Object.values(total.lines).reduce((sum, off) => sum + off, 0) + total.shippingMinor;
+  return { used, applied: total };
+}
+
+/**
+ * Which of the codes a cart holds are used, and what they take off together (D299 E2): of every set whose codes all
+ * combine with each other, applied one after another (product codes, then order codes, then free shipping, each class in
+ * the order typed) and still all applying, the one taking most off; on a tie the one holding the codes typed first. The
+ * candidates are the codes that can be used at all, in the order typed; the others' reasons are the server's.
+ */
+export function stackCodes(candidates: StackCandidate[], basket: StackBasket): StackResult {
+  const list = candidates.slice(0, CODES_MAX);
+  const ordered = (set: StackCandidate[]) =>
+    [...set].sort((a, b) => CLASS_ORDER[codeClass(a.discount)] - CLASS_ORDER[codeClass(b.discount)] || list.indexOf(a) - list.indexOf(b));
+  let best: { mask: number; used: StackResult["used"]; applied: AppliedDiscount } | null = null;
+  // Preference on a tie: the set whose earliest-typed codes are in it. With bit 0 the first code typed, reversed order
+  // of the bits compares sets so.
+  const rank = (mask: number) => {
+    let out = 0;
+    for (let i = 0; i < list.length; i++) if (mask & (1 << i)) out |= 1 << (list.length - 1 - i);
+    return out;
+  };
+  for (let mask = 1; mask < 1 << list.length; mask++) {
+    const set = list.filter((_, i) => mask & (1 << i));
+    if (set.some((a, i) => set.some((b, j) => j > i && !combines(a.discount, b.discount)))) continue;
+    const result = applyInTurn(ordered(set), basket);
+    if ("failed" in result) continue;
+    if (
+      !best ||
+      result.applied.totalMinor > best.applied.totalMinor ||
+      (result.applied.totalMinor === best.applied.totalMinor && rank(mask) > rank(best.mask))
+    ) {
+      best = { mask, ...result };
+    }
+  }
+  const used = best?.used ?? [];
+  const chosen = list.filter((_, i) => best && best.mask & (1 << i));
+  const refused: Record<string, StackRefusal> = {};
+  for (const candidate of list) {
+    if (chosen.includes(candidate)) continue;
+    const alone = applyInTurn([candidate], basket);
+    if ("failed" in alone) {
+      refused[candidate.key] = { problem: alone.problem, with: null, alone: true };
+      continue;
+    }
+    const clash = chosen.find((other) => !combines(candidate.discount, other.discount));
+    if (clash) {
+      refused[candidate.key] = { problem: "not_combinable", with: clash.key, alone: false };
+      continue;
+    }
+    const after = applyInTurn(ordered([...chosen, candidate]), basket);
+    refused[candidate.key] = { problem: "failed" in after ? after.problem : "not_applicable", with: null, alone: false };
+  }
+  return { used, applied: best?.applied ?? { lines: {}, shippingMinor: 0, totalMinor: 0, renewalUnits: {} }, refused };
+}
+
 /** Whether a code reaches a product: everything when it names neither products nor terms; else a chosen product or one in a chosen term. */
 export function reaches(discount: Pick<StoreDiscount, "productIds" | "termIds">, productId: string, reached?: ReadonlySet<string>): boolean {
   if (discount.productIds === null && discount.termIds.length === 0) return true;
@@ -260,6 +401,7 @@ export const storeDiscountInput = z
     /** The named customers' emails, one per line or separated by commas; the server finds them. */
     customerEmails: z.string().max(20_000).default(""),
     uniqueCodes: z.boolean().default(false),
+    combinesWith: z.array(z.enum(["products", "order", "shipping"])).max(3).default([]),
   })
   .refine((input) => input.productIds === null || input.productIds.length > 0 || input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the code apply to everything.",

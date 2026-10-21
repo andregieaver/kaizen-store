@@ -359,6 +359,8 @@ export const en = {
     minimum_quantity: "Add a few more items to use the code.",
     not_eligible: "The code is not for your account.",
     not_applicable: "The code does not apply to what is in your cart.",
+    not_combinable: "Can't be used together with {code}.",
+    codes_full: "You can use up to five codes.",
   },
   minimumFor: "The code applies when the items come to at least",
   problemPaid: "This cart has already been paid for.",

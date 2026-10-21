@@ -54,6 +54,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         tierIds: discount.tierIds,
         customerEmails: emails.join("\n"),
         uniqueCodes: discount.uniqueCodes,
+        combinesWith: discount.combinesWith,
       }
     : {
         code: "",
@@ -73,6 +74,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         tierIds: [],
         customerEmails: "",
         uniqueCodes: false,
+        combinesWith: [],
       };
   return (
     <DiscountEditor

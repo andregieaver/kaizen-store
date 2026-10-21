@@ -114,7 +114,7 @@ const { getOpenCheckout, startCheckout } = await import("./checkout");
 const { getOrder, getShopperOrder } = await import("./orders");
 const { appointmentSlots } = await import("./appointments");
 const { rentalTimes } = await import("./ranges");
-const { saveDiscount, setCartCode } = await import("./discounts");
+const { addCartCode, saveDiscount, setCartCode } = await import("./discounts");
 const { saveCampaign } = await import("./campaigns");
 const { preRegisterCustomer, startSession } = await import("./customers");
 const { bonusOverview, customerBonus, getBonusSettings, setCartCredits, shopperBonus } = await import("./bonus");
@@ -421,6 +421,8 @@ type Scenario = {
   /** How each appointment is paid (D66), set before the cart is filled. */
   massage?: "now" | "deposit" | "venue";
   code?: string;
+  /** Codes added after `code` (D299 E2), in this order. */
+  moreCodes?: string[];
   /** Shown in euro instead of the country's own currency (D109). */
   euro?: boolean;
   /** Who buys (D108): in a discount group, or an employee of a company that gives half of one. */
@@ -487,6 +489,14 @@ const scenarios: Scenario[] = [
     },
     consent: { digital: true },
     code: `KAT${run}`.toUpperCase(),
+    bookings: 0,
+  },
+  {
+    // Two codes that may be used together (D299 E2): a percentage on the Home category, then an amount off everything.
+    name: "goods with two codes that combine",
+    fill: () => add("DEMO-MUG-WHITE", 2),
+    code: `PAR${run}A`.toUpperCase(),
+    moreCodes: [`PAR${run}B`.toUpperCase()],
     bookings: 0,
   },
   { name: "goods for a customer in a discount group", fill: () => add("DEMO-MUG-WHITE", 3), buyer: "group", bookings: 0 },
@@ -612,6 +622,15 @@ const euroScenarios: Scenario[] = [
     bookings: 2,
   },
   { name: "a bike for three hours, shown in euro", fill: () => addRental("DEMO-SYKKEL-TIME", "hour", 3), euro: true, bookings: 1 },
+  // Two codes that may be used together (D299 E2), in euro: the amount off converted, each code counting what the other left.
+  {
+    name: "goods with two codes that combine, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 2),
+    code: `PAR${run}A`.toUpperCase(),
+    moreCodes: [`PAR${run}B`.toUpperCase()],
+    euro: true,
+    bookings: 0,
+  },
   // A single-use code from a code that hands them out (D299 E1), in euro.
   { name: "goods with a single-use code, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), code: `GEN${run}-ABCDEFGH`.toUpperCase(), euro: true, bookings: 0 },
 ];
@@ -688,6 +707,13 @@ describe("checkout for every kind of product", () => {
     if (!category.ok) throw new Error(category.problems.join(" "));
     const generated = await saveDiscount(member, null, { code: `GEN${run}`.toUpperCase(), kind: "fixed", amounts: { NO: "50" }, uniqueCodes: true });
     if (!generated.ok) throw new Error(generated.problems.join(" "));
+    for (const input of [
+      { code: `PAR${run}A`.toUpperCase(), kind: "percent", percent: 10, termIds: [homeCategory], combinesWith: ["order"] },
+      { code: `PAR${run}B`.toUpperCase(), kind: "fixed", amounts: { NO: "40" }, combinesWith: ["products"] },
+    ]) {
+      const made = await saveDiscount(member, null, input);
+      if (!made.ok) throw new Error(made.problems.join(" "));
+    }
     // The one generated code the euro scenario types, with a text the test knows.
     await db().execute(sql`
       insert into commerce.discount_code_items (store_id, discount_id, code, batch)
@@ -722,6 +748,7 @@ describe("checkout for every kind of product", () => {
     const buyerId = scenario.buyer ? await signInBuyer(scenario.buyer) : null;
     await scenario.fill();
     if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
+    for (const more of scenario.moreCodes ?? []) expect(await addCartCode(shop(), more)).toBe("saved");
     // The store's gift messages are on only while a gift scenario runs (D173).
     await db().execute(sql`
       insert into commerce.order_settings (store_id, gift_messages) values (${storeId}::uuid, ${Boolean(scenario.gift)})
@@ -755,6 +782,8 @@ describe("checkout for every kind of product", () => {
     const summary = await cartSummary(shop(), cart);
     expect(summary.blocked).toBe(false);
     if (scenario.code) expect(summary.discountMinor).toBeGreaterThan(0);
+    // Every code the scenario typed is used, in the order they apply (D299 E2).
+    if (scenario.moreCodes) expect(summary.code?.used.map((u) => u.code)).toEqual([scenario.code, ...scenario.moreCodes]);
     if (scenario.campaigns) expect(summary.campaignDiscountMinor + summary.gifts.length).toBeGreaterThan(0);
     expect(summary.gifts).toHaveLength(scenario.gifts ?? 0);
     expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");

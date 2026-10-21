@@ -353,6 +353,8 @@ export const nb: Messages = {
     minimum_quantity: "Legg til noen flere varer for å bruke koden.",
     not_eligible: "Koden gjelder ikke for kontoen din.",
     not_applicable: "Koden gjelder ikke for det som ligger i handlekurven.",
+    not_combinable: "Kan ikke brukes sammen med {code}.",
+    codes_full: "Du kan bruke opptil fem koder.",
   },
   minimumFor: "Koden gjelder når varene koster minst",
   problemPaid: "Denne handlekurven er allerede betalt.",

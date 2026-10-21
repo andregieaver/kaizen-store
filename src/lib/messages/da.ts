@@ -353,6 +353,8 @@ export const da: Messages = {
     minimum_quantity: "Læg et par varer mere i kurven for at bruge koden.",
     not_eligible: "Koden gælder ikke for din konto.",
     not_applicable: "Koden gælder ikke for det, der ligger i kurven.",
+    not_combinable: "Kan ikke bruges sammen med {code}.",
+    codes_full: "Du kan bruge op til fem koder.",
   },
   minimumFor: "Koden gælder, når varerne koster mindst",
   problemPaid: "Denne kurv er allerede betalt.",

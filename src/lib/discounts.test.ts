@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   applyDiscount,
   availability,
+  codeClass,
+  combines,
+  stackCodes,
   GENERATED_ALPHABET,
   generatedCode,
   reaches,
@@ -32,6 +35,7 @@ const base: StoreDiscount = {
   tierIds: [],
   customerIds: [],
   uniqueCodes: false,
+  combinesWith: [],
 };
 
 const line = (key: string, unitMinor: number, quantity = 1, extra: Partial<DiscountLine> = {}): DiscountLine => ({
@@ -222,5 +226,81 @@ describe("codes in depth (D299 E1)", () => {
     }
     expect(codes.size).toBeGreaterThan(190);
     expect(generatedCode("", random)).toMatch(/^[A-Z2-9]{8}$/);
+  });
+});
+
+describe("several codes on one order (D299 E2)", () => {
+  const all = ["products", "order", "shipping"] as const;
+  const code = (id: string, extra: Partial<StoreDiscount> = {}): StoreDiscount => ({ ...base, id, code: id.toUpperCase(), ...extra });
+  const basket = (lines: DiscountLine[], shippingMinor = 9900) => ({ marketCode: "NO", lines, shippingMinor });
+
+  it("knows a code's class and whether two may be used together", () => {
+    expect(codeClass(code("a", { kind: "free_shipping" }))).toBe("shipping");
+    expect(codeClass(code("b", { productIds: ["p-1"] }))).toBe("products");
+    expect(codeClass(code("c", { termIds: ["t"] }))).toBe("products");
+    expect(codeClass(code("d"))).toBe("order");
+    const open = code("e", { combinesWith: [...all] });
+    expect(combines(open, code("f", { combinesWith: ["order"] }))).toBe(true);
+    // Each must allow the other: one that allows nothing is used alone.
+    expect(combines(open, code("g"))).toBe(false);
+    expect(combines(open, { ...open })).toBe(false);
+  });
+
+  it("adds up two codes that combine, the second counting what the first left", () => {
+    const a = code("a", { percent: 10, combinesWith: ["order"] });
+    const b = code("b", { percent: 20, combinesWith: ["order"] });
+    const result = stackCodes([{ key: "A", discount: a }, { key: "B", discount: b }], basket([line("1", 10_000)]));
+    expect(result.used.map((u) => u.key)).toEqual(["A", "B"]);
+    // 10 % of 100,00 is 10,00; 20 % of the 90,00 left is 18,00.
+    expect(result.applied.lines).toEqual({ "1": 2800 });
+    expect(result.refused).toEqual({});
+  });
+
+  it("keeps the better of two that cannot combine, and says why of the other", () => {
+    const small = code("small", { percent: 10 });
+    const big = code("big", { kind: "fixed", amounts: { NO: 3000 } });
+    const result = stackCodes([{ key: "SMALL", discount: small }, { key: "BIG", discount: big }], basket([line("1", 10_000)]));
+    expect(result.used.map((u) => u.key)).toEqual(["BIG"]);
+    expect(result.refused).toEqual({ SMALL: { problem: "not_combinable", with: "BIG", alone: false } });
+  });
+
+  it("keeps the first typed on a tie", () => {
+    const one = code("one", { percent: 10 });
+    const two = code("two", { kind: "fixed", amounts: { NO: 1000 } });
+    const result = stackCodes([{ key: "ONE", discount: one }, { key: "TWO", discount: two }], basket([line("1", 10_000)]));
+    expect(result.used.map((u) => u.key)).toEqual(["ONE"]);
+  });
+
+  it("applies product codes before order codes, and free shipping beside them", () => {
+    const order = code("o", { kind: "fixed", amounts: { NO: 5000 }, combinesWith: ["products", "shipping"] });
+    const product = code("p", { percent: 50, productIds: ["p-1"], combinesWith: ["order", "shipping"] });
+    const ship = code("s", { kind: "free_shipping", combinesWith: ["products", "order"] });
+    const result = stackCodes(
+      [{ key: "O", discount: order }, { key: "S", discount: ship }, { key: "P", discount: product }],
+      basket([line("1", 6000), line("2", 4000)]),
+    );
+    expect(result.used.map((u) => u.key)).toEqual(["P", "O", "S"]);
+    // Half of line 1 (30,00), then 50,00 spread over the 70,00 left; shipping free.
+    expect(result.applied.shippingMinor).toBe(9900);
+    expect(result.applied.lines["1"] + result.applied.lines["2"]).toBe(3000 + 5000);
+  });
+
+  it("drops a code whose minimum the others leave unmet, and never takes a line below nothing", () => {
+    const first = code("f", { kind: "fixed", amounts: { NO: 8000 }, combinesWith: ["order"] });
+    const second = code("m", { percent: 10, minSubtotals: { NO: 5000 }, combinesWith: ["order"] });
+    const result = stackCodes([{ key: "F", discount: first }, { key: "M", discount: second }], basket([line("1", 10_000)]));
+    expect(result.used.map((u) => u.key)).toEqual(["F"]);
+    expect(result.refused.M).toEqual({ problem: "minimum", with: null, alone: false });
+    const huge = code("h", { kind: "fixed", amounts: { NO: 50_000 }, combinesWith: ["order"] });
+    const rest = code("r", { kind: "fixed", amounts: { NO: 50_000 }, combinesWith: ["order"] });
+    const capped = stackCodes([{ key: "H", discount: huge }, { key: "R", discount: rest }], basket([line("1", 10_000)]));
+    expect(capped.applied.lines["1"]).toBe(10_000);
+  });
+
+  it("says a code's own reason when it does not apply alone", () => {
+    const ship = code("s", { kind: "free_shipping" });
+    const result = stackCodes([{ key: "S", discount: ship }], basket([line("1", 10_000)], 0));
+    expect(result.used).toEqual([]);
+    expect(result.refused.S).toEqual({ problem: "not_applicable", with: null, alone: true });
   });
 });

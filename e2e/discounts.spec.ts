@@ -3,13 +3,17 @@ import { expect, test } from "@playwright/test";
 import { testDb } from "./db";
 
 /** A shopper's discount code in the cart (D31). */
-test("a discount code comes off the cart, says why when it cannot, and comes off again", async ({ page }) => {
+test("a discount code comes off the cart, says why when it cannot or cannot beside another, and comes off again", async ({ page }) => {
   const code = `E2E${Date.now().toString(36).toUpperCase()}`;
   const db = testDb();
   try {
     await db`
       insert into commerce.discount_codes (store_id, code, kind, percent, min_subtotals)
       select id, ${code}, 'percent', 10, '{"NO": 30000}'::jsonb from commerce.stores where slug = 'demo'`;
+    // A code that cannot be used beside it (D299 E2), and takes more off.
+    await db`
+      insert into commerce.discount_codes (store_id, code, kind, amounts)
+      select id, ${`${code}X`}, 'fixed', '{"NO": 5000}'::jsonb from commerce.stores where slug = 'demo'`;
   } finally {
     await db.end();
   }
@@ -38,7 +42,16 @@ test("a discount code comes off the cart, says why when it cannot, and comes off
   await expect(summary).toContainText("−39,80");
   await expect(summary).toContainText("457,20");
 
-  await summary.getByRole("button", { name: /Fjern/ }).click();
+  // A second code that cannot be used with it: the one taking more off is used, and the cart says why of the other.
+  await summary.getByLabel("Rabattkode").fill(`${code}x`);
+  await summary.getByRole("button", { name: "Bruk" }).click();
+  await expect(summary).toContainText(`Rabatt (${code}X)`);
+  await expect(summary).toContainText("−50,00");
+  await expect(summary.getByRole("alert")).toHaveText(`Kan ikke brukes sammen med ${code}X.`);
+  await summary.getByRole("button", { name: `Fjern : ${code}X`, exact: true }).click();
+  await expect(summary).toContainText(`Rabatt (${code})`);
+
+  await summary.getByRole("button", { name: `Fjern : ${code}`, exact: true }).click();
   await expect(summary).not.toContainText(`Rabatt (${code})`);
   await expect(summary).toContainText("497,00");
 });

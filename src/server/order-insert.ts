@@ -42,6 +42,10 @@ export type OrderInsert = {
   /** The generated single-use code used (D299 E1). */
   discountCodeItemId?: string | null;
   discountCode?: string | null;
+  /** Every code the order used (D299 E2), in the order applied, with what each took off; the first is `discountCodeId`'s. */
+  discountCodes?: { code: string; discountId: string | null; itemId: string | null; amountMinor: number }[];
+  /** Every code the cart held, whether it applied or not. */
+  enteredCodes?: string[] | null;
   companyName?: string | null;
   organisationNumber?: string | null;
   balanceMinor?: number;
@@ -104,7 +108,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
-      delivery_method, pickup_location_id, delivery_note, exchange_id
+      delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -123,10 +127,19 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.draft ? "draft" : input.exchange ? "exchange" : "checkout"}, ${input.draft?.id ?? null}::uuid, ${input.draft?.madeBy ?? input.exchange?.madeBy ?? null}::uuid,
       ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null},
       ${input.deliveryMethod ?? "ship"}, ${input.deliveryMethod === "pickup" ? (input.pickupLocationId ?? null) : null}::uuid,
-      ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}, ${input.exchange?.id ?? null}::uuid
+      ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}, ${input.exchange?.id ?? null}::uuid,
+      ${input.enteredCodes ? sql`(select coalesce(array_agg(c order by n), '{}') from jsonb_array_elements_text(${JSON.stringify(input.enteredCodes)}::jsonb) with ordinality as t(c, n))` : sql`null`}
     )
     returning id
   `);
+  const codes = (input.discountCodes ?? []).slice(0, 5);
+  if (codes.length > 0) {
+    await tx.execute(sql`
+      insert into commerce.order_discount_codes (store_id, order_id, position, code, discount_id, item_id, amount_minor)
+      select ${input.storeId}::uuid, ${String(order.id)}::uuid, n::int, c->>'code', (c->>'discountId')::uuid, (c->>'itemId')::uuid, (c->>'amountMinor')::bigint
+      from jsonb_array_elements(${JSON.stringify(codes)}::jsonb) with ordinality as t(c, n)
+    `);
+  }
   return { orderId: String(order.id), number };
 }
 

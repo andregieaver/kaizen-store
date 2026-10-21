@@ -198,11 +198,23 @@ async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> 
 /** The codes used by the period's paid orders, by code and currency, the biggest by revenue first (one more than the cap, to know). */
 async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
   return setBased<Row>(sql`
+    -- One row per order and code: an order with several codes (D299 E2) gives each its share of what the codes took off, by
+    -- what each took; one placed before has its one code, on the order.
     with po as materialized (
-      select o.id, trim(o.currency) as currency, (o.total_minor - o.tax_minor) as revenue,
-        upper(coalesce(dc.code, nullif(o.discount_code, ''))) as code, dc.kind as code_kind, dc.active as code_active
+      select o.id, trim(o.currency) as currency, (o.total_minor - o.tax_minor) as revenue, c.code, c.code_kind, c.code_active, c.share
       from commerce.orders o
-      left join commerce.discount_codes dc on dc.store_id = o.store_id and dc.id = o.discount_code_id
+      cross join lateral (
+        select upper(coalesce(dc.code, x.code)) as code, dc.kind as code_kind, dc.active as code_active,
+          case when sum(x.amount_minor) over () > 0 then x.amount_minor::numeric / sum(x.amount_minor) over () else 1.0 / count(*) over () end as share
+        from commerce.order_discount_codes x
+        left join commerce.discount_codes dc on dc.store_id = x.store_id and dc.id = x.discount_id
+        where x.store_id = o.store_id and x.order_id = o.id
+        union all
+        select upper(coalesce(dc.code, nullif(o.discount_code, ''))), dc.kind, dc.active, 1.0
+        from (select 1) one
+        left join commerce.discount_codes dc on dc.store_id = o.store_id and dc.id = o.discount_code_id
+        where not exists (select 1 from commerce.order_discount_codes y where y.store_id = o.store_id and y.order_id = o.id)
+      ) c
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
         and (o.discount_code_id is not null or nullif(o.discount_code, '') is not null)
     ),
@@ -215,7 +227,7 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
     by_line as (
       select po.code, po.currency,
         sum(round(ol.unit_price_minor::numeric * ol.quantity / (1 + ol.tax_rate))) as gross,
-        sum(${lineExVat("greatest(ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor - ol.staff_discount_minor, 0)")}) as code_off
+        round(sum((${lineExVat("greatest(ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor - ol.staff_discount_minor, 0)")})::numeric * po.share)) as code_off
       from po
       join commerce.order_lines ol on ol.order_id = po.id
       where po.code is not null and ol.store_id = ${store.id}::uuid

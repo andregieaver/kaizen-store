@@ -2584,11 +2584,17 @@ export const discountCodes = commerce.table(
     customerIds: jsonb("customer_ids").notNull().default([]),
     /** Its own text is a name only: shoppers use its generated single-use codes (`discount_code_items`). */
     uniqueCodes: boolean("unique_codes").notNull().default(false),
+    /** The classes of other codes it may be used with on one order (D299 E2: `products`, `order`, `shipping`); empty, alone. */
+    combinesWith: jsonb("combines_with").notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("discount_codes_store_id_key").on(t.storeId, t.id),
+    check(
+      "discount_codes_combines_with",
+      sql`jsonb_typeof(${t.combinesWith}) = 'array' and ${t.combinesWith} <@ '["products", "order", "shipping"]'::jsonb`,
+    ),
     check("discount_codes_min_quantity", sql`${t.minQuantity} is null or ${t.minQuantity} between 1 and 1000`),
     check("discount_codes_term_ids", sql`jsonb_typeof(${t.termIds}) = 'array'`),
     check("discount_codes_tier_ids", sql`jsonb_typeof(${t.tierIds}) = 'array'`),
@@ -3231,8 +3237,10 @@ export const carts = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     locale: text("locale").notNull(),
     customerId: uuid("customer_id"),
-    /** The discount code the shopper entered (D31), checked again at checkout. */
+    /** The discount code the shopper entered (D31), checked again at checkout; the first of them since D299 E2. */
     discountCode: text("discount_code"),
+    /** The codes entered after the first (D299 E2), in the order typed; five in all at most. */
+    moreCodes: text("more_codes").array().notNull().default(sql`'{}'::text[]`),
     /** The company the shopper buys for (B2B), entered in the cart and copied to the order. */
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
@@ -3474,6 +3482,8 @@ export const orders = commerce.table(
     discountCode: text("discount_code"),
     /** The generated single-use code used (D299 E1); its text is in `discount_code`. No foreign key: a deleted code's orders keep the text. */
     discountCodeItemId: uuid("discount_code_item_id"),
+    /** Every code the cart held when the order was placed (D299 E2), so a changed cart is told from what was entered, not what applied. */
+    enteredCodes: text("entered_codes").array(),
     /** The company the order was placed for (B2B), shown on the order and its invoice. */
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
@@ -10293,6 +10303,33 @@ export const notFoundIgnored = commerce.table(
  * 40 characters, no comma or control character. Copied orders (D129) may have tags: the copied-order guards are not installed here. Written only
  * by `src/server/order-tags.ts`; the daily clean-up deletes the tags of an anonymised order.
  */
+/**
+ * The codes an order used (D299 E2, `docs/wave-5-marketing.md` 7.2), one row each in the order applied, with what each took off in the order's
+ * currency; written only with the order by `insertOrder()`. The code's and the generated code's ids are kept without a reference: a code can be
+ * deleted after use, and the order keeps its words. Not personal.
+ */
+export const orderDiscountCodes = commerce.table(
+  "order_discount_codes",
+  {
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    position: integer("position").notNull(),
+    code: text("code").notNull(),
+    discountId: uuid("discount_id"),
+    itemId: uuid("item_id"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orderId, t.position] }),
+    orderRef("order_discount_codes_order_fk", t).onDelete("restrict"),
+    index("order_discount_codes_discount_idx").on(t.storeId, t.discountId),
+    index("order_discount_codes_item_idx").on(t.storeId, t.itemId).where(sql`${t.itemId} is not null`),
+    check("order_discount_codes_position", sql`${t.position} between 1 and 5`),
+    check("order_discount_codes_amount", sql`${t.amountMinor} >= 0`),
+  ],
+);
+
 export const orderTags = commerce.table(
   "order_tags",
   {

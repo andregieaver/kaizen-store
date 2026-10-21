@@ -24,6 +24,7 @@ const draft = (over: Partial<DiscountDraft> = {}): DiscountDraft => ({
   tierIds: [],
   customerEmails: "",
   uniqueCodes: false,
+  combinesWith: [],
   ...over,
 });
 

@@ -415,7 +415,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Verified `discount_codes` (D31, D299 E1): percentage, fixed amount per market or free shipping; all products, chosen products, or products in chosen categories and tags; a minimum order per market and a minimum number of items; start and end; total uses; once per customer; limited to customer groups or up to 100 named customers (a guest is asked to sign in, anyone else refused with the reason); single-use codes generated from a prefix (up to 10,000 at a time, 100,000 per code, each used once under a row lock) and exported as CSV. Still one code per order (D299 E2) and no eligibility by segment.",
+    "gap": "Verified `discount_codes` (D31, D299 E1 and E2): percentage, fixed amount per market or free shipping; all products, chosen products, or products in chosen categories and tags; a minimum order per market and a minimum number of items; start and end; total uses; once per customer; limited to customer groups or up to 100 named customers; single-use codes generated from a prefix and exported as CSV. Up to five codes on one order, each saying which kinds of code it may be used with (products, order, free shipping); where two cannot combine the shopper gets the one taking more off and the cart says why of the other. Still no Buy X get Y code (D299 E4) and no eligibility by segment.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -435,7 +435,9 @@
         "src/server/cart-summary.ts",
         "src/server/checkout.ts",
         "src/components/admin/generated-codes.tsx",
-        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts"
+        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts",
+        "src/lib/code-words.ts",
+        "src/components/checkout-code-form.tsx"
       ],
       "tests": [
         "src/lib/discounts.test.ts",

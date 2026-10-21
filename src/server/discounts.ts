@@ -8,7 +8,13 @@ import { db } from "@/db/client";
 import { writeCsv } from "@/lib/csv";
 import {
   applyDiscount,
+  CODE_CLASSES,
   CODE_ITEMS_MAX,
+  CODES_MAX,
+  stackCodes,
+  type CodeClass,
+  type StackCandidate,
+  type StackRefusal,
   generateCodesInput,
   generatedCode,
   availability,
@@ -63,18 +69,30 @@ function toDiscount(row: Row): StoreDiscount {
     tierIds: ids(row.tier_ids),
     customerIds: ids(row.customer_ids),
     uniqueCodes: Boolean(row.unique_codes),
+    combinesWith: (Array.isArray(row.combines_with) ? row.combines_with : []).filter((c): c is CodeClass => (CODE_CLASSES as readonly string[]).includes(String(c))),
   };
 }
 
 const ids = (value: unknown): string[] => (Array.isArray(value) ? value.map(String) : []);
 
+/**
+ * An order used the code `d` when it is its first code or one of its others (D299 E2: `order_discount_codes`; orders placed before have only the
+ * first, on the order).
+ */
+const orderUsed = sql`(o.discount_code_id = d.id or exists (
+  select 1 from commerce.order_discount_codes x where x.store_id = o.store_id and x.order_id = o.id and x.discount_id = d.id))`;
+
 const used = (customerId: string | null) => sql`
   (select count(*)::int from commerce.orders o
-    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled' and o.copied_from is null) as used,
+    where o.store_id = d.store_id and ${orderUsed} and o.status <> 'cancelled' and o.copied_from is null) as used,
   (select count(*)::int from commerce.orders o
-    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled' and o.copied_from is null
+    where o.store_id = d.store_id and ${orderUsed} and o.status <> 'cancelled' and o.copied_from is null
       and ${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid) as used_by_customer
 `;
+
+/** An order used the generated code `i` (D299 E1, E2). */
+const itemUsed = sql`(o.discount_code_item_id = i.id or exists (
+  select 1 from commerce.order_discount_codes x where x.store_id = o.store_id and x.order_id = o.id and x.item_id = i.id))`;
 
 /**
  * A code's amounts for the market, in the currency shown (D109): what it
@@ -96,8 +114,11 @@ export async function listDiscounts(storeId: string): Promise<DiscountListRow[]>
   const rows = await db().execute<Row>(sql`
     select d.*, ${used(null)},
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
-        select o.currency, sum(o.discount_minor - o.credit_minor - o.referral_discount_minor - o.vat_relief_minor)::bigint as total from commerce.orders o
-        where o.store_id = d.store_id and o.discount_code_id = d.id and o.copied_from is null
+        -- What the code itself took off where the order keeps it (D299 E2), else the order's discount as before.
+        select o.currency, sum(coalesce(
+          (select sum(x.amount_minor) from commerce.order_discount_codes x where x.store_id = o.store_id and x.order_id = o.id and x.discount_id = d.id),
+          o.discount_minor - o.credit_minor - o.referral_discount_minor - o.vat_relief_minor))::bigint as total from commerce.orders o
+        where o.store_id = d.store_id and ${orderUsed} and o.copied_from is null
           and o.status not in ('cancelled', 'pending_payment')
         group by o.currency) g) as given
     from commerce.discount_codes d
@@ -241,6 +262,7 @@ export async function saveDiscount(
     termIds: JSON.stringify(termIds),
     tierIds: JSON.stringify(tierIds),
     customerIds: JSON.stringify(customerIds),
+    combinesWith: JSON.stringify([...new Set(d.combinesWith)]),
   };
   try {
     const [row] = id
@@ -252,7 +274,7 @@ export async function saveDiscount(
             starts_at = ${startsAt}::timestamptz, ends_at = ${endsAt}::timestamptz,
             usage_limit = ${d.usageLimit}, once_per_customer = ${d.oncePerCustomer}, active = ${d.active},
             term_ids = ${values.termIds}::jsonb, min_quantity = ${d.minQuantity}, tier_ids = ${values.tierIds}::jsonb,
-            customer_ids = ${values.customerIds}::jsonb, unique_codes = ${d.uniqueCodes},
+            customer_ids = ${values.customerIds}::jsonb, unique_codes = ${d.uniqueCodes}, combines_with = ${values.combinesWith}::jsonb,
             updated_at = now()
           where store_id = ${store.id}::uuid and id = ${id}::uuid
           returning id
@@ -260,12 +282,13 @@ export async function saveDiscount(
       : await db().execute<Row>(sql`
           insert into commerce.discount_codes (
             store_id, code, kind, percent, amounts, min_subtotals, product_ids, recurring,
-            starts_at, ends_at, usage_limit, once_per_customer, active, term_ids, min_quantity, tier_ids, customer_ids, unique_codes
+            starts_at, ends_at, usage_limit, once_per_customer, active, term_ids, min_quantity, tier_ids, customer_ids, unique_codes, combines_with
           ) values (
             ${store.id}::uuid, ${values.code}, ${values.kind}, ${values.percent}, ${values.amounts}::jsonb,
             ${values.minSubtotals}::jsonb, ${values.productIds}::jsonb, ${values.recurring},
             ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${d.usageLimit}, ${d.oncePerCustomer}, ${d.active},
-            ${values.termIds}::jsonb, ${d.minQuantity}, ${values.tierIds}::jsonb, ${values.customerIds}::jsonb, ${d.uniqueCodes}
+            ${values.termIds}::jsonb, ${d.minQuantity}, ${values.tierIds}::jsonb, ${values.customerIds}::jsonb, ${d.uniqueCodes},
+            ${values.combinesWith}::jsonb
           )
           returning id
         `);
@@ -342,8 +365,8 @@ export async function findUsableDiscount(
   }
   const [counts] = await runner.execute<Row>(sql`
     select ${used(customerId)},
-      (select count(*)::int from commerce.orders o
-        where o.store_id = d.store_id and o.discount_code_item_id = ${item?.id ?? null}::uuid and o.status <> 'cancelled' and o.copied_from is null) as item_used
+      (select count(*)::int from commerce.discount_code_items i join commerce.orders o on o.store_id = i.store_id and ${itemUsed}
+        where i.store_id = d.store_id and i.id = ${item?.id ?? null}::uuid and o.status <> 'cancelled' and o.copied_from is null) as item_used
     from commerce.discount_codes d where d.id = ${row.id}
   `);
   const discount = inShownCurrency(toDiscount(row), market);
@@ -380,80 +403,219 @@ export async function applyCode(
   return applyDiscount(discount, { ...basket, reached });
 }
 
-/** The code on the shopper's cart, if any. */
-export async function getCartCode(shop: Shop): Promise<string | null> {
+/** The codes on the shopper's cart (D299 E2), in the order typed: the first, then the rest. */
+export async function getCartCodes(shop: Shop): Promise<string[]> {
   const cartId = await readCartId(shop);
-  if (!cartId) return null;
+  if (!cartId) return [];
   const [row] = await db().execute<Row>(sql`
-    select discount_code from commerce.carts
+    select discount_code, more_codes from commerce.carts
     where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
   `);
-  return row?.discount_code ? String(row.discount_code) : null;
+  return row ? cartCodesOf(row) : [];
 }
 
-/** Puts a code on the cart (or takes it off, with null); the cart page checks it against the basket. */
-export async function setCartCode(shop: Shop, text: string | null): Promise<boolean> {
+/** A cart row's codes: `discount_code` first, then `more_codes`. */
+export function cartCodesOf(row: Row): string[] {
+  const more = Array.isArray(row.more_codes) ? row.more_codes.map(String) : [];
+  return [...new Set([...(row.discount_code ? [String(row.discount_code)] : []), ...more].filter(Boolean))];
+}
+
+async function writeCartCodes(shop: Shop, change: (codes: string[]) => string[] | null): Promise<"saved" | "full" | "none"> {
   const cartId = await readCartId(shop);
-  if (!cartId) return false;
-  const code = text === null ? null : normalizeCode(text) || null;
-  const rows = await db().execute<Row>(sql`
-    update commerce.carts set discount_code = ${code}, updated_at = now()
-    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
-    returning id
-  `);
-  return rows.length > 0;
+  if (!cartId) return "none";
+  return db().transaction(async (tx) => {
+    const [row] = await tx.execute<Row>(sql`
+      select discount_code, more_codes from commerce.carts
+      where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+      for update
+    `);
+    if (!row) return "none";
+    const next = change(cartCodesOf(row));
+    if (next === null) return "full";
+    await tx.execute(sql`
+      update commerce.carts
+      set discount_code = ${next[0] ?? null},
+          more_codes = coalesce((select array_agg(c order by n) from jsonb_array_elements_text(${JSON.stringify(next.slice(1))}::jsonb) with ordinality as t(c, n)), '{}'),
+          updated_at = now()
+      where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid
+    `);
+    return "saved";
+  });
 }
 
-export type CartDiscount =
-  | { code: string; ok: true; discount: StoreDiscount; applied: AppliedDiscount }
-  | { code: string; ok: false; problem: DiscountProblem; minimumMinor: number | null };
+/** Adds a code to the cart (D299 E2); one already there is not added twice, and a sixth is refused. */
+export async function addCartCode(shop: Shop, text: string): Promise<"saved" | "full" | "none"> {
+  const code = normalizeCode(text);
+  if (!code) return "none";
+  return writeCartCodes(shop, (codes) => (codes.includes(code) ? codes : codes.length >= CODES_MAX ? null : [...codes, code]));
+}
+
+/** Puts exactly this code on the cart (or none, with null), as a cart reminder's link does. */
+export async function setCartCode(shop: Shop, text: string | null): Promise<boolean> {
+  const code = text === null ? null : normalizeCode(text) || null;
+  return (await writeCartCodes(shop, () => (code ? [code] : []))) === "saved";
+}
+
+/** Takes one code off the cart, or all of them with null. */
+export async function removeCartCode(shop: Shop, text: string | null): Promise<boolean> {
+  const code = text === null ? null : normalizeCode(text);
+  return (await writeCartCodes(shop, (codes) => (code === null ? [] : codes.filter((c) => c !== code)))) === "saved";
+}
+
+/** What became of each code on a basket (D299 E2), in the order the shopper typed them. */
+export type CodeOutcome =
+  | { code: string; ok: true; amountMinor: number }
+  | {
+      code: string;
+      ok: false;
+      problem: DiscountProblem;
+      /** The code it cannot be used with, for `not_combinable`. */
+      with: string | null;
+      /** Its own minimum in the currency shown, for `minimum`. */
+      minimumMinor: number | null;
+      /** It does not apply on its own (rather than only beside the others). */
+      alone: boolean;
+    };
+
+export type CodesResult = {
+  codes: CodeOutcome[];
+  /** The codes used, in the order applied, with the generated code where one was typed. */
+  used: { code: string; discount: StoreDiscount; item: { id: string; code: string } | null; applied: AppliedDiscount }[];
+  /** What they take off together; null when none applies. */
+  applied: AppliedDiscount | null;
+  /** The codes used, joined by " + " as the order keeps them; null for none. */
+  label: string | null;
+};
 
 /**
- * What the cart's code does to this basket, checked as checkout will
- * check it, so the cart shows what the shopper will pay.
+ * Which of the codes typed apply to a basket, and what they take off together (D299 E2): each is checked as a single code is
+ * (`findUsableDiscount()`), and `stackCodes()` chooses among those that can be used. The cart, the checkout's code field and
+ * `placeOrder()` all go through this, so they agree. With `lock` (in `placeOrder()`'s transaction) every code and generated
+ * code typed is locked first, in id order, so two checkouts never wait on each other in a circle.
  */
-export async function previewCartDiscount(
-  shop: Shop,
-  basket: { lines: DiscountLine[]; shippingMinor: number },
-): Promise<CartDiscount | null> {
-  const code = await getCartCode(shop);
-  if (!code) return null;
+export async function stackForBasket(
+  runner: Runner,
+  storeId: string,
+  texts: string[],
+  context: { market: Market; customerId: string | null; lock?: boolean },
+  basket: { marketCode: string; lines: DiscountLine[]; shippingMinor: number },
+): Promise<CodesResult> {
+  const typed = [...new Set(texts.map(normalizeCode).filter(Boolean))].slice(0, CODES_MAX);
+  if (typed.length === 0) return { codes: [], used: [], applied: null, label: null };
+  if (context.lock) {
+    const list = JSON.stringify(typed);
+    await runner.execute(sql`
+      select d.id from commerce.discount_codes d
+      where d.store_id = ${storeId}::uuid and (
+        d.code in (select jsonb_array_elements_text(${list}::jsonb))
+        or d.id in (select i.discount_id from commerce.discount_code_items i
+                    where i.store_id = ${storeId}::uuid and i.code in (select jsonb_array_elements_text(${list}::jsonb))))
+      order by d.id for update
+    `);
+    await runner.execute(sql`
+      select i.id from commerce.discount_code_items i
+      where i.store_id = ${storeId}::uuid and i.code in (select jsonb_array_elements_text(${list}::jsonb))
+      order by i.id for update
+    `);
+  }
+  const found = await Promise.all(typed.map((text) => findUsableDiscount(runner, storeId, text, context).then((f) => ({ text, f }))));
+  const usable = found.filter((x): x is { text: string; f: Extract<FoundDiscount, { ok: true }> } => x.f.ok);
+  const termed = usable.some((x) => x.f.discount.termIds.length > 0);
+  const terms = termed ? await termsOfProducts(runner, storeId, [...new Set(basket.lines.map((l) => l.productId))]) : null;
+  const candidates: StackCandidate[] = usable.map(({ text, f }) => ({
+    key: text,
+    discount: f.discount,
+    reached:
+      f.discount.termIds.length > 0 && terms
+        ? new Set([...terms].filter(([, termIds]) => termIds.some((t) => f.discount.termIds.includes(t))).map(([productId]) => productId))
+        : undefined,
+  }));
+  const stack = stackCodes(candidates, basket);
+  const byText = new Map(usable.map((x) => [x.text, x.f]));
+  const used = stack.used.map((u) => {
+    const f = byText.get(u.key)!;
+    return { code: f.item?.code ?? f.discount.code, discount: f.discount, item: f.item, applied: u.applied };
+  });
+  const codes: CodeOutcome[] = found.map(({ text, f }): CodeOutcome => {
+    if (!f.ok) return { code: text, ok: false, problem: f.problem, with: null, minimumMinor: null, alone: true };
+    const hit = stack.used.find((u) => u.key === text);
+    if (hit) return { code: text, ok: true, amountMinor: hit.applied.totalMinor };
+    const refusal: StackRefusal = stack.refused[text] ?? { problem: "not_applicable", with: null, alone: true };
+    return {
+      code: text,
+      ok: false,
+      problem: refusal.problem,
+      with: refusal.with,
+      minimumMinor: refusal.problem === "minimum" ? (f.discount.minSubtotals[basket.marketCode] ?? null) : null,
+      alone: refusal.alone,
+    };
+  });
+  return {
+    codes,
+    used,
+    applied: used.length > 0 ? stack.applied : null,
+    label: used.length > 0 ? used.map((u) => u.code).join(" + ") : null,
+  };
+}
+
+/**
+ * What the cart's codes do to this basket, checked as checkout will
+ * check them, so the cart shows what the shopper will pay.
+ */
+export async function previewCartCodes(shop: Shop, basket: { lines: DiscountLine[]; shippingMinor: number }): Promise<CodesResult | null> {
+  const texts = await getCartCodes(shop);
+  if (texts.length === 0) return null;
   const customer = await getCustomer(shop.storeId);
-  const found = await findUsableDiscount(db(), shop.storeId, code, { market: shop.market, customerId: customer?.id ?? null });
-  if (!found.ok) return { code, ok: false, problem: found.problem, minimumMinor: null };
-  const result = await applyCode(db(), shop.storeId, found.discount, { marketCode: shop.market.code, ...basket });
-  return result.ok
-    ? { code, ok: true, discount: found.discount, applied: result.applied }
-    : { code, ok: false, problem: result.problem, minimumMinor: found.discount.minSubtotals[shop.market.code] ?? null };
+  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId: customer?.id ?? null }, { marketCode: shop.market.code, ...basket });
 }
 
 /**
  * Whether a code the shopper types at checkout would apply to the order
- * waiting for payment, checked as placing the order will (D31, D38): the
- * order is only placed again once it does, so a code that does not work
- * never costs the shopper their checkout.
+ * waiting for payment beside the codes already on the cart, checked as
+ * placing the order will (D31, D38, D299 E2): the order is only placed again
+ * once it does, so a code that does not work never costs the shopper their
+ * checkout. A code that applies may push out one it cannot be used with,
+ * when it takes more off; the cart then says why of the other.
  */
 export async function checkCodeForOrder(
   shop: Shop,
   orderId: string,
   text: string,
-): Promise<{ ok: true; code: string } | { ok: false; problem: DiscountProblem; minimumMinor: number | null }> {
+): Promise<{ ok: true; code: string } | { ok: false; problem: DiscountProblem; with: string | null; minimumMinor: number | null }> {
+  const typed = normalizeCode(text);
+  if (!typed) return { ok: false, problem: "unknown", with: null, minimumMinor: null };
+  const current = (await getCartCodes(shop)).filter((c) => c !== typed);
+  if (current.length >= CODES_MAX) return { ok: false, problem: "codes_full", with: null, minimumMinor: null };
+  const result = await stackOnOrder(shop, orderId, [...current, typed]);
+  const outcome = result?.codes.find((c) => c.code === typed);
+  if (!result || !outcome) return { ok: false, problem: "not_applicable", with: null, minimumMinor: null };
+  if (outcome.ok) return { ok: true, code: typed };
+  return { ok: false, problem: outcome.problem, with: outcome.with, minimumMinor: outcome.minimumMinor };
+}
+
+/** What became of each of the cart's codes on the order waiting for payment, for the checkout to say (D299 E2); null without codes. */
+export async function orderCodeOutcomes(shop: Shop, orderId: string): Promise<CodeOutcome[] | null> {
+  const texts = await getCartCodes(shop);
+  if (texts.length === 0) return null;
+  return (await stackOnOrder(shop, orderId, texts))?.codes ?? null;
+}
+
+/** The codes stacked on an order waiting for payment, counting what a campaign, the group and the welcome discount left. */
+async function stackOnOrder(shop: Shop, orderId: string, texts: string[]): Promise<CodesResult | null> {
   const customer = await getCustomer(shop.storeId);
-  const found = await findUsableDiscount(db(), shop.storeId, text, { market: shop.market, customerId: customer?.id ?? null });
-  if (!found.ok) return { ok: false, problem: found.problem, minimumMinor: null };
   const [order] = await db().execute<Row>(sql`
     select shipping_minor, member_percent from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
   `);
+  if (!order) return null;
   const lines = await db().execute<Row>(sql`
     select ol.id, v.product_id, ol.unit_price_minor, ol.member_discount_minor, ol.campaign_discount_minor, ol.referral_discount_minor, ol.quantity, ol.selling_plan_id is not null as recurring
     from commerce.order_lines ol
     join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
     where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
   `);
-  if (!order) return { ok: false, problem: "not_applicable", minimumMinor: null };
-  const result = await applyCode(db(), shop.storeId, found.discount, {
+  return stackForBasket(db(), shop.storeId, texts, { market: shop.market, customerId: customer?.id ?? null }, {
     marketCode: shop.market.code,
-    // The code counts what a campaign (D114), the buyer's group or company discount (D108) and the friend's welcome discount (D131) left, as placing the order does.
+    // The codes count what a campaign (D114), the buyer's group or company discount (D108) and the friend's welcome discount (D131) left, as placing the order does.
     lines: lines.map((line) => ({
       key: String(line.id),
       productId: String(line.product_id),
@@ -464,9 +626,6 @@ export async function checkCodeForOrder(
     })),
     shippingMinor: Number(order.shipping_minor),
   });
-  return result.ok
-    ? { ok: true, code: found.item?.code ?? found.discount.code }
-    : { ok: false, problem: result.problem, minimumMinor: found.discount.minSubtotals[shop.market.code] ?? null };
 }
 
 /** The store's products to choose from, by title in the store's first language. */
@@ -535,7 +694,7 @@ export async function codeItemCounts(storeId: string, id: string): Promise<{ mad
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as made,
       count(*) filter (where exists (
-        select 1 from commerce.orders o where o.store_id = i.store_id and o.discount_code_item_id = i.id and o.status <> 'cancelled' and o.copied_from is null
+        select 1 from commerce.orders o where o.store_id = i.store_id and ${itemUsed} and o.status <> 'cancelled' and o.copied_from is null
       ))::int as used
     from commerce.discount_code_items i where i.store_id = ${storeId}::uuid and i.discount_id = ${id}::uuid
   `);
@@ -548,7 +707,7 @@ export async function exportCodeItems({ account, store }: Membership, id: string
   if (!discount) return null;
   const rows = await db().execute<Row>(sql`
     select i.code, i.created_at,
-      exists (select 1 from commerce.orders o where o.store_id = i.store_id and o.discount_code_item_id = i.id and o.status <> 'cancelled' and o.copied_from is null) as used
+      exists (select 1 from commerce.orders o where o.store_id = i.store_id and ${itemUsed} and o.status <> 'cancelled' and o.copied_from is null) as used
     from commerce.discount_code_items i where i.store_id = ${store.id}::uuid and i.discount_id = ${id}::uuid
     order by i.batch, i.code
   `);

@@ -1258,7 +1258,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order and minimum number of items, dates, total and per-customer limits, recurring; products, categories and tags; customer groups or named customers; generated single-use codes with a CSV, D299 E1) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking). Still one code per order with no combination choices (D299 E2), no automatic amount off or free shipping (E3) and no buy X get Y (E4).",
+    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order and minimum number of items, dates, total and per-customer limits, recurring; products, categories and tags; customer groups or named customers; generated single-use codes with a CSV, D299 E1; up to five on one order under each code's combination choice, the best for the shopper where two cannot combine, D299 E2) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking). Still no automatic amount off or free shipping and no tiers (D299 E3), no buy X get Y (E4), and campaigns do not yet follow the codes' combination choices.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -1276,7 +1276,10 @@
         "src/server/cart-summary.ts",
         "src/server/checkout.ts",
         "src/components/admin/generated-codes.tsx",
-        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts"
+        "src/app/admin/(gated)/[store]/discounts/[discountId]/codes/route.ts",
+        "src/lib/code-words.ts",
+        "src/components/checkout-code-form.tsx",
+        "src/components/discount-code-form.tsx"
       ],
       "tests": [
         "src/lib/discounts.test.ts",

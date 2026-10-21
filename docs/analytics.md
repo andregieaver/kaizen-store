@@ -202,6 +202,15 @@ The definitions of **Staff-made order**, **Custom item**, **Custom price** and *
 - Order files (`order-csv.ts`, `order-export.ts`) gain `tags`, `archived`, `source` (`checkout`, `draft` or `copied`) and `gift_order` in both profiles and `gift_to`, `gift_from`, `gift_message` in the Full profile only (a third party's name and words: personal), none of it for an erased person's order (`[removed]`), formula characters escaped by `writeCsv()`. They follow the amounts, so the line columns and the payment reference still end the lines layout.
 - The AI manager's order tools (`src/lib/order-ops-tools.ts`, `src/server/order-ops-tools.ts`) read and write only through the Orders page's own functions: `list_orders` is `resolveOrderList()` and `listOrdersPage()` (search, filters, keyset paging), `tag_orders` and `archive_orders` are `runBulk()` (up to 25 orders, per order, each refusal in the page's words), `list_draft_orders` is `listDrafts()`, `create_draft_order` is `createDraft()` and `saveDraft()` (a draft only, priced by `previewDraft()`, amounts through `formatMoney`), `send_draft_order` is `sendDraft()` behind the `send` gate (checked again by `preflightSendDraft()`, described from the draft by `draftApprovalSummary()`). No tool records a payment, takes money outside Kaizen or deletes a draft, and `refund_order` refuses an order paid outside Kaizen. The tools never give the model a gift message, and show tags and names only of orders whose person was not erased.
 
+## Several codes on one order (D299 E2, wave 5)
+
+- *Discount codes used in the period* (the Marketing page's coupon table, `readCoupons()` in `analytics-discounts-data.ts`) has a row per code. An
+  order that used several codes (`order_discount_codes`) counts as one order **of each code it used**, with its whole revenue and gross sales,
+  and the codes' part of each line's discount is split among them by what each took off (`amount_minor`; equal shares when every code took
+  nothing). An order placed before keeps its one code from the order's own columns, as before. The page's totals (orders, revenue, discounts)
+  count every order once, whatever number of codes it used; only the per-code table counts an order under each of its codes.
+- A generated code (D299 E1) is counted under its code's own text, never the generated text.
+
 ## Order changes and parcels (D174, wave 3)
 
 The definitions of **Edited order**, **Refunds** (without the refunds that settle a change) and **Owed** (per line) are in the table above;

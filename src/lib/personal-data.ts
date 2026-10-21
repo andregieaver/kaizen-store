@@ -232,6 +232,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  order_discount_codes:
+    "The discount codes an order used (D299 E2): a code's text, its ids and what it took off; the order's own row holds who bought, and erasure anonymises that.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",
   automations: "A store's automation settings (D298): whether each is on, its days and its words in each language; never a person.",
   broadcast_link_clicks: "Presses on a broadcast's links (D297): a link's key and a count, nothing of who pressed or when.",

@@ -353,6 +353,8 @@ export const sv: Messages = {
     minimum_quantity: "Lägg till några fler varor för att använda koden.",
     not_eligible: "Koden gäller inte för ditt konto.",
     not_applicable: "Koden gäller inte för det som ligger i varukorgen.",
+    not_combinable: "Kan inte användas tillsammans med {code}.",
+    codes_full: "Du kan använda upp till fem koder.",
   },
   minimumFor: "Koden gäller när varorna kostar minst",
   problemPaid: "Den här varukorgen är redan betald.",

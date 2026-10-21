@@ -48,7 +48,7 @@ vi.mock("./stripe", () => ({
 }));
 
 const { cancelUnpaidOrder, placeOrder, startCheckout } = await import("./checkout");
-const { checkCodeForOrder, codeItemCounts, deleteDiscount, exportCodeItems, generateCodes, saveDiscount } = await import("./discounts");
+const { checkCodeForOrder, codeItemCounts, deleteDiscount, exportCodeItems, generateCodes, getDiscount, saveDiscount } = await import("./discounts");
 
 const run = Date.now().toString(36);
 const slug = `disc-${run}`;
@@ -257,12 +257,14 @@ describe("a code typed at checkout (D38)", () => {
     expect(await checkCodeForOrder(shop, placed.order.orderId, "finnes-ikke")).toEqual({
       ok: false,
       problem: "unknown",
+      with: null,
       minimumMinor: null,
     });
     // One tote (199,00) is below the code's 300,00.
     expect(await checkCodeForOrder(shop, placed.order.orderId, "kasse10")).toEqual({
       ok: false,
       problem: "minimum",
+      with: null,
       minimumMinor: 30000,
     });
     const two = await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 2, null]], null));
@@ -362,5 +364,60 @@ describe("codes in depth (D299 E1)", () => {
     expect(file?.csv).toContain(`${String(items[0].code)},yes,`);
     // A generated code's text can never be a code of the store's own.
     expect(await saveDiscount(member, null, { code: String(items[2].code), kind: "percent", percent: 5 })).toMatchObject({ ok: false });
+  });
+});
+
+describe("several codes on one order (D299 E2)", () => {
+  /** A cart holding these codes, in this order, as the cart page keeps them. */
+  async function cartWith(lines: [string, number, string | null][], codes: string[]): Promise<string> {
+    const id = await cart(lines, codes[0] ?? null);
+    await db().execute(sql`
+      update commerce.carts set more_codes = ${`{${codes.slice(1).join(",")}}`}::text[] where id = ${id}::uuid
+    `);
+    return id;
+  }
+
+  it("uses two codes that combine, keeping both and what each took off", async () => {
+    const first = await code({ code: "PAR-EN", kind: "percent", percent: 10, combinesWith: ["order"] });
+    await code({ code: "PAR-TO", kind: "fixed", amounts: { NO: "20" }, combinesWith: ["order"] });
+    const result = await placeOrder({ storeId, market: no }, await cartWith([["DEMO-TOTE", 2, null]], ["PAR-EN", "PAR-TO"]));
+    if (!result.ok) throw new Error(result.problem);
+    // 10 % of 398,00 is 39,80; 20,00 off the 358,20 left.
+    expect(result.order.discount).toEqual({ code: "PAR-EN + PAR-TO", couponMinor: 3980 + 2000 });
+    const [order] = await db().execute<Row>(sql`
+      select discount_code, discount_code_id, entered_codes from commerce.orders where id = ${result.order.orderId}::uuid
+    `);
+    expect(order).toEqual({ discount_code: "PAR-EN + PAR-TO", discount_code_id: first, entered_codes: ["PAR-EN", "PAR-TO"] });
+    const rows = await db().execute<Row>(sql`
+      select position, code, amount_minor from commerce.order_discount_codes where order_id = ${result.order.orderId}::uuid order by position
+    `);
+    expect(rows).toEqual([
+      { position: 1, code: "PAR-EN", amount_minor: "3980" },
+      { position: 2, code: "PAR-TO", amount_minor: "2000" },
+    ]);
+    // The second code's uses count this order too.
+    const second = await db().execute<Row>(sql`select id from commerce.discount_codes where store_id = ${storeId}::uuid and code = 'PAR-TO'`);
+    expect((await getDiscount(storeId, String(second[0].id)))?.used).toBe(1);
+  });
+
+  it("keeps the better of two that cannot combine, in the cart and the order alike, and does not stop the checkout", async () => {
+    await code({ code: "ALENE-LITEN", kind: "percent", percent: 5 });
+    await code({ code: "ALENE-STOR", kind: "fixed", amounts: { NO: "50" } });
+    const result = await placeOrder({ storeId, market: no }, await cartWith([["DEMO-TOTE", 1, null]], ["ALENE-LITEN", "ALENE-STOR"]));
+    if (!result.ok) throw new Error(result.problem);
+    expect(result.order.discount).toEqual({ code: "ALENE-STOR", couponMinor: 5000 });
+    // The order remembers both were typed, and that only the better one applied.
+    const [order] = await db().execute<Row>(sql`select entered_codes from commerce.orders where id = ${result.order.orderId}::uuid`);
+    expect(order.entered_codes).toEqual(["ALENE-LITEN", "ALENE-STOR"]);
+    const rows = await db().execute<Row>(sql`select code from commerce.order_discount_codes where order_id = ${result.order.orderId}::uuid`);
+    expect(rows).toEqual([{ code: "ALENE-STOR" }]);
+  });
+
+  it("still stops the checkout for a code that does not apply on its own", async () => {
+    await code({ code: "PAR-MIN", kind: "percent", percent: 10, minSubtotals: { NO: "1000" }, combinesWith: ["order"] });
+    expect(await placeOrder({ storeId, market: no }, await cartWith([["DEMO-TOTE", 1, null]], ["PAR-EN", "PAR-MIN"]))).toEqual({
+      ok: false,
+      problem: "discount",
+    });
   });
 });

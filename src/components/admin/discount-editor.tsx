@@ -28,6 +28,8 @@ export type DiscountDraft = {
   /** The named customers' emails, one per line. */
   customerEmails: string;
   uniqueCodes: boolean;
+  /** The classes of other codes it may be used with (D299 E2). */
+  combinesWith: ("products" | "order" | "shipping")[];
 };
 
 type Who = "everyone" | "groups" | "customers";
@@ -95,6 +97,7 @@ export function DiscountEditor({
         tierIds: who === "groups" ? d.tierIds : [],
         customerEmails: who === "customers" ? d.customerEmails : "",
         uniqueCodes: d.uniqueCodes,
+        combinesWith: d.combinesWith,
         recurring: d.kind === "percent" && d.recurring,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
@@ -424,6 +427,35 @@ export function DiscountEditor({
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
           Switched on
         </label>
+      </section>
+
+      <section aria-labelledby="combine-heading" className={card}>
+        <h2 id="combine-heading" className="text-title text-ink">
+          Using it with other codes
+        </h2>
+        <p className={hint}>
+          A shopper can put up to five codes on one order. Tick the kinds this code may be used with; the other code must allow this one too.
+          Where two cannot be used together, the shopper gets the one that takes more off, and the cart says why of the other.
+        </p>
+        {(
+          [
+            ["products", "Codes on chosen products, categories or tags"],
+            ["order", "Codes on everything"],
+            ["shipping", "Free shipping codes"],
+          ] as const
+        ).map(([kind, words]) => (
+          <label key={kind} className="flex items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={d.combinesWith.includes(kind)}
+              onChange={(event) =>
+                set("combinesWith", event.target.checked ? [...d.combinesWith, kind] : d.combinesWith.filter((k) => k !== kind))
+              }
+              className="size-4"
+            />
+            {words}
+          </label>
+        ))}
       </section>
 
       <div className="flex items-center gap-3">

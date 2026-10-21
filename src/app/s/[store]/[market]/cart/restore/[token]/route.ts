@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { marketPath } from "@/lib/paths";
 import { changeLine } from "@/server/cart";
 import { openReminderLink } from "@/server/cart-reminders";
-import { setCartCode } from "@/server/discounts";
+import { addCartCode } from "@/server/discounts";
 import { featureOn } from "@/lib/store-features";
 import { resolveAfterSaleShop, resolveShop } from "@/server/shop";
 
@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: RouteContext<"/s/[store]
       await changeLine(cart, line.variantId, line.quantity, "set", line.sellingPlanId);
     }
     const code = new URL(request.url).searchParams.get("code");
-    if (code) await setCartCode(cart, code.slice(0, 40));
+    if (code) await addCartCode(cart, code.slice(0, 40));
   }
   redirect(marketPath(shop.store.slug, shop.market.slug, "/cart"));
 }

@@ -18,7 +18,8 @@ import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
 import { db } from "@/db/client";
 import { chooseDelivery, deliveryReady, marketShipping, quoteDelivery, setDeliveryPostalCode } from "@/server/delivery-options";
-import { checkCodeForOrder, setCartCode } from "@/server/discounts";
+import { addCartCode, checkCodeForOrder, removeCartCode } from "@/server/discounts";
+import { codeProblemText } from "@/lib/code-words";
 import { joinList, setAccountSubscription } from "@/server/marketing-subscribers";
 import { resolveSellingShop } from "@/server/shop";
 
@@ -130,20 +131,20 @@ export async function checkoutCodeAction(
 
   const removing = form.get("intent") === "remove";
   const text = String(form.get("code") ?? "").slice(0, 60);
+  if (removing && !text.trim()) return { problem: null, tried: "" };
   if (!removing) {
     if (!text.trim()) return { problem: null, tried: "" };
     const check = await checkCodeForOrder(cartShop, open.orderId, text);
     if (!check.ok) {
       return {
-        problem:
-          check.problem === "minimum" && check.minimumMinor
-            ? `${m.minimumFor} ${formatMoney(check.minimumMinor, shop.market.currency, shop.market.locale)}.`
-            : m.codeProblems[check.problem],
+        problem: codeProblemText(m, check, (minor) => formatMoney(minor, shop.market.currency, shop.market.locale)),
         tried: text,
       };
     }
   }
-  await setCartCode(cartShop, removing ? null : text);
+  // A code is added beside those on the cart, or one is taken off (D299 E2).
+  if (removing) await removeCartCode(cartShop, text);
+  else await addCartCode(cartShop, text);
   if (open.subscription) {
     refresh();
     return { problem: null, tried: "" };

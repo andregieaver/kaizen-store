@@ -236,6 +236,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   inventory_movements: never("The history of the original's stock (D172); a copy starts with its own opening movements, written by the level inserts."),
   stock_alerts: never("The low-stock state of the original's variants (D172); recomputed from the copied levels and thresholds."),
   order_tags: never("The original's staff working notes on its orders (D173): a copy's order history starts clean; its copied orders can be tagged afresh."),
+  order_discount_codes: never("The codes the original's orders used (D299 E2): a copied order keeps their words in `discount_code`."),
   order_views: never("A saved view of the order list names the original's tags, markets and filters (D173); a copy starts with the built-in views."),
   order_settings: never("A copy starts with the defaults (D173): gift messages off, no automatic archiving, links valid 7 days, staff may not record payments; the row is made when first read, so clone_store() and duplicate_store() need no patch."),
   draft_orders: never("A draft order is a working document with a customer's contact data, and a sent one holds stock (D173); never copied."),

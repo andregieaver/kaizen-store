@@ -15,7 +15,7 @@ import { rememberAffiliate } from "@/server/affiliates";
 import { changeLine, readCartId, setCartCompany, setCartGift, setCartVatNumber } from "@/server/cart";
 import { viesClientKey } from "@/server/vat-checks";
 import { getCustomer } from "@/server/customers";
-import { setCartCode } from "@/server/discounts";
+import { addCartCode, removeCartCode } from "@/server/discounts";
 import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
@@ -234,7 +234,7 @@ export async function vatNumberAction(
   return { outcome: result.ok ? result.outcome : result.problem };
 }
 
-export type CodeState = { tried: string | null };
+export type CodeState = { tried: string | null; full?: boolean };
 
 /**
  * Puts a discount code on the cart (D31). Whether it applies is shown by
@@ -250,16 +250,17 @@ export async function applyCodeAction(
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   const code = String(form.get("code") ?? "").slice(0, 60);
   if (!shop || !code.trim()) return { tried: null };
-  await setCartCode({ storeId: shop.store.id, market: shop.market }, code);
+  // Added beside the codes already there (D299 E2); the cart page says which apply and why the others do not.
+  const saved = await addCartCode({ storeId: shop.store.id, market: shop.market }, code);
   refresh();
-  return { tried: code };
+  return { tried: code, full: saved === "full" };
 }
 
-/** Takes the discount code off the cart. */
-export async function removeCodeAction(storeSlug: string, marketSlug: string): Promise<void> {
+/** Takes one discount code off the cart. */
+export async function removeCodeAction(storeSlug: string, marketSlug: string, code: string): Promise<void> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return;
-  await setCartCode({ storeId: shop.store.id, market: shop.market }, null);
+  await removeCartCode({ storeId: shop.store.id, market: shop.market }, String(code).slice(0, 60));
   refresh();
 }
 

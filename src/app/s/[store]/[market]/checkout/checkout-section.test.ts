@@ -16,7 +16,7 @@ const getOrder = vi.fn();
 vi.mock("@/server/orders", () => ({ getOrder: (...a: unknown[]) => getOrder(...a) }));
 vi.mock("@/server/cart-reminders", () => ({ cartRemindersOn: async () => false, checkoutOptedOut: async () => false }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
-vi.mock("@/server/discounts", () => ({ getCartCode: async () => null }));
+vi.mock("@/server/discounts", () => ({ orderCodeOutcomes: async () => null }));
 const stripeNow = vi.hoisted(() => ({ key: null as string | null }));
 vi.mock("@/server/stripe", () => ({ platformPublishableKey: () => stripeNow.key }));
 // The terms the store shows at checkout (wave 1, 1e): replaced by what the store has chosen.

@@ -34,7 +34,8 @@ import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
 import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
-import { getCartCode } from "@/server/discounts";
+import { orderCodeOutcomes, type CodeOutcome } from "@/server/discounts";
+import { codeProblemText } from "@/lib/code-words";
 import { getOrder } from "@/server/orders";
 import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
@@ -92,7 +93,7 @@ export async function Checkout({ store, market, drawTerms = true }: { store: Sto
         </h2>
         {itemsList(view, market)}
         <div className="mt-3 border-t border-border pt-3">
-          {codeForm(store, market, view, await cartCodeOf(store, market))}
+          {codeForm(store, market, view, await cartCodesOf(store, market, view))}
         </div>
         {credits && <div className="mt-3 border-t border-border pt-3">{credits}</div>}
         <div className="mt-3 border-t border-border pt-3">{totalsList(view, market)}</div>
@@ -108,7 +109,8 @@ export async function Checkout({ store, market, drawTerms = true }: { store: Sto
   );
 }
 
-const cartCodeOf = (store: Store, market: Market) => getCartCode({ storeId: store.id, market });
+/** The cart's codes and what became of each on the order (D299 E2). */
+const cartCodesOf = (store: Store, market: Market, view: CheckoutView) => orderCodeOutcomes({ storeId: store.id, market }, view.open.orderId);
 
 /** The order's lines, as the shopper is about to pay for them (D117). */
 export async function CheckoutItems({ store, market }: { store: Store; market: Market }) {
@@ -117,8 +119,8 @@ export async function CheckoutItems({ store, market }: { store: Store; market: M
 
 /** The field for a discount code at the checkout (D117). */
 export async function CheckoutCode({ store, market }: { store: Store; market: Market }) {
-  const [view, code] = await Promise.all([requireCheckout(store, market), cartCodeOf(store, market)]);
-  return codeForm(store, market, view, code);
+  const view = await requireCheckout(store, market);
+  return codeForm(store, market, view, await cartCodesOf(store, market, view));
 }
 
 /** The bonus credits at the checkout (D130, D117): use them, or what this order earns; nothing in a store without the program. */
@@ -220,13 +222,15 @@ function itemsList(view: CheckoutView, market: Market) {
   );
 }
 
-function codeForm(store: Store, market: Market, view: CheckoutView, cartCode: string | null) {
+function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeOutcome[] | null) {
   const { m } = view;
+  const money = moneyOf(view, market);
   return (
     <CheckoutCodeForm
       store={store.slug}
       market={market.slug}
-      code={cartCode}
+      codes={(codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
+      full={m.codeProblems.codes_full}
       labels={{
         label: m.haveCode,
         code: m.discountCode,

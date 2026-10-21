@@ -43,7 +43,7 @@ import { checkoutProviderOf } from "./mollie";
 import { mollieProvider, openMolliePayment } from "./payment-providers/mollie";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
-import { applyCode, findUsableDiscount } from "./discounts";
+import { cartCodesOf, stackForBasket } from "./discounts";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
 import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
@@ -217,7 +217,7 @@ export async function placeOrder(
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
       -- A company is bought for only where the store sells to businesses (B2B; D178: never with Sell to businesses off).
-      select c.id, c.discount_code, ${STORE_AUDIENCE} as store_audience, s.time_zone,
+      select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
         c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message,
@@ -515,47 +515,54 @@ export async function placeOrder(
     });
     const referralTotal = priced.reduce((sum, p) => sum + p.referral, 0);
 
-    // The cart's discount code (D31), checked again here under a lock, so
-    // two checkouts cannot both take a code's last use.
+    // The cart's discount codes (D31), checked again here under a lock, so two checkouts cannot both take a code's last
+    // use; the best of them that may be used together, as the cart page chose (D299 E2).
     let discount: { id: string; code: string; itemId: string | null } | null = null;
+    let usedCodes: { code: string; discountId: string; itemId: string | null; amountMinor: number }[] = [];
     let shippingDiscount = 0;
     const lowered = new Set<number>();
-    if (cart.discount_code) {
-      const found = await findUsableDiscount(tx, storeId, String(cart.discount_code), {
-        market,
-        customerId,
-        lock: true,
-      });
-      const result = found.ok
-        ? await applyCode(tx, storeId, found.discount, {
-            marketCode: market.code,
-            lines: priced.map((p, i) => ({
-              key: String(i),
-              productId: String(p.line.product_id),
-              // What the code is taken off: the price after the group's discount for what is bought once.
-              unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
-              quantity: p.quantity,
-              todayMinor: p.total,
-              recurring: p.recurring,
-            })),
-            shippingMinor: basket.first,
-          })
-        : null;
-      if (!found.ok || !result?.ok) return { ok: false, problem: "discount" };
-      const { applied } = result;
-      priced.forEach((p, i) => {
-        // A recurring percentage lowers the subscriber's price for good.
-        const renewal = applied.renewalUnits[String(i)];
-        if (renewal !== undefined) {
-          p.renewUnit = renewal;
-          lowered.add(i);
-        }
-        p.discount = p.campaign + p.member + p.referral + (applied.lines[String(i)] ?? 0);
-        p.total = p.unit * p.quantity - p.discount;
-      });
-      if (lowered.size > 0) basket = shippingFor();
-      shippingDiscount = applied.shippingMinor;
-      discount = { id: found.discount.id, code: found.item?.code ?? found.discount.code, itemId: found.item?.id ?? null };
+    const enteredCodes = cartCodesOf(cart);
+    if (enteredCodes.length > 0) {
+      const result = await stackForBasket(
+        tx,
+        storeId,
+        enteredCodes,
+        { market, customerId, lock: true },
+        {
+          marketCode: market.code,
+          lines: priced.map((p, i) => ({
+            key: String(i),
+            productId: String(p.line.product_id),
+            // What the code is taken off: the price after the group's discount for what is bought once.
+            unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
+            quantity: p.quantity,
+            todayMinor: p.total,
+            recurring: p.recurring,
+          })),
+          shippingMinor: basket.first,
+        },
+      );
+      // A code that does not apply even on its own stops the checkout, so the cart can say why; one left out because
+      // it cannot be used beside a better one does not.
+      if (result.codes.some((c) => !c.ok && c.alone)) return { ok: false, problem: "discount" };
+      const applied = result.applied;
+      if (applied) {
+        priced.forEach((p, i) => {
+          // A recurring percentage lowers the subscriber's price for good.
+          const renewal = applied.renewalUnits[String(i)];
+          if (renewal !== undefined) {
+            p.renewUnit = renewal;
+            lowered.add(i);
+          }
+          p.discount = p.campaign + p.member + p.referral + (applied.lines[String(i)] ?? 0);
+          p.total = p.unit * p.quantity - p.discount;
+        });
+        if (lowered.size > 0) basket = shippingFor();
+        shippingDiscount = applied.shippingMinor;
+        const [first] = result.used;
+        discount = { id: first.discount.id, code: result.label ?? first.code, itemId: first.item?.id ?? null };
+        usedCodes = result.used.map((u) => ({ code: u.code, discountId: u.discount.id, itemId: u.item?.id ?? null, amountMinor: u.applied.totalMinor }));
+      }
     }
     const shipping = basket.first;
     // The cheapest standard delivery on offer, kept with the order (D153): a withdrawal of the whole order gives back no
@@ -675,6 +682,8 @@ export async function placeOrder(
       discountCodeId: discount?.id ?? null,
       discountCodeItemId: discount?.itemId ?? null,
       discountCode: discount?.code ?? null,
+      discountCodes: usedCodes,
+      enteredCodes,
       companyName: orderCompany?.name ?? null,
       organisationNumber: orderCompany?.number ?? null,
       balanceMinor: orderBalance,
@@ -1224,8 +1233,9 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
          -- A free product a campaign gave (D114) is not in the cart.
          where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null and not ol.gift)
       -- A code put on or taken off the cart changes the price too (D31).
-      or (select c.discount_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
-         is distinct from o.discount_code
+      -- The codes the cart holds are compared with those it held (D299 E2); an order placed before kept only the one that applied.
+      or (select array_remove(array[c.discount_code] || c.more_codes, null) from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from coalesce(o.entered_codes, array_remove(array[o.discount_code], null))
       -- So does asking for other bonus credits (D130): the cart holds what the order used until it is changed.
       or (select case when c.bonus_request_currency = o.currency then c.bonus_request_minor else 0 end
             from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
