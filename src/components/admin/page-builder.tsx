@@ -464,7 +464,7 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
   const point = pointerOf(move);
   const lines = measureLines(row);
   const slot = point && lines ? columnSlotAt(lines, point) : null;
-  return slot && lines ? { slot, anchor: slotAnchor(lines[slot.line], slot.index) } : null;
+  return slot && lines ? { slot, anchor: slotAnchor(lines[slot.line], slot.index, slot.reversed) } : null;
 }
 
 const blockLabels: Record<BlockType, string> = {
@@ -5308,7 +5308,7 @@ function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether
 
 /**
  * A row's columns at the size edited (D179): side by side or one under another (on Small unless set), the last first where
- * they stack, and the space between them. Each with its device icon; below Extra large an override of the size.
+ * reversed (either way), and the space between them. Each with its device icon; below Extra large an override of the size.
  */
 function RowSizeFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
   const { size } = useSizeEdit();
@@ -5328,17 +5328,15 @@ function RowSizeFields({ row, onChange }: { row: PageRow; onChange: (patch: RowP
         value={stacked ? "stack" : "side"}
         onChange={(choice) => onChange(stackPatchAt(row, size, choice === "stack"))}
       />
-      {stacked && (
-        <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(row, size, "reverse"), size)}`}>
-          <Check
-            label="Last column first"
-            hint="Where the columns are one under another."
-            checked={reverse}
-            onChange={(on) => onChange(setAt(row, size, { reverse: size === "xl" ? on || undefined : on }))}
-          />
-          <SizeMark part={row} field="reverse" label="Last column first" onPatch={back} />
-        </div>
-      )}
+      <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(row, size, "reverse"), size)}`}>
+        <Check
+          label="Reverse column order"
+          hint={stacked ? "The last column comes first, at the top." : "The last column comes first, on the left."}
+          checked={reverse}
+          onChange={(on) => onChange(setAt(row, size, { reverse: size === "xl" ? on || undefined : on }))}
+        />
+        <SizeMark part={row} field="reverse" label="Reverse column order" onPatch={back} />
+      </div>
       <NumberField
         label="Space between columns"
         hint={`in pixels, up to ${GRID_GAP_MAX}`}

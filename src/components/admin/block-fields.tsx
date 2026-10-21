@@ -852,6 +852,7 @@ function ColumnsFields({ block, onChange }: BlockEditorProps<ColumnsBlock>) {
         value={stacking}
         onChange={(value) => onChange({ stack: value === "phones" ? undefined : value === "always" })}
       />
+      <ReverseColumns block={block} onChange={onChange} />
       <NumberField label="Space between the columns" value={block.gap ?? 32} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
       <Check label="Columns as tall as the tallest" checked={Boolean(block.equalHeight)} onChange={(equalHeight) => onChange({ equalHeight: equalHeight || undefined })} />
       <Choices
@@ -865,6 +866,22 @@ function ColumnsFields({ block, onChange }: BlockEditorProps<ColumnsBlock>) {
         onChange={(verticalAlign) => onChange({ verticalAlign: verticalAlign === "top" ? undefined : verticalAlign })}
       />
     </>
+  );
+}
+
+/** Whether a Columns component's last column comes first at the size edited, side by side or one under another (D179). */
+function ReverseColumns({ block, onChange }: Pick<BlockEditorProps<ColumnsBlock>, "block" | "onChange">) {
+  const { size } = useSizeEdit();
+  return (
+    <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(block, size, "reverse"), size)}`}>
+      <Check
+        label="Reverse column order"
+        hint="The last column comes first."
+        checked={valueAt(block, "reverse", size) === true}
+        onChange={(on) => onChange(setAt(block, size, { reverse: size === "xl" ? on || undefined : on }))}
+      />
+      <SizeMark part={block} field="reverse" label="Reverse column order" onPatch={onChange} />
+    </div>
   );
 }
 

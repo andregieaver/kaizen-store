@@ -619,3 +619,58 @@ test("a content grid shows pages of a category and a store's products with price
   // Prices come with their VAT label, in the market's language.
   await expect(productsGrid.locator("li").first()).toContainText(/\d/);
 });
+
+test("a row's column order is reversed from the size it is set at, side by side and stacked (D179)", async ({ page }) => {
+  const slug = `reverse-${run}`;
+  const text = (id: string, words: string) => ({
+    id,
+    type: "richText",
+    htmlId: id,
+    doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] },
+  });
+  const published = {
+    ...content("Reverse", slug, "Unused. "),
+    blocks: undefined,
+    rows: [
+      {
+        id: "r1",
+        type: "row",
+        layout: "right-sidebar",
+        // From Large down: the text column first, the picture column second.
+        at: { lg: { reverse: true } },
+        columns: [
+          { id: "c1", blocks: [text("picture", "The picture's column.")] },
+          { id: "c2", blocks: [text("words", "The words' column.")] },
+        ],
+      },
+    ],
+  };
+  const sql = testDb();
+  try {
+    await sql`insert into commerce.pages (slug, draft, published, published_at) values (${slug}, ${sql.json(published)}, ${sql.json(published)}, now())`;
+  } finally {
+    await sql.end();
+  }
+  const where = async () => {
+    const a = (await page.locator("#picture").boundingBox())!;
+    const b = (await page.locator("#words").boundingBox())!;
+    return { a, b };
+  };
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(`/${slug}`);
+  let { a, b } = await where();
+  // Extra large: as built, the picture's column first and twice as wide.
+  expect(a.x).toBeLessThan(b.x);
+  expect(a.width).toBeGreaterThan(b.width);
+  for (const width of [1100, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    ({ a, b } = await where());
+    // Large and Medium: the words first, each column keeping its own width.
+    expect([width, b.x < a.x]).toEqual([width, true]);
+    expect(a.width).toBeGreaterThan(b.width);
+  }
+  await page.setViewportSize({ width: 400, height: 900 });
+  ({ a, b } = await where());
+  // Small, one under another: the words on top.
+  expect(b.y).toBeLessThan(a.y);
+});

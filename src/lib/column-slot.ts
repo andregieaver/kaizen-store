@@ -12,12 +12,23 @@ export type Point = { x: number; y: number };
 /** One line of a row's columns on the canvas: their ids in order and where each is. */
 export type SlotLine = { ids: readonly string[]; boxes: readonly Box[] };
 
-/** The place a column takes: in `line`, with `index` columns of it before (0 is first, the line's length is last). */
-export type ColumnSlot = { line: number; index: number };
+/**
+ * The place a column takes: in `line`, with `index` columns of it before (0 is first, the line's length is last), in the row's own
+ * order; `reversed` where the line is drawn last column first (a row reversed at the size shown), so the indicator goes the other side.
+ */
+export type ColumnSlot = { line: number; index: number; reversed?: boolean };
 
-/** Whether a line's columns lie one under another (a row that stacks, as on a phone) rather than side by side. */
+/** Whether a line's columns lie one under another (a row that stacks, as on a phone) rather than side by side, whichever comes first. */
 export function isStacked(boxes: readonly Box[]): boolean {
-  return boxes.length > 1 && boxes.every((box, i) => i === 0 || box.top >= boxes[i - 1].bottom - 1);
+  const byTop = [...boxes].sort((a, b) => a.top - b.top);
+  return boxes.length > 1 && byTop.every((box, i) => i === 0 || box.top >= byTop[i - 1].bottom - 1);
+}
+
+/** Whether a line is drawn last column first: its first column lies after its last, to the right or below. */
+export function isReversed(boxes: readonly Box[], stacked = isStacked(boxes)): boolean {
+  if (boxes.length < 2) return false;
+  const mid = (box: Box) => (stacked ? (box.top + box.bottom) / 2 : (box.left + box.right) / 2);
+  return mid(boxes[0]) > mid(boxes[boxes.length - 1]);
 }
 
 /** How far a point is from a line's band across the page (0 within it). */
@@ -46,15 +57,18 @@ export function columnSlotAt(lines: readonly SlotLine[], point: Point): ColumnSl
   if (line < 0) return null;
   const { boxes } = lines[line];
   const stacked = isStacked(boxes);
-  const index = boxes.filter((box) => (stacked ? (box.top + box.bottom) / 2 : (box.left + box.right) / 2) < (stacked ? point.y : point.x)).length;
-  return { line, index };
+  const reversed = isReversed(boxes, stacked);
+  const before = boxes.filter((box) => (stacked ? (box.top + box.bottom) / 2 : (box.left + box.right) / 2) < (stacked ? point.y : point.x)).length;
+  // Drawn last first, the columns on screen before the pointer are the row's last ones.
+  return reversed ? { line, index: boxes.length - before, reversed } : { line, index: before };
 }
 
 /**
  * The column a drop indicator is drawn on for a slot: before the column that takes the slot's place, or after the line's last
  * where the slot is the end of it. Null for a line with no columns.
  */
-export function slotAnchor(line: SlotLine | undefined, index: number): { id: string; after: boolean } | null {
+export function slotAnchor(line: SlotLine | undefined, index: number, reversed = false): { id: string; after: boolean } | null {
   if (!line || line.ids.length === 0) return null;
-  return index < line.ids.length ? { id: line.ids[index], after: false } : { id: line.ids[line.ids.length - 1], after: true };
+  // `after` is the side on screen, so a line drawn last first puts the indicator on the other side of the same column.
+  return index < line.ids.length ? { id: line.ids[index], after: reversed } : { id: line.ids[line.ids.length - 1], after: !reversed };
 }

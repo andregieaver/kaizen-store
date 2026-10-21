@@ -190,8 +190,9 @@ export const panelStyle = (row: PageRow): ElementStyle =>
 const trackOf = (width: number) => (width === 0 ? "minmax(0, max-content)" : `minmax(0, ${width}fr)`);
 
 /**
- * The row's columns: one under another where it stacks (on Small unless set; the last first where reversed), else side by
- * side in its layout's widths; 32 px apart unless set. A row of several lines of columns (D187) draws each line in a box of
+ * The row's columns: one under another where it stacks (on Small unless set), else side by side in its layout's widths; the
+ * last first where reversed at a size, whichever way they lie (a column keeps its own width, and its own order where it sets
+ * one); 32 px apart unless set. A row of several lines of columns (D187) draws each line in a box of
  * its own, one under another: the box of a line is the grid, or the stack, as the row itself is when it has one line.
  */
 export function rowGridStyle(row: PageRow): ElementStyle {
@@ -209,7 +210,9 @@ export function rowGridStyle(row: PageRow): ElementStyle {
       out["flex-direction"] = valueAt(row, "reverse", size) ? "column-reverse" : "column";
     } else {
       out.display = "grid";
-      out["grid-template-columns"] = line.map((column, i) => trackOf(valueAt(column, "width", size) ?? widths[i] ?? 1)).join(" ");
+      const tracks = line.map((column, i) => trackOf(valueAt(column, "width", size) ?? widths[i] ?? 1));
+      // Side by side and reversed: the tracks go right to left with their columns, which the order rules below place.
+      out["grid-template-columns"] = (valueAt(row, "reverse", size) ? [...tracks].reverse() : tracks).join(" ");
       out["align-items"] = row.equalHeight ? "stretch" : ITEMS[align];
     }
   };
@@ -253,7 +256,10 @@ export function rowGridStyle(row: PageRow): ElementStyle {
       where: true,
       sizes: perSize((size) => {
         const value = valueAt(column, "order", size);
-        return value === undefined ? ({} as Decl) : { order: String(value) };
+        if (value !== undefined) return { order: String(value) };
+        // Side by side and reversed: the last column first in its line.
+        if (!stackAt(row, size) && valueAt(row, "reverse", size)) return { order: String(line.length - 1 - i) };
+        return {} as Decl;
       }),
     })),
   );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_BREAKPOINTS, breakpointQueries, breakpointsOf, breakpointsProblem, sizeRuns, sizesQuery, type Size } from "./breakpoints";
-import { pageBlockSchema, pageInput, pageRowSchema, newPageContent, ROW_LAYOUTS, type ContentGridBlock, type ImageBlock, type PageBlock, type PageRow, type RowLayout, type TextAlign, type TextAlignments } from "./page-content";
+import { columnsAsRow, pageBlockSchema, pageInput, pageRowSchema, newPageContent, ROW_LAYOUTS, type ContentGridBlock, type ImageBlock, type PageBlock, type PageRow, type RowLayout, type TextAlign, type TextAlignments } from "./page-content";
 import { blockStyle, gridListStyle, partCss, renderPartCss, rowGridStyle, rowStyle, type PartRule } from "./part-css";
 import { partStyleAt, WIDTHS } from "./part-css.testing";
 import {
@@ -374,3 +374,46 @@ function normalized(view: TextAlignments): TextAlignments | undefined {
   if (d && d !== (t ?? m ?? "left")) out.desktop = d;
   return Object.keys(out).length > 0 ? out : undefined;
 }
+
+describe("reversing a row's columns by screen size", () => {
+  type SizedRule = Extract<PartRule, { sizes: unknown }>;
+  const none = { sizes: { xl: {}, lg: {}, md: {}, sm: {} } } as unknown as SizedRule;
+  // The grid's rule, then the first and second column's (an empty rule is left out of the sheet, so it reads as empty).
+  const rules = (row: PageRow): SizedRule[] => {
+    const all = rowGridStyle(row).rules as SizedRule[];
+    const of = (child: string | null) => all.find((rule) => (child ? rule.selector.endsWith(child) : !rule.selector.includes(">"))) ?? none;
+    return [of(null), of(" > :nth-child(1)"), of(" > :nth-child(2)")];
+  };
+  const row = (over: Partial<PageRow>): PageRow =>
+    pageRowSchema.parse({ id: "r", type: "row", layout: "right-sidebar", columns: [{ id: "a", blocks: [] }, { id: "b", blocks: [] }], ...over }) as PageRow;
+
+  it("puts the last column first side by side where reversed, its width going with it, and leaves other sizes alone", () => {
+    const r = row({ at: { lg: { reverse: true }, md: { reverse: false } } });
+    const [grid, first, second] = rules(r);
+    expect(grid.sizes.xl["grid-template-columns"]).toBe("minmax(0, 2fr) minmax(0, 1fr)");
+    expect(grid.sizes.lg["grid-template-columns"]).toBe("minmax(0, 1fr) minmax(0, 2fr)");
+    expect(grid.sizes.md["grid-template-columns"]).toBe("minmax(0, 2fr) minmax(0, 1fr)");
+    expect([first.sizes.lg, second.sizes.lg]).toEqual([{ order: "1" }, { order: "0" }]);
+    expect([first.sizes.xl, first.sizes.md]).toEqual([{}, {}]);
+    // Stacked on Small (unset) and still reversed from Large down to Medium only: Small does not inherit Medium's "no".
+    expect(grid.sizes.sm["flex-direction"]).toBe("column");
+  });
+
+  it("stacks the last first where it stacks and reverses, with no order of its own", () => {
+    const [grid, first] = rules(row({ at: { sm: { reverse: true } } }));
+    expect(grid.sizes.sm["flex-direction"]).toBe("column-reverse");
+    expect(first.sizes.sm).toEqual({});
+  });
+
+  it("keeps a column's own order where it sets one", () => {
+    const r = row({ at: { lg: { reverse: true } }, columns: [{ id: "a", blocks: [], at: { lg: { order: 5 } } }, { id: "b", blocks: [] }] as PageRow["columns"] });
+    const [, first, second] = rules(r);
+    expect([first.sizes.lg, second.sizes.lg]).toEqual([{ order: "5" }, { order: "0" }]);
+  });
+
+  it("reverses a Columns component's columns the same way", () => {
+    const block = pageBlockSchema.parse({ id: "c", type: "columns", layout: "2", columns: [{ id: "a", blocks: [] }, { id: "b", blocks: [] }], at: { md: { reverse: true } } }) as PageBlock;
+    const [, first, second] = rules(columnsAsRow(block as never));
+    expect([first.sizes.md, second.sizes.md]).toEqual([{ order: "1" }, { order: "0" }]);
+  });
+});

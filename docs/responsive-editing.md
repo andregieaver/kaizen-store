@@ -412,3 +412,10 @@ runs nothing.
   Never part, a date that holds and one that ended, a country across Norway and Sweden and an address parameter; the
   whole HTML is read, signed out and with a customer session and its cookie). `e2e/responsive-parity.spec.ts` still finds
   saved pages unchanged against a capture of phase 3's build (4aa0759).
+
+**Reversing columns side by side (2026-10-21).** *Reverse column order* is offered at every screen size, not only where
+a row stacks: a row (or a Columns component) set to `reverse` at a size where its columns sit side by side draws them last
+column first there (`rowGridStyle()` reverses the line's tracks and gives each column an `order`, unless the column sets
+its own), so an image then text becomes text then image on the sizes chosen. Stacked, it is still `column-reverse`. The
+canvas's drop places read the line as drawn (`isReversed()`, `ColumnSlot.reversed` in `src/lib/column-slot.ts`). Saved rows
+never had `reverse` at a side-by-side size from the editor (the switch showed only when stacked), so none change.

@@ -73,3 +73,31 @@ describe("the column an indicator is drawn on", () => {
     expect(slotAnchor({ ids: [], boxes: [] }, 0)).toBeNull();
   });
 });
+
+describe("a line drawn last column first (reversed at the size shown)", () => {
+  // The same three columns in the row's order a, b, c, drawn c, b, a from the left.
+  const reversed: SlotLine = { ids: ["a", "b", "c"], boxes: [box(764, 1064), box(432, 732), box(100, 400)] };
+
+  it("counts the slot in the row's own order, and says it is reversed", () => {
+    const at = (x: number) => columnSlotAt([reversed], { x, y: 25 });
+    // Left of everything on screen is after the row's last column.
+    expect(at(50)).toEqual({ line: 0, index: 3, reversed: true });
+    // Between c and b on screen is between b and c in the row.
+    expect(at(416)).toEqual({ line: 0, index: 2, reversed: true });
+    expect(at(1200)).toEqual({ line: 0, index: 0, reversed: true });
+  });
+
+  it("puts the indicator on the side of its column the slot is on, on screen", () => {
+    // Index 2 is before c in the row, which on screen is c's right edge.
+    expect(slotAnchor(reversed, 2, true)).toEqual({ id: "c", after: true });
+    expect(slotAnchor(reversed, 3, true)).toEqual({ id: "c", after: false });
+    expect(slotAnchor(reversed, 0, true)).toEqual({ id: "a", after: true });
+  });
+
+  it("knows a stack drawn bottom up is still a stack", () => {
+    const stack: SlotLine = { ids: ["a", "b"], boxes: [box(0, 300, 120, 200), box(0, 300, 0, 100)] };
+    expect(isStacked(stack.boxes)).toBe(true);
+    expect(columnSlotAt([stack], { x: 10, y: 10 })).toEqual({ line: 0, index: 2, reversed: true });
+    expect(columnSlotAt([stack], { x: 10, y: 300 })).toEqual({ line: 0, index: 0, reversed: true });
+  });
+});
