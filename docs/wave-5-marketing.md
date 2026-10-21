@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units G to J are outlined in section 9.
+section is written here before it is built; units H to J are outlined in section 10.
 
 ## 2. Rules for every unit
 
@@ -700,10 +700,149 @@ gift card line for withdrawal. Integration: issued once at payment with its emai
 cards, held then released on cancel, refunded back on a refund, another store's or currency's card refused, the attempts limit; NOK and euro
 scenarios in `checkout-kinds.int.test.ts`; personal data export and erasure. e2e: buying a card, the email's code spent at checkout.
 
-## 9. Units G to J, outlined
+## 9. Unit G (D301): product reviews
 
-- **G, reviews (D301).** Asked for by email after delivery (a token per order line), written by the buyer (verified purchase), moderated by staff,
-  shown on the product page with the average, in the product's JSON-LD only for approved reviews; no reward for a good review.
+A product review is a buyer's own words about something they bought and received in the store: stars from one to five, an optional title and
+text, the name they choose to show. The EU's rules on reviews (Directive 2005/29/EC as amended by the Omnibus Directive 2019/2161, Annex I
+points 23b and 23c, Article 7(6)) say a trader who shows reviews must say whether and how it checks they come from people who used or bought the
+product, must not claim they do when it does not, and must not hide or misrepresent reviews to make the whole look better. Kaizena Flow answers
+by construction:
+
+- **Only buyers write.** A review is written from an order line the person bought and received (9.2), so every written review is a verified
+  purchase; a review imported from elsewhere (9.6) is marked imported, never verified. There is no form for anyone else.
+- **Staff never write or change one.** Staff publish, hide (with a reason, 9.4) and answer; the database refuses any change to a review's
+  rating or words except by its author (9.1). No review is rewarded: there is no field, credit or code for one, and the page says so.
+- **What is shown is counted.** The stars, the average and the structured data count only published reviews of that product, worked out in SQL,
+  never by a model.
+
+The checking statement, the review words and the request email are hand-written nb, sv, da and en and flagged for legal review; the rule that a
+review request is marketing (9.5) needs a lawyer's look before stores rely on it.
+
+Built in four steps, each its own commit:
+
+| Step | What |
+|---|---|
+| G1 | The model and writing: `product_reviews` and `review_settings`, the database's rules, the feature `reviews`, *Reviews* in My account (what can be reviewed, write, edit, delete), registers and erasure; PGlite and integration tests |
+| G2 | Checking and showing: the admin's Reviews page (queue, publish, hide with a reason, answer, the publish setting), the product parts `rating` and `reviews`, *How reviews are checked*, `aggregateRating` and `review` in the product's JSON-LD; docs and parity |
+| G3 | Asking and importing: the request email after receipt (subscribed addresses only), its token page, importing reviews from CSV (a D165 job), the AI manager's read-only `reviews_overview`, the control center's count of reviews waiting |
+| G4 | Pictures: up to three per review, shrunk in the browser, kept private until the review is published, moderated with it |
+
+### 9.1 G1: the model
+
+- **`commerce.product_reviews`**: `store_id`, `id`, `product_id` (the store's product), `variant_id` (the variant bought, kept for *Size M*; null
+  for an import), `source` (`buyer` or `import`), for a buyer's: `order_id`, `order_line_id` (unique per store: one review per order line) and
+  `buyer_key` (`c:{customer}` for a customer; G3's guests `e:{hash of the order's email}`), `customer_id` (null for a guest or an import); for an
+  import: `imported_from` (1 to 80 characters, *Trustpilot*) and `written_on` (the date it was written there). `author_name` (1 to 60),
+  `rating` (1 to 5), `title` (up to 120, may be null), `body` (up to 5 000, may be null), `locale` (the language it was written in), `status`
+  (`pending`, `published`, `hidden`), `hidden_reason` (`not_about_product`, `offensive`, `personal_data`, `spam`, `other`; set exactly when
+  hidden), `moderated_at`, `moderated_by`, `answer` (up to 2 000) with `answered_at` and `answered_by`, `created_at`, `edited_at`.
+  One buyer review per product and buyer (a unique index on `store_id`, `product_id`, `buyer_key` where `source = 'buyer'`): buying it again
+  lets them edit theirs, never add a second.
+- **The database's rules** (`product_reviews_rules()`): the store, product, source, order, line, buyer and customer are fixed once written; a
+  buyer's line must be of that order and of a variant of that product, and the order the store's; the rating, title, body and name change only
+  inside the author's write (the transaction setting `kaizen.review_author` names the review, set only by `src/server/reviews.ts`); the status
+  moves `pending → published | hidden`, `published ↔ hidden`, and back to `pending` only in the author's write; a review is deleted only in a
+  transaction marked `kaizen.review_delete` (the author's delete, erasure, retention). Staff therefore cannot change a word or a star.
+- **`commerce.review_settings`**, one row per store: `publish` (`after_check`, the default: a new or edited review waits for staff; or
+  `at_once`: published when written, staff may hide it after), and for G3 `requests_on`, `requests_enabled_at`, `request_days` (3 to 60,
+  default 14).
+- **Feature**: `reviews` in `FEATURE_IDS` (group Customers, needs `shop`), off by default. Off: nothing is shown or asked for and My account's
+  Reviews is gone; reviews are kept, and the admin's page stays (it says the feature is off). `featureFacts()` counts published reviews; the
+  warning on switching off says how many stop showing.
+- **Copying, personal data**: `product_reviews` is `never` in `COPY_RULES` (a copied store gathers its own; a template's demo reviews would be
+  invented, so there are none), `review_settings` `settings`. A review is personal data (`PERSONAL_DATA`, by the customer or the order's email
+  through its order; export section `reviews` with product, stars, words, status and dates; erasure **deletes** it: its words are the person's,
+  and the average follows).
+
+### 9.2 What can be reviewed
+
+Only `reviewableLines()` (`src/server/reviews.ts`, one SQL reader) says what a person may review, and the write checks it again under the line's
+lock. A line is reviewable when its order is sold (D298's `SOLD`: a captured payment, status `paid`, `fulfilled` or `closed`, never copied, not
+restricted or anonymised), it has a variant of a product that is not a gift card, the product still exists, and it was **received**:
+
+| The line | Received when |
+|---|---|
+| Goods (`physical`) | The order has `delivered_at` (sent in full and delivered, or collected) |
+| A download (`digital`) | The order is paid |
+| A service (an appointment, a stay, a rental) | Its booking is `confirmed`, has ended and is not a no-show |
+
+and the moment it was received is within `REVIEW_WINDOW_DAYS` (365) ago. Writing needs the feature on and the store open. A person is the
+signed-in customer whose own orders the line is on (`ownsOrder()`, as My account reads them); G3 adds the order's token.
+
+### 9.3 Writing, in My account
+
+*Reviews* in My account (`/account/reviews`, a link on My account and *Write a review* beside each reviewable line of an order's page) lists
+what can be reviewed, newest first, and the reviews already written with their state in words (*Waiting to be checked*, *Published*, *Not
+shown*, and the store's answer). The form: stars (a radio group, required), a title, the text and the name to show (filled with the first
+name and the surname's initial, editable). The words are cleaned (`cleanReviewText()`: trimmed, control characters out, refused not cut), and a
+press writes through `writeReview()` (at most 20 writes a customer a day, counted in `chat_usage` bucket `review:*`). An edit
+writes the new words and, with `after_check`, sends it back to the queue; a delete is one press with a confirm. The review is written in the
+market's language. A hidden review can be edited (it goes to the queue again) but its reason is not shown to the buyer.
+
+### 9.4 G2: checking
+
+Products → Reviews (`/admin/{store}/reviews`, `products:read`; every change `products:write`, the Products section's, as gift cards'): the queue
+of reviews waiting first, then all by state, searched by product, stars and words; each with its stars, words, product and variant, *Verified
+purchase* or *Imported from …*, the order (linked for staff who may read orders) and buttons *Publish*, *Hide* (a reason from the list,
+required) and *Answer* (shown under the review as the store's answer; editing or removing it is allowed). The settings card chooses
+`after_check` or `at_once`. Audit `review.published`, `review.hidden`, `review.answered`, `review.settings` (area products) with ids only.
+Every change refreshes `reviewsTag(store)`. Hiding is for the reasons listed; the page says *Hiding a review because it is negative is not
+allowed* beside the button (Annex I 23c).
+
+### 9.5 G2: showing
+
+Two product parts (`PRODUCT_PARTS`, feature `reviews` in `PRODUCT_PART_FEATURES`), both drawing nothing while there is no published review:
+
+- **`rating`**: the stars, the average to one decimal and *(12 reviews)*, linking to the reviews below; placed under the title in the default
+  layout.
+- **`reviews`**: the heading, the average, the count and how many gave each number of stars; the newest ten published reviews (stars, title,
+  text, name, date, the variant bought, *Verified purchase* or *Imported from {source}*, the store's answer), *Show more* fetching the next ten
+  from `/api/reviews` (GET, the store's published reviews of one product, keyset, cached briefly), and *How reviews are checked* (a disclosure
+  with the hand-written statement: who can write, that staff check them before they show or may hide them after, the reasons a review is not
+  shown, that no one is rewarded, that imported reviews were written elsewhere). Placed last in the default layout. A review's words are text
+  in its own language (`lang`), never HTML, never translated.
+
+The reads are cached (`'use cache'`, tags `reviews:{store}` and the product's catalogue tag); the product page stays prerendered. The product's
+JSON-LD (`productJsonLd()`) gets `aggregateRating` (`ratingValue` to one decimal, `reviewCount`, `bestRating` 5, `worstRating` 1) and up to five
+newest `review`s (`author` a `Person` by the shown name, `datePublished`, `reviewRating`, `name`, `reviewBody`) only when there is a published
+review, from the same read (`reviewFacts()`). Stars on product cards are not in this unit.
+
+### 9.6 G3: asking and importing
+
+- **The request.** With `requests_on`, the every-minute marketing job (`runReviewRequests()`, beside `runAutomations()`) emails each sold order
+  once (`review_requests`, key `review:{order}`, claimed before sending) when its newest reviewable line was received `request_days` ago, after
+  `requests_enabled_at` and within D298's `CATCH_UP_DAYS`, **only when the order's email is `subscribed`** on the list: asking for a review is
+  treated as marketing (the German Federal Court of Justice, VI ZR 225/17, 2018), so rule 1 holds, with the subscriber's unsubscribe link and
+  headers (`marketingEmail()`'s shape). The email names up to five products and has one button to `/account/review/{token}` (a token per order,
+  kept as a hash, 90 days, `review_invitations`), where the order's reviewable lines are written without signing in (`buyer_key` the customer's
+  when the order has one, else the hash of its email). Kind `review.request` (shopper). Every buyer can still review from My account.
+- **Importing.** Reviews from another service come in as a D165 job (`review_import`, the CSV's `product_handle`, `rating`, `title`, `body`,
+  `author`, `date`, `source`): only for the store's products by handle, each an `import` review published or waiting as the owner chooses,
+  never verified, never more than 10 000 a file, an error per refused row. `review_export` writes the published and waiting ones.
+- **AI manager.** `reviews_overview` (read-only, `products:read`, feature `reviews`): counts by state, the average and count per product (the
+  best and worst ten with at least three reviews), how many wait; never an author's name.
+- **Control center.** *Reviews waiting* beside the store's other waiting things.
+
+### 9.7 G4: pictures
+
+Up to three pictures a review, shrunk in the browser to WebP (1600 px and a 480 px thumbnail, `compressPicture()` without AVIF), sent with the
+review and checked on the server (WebP by its bytes, at most 600 KB and 1600 px), kept in the private bucket `review-pictures` and served by
+`/api/reviews/picture/{id}` only while their review is published (staff see them through the admin); staff may hide one picture alone. Personal
+data (`storage:review-pictures`, deleted with the review).
+
+### 9.8 Tests
+
+PGlite: the rules (fixed columns, words changed only in the author's write, status moves, delete only when marked, one review per line and per
+product and buyer, the line of that order and product). Unit: `cleanReviewText()`, the average and histogram, the JSON-LD (no `aggregateRating`
+without a published review, imports and pending excluded), the checking statement in four languages. Integration (`reviews.int.test.ts`): a
+delivered line can be reviewed and an undelivered one cannot; a download at payment; a booking after it ended, never a no-show; a copied order
+never; another customer's order never; another store's product never; after_check waits and at_once publishes; an edit goes back to the queue;
+staff cannot change the words; the average counts published only; erasure deletes the person's reviews. G3: the request goes once, only to a
+subscribed address, never for a copy; the token page writes for its order only. e2e: a buyer writes a review and staff publish it, and the
+product page shows it.
+
+## 10. Units H to J, outlined
+
 - **H, feeds (D302).** One normalised feed per store and market (title, description, price as shown with VAT, availability, GTIN/brand from custom
   fields, pictures, unit price), written as Google Merchant Center XML and the Meta, TikTok and Pinterest CSVs at a private, token-addressed URL.
 - **I, pixels and attribution (D303).** Meta, Google, TikTok and Pinterest pixels as tracking tools (D58: only after `marketing` consent, from
