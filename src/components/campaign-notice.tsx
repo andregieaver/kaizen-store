@@ -43,7 +43,7 @@ export function CampaignBadge({ notices, m }: { notices: CampaignNotice[]; m: Me
     <span className="pointer-events-none absolute top-2 left-2 z-10 flex flex-col items-start gap-1">
       {shown.map((notice) => (
         <CampaignEnds key={notice.id} endsAt={notice.endsAt}>
-          <span className="rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">{noticeText(notice, m, money)}</span>
+          <span className="rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">{noticeText(notice, m, money, { card: true })}</span>
         </CampaignEnds>
       ))}
     </span>

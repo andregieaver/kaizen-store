@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -47,6 +47,15 @@ function toCampaign(row: Row): Campaign {
     giftVariantId: row.gift_variant_id ? String(row.gift_variant_id) : null,
     giftQuantity: Number(row.gift_quantity),
     thresholds: (row.thresholds ?? {}) as Record<string, number>,
+    amounts: (row.amounts ?? {}) as Record<string, number>,
+    tierBasis: row.tier_basis === "quantity" || row.tier_basis === "spend" ? row.tier_basis : null,
+    tiers: Array.isArray(row.tiers)
+      ? (row.tiers as Record<string, unknown>[]).map((tier) => ({
+          quantity: tier.quantity === null || tier.quantity === undefined ? null : Number(tier.quantity),
+          amounts: (tier.amounts ?? {}) as Record<string, number>,
+          percent: Number(tier.percent),
+        }))
+      : [],
     productIds: ids(row.product_ids),
     termIds: ids(row.term_ids),
     tierIds: ids(row.tier_ids),
@@ -67,7 +76,19 @@ export type CampaignListRow = Campaign & {
 };
 
 /** Whether an order line got something from the campaign with this id (an SQL expression), through its parts (D115). */
-const partOf = (id: string) => sql.raw(`ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', ${id}::text))`);
+const partText = (id: string) => `ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', ${id}::text))`;
+
+/**
+ * How many orders (alias `o`) the campaign with this id (an SQL expression) gave something: on a line, or the order's free shipping
+ * (D299 E3). Not cancelled, not copied (D129); `extra` narrows them.
+ */
+const ordersOf = (id: string, extra: SQL = sql`true`) => sql`(
+  select count(*)::int from commerce.orders o
+  where o.store_id = c.store_id and o.status <> 'cancelled' and o.copied_from is null and ${extra}
+    and (o.campaign_shipping ->> 'id' = ${sql.raw(id)}::text or exists (
+      select 1 from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and ${sql.raw(partText(id))}
+    ))
+)`;
 
 export async function listCampaigns(storeId: string): Promise<CampaignListRow[]> {
   const rows = await db().execute<Row>(sql`
@@ -76,16 +97,21 @@ export async function listCampaigns(storeId: string): Promise<CampaignListRow[]>
          from commerce.product_variants v
          join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
          where v.store_id = c.store_id and v.id = c.gift_variant_id) as gift_title,
-      (select count(distinct ol.order_id)::int from commerce.order_lines ol
-         join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-         where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null) as orders,
+      ${ordersOf("c.id")} as orders,
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
-         select o.currency, sum((part ->> 'minor')::bigint)::bigint as total
-         from commerce.order_lines ol
-         join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-         cross join lateral jsonb_array_elements(ol.campaign_parts) part
-         where ol.store_id = c.store_id and part ->> 'id' = c.id::text and o.copied_from is null and o.status not in ('cancelled', 'pending_payment')
-         group by o.currency) g) as given
+         select currency, sum(minor)::bigint as total from (
+           select o.currency, (part ->> 'minor')::bigint as minor
+           from commerce.order_lines ol
+           join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
+           cross join lateral jsonb_array_elements(ol.campaign_parts) part
+           where ol.store_id = c.store_id and part ->> 'id' = c.id::text and o.copied_from is null and o.status not in ('cancelled', 'pending_payment')
+           union all
+           -- The free shipping it gave (D299 E3).
+           select o.currency, (o.campaign_shipping ->> 'minor')::bigint
+           from commerce.orders o
+           where o.store_id = c.store_id and o.campaign_shipping ->> 'id' = c.id::text and o.copied_from is null and o.status not in ('cancelled', 'pending_payment')
+         ) parts
+         group by currency) g) as given
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid
     order by c.active desc, c.created_at desc
@@ -118,17 +144,49 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
   // A country the store keeps but does not offer now (Several countries off, D178) is not in the editor: what the campaign says of it is kept.
   const hidden = (code: string) => !store.markets.some((m) => m.code === code) && store.keptMarkets.some((m) => m.code === code);
 
-  const thresholds: Record<string, number> = {};
-  if (c.kind === "gift") {
-    for (const [code, minor] of Object.entries(existing?.thresholds ?? {})) if (hidden(code)) thresholds[code] = minor;
+  /** Amounts typed per country in its currency, keeping what a hidden country had; `what` names them in a problem. */
+  const perMarket = (typed: Record<string, string>, kept: Record<string, number> | undefined, what: string): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [code, minor] of Object.entries(kept ?? {})) if (hidden(code)) out[code] = minor;
     for (const market of store.markets) {
-      const text = c.thresholds[market.code] ?? "";
+      const text = typed[market.code] ?? "";
       if (!text) continue;
       const minor = parsePrice(text, market.currency);
-      if (minor === null || minor <= 0) problems.push(`The amount for ${market.name} is not a valid amount.`);
-      else thresholds[market.code] = minor;
+      if (minor === null || minor <= 0) problems.push(`${what} for ${market.name} is not a valid amount.`);
+      else out[market.code] = minor;
     }
-    if (!store.markets.some((m) => thresholds[m.code] !== undefined) && problems.length === 0) problems.push("Say what the basket must come to, in at least one country's currency.");
+    return out;
+  };
+  const someMarket = (values: Record<string, number>) => store.markets.some((m) => values[m.code] !== undefined);
+  // A gift needs its amount; an amount off and free shipping may have one (D299 E3).
+  const thresholds = c.kind === "gift" || c.kind === "amount" || c.kind === "free_shipping" ? perMarket(c.thresholds, existing?.thresholds, "The amount") : {};
+  if (c.kind === "gift" && !someMarket(thresholds) && problems.length === 0) problems.push("Say what the basket must come to, in at least one country's currency.");
+  const amounts = c.kind === "amount" ? perMarket(c.amounts, existing?.amounts, "The amount off") : {};
+  if (c.kind === "amount" && !someMarket(amounts) && problems.length === 0) problems.push("Say how much is taken off, in at least one country's currency.");
+  // A tiered campaign's steps: each asking for more than the one before and giving more (D299 E3).
+  const tiers: Campaign["tiers"] =
+    c.kind === "tiered"
+      ? c.tiers.map((tier, i) => ({
+          quantity: c.tierBasis === "quantity" ? tier.quantity : null,
+          amounts: c.tierBasis === "spend" ? perMarket(tier.amounts, existing?.tierBasis === "spend" ? existing.tiers[i]?.amounts : undefined, `Step ${i + 1}'s amount`) : {},
+          percent: tier.percent,
+        }))
+      : [];
+  if (c.kind === "tiered" && problems.length === 0) {
+    for (let i = 1; i < tiers.length; i++) {
+      const before = tiers[i - 1];
+      const now = tiers[i];
+      if (now.percent <= before.percent) problems.push(`Step ${i + 1} must give more than step ${i}.`);
+      if (c.tierBasis === "quantity" && (now.quantity ?? 0) <= (before.quantity ?? 0)) problems.push(`Step ${i + 1} must ask for more items than step ${i}.`);
+      if (c.tierBasis === "spend") {
+        for (const market of store.markets) {
+          const a = before.amounts[market.code];
+          const b = now.amounts[market.code];
+          if (a !== undefined && b !== undefined && b <= a) problems.push(`Step ${i + 1} must ask for more than step ${i} in ${market.name}.`);
+        }
+      }
+    }
+    if (c.tierBasis === "spend" && !tiers.some((tier) => someMarket(tier.amounts))) problems.push("Say what each step asks the basket to come to, in at least one country's currency.");
   }
   const startsAt = osloTime(c.startsAt);
   const endsAt = osloTime(c.endsAt);
@@ -182,18 +240,22 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     gift: c.kind === "gift" ? c.giftVariantId : null,
     giftQuantity: c.kind === "gift" ? c.giftQuantity : 1,
     thresholds: JSON.stringify(thresholds),
+    amounts: JSON.stringify(amounts),
+    tierBasis: c.kind === "tiered" ? c.tierBasis : null,
+    tiers: JSON.stringify(tiers),
     productIds: JSON.stringify(productIds),
     termIds: JSON.stringify(termIds),
     tierIds: JSON.stringify(tierIds),
     // Every country the store keeps is everywhere: an empty list. A list of the countries offered while others are kept stays a list (D178).
     markets: JSON.stringify(store.keptMarkets.every((m) => markets.includes(m.code)) ? [] : markets),
-    stacks: c.kind !== "gift" && c.stacks,
+    stacks: (c.kind === "percent" || c.kind === "multi_buy" || c.kind === "tiered") && c.stacks,
   };
   const [row] = id
     ? await db().execute<Row>(sql`
         update commerce.campaigns set
           name = ${c.name}, kind = ${c.kind}, percent = ${values.percent}, buy_quantity = ${values.buy}, pay_quantity = ${values.pay},
           gift_variant_id = ${values.gift}::uuid, gift_quantity = ${values.giftQuantity}, thresholds = ${values.thresholds}::jsonb,
+          amounts = ${values.amounts}::jsonb, tier_basis = ${values.tierBasis}, tiers = ${values.tiers}::jsonb,
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
           tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, per_customer_limit = ${c.perCustomerLimit},
           markets = ${values.markets}::jsonb, stacks = ${values.stacks},
@@ -203,11 +265,11 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
       `)
     : await db().execute<Row>(sql`
         insert into commerce.campaigns (
-          store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds,
+          store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds, amounts, tier_basis, tiers,
           product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, starts_at, ends_at, active
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
-          ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
+          ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.amounts}::jsonb, ${values.tierBasis}, ${values.tiers}::jsonb, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
           ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
         )
         returning id
@@ -262,16 +324,8 @@ export async function runningCampaigns(
     `);
   }
   const rows = await runner.execute<Row>(sql`
-    select c.*, case when c.usage_limit is null then 0 else (
-      select count(distinct ol.order_id)::int from commerce.order_lines ol
-      join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null
-    ) end as used,
-    case when c.per_customer_limit is null or ${customerId}::uuid is null then 0 else (
-      select count(distinct ol.order_id)::int from commerce.order_lines ol
-      join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null and o.customer_id = ${customerId}::uuid
-    ) end as used_by_customer
+    select c.*, case when c.usage_limit is null then 0 else ${ordersOf("c.id")} end as used,
+    case when c.per_customer_limit is null or ${customerId}::uuid is null then 0 else ${ordersOf("c.id", sql`o.customer_id = ${customerId}::uuid`)} end as used_by_customer
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid and c.active
   `);
@@ -285,10 +339,13 @@ export async function runningCampaigns(
       if (campaign.tierIds.length > 0 && !campaign.tierIds.some((id) => tiers.includes(id))) return false;
       return campaign.usageLimit === null || Number(row.used) < campaign.usageLimit;
     })
-    .map((row) => {
-      const c = toCampaign(row);
-      return { ...c, thresholds: c.thresholds[market.code] === undefined ? c.thresholds : { ...c.thresholds, [market.code]: shown(market, c.thresholds[market.code]) } };
-    });
+    .map((row) => shownIn(toCampaign(row), market));
+}
+
+/** A campaign's amounts for this market in the currency shown (D109): its threshold, an amount off and a tier's spend (D299 E3). */
+export function shownIn(c: Campaign, market: Market): Campaign {
+  const one = (values: Record<string, number>) => (values[market.code] === undefined ? values : { ...values, [market.code]: shown(market, values[market.code]) });
+  return { ...c, thresholds: one(c.thresholds), amounts: one(c.amounts), tiers: c.tiers.map((tier) => ({ ...tier, amounts: one(tier.amounts) })) };
 }
 
 /** Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers". */
@@ -331,7 +388,7 @@ export type GiftItem = {
 
 export type CampaignOutcome = { result: CampaignResult; gifts: GiftItem[] };
 
-const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0 }, gifts: [] };
+const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0, freeShipping: null, next: [] }, gifts: [] };
 
 /**
  * What the running campaigns do to a basket: the reductions per line, and

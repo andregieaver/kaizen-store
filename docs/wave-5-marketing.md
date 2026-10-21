@@ -476,9 +476,67 @@ shipping beside a product code). PGlite: the new checks (`combines_with` classes
 codes that combine places an order with both rows and the joined text; two that cannot keep the better one in the cart and the order alike; a
 code's uses count its second place; `checkout-kinds.int.test.ts` holds two codes in NOK and in euro.
 
-### 7.3 E3 and E4
+### 7.3 E3: campaigns in depth
 
-Each is written here in full before it is built.
+Three more kinds of campaign (D114), worked out by the same `applyCampaigns()` in the cart and in `placeOrder()`:
+
+| Kind | What it gives | New columns |
+|---|---|---|
+| `amount` | An amount off the lines it reaches, per country in the country's own currency (`amounts`), optionally only once those lines come to an amount (`thresholds`) | `amounts` |
+| `free_shipping` | No shipping on the order, optionally only once the lines it reaches come to an amount (`thresholds`) | none |
+| `tiered` | A percentage off the lines it reaches, the higher the more is bought: by number of items (`tier_basis = 'quantity'`) or by what they come to (`'spend'`, an amount per country); the highest step reached applies | `tier_basis`, `tiers` |
+
+`tiers` is two to five steps, each `{ "quantity": n, "percent": p }` or `{ "amounts": { "NO": minor, … }, "percent": p }`, each step asking for
+more than the one before and giving more (the database checks the shape and the count; the server the order and the currencies). A step without
+an amount for a country is not offered there. `thresholds` stays per country: required for a gift (as today), optional for an amount and free
+shipping (no amount for a country: no minimum there). Amounts are converted to the currency shown with `shown()`, as thresholds are.
+
+**The arithmetic** (`src/lib/campaigns.ts`, pure):
+
+- An **amount** competes with the percentages and the "3 for 2" for the lines still free, as they compete with each other (the one taking most
+  off wins a line; ties to the older campaign). It takes `min(amount, what the lines come to)`, split over the lines it reaches by what each
+  costs (largest remainder, the earlier line first on a tie), never more than a line costs. It counts only when the lines it reaches, of those
+  still free, come to its threshold. It does not stack (a check).
+- A **tiered** campaign counts the units (or what they come to, before any reduction) of the lines it reaches that are still free, takes the
+  highest step they reach, and is then a percentage off those lines (`percentOff()`). It may stack like a percentage: it then counts the lines it
+  reaches before any reduction, and takes its percentage off what is left of each.
+- **Free shipping** is decided after the price campaigns and the gifts: of the running ones, the oldest whose reached lines, after the
+  reductions, come to its threshold makes the order's first shipping free (whatever the delivery: the flat rate, a method, a carrier's service,
+  pickup costs nothing anyway). Never on a basket with a subscription (a renewal pays its shipping, D25), and only when the basket ships. It
+  comes before codes (D31), so a free-shipping code beside it has nothing to take (`not_applicable`, as over the flat rate's free limit today).
+- **How far the next step is** (`nextSteps()`): for each tiered campaign below its last step, the units or the amount still missing for
+  the next step and its percentage; for an amount or free shipping with a threshold not yet reached, the amount missing; only where the basket
+  has lines the campaign reaches and no other campaign holds them, so adding to them would give it (free shipping: the nearest one only).
+
+**The order.** An amount and a tiered campaign are on the lines as every campaign is (`campaign_discount_minor`, `campaign_parts`). Free shipping is
+the order's: its amount is part of `orders.discount_minor` and `campaign_discount_minor` (so the invoice's campaign row and the shipping's VAT
+follow, as a free-shipping code's does), and the campaign is `orders.campaign_shipping` (`{ id, name, minor }`, null without). A campaign's uses,
+its orders and what it gave count `campaign_shipping` beside the lines' parts. The discounts analytics count campaigns from the lines as today
+(the shipping's discount is in neither a code's nor a campaign's line figure, as before).
+
+**What shoppers see.** The product page's notice says each: *NOK 100 off*, *NOK 100 off when you spend NOK 500*, *Free shipping*, *Free
+shipping when you spend NOK 500*, and a tiered campaign its ladder (*10 % off when you buy 2 · 15 % off when you buy 4*, or *… when you spend
+NOK 500*). A card carries the price offers that need no amount (a tiered campaign as *Up to 15 % off*), never an amount off or free shipping. The cart
+says how far the next step is: *Buy 2 more to get 15 % off*, *Spend NOK 120 more to get 15 % off*, *Spend NOK 120 more to get NOK 100 off*,
+*Spend NOK 120 more for free shipping* (with the campaign's name), and shows free shipping as the shipping's row. Words in `m.campaigns`, nb, sv,
+da and en by hand. The chat agent's offers say the same through `noticeText()`.
+
+**The editor.** Three more choices on *What it gives*: *An amount off*, *Free shipping*, *Bigger discounts for buying more* (steps added and
+removed, by number of items or by amount per country). The list says what each gives (`describeCampaign()`).
+
+**Copying.** `duplicate_store()` carries `amounts`, `tier_basis` and `tiers` (patched in place). `orders.campaign_shipping` is history like the rest
+of the order.
+
+**Tests.** Unit: an amount split and capped; an amount's threshold; an amount competing with a percentage; tiers by quantity and by spend, the
+highest step; a stacking tiered campaign; free shipping with and without a threshold, after reductions; `nextSteps()` for each; the notices'
+words. PGlite: the new kinds' checks (`amounts` only on `amount`, `tiers` only on `tiered` with two to five steps, no stacking amount or free
+shipping). Integration: a free-shipping campaign gives an order with no shipping to pay, its `campaign_shipping` and a use counted; a tiered
+campaign's limit counts its orders; `checkout-kinds.int.test.ts` holds the cart and the order together for an amount, a tiered campaign and free
+shipping, in NOK and in euro.
+
+### 7.4 E4
+
+Written here in full before it is built.
 
 ## 8. Units F to J, outlined
 

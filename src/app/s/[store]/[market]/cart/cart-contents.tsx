@@ -13,6 +13,7 @@ import { deliveryRowLabel, priceLaterFrom } from "@/lib/delivery-words";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
+import { nextStepText } from "@/lib/campaign-notices";
 import { campaignLabel } from "@/lib/campaigns";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -501,7 +502,7 @@ function summaryList({ store, market, m, view }: Draw) {
                   minor: lineDiscount(i),
                   rate: line.vatRate,
                 })),
-                { minor: applied?.shippingMinor ?? 0, rate: tax.shippingRate },
+                { minor: (applied?.shippingMinor ?? 0) + summary.campaignShippingMinor, rate: tax.shippingRate },
               ])}
             </dd>
           </div>
@@ -565,6 +566,16 @@ function summaryList({ store, market, m, view }: Draw) {
           </>
         )}
       </dl>
+      {summary.campaignNext.length > 0 && (
+        // How far a campaign's next step is (D299 E3), worked out on the same lines checkout counts.
+        <ul className="flex flex-col gap-1 text-sm" data-campaign-next>
+          {summary.campaignNext.map((step) => (
+            <li key={`${step.campaignId}:${step.kind}`} className="rounded-lg bg-accent px-3 py-2 text-accent-foreground">
+              {nextStepText(step, m, money)} <span className="opacity-80">({step.name})</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {from !== null && <p className="text-sm">{m.deliveryOptions.priceInfo.atCheckout}</p>}
       {((!business && !tax.reverseCharge) || shipping === null) && (
         <p className="text-sm text-muted">

@@ -91,7 +91,10 @@ export async function cartSummary(
     { ships, customerId },
   );
   const campaignOff = payable.map((_, i) => campaigns.result.lineOff[String(i)] ?? 0);
-  const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0);
+  // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, never with a subscription.
+  const freeShipping = campaigns.result.freeShipping && ships && !plan && (shipping ?? 0) > 0 ? campaigns.result.freeShipping : null;
+  const campaignShippingMinor = freeShipping ? (shipping ?? 0) : 0;
+  const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0) + campaignShippingMinor;
   const memberOff = payable.map((line, i) =>
     member && !line.plan && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
   );
@@ -123,7 +126,7 @@ export async function cartSummary(
         todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
         recurring: line.plan !== null,
       })),
-      shippingMinor: shipping ?? 0,
+      shippingMinor: (shipping ?? 0) - campaignShippingMinor,
     },
   );
   const applied = code?.applied ?? null;
@@ -180,7 +183,7 @@ export async function cartSummary(
       recurring: line.plan !== null,
       host: line.hostId !== null,
     })),
-    shippingMinor: (shipping ?? 0) - (applied?.shippingMinor ?? 0),
+    shippingMinor: (shipping ?? 0) - (applied?.shippingMinor ?? 0) - campaignShippingMinor,
     fees: fees.map((fee) => ({ amountMinor: fee.amount, rate: fee.rate })),
     currency: market.currency,
   };
@@ -228,7 +231,11 @@ export async function cartSummary(
     codeDiscountMinor,
     /** What campaigns give (D114): the names of those that reduced something, the amount, and the free products earned. */
     campaignDiscountMinor,
-    campaignNames: campaigns.result.applied.map((a) => a.name),
+    campaignNames: [...campaigns.result.applied.map((a) => a.name), ...(freeShipping ? [freeShipping.name] : [])],
+    /** The shipping a campaign made free (D299 E3), in the currency shown: part of `campaignDiscountMinor`, taken at the shipping's rate. */
+    campaignShippingMinor,
+    /** How far each campaign's next step is (D299 E3); free shipping only for a basket that ships and has no subscription. */
+    campaignNext: campaigns.result.next.filter((step) => step.kind !== "free_shipping" || (ships && !plan)),
     campaignLine,
     gifts: campaigns.gifts,
     renewal,

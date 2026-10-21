@@ -1,0 +1,11 @@
+ALTER TABLE "commerce"."campaigns" DROP CONSTRAINT "campaigns_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" DROP CONSTRAINT "campaigns_stacks";--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD COLUMN "amounts" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD COLUMN "tier_basis" text;--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD COLUMN "tiers" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."orders" ADD COLUMN "campaign_shipping" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD CONSTRAINT "campaigns_amounts" CHECK (jsonb_typeof("commerce"."campaigns"."amounts") = 'object' and ("commerce"."campaigns"."kind" = 'amount' or "commerce"."campaigns"."amounts" = '{}'::jsonb));--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD CONSTRAINT "campaigns_tiers" CHECK (jsonb_typeof("commerce"."campaigns"."tiers") = 'array' and (("commerce"."campaigns"."kind" = 'tiered' and "commerce"."campaigns"."tier_basis" in ('quantity', 'spend') and jsonb_array_length("commerce"."campaigns"."tiers") between 2 and 5) or ("commerce"."campaigns"."kind" <> 'tiered' and "commerce"."campaigns"."tier_basis" is null and "commerce"."campaigns"."tiers" = '[]'::jsonb)));--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD CONSTRAINT "campaigns_kind" CHECK ("commerce"."campaigns"."kind" in ('percent', 'multi_buy', 'gift', 'amount', 'free_shipping', 'tiered'));--> statement-breakpoint
+ALTER TABLE "commerce"."campaigns" ADD CONSTRAINT "campaigns_stacks" CHECK (not "commerce"."campaigns"."stacks" or "commerce"."campaigns"."kind" in ('percent', 'multi_buy', 'tiered'));--> statement-breakpoint
+ALTER TABLE "commerce"."orders" ADD CONSTRAINT "orders_campaign_shipping" CHECK ("commerce"."orders"."campaign_shipping" is null or (jsonb_typeof("commerce"."orders"."campaign_shipping") = 'object' and ("commerce"."orders"."campaign_shipping" ->> 'minor')::bigint between 0 and "commerce"."orders"."campaign_discount_minor"));

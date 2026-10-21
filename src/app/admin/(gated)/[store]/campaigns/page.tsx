@@ -23,7 +23,14 @@ const STATUS = {
 
 const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight", ended: "neutral" } as const;
 
-const KIND_WORD = { percent: "Percentage off", multi_buy: "Buy more, pay for fewer", gift: "Free product" } as const;
+const KIND_WORD = {
+  percent: "Percentage off",
+  multi_buy: "Buy more, pay for fewer",
+  gift: "Free product",
+  amount: "Amount off",
+  free_shipping: "Free shipping",
+  tiered: "Buy more, save more",
+} as const;
 
 /** The store's campaigns (D114): offers without a code, for a time, and what each has given. */
 export default async function CampaignsPage({ params }: PageProps<"/admin/[store]/campaigns">) {
@@ -44,7 +51,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader
           title="Campaigns"
-          description={<>Offers that need no code: a percentage off, buy more and pay for fewer (3 for 2), or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.</>}
+          description={<>Offers that need no code: a percentage or an amount off, buy more and pay for fewer (3 for 2), bigger discounts for buying more, free shipping, or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.</>}
         />
         <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           New campaign
@@ -78,7 +85,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                         {c.kind === "gift" && c.giftTitle && ` (${c.giftQuantity > 1 ? `${c.giftQuantity} × ` : ""}${c.giftTitle})`}
                         {" · "}
                         {reach === 0
-                          ? c.kind === "gift"
+                          ? c.kind === "gift" || c.kind === "free_shipping"
                             ? "Counts everything"
                             : "Everything"
                           : [

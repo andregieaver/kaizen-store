@@ -282,7 +282,7 @@ export const ORDER_EDIT_PROBLEMS = {
   nothing_left: "Every item would be taken off. Cancel the order instead.",
   total_zero: "The order's total would be 0.",
   shipping_invalid: "The shipping price is not valid.",
-  shipping_discounted: "The order's shipping was discounted (a code), so a new shipping price cannot be set: keep the shipping.",
+  shipping_discounted: "The order's shipping was discounted (a code or a campaign), so a new shipping price cannot be set: keep the shipping.",
   vat_changed: "The change would alter how VAT is charged on this order (for example IOSS), so it cannot be made.",
   swap_needs_request: "Adding products without the customer paying for them is a swap: choose The customer asked as the reason.",
   // Found by the server

@@ -3,7 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { CAMPAIGN_NAME_MAX, GIFT_QUANTITY_MAX, MULTI_BUY_MAX, type CampaignInput, type CampaignKind } from "@/lib/campaigns";
+import {
+  CAMPAIGN_NAME_MAX,
+  GIFT_QUANTITY_MAX,
+  MULTI_BUY_MAX,
+  TIER_QUANTITY_MAX,
+  TIERS_MAX,
+  TIERS_MIN,
+  type CampaignInput,
+  type CampaignKind,
+  type TierBasis,
+} from "@/lib/campaigns";
 
 type Save = (input: CampaignInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type Market = { code: string; name: string; currency: string };
@@ -17,6 +27,11 @@ export type CampaignDraft = {
   giftVariantId: string;
   giftQuantity: string;
   thresholds: Record<string, string>;
+  /** An amount campaign's amounts off, typed per market (D299 E3). */
+  amounts: Record<string, string>;
+  /** A tiered campaign's basis and steps, typed. */
+  tierBasis: TierBasis;
+  tiers: { quantity: string; amounts: Record<string, string>; percent: string }[];
   scope: "all" | "some";
   productIds: string[];
   termIds: string[];
@@ -40,8 +55,14 @@ const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 const KINDS: { value: CampaignKind; title: string; text: string }[] = [
   { value: "percent", title: "A percentage off", text: "For example 20 % off the chosen products, without a code." },
   { value: "multi_buy", title: "Buy more, pay for fewer", text: "3 for 2: the cheapest of every three is free." },
+  { value: "amount", title: "An amount off", text: "For example NOK 100 off, optionally when the basket comes to NOK 500." },
+  { value: "tiered", title: "Bigger discounts for buying more", text: "For example 10 % off 2 items and 15 % off 4, or by what the basket comes to." },
+  { value: "free_shipping", title: "Free shipping", text: "No shipping to pay, optionally when the basket comes to an amount." },
   { value: "gift", title: "A free product", text: "Added to the order, free, when the basket comes to an amount." },
 ];
+
+/** Kinds that can also come on top of other campaigns. */
+const STACKING: readonly CampaignKind[] = ["percent", "multi_buy", "tiered"];
 
 /**
  * A store's campaign (D114): what it gives, on what, and when. Saved as a
@@ -89,6 +110,9 @@ export function CampaignEditor({
         giftVariantId: d.giftVariantId || null,
         giftQuantity: d.giftQuantity,
         thresholds: d.thresholds,
+        amounts: d.amounts,
+        tierBasis: d.tierBasis,
+        tiers: d.tiers,
         scope: d.scope,
         productIds: d.productIds,
         termIds: d.termIds,
@@ -96,7 +120,7 @@ export function CampaignEditor({
         usageLimit: d.usageLimit || null,
         perCustomerLimit: d.perCustomerLimit || null,
         markets: d.markets,
-        stacks: d.kind !== "gift" && d.stacks,
+        stacks: STACKING.includes(d.kind) && d.stacks,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
         active: d.active,
@@ -117,7 +141,26 @@ export function CampaignEditor({
     const parent = term.parentId ? terms.find((t) => t.id === term.parentId) : null;
     return parent ? `${path(parent)} › ${term.name}` : term.name;
   };
-  const scopeWord = d.kind === "gift" ? "What counts towards the amount" : "What it applies to";
+  const scopeWord = d.kind === "gift" || d.kind === "free_shipping" ? "What counts towards the amount" : "What it applies to";
+  /** Fields for an amount in each country's currency. */
+  const perMarket = (values: Record<string, string>, change: (next: Record<string, string>) => void, placeholder: string, prefix: string) => (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {markets.map((market) => (
+        <label key={market.code} className={label}>
+          {market.name} ({market.currency})
+          <input
+            value={values[market.code] ?? ""}
+            onChange={(event) => change({ ...values, [market.code]: event.target.value })}
+            inputMode="decimal"
+            placeholder={placeholder}
+            aria-label={`${prefix}, ${market.name}`}
+            className={input}
+          />
+        </label>
+      ))}
+    </div>
+  );
+  const setTier = (i: number, patch: Partial<CampaignDraft["tiers"][number]>) => set("tiers", d.tiers.map((tier, j) => (j === i ? { ...tier, ...patch } : tier)));
 
   return (
     <form
@@ -176,7 +219,78 @@ export function CampaignEditor({
             <input type="number" min={1} max={100} value={d.percent} onChange={(event) => set("percent", event.target.value)} required inputMode="numeric" className={input} />
           </label>
         )}
-        {d.kind !== "gift" && (
+        {d.kind === "amount" && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">Amount off, in each country&apos;s currency</p>
+            {perMarket(d.amounts, (next) => set("amounts", next), "Not offered", "Amount off")}
+            <p className={hint}>Shared over the products it applies to by what each costs, never more than they cost. Leave a country empty and the campaign does not run there.</p>
+          </div>
+        )}
+        {(d.kind === "amount" || d.kind === "free_shipping") && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">When the basket comes to (optional)</p>
+            {perMarket(d.thresholds, (next) => set("thresholds", next), "Any basket", "When the basket comes to")}
+            <p className={hint}>
+              What the products it applies to come to, with VAT{d.kind === "free_shipping" ? ", after any campaign price reductions" : ""}. Empty: any basket. The cart tells shoppers how much more they need.
+            </p>
+          </div>
+        )}
+        {d.kind === "free_shipping" && (
+          <p className={hint}>The order&apos;s whole shipping is free, whichever delivery the shopper chooses. Not for subscriptions, which pay shipping on each delivery.</p>
+        )}
+        {d.kind === "tiered" && (
+          <div className="flex flex-col gap-3">
+            <fieldset className="flex flex-wrap gap-4">
+              <legend className="mb-1 text-sm font-medium">Each step counts</legend>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="tierBasis" checked={d.tierBasis === "quantity"} onChange={() => set("tierBasis", "quantity")} className="size-4" />
+                Items bought
+              </label>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="tierBasis" checked={d.tierBasis === "spend"} onChange={() => set("tierBasis", "spend")} className="size-4" />
+                What the basket comes to
+              </label>
+            </fieldset>
+            <ol className="flex flex-col gap-3">
+              {d.tiers.map((tier, i) => (
+                <li key={i} className="flex flex-col gap-2 rounded-md border border-line p-3">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <span className="text-sm font-medium">Step {i + 1}</span>
+                    {d.tierBasis === "quantity" && (
+                      <label className={`${label} w-32`}>
+                        From items
+                        <input type="number" min={1} max={TIER_QUANTITY_MAX} value={tier.quantity} onChange={(event) => setTier(i, { quantity: event.target.value })} required inputMode="numeric" className={input} />
+                      </label>
+                    )}
+                    <label className={`${label} w-32`}>
+                      Percent off
+                      <input type="number" min={1} max={100} value={tier.percent} onChange={(event) => setTier(i, { percent: event.target.value })} required inputMode="numeric" className={input} />
+                    </label>
+                    {d.tiers.length > TIERS_MIN && (
+                      <button type="button" onClick={() => set("tiers", d.tiers.filter((_, j) => j !== i))} className="min-h-10 rounded-pill px-3 text-sm underline">
+                        Remove step {i + 1}
+                      </button>
+                    )}
+                  </div>
+                  {d.tierBasis === "spend" && perMarket(tier.amounts, (next) => setTier(i, { amounts: next }), "Not offered", `Step ${i + 1} from`)}
+                </li>
+              ))}
+            </ol>
+            {d.tiers.length < TIERS_MAX && (
+              <button
+                type="button"
+                onClick={() => set("tiers", [...d.tiers, { quantity: "", amounts: {}, percent: "" }])}
+                className="self-start rounded-pill border border-line px-4 py-2 text-sm"
+              >
+                Add a step
+              </button>
+            )}
+            <p className={hint}>
+              The highest step the shopper reaches applies, to every product it applies to. Each step asks for more and gives more than the one before. The product page shows the steps, and the cart how far the next one is.
+            </p>
+          </div>
+        )}
+        {STACKING.includes(d.kind) && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={d.stacks} onChange={(event) => set("stacks", event.target.checked)} className="mt-0.5 size-4" />
             <span>
@@ -296,7 +410,7 @@ export function CampaignEditor({
             </fieldset>
           </div>
         )}
-        {d.kind !== "gift" && (
+        {d.kind !== "gift" && d.kind !== "free_shipping" && (
           <p className={hint}>
             Campaigns take money off goods bought once: not appointments, stays, rentals or subscriptions. Where two campaigns apply to the same products, the one that gives the shopper more is used. The buyer&apos;s customer group discount and any discount code come off what is left.
           </p>

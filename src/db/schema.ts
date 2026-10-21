@@ -2757,6 +2757,12 @@ export const campaigns = commerce.table(
     giftVariantId: uuid("gift_variant_id"),
     giftQuantity: integer("gift_quantity").notNull().default(1),
     thresholds: jsonb("thresholds").notNull().default({}),
+    /** What an `amount` campaign takes off, per market in the country's own currency (D299 E3). */
+    amounts: jsonb("amounts").notNull().default({}),
+    /** What a `tiered` campaign's steps count: units (`quantity`) or what the lines come to (`spend`). */
+    tierBasis: text("tier_basis"),
+    /** A `tiered` campaign's steps: `[{ quantity, percent }]` or `[{ amounts: { market: minor }, percent }]`, two to five. */
+    tiers: jsonb("tiers").notNull().default([]),
     productIds: jsonb("product_ids").notNull().default([]),
     termIds: jsonb("term_ids").notNull().default([]),
     /** Only customers in one of these customer groups (D108), their company's included; none for everyone. */
@@ -2780,7 +2786,12 @@ export const campaigns = commerce.table(
     variantRef("campaigns_gift_variant_fk", { storeId: t.storeId, variantId: t.giftVariantId }),
     index("campaigns_store_idx").on(t.storeId, t.active),
     index("campaigns_gift_variant_idx").on(t.storeId, t.giftVariantId),
-    check("campaigns_kind", sql`${t.kind} in ('percent', 'multi_buy', 'gift')`),
+    check("campaigns_kind", sql`${t.kind} in ('percent', 'multi_buy', 'gift', 'amount', 'free_shipping', 'tiered')`),
+    check("campaigns_amounts", sql`jsonb_typeof(${t.amounts}) = 'object' and (${t.kind} = 'amount' or ${t.amounts} = '{}'::jsonb)`),
+    check(
+      "campaigns_tiers",
+      sql`jsonb_typeof(${t.tiers}) = 'array' and ((${t.kind} = 'tiered' and ${t.tierBasis} in ('quantity', 'spend') and jsonb_array_length(${t.tiers}) between 2 and 5) or (${t.kind} <> 'tiered' and ${t.tierBasis} is null and ${t.tiers} = '[]'::jsonb))`,
+    ),
     check("campaigns_percent", sql`(${t.kind} = 'percent' and ${t.percent} between 1 and 100) or (${t.kind} <> 'percent' and ${t.percent} = 0)`),
     check(
       "campaigns_multi_buy",
@@ -2789,7 +2800,7 @@ export const campaigns = commerce.table(
     check("campaigns_gift", sql`(${t.kind} = 'gift' and ${t.giftVariantId} is not null and ${t.giftQuantity} between 1 and 5) or (${t.kind} <> 'gift' and ${t.giftVariantId} is null)`),
     check("campaigns_usage_limit", sql`${t.usageLimit} is null or ${t.usageLimit} > 0`),
     check("campaigns_per_customer_limit", sql`${t.perCustomerLimit} is null or ${t.perCustomerLimit} > 0`),
-    check("campaigns_stacks", sql`not ${t.stacks} or ${t.kind} in ('percent', 'multi_buy')`),
+    check("campaigns_stacks", sql`not ${t.stacks} or ${t.kind} in ('percent', 'multi_buy', 'tiered')`),
     check("campaigns_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
   ],
 );
@@ -3396,6 +3407,8 @@ export const orders = commerce.table(
     /** The part of the discount that campaigns gave (D114), and their names as sold; the rest is the code's and the group's. */
     campaignDiscountMinor: money("campaign_discount_minor").default(0),
     campaignLabel: text("campaign_label"),
+    /** The campaign that made the order's shipping free (D299 E3): `{ id, name, minor }`, part of `campaign_discount_minor`; null without. */
+    campaignShipping: jsonb("campaign_shipping"),
     /**
      * The bonus credits used on the order (D130), in the order's currency: a part of the discount (so the total adds
      * up), taken off goods last and spread over the lines as `order_lines.bonus_discount_minor`.
@@ -3697,6 +3710,10 @@ export const orders = commerce.table(
     ),
     check("orders_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
     check("orders_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
+    check(
+      "orders_campaign_shipping",
+      sql`${t.campaignShipping} is null or (jsonb_typeof(${t.campaignShipping}) = 'object' and (${t.campaignShipping} ->> 'minor')::bigint between 0 and ${t.campaignDiscountMinor})`,
+    ),
     check("orders_tax_within_total", sql`${t.taxMinor} <= ${t.totalMinor}`),
     check("orders_balance", sql`${t.balanceMinor} between 0 and ${t.totalMinor}`),
   ],

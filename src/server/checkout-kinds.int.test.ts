@@ -115,7 +115,7 @@ const { getOrder, getShopperOrder } = await import("./orders");
 const { appointmentSlots } = await import("./appointments");
 const { rentalTimes } = await import("./ranges");
 const { addCartCode, saveDiscount, setCartCode } = await import("./discounts");
-const { saveCampaign } = await import("./campaigns");
+const { saveCampaign, listCampaigns } = await import("./campaigns");
 const { preRegisterCustomer, startSession } = await import("./customers");
 const { bonusOverview, customerBonus, getBonusSettings, setCartCredits, shopperBonus } = await import("./bonus");
 const { cancelOrder, refundOrder } = await import("./order-admin");
@@ -431,6 +431,8 @@ type Scenario = {
   campaigns?: () => Record<string, unknown>[];
   /** What they give: reductions, and free products added to the order. */
   gifts?: number;
+  /** A campaign makes the shipping free (D299 E3): the order keeps which and what it took off. */
+  freeShipping?: boolean;
   /** Lines with a time, confirmed once paid. */
   bookings: number;
   /** A carrier's service chosen at checkout (D135), instead of the flat rate: a pickup point, or home delivery. */
@@ -536,6 +538,29 @@ let homeCategory: string;
 const percentCampaign = (percent: number, over: Record<string, unknown> = {}) => ({ name: `${percent} % off`, kind: "percent", percent, ...over });
 const threeForTwo = (over: Record<string, unknown> = {}) => ({ name: "3 for 2", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, ...over });
 const freeNotebook = (over: Record<string, unknown> = {}) => ({ name: "Free notebook", kind: "gift", giftVariantId: variant["DEMO-NOTEBOOK-LINED"], thresholds: { NO: "1" }, ...over });
+// Campaigns in depth (D299 E3): amounts are typed in the country's own currency, as the editor sends them.
+const amountOff = (over: Record<string, unknown> = {}) => ({ name: "50 kr off", kind: "amount", amounts: { NO: "50" }, thresholds: { NO: "100" }, ...over });
+const freeShippingCampaign = (over: Record<string, unknown> = {}) => ({ name: "Free shipping", kind: "free_shipping", thresholds: { NO: "100" }, ...over });
+const stepsByItems = (over: Record<string, unknown> = {}) => ({
+  name: "Buy more, save more",
+  kind: "tiered",
+  tierBasis: "quantity",
+  tiers: [
+    { quantity: "2", percent: "10" },
+    { quantity: "4", percent: "20" },
+  ],
+  ...over,
+});
+const stepsBySpend = (over: Record<string, unknown> = {}) => ({
+  name: "Spend more, save more",
+  kind: "tiered",
+  tierBasis: "spend",
+  tiers: [
+    { amounts: { NO: "100" }, percent: "5" },
+    { amounts: { NO: "300" }, percent: "15" },
+  ],
+  ...over,
+});
 
 const campaignScenarios: Scenario[] = [
   { name: "goods with a percentage campaign", fill: () => add("DEMO-MUG-WHITE", 2), campaigns: () => [percentCampaign(20)], bookings: 0 },
@@ -592,6 +617,55 @@ const campaignScenarios: Scenario[] = [
     fill: () => add("DEMO-MUG-WHITE", 4),
     campaigns: () => [threeForTwo({ stacks: true }), percentCampaign(10, { stacks: true })],
     buyer: "group",
+    euro: true,
+    bookings: 0,
+  },
+  {
+    name: "an amount off over a threshold, shared over two products",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [amountOff()],
+    bookings: 0,
+  },
+  {
+    name: "a tiered campaign by items, its highest step reached",
+    fill: () => add("DEMO-MUG-WHITE", 4),
+    campaigns: () => [stepsByItems()],
+    bookings: 0,
+  },
+  {
+    name: "a tiered campaign by spend that stacks on a percentage, for a group member",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [percentCampaign(10), stepsBySpend({ stacks: true })],
+    buyer: "group",
+    bookings: 0,
+  },
+  {
+    name: "free shipping over an amount, with a code",
+    fill: () => add("DEMO-MUG-WHITE", 2),
+    campaigns: () => [freeShippingCampaign()],
+    freeShipping: true,
+    code: `TI${run}`.toUpperCase(),
+    bookings: 0,
+  },
+  {
+    name: "free shipping and an amount off, shown in euro",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [amountOff(), freeShippingCampaign()],
+    freeShipping: true,
+    euro: true,
+    bookings: 0,
+  },
+  {
+    name: "a tiered campaign by spend for a company's employee, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [stepsBySpend()],
+    buyer: "company",
     euro: true,
     bookings: 0,
   },
@@ -816,6 +890,18 @@ describe("checkout for every kind of product", () => {
       off: summary.discountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
     });
     await expectUnitPrices(cart, order!, scenario);
+    // Free shipping from a campaign (D299 E3): the whole shipping, kept on the order with the campaign, part of what campaigns took off.
+    const [kept] = await db().execute<Row>(sql`select campaign_shipping from commerce.orders where id = ${open!.orderId}::uuid`);
+    if (scenario.freeShipping) {
+      expect(summary.shipping).toBeGreaterThan(0);
+      expect(summary.campaignShippingMinor).toBe(summary.shipping);
+      expect(kept.campaign_shipping).toMatchObject({ name: "Free shipping", minor: summary.shipping });
+      // A use of the campaign: the order counts though no line of it was reduced.
+      expect((await listCampaigns(storeId)).find((c) => c.kind === "free_shipping")?.orders).toBe(1);
+    } else {
+      expect(summary.campaignShippingMinor).toBe(0);
+      expect(kept.campaign_shipping).toBeNull();
+    }
     // The gift is the buyer's words, kept on the order as typed, and moves no amount: the totals above already equal the cart's, which had no gift line.
     if (scenario.gift) {
       expect(order?.gift).toEqual({ isGift: true, to: scenario.gift.to, from: scenario.gift.from, message: scenario.gift.message });

@@ -55,6 +55,8 @@ export type OrderInsert = {
   memberPercent?: number | null;
   campaignDiscountMinor?: number;
   campaignLabel?: string | null;
+  /** The campaign that made the shipping free (D299 E3) and what it took off: part of `campaignDiscountMinor`. */
+  campaignShipping?: { id: string; name: string; minor: number } | null;
   creditMinor?: number;
   referralDiscountMinor?: number;
   delivery?: unknown | null;
@@ -108,7 +110,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
-      delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes
+      delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes, campaign_shipping
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -128,7 +130,8 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null},
       ${input.deliveryMethod ?? "ship"}, ${input.deliveryMethod === "pickup" ? (input.pickupLocationId ?? null) : null}::uuid,
       ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}, ${input.exchange?.id ?? null}::uuid,
-      ${input.enteredCodes ? sql`(select coalesce(array_agg(c order by n), '{}') from jsonb_array_elements_text(${JSON.stringify(input.enteredCodes)}::jsonb) with ordinality as t(c, n))` : sql`null`}
+      ${input.enteredCodes ? sql`(select coalesce(array_agg(c order by n), '{}') from jsonb_array_elements_text(${JSON.stringify(input.enteredCodes)}::jsonb) with ordinality as t(c, n))` : sql`null`},
+      ${input.campaignShipping ? JSON.stringify(input.campaignShipping) : null}::jsonb
     )
     returning id
   `);

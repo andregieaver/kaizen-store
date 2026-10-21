@@ -211,6 +211,13 @@ The definitions of **Staff-made order**, **Custom item**, **Custom price** and *
   count every order once, whatever number of codes it used; only the per-code table counts an order under each of its codes.
 - A generated code (D299 E1) is counted under its code's own text, never the generated text.
 
+## Campaigns in depth (D299 E3, wave 5)
+
+- An amount off and a tiered campaign are a line's campaign discount like every campaign (`order_lines.campaign_discount_minor`), so the
+  discounts table's *Campaigns* counts them as it always did.
+- A campaign's free shipping is the order's, not a line's (`orders.campaign_shipping`, inside `orders.campaign_discount_minor`): like a free-shipping
+  code's, it is in neither a code's nor a campaign's line figure of the discounts table; revenue is without it, as the order's total is.
+
 ## Order changes and parcels (D174, wave 3)
 
 The definitions of **Edited order**, **Refunds** (without the refunds that settle a change) and **Owed** (per line) are in the table above;

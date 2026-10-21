@@ -129,3 +129,49 @@ test("an announcement stops when its campaign ends, without waiting for the page
   await expect(page.getByText("Kort: 10 % rabatt")).toBeVisible();
   await expect(page.getByText("Kort: 10 % rabatt")).toHaveCount(0, { timeout: 8000 });
 });
+
+test("a tiered campaign shows its ladder and the cart how far the next step and free shipping are (D299 E3)", async ({ page }) => {
+  const slug = await storeWithCampaigns(async (id, sql) => {
+    const [bag] = await sql`select id from commerce.products where store_id = ${id} and handle = 'demo-handlenett'`;
+    await sql`
+      insert into commerce.campaigns (store_id, name, kind, tier_basis, tiers, product_ids)
+      values (${id}, 'Kjøp mer', 'tiered', 'quantity', '[{"quantity": 2, "percent": 10}, {"quantity": 3, "percent": 20}]'::jsonb, ${sql.json([bag.id])})`;
+    await sql`insert into commerce.campaigns (store_id, name, kind, thresholds) values (${id}, 'Fri frakt', 'free_shipping', '{"NO": 50000}'::jsonb)`;
+  });
+
+  await page.goto(`/s/${slug}/no/p/demo-handlenett`);
+  await expect(page.getByText("Kjøp mer: 10 % rabatt når du kjøper 2 · 20 % rabatt når du kjøper 3")).toBeVisible();
+  await expect(page.getByText(/Fri frakt: Gratis frakt når du handler for 500,00/)).toBeVisible();
+  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
+
+  // The card says the most it can give, never free shipping.
+  await page.goto(`/s/${slug}/no/products`);
+  const bagCard = page.locator("li.product-card").filter({ hasText: "Handlenett" });
+  await expect(bagCard.getByText("Opptil 20 % rabatt").first()).toBeVisible();
+  await expect(bagCard.getByText("Gratis frakt")).toHaveCount(0);
+
+  await page.goto(`/s/${slug}/no/cart`);
+  const summary = page.getByRole("complementary");
+  const next = summary.locator("[data-campaign-next]");
+  // One bag at 199,00: a step away from 10 %, and 301,00 from free shipping.
+  await expect(next).toContainText("Kjøp 1 til for å få 10 % rabatt (Kjøp mer)");
+  await expect(next).toContainText(/Handle for .*301,00.* til for å få gratis frakt \(Fri frakt\)/);
+  await expect(summary).not.toContainText("Rabatt (");
+
+  // Three bags: the top step, 20 % off 597,00 is 119,40, and 477,60 is still 22,40 short of free shipping.
+  await page.getByLabel("Antall").fill("3");
+  await page.getByRole("button", { name: "Oppdater" }).click();
+  await expect(summary).toContainText("Rabatt (Kjøp mer)");
+  await expect(summary).toContainText("−119,40");
+  await expect(next).toContainText(/Handle for .*22,40/);
+  await expect(next).not.toContainText("Kjøp 1 til");
+
+  // Four bags: 636,80 after the 20 %, so the shipping is free too: −159,20 and −99,00 in one row, and 636,80 to pay.
+  await page.getByLabel("Antall").fill("4");
+  await page.getByRole("button", { name: "Oppdater" }).click();
+  await expect(summary).toContainText("Rabatt (Kjøp mer, Fri frakt)");
+  await expect(summary).toContainText("−258,20");
+  await expect(summary.locator("[data-campaign-next]")).toHaveCount(0);
+  await expect(summary).toContainText("636,80");
+});

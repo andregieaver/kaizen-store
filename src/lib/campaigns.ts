@@ -5,8 +5,9 @@ import { planPrice } from "./subscriptions";
 
 /**
  * Campaigns (D114): offers a store runs for a time, that shoppers need no
- * code for. Three kinds: a percentage off, "buy N pay for M" (3 for 2), and a
- * free product once the basket comes to an amount. Each can be limited to
+ * code for: a percentage off, "buy N pay for M" (3 for 2), a free product once
+ * the basket comes to an amount, and (D299 E3) an amount off, free shipping and
+ * a percentage that grows with what is bought (tiers). Each can be limited to
  * chosen products and categories or tags, and to a time. The rules here need
  * no database, so the cart shows what checkout will charge.
  *
@@ -18,8 +19,20 @@ import { planPrice } from "./subscriptions";
  * what the others left, one after the other.
  */
 
-export const CAMPAIGN_KINDS = ["percent", "multi_buy", "gift"] as const;
+export const CAMPAIGN_KINDS = ["percent", "multi_buy", "gift", "amount", "free_shipping", "tiered"] as const;
 export type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
+
+/** What a tiered campaign's steps count (D299 E3): units, or what the lines come to. */
+export const TIER_BASES = ["quantity", "spend"] as const;
+export type TierBasis = (typeof TIER_BASES)[number];
+/** A tiered campaign has two to five steps. */
+export const TIERS_MIN = 2;
+export const TIERS_MAX = 5;
+/** Most units a quantity step can ask for. */
+export const TIER_QUANTITY_MAX = 1000;
+
+/** A step of a tiered campaign: so many units, or what the lines come to per market (in the currency shown), for a percentage off. */
+export type CampaignTier = { quantity: number | null; amounts: Record<string, number>; percent: number };
 
 export const CAMPAIGN_NAME_MAX = 80;
 /** Most units a "buy N" offer can ask for. */
@@ -43,6 +56,11 @@ export type Campaign = {
   giftVariantId: string | null;
   giftQuantity: number;
   thresholds: Record<string, number>;
+  /** What an `amount` campaign takes off, per market (in the currency shown). */
+  amounts: Record<string, number>;
+  /** A `tiered` campaign's basis and steps, lowest first. */
+  tierBasis: TierBasis | null;
+  tiers: CampaignTier[];
   /** What it applies to: these products and every product in these categories and tags; with neither, everything. */
   productIds: string[];
   termIds: string[];
@@ -87,6 +105,23 @@ export type CampaignResult = {
   gifts: { campaignId: string; name: string; variantId: string; quantity: number }[];
   /** What the lines count after the reductions, for a gift's amount. */
   valueMinor: number;
+  /** The campaign that makes the order's shipping free (D299 E3), if any; whether the order ships is for the caller to say. */
+  freeShipping: { campaignId: string; name: string } | null;
+  /** How far the next step of a campaign is (D299 E3), for the cart to say. */
+  next: CampaignNext[];
+};
+
+/** How far a campaign's next step is: units or an amount (in the currency shown) still to add, and what it then gives. */
+export type CampaignNext = {
+  campaignId: string;
+  name: string;
+  kind: "tiered" | "amount" | "free_shipping";
+  missingUnits: number | null;
+  missingMinor: number | null;
+  /** The percentage the next step gives (tiered). */
+  percent: number | null;
+  /** The amount it then takes off (amount). */
+  offMinor: number | null;
 };
 
 /** Whether a campaign is on now: switched on and within its dates. */
@@ -147,18 +182,77 @@ export function multiBuyFree(lines: Pick<CampaignLine, "key" | "unitMinor" | "qu
 /** What "buy N pay for M" makes free, per line. */
 export const multiBuyOff = (lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], buy: number, pay: number): Record<string, number> => multiBuyFree(lines, buy, pay).off;
 
-function priceOff(campaign: Campaign, lines: CampaignLine[]): Record<string, number> {
+/** The steps of a tiered campaign a market has, lowest first: quantity steps everywhere, spend steps where they have an amount. */
+export function tiersIn(campaign: Pick<Campaign, "tierBasis" | "tiers">, marketCode: string): { at: number; percent: number }[] {
+  return campaign.tiers
+    .map((tier) => ({ at: campaign.tierBasis === "quantity" ? (tier.quantity ?? 0) : (tier.amounts[marketCode] ?? 0), percent: tier.percent }))
+    .filter((tier) => tier.at > 0)
+    .sort((a, b) => a.at - b.at);
+}
+
+/** What a tiered campaign's steps count on these lines: their units, or what they come to before any reduction. */
+export const tierCount = (campaign: Pick<Campaign, "tierBasis">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[]): number =>
+  lines.reduce((sum, line) => sum + (campaign.tierBasis === "quantity" ? line.quantity : line.unitMinor * line.quantity), 0);
+
+/** The percentage the highest step reached gives (0 for none). */
+export function tierPercent(campaign: Pick<Campaign, "tierBasis" | "tiers">, lines: Pick<CampaignLine, "unitMinor" | "quantity">[], marketCode: string): number {
+  const count = tierCount(campaign, lines);
+  return tiersIn(campaign, marketCode).reduce((best, tier) => (count >= tier.at ? Math.max(best, tier.percent) : best), 0);
+}
+
+/**
+ * An amount split over lines by what each costs (D299 E3): the largest remainder rounding, an earlier line first on a tie, never
+ * more than a line costs and never more in all than the lines come to.
+ */
+export function splitAmount(lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], amount: number): Record<string, number> {
+  const worth = lines.map((line) => ({ key: line.key, value: line.unitMinor * line.quantity })).filter((line) => line.value > 0);
+  const total = worth.reduce((sum, line) => sum + line.value, 0);
+  const off: Record<string, number> = {};
+  const take = Math.min(Math.max(0, Math.floor(amount)), total);
+  if (take === 0) return off;
+  const shares = worth.map((line, i) => {
+    const exact = (take * line.value) / total;
+    return { ...line, i, base: Math.floor(exact), rest: exact - Math.floor(exact) };
+  });
+  let left = take - shares.reduce((sum, share) => sum + share.base, 0);
+  for (const share of [...shares].sort((a, b) => b.rest - a.rest || a.i - b.i)) {
+    if (left <= 0) break;
+    if (share.base < share.value) {
+      share.base += 1;
+      left -= 1;
+    }
+  }
+  for (const share of shares) if (share.base > 0) off[share.key] = share.base;
+  return off;
+}
+
+/** What the lines a campaign reaches come to, before any reduction. */
+const worthOf = (lines: Pick<CampaignLine, "unitMinor" | "quantity">[]) => lines.reduce((sum, line) => sum + line.unitMinor * line.quantity, 0);
+
+function priceOff(campaign: Campaign, lines: CampaignLine[], marketCode: string): Record<string, number> {
   const reached = lines.filter((line) => line.discountable && line.unitMinor > 0 && reaches(campaign, line));
-  if (campaign.kind === "percent") {
+  if (campaign.kind === "percent" || campaign.kind === "tiered") {
+    const percent = campaign.kind === "percent" ? campaign.percent : tierPercent(campaign, reached, marketCode);
     const off: Record<string, number> = {};
+    if (percent <= 0) return off;
     for (const line of reached) {
-      const amount = percentOff(line.unitMinor, line.quantity, campaign.percent);
+      const amount = percentOff(line.unitMinor, line.quantity, percent);
       if (amount > 0) off[line.key] = amount;
     }
     return off;
   }
-  return multiBuyOff(reached, campaign.buyQuantity, campaign.payQuantity);
+  if (campaign.kind === "amount") {
+    const amount = campaign.amounts[marketCode] ?? 0;
+    const threshold = campaign.thresholds[marketCode] ?? 0;
+    if (amount <= 0 || worthOf(reached) < threshold) return {};
+    return splitAmount(reached, amount);
+  }
+  if (campaign.kind === "multi_buy") return multiBuyOff(reached, campaign.buyQuantity, campaign.payQuantity);
+  return {};
 }
+
+/** Kinds that reduce prices, competing with each other for lines unless they stack. */
+const PRICE_KINDS: readonly CampaignKind[] = ["percent", "multi_buy", "amount", "tiered"];
 
 /**
  * What the running campaigns do to a basket. Price campaigns first, each
@@ -167,23 +261,23 @@ function priceOff(campaign: Campaign, lines: CampaignLine[]): Record<string, num
  * to after the reductions.
  */
 export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], marketCode: string): CampaignResult {
-  const result: CampaignResult = { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0 };
+  const result: CampaignResult = { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0, freeShipping: null, next: [] };
   const ordered = [...campaigns].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-  let pending = ordered.filter((c) => c.kind !== "gift" && !c.stacks);
+  let pending = ordered.filter((c) => PRICE_KINDS.includes(c.kind) && !c.stacks);
   let free = lines;
   // Units a "buy N pay for M" has made free, per line: a stacking one takes only what is left to pay for.
   const freed: Record<string, number> = {};
   while (pending.length > 0) {
     let best: { campaign: Campaign; off: Record<string, number>; total: number } | null = null;
     for (const campaign of pending) {
-      const off = priceOff(campaign, free);
+      const off = priceOff(campaign, free, marketCode);
       const total = Object.values(off).reduce((sum, amount) => sum + amount, 0);
       if (total > 0 && (!best || total > best.total)) best = { campaign, off, total };
     }
     if (!best) break;
     // A pool of lines share a "3 for 2", so all it reached is used up, whether or not a unit of each was free.
     const taken = new Set(
-      best.campaign.kind === "percent"
+      best.campaign.kind !== "multi_buy"
         ? Object.keys(best.off)
         : free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line)).map((line) => line.key),
     );
@@ -208,13 +302,15 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
     result.lineBy[line.key] ??= campaign.id;
     (result.lineParts[line.key] ??= []).push({ campaignId: campaign.id, name: campaign.name, minor: off });
   };
-  for (const campaign of ordered.filter((c) => c.stacks && (c.kind === "percent" || c.kind === "multi_buy"))) {
+  for (const campaign of ordered.filter((c) => c.stacks && (c.kind === "percent" || c.kind === "multi_buy" || c.kind === "tiered"))) {
     let total = 0;
     const reached = lines.filter((l) => l.discountable && l.unitMinor > 0 && reaches(campaign, l));
-    if (campaign.kind === "percent") {
+    if (campaign.kind === "percent" || campaign.kind === "tiered") {
+      // A stacking tier counts the lines it reaches before any reduction.
+      const percent = campaign.kind === "percent" ? campaign.percent : tierPercent(campaign, reached, marketCode);
       for (const line of reached) {
         const left = line.unitMinor * line.quantity - (result.lineOff[line.key] ?? 0);
-        const off = left > 0 ? left - planPrice(left, campaign.percent) : 0;
+        const off = left > 0 && percent > 0 ? left - planPrice(left, percent) : 0;
         if (off <= 0) continue;
         take(campaign, line, off);
         total += off;
@@ -254,7 +350,57 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
       result.gifts.push({ campaignId: campaign.id, name: campaign.name, variantId: campaign.giftVariantId!, quantity: campaign.giftQuantity });
     }
   }
+  // Free shipping (D299 E3): the oldest whose lines, after the reductions, come to its amount in this market (none asked: any basket).
+  const counted = (campaign: Campaign) => lines.filter((line) => reaches(campaign, line)).reduce((sum, line) => sum + line.valueMinor - (result.lineOff[line.key] ?? 0), 0);
+  for (const campaign of ordered.filter((c) => c.kind === "free_shipping")) {
+    const reachedAny = lines.some((line) => reaches(campaign, line));
+    if (reachedAny && counted(campaign) >= (campaign.thresholds[marketCode] ?? 0)) {
+      result.freeShipping = { campaignId: campaign.id, name: campaign.name };
+      break;
+    }
+  }
+  result.next = nextSteps(ordered, lines, marketCode, result, counted);
   return result;
+}
+
+/**
+ * How far each campaign's next step is (D299 E3): a tiered campaign's next step, an amount's or free shipping's threshold not yet
+ * reached. Only where the basket has lines the campaign reaches and no other campaign holds them, so adding to them would give it.
+ */
+function nextSteps(campaigns: Campaign[], lines: CampaignLine[], marketCode: string, result: CampaignResult, counted: (c: Campaign) => number): CampaignNext[] {
+  const next: CampaignNext[] = [];
+  const own = (campaign: Campaign) => {
+    const reached = lines.filter((line) => line.discountable && line.unitMinor > 0 && reaches(campaign, line));
+    const free = reached.length > 0 && reached.every((line) => !result.lineBy[line.key] || result.lineBy[line.key] === campaign.id || campaign.stacks);
+    return free ? reached : [];
+  };
+  for (const campaign of campaigns) {
+    if (campaign.kind === "tiered") {
+      const reached = own(campaign);
+      if (reached.length === 0) continue;
+      const count = tierCount(campaign, reached);
+      const step = tiersIn(campaign, marketCode).find((tier) => tier.at > count);
+      if (!step) continue;
+      const quantity = campaign.tierBasis === "quantity";
+      next.push({ campaignId: campaign.id, name: campaign.name, kind: "tiered", missingUnits: quantity ? step.at - count : null, missingMinor: quantity ? null : step.at - count, percent: step.percent, offMinor: null });
+    } else if (campaign.kind === "amount") {
+      const reached = own(campaign);
+      const threshold = campaign.thresholds[marketCode] ?? 0;
+      const amount = campaign.amounts[marketCode] ?? 0;
+      if (reached.length === 0 || amount <= 0 || worthOf(reached) >= threshold) continue;
+      next.push({ campaignId: campaign.id, name: campaign.name, kind: "amount", missingUnits: null, missingMinor: threshold - worthOf(reached), percent: null, offMinor: amount });
+    }
+  }
+  if (!result.freeShipping) {
+    // The nearest free shipping only: one row is enough.
+    const near = campaigns
+      .filter((c) => c.kind === "free_shipping" && (c.thresholds[marketCode] ?? 0) > 0 && lines.some((line) => reaches(c, line)))
+      .map((c) => ({ campaign: c, missing: c.thresholds[marketCode] - counted(c) }))
+      .filter((x) => x.missing > 0)
+      .sort((a, b) => a.missing - b.missing)[0];
+    if (near) next.push({ campaignId: near.campaign.id, name: near.campaign.name, kind: "free_shipping", missingUnits: null, missingMinor: near.missing, percent: null, offMinor: null });
+  }
+  return next;
 }
 
 /**
@@ -270,13 +416,20 @@ export function memberOffAfterCampaign(unitMinor: number, quantity: number, camp
 
 /** What a campaign gives, in English for the admin: "20 % off", "3 for 2", "Free product over NOK 500.00". */
 export function describeCampaign(
-  campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds">,
+  campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds"> & Partial<Pick<Campaign, "amounts" | "tierBasis" | "tiers">>,
   money: (minor: number, marketCode: string) => string,
 ): string {
+  const per = (values: Record<string, number>) => Object.entries(values).map(([market, minor]) => money(minor, market)).join(" / ");
+  const over = per(campaign.thresholds);
   if (campaign.kind === "percent") return `${campaign.percent} % off`;
   if (campaign.kind === "multi_buy") return `${campaign.buyQuantity} for ${campaign.payQuantity}`;
-  const over = Object.entries(campaign.thresholds).map(([market, minor]) => money(minor, market));
-  return `Free product over ${over.join(" / ") || "an amount"}`;
+  if (campaign.kind === "amount") return `${per(campaign.amounts ?? {}) || "An amount"} off${over ? ` over ${over}` : ""}`;
+  if (campaign.kind === "free_shipping") return over ? `Free shipping over ${over}` : "Free shipping";
+  if (campaign.kind === "tiered") {
+    const steps = (campaign.tiers ?? []).map((tier) => `${tier.percent} % from ${campaign.tierBasis === "quantity" ? `${tier.quantity} items` : per(tier.amounts)}`);
+    return steps.join(", ") || "Tiers";
+  }
+  return `Free product over ${over || "an amount"}`;
 }
 
 /** What shoppers read on a line of the cart for a campaign: its name. */
@@ -300,6 +453,20 @@ export const campaignInput = z
     giftVariantId: z.preprocess((v) => (v === "" ? null : v), z.uuid().nullable()).default(null),
     giftQuantity: whole(1, GIFT_QUANTITY_MAX, `Give between 1 and ${GIFT_QUANTITY_MAX} of the product.`).default(1),
     thresholds: z.record(z.string(), z.string().trim()).default({}),
+    /** What an amount campaign takes off, typed per market (D299 E3). */
+    amounts: z.record(z.string(), z.string().trim()).default({}),
+    /** A tiered campaign's basis and its steps, amounts typed per market. */
+    tierBasis: z.enum(TIER_BASES).default("quantity"),
+    tiers: z
+      .array(
+        z.object({
+          quantity: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole items, please.").min(1, "A step asks for at least 1 item.").max(TIER_QUANTITY_MAX, `A step asks for at most ${TIER_QUANTITY_MAX} items.`).nullable()).default(null),
+          amounts: z.record(z.string(), z.string().trim()).default({}),
+          percent: whole(1, 100, "Each step takes off between 1 and 100 %."),
+        }),
+      )
+      .max(TIERS_MAX, `Give at most ${TIERS_MAX} steps.`)
+      .default([]),
     /** "all": everything in the store; "some": only the chosen products and the products in the chosen categories and tags. */
     scope: z.enum(["all", "some"]).default("all"),
     productIds: z.array(z.uuid()).default([]),
@@ -322,6 +489,13 @@ export const campaignInput = z
     message: "Shoppers must pay for fewer items than they buy: 3 for 2, not 2 for 3.",
   })
   .refine((input) => !input.stacks || input.kind !== "gift", { message: "A free product cannot be added on top of other campaigns: it is given whatever else applies." })
+  .refine((input) => !input.stacks || (input.kind !== "amount" && input.kind !== "free_shipping"), {
+    message: "An amount off or free shipping cannot be added on top of other campaigns.",
+  })
+  .refine((input) => input.kind !== "tiered" || input.tiers.length >= TIERS_MIN, { message: `Give at least ${TIERS_MIN} steps.` })
+  .refine((input) => input.kind !== "tiered" || input.tierBasis !== "quantity" || input.tiers.every((tier) => tier.quantity !== null), {
+    message: "Say how many items each step asks for.",
+  })
   .refine((input) => input.kind !== "gift" || input.giftVariantId !== null, { message: "Choose the product to give." })
   .refine((input) => input.scope === "all" || input.productIds.length + input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the campaign apply to everything.",

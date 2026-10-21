@@ -467,13 +467,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Verified `campaigns` (D114 to D116): percentage off, buy N pay for M and a free product over a basket amount, by product, category or tag, customer group, market and limits, with a stacking flag. No automatic fixed-amount discount, no automatic free-shipping discount (free shipping above a basket value is only a shipping-rate setting), no spend tiers.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner makes an automatic discount of a fixed amount per market off chosen products or the order, and an automatic free-shipping discount above a basket value per market.",
       "An automatic discount can be tiered by spend (spend X get a % off), applied without a code.",
@@ -488,23 +488,36 @@
         "src/app/admin/(gated)/[store]/campaigns/page.tsx",
         "src/app/admin/(gated)/[store]/campaigns/campaign-form.tsx",
         "src/lib/campaign-notices.ts",
-        "src/server/cart-summary.ts"
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/campaign-notices.ts",
+        "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+        "supabase/migrations/20261021090105_campaigns_depth.sql"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
         "src/server/campaigns.int.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/lib/campaign-notices.test.ts",
-        "e2e/campaigns.spec.ts"
+        "e2e/campaigns.spec.ts",
+        "src/db/campaigns-depth.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D114",
       "D115",
-      "D116"
+      "D116",
+      "D299"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-21",
+        "from": "partial",
+        "to": "full",
+        "why": "D299 E3: campaigns of an amount off per market (with an optional threshold), free shipping (with an optional threshold) and tiers by items or spend, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, announced from the cached notices."
+      }
+    ]
   },
   {
     "id": "customers.buy-x-get-y",
@@ -569,7 +582,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "Several overlapping multi-buy campaigns and a stacking percentage approximate a ladder, but no single discount has tiers (buy 3 or more save a %, spend X save b %), and no ladder is shown on the product page.",
+    "gap": "D299 E3: a tiered campaign (two to five steps, by items or by spend per market, the highest reached applies) with its ladder on the product page and how far the next step is in the cart, held in NOK and euro scenarios. A step gives a percentage only, never an amount.",
     "bucket": "A",
     "wave": 5,
     "criteria": [
@@ -581,17 +594,25 @@
       "files": [
         "src/lib/campaigns.ts",
         "src/server/campaigns.ts",
-        "src/lib/campaign-notices.ts"
+        "src/lib/campaign-notices.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/components/admin/campaign-editor.tsx",
+        "src/server/campaign-notices.ts"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
-        "src/server/campaigns.int.test.ts"
+        "src/server/campaigns.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/campaign-notices.test.ts",
+        "src/db/campaigns-depth.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D114",
-      "D115"
+      "D115",
+      "D299"
     ],
     "history": [
       {

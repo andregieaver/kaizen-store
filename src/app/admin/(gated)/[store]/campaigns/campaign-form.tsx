@@ -10,6 +10,12 @@ import type { Store } from "@/server/stores";
 
 import { saveCampaignAction } from "./actions";
 
+/** A new tiered campaign's steps, to change: 10 % from 2 items, 15 % from 4. */
+const NEW_TIERS: CampaignDraft["tiers"] = [
+  { quantity: "2", amounts: {}, percent: "10" },
+  { quantity: "4", amounts: {}, percent: "15" },
+];
+
 /** `datetime-local` text for a time, in Norwegian time. */
 function osloLocal(iso: string | null): string {
   if (!iso) return "";
@@ -35,6 +41,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
     listTiers(store.id),
   ]);
   const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
+  const typed = (values: Record<string, number>) => Object.fromEntries(Object.entries(values).map(([code, minor]) => [code, formatPriceInput(minor, currency(code))]));
   const initial: CampaignDraft = campaign
     ? {
         name: campaign.name,
@@ -44,7 +51,13 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         payQuantity: campaign.kind === "multi_buy" ? String(campaign.payQuantity) : "2",
         giftVariantId: campaign.giftVariantId ?? "",
         giftQuantity: String(campaign.giftQuantity),
-        thresholds: Object.fromEntries(Object.entries(campaign.thresholds).map(([code, minor]) => [code, formatPriceInput(minor, currency(code))])),
+        thresholds: typed(campaign.thresholds),
+        amounts: typed(campaign.amounts),
+        tierBasis: campaign.tierBasis ?? "quantity",
+        tiers:
+          campaign.kind === "tiered"
+            ? campaign.tiers.map((tier) => ({ quantity: tier.quantity === null ? "" : String(tier.quantity), amounts: typed(tier.amounts), percent: String(tier.percent) }))
+            : NEW_TIERS,
         scope: campaign.productIds.length + campaign.termIds.length > 0 ? "some" : "all",
         productIds: campaign.productIds,
         termIds: campaign.termIds,
@@ -66,6 +79,9 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         giftVariantId: "",
         giftQuantity: "1",
         thresholds: {},
+        amounts: {},
+        tierBasis: "quantity",
+        tiers: NEW_TIERS,
         scope: "all",
         productIds: [],
         termIds: [],

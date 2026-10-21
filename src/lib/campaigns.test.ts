@@ -9,6 +9,8 @@ import {
   multiBuyOff,
   percentOff,
   reaches,
+  splitAmount,
+  tierPercent,
   type Campaign,
   type CampaignLine,
 } from "./campaigns";
@@ -27,6 +29,9 @@ const campaign = (over: Partial<Campaign>): Campaign => ({
   giftVariantId: null,
   giftQuantity: 1,
   thresholds: {},
+  amounts: {},
+  tierBasis: null,
+  tiers: [],
   productIds: [],
   termIds: [],
   tierIds: [],
@@ -274,5 +279,104 @@ describe("the admin's form", () => {
     expect(describeCampaign({ kind: "percent", percent: 20, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money)).toBe("20 % off");
     expect(describeCampaign({ kind: "multi_buy", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money)).toBe("3 for 2");
     expect(describeCampaign({ kind: "gift", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: { NO: 50000 } }, money)).toBe("Free product over NO 500");
+  });
+});
+
+describe("campaigns in depth (D299 E3)", () => {
+  it("splits an amount over the lines it reaches by what each costs, never more than they cost", () => {
+    expect(splitAmount([line("a", 3000), line("b", 1000)], 1000)).toEqual({ a: 750, b: 250 });
+    // Rounding: largest remainder, the earlier line first on a tie.
+    expect(splitAmount([line("a", 100), line("b", 100), line("c", 100)], 100)).toEqual({ a: 34, b: 33, c: 33 });
+    expect(splitAmount([line("a", 300)], 1000)).toEqual({ a: 300 });
+    expect(splitAmount([], 1000)).toEqual({});
+  });
+
+  it("takes an amount off once the lines it reaches come to its threshold", () => {
+    const c = campaign({ kind: "amount", percent: 0, amounts: { NO: 10000 }, thresholds: { NO: 50000 } });
+    expect(applyCampaigns([c], [line("a", 40000)], "NO").lineOff).toEqual({});
+    const result = applyCampaigns([c], [line("a", 40000), line("b", 10000)], "NO");
+    expect(result.lineOff).toEqual({ a: 8000, b: 2000 });
+    expect(result.applied).toMatchObject([{ kind: "amount", offMinor: 10000 }]);
+    // Not in a market it has no amount for.
+    expect(applyCampaigns([c], [line("a", 90000)], "SE").applied).toEqual([]);
+  });
+
+  it("lets an amount compete with a percentage for the same lines", () => {
+    const amount = campaign({ kind: "amount", percent: 0, amounts: { NO: 3000 } });
+    const percent = campaign({ percent: 10 });
+    expect(applyCampaigns([amount, percent], [line("a", 20000)], "NO").applied).toMatchObject([{ kind: "amount", offMinor: 3000 }]);
+    expect(applyCampaigns([amount, percent], [line("a", 50000)], "NO").applied).toMatchObject([{ kind: "percent", offMinor: 5000 }]);
+  });
+
+  it("gives a tiered campaign's highest step reached, by items or by spend", () => {
+    const byItems = campaign({ kind: "tiered", percent: 0, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] });
+    expect(applyCampaigns([byItems], [line("a", 1000)], "NO").applied).toEqual([]);
+    expect(applyCampaigns([byItems], [line("a", 1000, 3)], "NO").lineOff).toEqual({ a: 300 });
+    expect(applyCampaigns([byItems], [line("a", 1000, 2), line("b", 1000, 2)], "NO").lineOff).toEqual({ a: 400, b: 400 });
+    expect(tierPercent(byItems, [line("a", 1, 9)], "NO")).toBe(20);
+    const bySpend = campaign({ kind: "tiered", percent: 0, tierBasis: "spend", tiers: [{ quantity: null, amounts: { NO: 50000 }, percent: 5 }, { quantity: null, amounts: { NO: 100000 }, percent: 15 }] });
+    expect(applyCampaigns([bySpend], [line("a", 60000)], "NO").lineOff).toEqual({ a: 3000 });
+    expect(applyCampaigns([bySpend], [line("a", 60000), line("b", 40000)], "NO").lineOff).toEqual({ a: 9000, b: 6000 });
+    // A market without the step's amount has no such step.
+    expect(applyCampaigns([bySpend], [line("a", 600000)], "SE").applied).toEqual([]);
+  });
+
+  it("stacks a tiered campaign on what the others left, counting the lines before any reduction", () => {
+    const first = campaign({ percent: 50 });
+    const tier = campaign({ kind: "tiered", percent: 0, stacks: true, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 3, amounts: {}, percent: 20 }] });
+    const result = applyCampaigns([first, tier], [line("a", 1000, 2)], "NO");
+    // Half off 2000, then 10 % off the 1000 left.
+    expect(result.lineOff).toEqual({ a: 1100 });
+    expect(result.lineParts.a.map((p) => p.minor)).toEqual([1000, 100]);
+  });
+
+  it("makes shipping free once the lines it reaches, after reductions, come to its amount", () => {
+    const free = campaign({ kind: "free_shipping", percent: 0, thresholds: { NO: 50000 } });
+    expect(applyCampaigns([free], [line("a", 49900)], "NO").freeShipping).toBeNull();
+    expect(applyCampaigns([free], [line("a", 50000)], "NO").freeShipping).toMatchObject({ campaignId: free.id });
+    // A percentage off counts first: 60000 less 20 % is 48000, short of the amount.
+    expect(applyCampaigns([campaign({ percent: 20 }), free], [line("a", 60000)], "NO").freeShipping).toBeNull();
+    // Without an amount it is free for any basket it reaches, and only one it reaches.
+    const always = campaign({ kind: "free_shipping", percent: 0, productIds: ["p-a"] });
+    expect(applyCampaigns([always], [line("a", 100)], "NO").freeShipping).toMatchObject({ campaignId: always.id });
+    expect(applyCampaigns([always], [line("b", 100)], "NO").freeShipping).toBeNull();
+  });
+
+  it("says how far the next step is, only where no other campaign holds the lines", () => {
+    const tier = campaign({ kind: "tiered", percent: 0, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] });
+    expect(applyCampaigns([tier], [line("a", 1000)], "NO").next).toMatchObject([{ kind: "tiered", missingUnits: 1, percent: 10 }]);
+    expect(applyCampaigns([tier], [line("a", 1000, 3)], "NO").next).toMatchObject([{ kind: "tiered", missingUnits: 1, percent: 20 }]);
+    expect(applyCampaigns([tier], [line("a", 1000, 4)], "NO").next).toEqual([]);
+    // A better campaign holds the line: no promise.
+    expect(applyCampaigns([tier, campaign({ percent: 50 })], [line("a", 1000)], "NO").next).toEqual([]);
+    const amount = campaign({ kind: "amount", percent: 0, amounts: { NO: 10000 }, thresholds: { NO: 50000 } });
+    expect(applyCampaigns([amount], [line("a", 30000)], "NO").next).toMatchObject([{ kind: "amount", missingMinor: 20000, offMinor: 10000 }]);
+    const free = campaign({ kind: "free_shipping", percent: 0, thresholds: { NO: 50000 } });
+    const nearer = campaign({ kind: "free_shipping", percent: 0, thresholds: { NO: 40000 } });
+    expect(applyCampaigns([free, nearer], [line("a", 30000)], "NO").next).toMatchObject([{ kind: "free_shipping", missingMinor: 10000, campaignId: nearer.id }]);
+    expect(applyCampaigns([free], [line("a", 60000)], "NO").next).toEqual([]);
+  });
+
+  it("checks the new kinds in the admin's form", () => {
+    const base = { name: "Høst", kind: "tiered" as const, tierBasis: "quantity" as const };
+    expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }] }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }, { quantity: "", percent: "20" }] }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, tiers: [{ quantity: "2", percent: "10" }, { quantity: "4", percent: "20" }], stacks: true }).data?.tiers).toEqual([
+      { quantity: 2, amounts: {}, percent: 10 },
+      { quantity: 4, amounts: {}, percent: 20 },
+    ]);
+    expect(campaignInput.safeParse({ name: "Frakt", kind: "free_shipping", stacks: true }).success).toBe(false);
+    expect(campaignInput.safeParse({ name: "Kroner", kind: "amount", amounts: { NO: "100" }, stacks: true }).success).toBe(false);
+    expect(campaignInput.safeParse({ name: "Kroner", kind: "amount", amounts: { NO: "100" } }).success).toBe(true);
+  });
+
+  it("is described for the list", () => {
+    const money = (minor: number, code: string) => `${code} ${minor / 100}`;
+    const plain = { percent: 0, buyQuantity: 0, payQuantity: 0 };
+    expect(describeCampaign({ ...plain, kind: "amount", amounts: { NO: 10000 }, thresholds: { NO: 50000 } }, money)).toBe("NO 100 off over NO 500");
+    expect(describeCampaign({ ...plain, kind: "free_shipping", thresholds: {} }, money)).toBe("Free shipping");
+    expect(
+      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] }, money),
+    ).toBe("10 % from 2 items, 20 % from 4 items");
   });
 });

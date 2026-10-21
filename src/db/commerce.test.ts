@@ -4833,6 +4833,13 @@ describe("duplicating a store (D129)", () => {
        values ($1, 'Gift beta', 'gift', $2, 1)`,
       [src, ids["beta-variant"]],
     );
+    // An amount off and a tiered campaign (D299 E3): their amounts and steps go with the copy.
+    await db.query(
+      `insert into commerce.campaigns (store_id, name, kind, amounts, thresholds, tier_basis, tiers) values
+         ($1, 'Kroner', 'amount', '{"NO": 10000}', '{"NO": 50000}', null, '[]'),
+         ($1, 'Steps', 'tiered', '{}', '{}', 'quantity', '[{"quantity": 2, "percent": 10}, {"quantity": 4, "percent": 20}]')`,
+      [src],
+    );
     await db.query(
       "insert into commerce.discount_codes (store_id, code, kind, percent, product_ids) values ($1, 'BETA10', 'percent', 10, $2::jsonb), ($1, 'ALL10', 'percent', 10, null)",
       [src, JSON.stringify([ids.beta])],
@@ -4991,8 +4998,14 @@ describe("duplicating a store (D129)", () => {
     // A campaign for products that were not copied is off (it would reach everything), the others as they were.
     expect(await rows("select name, active from commerce.campaigns where store_id = $1 order by name", [copy])).toEqual([
       { name: "Everything", active: true },
+      { name: "Kroner", active: true },
       { name: "On alpha", active: true },
       { name: "On beta", active: false },
+      { name: "Steps", active: true },
+    ]);
+    expect(await rows("select amounts, thresholds, tier_basis, tiers from commerce.campaigns where store_id = $1 and name in ('Kroner', 'Steps') order by name", [copy])).toEqual([
+      { amounts: { NO: 10000 }, thresholds: { NO: 50000 }, tier_basis: null, tiers: [] },
+      { amounts: {}, thresholds: {}, tier_basis: "quantity", tiers: [{ quantity: 2, percent: 10 }, { quantity: 4, percent: 20 }] },
     ]);
     expect(await scalar("select product_ids from commerce.campaigns where store_id = $1 and name = 'On alpha'", [copy])).toEqual([await cloneId(copy, ids.alpha)]);
     expect(await scalar("select product_ids from commerce.campaigns where store_id = $1 and name = 'On beta'", [copy])).toEqual([]);
@@ -5009,7 +5022,7 @@ describe("duplicating a store (D129)", () => {
 
     // With everything copied, all of it stays.
     const all = await copyOf("copy-with-beta");
-    expect(await scalar("select count(*)::int from commerce.campaigns where store_id = $1 and active", [all])).toBe(4);
+    expect(await scalar("select count(*)::int from commerce.campaigns where store_id = $1 and active", [all])).toBe(6);
     expect(await scalar("select jsonb_array_length(items)::int from commerce.menus where store_id = $1", [all])).toBe(5);
   });
 

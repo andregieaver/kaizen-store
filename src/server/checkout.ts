@@ -519,7 +519,11 @@ export async function placeOrder(
     // use; the best of them that may be used together, as the cart page chose (D299 E2).
     let discount: { id: string; code: string; itemId: string | null } | null = null;
     let usedCodes: { code: string; discountId: string; itemId: string | null; amountMinor: number }[] = [];
-    let shippingDiscount = 0;
+    // Free shipping from a campaign (D299 E3): the basket's first shipping, before any code, as the cart page takes it; never with a
+    // subscription (a renewal pays its shipping).
+    const freeShipping = outcome.result.freeShipping && ships && !rhythm && basket.first > 0 ? outcome.result.freeShipping : null;
+    const campaignShipping = freeShipping ? basket.first : 0;
+    let shippingDiscount = campaignShipping;
     const lowered = new Set<number>();
     const enteredCodes = cartCodesOf(cart);
     if (enteredCodes.length > 0) {
@@ -539,7 +543,7 @@ export async function placeOrder(
             todayMinor: p.total,
             recurring: p.recurring,
           })),
-          shippingMinor: basket.first,
+          shippingMinor: basket.first - campaignShipping,
         },
       );
       // A code that does not apply even on its own stops the checkout, so the cart can say why; one left out because
@@ -558,7 +562,7 @@ export async function placeOrder(
           p.total = p.unit * p.quantity - p.discount;
         });
         if (lowered.size > 0) basket = shippingFor();
-        shippingDiscount = applied.shippingMinor;
+        shippingDiscount = campaignShipping + applied.shippingMinor;
         const [first] = result.used;
         discount = { id: first.discount.id, code: result.label ?? first.code, itemId: first.item?.id ?? null };
         usedCodes = result.used.map((u) => ({ code: u.code, discountId: u.discount.id, itemId: u.item?.id ?? null, amountMinor: u.applied.totalMinor }));
@@ -583,8 +587,8 @@ export async function placeOrder(
     const returnCostPayer = returnRules?.who_pays_return === "store" ? "store" : "shopper";
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
-    const campaignTotal = priced.reduce((sum, p) => sum + p.campaign, 0);
-    const campaignText = campaignLabel(priced.flatMap((p) => p.parts.map((part) => part.name)));
+    const campaignTotal = priced.reduce((sum, p) => sum + p.campaign, 0) + campaignShipping;
+    const campaignText = campaignLabel([...priced.flatMap((p) => p.parts.map((part) => part.name)), ...(freeShipping ? [freeShipping.name] : [])]);
     // Appointments paid at the venue, or with a deposit now (D66): the part left for the venue.
     const venue = priced.map((p) =>
       venuePart(
@@ -693,6 +697,7 @@ export async function placeOrder(
       memberPercent: memberTotal > 0 ? member!.percent : null,
       campaignDiscountMinor: campaignTotal,
       campaignLabel: campaignTotal > 0 ? campaignText : null,
+      campaignShipping: freeShipping ? { id: freeShipping.campaignId, name: freeShipping.name, minor: campaignShipping } : null,
       creditMinor: creditTotal,
       referralDiscountMinor: referralTotal,
       delivery: resolved?.delivery ?? null,

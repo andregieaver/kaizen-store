@@ -2773,6 +2773,20 @@
       "when": 1792565378282,
       "tag": "20261021064938_discount_codes_stacking_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 396,
+      "version": "7",
+      "when": 1792573265716,
+      "tag": "20261021090105_campaigns_depth",
+      "breakpoints": true
+    },
+    {
+      "idx": 397,
+      "version": "7",
+      "when": 1792573282651,
+      "tag": "20261021090122_campaigns_depth_rules",
+      "breakpoints": true
     }
   ]
 }

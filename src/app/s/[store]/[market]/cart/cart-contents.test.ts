@@ -105,6 +105,8 @@ const summary = (over: Record<string, unknown> = {}) => ({
   memberDiscountMinor: 0,
   campaignDiscountMinor: 0,
   campaignNames: [],
+  campaignShippingMinor: 0,
+  campaignNext: [],
   today: () => 10000,
   lineDiscount: () => 0,
   total: 8500,

@@ -236,3 +236,41 @@ describe("the admin's pages", () => {
     expect((form.props.products as { id: string }[]).some((p) => p.id === mug.product)).toBe(true);
   });
 });
+
+describe("campaigns in depth (D299 E3)", () => {
+  it("saves an amount off, free shipping and a tiered campaign, amounts in minor units", async () => {
+    expect(await save({ name: "Kroner", kind: "amount", amounts: { NO: "100" }, thresholds: { NO: "500" } })).toMatchObject({ ok: true });
+    expect(await save({ name: "Frakt", kind: "free_shipping" })).toMatchObject({ ok: true });
+    expect(
+      await save({ name: "Trapp", kind: "tiered", tierBasis: "spend", tiers: [{ amounts: { NO: "500" }, percent: "5" }, { amounts: { NO: "1000" }, percent: "10" }] }),
+    ).toMatchObject({ ok: true });
+    const listed = await campaigns.listCampaigns(storeId);
+    expect(listed.find((c) => c.name === "Kroner")).toMatchObject({ kind: "amount", amounts: { NO: 10000 }, thresholds: { NO: 50000 }, tiers: [], tierBasis: null });
+    expect(listed.find((c) => c.name === "Frakt")).toMatchObject({ kind: "free_shipping", thresholds: {}, amounts: {} });
+    expect(listed.find((c) => c.name === "Trapp")).toMatchObject({
+      tierBasis: "spend",
+      tiers: [
+        { quantity: null, amounts: { NO: 50000 }, percent: 5 },
+        { quantity: null, amounts: { NO: 100000 }, percent: 10 },
+      ],
+    });
+  });
+
+  it("refuses what would not make sense", async () => {
+    const refused = (input: Record<string, unknown>) => save(input).then((r) => (r.ok ? [] : r.problems));
+    expect(await refused({ name: "Ingen", kind: "amount" })).toContain("Say how much is taken off, in at least one country's currency.");
+    expect(await refused({ name: "Feil", kind: "amount", amounts: { NO: "abc" } })).toContain("The amount off for Norge is not a valid amount.".replace("Norge", no.name));
+    expect(await refused({ name: "Ned", kind: "tiered", tierBasis: "quantity", tiers: [{ quantity: "4", percent: "10" }, { quantity: "2", percent: "20" }] })).toContain(
+      "Step 2 must ask for more items than step 1.",
+    );
+    expect(await refused({ name: "Mindre", kind: "tiered", tierBasis: "quantity", tiers: [{ quantity: "2", percent: "20" }, { quantity: "4", percent: "10" }] })).toContain(
+      "Step 2 must give more than step 1.",
+    );
+  });
+
+  it("gives the running ones in the currency shown", async () => {
+    const running = await campaigns.runningCampaigns(db(), storeId, no);
+    expect(running.find((c) => c.name === "Kroner")?.amounts).toEqual({ NO: 10000 });
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid and name in ('Kroner', 'Frakt', 'Trapp')`);
+  });
+});

@@ -233,7 +233,7 @@ function offersOn(site: Extract<ChatSite, { kind: "store" }>, notices: CampaignN
   const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
   const mine = noticesFor(notices, productId);
   const say = (n: CampaignNotice) => `${n.name}: ${noticeText(n, m, money)}${n.signIn ? ` (${m.campaigns.signIn})` : ""}`;
-  return { card: cardNotices(mine).map((n) => noticeText(n, m, money)), told: mine.filter((n) => gifts || n.kind !== "gift").map(say) };
+  return { card: cardNotices(mine).map((n) => noticeText(n, m, money, { card: true })), told: mine.filter((n) => gifts || n.kind !== "gift").map(say) };
 }
 
 function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProduct, "handle" | "title" | "image" | "price">, from: boolean, offers: string[] = []): ChatProduct {

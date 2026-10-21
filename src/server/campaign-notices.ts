@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { NO_NOTICES, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
+import { tiersIn } from "@/lib/campaigns";
 import { shown, type Market } from "@/lib/markets";
 
 import { storeAndMarket } from "./content-grid";
@@ -29,7 +30,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
   const now = Date.now();
 
   const rows = await readDb().execute<Row>(sql`
-    select c.id, c.name, c.kind, c.percent, c.buy_quantity, c.pay_quantity, c.thresholds, c.product_ids, c.term_ids,
+    select c.id, c.name, c.kind, c.percent, c.buy_quantity, c.pay_quantity, c.thresholds, c.amounts, c.tier_basis, c.tiers, c.product_ids, c.term_ids,
       c.gift_variant_id, c.usage_limit, c.per_customer_limit, c.markets, c.starts_at, c.ends_at,
       (select coalesce(tl.title, tf.title, p.handle)
          from commerce.product_variants v
@@ -38,9 +39,13 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
          left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
          where v.store_id = c.store_id and v.id = c.gift_variant_id) as gift_title,
       case when c.usage_limit is null then 0 else (
-        select count(distinct ol.order_id)::int from commerce.order_lines ol
-        join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-        where ol.store_id = c.store_id and ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', c.id::text)) and o.status <> 'cancelled' and o.copied_from is null
+        -- Orders it gave something: on a line, or their shipping (D299 E3).
+        select count(*)::int from commerce.orders o
+        where o.store_id = c.store_id and o.status <> 'cancelled' and o.copied_from is null
+          and (o.campaign_shipping ->> 'id' = c.id::text or exists (
+            select 1 from commerce.order_lines ol
+            where ol.store_id = o.store_id and ol.order_id = o.id and ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', c.id::text))
+          ))
       ) end as used
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid and c.active and c.tier_ids = '[]'::jsonb
@@ -74,6 +79,18 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
     const threshold = (row.thresholds as Record<string, number>)[market.code];
     // A free product is announced only where the campaign has an amount, and has its product.
     if (kind === "gift" && (!(threshold > 0) || !row.gift_title)) continue;
+    // An amount off only where it has one (D299 E3); a tiered campaign with its steps in this market.
+    const amount = (row.amounts as Record<string, number>)[market.code];
+    if (kind === "amount" && !(amount > 0)) continue;
+    const basis = row.tier_basis === "quantity" || row.tier_basis === "spend" ? row.tier_basis : null;
+    const tiers =
+      kind === "tiered" && basis
+        ? tiersIn(
+            { tierBasis: basis, tiers: (row.tiers as { quantity?: number | null; amounts?: Record<string, number>; percent: number }[]).map((t) => ({ quantity: t.quantity ?? null, amounts: t.amounts ?? {}, percent: Number(t.percent) })) },
+            market.code,
+          ).map((t) => ({ at: basis === "spend" ? shown(market, t.at) : t.at, percent: t.percent }))
+        : [];
+    if (kind === "tiered" && tiers.length === 0) continue;
     const productIds = (row.product_ids as string[]).map(String);
     const termIds = (row.term_ids as string[]).map(String);
     let reach: string[] | null = null;
@@ -88,7 +105,10 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
       buyQuantity: Number(row.buy_quantity),
       payQuantity: Number(row.pay_quantity),
       giftTitle: row.gift_title ? String(row.gift_title) : null,
-      thresholdMinor: kind === "gift" ? shown(market, threshold) : null,
+      thresholdMinor: (kind === "gift" || kind === "amount" || kind === "free_shipping") && threshold > 0 ? shown(market, threshold) : null,
+      amountMinor: kind === "amount" ? shown(market, amount) : null,
+      tierBasis: kind === "tiered" ? basis : null,
+      tiers,
       endsAt: ends === null ? null : new Date(ends).toISOString(),
       productIds: reach,
       signIn: row.per_customer_limit !== null,
