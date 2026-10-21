@@ -4,14 +4,18 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import {
+  BUY_MIN_MAX,
   CAMPAIGN_NAME_MAX,
+  GET_QUANTITY_MAX,
   GIFT_QUANTITY_MAX,
+  USES_PER_ORDER_MAX,
   MULTI_BUY_MAX,
   TIER_QUANTITY_MAX,
   TIERS_MAX,
   TIERS_MIN,
   type CampaignInput,
   type CampaignKind,
+  type GetKind,
   type TierBasis,
 } from "@/lib/campaigns";
 
@@ -32,6 +36,18 @@ export type CampaignDraft = {
   /** A tiered campaign's basis and steps, typed. */
   tierBasis: TierBasis;
   tiers: { quantity: string; amounts: Record<string, string>; percent: string }[];
+  /** Buy X get Y (D299 E4): what one use asks for, what they get and what each given item takes off, typed. */
+  buyBasis: "items" | "spend";
+  buyMinQuantity: string;
+  buyMinAmounts: Record<string, string>;
+  getScope: "same" | "some";
+  getProductIds: string[];
+  getTermIds: string[];
+  getQuantity: string;
+  getKind: GetKind;
+  getPercent: string;
+  getAmounts: Record<string, string>;
+  usesPerOrder: string;
   scope: "all" | "some";
   productIds: string[];
   termIds: string[];
@@ -58,6 +74,7 @@ const KINDS: { value: CampaignKind; title: string; text: string }[] = [
   { value: "amount", title: "An amount off", text: "For example NOK 100 off, optionally when the basket comes to NOK 500." },
   { value: "tiered", title: "Bigger discounts for buying more", text: "For example 10 % off 2 items and 15 % off 4, or by what the basket comes to." },
   { value: "free_shipping", title: "Free shipping", text: "No shipping to pay, optionally when the basket comes to an amount." },
+  { value: "bxgy", title: "Buy one thing, get another", text: "For example buy 2 shirts, get a cap free, or buy 2 and get the cheapest at half price." },
   { value: "gift", title: "A free product", text: "Added to the order, free, when the basket comes to an amount." },
 ];
 
@@ -97,7 +114,7 @@ export function CampaignEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => setD((current) => ({ ...current, [key]: value }));
-  const toggle = (key: "productIds" | "termIds" | "tierIds" | "markets", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
+  const toggle = (key: "productIds" | "termIds" | "tierIds" | "markets" | "getProductIds" | "getTermIds", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
 
   const submit = () =>
     startSaving(async () => {
@@ -113,6 +130,17 @@ export function CampaignEditor({
         amounts: d.amounts,
         tierBasis: d.tierBasis,
         tiers: d.tiers,
+        buyBasis: d.buyBasis,
+        buyMinQuantity: d.buyMinQuantity,
+        buyMinAmounts: d.buyMinAmounts,
+        getScope: d.getScope,
+        getProductIds: d.getProductIds,
+        getTermIds: d.getTermIds,
+        getQuantity: d.getQuantity,
+        getKind: d.getKind,
+        getPercent: d.getPercent,
+        getAmounts: d.getAmounts,
+        usesPerOrder: d.usesPerOrder || null,
         scope: d.scope,
         productIds: d.productIds,
         termIds: d.termIds,
@@ -141,7 +169,7 @@ export function CampaignEditor({
     const parent = term.parentId ? terms.find((t) => t.id === term.parentId) : null;
     return parent ? `${path(parent)} › ${term.name}` : term.name;
   };
-  const scopeWord = d.kind === "gift" || d.kind === "free_shipping" ? "What counts towards the amount" : "What it applies to";
+  const scopeWord = d.kind === "bxgy" ? "What they buy" : d.kind === "gift" || d.kind === "free_shipping" ? "What counts towards the amount" : "What it applies to";
   /** Fields for an amount in each country's currency. */
   const perMarket = (values: Record<string, string>, change: (next: Record<string, string>) => void, placeholder: string, prefix: string) => (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -287,6 +315,88 @@ export function CampaignEditor({
             )}
             <p className={hint}>
               The highest step the shopper reaches applies, to every product it applies to. Each step asks for more and gives more than the one before. The product page shows the steps, and the cart how far the next one is.
+            </p>
+          </div>
+        )}
+        {d.kind === "bxgy" && (
+          <div className="flex flex-col gap-3">
+            <fieldset className="flex flex-wrap gap-4">
+              <legend className="mb-1 text-sm font-medium">They buy</legend>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="buyBasis" checked={d.buyBasis === "items"} onChange={() => set("buyBasis", "items")} className="size-4" />
+                A number of items
+              </label>
+              <label className="flex min-h-10 items-center gap-2 text-sm">
+                <input type="radio" name="buyBasis" checked={d.buyBasis === "spend"} onChange={() => set("buyBasis", "spend")} className="size-4" />
+                For an amount
+              </label>
+            </fieldset>
+            {d.buyBasis === "items" ? (
+              <label className={`${label} w-32`}>
+                Items
+                <input type="number" min={1} max={BUY_MIN_MAX} value={d.buyMinQuantity} onChange={(event) => set("buyMinQuantity", event.target.value)} required inputMode="numeric" className={input} />
+              </label>
+            ) : (
+              perMarket(d.buyMinAmounts, (next) => set("buyMinAmounts", next), "Not offered", "They spend")
+            )}
+            <div className="flex flex-wrap items-end gap-3">
+              <label className={`${label} w-32`}>
+                They get
+                <input type="number" min={1} max={GET_QUANTITY_MAX} value={d.getQuantity} onChange={(event) => set("getQuantity", event.target.value)} required inputMode="numeric" className={input} />
+              </label>
+              <label className={`${label} w-56`}>
+                At
+                <select value={d.getKind} onChange={(event) => set("getKind", event.target.value as GetKind)} className={input}>
+                  <option value="free">No cost</option>
+                  <option value="percent">A percentage off</option>
+                  <option value="amount">An amount off each</option>
+                </select>
+              </label>
+              {d.getKind === "percent" && (
+                <label className={`${label} w-32`}>
+                  Percent off
+                  <input type="number" min={1} max={100} value={d.getPercent} onChange={(event) => set("getPercent", event.target.value)} required inputMode="numeric" className={input} />
+                </label>
+              )}
+            </div>
+            {d.getKind === "amount" && perMarket(d.getAmounts, (next) => set("getAmounts", next), "Not offered", "Off each")}
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium">What they get</legend>
+              <label className="flex min-h-10 items-center gap-3 text-sm">
+                <input type="radio" name="getScope" checked={d.getScope === "same"} onChange={() => set("getScope", "same")} className="size-4" />
+                The same as what they buy (the cheapest)
+              </label>
+              <label className="flex min-h-10 items-center gap-3 text-sm">
+                <input type="radio" name="getScope" checked={d.getScope === "some"} onChange={() => set("getScope", "some")} className="size-4" />
+                Other products, categories or tags
+              </label>
+            </fieldset>
+            {d.getScope === "some" && (
+              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2" aria-label="What they get">
+                {terms.map((term) => (
+                  <li key={`t:${term.id}`}>
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
+                      <input type="checkbox" checked={d.getTermIds.includes(term.id)} onChange={(event) => toggle("getTermIds", term.id, event.target.checked)} className="size-4" />
+                      {term.kind === "tag" ? `#${term.name}` : path(term)}
+                    </label>
+                  </li>
+                ))}
+                {products.map((product) => (
+                  <li key={`p:${product.id}`}>
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
+                      <input type="checkbox" checked={d.getProductIds.includes(product.id)} onChange={(event) => toggle("getProductIds", product.id, event.target.checked)} className="size-4" />
+                      {product.title}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <label className={`${label} max-w-56`}>
+              Times per order (optional)
+              <input type="number" min={1} max={USES_PER_ORDER_MAX} value={d.usesPerOrder} onChange={(event) => set("usesPerOrder", event.target.value)} placeholder="As often as the basket allows" inputMode="numeric" className={input} />
+            </label>
+            <p className={hint}>
+              The shopper puts the items in the basket; the cheapest of what they get comes off, never an item counted as bought. Product pages of both say so.
             </p>
           </div>
         )}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyCampaigns,
+  bxgyOff,
   campaignInput,
   campaignStatus,
   describeCampaign,
@@ -32,6 +33,15 @@ const campaign = (over: Partial<Campaign>): Campaign => ({
   amounts: {},
   tierBasis: null,
   tiers: [],
+  buyMinQuantity: null,
+  buyMinAmounts: {},
+  getProductIds: [],
+  getTermIds: [],
+  getQuantity: 0,
+  getKind: null,
+  getPercent: null,
+  getAmounts: {},
+  usesPerOrder: null,
   productIds: [],
   termIds: [],
   tierIds: [],
@@ -378,5 +388,71 @@ describe("campaigns in depth (D299 E3)", () => {
     expect(
       describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] }, money),
     ).toBe("10 % from 2 items, 20 % from 4 items");
+  });
+});
+
+describe("buy X get Y (D299 E4)", () => {
+  const bxgy = (over: Partial<Campaign> = {}) =>
+    campaign({ kind: "bxgy", percent: 0, buyMinQuantity: 2, getQuantity: 1, getKind: "free", ...over });
+
+  it("on one set gives the cheapest of every three, never a unit counted as bought", () => {
+    const lines = [line("a", 1000, 2), line("b", 600, 2), line("c", 200, 2)];
+    const { off, uses } = bxgyOff(bxgy(), lines, "NO");
+    // Use one buys both 1000s and gives a 200; use two buys both 600s and gives the other 200.
+    expect(off).toEqual({ c: 400 });
+    expect(uses).toBe(2);
+    expect(applyCampaigns([bxgy()], [line("a", 1000, 2)], "NO").applied).toEqual([]);
+  });
+
+  it("on two sets gives the get set's cheapest once the buy set is in the basket", () => {
+    const c = bxgy({ productIds: ["p-shirt"], getProductIds: ["p-cap", "p-sock"], getQuantity: 1 });
+    const lines = [line("shirt", 3000, 2), line("cap", 500), line("sock", 300)];
+    expect(bxgyOff(c, lines, "NO").off).toEqual({ sock: 300 });
+    // One shirt is not enough.
+    expect(bxgyOff(c, [line("shirt", 3000), line("cap", 500)], "NO").off).toEqual({});
+    // No get item in the basket: nothing.
+    expect(bxgyOff(c, [line("shirt", 3000, 4)], "NO").off).toEqual({});
+  });
+
+  it("gives a percentage or an amount per unit, never more than a unit costs", () => {
+    const lines = [line("a", 1000, 3)];
+    expect(bxgyOff(bxgy({ getKind: "percent", getPercent: 50 }), lines, "NO").off).toEqual({ a: 500 });
+    expect(bxgyOff(bxgy({ getKind: "amount", getAmounts: { NO: 300 } }), lines, "NO").off).toEqual({ a: 300 });
+    expect(bxgyOff(bxgy({ getKind: "amount", getAmounts: { NO: 5000 } }), lines, "NO").off).toEqual({ a: 1000 });
+    expect(bxgyOff(bxgy({ getKind: "amount", getAmounts: { NO: 300 } }), lines, "SE").off).toEqual({});
+  });
+
+  it("can ask for an amount instead of a number of items", () => {
+    const c = bxgy({ buyMinQuantity: null, buyMinAmounts: { NO: 2000 }, productIds: ["p-a"], getProductIds: ["p-g"] });
+    expect(bxgyOff(c, [line("a", 1500), line("g", 400)], "NO").off).toEqual({});
+    expect(bxgyOff(c, [line("a", 1500, 2), line("g", 400)], "NO").off).toEqual({ g: 400 });
+  });
+
+  it("stops at the uses an order may have", () => {
+    const lines = [line("a", 1000, 9)];
+    expect(bxgyOff(bxgy(), lines, "NO").uses).toBe(3);
+    expect(bxgyOff(bxgy({ usesPerOrder: 1 }), lines, "NO")).toMatchObject({ uses: 1, off: { a: 1000 } });
+  });
+
+  it("competes with a percentage for the lines it uses, the one giving more winning", () => {
+    const lines = [line("a", 1000, 3)];
+    // Buy 2 get 1 free takes 1000 off; 20 % takes 600.
+    expect(applyCampaigns([campaign({ percent: 20 }), bxgy()], lines, "NO").applied).toMatchObject([{ kind: "bxgy", offMinor: 1000 }]);
+    // 50 % takes 1500 and wins; buy X get Y gets nothing, the lines being taken.
+    expect(applyCampaigns([campaign({ percent: 50 }), bxgy()], lines, "NO").applied).toMatchObject([{ kind: "percent", offMinor: 1500 }]);
+  });
+
+  it("checks the admin's form and is described for the list", () => {
+    const base = { name: "Caps", kind: "bxgy" as const };
+    expect(campaignInput.safeParse({ ...base, getScope: "some" }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, getScope: "some", getProductIds: [crypto.randomUUID()] }).success).toBe(true);
+    expect(campaignInput.safeParse({ ...base, stacks: true }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, usesPerOrder: "" }).data?.usesPerOrder).toBeNull();
+    const money = (minor: number, code: string) => `${code} ${minor / 100}`;
+    const plain = { percent: 0, buyQuantity: 0, payQuantity: 0, thresholds: {} };
+    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: 2, getQuantity: 1, getKind: "free" }, money)).toBe("Buy 2, get 1 free");
+    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: null, buyMinAmounts: { NO: 50000 }, getQuantity: 1, getKind: "percent", getPercent: 50 }, money)).toBe(
+      "Spend NO 500, get 1 at 50 % off",
+    );
   });
 });

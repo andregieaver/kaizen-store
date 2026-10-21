@@ -19,7 +19,7 @@ import { planPrice } from "./subscriptions";
  * what the others left, one after the other.
  */
 
-export const CAMPAIGN_KINDS = ["percent", "multi_buy", "gift", "amount", "free_shipping", "tiered"] as const;
+export const CAMPAIGN_KINDS = ["percent", "multi_buy", "gift", "amount", "free_shipping", "tiered", "bxgy"] as const;
 export type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
 
 /** What a tiered campaign's steps count (D299 E3): units, or what the lines come to. */
@@ -30,6 +30,14 @@ export const TIERS_MIN = 2;
 export const TIERS_MAX = 5;
 /** Most units a quantity step can ask for. */
 export const TIER_QUANTITY_MAX = 1000;
+
+/** What a buy X get Y campaign gives each unit of its get set (D299 E4). */
+export const GET_KINDS = ["free", "percent", "amount"] as const;
+export type GetKind = (typeof GET_KINDS)[number];
+/** Most units one use of buy X get Y may ask for, give, and how often one order may use it. */
+export const BUY_MIN_MAX = 100;
+export const GET_QUANTITY_MAX = 20;
+export const USES_PER_ORDER_MAX = 100;
 
 /** A step of a tiered campaign: so many units, or what the lines come to per market (in the currency shown), for a percentage off. */
 export type CampaignTier = { quantity: number | null; amounts: Record<string, number>; percent: number };
@@ -61,6 +69,19 @@ export type Campaign = {
   /** A `tiered` campaign's basis and steps, lowest first. */
   tierBasis: TierBasis | null;
   tiers: CampaignTier[];
+  /**
+   * Buy X get Y (D299 E4): what one use asks of the buy set (the campaign's own reach): units, or an amount per market (in the currency
+   * shown); the get set (none: the buy set); units given per use and what each gets; uses per order (null: no limit).
+   */
+  buyMinQuantity: number | null;
+  buyMinAmounts: Record<string, number>;
+  getProductIds: string[];
+  getTermIds: string[];
+  getQuantity: number;
+  getKind: GetKind | null;
+  getPercent: number | null;
+  getAmounts: Record<string, number>;
+  usesPerOrder: number | null;
   /** What it applies to: these products and every product in these categories and tags; with neither, everything. */
   productIds: string[];
   termIds: string[];
@@ -248,11 +269,79 @@ function priceOff(campaign: Campaign, lines: CampaignLine[], marketCode: string)
     return splitAmount(reached, amount);
   }
   if (campaign.kind === "multi_buy") return multiBuyOff(reached, campaign.buyQuantity, campaign.payQuantity);
+  if (campaign.kind === "bxgy") return bxgyOff(campaign, lines, marketCode).off;
   return {};
 }
 
 /** Kinds that reduce prices, competing with each other for lines unless they stack. */
-const PRICE_KINDS: readonly CampaignKind[] = ["percent", "multi_buy", "amount", "tiered"];
+const PRICE_KINDS: readonly CampaignKind[] = ["percent", "multi_buy", "amount", "tiered", "bxgy"];
+
+/** Whether a line is in a buy X get Y campaign's get set: its own, or the buy set when it names none. */
+export function inGetSet(campaign: Pick<Campaign, "productIds" | "termIds" | "getProductIds" | "getTermIds">, line: Pick<CampaignLine, "productId" | "termIds">): boolean {
+  if (campaign.getProductIds.length === 0 && campaign.getTermIds.length === 0) return reaches(campaign, line);
+  return reaches({ productIds: campaign.getProductIds, termIds: campaign.getTermIds }, line);
+}
+
+/** What one given unit at this price takes off: all of it, the lowered price as every percentage, or an amount never above it. */
+export function getUnitOff(campaign: Pick<Campaign, "getKind" | "getPercent" | "getAmounts">, unitMinor: number, marketCode: string): number {
+  if (campaign.getKind === "free") return unitMinor;
+  if (campaign.getKind === "percent") return unitMinor - planPrice(unitMinor, campaign.getPercent ?? 0);
+  if (campaign.getKind === "amount") return Math.min(unitMinor, Math.max(0, campaign.getAmounts[marketCode] ?? 0));
+  return 0;
+}
+
+/**
+ * What buy X get Y takes off (D299 E4): each use counts the dearest units of the buy set still unused until it has its quantity (or
+ * amount), then gives up to `getQuantity` of the cheapest units of the get set still unused, never one it counted as bought; a use that
+ * gives nothing does not count, and uses stop at `usesPerOrder`. Returns what comes off each line and every line whose units it used.
+ */
+export function bxgyOff(campaign: Campaign, lines: CampaignLine[], marketCode: string): { off: Record<string, number>; used: Set<string>; uses: number } {
+  const off: Record<string, number> = {};
+  const used = new Set<string>();
+  const amount = campaign.buyMinAmounts[marketCode] ?? 0;
+  const byQuantity = campaign.buyMinQuantity !== null;
+  if (campaign.getQuantity <= 0 || (!byQuantity && amount <= 0) || (byQuantity && (campaign.buyMinQuantity ?? 0) <= 0)) return { off, used, uses: 0 };
+  const units = lines
+    .filter((line) => line.discountable && line.unitMinor > 0)
+    .flatMap((line, order) =>
+      Array.from({ length: line.quantity }, (_, i) => ({
+        id: `${line.key}#${i}`,
+        key: line.key,
+        order,
+        price: line.unitMinor,
+        buy: reaches(campaign, line),
+        get: inGetSet(campaign, line),
+      })),
+    )
+    .filter((unit) => unit.buy || unit.get);
+  const taken = new Set<string>();
+  // The dearest first to count as bought; the cheapest first to give; ties keep the basket's order.
+  const dearest = units.filter((u) => u.buy).sort((a, b) => b.price - a.price || a.order - b.order);
+  const cheapest = units.filter((u) => u.get).sort((a, b) => a.price - b.price || a.order - b.order);
+  let uses = 0;
+  while (campaign.usesPerOrder === null || uses < campaign.usesPerOrder) {
+    const bought: typeof units = [];
+    let spent = 0;
+    for (const unit of dearest) {
+      if (taken.has(unit.id)) continue;
+      if (byQuantity ? bought.length >= campaign.buyMinQuantity! : spent >= amount) break;
+      bought.push(unit);
+      spent += unit.price;
+    }
+    if (byQuantity ? bought.length < campaign.buyMinQuantity! : spent < amount) break;
+    const boughtIds = new Set(bought.map((u) => u.id));
+    const given = cheapest.filter((u) => !taken.has(u.id) && !boughtIds.has(u.id)).slice(0, campaign.getQuantity);
+    const gain = given.reduce((sum, u) => sum + getUnitOff(campaign, u.price, marketCode), 0);
+    if (given.length === 0 || gain <= 0) break;
+    for (const unit of [...bought, ...given]) {
+      taken.add(unit.id);
+      used.add(unit.key);
+    }
+    for (const unit of given) off[unit.key] = (off[unit.key] ?? 0) + getUnitOff(campaign, unit.price, marketCode);
+    uses += 1;
+  }
+  return { off, used, uses };
+}
 
 /**
  * What the running campaigns do to a basket. Price campaigns first, each
@@ -275,11 +364,13 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
       if (total > 0 && (!best || total > best.total)) best = { campaign, off, total };
     }
     if (!best) break;
-    // A pool of lines share a "3 for 2", so all it reached is used up, whether or not a unit of each was free.
+    // A pool of lines share a "3 for 2", and buy X get Y takes the lines it counted as bought as well as those it gave.
     const taken = new Set(
-      best.campaign.kind !== "multi_buy"
-        ? Object.keys(best.off)
-        : free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line)).map((line) => line.key),
+      best.campaign.kind === "multi_buy"
+        ? free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line)).map((line) => line.key)
+        : best.campaign.kind === "bxgy"
+          ? bxgyOff(best.campaign, free, marketCode).used
+          : Object.keys(best.off),
     );
     if (best.campaign.kind === "multi_buy") {
       const reached = free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line));
@@ -416,7 +507,8 @@ export function memberOffAfterCampaign(unitMinor: number, quantity: number, camp
 
 /** What a campaign gives, in English for the admin: "20 % off", "3 for 2", "Free product over NOK 500.00". */
 export function describeCampaign(
-  campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds"> & Partial<Pick<Campaign, "amounts" | "tierBasis" | "tiers">>,
+  campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds"> &
+    Partial<Pick<Campaign, "amounts" | "tierBasis" | "tiers" | "buyMinQuantity" | "buyMinAmounts" | "getQuantity" | "getKind" | "getPercent" | "getAmounts">>,
   money: (minor: number, marketCode: string) => string,
 ): string {
   const per = (values: Record<string, number>) => Object.entries(values).map(([market, minor]) => money(minor, market)).join(" / ");
@@ -425,6 +517,11 @@ export function describeCampaign(
   if (campaign.kind === "multi_buy") return `${campaign.buyQuantity} for ${campaign.payQuantity}`;
   if (campaign.kind === "amount") return `${per(campaign.amounts ?? {}) || "An amount"} off${over ? ` over ${over}` : ""}`;
   if (campaign.kind === "free_shipping") return over ? `Free shipping over ${over}` : "Free shipping";
+  if (campaign.kind === "bxgy") {
+    const buy = campaign.buyMinQuantity ? `Buy ${campaign.buyMinQuantity}` : `Spend ${per(campaign.buyMinAmounts ?? {}) || "an amount"}`;
+    const get = campaign.getKind === "free" ? "free" : campaign.getKind === "percent" ? `at ${campaign.getPercent} % off` : `at ${per(campaign.getAmounts ?? {})} off`;
+    return `${buy}, get ${campaign.getQuantity ?? 1} ${get}`;
+  }
   if (campaign.kind === "tiered") {
     const steps = (campaign.tiers ?? []).map((tier) => `${tier.percent} % from ${campaign.tierBasis === "quantity" ? `${tier.quantity} items` : per(tier.amounts)}`);
     return steps.join(", ") || "Tiers";
@@ -457,6 +554,18 @@ export const campaignInput = z
     amounts: z.record(z.string(), z.string().trim()).default({}),
     /** A tiered campaign's basis and its steps, amounts typed per market. */
     tierBasis: z.enum(TIER_BASES).default("quantity"),
+    /** Buy X get Y (D299 E4): the buy measure (`items` or `spend`), the get set (`same` or chosen), what each given unit gets. */
+    buyBasis: z.enum(["items", "spend"]).default("items"),
+    buyMinQuantity: whole(1, BUY_MIN_MAX, `Ask for between 1 and ${BUY_MIN_MAX} items.`).default(2),
+    buyMinAmounts: z.record(z.string(), z.string().trim()).default({}),
+    getScope: z.enum(["same", "some"]).default("same"),
+    getProductIds: z.array(z.uuid()).default([]),
+    getTermIds: z.array(z.uuid()).default([]),
+    getQuantity: whole(1, GET_QUANTITY_MAX, `Give between 1 and ${GET_QUANTITY_MAX} items.`).default(1),
+    getKind: z.enum(GET_KINDS).default("free"),
+    getPercent: whole(1, 100, "Take off between 1 and 100 %.").default(50),
+    getAmounts: z.record(z.string(), z.string().trim()).default({}),
+    usesPerOrder: z.preprocess((v) => (v === "" || v === undefined ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole uses, please.").min(1, "Allow at least one use, or no limit.").max(USES_PER_ORDER_MAX).nullable()).default(null),
     tiers: z
       .array(
         z.object({
@@ -492,6 +601,10 @@ export const campaignInput = z
   .refine((input) => !input.stacks || (input.kind !== "amount" && input.kind !== "free_shipping"), {
     message: "An amount off or free shipping cannot be added on top of other campaigns.",
   })
+  .refine((input) => input.kind !== "bxgy" || input.getScope === "same" || input.getProductIds.length + input.getTermIds.length > 0, {
+    message: "Choose what shoppers get: products, categories or tags, or the same as what they buy.",
+  })
+  .refine((input) => !input.stacks || input.kind !== "bxgy", { message: "Buy one thing, get another cannot be added on top of other campaigns." })
   .refine((input) => input.kind !== "tiered" || input.tiers.length >= TIERS_MIN, { message: `Give at least ${TIERS_MIN} steps.` })
   .refine((input) => input.kind !== "tiered" || input.tierBasis !== "quantity" || input.tiers.every((tier) => tier.quantity !== null), {
     message: "Say how many items each step asks for.",

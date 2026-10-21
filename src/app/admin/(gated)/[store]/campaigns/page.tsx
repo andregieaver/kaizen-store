@@ -30,6 +30,7 @@ const KIND_WORD = {
   amount: "Amount off",
   free_shipping: "Free shipping",
   tiered: "Buy more, save more",
+  bxgy: "Buy one thing, get another",
 } as const;
 
 /** The store's campaigns (D114): offers without a code, for a time, and what each has given. */

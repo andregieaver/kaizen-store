@@ -1,4 +1,4 @@
-import type { CampaignKind, CampaignNext, TierBasis } from "./campaigns";
+import type { CampaignKind, CampaignNext, GetKind, TierBasis } from "./campaigns";
 import type { Messages } from "./i18n";
 
 /**
@@ -25,6 +25,11 @@ export type CampaignNotice = {
   /** A tiered campaign's ladder in this market, lowest first: units, or an amount in the currency shown. */
   tierBasis: TierBasis | null;
   tiers: { at: number; percent: number }[];
+  /**
+   * Buy X get Y (D299 E4): units one use asks for, or what they come to in the currency shown; units given and what each gets (a
+   * percentage, or an amount in the currency shown).
+   */
+  bxgy: { buyQuantity: number | null; buyMinor: number | null; getQuantity: number; getKind: GetKind; getPercent: number | null; getMinor: number | null } | null;
   /** When it ends, so the page can stop announcing it on time; null for no end. */
   endsAt: string | null;
   /** The products it reaches; null for every product. */
@@ -53,6 +58,17 @@ export function noticeText(notice: CampaignNotice, m: Messages, money: (minor: n
   if (notice.kind === "multi_buy") return m.campaigns.multiBuy(notice.buyQuantity, notice.payQuantity);
   if (notice.kind === "amount") return over ? m.campaigns.amountOver(money(notice.amountMinor ?? 0), over) : m.campaigns.amount(money(notice.amountMinor ?? 0));
   if (notice.kind === "free_shipping") return over ? m.campaigns.freeShippingOver(over) : m.campaigns.freeShipping;
+  if (notice.kind === "bxgy" && notice.bxgy) {
+    const b = notice.bxgy;
+    const buy = b.buyQuantity !== null ? m.campaigns.bxgyBuy(b.buyQuantity) : m.campaigns.bxgySpend(money(b.buyMinor ?? 0));
+    const get =
+      b.getKind === "free"
+        ? m.campaigns.bxgyGetFree(b.getQuantity)
+        : b.getKind === "percent"
+          ? m.campaigns.bxgyGetPercent(b.getQuantity, b.getPercent ?? 0)
+          : m.campaigns.bxgyGetAmount(b.getQuantity, money(b.getMinor ?? 0));
+    return `${buy}, ${get}`;
+  }
   if (notice.kind === "tiered") {
     if (card) return m.campaigns.upTo(Math.max(0, ...notice.tiers.map((tier) => tier.percent)));
     return notice.tiers
@@ -64,9 +80,17 @@ export function noticeText(notice: CampaignNotice, m: Messages, money: (minor: n
 
 /**
  * The notices a product card carries: the offers on the price that need no amount, two at most (a percentage, "3 for 2", a tiered
- * campaign as "Up to 15 % off"); gifts, amounts off and free shipping are told on the product page.
+ * campaign as "Up to 15 % off", "Buy 2, get 1 free"); gifts, amounts off and free shipping are told on the product page.
  */
-export const cardNotices = (notices: CampaignNotice[]) => notices.filter((notice) => CARD_KINDS.includes(notice.kind)).slice(0, 2);
+export const cardNotices = (notices: CampaignNotice[]) =>
+  notices
+    .filter(
+      (notice) =>
+        CARD_KINDS.includes(notice.kind) ||
+        // Buy X get Y by items, free or at a percentage, needs no amount (D299 E4).
+        (notice.kind === "bxgy" && notice.bxgy !== null && notice.bxgy.buyQuantity !== null && notice.bxgy.getKind !== "amount"),
+    )
+    .slice(0, 2);
 
 const CARD_KINDS: readonly CampaignNotice["kind"][] = ["percent", "multi_buy", "tiered"];
 

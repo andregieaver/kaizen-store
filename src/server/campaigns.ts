@@ -56,6 +56,15 @@ function toCampaign(row: Row): Campaign {
           percent: Number(tier.percent),
         }))
       : [],
+    buyMinQuantity: row.buy_min_quantity === null || row.buy_min_quantity === undefined ? null : Number(row.buy_min_quantity),
+    buyMinAmounts: (row.buy_min_amounts ?? {}) as Record<string, number>,
+    getProductIds: ids(row.get_product_ids),
+    getTermIds: ids(row.get_term_ids),
+    getQuantity: Number(row.get_quantity ?? 0),
+    getKind: row.get_kind === "free" || row.get_kind === "percent" || row.get_kind === "amount" ? row.get_kind : null,
+    getPercent: row.get_percent === null || row.get_percent === undefined ? null : Number(row.get_percent),
+    getAmounts: (row.get_amounts ?? {}) as Record<string, number>,
+    usesPerOrder: row.uses_per_order === null || row.uses_per_order === undefined ? null : Number(row.uses_per_order),
     productIds: ids(row.product_ids),
     termIds: ids(row.term_ids),
     tierIds: ids(row.tier_ids),
@@ -188,6 +197,14 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     }
     if (c.tierBasis === "spend" && !tiers.some((tier) => someMarket(tier.amounts))) problems.push("Say what each step asks the basket to come to, in at least one country's currency.");
   }
+  // Buy X get Y (D299 E4): what one use asks for, what shoppers get and what each given unit takes off.
+  const bxgy = c.kind === "bxgy";
+  const buyMinAmounts = bxgy && c.buyBasis === "spend" ? perMarket(c.buyMinAmounts, existing?.buyMinAmounts, "What they spend") : {};
+  if (bxgy && c.buyBasis === "spend" && !someMarket(buyMinAmounts) && problems.length === 0) problems.push("Say what shoppers spend, in at least one country's currency.");
+  const getAmounts = bxgy && c.getKind === "amount" ? perMarket(c.getAmounts, existing?.getAmounts, "The amount off each") : {};
+  if (bxgy && c.getKind === "amount" && !someMarket(getAmounts) && problems.length === 0) problems.push("Say how much comes off each item, in at least one country's currency.");
+  const getProductIds = bxgy && c.getScope === "some" ? [...new Set(c.getProductIds)] : [];
+  const getTermIds = bxgy && c.getScope === "some" ? [...new Set(c.getTermIds)] : [];
   const startsAt = osloTime(c.startsAt);
   const endsAt = osloTime(c.endsAt);
   if (startsAt && endsAt && startsAt >= endsAt) problems.push("The campaign must end after it starts.");
@@ -206,19 +223,24 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     `);
     if (Number(row.n) !== tierIds.length) problems.push("A chosen customer group no longer exists.");
   }
-  if (productIds.length > 0) {
+  // What it reaches and what it gives must be the store's own.
+  const chosenProducts = [...new Set([...productIds, ...getProductIds])];
+  const chosenTerms = [...new Set([...termIds, ...getTermIds])];
+  if (chosenProducts.length > 0) {
+    const chosen = chosenProducts;
     const [row] = await db().execute<Row>(sql`
       select count(*)::int as n from commerce.products
-      where store_id = ${store.id}::uuid and id in (${sql.join(productIds.map((p) => sql`${p}::uuid`), sql`, `)})
+      where store_id = ${store.id}::uuid and id in (${sql.join(chosen.map((p) => sql`${p}::uuid`), sql`, `)})
     `);
-    if (Number(row.n) !== productIds.length) problems.push("A chosen product no longer exists.");
+    if (Number(row.n) !== chosen.length) problems.push("A chosen product no longer exists.");
   }
-  if (termIds.length > 0) {
+  if (chosenTerms.length > 0) {
+    const chosen = chosenTerms;
     const [row] = await db().execute<Row>(sql`
       select count(*)::int as n from commerce.terms
-      where store_id = ${store.id}::uuid and content_type = 'product' and id in (${sql.join(termIds.map((t) => sql`${t}::uuid`), sql`, `)})
+      where store_id = ${store.id}::uuid and content_type = 'product' and id in (${sql.join(chosen.map((t) => sql`${t}::uuid`), sql`, `)})
     `);
-    if (Number(row.n) !== termIds.length) problems.push("A chosen category or tag no longer exists.");
+    if (Number(row.n) !== chosen.length) problems.push("A chosen category or tag no longer exists.");
   }
   if (c.kind === "gift" && c.giftVariantId) {
     const [gift] = await db().execute<Row>(sql`
@@ -243,6 +265,15 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     amounts: JSON.stringify(amounts),
     tierBasis: c.kind === "tiered" ? c.tierBasis : null,
     tiers: JSON.stringify(tiers),
+    buyMinQuantity: bxgy && c.buyBasis === "items" ? c.buyMinQuantity : null,
+    buyMinAmounts: JSON.stringify(buyMinAmounts),
+    getProductIds: JSON.stringify(getProductIds),
+    getTermIds: JSON.stringify(getTermIds),
+    getQuantity: bxgy ? c.getQuantity : 0,
+    getKind: bxgy ? c.getKind : null,
+    getPercent: bxgy && c.getKind === "percent" ? c.getPercent : null,
+    getAmounts: JSON.stringify(getAmounts),
+    usesPerOrder: bxgy ? c.usesPerOrder : null,
     productIds: JSON.stringify(productIds),
     termIds: JSON.stringify(termIds),
     tierIds: JSON.stringify(tierIds),
@@ -256,6 +287,9 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
           name = ${c.name}, kind = ${c.kind}, percent = ${values.percent}, buy_quantity = ${values.buy}, pay_quantity = ${values.pay},
           gift_variant_id = ${values.gift}::uuid, gift_quantity = ${values.giftQuantity}, thresholds = ${values.thresholds}::jsonb,
           amounts = ${values.amounts}::jsonb, tier_basis = ${values.tierBasis}, tiers = ${values.tiers}::jsonb,
+          buy_min_quantity = ${values.buyMinQuantity}, buy_min_amounts = ${values.buyMinAmounts}::jsonb,
+          get_product_ids = ${values.getProductIds}::jsonb, get_term_ids = ${values.getTermIds}::jsonb, get_quantity = ${values.getQuantity},
+          get_kind = ${values.getKind}, get_percent = ${values.getPercent}, get_amounts = ${values.getAmounts}::jsonb, uses_per_order = ${values.usesPerOrder},
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
           tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, per_customer_limit = ${c.perCustomerLimit},
           markets = ${values.markets}::jsonb, stacks = ${values.stacks},
@@ -266,10 +300,13 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     : await db().execute<Row>(sql`
         insert into commerce.campaigns (
           store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds, amounts, tier_basis, tiers,
+          buy_min_quantity, buy_min_amounts, get_product_ids, get_term_ids, get_quantity, get_kind, get_percent, get_amounts, uses_per_order,
           product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, starts_at, ends_at, active
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
-          ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.amounts}::jsonb, ${values.tierBasis}, ${values.tiers}::jsonb, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
+          ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.amounts}::jsonb, ${values.tierBasis}, ${values.tiers}::jsonb,
+          ${values.buyMinQuantity}, ${values.buyMinAmounts}::jsonb, ${values.getProductIds}::jsonb, ${values.getTermIds}::jsonb, ${values.getQuantity},
+          ${values.getKind}, ${values.getPercent}, ${values.getAmounts}::jsonb, ${values.usesPerOrder}, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
           ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
         )
         returning id
@@ -345,7 +382,14 @@ export async function runningCampaigns(
 /** A campaign's amounts for this market in the currency shown (D109): its threshold, an amount off and a tier's spend (D299 E3). */
 export function shownIn(c: Campaign, market: Market): Campaign {
   const one = (values: Record<string, number>) => (values[market.code] === undefined ? values : { ...values, [market.code]: shown(market, values[market.code]) });
-  return { ...c, thresholds: one(c.thresholds), amounts: one(c.amounts), tiers: c.tiers.map((tier) => ({ ...tier, amounts: one(tier.amounts) })) };
+  return {
+    ...c,
+    thresholds: one(c.thresholds),
+    amounts: one(c.amounts),
+    tiers: c.tiers.map((tier) => ({ ...tier, amounts: one(tier.amounts) })),
+    buyMinAmounts: one(c.buyMinAmounts),
+    getAmounts: one(c.getAmounts),
+  };
 }
 
 /** Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers". */

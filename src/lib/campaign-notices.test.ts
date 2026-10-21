@@ -15,6 +15,7 @@ const notice = (over: Partial<CampaignNotice>): CampaignNotice => ({
   amountMinor: null,
   tierBasis: null,
   tiers: [],
+  bxgy: null,
   endsAt: null,
   productIds: null,
   signIn: false,
@@ -75,5 +76,16 @@ describe("campaign notices", () => {
     expect(nextStepText({ ...step, kind: "tiered", missingMinor: 12000, percent: 15 }, t("nb"), money)).toBe("Handle for kr 120 til for å få 15 % rabatt");
     expect(nextStepText({ ...step, kind: "amount", missingMinor: 12000, offMinor: 10000 }, t("sv"), money)).toBe("Handla för kr 120 till för att få kr 100 rabatt");
     expect(nextStepText({ ...step, kind: "free_shipping", missingMinor: 12000 }, t("da"), money)).toBe("Handl for kr 120 mere for at få gratis fragt");
+  });
+
+  it("say buy X get Y, and put it on cards only when it needs no amount (D299 E4)", () => {
+    const b = { buyQuantity: 2, buyMinor: null, getQuantity: 1, getKind: "free" as const, getPercent: null, getMinor: null };
+    const free = notice({ id: "f", kind: "bxgy", bxgy: b });
+    expect(noticeText(free, t("nb"), money)).toBe("Kjøp 2, få 1 gratis");
+    expect(noticeText(notice({ kind: "bxgy", bxgy: { ...b, getKind: "percent", getPercent: 50 } }), t("sv"), money)).toBe("Köp 2, få 1 med 50 % rabatt");
+    expect(noticeText(notice({ kind: "bxgy", bxgy: { ...b, getKind: "amount", getMinor: 10000 } }), t("da"), money)).toBe("Køb 2, få 1 med kr 100 rabat");
+    const spend = notice({ id: "s", kind: "bxgy", bxgy: { ...b, buyQuantity: null, buyMinor: 50000 } });
+    expect(noticeText(spend, t("en"), money)).toBe("Spend kr 500, get 1 free");
+    expect(cardNotices([free, spend, notice({ id: "a", kind: "bxgy", bxgy: { ...b, getKind: "amount", getMinor: 100 } })]).map((n) => n.id)).toEqual(["f"]);
   });
 });

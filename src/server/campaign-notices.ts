@@ -31,6 +31,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
 
   const rows = await readDb().execute<Row>(sql`
     select c.id, c.name, c.kind, c.percent, c.buy_quantity, c.pay_quantity, c.thresholds, c.amounts, c.tier_basis, c.tiers, c.product_ids, c.term_ids,
+      c.buy_min_quantity, c.buy_min_amounts, c.get_product_ids, c.get_term_ids, c.get_quantity, c.get_kind, c.get_percent, c.get_amounts,
       c.gift_variant_id, c.usage_limit, c.per_customer_limit, c.markets, c.starts_at, c.ends_at,
       (select coalesce(tl.title, tf.title, p.handle)
          from commerce.product_variants v
@@ -55,7 +56,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
   const items: CampaignNotice[] = [];
   const boundaries: number[] = [];
   let limited = false;
-  const scoped = rows.filter((row) => (row.term_ids as unknown[]).length > 0);
+  const scoped = rows.filter((row) => (row.term_ids as unknown[]).length > 0 || (row.get_term_ids as unknown[]).length > 0);
   // Products in a chosen category (its subcategories too) or tag, worked out once for all of them.
   const termsOf = scoped.length > 0 ? await productTerms(storeId) : new Map<string, Set<string>>();
 
@@ -91,11 +92,22 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
           ).map((t) => ({ at: basis === "spend" ? shown(market, t.at) : t.at, percent: t.percent }))
         : [];
     if (kind === "tiered" && tiers.length === 0) continue;
+    // Buy X get Y (D299 E4) only where its buy measure and what it gives have their amounts here.
+    const buyMin = (row.buy_min_amounts as Record<string, number>)[market.code];
+    const getAmount = (row.get_amounts as Record<string, number>)[market.code];
+    const byItems = row.buy_min_quantity !== null && row.buy_min_quantity !== undefined;
+    if (kind === "bxgy" && ((!byItems && !(buyMin > 0)) || (row.get_kind === "amount" && !(getAmount > 0)))) continue;
+    const productsOf = (productIds: string[], termIds: string[]) =>
+      [...new Set([...productIds, ...[...termsOf].filter(([, terms]) => termIds.some((id) => terms.has(id))).map(([product]) => product)])];
     const productIds = (row.product_ids as string[]).map(String);
     const termIds = (row.term_ids as string[]).map(String);
+    const getProductIds = (row.get_product_ids as string[]).map(String);
+    const getTermIds = (row.get_term_ids as string[]).map(String);
     let reach: string[] | null = null;
     if (productIds.length > 0 || termIds.length > 0) {
-      reach = [...new Set([...productIds, ...[...termsOf].filter(([, terms]) => termIds.some((id) => terms.has(id))).map(([product]) => product)])];
+      reach = productsOf(productIds, termIds);
+      // Told on the products of both sets.
+      if (kind === "bxgy") reach = [...new Set([...reach, ...productsOf(getProductIds, getTermIds)])];
     }
     items.push({
       id: String(row.id),
@@ -109,6 +121,17 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
       amountMinor: kind === "amount" ? shown(market, amount) : null,
       tierBasis: kind === "tiered" ? basis : null,
       tiers,
+      bxgy:
+        kind === "bxgy"
+          ? {
+              buyQuantity: byItems ? Number(row.buy_min_quantity) : null,
+              buyMinor: byItems ? null : shown(market, buyMin),
+              getQuantity: Number(row.get_quantity),
+              getKind: row.get_kind as "free" | "percent" | "amount",
+              getPercent: row.get_percent === null ? null : Number(row.get_percent),
+              getMinor: row.get_kind === "amount" ? shown(market, getAmount) : null,
+            }
+          : null,
       endsAt: ends === null ? null : new Date(ends).toISOString(),
       productIds: reach,
       signIn: row.per_customer_limit !== null,

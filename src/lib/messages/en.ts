@@ -494,6 +494,12 @@ export const en = {
     nextSpend: (amount: string, percent: number) => `Spend ${amount} more to get ${percent} % off`,
     nextAmount: (amount: string, off: string) => `Spend ${amount} more to get ${off} off`,
     nextFreeShipping: (amount: string) => `Spend ${amount} more for free shipping`,
+    /** D299 E4: buy X get Y, as "Buy 2" and "get 1 free" joined by a comma. */
+    bxgyBuy: (items: number) => `Buy ${items}`,
+    bxgySpend: (amount: string) => `Spend ${amount}`,
+    bxgyGetFree: (items: number) => `get ${items} free`,
+    bxgyGetPercent: (items: number, percent: number) => `get ${items} at ${percent} % off`,
+    bxgyGetAmount: (items: number, amount: string) => `get ${items} at ${amount} off`,
   },
   total: "Total",
   vatAmount: "of which VAT",

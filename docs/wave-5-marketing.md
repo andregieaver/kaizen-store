@@ -534,9 +534,42 @@ shipping). Integration: a free-shipping campaign gives an order with no shipping
 campaign's limit counts its orders; `checkout-kinds.int.test.ts` holds the cart and the order together for an amount, a tiered campaign and free
 shipping, in NOK and in euro.
 
-### 7.4 E4
+### 7.4 E4: buy X get Y
 
-Written here in full before it is built.
+A campaign of kind `bxgy`, worked out by the same `applyCampaigns()` in the cart and in `placeOrder()`:
+
+| Column | Meaning |
+|---|---|
+| `product_ids`, `term_ids` | The **buy set**, as every campaign's reach (none: everything). |
+| `buy_min_quantity` or `buy_min_amounts` | What one use asks for: so many units of the buy set (1 to 100), or what they come to per country in its own currency. Exactly one. |
+| `get_product_ids`, `get_term_ids` | The **get set**; both empty: the same as the buy set. |
+| `get_quantity` | Units given per use (1 to 20). |
+| `get_kind`, `get_percent`, `get_amounts` | What each given unit gets: `free`, `percent` (1 to 100, the lowered price as every percentage) or `amount` per unit per country (never more than the unit costs). |
+| `uses_per_order` | How many times one order may use it (1 to 100; null: as often as the basket allows). |
+
+**The arithmetic** (`bxgyOff()`, pure). Units of goods bought once, that cost something and are still free of other campaigns, are laid out one by one.
+A use takes the **dearest** units of the buy set that are still unused until it has its quantity (or its amount), then gives up to `get_quantity`
+of the **cheapest** units of the get set still unused, never a unit it counted as bought; a use that can give nothing does not count, and uses
+stop at `uses_per_order` or when the basket runs out. So "buy 2, get 1 free" on one set gives the cheapest of every three, and on two sets gives the
+cheapest of the get set once two of the buy set are in the basket. The shopper adds the given units themselves (unlike a free product, D114,
+nothing is added). The campaign competes for lines with the others (the one taking most off wins; ties to the older), takes every line whose units it
+counted or gave, and does not stack (a check). The order keeps it as every price campaign: on the given lines' `campaign_discount_minor` and
+`campaign_parts`, so its uses count as before.
+
+**What shoppers see.** The product page tells it on the products of both sets: *Buy 2, get 1 free*, *Buy 2, get 1 at 50 % off*, *Buy 2, get 1 at
+NOK 100 off*, or with an amount *Spend NOK 500, get 1 free*; a card carries it when it needs no amount (a quantity and free or a percentage).
+Words in `m.campaigns`, nb, sv, da and en by hand.
+
+**The editor.** *Buy one thing, get another*: what they buy (the campaign's own reach), how much (items or an amount per country), what they get
+(the same products, or chosen products, categories and tags), how many, and free, a percentage or an amount off; the uses per order under it.
+
+**Copying.** `duplicate_store()` carries the new columns, the get set remapped to the copy's own products and terms; a get set that named products and
+lost them all is switched off rather than left to mean "the same as the buy set" (patched in place).
+
+**Tests.** Unit: one set "buy 2 get 1 free" over six units of three prices; two sets; a percentage and an amount per unit; by amount; the uses per
+order; a unit never both bought and given; competition with a percentage; the notices' words. PGlite: the kind's checks (exactly one buy measure,
+get kind and its value, no stacking). Integration: `checkout-kinds.int.test.ts` holds the cart and the order together for one set and two sets, in
+NOK and in euro.
 
 ## 8. Units F to J, outlined
 

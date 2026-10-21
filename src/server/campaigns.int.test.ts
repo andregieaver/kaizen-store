@@ -274,3 +274,32 @@ describe("campaigns in depth (D299 E3)", () => {
     await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid and name in ('Kroner', 'Frakt', 'Trapp')`);
   });
 });
+
+describe("buy X get Y (D299 E4)", () => {
+  it("saves the buy measure, the get set and what each given item gets", async () => {
+    expect(
+      await save({ name: "Caps", kind: "bxgy", buyBasis: "items", buyMinQuantity: "3", scope: "some", productIds: [mug.product], getScope: "some", getProductIds: [notebook.product], getQuantity: "1", getKind: "amount", getAmounts: { NO: "25" }, usesPerOrder: "2" }),
+    ).toMatchObject({ ok: true });
+    expect(await save({ name: "Spend", kind: "bxgy", buyBasis: "spend", buyMinAmounts: { NO: "500" }, getKind: "percent", getPercent: "30" })).toMatchObject({ ok: true });
+    const listed = await campaigns.listCampaigns(storeId);
+    expect(listed.find((c) => c.name === "Caps")).toMatchObject({
+      buyMinQuantity: 3,
+      buyMinAmounts: {},
+      getProductIds: [notebook.product],
+      getQuantity: 1,
+      getKind: "amount",
+      getAmounts: { NO: 2500 },
+      getPercent: null,
+      usesPerOrder: 2,
+    });
+    expect(listed.find((c) => c.name === "Spend")).toMatchObject({ buyMinQuantity: null, buyMinAmounts: { NO: 50000 }, getKind: "percent", getPercent: 30, getProductIds: [], usesPerOrder: null });
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid and name in ('Caps', 'Spend')`);
+  });
+
+  it("refuses an amount it has none of, and a get set of things the store does not have", async () => {
+    const refused = (input: Record<string, unknown>) => save(input).then((r) => (r.ok ? [] : r.problems));
+    expect(await refused({ name: "Ingen", kind: "bxgy", buyBasis: "spend" })).toContain("Say what shoppers spend, in at least one country's currency.");
+    expect(await refused({ name: "Ingen", kind: "bxgy", getKind: "amount" })).toContain("Say how much comes off each item, in at least one country's currency.");
+    expect(await refused({ name: "Fremmed", kind: "bxgy", getScope: "some", getProductIds: [crypto.randomUUID()] })).toContain("A chosen product no longer exists.");
+  });
+});

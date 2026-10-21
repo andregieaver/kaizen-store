@@ -175,3 +175,29 @@ test("a tiered campaign shows its ladder and the cart how far the next step and 
   await expect(summary.locator("[data-campaign-next]")).toHaveCount(0);
   await expect(summary).toContainText("636,80");
 });
+
+test("buy 2 get 1 free is told on the product page and takes the cheapest off in the cart (D299 E4)", async ({ page }) => {
+  const slug = await storeWithCampaigns(async (id, sql) => {
+    const [bag] = await sql`select id from commerce.products where store_id = ${id} and handle = 'demo-handlenett'`;
+    await sql`
+      insert into commerce.campaigns (store_id, name, kind, buy_min_quantity, get_quantity, get_kind, product_ids)
+      values (${id}, 'Kjøp to', 'bxgy', 2, 1, 'free', ${sql.json([bag.id])})`;
+  });
+
+  await page.goto(`/s/${slug}/no/p/demo-handlenett`);
+  await expect(page.getByText("Kjøp to: Kjøp 2, få 1 gratis")).toBeVisible();
+  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
+  await page.goto(`/s/${slug}/no/cart`);
+  const summary = page.getByRole("complementary");
+  // Two bags: nothing to give yet.
+  await page.getByLabel("Antall").fill("2");
+  await page.getByRole("button", { name: "Oppdater" }).click();
+  await expect(summary).toContainText("398,00");
+  await expect(summary).not.toContainText("Rabatt (");
+  // Three bags at 199,00: one free.
+  await page.getByLabel("Antall").fill("3");
+  await page.getByRole("button", { name: "Oppdater" }).click();
+  await expect(summary).toContainText("Rabatt (Kjøp to)");
+  await expect(summary).toContainText("−199,00");
+});

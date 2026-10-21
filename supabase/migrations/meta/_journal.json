@@ -2787,6 +2787,20 @@
       "when": 1792573282651,
       "tag": "20261021090122_campaigns_depth_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 398,
+      "version": "7",
+      "when": 1792579410377,
+      "tag": "20261021104330_campaigns_bxgy",
+      "breakpoints": true
+    },
+    {
+      "idx": 399,
+      "version": "7",
+      "when": 1792579422941,
+      "tag": "20261021104342_campaigns_bxgy_rules",
+      "breakpoints": true
     }
   ]
 }

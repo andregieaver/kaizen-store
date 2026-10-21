@@ -2763,6 +2763,19 @@ export const campaigns = commerce.table(
     tierBasis: text("tier_basis"),
     /** A `tiered` campaign's steps: `[{ quantity, percent }]` or `[{ amounts: { market: minor }, percent }]`, two to five. */
     tiers: jsonb("tiers").notNull().default([]),
+    /** Buy X get Y (D299 E4): what one use asks of the buy set (`product_ids`, `term_ids`): units, or an amount per market. */
+    buyMinQuantity: integer("buy_min_quantity"),
+    buyMinAmounts: jsonb("buy_min_amounts").notNull().default({}),
+    /** The get set; both empty: the same as the buy set. */
+    getProductIds: jsonb("get_product_ids").notNull().default([]),
+    getTermIds: jsonb("get_term_ids").notNull().default([]),
+    /** Units given per use, and what each gets: `free`, `percent` (`get_percent`) or an amount per market (`get_amounts`). */
+    getQuantity: integer("get_quantity").notNull().default(0),
+    getKind: text("get_kind"),
+    getPercent: integer("get_percent"),
+    getAmounts: jsonb("get_amounts").notNull().default({}),
+    /** How many times one order may use it; null: as often as the basket allows. */
+    usesPerOrder: integer("uses_per_order"),
     productIds: jsonb("product_ids").notNull().default([]),
     termIds: jsonb("term_ids").notNull().default([]),
     /** Only customers in one of these customer groups (D108), their company's included; none for everyone. */
@@ -2786,7 +2799,21 @@ export const campaigns = commerce.table(
     variantRef("campaigns_gift_variant_fk", { storeId: t.storeId, variantId: t.giftVariantId }),
     index("campaigns_store_idx").on(t.storeId, t.active),
     index("campaigns_gift_variant_idx").on(t.storeId, t.giftVariantId),
-    check("campaigns_kind", sql`${t.kind} in ('percent', 'multi_buy', 'gift', 'amount', 'free_shipping', 'tiered')`),
+    check("campaigns_kind", sql`${t.kind} in ('percent', 'multi_buy', 'gift', 'amount', 'free_shipping', 'tiered', 'bxgy')`),
+    check(
+      "campaigns_bxgy",
+      sql`coalesce(jsonb_typeof(${t.buyMinAmounts}) = 'object' and jsonb_typeof(${t.getProductIds}) = 'array' and jsonb_typeof(${t.getTermIds}) = 'array' and jsonb_typeof(${t.getAmounts}) = 'object' and (
+        (${t.kind} = 'bxgy'
+          and ((${t.buyMinQuantity} between 1 and 100 and ${t.buyMinAmounts} = '{}'::jsonb) or (${t.buyMinQuantity} is null and ${t.buyMinAmounts} <> '{}'::jsonb))
+          and ${t.getQuantity} between 1 and 20
+          and ((${t.getKind} = 'free' and ${t.getPercent} is null and ${t.getAmounts} = '{}'::jsonb)
+            or (${t.getKind} = 'percent' and ${t.getPercent} between 1 and 100 and ${t.getAmounts} = '{}'::jsonb)
+            or (${t.getKind} = 'amount' and ${t.getPercent} is null and ${t.getAmounts} <> '{}'::jsonb))
+          and (${t.usesPerOrder} is null or ${t.usesPerOrder} between 1 and 100))
+        or (${t.kind} <> 'bxgy' and ${t.buyMinQuantity} is null and ${t.buyMinAmounts} = '{}'::jsonb and ${t.getProductIds} = '[]'::jsonb
+          and ${t.getTermIds} = '[]'::jsonb and ${t.getQuantity} = 0 and ${t.getKind} is null and ${t.getPercent} is null
+          and ${t.getAmounts} = '{}'::jsonb and ${t.usesPerOrder} is null)), false)`,
+    ),
     check("campaigns_amounts", sql`jsonb_typeof(${t.amounts}) = 'object' and (${t.kind} = 'amount' or ${t.amounts} = '{}'::jsonb)`),
     check(
       "campaigns_tiers",

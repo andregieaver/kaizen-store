@@ -532,13 +532,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Verified: 'buy N pay for M' (the cheapest N minus M units free) and a free product over a basket amount only. No 'buy X of these, get Y of those at 50 % or an amount off', no buy-amount trigger, no limit on uses per order.",
-    "bucket": "A",
-    "wave": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines a buy set (a quantity or an amount of chosen products, categories or tags) and a get set (a quantity of chosen products) that is free, a percentage off or an amount off, with a maximum number of uses per order.",
       "Buy and get sets may be different products; which units are discounted is stated and tested (cheapest first); each discounted unit's share is on its own order line so VAT and refunds agree.",
@@ -549,21 +549,36 @@
         "src/lib/campaigns.ts",
         "src/server/campaigns.ts",
         "src/components/admin/campaign-editor.tsx",
-        "src/server/cart-summary.ts"
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/campaign-notices.ts",
+        "src/lib/campaign-notices.ts",
+        "supabase/migrations/20261021104330_campaigns_bxgy.sql"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
         "src/server/campaigns.int.test.ts",
-        "src/server/checkout-kinds.int.test.ts"
+        "src/server/checkout-kinds.int.test.ts",
+        "src/db/campaigns-depth.test.ts",
+        "src/lib/campaign-notices.test.ts",
+        "e2e/campaigns.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D114",
       "D115",
-      "D116"
+      "D116",
+      "D299"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-21",
+        "from": "partial",
+        "to": "full",
+        "why": "D299 E4: a buy X get Y campaign (a buy set by items or an amount per market, a get set of its own or the same, free, a percentage or an amount off per unit, cheapest first, never a unit counted as bought, uses per order), on its own order lines, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, and only on goods bought once."
+      }
+    ]
   },
   {
     "id": "customers.tiered-and-volume-discounts",

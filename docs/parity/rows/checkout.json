@@ -1258,7 +1258,7 @@
       "was": "full"
     },
     "weight": 4,
-    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order and minimum number of items, dates, total and per-customer limits, recurring; products, categories and tags; customer groups or named customers; generated single-use codes with a CSV, D299 E1; up to five on one order under each code's combination choice, the best for the shopper where two cannot combine, D299 E2) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking; D299 E3: an amount off, free shipping and tiers by items or spend). Still no buy X get Y (E4), and campaigns do not yet follow the codes' combination choices.",
+    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order and minimum number of items, dates, total and per-customer limits, recurring; products, categories and tags; customer groups or named customers; generated single-use codes with a CSV, D299 E1; up to five on one order under each code's combination choice, the best for the shopper where two cannot combine, D299 E2) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking; D299 E3: an amount off, free shipping and tiers by items or spend; E4: buy X get Y). Campaigns do not yet follow the codes' combination choices: they always come first and compete among themselves.",
     "bucket": "A",
     "wave": 5,
     "criteria": [

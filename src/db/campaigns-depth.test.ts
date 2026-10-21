@@ -56,4 +56,22 @@ describe("campaigns in depth", () => {
     );
     expect(await scalar("select campaign_shipping from commerce.orders where id = $1", [order.id])).toBeNull();
   });
+
+  it("hold buy X get Y to exactly one buy measure and a get kind with its value (D299 E4)", async () => {
+    await db.query(insert("kind, buy_min_quantity, get_quantity, get_kind", "'bxgy', 2, 1, 'free'"), [store]);
+    await db.query(insert("kind, buy_min_amounts, get_quantity, get_kind, get_percent, uses_per_order", "'bxgy', '{\"NO\": 50000}', 1, 'percent', 50, 2"), [store]);
+    await db.query(insert("kind, buy_min_quantity, get_quantity, get_kind, get_amounts, get_product_ids", "'bxgy', 1, 2, 'amount', '{\"NO\": 1000}', '[\"00000000-0000-4000-8000-000000000001\"]'"), [store]);
+    // Both buy measures, or neither.
+    await rejects(insert("kind, buy_min_quantity, buy_min_amounts, get_quantity, get_kind", "'bxgy', 2, '{\"NO\": 1}', 1, 'free'"), [store], /campaigns_bxgy/);
+    await rejects(insert("kind, get_quantity, get_kind", "'bxgy', 1, 'free'"), [store], /campaigns_bxgy/);
+    // A get kind without its value, or with another's.
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind", "'bxgy', 2, 1, 'percent'"), [store], /campaigns_bxgy/);
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind, get_percent", "'bxgy', 2, 1, 'free', 10"), [store], /campaigns_bxgy/);
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind", "'bxgy', 2, 1, 'amount'"), [store], /campaigns_bxgy/);
+    // Quantities in range, no stacking, and the columns empty on other kinds.
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind", "'bxgy', 2, 21, 'free'"), [store], /campaigns_bxgy/);
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind, uses_per_order", "'bxgy', 2, 1, 'free', 0"), [store], /campaigns_bxgy/);
+    await rejects(insert("kind, buy_min_quantity, get_quantity, get_kind, stacks", "'bxgy', 2, 1, 'free', true"), [store], /campaigns_stacks/);
+    await rejects(insert("kind, percent, get_quantity", "'percent', 10, 1"), [store], /campaigns_bxgy/);
+  });
 });

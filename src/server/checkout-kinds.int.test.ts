@@ -551,6 +551,8 @@ const stepsByItems = (over: Record<string, unknown> = {}) => ({
   ],
   ...over,
 });
+// Buy X get Y (D299 E4): the buy set is the campaign's reach; the get set, when chosen, its own.
+const buyGet = (over: Record<string, unknown> = {}) => ({ name: "Buy 2, get 1", kind: "bxgy", buyBasis: "items", buyMinQuantity: "2", getQuantity: "1", getKind: "free", ...over });
 const stepsBySpend = (over: Record<string, unknown> = {}) => ({
   name: "Spend more, save more",
   kind: "tiered",
@@ -666,6 +668,44 @@ const campaignScenarios: Scenario[] = [
     fill: () => add("DEMO-MUG-WHITE", 3),
     campaigns: () => [stepsBySpend()],
     buyer: "company",
+    euro: true,
+    bookings: 0,
+  },
+  {
+    name: "buy 2 get 1 free on one set",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [buyGet()],
+    bookings: 0,
+  },
+  {
+    name: "buy 2 mugs, get a notebook at half price, for a group member",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [
+      buyGet({ scope: "some", productIds: [product["demo-keramikkopp"]], getScope: "some", getProductIds: [product["demo-notatbok"]], getKind: "percent", getPercent: "50" }),
+    ],
+    buyer: "group",
+    bookings: 0,
+  },
+  {
+    name: "buy 2 get 1 at an amount off, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [buyGet({ getKind: "amount", getAmounts: { NO: "40" } })],
+    euro: true,
+    bookings: 0,
+  },
+  {
+    name: "spend an amount on mugs, get a notebook free, with a code, shown in euro",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [
+      buyGet({ buyBasis: "spend", buyMinAmounts: { NO: "100" }, scope: "some", productIds: [product["demo-keramikkopp"]], getScope: "some", getProductIds: [product["demo-notatbok"]] }),
+    ],
+    code: `TI${run}`.toUpperCase(),
     euro: true,
     bookings: 0,
   },
