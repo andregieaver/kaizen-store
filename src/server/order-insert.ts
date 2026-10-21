@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import type { Db } from "@/db/client";
 import type { GiftFields } from "@/lib/gift";
+import type { GiftCardRecipient } from "@/lib/gift-card-line";
 import { allocate, totalsOf } from "@/lib/stock-routing";
 
 type Row = Record<string, unknown>;
@@ -183,6 +184,8 @@ export type OrderLineInsert = {
   staffDiscountMinor?: number;
   /** A line an order change added (D174): written only by `applyOrderEdit()`'s writer, inside the edit context, naming its change. */
   orderEditId?: string | null;
+  /** Who a gift card line's cards are emailed to (D300), from its cart line; null for the buyer, and for anything that is not a gift card. */
+  giftCard?: GiftCardRecipient | null;
 };
 
 /** Writes one order line and returns its id. */
@@ -194,7 +197,8 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
       campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
       unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days,
-      list_price_minor, custom, staff_discount_minor, order_edit_id
+      list_price_minor, custom, staff_discount_minor, order_edit_id,
+      gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on
     ) values (
       ${storeId}::uuid, ${orderId}::uuid, ${line.variantId}::uuid, ${line.sku},
       ${line.title}, ${line.quantity}, ${line.unitPriceMinor}, ${line.discountMinor}, ${line.memberDiscountMinor ?? 0},
@@ -209,7 +213,9 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       ${line.unitCostMinor ?? null}, ${line.vatReliefMinor ?? 0},
       ${line.measure?.amount ?? null}::numeric, ${line.measure?.unit ?? null}, ${line.measure?.base ?? null},
       ${line.backorderQuantity ?? 0}, ${line.backorderDays ?? null},
-      ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}, ${line.orderEditId ?? null}::uuid
+      ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}, ${line.orderEditId ?? null}::uuid,
+      ${line.giftCard?.to ?? null}, ${line.giftCard?.toName ?? null}, ${line.giftCard?.from ?? null}, ${line.giftCard?.message ?? null},
+      ${line.giftCard?.sendOn ?? null}::date
     )
     returning id
   `);

@@ -89,6 +89,8 @@ export type EditorContext = {
    */
   appointmentsOn: boolean;
   staysOn: boolean;
+  /** Gift cards are on (D300): the editor offers the kind. */
+  giftCardsOn: boolean;
   subscriptionsOn: boolean;
   /** The store's staff, rooms and homes, and items to rent (D65, D67); each kind of product picks from its own. */
   staff: { id: string; name: string; active: boolean; kind: "staff" | "unit" | "item" }[];
@@ -161,6 +163,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     activeLocations: Number(counted?.n ?? 0),
     appointmentsOn: featureOn(store, "appointments"),
     staysOn: featureOn(store, "bookings"),
+    giftCardsOn: featureOn(store, "gift_cards"),
     subscriptionsOn: featureOn(store, "subscriptions"),
     staff: staff.map((row) => ({
       id: String(row.id),

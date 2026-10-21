@@ -106,6 +106,7 @@ export const svReturns: ReturnsMessages = {
     booking: "En bokning av en tjänst avbokas eller flyttas från din order, enligt butikens regler. Den ångras inte här. Anser du att du har lagstadgad ångerrätt för den, skriv till butiken.",
     business_order: "Ordern lades för ett företag, som inte har lagstadgad ångerrätt.",
     period_over: "Enligt våra uppgifter har de 14 dagarna för att ångra gått ut. Har du inte fått information om ångerrätten, eller fick du varorna senare, kan tiden vara längre: skriv till butiken.",
+    gift_card_spent: "En del av presentkortet har använts, så köpet kan inte längre ångras. Skriv till butiken om något är fel.",
   },
   sealedLine: "Ångerrätten gäller bara så länge förseglingen inte är bruten.",
   nothingToSend: "Inget att skicka tillbaka",

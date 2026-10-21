@@ -616,6 +616,21 @@ async function writeConfirmation(
   }
   if (!keep.some((l) => l.decision === "accept")) return refusal("nothing_to_withdraw", "Nothing you declared can be withdrawn.");
 
+  // A gift card withdrawn from (D300): as many of its line's whole cards as declared, locked now; one spent meanwhile refuses it all.
+  const voided: string[] = [];
+  for (const line of keep.filter((l) => l.decision === "accept" && facts.lines.find((x) => x.id === l.lineId)?.giftCard)) {
+    const whole = await tx.execute<Row>(sql`
+      select g.id from commerce.gift_cards g
+      where g.store_id = ${storeId}::uuid and g.order_line_id = ${line.lineId}::uuid and g.status = 'active'
+        and commerce.gift_card_balance(g.id) = g.initial_minor
+      order by g.unit_index desc
+      limit ${line.quantity}
+      for update
+    `);
+    if (whole.length < line.quantity) return refusal("not_available", "Something you declared can no longer be withdrawn. Start again to see what can.");
+    voided.push(...whole.map((card) => String(card.id)));
+  }
+
   await tx.execute(sql`
     update commerce.withdrawal_requests set status = 'confirmed', confirmed_at = ${by.confirmedAt ? by.confirmedAt.toISOString() : null}::timestamptz
     where store_id = ${storeId}::uuid and id = ${requestId}::uuid
@@ -629,6 +644,10 @@ async function writeConfirmation(
   `);
   // A return on an archived order starts work again (D173): the order is back in the list.
   await unarchiveForReturn(tx, storeId, facts.orderId);
+  // The gift cards withdrawn from can no longer be spent: what they hold goes, with the order (their refund is the return's).
+  for (const card of voided) {
+    await tx.execute(sql`select commerce.gift_card_withdraw(${storeId}::uuid, ${card}::uuid, ${facts.orderId}::uuid)`);
+  }
   for (const line of keep) {
     await tx.execute(sql`
       insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, decision, decline_reason)

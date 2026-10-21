@@ -117,6 +117,12 @@ export const NOTIFICATIONS: readonly NotificationDef[] = [
   def("order.payment_overdue", "orders", "Payment overdue (terms)", "The day after an order bought on payment terms was due, while it is not paid.", {
     own: ["order_total", "due_date"],
   }),
+  // Gift cards (wave 5 unit F, D300 F2, docs/wave-5-marketing.md 8.2): the card's code reaches no one any other way.
+  def("gift_card.issued", "orders", "Gift card", "When a gift card bought is delivered: to the buyer at once, or to the person it is for on the day chosen.", {
+    required: true,
+    editable: false,
+    why: "It is the only place the card's code is given: without it the customer has paid for nothing they can use.",
+  }),
   def("order.ready_for_pickup", "pickup", "Ready for pickup", "When staff mark a pickup order ready to collect.", { own: ["pickup_place"] }),
   def("order.out_for_delivery", "pickup", "Out for delivery (your driver)", "When the store's own driver takes a local delivery out."),
   def("return.acknowledgement", "returns", "Withdrawal acknowledgement", "When a customer withdraws from a purchase with the withdrawal button.", {

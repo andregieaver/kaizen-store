@@ -9,6 +9,8 @@ import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
+import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
+import { todayIn } from "@/lib/analytics-period";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import { rememberAffiliate } from "@/server/affiliates";
@@ -37,12 +39,16 @@ const lineInput = z
     /** An appointment's time and who with (D65), or a stay's or rental's check-in and room or item (D67). */
     startsAt: z.iso.datetime({ offset: true }).nullable(),
     resourceId: z.uuid().nullable(),
+    /** A gift card's line as the cart's forms name it (D300): the key of who its cards are for; null for the buyer's own. */
+    giftCardKey: z.string().max(2000).nullable(),
   })
   .refine((line) => line.startsAt !== null || line.quantity <= MAX_LINE_QUANTITY);
 
 export type AddToCartState = {
-  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error";
+  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error" | "gift_card";
   quantity: number;
+  /** What was wrong with *Send it to someone* (D300), field by field; the card was not added. */
+  giftCardProblems?: GiftCardProblem[];
 };
 
 async function parse(formData: FormData) {
@@ -54,12 +60,15 @@ async function parse(formData: FormData) {
     sellingPlanId: formData.get("sellingPlanId") || null,
     startsAt: formData.get("startsAt") || null,
     resourceId: formData.get("resourceId") || null,
+    giftCardKey: formData.get("giftCardKey") || null,
   });
   if (!parsed.success) return null;
   const shop = await resolveSellingShop(parsed.data.store, parsed.data.market);
   return shop
     ? {
         shop: { storeId: shop.store.id, market: shop.market },
+        timeZone: shop.store.timeZone,
+        giftCardKey: parsed.data.giftCardKey,
         variantId: parsed.data.variantId,
         quantity: parsed.data.quantity,
         sellingPlanId: parsed.data.sellingPlanId,
@@ -77,6 +86,19 @@ export async function addToCart(
 ): Promise<AddToCartState> {
   const input = await parse(formData);
   if (!input || input.quantity < 1) return { outcome: "error", quantity: 0 };
+  // A gift card sent to someone (D300): who, cleaned as the order will keep it; refused whole, never cut.
+  const card = cleanGiftCardRecipient(
+    {
+      send: formData.get("giftCardSend") === "on",
+      to: formData.get("giftCardTo"),
+      toName: formData.get("giftCardToName"),
+      from: formData.get("giftCardFrom"),
+      message: formData.get("giftCardMessage"),
+      sendOn: formData.get("giftCardSendOn"),
+    },
+    todayIn(new Date(), input.timeZone),
+  );
+  if (!card.ok) return { outcome: "gift_card", quantity: 0, giftCardProblems: card.problems };
   const result = await changeLine(
     input.shop,
     input.variantId,
@@ -85,6 +107,7 @@ export async function addToCart(
     input.sellingPlanId,
     undefined,
     input.booking,
+    card.recipient ? { recipient: card.recipient } : null,
   );
   // The referral code the page held (D131), else the consented cookie's, is kept with the cart; checked by the server.
   if (result.outcome !== "removed") {
@@ -111,7 +134,7 @@ export async function addToCart(
 export async function updateCartLine(formData: FormData): Promise<void> {
   const input = await parse(formData);
   if (!input) return;
-  await changeLine(input.shop, input.variantId, input.quantity, "set", input.sellingPlanId, undefined, input.booking);
+  await changeLine(input.shop, input.variantId, input.quantity, "set", input.sellingPlanId, undefined, input.booking, input.giftCardKey ? { key: input.giftCardKey } : null);
   refresh();
 }
 

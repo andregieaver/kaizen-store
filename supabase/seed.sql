@@ -245,6 +245,8 @@ BEGIN
   -- 6. A stay and a rental (D67), with a cabin and bikes to book.
   PERFORM commerce.add_demo_stay(v_store);
   PERFORM commerce.add_demo_rental(v_store);
+  -- 7. A gift card (D300), two amounts, hidden until the owner switches gift cards on.
+  PERFORM commerce.add_demo_gift_card(v_store);
 
   -- Categories and tags (D50), with the demo's products in them; a lamp is
   -- in Belysning, inside Hjem, so it shows under Hjem too.

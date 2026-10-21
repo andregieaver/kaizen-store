@@ -176,12 +176,19 @@ export type OutgoingEmail = {
    * not put their address back (D162). It is still sent to `to`.
    */
   logAddress?: boolean;
+  /**
+   * Words the email carries that are never kept (a gift card's code, D300): the log's copy has each replaced by `[code]`, and the email
+   * itself is sent as written.
+   */
+  secrets?: readonly string[];
 };
 
 /** `suppressed`: nothing was sent, because the email is about an order that is restricted or anonymised (D162), or the address is gone. */
 export type SendOutcome = "sent" | "logged" | "failed" | "duplicate" | "suppressed";
 
 const REMOVED = "[removed]";
+/** What a secret reads as in the log (`OutgoingEmail.secrets`). */
+const SECRET = "[code]";
 
 /**
  * Whether an email must not be sent, and why: it has no address left, it is about an order or subscription whose person was erased, or it
@@ -232,12 +239,13 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
       return "suppressed";
     }
     const hide = message.logAddress === false;
+    const kept = (text: string) => (message.secrets ?? []).filter((secret) => secret !== "").reduce((out, secret) => out.split(secret).join(SECRET), text);
     const [row] = await db().execute<Row>(sql`
       insert into commerce.email_messages (
         store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id
       ) values (
         ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${hide ? REMOVED : message.to},
-        ${hide ? REMOVED : message.email.subject}, ${message.email.html}, ${message.email.text},
+        ${hide ? REMOVED : kept(message.email.subject)}, ${kept(message.email.html)}, ${kept(message.email.text)},
         ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid
       )
       on conflict (idempotency_key) do nothing

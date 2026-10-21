@@ -64,6 +64,24 @@ export type OrderFacts = {
   contactEmail: string | null;
 };
 
+/**
+ * A gift card line's facts for `lineEligibility()` (D300): whether the line is one, how many of its cards are whole (active, nothing
+ * spent: the balance is what it was issued with), and when the order was paid (its 14 days count from it). Read against `ol` and `o`.
+ */
+export const GIFT_CARD_LINE_FACTS = sql`
+  exists (select 1 from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+          where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card') as is_gift_card,
+  (select count(*)::int from commerce.gift_cards g
+    where g.store_id = ol.store_id and g.order_line_id = ol.id and g.status = 'active'
+      and commerce.gift_card_balance(g.id) = g.initial_minor) as gift_cards_whole,
+  coalesce((select min(e.created_at) from commerce.order_events e where e.store_id = ol.store_id and e.order_id = ol.order_id and e.type = 'order.paid'),
+           (select x.created_at from commerce.orders x where x.store_id = ol.store_id and x.id = ol.order_id)) as gift_card_bought_at`;
+
+/** The gift card facts of a row read with `GIFT_CARD_LINE_FACTS`; null for any other line. */
+export function giftCardFactsOf(row: Row): { unspent: number; boughtAt: Date } | null {
+  return row.is_gift_card ? { unspent: Number(row.gift_cards_whole ?? 0), boughtAt: new Date(String(row.gift_card_bought_at)) } : null;
+}
+
 /** The order with its lines, settings and zone; null when it is not the store's. */
 export async function loadFacts(storeId: string, orderId: string): Promise<OrderFacts | null> {
   const [order] = await db().execute<Row>(sql`
@@ -80,7 +98,7 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
   const [lines, settings] = await Promise.all([
     db().execute<Row>(sql`
       select ol.id, ol.title, ol.sku, ol.variant_id, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery,
-        ol.withdrawal_exclusion, ol.gift,
+        ol.withdrawal_exclusion, ol.gift, ${GIFT_CARD_LINE_FACTS},
         -- Units staff closed as never to be sent (D174) were refunded and are not the shopper's to withdraw.
         commerce.returned_quantity(ol.id) + commerce.closed_quantity(ol.id) as taken
       from commerce.order_lines ol
@@ -125,6 +143,7 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
       withdrawalExclusion: String(line.withdrawal_exclusion),
       takenQuantity: Number(line.taken),
       gift: Boolean(line.gift),
+      giftCard: giftCardFactsOf(line),
     })),
     settings,
     timeZone: String(order.time_zone ?? "Europe/Oslo"),

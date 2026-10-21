@@ -57,12 +57,16 @@ export function describeRate(args: { category: string; rate: number; standardRat
   return { text: ratePercent(args.rate), fallback: false };
 }
 
-/** The categories an owner can choose for a product of a kind: `accommodation` only for stays and rentals; inactive ones only when the product already has one. */
+/**
+ * The categories an owner can choose for a product of a kind: `accommodation` only for stays and rentals; a gift card only `voucher`, and
+ * `voucher` only for a gift card (D300); inactive ones only when the product already has one.
+ */
 export function categoriesFor(
   categories: readonly VatCategoryRow[],
   options: { kind: string; current: string },
 ): (VatCategoryRow & { inactive: boolean })[] {
   return categories
+    .filter((c) => (options.kind === "gift_card") === (c.code === "voucher"))
     .filter((c) => (c.active || c.code === options.current) && (c.code !== "accommodation" || ["stay", "rental"].includes(options.kind) || c.code === options.current))
     .map((c) => ({ ...c, inactive: !c.active }))
     .sort((a, b) => a.sort - b.sort || a.nameEn.localeCompare(b.nameEn));

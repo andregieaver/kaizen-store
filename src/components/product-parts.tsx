@@ -6,6 +6,7 @@ import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { CampaignNotices } from "@/components/campaign-notice";
 import { CustomFieldGroups, CustomFieldView } from "@/components/custom-fields-view";
+import { GiftCardBuy } from "@/components/gift-card-buy";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
 import { Price, VatAmount } from "@/components/price";
@@ -32,6 +33,8 @@ import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { inView, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { todayIn } from "@/lib/analytics-period";
+import { browserText } from "@/lib/browser-text";
 import type { PageContent, ProductBlock } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
@@ -173,6 +176,16 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
               <MemberNotice store={store} m={m} />
               <RangeBooking store={store} product={product} market={market} m={m} />
+            </Suspense>
+          </section>
+        );
+      }
+      if (product.kind === "gift_card") {
+        // A gift card (D300): its amounts are its variants, priced in this market; no stock, and a day it is sent on read for this request.
+        return (
+          <section aria-label={product.title} className={forBusiness}>
+            <Suspense fallback={null}>
+              <GiftCardPurchase store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
         );
@@ -381,8 +394,35 @@ export function productPartShows(block: ProductBlock, product: ProductDetail, ca
   }
 }
 
+/** A gift card's amounts and *Send it to someone* (D300), with the store's day for the earliest send, read per request. */
+async function GiftCardPurchase({ store, product, market, m }: { store: Store; product: ProductDetail; market: Market; m: Messages }) {
+  await connection();
+  return (
+    <GiftCardBuy
+      store={store.slug}
+      market={market.slug}
+      cartHref={marketPath(store.slug, market.slug, "/cart")}
+      openCart={store.openCartOnAdd}
+      amounts={product.variants.map((variant) => ({ variantId: variant.id, label: formatMoney(variant.price.amountMinor, variant.price.currency, market.locale) }))}
+      today={todayIn(new Date(), store.timeZone)}
+      labels={browserText(market.lang).giftCard}
+      cartLabels={{
+        addToCart: m.addToCart,
+        adding: m.adding,
+        added: m.added,
+        capped: m.capped,
+        unavailable: m.unavailable,
+        planConflict: m.planConflict,
+        tryAgain: m.tryAgain,
+        goToCart: m.goToCart,
+      }}
+    />
+  );
+}
+
 /** The line on the right of withdrawal: none for ordinary goods, which can be sent back. */
 function withdrawalText(product: ProductDetail, m: Messages): string | null {
+  if (product.kind === "gift_card") return m.giftCardLine.withdrawal;
   return product.kind === "appointment"
     ? m.booking.noWithdrawal
     : product.kind === "stay" || product.kind === "rental"

@@ -38,6 +38,7 @@ import {
   defaultBooking,
   GENERAL_TAX_CODE,
   isBooked,
+  VOUCHER_CATEGORY,
   MAX_FILES,
   MAX_MEDIA,
   MAX_OPTIONS,
@@ -405,7 +406,7 @@ export function ProductEditor(props: Props) {
       )}
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
-      {(context.appointmentsOn || context.staysOn || isBooked(product.kind) || isBooked(props.initial.kind)) && (
+      {(context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
         <KindSection
           product={product}
           update={update}
@@ -414,6 +415,7 @@ export function ProductEditor(props: Props) {
             appointment: context.appointmentsOn || props.initial.kind === "appointment",
             stay: context.staysOn || props.initial.kind === "stay",
             rental: context.staysOn || props.initial.kind === "rental",
+            gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
           }}
         />
       )}
@@ -2086,17 +2088,25 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
     setLostContent(kind !== "goods" && product.variants.some((v) => v.measure !== null));
     update((p) => {
       const booked = isBooked(kind);
-      const delivery = (d: Delivery): Delivery => (booked ? "service" : d === "service" ? "physical" : d);
+      // A gift card's amounts are emailed as a code (D300); leaving the kind, they are shipped until said otherwise.
+      const giftCard = kind === "gift_card";
+      const delivery = (d: Delivery): Delivery =>
+        booked ? "service" : giftCard ? "digital" : d === "service" || p.kind === "gift_card" ? "physical" : d;
+      // Rooms and homes take the reduced rate for accommodation where there is one (D65); a gift card no VAT when sold, and only it (D300).
+      const vatCategory = giftCard
+        ? VOUCHER_CATEGORY
+        : p.vatCategory === VOUCHER_CATEGORY
+          ? kind === "stay" ? "accommodation" : "standard"
+          : kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory;
       return {
         ...p,
         kind,
         appointment: isBooked(kind) ? (p.kind === kind && p.appointment ? p.appointment : defaultBooking(kind)) : null,
-        // Rooms and homes take the reduced rate for accommodation where there is one (D65).
-        vatCategory: kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory,
+        vatCategory,
         delivery: delivery(p.delivery),
         variants: withoutContentWhereNotGoods(kind, p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) }))),
-        plans: booked ? [] : p.plans,
-        subscriptionOnly: booked ? false : p.subscriptionOnly,
+        plans: booked || giftCard ? [] : p.plans,
+        subscriptionOnly: booked || giftCard ? false : p.subscriptionOnly,
         soldByMeasure: kind === "goods" ? p.soldByMeasure : false,
       };
     });
@@ -2114,6 +2124,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
               ["appointment", "An appointment", "Booked for a time with your staff"],
               ["stay", "A stay", "Nights in a room or a home"],
               ["rental", "A rental", "Days with an item, such as a bike or a boat"],
+              ["gift_card", "A gift card", "Amounts emailed as a code, spent in your store"],
             ] as const
           ).filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label

@@ -267,10 +267,22 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                 <Link href={`${home}/p/${line.handle}`} className="font-medium underline-offset-2 hover:underline">
                   {line.title}
                 </Link>
-                {Object.keys(line.options).length > 0 && (
-                  <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>
+                {/* A gift card (D300) is named by its amount; what is said of it is who it goes to and when, else that it comes to the buyer. */}
+                {line.giftCard ? (
+                  <p className="text-sm text-muted">
+                    {line.giftCard.recipient
+                      ? m.giftCardLine.sentTo(
+                          line.giftCard.recipient.to,
+                          new Date(`${line.giftCard.recipient.sendOn}T12:00:00Z`).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "UTC" }),
+                        )
+                      : m.giftCardLine.toYou}
+                  </p>
+                ) : (
+                  <>
+                    {Object.keys(line.options).length > 0 && <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>}
+                    {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
+                  </>
                 )}
-                {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
                 {/* The price per kg, litre or metre of one unit as this cart shows it (D160): netted for a business buyer, whatever the quantity. */}
                 <LineUnitPrice
                   shownMinor={
@@ -348,6 +360,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                   <input type="hidden" name="market" value={market.slug} />
                   <input type="hidden" name="variantId" value={line.variantId} />
                   {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
+                  {line.giftCard?.key && <input type="hidden" name="giftCardKey" value={line.giftCard.key} />}
                   <label className="flex flex-col text-sm">
                     {m.quantity}
                     <input
@@ -370,6 +383,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                 <input type="hidden" name="variantId" value={line.variantId} />
                 {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
                 {line.booking && <input type="hidden" name="startsAt" value={line.booking.startsAt} />}
+                {line.giftCard?.key && <input type="hidden" name="giftCardKey" value={line.giftCard.key} />}
                 <input type="hidden" name="quantity" value="0" />
                 {/* In the drawer it lines up with the quantity when it wraps under it. */}
                 <button type="submit" className={`min-h-11 text-sm underline ${drawer ? "px-1" : "px-3"}`}>

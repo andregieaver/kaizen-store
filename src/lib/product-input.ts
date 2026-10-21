@@ -120,12 +120,14 @@ const operatorSchema = z.union([
 
 export type OperatorChoice = z.infer<typeof operatorSchema>;
 
-/** What a product is (D65): goods (shipped or downloaded) or an appointment. */
-export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental"] as const;
+/** What a product is (D65): goods (shipped or downloaded), an appointment, a stay, a rental, or a gift card (D300, its variants its amounts). */
+export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental", "gift_card"] as const;
 export type ProductKind = (typeof PRODUCT_KINDS)[number];
 /** Kinds booked for a time (D65, D67): sold as services, with the settings below. */
 export const BOOKED_KINDS = ["appointment", "stay", "rental"] as const;
-export const isBooked = (kind: ProductKind): kind is (typeof BOOKED_KINDS)[number] => kind !== "goods";
+export const isBooked = (kind: ProductKind): kind is (typeof BOOKED_KINDS)[number] => (BOOKED_KINDS as readonly string[]).includes(kind);
+/** The VAT category of a gift card (D300): a multi-purpose voucher carries no VAT when sold; it is for gift cards only. */
+export const VOUCHER_CATEGORY = "voucher";
 
 /** How an appointment is booked (D65); kept in `appointment_settings` and `product_resources`. */
 const dayOfYear = z
@@ -528,11 +530,21 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     }
   }
 
+  // A gift card (D300): its variants are its amounts, emailed as a code, with no VAT when sold; nothing else.
+  if (input.kind === "gift_card") {
+    if (input.vatCategory !== VOUCHER_CATEGORY) problems.push("A gift card takes the VAT category Gift card: it carries no VAT when sold.");
+    if (input.plans.length > 0 || input.subscriptionOnly) problems.push("Gift cards cannot be subscribed to: take the purchase options away.");
+    if (input.variants.some((v) => v.delivery !== "digital")) problems.push("A gift card is sent by email: make every amount digital.");
+    if (input.files.length > 0) problems.push("A gift card sends a code, not a file: take the files away.");
+  } else if (input.vatCategory === VOUCHER_CATEGORY) {
+    problems.push("The VAT category Gift card is for gift cards only.");
+  }
+
   if (input.status !== "active") return problems;
 
   if (input.media.length === 0) problems.push("Add at least one picture before publishing the product.");
   const active = input.variants.filter((v) => v.active);
-  for (const variant of active.filter((v) => v.delivery === "digital")) {
+  for (const variant of active.filter((v) => v.delivery === "digital" && input.kind !== "gift_card")) {
     if (!input.files.some((f) => f.variantSku === null || f.variantSku === variant.sku)) {
       problems.push(`${variantLabel(variant.options)} is digital: add a file for shoppers to download.`);
     }

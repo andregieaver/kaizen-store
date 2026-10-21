@@ -157,9 +157,11 @@ beforeAll(async () => {
   // companies (the store sells to both private shoppers and businesses), use bonus credits and a friend's welcome discount, and sell in
   // several countries and, shown in euro, in several currencies.
   await db().execute(sql`
-    update commerce.stores set features = features || array['subscriptions', 'appointments', 'bookings', 'business', 'bonus', 'referrals', 'countries', 'currencies'], audience = 'both'
+    update commerce.stores set features = features || array['subscriptions', 'appointments', 'bookings', 'business', 'bonus', 'referrals', 'countries', 'currencies', 'gift_cards'], audience = 'both'
     where id = ${storeId}::uuid
   `);
+  // A new store's demo gift card waits as a draft, as every digital product does (D300): the owner publishes it.
+  await db().execute(sql`update commerce.products set status = 'active' where store_id = ${storeId}::uuid and handle = 'demo-gavekort'`);
   await db().execute(sql`
     insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
     values (${storeId}::uuid, 'test', ${`acct_kinds${run}`}, 'active', false)
@@ -781,6 +783,26 @@ const giftScenarios: Scenario[] = [
   { name: "goods as a gift, shown in euro", fill: () => add("DEMO-MUG-WHITE", 1), gift: { to: "Lena", from: "Anna", message: "Happy birthday" }, euro: true, bookings: 0 },
 ];
 
+/**
+ * Gift cards (D300 F2): a card's amount is its price, with no VAT; nothing comes off it (a code, a group discount and credits reach only the
+ * goods beside it) and it counts towards no threshold; who it is sent to rides on its line to the order. In kroner and in euro.
+ */
+const giftCardScenarios: Scenario[] = [
+  { name: "a gift card for the buyer", fill: () => add("DEMO-GAVEKORT-500", 2), bookings: 0 },
+  {
+    name: "a gift card sent to someone, beside goods with a code, for a group member, shown in euro",
+    fill: async () => {
+      const recipient = { to: "lena@example.com", toName: "Lena", from: "Anna", message: "Gratulerer!", sendOn: "2099-01-01" };
+      expect(await changeLine(shop(), variant["DEMO-GAVEKORT-1000"], 1, "add", null, undefined, null, { recipient })).toMatchObject({ outcome: "added" });
+      await add("DEMO-MUG-WHITE", 2);
+    },
+    code: `TI${run}`.toUpperCase(),
+    buyer: "group",
+    euro: true,
+    bookings: 0,
+  },
+];
+
 /** Posten / Bring's services chosen at checkout (D135): the price the shopper saw is the price of the order and of Stripe's charge. */
 const deliveryScenarios: Scenario[] = [
   { name: "goods delivered to a pickup point", fill: () => add("DEMO-MUG-WHITE", 2), delivery: "pickup", bookings: 0 },
@@ -844,7 +866,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).

@@ -250,6 +250,6 @@ export const quantityNotice = (problems: readonly QuantityProblem[]): Notice => 
 
 /** The key a refusal's text is under, or null for a reason a person wrote (a declined line's own words). */
 export function refusalCode(value: string | null): Refusal | null {
-  const codes: readonly string[] = ["order_not_paid", "copied_order", "already_returned", "excluded_by_law", "digital_content", "booking", "business_order", "period_over"];
+  const codes: readonly string[] = ["order_not_paid", "copied_order", "already_returned", "excluded_by_law", "digital_content", "booking", "business_order", "period_over", "gift_card_spent"];
   return value !== null && codes.includes(value) ? (value as Refusal) : null;
 }

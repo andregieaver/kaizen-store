@@ -16,6 +16,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   booking: "a booking",
   business_order: "a company's order",
   period_over: "the 14 days had passed by the records",
+  gift_card_spent: "part of the gift card was used",
 };
 
 /** Where an order stands in the 14 days, in a sentence for staff. */

@@ -1265,6 +1265,27 @@ export const en = {
   },
   storeSummary: (name: string, country: string) => `${name}: online store delivering in ${country}. Prices include VAT.`,
   options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted", rental: "Rental", day: "Whole days", halfDay: "Half day", hour: "By the hour" },
+  // Gift cards (D300 F2). legal: needs review (the withdrawal sentence).
+  giftCardLine: {
+    sentTo: (to: string, day: string) => `Emailed to ${to} on ${day}`,
+    toYou: "Emailed to you once you have paid",
+    withdrawal: "You may withdraw from a gift card within 14 days, as long as none of it has been used.",
+    notDiscounted: "Discounts and bonus credits are not taken off gift cards.",
+  },
+  // The gift card's email (D300 F2). legal: needs review.
+  giftCardEmail: {
+    subject: (store: string) => `A gift card for ${store}`,
+    heading: (amount: string, store: string) => `${amount} to spend at ${store}`,
+    from: (name: string) => `From ${name}:`,
+    useIt: (store: string) => `Use the code at checkout in ${store}. What it does not cover is paid as usual.`,
+    validUntil: (day: string) => `It can be used until ${day}.`,
+    noExpiry: "It can be used for as long as the store sells.",
+    keepIt: "Keep this email: the code is the gift card, and anyone who has it can spend it.",
+    visit: (store: string) => `Visit ${store}`,
+    copySubject: (store: string) => `Your gift card from ${store} is on its way`,
+    copyHeading: "Your gift card is on its way",
+    copyText: (amount: string, to: string) => `We have emailed the gift card of ${amount} to ${to}. The code is only in their email.`,
+  },
 };
 
 export type Messages = typeof en;

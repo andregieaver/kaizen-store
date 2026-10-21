@@ -30,6 +30,7 @@ describe("the notification catalogue (docs/wave-3-notifications.md 4.1)", () => 
       "order.cancelled",
       "order.payment_due",
       "order.payment_overdue",
+      "gift_card.issued",
       "order.ready_for_pickup",
       "order.out_for_delivery",
       "return.acknowledgement",
@@ -50,16 +51,17 @@ describe("the notification catalogue (docs/wave-3-notifications.md 4.1)", () => 
       "order.confirmation",
       "subscription.renewed",
       "order.changed",
+      "gift_card.issued",
       "return.acknowledgement",
       "return.approved",
       "return.declined",
       "return.exchange_to_pay",
       "return.exchanged",
     ]);
-    expect(LOCKED_NOTIFICATIONS).toEqual(["return.acknowledgement"]);
+    expect(LOCKED_NOTIFICATIONS).toEqual(["gift_card.issued", "return.acknowledgement"]);
     expect(NOTIFICATIONS.filter((n) => !n.defaultOn).map((n) => n.id)).toEqual(["order.parcel_out_for_delivery", "order.parcel_delivered"]);
     expect(EDITABLE_NOTIFICATIONS).not.toContain("return.acknowledgement");
-    expect(EDITABLE_NOTIFICATIONS).toHaveLength(NOTIFICATIONS.length - 1);
+    expect(EDITABLE_NOTIFICATIONS).toHaveLength(NOTIFICATIONS.length - 2);
     expect(SWITCHABLE_NOTIFICATIONS).toHaveLength(NOTIFICATIONS.length - REQUIRED_NOTIFICATIONS.length);
     for (const id of REQUIRED_NOTIFICATIONS) {
       expect(notificationOf(id)?.why, id).toBeTruthy();

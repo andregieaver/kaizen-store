@@ -373,6 +373,11 @@ export async function sendOrderConfirmation(
     attachments: [...calendarAttachment(booked.map((line) => bookingEvent(line, store, m))), ...(documents?.attachments ?? [])],
   });
   await noteDeliveries(storeId, documents, outcome, { idempotencyKey, orderId, kind });
+  // The gift cards it bought (D300), emailed now when their day is today; the every-minute job takes the rest on their day.
+  if (!resend && order.lines.some((line) => line.delivery === "digital")) {
+    const { deliverGiftCards } = await import("./gift-card-delivery");
+    await deliverGiftCards({ orderId });
+  }
   return outcome;
 }
 

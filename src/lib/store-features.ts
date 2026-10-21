@@ -16,6 +16,7 @@ export const FEATURE_IDS = [
   "boxes",
   "appointments",
   "bookings",
+  "gift_cards",
   "countries",
   "languages",
   "currencies",
@@ -104,6 +105,16 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     legacyModule: "bookings",
   },
   {
+    id: "gift_cards",
+    group: "selling",
+    label: "Gift cards",
+    words: "Sell gift cards of the amounts you choose, emailed to the buyer or straight to the person they are for, on the day chosen.",
+    offWords:
+      "Gift cards can no longer be bought. Cards already sold can still be used and refunded: the money is the customer's.",
+    needs: ["shop"],
+    setupPath: "/products",
+  },
+  {
     id: "countries",
     group: "world",
     label: "Several countries",
@@ -161,7 +172,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
 
 export const FEATURES_BY_ID: Record<FeatureId, StoreFeature> = Object.fromEntries(STORE_FEATURES.map((f) => [f.id, f])) as Record<FeatureId, StoreFeature>;
 
-/** The features that count on the Features page ("N of 10 on"): every one but the shop's own switch. */
+/** The features that count on the Features page ("N of 11 on"): every one but the shop's own switch. */
 export const COUNTED_FEATURES: readonly FeatureId[] = FEATURE_IDS.filter((id) => id !== "shop");
 
 /** What a new store starts with: the shop, nothing else (D178). */
@@ -215,11 +226,12 @@ export function featureOffText(requirement: FeatureRequirement): string {
 }
 
 /**
- * The feature a kind of product needs to be offered (D178): an appointment Appointments, a stay or a rental Stays and rentals; goods none.
+ * The feature a kind of product needs to be offered (D178): an appointment Appointments, a stay or a rental Stays and rentals, a gift card Gift
+ * cards (D300); goods none.
  * SQL repeats it in `commerce.kind_offered()`.
  */
 export function kindFeature(kind: string): FeatureId | null {
-  return kind === "appointment" ? "appointments" : kind === "stay" || kind === "rental" ? "bookings" : null;
+  return kind === "appointment" ? "appointments" : kind === "stay" || kind === "rental" ? "bookings" : kind === "gift_card" ? "gift_cards" : null;
 }
 
 /** Whether a store offers a kind of product now (its feature is on, or it needs none). */
@@ -335,6 +347,9 @@ export type FeatureFacts = {
   referralsEnabled: boolean;
   referrers: number;
   pendingReferrals: number;
+  /** Gift cards (D300): products of the kind not archived, and cards sold or issued that still hold money (live ones). */
+  giftCardProducts: number;
+  giftCardsHeld: number;
 };
 
 export const NO_FACTS: FeatureFacts = {
@@ -370,6 +385,8 @@ export const NO_FACTS: FeatureFacts = {
   referralsEnabled: false,
   referrers: 0,
   pendingReferrals: 0,
+  giftCardProducts: 0,
+  giftCardsHeld: 0,
 };
 
 /** A reason a feature cannot be switched off, with the admin page (after the store's address) where it is dealt with. */
@@ -482,6 +499,10 @@ export function featureWarnings(id: FeatureId, f: FeatureFacts, features: Featur
       if (f.referrers > 0) out.push(`${many(f.referrers, "customer has", "customers have")} a referral link that stops giving discounts.`);
       if (f.pendingReferrals > 0) out.push(`${many(f.pendingReferrals, "reward is", "rewards are")} still pending: ${f.pendingReferrals === 1 ? "it was" : "they were"} earned while the program was on, so ${f.pendingReferrals === 1 ? "it is" : "they are"} decided as usual.`);
       break;
+    case "gift_cards":
+      if (f.giftCardProducts > 0) out.push(`${many(f.giftCardProducts, "gift card product", "gift card products")} can no longer be bought.`);
+      if (f.giftCardsHeld > 0) out.push(`${many(f.giftCardsHeld, "gift card still holds", "gift cards still hold")} money. ${f.giftCardsHeld === 1 ? "It" : "They"} can still be used and refunded.`);
+      break;
   }
   if (asleep.length > 0) {
     const labels = asleep.map((dep) => FEATURES_BY_ID[dep].label);
@@ -515,6 +536,8 @@ export function featureInUse(id: FeatureId, f: FeatureFacts): boolean {
       return f.bonusEnabled || f.creditHolders > 0;
     case "referrals":
       return f.referralsEnabled || f.referrers > 0;
+    case "gift_cards":
+      return f.giftCardProducts > 0 || f.giftCardsHeld > 0;
   }
 }
 

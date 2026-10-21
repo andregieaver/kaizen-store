@@ -131,6 +131,16 @@ const giftFieldsCheck = (t: { isGift: AnyPgColumn; giftTo: AnyPgColumn; giftFrom
     and char_length(${t.giftTo}) <= ${lit(GIFT_NAME_MAX)} and char_length(${t.giftFrom}) <= ${lit(GIFT_NAME_MAX)}
     and char_length(${t.giftMessage}) <= ${lit(GIFT_MESSAGE_MAX)}
     and (${t.giftMessage} is null or cardinality(string_to_array(${t.giftMessage}, chr(10))) <= ${lit(GIFT_MESSAGE_LINES)})`;
+/**
+ * Who a gift card is sent to (D300 F2, `src/lib/gift-card-line.ts`): nothing for a card the buyer keeps, else the recipient's email and the day,
+ * with an optional name, sender and message inside the gift message's limits. Cart lines and order lines share it.
+ */
+const giftCardFieldsCheck = (t: { to: AnyPgColumn; toName: AnyPgColumn; from: AnyPgColumn; message: AnyPgColumn; sendOn: AnyPgColumn }) =>
+  sql`((${t.to} is null and ${t.toName} is null and ${t.from} is null and ${t.message} is null and ${t.sendOn} is null)
+      or (${t.to} is not null and ${t.sendOn} is not null))
+    and char_length(${t.to}) <= 254 and char_length(${t.toName}) <= ${lit(GIFT_NAME_MAX)} and char_length(${t.from}) <= ${lit(GIFT_NAME_MAX)}
+    and char_length(${t.message}) <= ${lit(GIFT_MESSAGE_MAX)}
+    and (${t.message} is null or cardinality(string_to_array(${t.message}, chr(10))) <= ${lit(GIFT_MESSAGE_LINES)})`;
 /** The linked legal roles (wave 1, 1e: `src/lib/legal-roles.ts`), as a SQL list for a check. */
 const legalRoleList = sql.raw(LEGAL_ROLES.map((r) => `'${r}'`).join(", "));
 
@@ -2172,7 +2182,7 @@ export const products = commerce.table(
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     foreignKey({ name: "products_vat_category_fk", columns: [t.vatCategory], foreignColumns: [vatCategories.code] }),
     index("products_vat_category_idx").on(t.vatCategory),
-    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental')`),
+    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental', 'gift_card')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
@@ -3387,11 +3397,25 @@ export const cartLines = commerce.table(
     /** An appointment (D65): when it starts, and with whom (null: whoever is free). */
     startsAt: timestamp("starts_at", { withTimezone: true }),
     resourceId: uuid("resource_id"),
+    /**
+     * A gift card sent to someone (D300 F2): its recipient, sender, message and day, and the key those make (`giftCardKey()`), so two cards of
+     * one amount for two people are two lines; all null for anything else, or a card the buyer keeps.
+     */
+    giftCardKey: text("gift_card_key"),
+    giftCardTo: text("gift_card_to"),
+    giftCardToName: text("gift_card_to_name"),
+    giftCardFrom: text("gift_card_from"),
+    giftCardMessage: text("gift_card_message"),
+    giftCardSendOn: date("gift_card_send_on"),
   },
   (t) => [
     unique("cart_lines_cart_variant_plan_key")
-      .on(t.cartId, t.variantId, t.sellingPlanId, t.startsAt)
+      .on(t.cartId, t.variantId, t.sellingPlanId, t.startsAt, t.giftCardKey)
       .nullsNotDistinct(),
+    check(
+      "cart_lines_gift_card",
+      sql`(${t.giftCardKey} is null) = (${t.giftCardTo} is null) and ${giftCardFieldsCheck({ to: t.giftCardTo, toName: t.giftCardToName, from: t.giftCardFrom, message: t.giftCardMessage, sendOn: t.giftCardSendOn })}`,
+    ),
     sellingPlanRef("cart_lines_selling_plan_fk", t),
     index("cart_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     cartRef("cart_lines_cart_fk", t).onDelete("cascade"),
@@ -3864,9 +3888,22 @@ export const orderLines = commerce.table(
     staffDiscountMinor: money("staff_discount_minor").default(0),
     /** The order change that added this line (wave 3 run 3, D174); null for a line placed with the order. Frozen after insert. */
     orderEditId: uuid("order_edit_id"),
+    /**
+     * A gift card sent to someone (D300 F2): its cart line's recipient, sender, message and day, frozen when the order is placed (each card of
+     * the line goes to them); all null for anything else, or a card the buyer keeps. Personal data: cleared when the order is anonymised.
+     */
+    giftCardTo: text("gift_card_to"),
+    giftCardToName: text("gift_card_to_name"),
+    giftCardFrom: text("gift_card_from"),
+    giftCardMessage: text("gift_card_message"),
+    giftCardSendOn: date("gift_card_send_on"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
+    check(
+      "order_lines_gift_card",
+      giftCardFieldsCheck({ to: t.giftCardTo, toName: t.giftCardToName, from: t.giftCardFrom, message: t.giftCardMessage, sendOn: t.giftCardSendOn }),
+    ),
     foreignKey({
       name: "order_lines_order_edit_fk",
       columns: [t.storeId, t.orderEditId],
@@ -8919,7 +8956,8 @@ export const giftCardEntries = commerce.table(
         or (${t.kind} = 'spend' and ${t.amountMinor} = 0) or (${t.kind} = 'adjust' and ${t.amountMinor} <> 0)`,
     ),
     check("gift_card_entries_order", sql`${t.kind} not in ('hold', 'release', 'spend', 'refund') or ${t.orderId} is not null`),
-    check("gift_card_entries_staff", sql`${t.kind} not in ('adjust', 'void') or ${t.accountId} is not null`),
+    // A person adjusts; a card is voided by a person, or by its order's withdrawal (D300 F2, with the order).
+    check("gift_card_entries_staff", sql`(${t.kind} <> 'adjust' or ${t.accountId} is not null) and (${t.kind} <> 'void' or ${t.accountId} is not null or ${t.orderId} is not null)`),
     check("gift_card_entries_note", sql`length(${t.note}) <= 500 and (${t.kind} <> 'adjust' or length(trim(${t.note})) > 0)`),
   ],
 );

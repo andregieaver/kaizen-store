@@ -112,7 +112,10 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
       (select coalesce(sum(held_minor), 0)::bigint from credits where held_minor > 0) as credits_minor,
       coalesce((select a.enabled from commerce.affiliate_settings a where a.store_id = ${storeId}::uuid), false) as referrals_enabled,
       (select count(*)::int from commerce.affiliates a where a.store_id = ${storeId}::uuid and a.blocked_at is null) as referrers,
-      (select count(*)::int from commerce.affiliate_attributions a where a.store_id = ${storeId}::uuid and a.status = 'pending') as pending_referrals
+      (select count(*)::int from commerce.affiliate_attributions a where a.store_id = ${storeId}::uuid and a.status = 'pending') as pending_referrals,
+      (select count(*)::int from commerce.products p where p.store_id = ${storeId}::uuid and p.kind = 'gift_card' and p.status <> 'archived') as gift_card_products,
+      (select count(*)::int from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.status = 'active' and not g.test_mode
+        and commerce.gift_card_balance(g.id) > 0) as gift_cards_held
   `);
   return {
     paidUnshipped: obligations.paidUnshipped,
@@ -147,6 +150,8 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
     referralsEnabled: Boolean(row?.referrals_enabled),
     referrers: n(row?.referrers),
     pendingReferrals: n(row?.pending_referrals),
+    giftCardProducts: n(row?.gift_card_products),
+    giftCardsHeld: n(row?.gift_cards_held),
   };
 }
 

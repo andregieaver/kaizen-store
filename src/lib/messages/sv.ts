@@ -1254,4 +1254,25 @@ export const sv: Messages = {
   },
   storeSummary: (name: string, country: string) => `${name}: webbutik med leverans i ${country}. Priser inklusive moms.`,
   options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad", rental: "Hyra", day: "Hela dagar", halfDay: "Halvdag", hour: "Per timme" },
+  // Presentkort (D300 F2). legal: needs review (ångerrättsmeningen).
+  giftCardLine: {
+    sentTo: (to: string, day: string) => `Mejlas till ${to} ${day}`,
+    toYou: "Mejlas till dig när du har betalat",
+    withdrawal: "Du kan ångra köpet av ett presentkort inom 14 dagar, så länge inget av det har använts.",
+    notDiscounted: "Rabatter och bonuspoäng dras inte av från presentkort.",
+  },
+  // Presentkortets mejl (D300 F2). legal: needs review.
+  giftCardEmail: {
+    subject: (store: string) => `Ett presentkort till ${store}`,
+    heading: (amount: string, store: string) => `${amount} att handla för hos ${store}`,
+    from: (name: string) => `Från ${name}:`,
+    useIt: (store: string) => `Använd koden i kassan hos ${store}. Det som presentkortet inte täcker betalas som vanligt.`,
+    validUntil: (day: string) => `Det kan användas till och med ${day}.`,
+    noExpiry: "Det kan användas så länge butiken säljer.",
+    keepIt: "Spara det här mejlet: koden är presentkortet, och alla som har den kan använda den.",
+    visit: (store: string) => `Gå till ${store}`,
+    copySubject: (store: string) => `Ditt presentkort från ${store} är på väg`,
+    copyHeading: "Ditt presentkort är på väg",
+    copyText: (amount: string, to: string) => `Vi har mejlat presentkortet på ${amount} till ${to}. Koden finns bara i deras mejl.`,
+  },
 };

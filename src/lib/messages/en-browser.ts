@@ -118,6 +118,26 @@ form: {
     failed: "It did not work. Try again.",
     note: "We email you once about this product, nothing else.",
   },
+  /** Buying a gift card (D300 F2): its amount, and sending it to someone on a day. */
+  giftCard: {
+    amount: "Amount",
+    send: "Send it to someone",
+    sendNote: "We email the gift card to them on the day you choose. Otherwise it is emailed to you.",
+    to: "Their email",
+    toName: "Their name (optional)",
+    from: "From (optional)",
+    message: "Message (optional)",
+    sendOn: "Send on",
+    problem: {
+      missing: "Write their email address.",
+      not_an_email: "Write a whole email address.",
+      too_long: (over: number) => `${over} ${over === 1 ? "character" : "characters"} too many.`,
+      too_many_lines: "Too many lines.",
+      not_a_day: "Choose a day.",
+      too_early: "Choose today or a later day.",
+      too_late: "Choose a day within a year.",
+    },
+  },
 };
 
 export type BrowserMessages = typeof enBrowser;

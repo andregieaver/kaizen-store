@@ -50,6 +50,7 @@ describe("a template gives the English message", () => {
     "ui:days": [[365], [730], [30], [7]],
     "ui:downloadsLeft": count,
     "ui:gift.counter": count,
+    "ui:giftCard.problem.too_long": count,
     "ui:bonus.dayCount": count,
     "ui:bonus.monthCount": count,
     "ui:planEvery": [["week", 1], ["week", 2], ["month", 1], ["month", 3], ["year", 1], ["year", 2]],

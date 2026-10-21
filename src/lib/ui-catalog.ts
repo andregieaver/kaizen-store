@@ -46,6 +46,7 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
   },
   "ui:downloadsLeft": { template: plural("# download left", "# downloads left") },
   "ui:gift.counter": { template: plural("# character left", "# characters left") },
+  "ui:giftCard.problem.too_long": { template: plural("# character too many.", "# characters too many.") },
   "ui:bonus.dayCount": { template: plural("# day", "# days") },
   "ui:bonus.monthCount": { template: plural("# month", "# months") },
   "ui:planEvery": {
@@ -141,6 +142,9 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   // Wave 4 unit F (D293): payment terms on the checkout, the order pages and the reminder emails, until the legal review clears them.
   "ui:paymentTerms.",
   "email:terms.",
+  // Wave 5 unit F (D300): the gift card's withdrawal sentence and its email, until the legal review clears them.
+  "ui:giftCardLine.withdrawal",
+  "ui:giftCardEmail.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

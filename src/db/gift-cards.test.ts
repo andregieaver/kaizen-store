@@ -68,6 +68,12 @@ describe("gift cards", () => {
     await rejects("delete from commerce.gift_card_entries where card_id = $1", [card], /gift_card_entries.fixed/);
     await rejects("delete from commerce.gift_cards where id = $1", [card], /gift_cards.kept/);
     await rejects("update commerce.gift_cards set initial_minor = 1 where id = $1", [card], /gift_cards.fixed/);
+    // A code is made again while the card was never delivered (its email failed); once delivered it stays, and is never taken away.
+    expect(await scalar("select commerce.gift_card_set_code($1, $2, 'again', 'CD34')", [store, card])).toBe(true);
+    await rejects("update commerce.gift_cards set code_hash = null, last4 = null where id = $1", [card], /gift_cards.code/);
+    expect(await scalar("select commerce.gift_card_mark_sent($1, $2)", [store, card])).toBe(true);
+    expect(await scalar("select commerce.gift_card_mark_sent($1, $2)", [store, card])).toBe(false);
+    expect(await scalar("select commerce.gift_card_set_code($1, $2, 'other', 'ZZ99')", [store, card])).toBe(false);
     await rejects("update commerce.gift_cards set code_hash = 'other', last4 = 'ZZ99' where id = $1", [card], /gift_cards.code/);
   });
 
@@ -164,5 +170,145 @@ describe("gift cards", () => {
     await db.query("update commerce.stores set features = array['shop', 'gift_cards'] where id = $1", [store]);
     expect(await scalar("select commerce.feature_on($1, 'gift_cards')", [store])).toBe(true);
     expect(await scalar("select commerce.feature_needs('gift_cards')")).toEqual(["shop"]);
+  });
+});
+
+/** Selling them (D300 F2): the product, its VAT, the cards a paid order issues, a withdrawal, and the person going with the order. */
+describe("gift cards sold", () => {
+  let product: string;
+  let small: string;
+  let large: string;
+
+  beforeAll(async () => {
+    product = await scalar<string>("select commerce.add_demo_gift_card($1)", [store]);
+    small = await scalar<string>("select id from commerce.product_variants where product_id = $1 and sku = 'DEMO-GAVEKORT-500'", [product]);
+    large = await scalar<string>("select id from commerce.product_variants where product_id = $1 and sku = 'DEMO-GAVEKORT-1000'", [product]);
+  });
+
+  /** An order of gift cards, unpaid: `lines` of a variant, units, and who it is for. */
+  async function giftOrder(lines: { variant: string; unit: number; quantity: number; to?: string }[]): Promise<{ id: string; lines: string[] }> {
+    const placed = await placeOrder(db, store, { lines: lines.map((l, i) => ({ sku: `GCX-${i}`, unit: l.unit, quantity: l.quantity, rate: 0, delivery: "digital" as const })), pay: false, shipping: 0 });
+    for (const [i, l] of lines.entries()) {
+      await db.query(
+        `update commerce.order_lines set variant_id = $2, gift_card_to = $3, gift_card_to_name = $4, gift_card_message = $5, gift_card_send_on = $6::date where id = $1`,
+        [placed.lineIds[i], l.variant, l.to ?? null, l.to ? "Kari" : null, l.to ? "Gratulerer!" : null, l.to ? "2026-12-24" : null],
+      );
+    }
+    return { id: placed.id, lines: placed.lineIds };
+  }
+
+  async function pay(orderId: string, opts: { test?: boolean } = {}): Promise<void> {
+    // A Stripe payment on no known account is a live one; a venue payment takes the store's Stripe mode (test, here).
+    await db.query("insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, $3, $4, 1, 'NOK', 'pending')", [
+      store,
+      orderId,
+      opts.test ? "venue" : "stripe",
+      `pi_gc_${orderId}`,
+    ]);
+    await db.query("select commerce.complete_order_payment($1::uuid, 'ref')", [orderId]);
+    await db.query("update commerce.payments set status = 'captured' where order_id = $1", [orderId]);
+  }
+
+  const cards = (orderId: string) =>
+    db.query<{ id: string; initial_minor: string; recipient_email: string | null; send_at: string | null; test_mode: boolean; unit_index: number }>(
+      "select id, initial_minor::text, recipient_email, send_at, test_mode, unit_index from commerce.gift_cards where order_id = $1 order by order_line_id, unit_index",
+      [orderId],
+    ).then((r) => r.rows);
+
+  it("are a product with the voucher category, which carries no VAT anywhere", async () => {
+    expect(await scalar("select kind || '/' || vat_category from commerce.products where id = $1", [product])).toBe("gift_card/voucher");
+    expect(await scalar("select delivery from commerce.product_variants where id = $1", [small])).toBe("digital");
+    for (const country of ["NO", "SE", "DK", "DE", "FR"]) {
+      expect(Number(await scalar("select commerce.vat_rate($1, 'voucher')", [country]))).toBe(0);
+    }
+    expect(Number(await scalar("select commerce.vat_rate('NO', 'standard')"))).toBeGreaterThan(0);
+  });
+
+  it("keep their rules: the voucher category, sold once, by email; the voucher on gift cards only", async () => {
+    await rejects("update commerce.products set vat_category = 'standard' where id = $1", [product], /gift_card.product/);
+    await rejects("update commerce.products set subscription_only = true where id = $1", [product], /gift_card.product/);
+    await rejects("update commerce.product_variants set delivery = 'physical' where id = $1", [small], /gift_card.variants/);
+    const goods = await scalar<string>("select id from commerce.products where store_id = $1 and kind = 'goods' limit 1", [store]);
+    await rejects("update commerce.products set vat_category = 'voucher' where id = $1", [goods], /gift_card.voucher/);
+  });
+
+  it("are offered only while gift cards are on", async () => {
+    await db.query("update commerce.stores set features = array['shop'] where id = $1", [store]);
+    expect(await scalar("select commerce.kind_offered($1, 'gift_card', false)", [store])).toBe(false);
+    await db.query("update commerce.stores set features = array['shop', 'gift_cards'] where id = $1", [store]);
+    expect(await scalar("select commerce.kind_offered($1, 'gift_card', false)", [store])).toBe(true);
+    expect(await scalar("select commerce.kind_offered($1, 'goods', false)", [store])).toBe(true);
+  });
+
+  it("issue one card per unit once the order is paid, for its amount and person, and never twice", async () => {
+    const o = await giftOrder([
+      { variant: small, unit: 50000, quantity: 2 },
+      { variant: large, unit: 100000, quantity: 1, to: "friend@example.com" },
+    ]);
+    expect(await cards(o.id)).toHaveLength(0);
+    await pay(o.id);
+    const issued = await cards(o.id);
+    expect(issued.map((c) => [Number(c.initial_minor), c.recipient_email, c.unit_index, c.test_mode])).toEqual([
+      ...(o.lines[0] < o.lines[1]
+        ? [
+            [50000, null, 1, false],
+            [50000, null, 2, false],
+            [100000, "friend@example.com", 1, false],
+          ]
+        : [
+            [100000, "friend@example.com", 1, false],
+            [50000, null, 1, false],
+            [50000, null, 2, false],
+          ]),
+    ]);
+    const sent = issued.find((c) => c.recipient_email);
+    expect(sent?.send_at).not.toBeNull();
+    expect(issued.filter((c) => !c.recipient_email).every((c) => c.send_at === null)).toBe(true);
+    for (const c of issued) expect(await balance(c.id)).toBe(Number(c.initial_minor));
+    // Another capture (a change paid, a retry) issues nothing more.
+    await db.query("update commerce.payments set status = 'captured' where order_id = $1", [o.id]);
+    expect(await cards(o.id)).toHaveLength(3);
+  });
+
+  it("issue nothing before a payment is captured, and test cards for a test payment", async () => {
+    const o = await giftOrder([{ variant: small, unit: 50000, quantity: 1 }]);
+    await db.query("insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'venue', $3, 1, 'NOK', 'pending')", [
+      store,
+      o.id,
+      `ven_t_${o.id}`,
+    ]);
+    expect(await scalar("select test_mode from commerce.payments where order_id = $1", [o.id])).toBe(true);
+    await db.query("select commerce.complete_order_payment($1::uuid, 'ref')", [o.id]);
+    expect(await cards(o.id)).toHaveLength(0);
+    await db.query("update commerce.payments set status = 'captured' where order_id = $1", [o.id]);
+    expect((await cards(o.id)).map((c) => c.test_mode)).toEqual([true]);
+  });
+
+  it("are voided by the order's withdrawal while unspent, and not after", async () => {
+    const o = await giftOrder([{ variant: small, unit: 50000, quantity: 2 }]);
+    await pay(o.id);
+    const [a, b] = await cards(o.id);
+    await rejects("select commerce.gift_card_withdraw($1, $2, gen_random_uuid())", [store, a.id], /gift_card.order/);
+    await db.query("select commerce.gift_card_withdraw($1, $2, $3)", [store, a.id, o.id]);
+    expect(await balance(a.id)).toBe(0);
+    expect(await scalar("select status from commerce.gift_cards where id = $1", [a.id])).toBe("deactivated");
+    expect(await scalar("select order_id = $2 and account_id is null from commerce.gift_card_entries where card_id = $1 and kind = 'void'", [a.id, o.id])).toBe(true);
+    // Part of the other is spent: it is no longer withdrawn.
+    await db.query("update commerce.gift_cards set code_hash = md5(id::text), last4 = 'EF56' where id = $1", [b.id]);
+    const spendOn = await order("GC-7");
+    await db.query("select commerce.gift_card_hold($1, $2, $3, 'NOK', false, 1000, 'w:h')", [store, b.id, spendOn]);
+    await rejects("select commerce.gift_card_withdraw($1, $2, $3)", [store, b.id, o.id], /gift_card.spent/);
+  });
+
+  it("forget who they were for when the order is anonymised, and keep the money", async () => {
+    const o = await giftOrder([{ variant: large, unit: 100000, quantity: 1, to: "anna@example.com" }]);
+    await pay(o.id);
+    const [card] = await cards(o.id);
+    await db.query("select set_config('commerce.anonymising', 'on', false)");
+    await db.query("update commerce.orders set email = '[removed]', billing_address = '{}', shipping_address = '{}', customer_id = null, anonymised_at = now() where id = $1", [o.id]);
+    await db.query("select set_config('commerce.anonymising', '', false)");
+    expect(await scalar("select gift_card_to is null and gift_card_message is null and gift_card_send_on is null from commerce.order_lines where order_id = $1", [o.id])).toBe(true);
+    expect(await scalar("select recipient_email is null and message is null from commerce.gift_cards where id = $1", [card.id])).toBe(true);
+    expect(await balance(card.id)).toBe(100000);
   });
 });

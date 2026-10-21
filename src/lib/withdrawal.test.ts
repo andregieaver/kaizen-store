@@ -346,3 +346,18 @@ describe("when a refund is due", () => {
     expect(r).toMatchObject({ state: "due", deadline: null, daysToDeadline: null });
   });
 });
+
+describe("a gift card line (D300)", () => {
+  const card = (unspent: number, boughtAt = "2026-10-01T10:00:00Z") => ({ delivery: "digital", quantity: 3, giftCard: { unspent, boughtAt } });
+
+  it("is withdrawn from within 14 days of the purchase, card by card while a card is whole", () => {
+    const judged = lineEligibility(line(card(2)), order({ digitalConsent: true }), settings(), OSLO, "2026-10-15T12:00:00Z");
+    expect(judged).toMatchObject({ right: "withdrawal", maxQuantity: 2, refusal: null });
+  });
+
+  it("is not once every card was spent from, nor after the 14 days, nor for a company", () => {
+    expect(lineEligibility(line(card(0)), order(), settings(), OSLO, "2026-10-02T12:00:00Z").refusal).toBe("gift_card_spent");
+    expect(lineEligibility(line(card(3)), order(), settings(), OSLO, "2026-10-16T12:00:00Z").refusal).toBe("period_over");
+    expect(lineEligibility(line(card(3)), order({ business: true }), settings(), OSLO, "2026-10-02T12:00:00Z").refusal).toBe("business_order");
+  });
+});

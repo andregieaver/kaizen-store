@@ -110,6 +110,11 @@ export type WithdrawalLine = {
   delivery: string;
   /** Units already on withdrawals and returns that are not declined or cancelled (`taken()`). */
   takenQuantity: number;
+  /**
+   * A gift card line (D300): how many of its cards are still whole (active, nothing spent), and when it was bought. A digital service
+   * that has not started until it is spent: withdrawn within 14 days of the purchase, card by card, while a card is whole.
+   */
+  giftCard?: { unspent: number; boughtAt: Instant } | null;
 };
 
 export type WithdrawalWindow = {
@@ -207,6 +212,7 @@ export const REFUSALS = [
   "booking",
   "business_order",
   "period_over",
+  "gift_card_spent",
 ] as const;
 export type Refusal = (typeof REFUSALS)[number];
 export const REFUSAL_KEYS: Record<Refusal, Refusal> = Object.fromEntries(REFUSALS.map((r) => [r, r])) as Record<Refusal, Refusal>;
@@ -287,6 +293,15 @@ export function lineEligibility(
   if (order.copied) return none("copied_order");
   if (!PAID_STATUSES.includes(order.status)) return none("order_not_paid");
   if (remaining <= 0) return none("already_returned");
+
+  // A gift card (D300): the 14 days count from the purchase, as for a service, and only a whole card goes back. legal: needs review.
+  if (line.giftCard) {
+    const whole = Math.min(remaining, line.giftCard.unspent);
+    if (whole <= 0) return none("gift_card_spent");
+    if (order.business) return none("business_order");
+    if (dayIn(now, timeZone) > addCalendarDays(dayIn(line.giftCard.boughtAt, timeZone), LEGAL_WITHDRAWAL_DAYS)) return none("period_over");
+    return { ...some("withdrawal"), maxQuantity: whole };
+  }
 
   const window = withdrawalWindow(order, settings, timeZone, now);
   // What the shopper's own tick or the kind of line takes away, whatever the product says.

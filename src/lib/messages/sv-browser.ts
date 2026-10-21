@@ -116,4 +116,23 @@ form: {
     failed: "Det gick inte. Försök igen.",
     note: "Vi mejlar dig bara en gång om den här produkten, inget annat.",
   },
+  giftCard: {
+    amount: "Belopp",
+    send: "Skicka det till någon",
+    sendNote: "Vi mejlar presentkortet till mottagaren den dag du väljer. Annars mejlas det till dig.",
+    to: "Mottagarens e-post",
+    toName: "Mottagarens namn (valfritt)",
+    from: "Från (valfritt)",
+    message: "Hälsning (valfritt)",
+    sendOn: "Skicka den",
+    problem: {
+      missing: "Skriv mottagarens e-postadress.",
+      not_an_email: "Skriv en hel e-postadress.",
+      too_long: (over: number) => `${over} tecken för mycket.`,
+      too_many_lines: "För många rader.",
+      not_a_day: "Välj en dag.",
+      too_early: "Välj i dag eller en senare dag.",
+      too_late: "Välj en dag inom ett år.",
+    },
+  },
 };

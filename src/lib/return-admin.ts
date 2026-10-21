@@ -106,6 +106,7 @@ export const DECLINE_REASON_LABELS: Record<string, string> = {
   booking: "A booking, which is cancelled from the booking itself",
   business_order: "Companies have no statutory right of withdrawal",
   period_over: "The period is over",
+  gift_card_spent: "Gift card partly used",
 };
 
 export const declineReasonText = (reason: string | null): string => (reason ? (DECLINE_REASON_LABELS[reason] ?? reason) : "Declined");

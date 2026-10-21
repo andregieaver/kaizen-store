@@ -11,6 +11,7 @@ import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { cleanGift, giftOfRow, NO_GIFT, type GiftFields, type GiftProblem } from "@/lib/gift";
+import { giftCardKey, giftCardRecipientOfRow, type GiftCardRecipient } from "@/lib/gift-card-line";
 import { backorderNote, lineIsOk, stockOf, type VariantStock } from "@/lib/stock-availability";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
@@ -97,6 +98,11 @@ export type CartLine = {
   payment: AppointmentPayment | null;
   /** The host whose listing it is (D71); bonus credits are the store's own, so they are not earned or used on a host's. */
   hostId: string | null;
+  /**
+   * A gift card (D300): who its cards are for (null: the buyer, emailed at once) and the key that names the line with them, which the
+   * cart's forms send back; null for anything else.
+   */
+  giftCard: { recipient: GiftCardRecipient | null; key: string | null } | null;
 };
 
 /** The time an appointment (or a stay, a rental) is booked for (D65, D67), and who or what with; null is whichever is free. */
@@ -140,12 +146,12 @@ export async function readCartId(shop: Shop): Promise<string | null> {
 
 /**
  * An appointment, a stay or a rental is in the cart with its time, and goods
- * without one (D65, D67); a time is kept while it is at least the notice
+ * and gift cards without one (D65, D67, D300); a time is kept while it is at least the notice
  * away. Whether it is still free is checked when adding and again at
  * checkout.
  */
 export const bookable = sql`
-  ((p.kind = 'goods') = (cl.starts_at is null))
+  ((p.kind in ('goods', 'gift_card')) = (cl.starts_at is null))
   and (cl.starts_at is null or cl.starts_at > now() + make_interval(mins => coalesce(aps.min_notice_minutes, 0)))
 `;
 
@@ -165,6 +171,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       c.company_name, c.organisation_number, c.vat_number, vk.status as vat_status, vk.requested_at as vat_checked_at,
       c.is_gift, c.gift_to, c.gift_from, c.gift_message,
       coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
+      cl.gift_card_key, cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered (Subscriptions on, D178), or buying once where that is allowed.
@@ -203,7 +210,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       and c.market_code = ${market.code}
       and c.status = 'open'
       and c.expires_at > now()
-    order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
+    order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at, cl.gift_card_key nulls first
   `);
 
   // Stays and rentals are priced by their nights' seasons, with a fee (D70).
@@ -312,6 +319,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
           ? { mode: parsePaymentMode(row.payment), depositPercent: Number(row.deposit_percent) }
           : null,
         hostId: row.host_id ? String(row.host_id) : null,
+        giftCard: row.kind === "gift_card" ? { recipient: giftCardRecipientOfRow(row), key: row.gift_card_key ? String(row.gift_card_key) : null } : null,
       };
     }),
   };
@@ -438,6 +446,8 @@ async function buysForBusiness(storeId: string): Promise<boolean> {
 export type SellableQuantity = {
   available: number;
   kind: BookedKind | "goods";
+  /** A gift card (D300, kind `goods` here: no time, no stock): its line may name who its cards are for. */
+  giftCard: boolean;
   /** Units really in stock (net of live checkout holds); for a download or a booking, the same as `available`. */
   inStock: number;
   stockPolicy: "deny" | "continue";
@@ -474,8 +484,8 @@ export async function sellableQuantity(
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
       -- Sold only in a country and currency the store offers now (D178: Several countries and currencies).
       and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})
-      -- Appointments, stays and rentals are booked for a time (D65, D67), and goods have none.
-      and (p.kind = 'goods') = ${booking === null}
+      -- Appointments, stays and rentals are booked for a time (D65, D67), and goods and gift cards have none.
+      and (p.kind in ('goods', 'gift_card')) = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
       -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
       and ${OFFERED}
@@ -501,7 +511,9 @@ export async function sellableQuantity(
     stockPolicy: stock ? stock.stockPolicy : ("deny" as const),
     backorderDays: stock ? stock.backorderDays : null,
   };
-  if (!booking) return { available: stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY, kind: "goods", ...room };
+  if (!booking) {
+    return { available: stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY, kind: "goods", giftCard: row.kind === "gift_card", ...room };
+  }
   const kind = bookedKind(row.kind);
   // A stay or a rental must be free for all its nights or days, and keep to the product's rules.
   if (kind !== "appointment") {
@@ -511,11 +523,11 @@ export async function sellableQuantity(
       unitId: booking.resourceId,
       period: parseRentalPeriod(row.rental_period),
     });
-    return { available: free.ok ? count : 0, kind, ...room };
+    return { available: free.ok ? count : 0, kind, giftCard: false, ...room };
   }
   // An appointment's time must be one the product page would offer now.
   const free = await freeResourcesAt(tx, storeId, String(row.product_id), booking.startsAt, booking.resourceId);
-  return { available: free && free.resourceIds.length > 0 ? 1 : 0, kind, ...room };
+  return { available: free && free.resourceIds.length > 0 ? 1 : 0, kind, giftCard: false, ...room };
 }
 
 /** Locks and returns the shopper's open cart, creating one if needed. */
@@ -577,10 +589,18 @@ export async function changeLine(
    * nights or days, which replace the line's.
    */
   booking: LineBooking | null = null,
+  /**
+   * A gift card's line (D300): who its cards are for, when adding (the line's key is made from it), or the line's key as the cart's forms send
+   * it back, when changing one. Ignored for anything but a gift card.
+   */
+  giftCard: { recipient: GiftCardRecipient | null } | { key: string | null } | null = null,
 ): Promise<{ outcome: LineOutcome | "removed" | "plan_conflict" | "slot_taken"; quantity: number }> {
+  let recipient = giftCard && "recipient" in giftCard ? giftCard.recipient : null;
+  const key = giftCard ? ("recipient" in giftCard ? giftCardKey(giftCard.recipient) : giftCard.key) : null;
   return db().transaction(async (tx) => {
     const samePlan = sql`selling_plan_id is not distinct from ${sellingPlanId}::uuid
-      and starts_at is not distinct from ${booking?.startsAt ?? null}::timestamptz`;
+      and starts_at is not distinct from ${booking?.startsAt ?? null}::timestamptz
+      and gift_card_key is not distinct from ${key}`;
     if (mode === "set" && quantity <= 0) {
       const cartId = await readCartId(shop);
       if (cartId) {
@@ -599,6 +619,8 @@ export async function changeLine(
       return { outcome: "unavailable" as const, quantity: 0 };
     }
     const range = sellable.kind === "stay" || sellable.kind === "rental";
+    // Only a gift card names who it is for; any other product's line has no key.
+    if (key !== null && !sellable.giftCard) return { outcome: "unavailable" as const, quantity: 0 };
 
     const cartId = await openCart(tx, shop);
     // One checkout makes one subscription, so it renews on one schedule.
@@ -606,18 +628,26 @@ export async function changeLine(
       return { outcome: "plan_conflict" as const, quantity: 0 };
     }
     const [current] = await tx.execute<Row>(sql`
-      select quantity from commerce.cart_lines
+      select quantity, gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on from commerce.cart_lines
       where cart_id = ${cartId}::uuid and variant_id = ${variantId}::uuid and ${samePlan}
       for update
     `);
+    // A line named by its key alone (the cart's own forms) is changed as it is, with whoever its cards are for.
+    if (key !== null && !recipient) {
+      if (!current) return { outcome: "unavailable" as const, quantity: 0 };
+      recipient = giftCardRecipientOfRow(current);
+    }
     // A time already in the cart is simply there: choosing it again is not asking for more.
     const wanted = booking ? 1 : mode === "add" ? Number(current?.quantity ?? 0) + quantity : quantity;
     const settled = range ? { outcome: "added" as const, quantity } : settleQuantity(wanted, sellable.available);
 
     await tx.execute(sql`
-      insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, selling_plan_id, starts_at, resource_id)
+      insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, selling_plan_id, starts_at, resource_id,
+                                       gift_card_key, gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on)
       values (${shop.storeId}::uuid, ${cartId}::uuid, ${variantId}::uuid, ${settled.quantity}, ${sellingPlanId}::uuid,
-              ${booking?.startsAt ?? null}::timestamptz, ${booking?.resourceId ?? null}::uuid)
+              ${booking?.startsAt ?? null}::timestamptz, ${booking?.resourceId ?? null}::uuid,
+              ${key}, ${recipient?.to ?? null}, ${recipient?.toName ?? null}, ${recipient?.from ?? null}, ${recipient?.message ?? null},
+              ${recipient?.sendOn ?? null}::date)
       on conflict on constraint cart_lines_cart_variant_plan_key
         do update set quantity = excluded.quantity, resource_id = excluded.resource_id
     `);

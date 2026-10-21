@@ -52,7 +52,7 @@ describe("the notifications' tables have one module each", () => {
 
 describe("every sender of a catalogue kind asks notificationOn()", () => {
   /** The modules that send the catalogue's kinds (`orderNotice()` and the parcel emails, `returnMail()`, the confirmation). */
-  const SENDERS = ["src/server/shopper-emails.ts", "src/server/return-emails.ts", "src/server/exchange-emails.ts"];
+  const SENDERS = ["src/server/shopper-emails.ts", "src/server/return-emails.ts", "src/server/exchange-emails.ts", "src/server/gift-card-delivery.ts"];
 
   it("lists every module that names a catalogue kind as an email kind", () => {
     const kinds = NOTIFICATIONS.map((n) => n.id).filter((id) => id !== "return.acknowledgement");

@@ -104,6 +104,7 @@ export const enReturns = {
     booking: "A booking for a service is cancelled or moved from your order, under the store's rules. It is not withdrawn here. If you believe you have a statutory right of withdrawal for it, write to the store.",
     business_order: "The order was placed for a company, which has no statutory right of withdrawal.",
     period_over: "By our records the 14 days for withdrawing have passed. If you were not given information about your right of withdrawal, or you received the goods later, the period may be longer: write to the store.",
+    gift_card_spent: "Part of this gift card has been used, so it can no longer be withdrawn from. Write to the store if something is wrong.",
   },
   sealedLine: "The right of withdrawal applies only while the seal is unbroken.",
   nothingToSend: "Nothing to send back",

@@ -350,6 +350,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** A back-in-stock request's confirmation link, and the one email when the variant is back (D298). */
   "stock.confirm": "shopper",
   "stock.back_in_stock": "shopper",
+  /** A gift card's code (D300), to the person it is for or the buyer, and the buyer's copy without the code when it went to someone else. */
+  "gift_card.issued": "shopper",
+  "gift_card.on_its_way": "shopper",
   "account.welcome": "shopper",
   "company.joined": "shopper",
   "company.ended": "shopper",

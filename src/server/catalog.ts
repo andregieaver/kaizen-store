@@ -100,8 +100,8 @@ export type ProductDetail = {
   needsNativeCurrency: boolean;
   /** Who it is for (B2B); always `all` unless the store sells to both. */
   audience: ProductAudience;
-  /** Goods, or an appointment booked for a time (D65). */
-  kind: "goods" | "appointment" | "stay" | "rental";
+  /** Goods, an appointment booked for a time (D65), a stay or a rental (D67), or a gift card (D300). */
+  kind: "goods" | "appointment" | "stay" | "rental" | "gift_card";
   /** The outside host who lists it, when the store is a marketplace (D71). */
   hostName: string | null;
   /** The store's public custom fields with a value for it, by group, in the shopper's language (D118). */
@@ -331,7 +331,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
     variantFields,
     storeFields,
     audience: productAudience(product),
-    kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
+    kind:
+      product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" || product.kind === "gift_card" ? product.kind : "goods",
   };
 }
 

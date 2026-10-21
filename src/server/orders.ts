@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
 import { giftOfRow, type GiftFields } from "@/lib/gift";
+import { giftCardRecipientOfRow, type GiftCardRecipient } from "@/lib/gift-card-line";
 import { readDelivery, readOrderDelivery, type AnyOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
 import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
@@ -131,6 +132,8 @@ export type OrderView = {
     unitPriceMinor: number;
     totalMinor: number;
     delivery: Delivery;
+    /** A gift card (D300): emailed as a code, never a download; who it goes to and when, when the buyer sent it to someone. */
+    giftCard: { recipient: GiftCardRecipient | null } | null;
     /** The product's first picture, small, as it is now: a path on the store's host or a full address; null for fees. */
     image: string | null;
     /** The VAT rate it was sold at (D65); with reverse charge the rate that would have applied. */
@@ -305,6 +308,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     unitPriceMinor: Number(line.unit_price_minor),
     totalMinor: Number(line.total_minor),
     delivery: parseDelivery(line.delivery),
+    giftCard: line.gift_card ? { recipient: giftCardRecipientOfRow(line) } : null,
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
     taxMinor: Number(line.tax_minor ?? 0),
@@ -363,7 +367,10 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
           order by m.position limit 1) as image,
         b.id as booking_id, b.starts_at, b.ends_at, b.status as booking_status, b.staff, b.place, s.time_zone,
         b.product_id as booking_product_id, b.resource_id as booking_resource_id, b.cancel_hours, b.sequence,
-        b.resource_kind, ol.venue_minor
+        b.resource_kind, ol.venue_minor,
+        ol.gift_card_to, ol.gift_card_to_name, ol.gift_card_from, ol.gift_card_message, ol.gift_card_send_on,
+        exists (select 1 from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+                where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card') as gift_card
       from commerce.order_lines ol
       join commerce.stores s on s.id = ol.store_id
       left join lateral (

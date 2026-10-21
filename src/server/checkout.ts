@@ -15,7 +15,9 @@ import { isNative, shown, type Market } from "@/lib/markets";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
-import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
+import { giftCardRecipientOfRow } from "@/lib/gift-card-line";
+import { formatMoney } from "@/lib/money";
+import { BOOKED_KINDS, GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { campaignLabel, memberOffAfterCampaign } from "@/lib/campaigns";
 import type { OrderVatTreatment, VatKind } from "@/lib/vat-treatment";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
@@ -153,7 +155,7 @@ export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
 
 /**
  * The rows `placeOrder()` prices, from a source that has the columns of a cart line (`store_id`,
- * `variant_id`, `quantity`, `selling_plan_id`, `starts_at`, `resource_id`): the shopper's cart lines, or
+ * `variant_id`, `quantity`, `selling_plan_id`, `starts_at`, `resource_id`, and a gift card's `gift_card_*`): the shopper's cart lines, or
  * the free products a campaign gives (D114), which are sold like any other line.
  */
 function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
@@ -170,6 +172,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
+        cl.gift_card_to, cl.gift_card_to_name, cl.gift_card_from, cl.gift_card_message, cl.gift_card_send_on,
         (p.status = 'active' and v.active and ${bookable} and ${OFFERED}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -282,7 +285,8 @@ export async function placeOrder(
     const minCycles = Math.max(0, ...planned.map((l) => Number(l.min_cycles)));
     if (rhythm && !consent.subscription) return { ok: false, problem: "subscription_consent" };
     const physical = lines.filter((l) => l.delivery === "physical");
-    const digital = lines.some((l) => l.delivery === "digital");
+    // Downloads (D24): a gift card is emailed as a code (D300), so it asks no tick and keeps its right of withdrawal.
+    const digital = lines.some((l) => l.delivery === "digital" && l.kind !== "gift_card");
     if (digital && !consent.digital) return { ok: false, problem: "consent" };
 
     const [rate] = await tx.execute<Row>(sql`
@@ -308,8 +312,13 @@ export async function placeOrder(
       // Kept in the country's own currency; the order is in the one shown (D109).
       const renewUnit = planPrice(shown(market, Number(line.amount_minor)), recurring ? Number(line.discount_percent) : 0);
       const options = (line.options ?? {}) as Record<string, string>;
+      // A gift card is named by its amount (D300), not by its variant's options.
       const title =
-        Object.keys(options).length > 0 ? `${line.title} (${variantLabel(shownOptions(t(market.lang), options))})` : String(line.title);
+        line.kind === "gift_card"
+          ? `${line.title} (${formatMoney(renewUnit, market.currency, market.locale)})`
+          : Object.keys(options).length > 0
+            ? `${line.title} (${variantLabel(shownOptions(t(market.lang), options))})`
+            : String(line.title);
       // An appointment's time (or a stay's or rental's dates) goes with it to Stripe, in the store's time zone (D65, D67).
       const startsAt = line.starts_at ? new Date(String(line.starts_at)).toISOString() : null;
       const range = line.kind === "stay" || line.kind === "rental" ? line.kind : null;
@@ -358,6 +367,11 @@ export async function placeOrder(
         /** Each campaign that gave something on the line, kept with the order line (D115). */
         parts: [] as { campaignId: string; name: string; minor: number }[],
         gift: false,
+        /**
+         * A gift card (D300): money paid now to be spent later, so nothing comes off it (no campaign, group discount, welcome discount, code
+         * or credit) and it counts towards no threshold (free shipping, a campaign's or a code's minimum), as the cart page reads it.
+         */
+        voucher: line.kind === "gift_card",
         total: unit * quantity,
         title,
         recurring,
@@ -382,7 +396,7 @@ export async function placeOrder(
         unitMinor: p.unit,
         quantity: p.quantity,
         discountable: !p.recurring && !p.range && p.line.kind === "goods" && p.unit > 0,
-        valueMinor: p.unit * p.quantity,
+        valueMinor: p.voucher ? 0 : p.unit * p.quantity,
       })),
       { ships: physical.length > 0, customerId, lock: true },
     );
@@ -401,7 +415,10 @@ export async function placeOrder(
       const [row] = await orderLineRows(
         tx,
         market,
-        sql`(values (${storeId}::uuid, ${gift.variantId}::uuid, ${gift.quantity}::int, null::uuid, null::timestamptz, null::uuid)) as cl (store_id, variant_id, quantity, selling_plan_id, starts_at, resource_id)`,
+        sql`(values (${storeId}::uuid, ${gift.variantId}::uuid, ${gift.quantity}::int, null::uuid, null::timestamptz, null::uuid,
+                     null::text, null::text, null::text, null::text, null::date))
+              as cl (store_id, variant_id, quantity, selling_plan_id, starts_at, resource_id,
+                     gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on)`,
         sql`true`,
       );
       if (!row || !row.sellable || !row.plan_ok || row.amount_minor === null) continue;
@@ -466,7 +483,7 @@ export async function placeOrder(
     // The basket's delivery (D135, D237): the one reader `cartSummary()` uses too, with the same basket value (the lines' totals before
     // discounts, gifts out), so both charge the same. The store's own methods are priced for the basket here and now; a subscription pays the
     // flat rate on each delivery (D25), and so does a weekly box (`flatRateOnly`, D237 2.8).
-    const basketValueMinor = priced.filter((p) => !p.gift).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
+    const basketValueMinor = priced.filter((p) => !p.gift && !p.voucher).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
     const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor }) : null;
     const chosen = resolved?.chosen ?? null;
     const flatRate = rate
@@ -481,7 +498,7 @@ export async function placeOrder(
     // subscription pays shipping on each delivery (D25).
     const shippingWith = (offer: typeof shippingRate) =>
       basketShipping(
-        priced.filter((p) => !p.gift).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
+        priced.filter((p) => !p.gift && !p.voucher).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
         offer,
         { trial },
       );
@@ -493,7 +510,7 @@ export async function placeOrder(
     const member = await memberDiscountFor(tx, storeId, customerId);
     if (member) {
       for (const p of priced) {
-        if (p.gift || p.recurring || p.unit <= 0) continue;
+        if (p.gift || p.voucher || p.recurring || p.unit <= 0) continue;
         p.member = memberOffAfterCampaign(p.unit, p.quantity, p.campaign, member.percent);
         p.discount = p.campaign + p.member;
         p.total = p.unit * p.quantity - p.discount;
@@ -506,7 +523,7 @@ export async function placeOrder(
     const program = await bonusProgram(tx, storeId);
     const friend = hostId ? null : await friendState(tx, storeId, customerId, cart.affiliate_code ? String(cart.affiliate_code) : null, program);
     const welcome = friend
-      ? welcomeFor(friend, market, priced.map((p) => (p.gift || p.recurring || p.unit <= 0 ? 0 : Math.max(0, p.total))))
+      ? welcomeFor(friend, market, priced.map((p) => (p.gift || p.voucher || p.recurring || p.unit <= 0 ? 0 : Math.max(0, p.total))))
       : { totalMinor: 0, lines: priced.map(() => 0) };
     priced.forEach((p, i) => {
       p.referral = welcome.lines[i] ?? 0;
@@ -534,15 +551,22 @@ export async function placeOrder(
         { market, customerId, lock: true },
         {
           marketCode: market.code,
-          lines: priced.map((p, i) => ({
-            key: String(i),
-            productId: String(p.line.product_id),
-            // What the code is taken off: the price after the group's discount for what is bought once.
-            unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
-            quantity: p.quantity,
-            todayMinor: p.total,
-            recurring: p.recurring,
-          })),
+          // A gift card is never in what a code reaches or counts (D300).
+          lines: priced.flatMap((p, i) =>
+            p.voucher
+              ? []
+              : [
+                  {
+                    key: String(i),
+                    productId: String(p.line.product_id),
+                    // What the code is taken off: the price after the group's discount for what is bought once.
+                    unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
+                    quantity: p.quantity,
+                    todayMinor: p.total,
+                    recurring: p.recurring,
+                  },
+                ],
+          ),
           shippingMinor: basket.first - campaignShipping,
         },
       );
@@ -605,7 +629,7 @@ export async function placeOrder(
     const credits = hostId ? null : await creditState(tx, { storeId, market }, customerId, cartId, program);
     const creditPlan = planFor(
       credits,
-      priced.map((p, i) => (p.recurring || p.gift || p.unit <= 0 ? 0 : Math.max(0, p.total - venue[i]))),
+      priced.map((p, i) => (p.recurring || p.gift || p.voucher || p.unit <= 0 ? 0 : Math.max(0, p.total - venue[i]))),
       subtotal + shipping - discountTotal - balance,
     );
     const creditDebit = credits ? debitFor(credits, market, creditPlan.usingMinor) : 0;
@@ -626,7 +650,7 @@ export async function placeOrder(
         key: String(i),
         totalMinor: p.total,
         rate: p.rate,
-        booking: p.line.kind !== "goods",
+        booking: (BOOKED_KINDS as readonly unknown[]).includes(p.line.kind),
         physical: p.delivery === "physical",
         recurring: p.recurring,
         host: Boolean(p.line.host_id),
@@ -750,6 +774,8 @@ export async function placeOrder(
         measure: snapshot ? { amount: snapshot.amount, unit: snapshot.unit, base: snapshot.base } : null,
         backorderQuantity: backorderOfLine.get(i) ?? 0,
         backorderDays: backorderOfLine.has(i) && p.line.backorder_days !== null && p.line.backorder_days !== undefined ? Number(p.line.backorder_days) : null,
+        // Who a gift card's cards go to (D300), frozen with the order.
+        giftCard: p.voucher ? giftCardRecipientOfRow(p.line) : null,
       });
       // The appointment's time (or the stay's or rental's nights or days, D67) is held as long as
       // its stock would be; taken meanwhile, nothing is placed.
@@ -1271,7 +1297,10 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       o.delivery_method <> 'pickup' and exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol
-               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital' and ol.variant_id is not null) as digital,
+               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital' and ol.variant_id is not null
+                 -- A gift card (D300) is emailed as a code, never a download: no tick for it.
+                 and not exists (select 1 from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+                                 where v.store_id = ol.store_id and v.id = ol.variant_id and p.kind = 'gift_card')) as digital,
       s.interval, s.interval_count, s.total_minor as renewal_minor
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'

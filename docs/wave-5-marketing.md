@@ -636,6 +636,12 @@ Built in four steps, each its own commit:
   buyer may withdraw within 14 days, which voids the card and refunds the line. Once any of it is spent, the line is not eligible
   (`lineEligibility()` reason `gift_card_spent`). Flagged for legal review.
 
+**As built (F2):** the cards are issued by deferred triggers on the payment and on the order, whichever comes last, rather than inside
+`complete_order_payment()`; a card's code is made when its email is sent (on its day), and made again while the card was never delivered,
+so an email that failed never leaves a card nobody can use; the day starts at 08:00 in the store's time zone. A new store's demo gift card
+waits as a draft, as every digital product does. The invoice line's own words and Finance leaving vouchers out of sales come with F4, and
+spending a card with F3: a store should not switch gift cards on before F3.
+
 ### 8.3 F3: spending one
 
 - **At checkout**, a *Gift card* field beside the discount code (never in the same field: a card is money, a code is a discount): the code is

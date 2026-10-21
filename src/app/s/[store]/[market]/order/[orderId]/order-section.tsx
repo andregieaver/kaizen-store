@@ -59,7 +59,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   if (!order) notFound();
   const m: Messages = t(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
-  const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
+  const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null && line.giftCard === null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
   const [downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],

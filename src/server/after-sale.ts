@@ -8,6 +8,7 @@ import { RETURN_STATUSES, isEnded } from "@/lib/return-status";
 import { afterSaleIsOpen, type AfterSale } from "@/lib/store-features";
 import { MAX_WINDOW_DAYS, lineEligibility, type WithdrawalOrder } from "@/lib/withdrawal";
 
+import { GIFT_CARD_LINE_FACTS, giftCardFactsOf } from "./return-facts";
 import { toSettings } from "./return-settings";
 
 /**
@@ -43,7 +44,7 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
     db().execute<Row>(sql`
       select o.id as order_id, o.status, o.delivered_at, o.company_name, o.subscription_id, o.digital_consent_at,
         (select max(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as last_shipped_at,
-        ol.id as line_id, ol.quantity, ol.delivery, ol.withdrawal_exclusion,
+        ol.id as line_id, ol.quantity, ol.delivery, ol.withdrawal_exclusion, ${GIFT_CARD_LINE_FACTS},
         commerce.returned_quantity(ol.id) + commerce.closed_quantity(ol.id) as taken
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
@@ -74,6 +75,7 @@ export async function afterSaleOf(storeId: string, now: Date = new Date()): Prom
         delivery: String(row.delivery),
         withdrawalExclusion: String(row.withdrawal_exclusion),
         takenQuantity: Number(row.taken),
+        giftCard: giftCardFactsOf(row),
       },
       order,
       settings,

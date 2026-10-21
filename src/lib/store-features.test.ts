@@ -33,7 +33,7 @@ describe("the store features registry (D178)", () => {
     expect(STORE_FEATURES.map((f) => f.id)).toEqual([...FEATURE_IDS]);
     expect(STORE_FEATURES.filter((f) => f.group === null).map((f) => f.id)).toEqual(["shop"]);
     for (const group of FEATURE_GROUPS) expect(featuresIn(group.id).length, group.id).toBeGreaterThan(0);
-    expect(COUNTED_FEATURES).toHaveLength(10);
+    expect(COUNTED_FEATURES).toHaveLength(11);
     expect(isFeatureId("bonus")).toBe(true);
     expect(isFeatureId("work")).toBe(false);
   });
@@ -78,11 +78,11 @@ describe("the store features registry (D178)", () => {
     expect(requirementLabel(["appointments", "bookings"])).toBe("Appointments or Stays and rentals");
   });
 
-  it("counts the features on of the ten", () => {
-    expect(featureCount(["shop"])).toEqual({ on: 0, total: 10 });
-    expect(featureCount(["shop", "bonus", "languages"])).toEqual({ on: 2, total: 10 });
-    expect(featureCount(["bonus", "languages"])).toEqual({ on: 1, total: 10 });
-    expect(featureCount([...FEATURE_IDS])).toEqual({ on: 10, total: 10 });
+  it("counts the features on of the eleven", () => {
+    expect(featureCount(["shop"])).toEqual({ on: 0, total: 11 });
+    expect(featureCount(["shop", "bonus", "languages"])).toEqual({ on: 2, total: 11 });
+    expect(featureCount(["bonus", "languages"])).toEqual({ on: 1, total: 11 });
+    expect(featureCount([...FEATURE_IDS])).toEqual({ on: 11, total: 11 });
   });
 });
 

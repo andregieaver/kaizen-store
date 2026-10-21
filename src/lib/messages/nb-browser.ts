@@ -116,4 +116,23 @@ form: {
     failed: "Det gikk ikke. Prøv igjen.",
     note: "Vi sender deg bare én e-post om dette produktet, ikke noe annet.",
   },
+  giftCard: {
+    amount: "Beløp",
+    send: "Send det til noen",
+    sendNote: "Vi sender gavekortet på e-post til mottakeren på dagen du velger. Ellers sendes det til deg.",
+    to: "Mottakerens e-post",
+    toName: "Mottakerens navn (valgfritt)",
+    from: "Fra (valgfritt)",
+    message: "Hilsen (valgfritt)",
+    sendOn: "Send den",
+    problem: {
+      missing: "Skriv mottakerens e-postadresse.",
+      not_an_email: "Skriv en hel e-postadresse.",
+      too_long: (over: number) => `${over} tegn for mye.`,
+      too_many_lines: "For mange linjer.",
+      not_a_day: "Velg en dag.",
+      too_early: "Velg i dag eller en senere dag.",
+      too_late: "Velg en dag innen et år.",
+    },
+  },
 };

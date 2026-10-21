@@ -101,7 +101,8 @@ describe("content grids (D51)", () => {
     const scope = { storeId: demo.id, contentType: "product" } as const;
     const mugs = created(await taxonomy.createTerm(admin, scope, { kind: "category", name: `Mugs ${run}` }));
     const products = await db().execute<Row>(sql`
-      select id from commerce.products where store_id = ${demo.id}::uuid and status = 'active' order by handle limit 2
+      select id from commerce.products where store_id = ${demo.id}::uuid and status = 'active'
+        and commerce.kind_offered(store_id, kind, subscription_only) order by handle limit 2
     `);
     for (const product of products) {
       await db().execute(sql`

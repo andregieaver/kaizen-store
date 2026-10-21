@@ -54,17 +54,20 @@ export async function cartSummary(
   const subtotal = cartSubtotal(payable.map((line) => ({ unitPriceMinor: today(line), quantity: 1 })));
   // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
   const ships = cart.lines.some((line) => line.delivery === "physical");
-  const digital = cart.lines.some((line) => line.delivery === "digital");
+  // Downloads (D24) ask a tick that ends the right of withdrawal; a gift card (D300) is emailed as a code and asks none.
+  const digital = cart.lines.some((line) => line.delivery === "digital" && line.giftCard === null);
   // The delivery the shopper chose at checkout (D135) is the basket's shipping rate instead of the market's flat rate;
   // a subscription pays the flat rate on each delivery (D25), so there it counts for nothing.
   const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
   // The one reader of the cart's delivery (D237): the store's own methods priced for this basket at the delivery postal code's zone, a pickup
   // place or a local area, or the flat rate; `placeOrder()` reads the same with the same basket value (the lines' totals before discounts).
-  const basketValueMinor = payable.reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);
+  // A gift card (D300) is money paid now to be spent later: nothing comes off it and it counts towards no threshold, as `placeOrder()` reads it.
+  const voucher = (line: (typeof payable)[number]) => line.giftCard !== null;
+  const basketValueMinor = payable.filter((line) => !voucher(line)).reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);
   const resolved = ships && !plan && cartId ? await resolveDelivery(db(), storeId, cartId, market, { basketValueMinor }) : null;
   const chosen = resolved?.chosen ?? null;
   const rate = resolved ? resolved.rate : checkout.shipping;
-  const basketLines = payable.map((line) => ({
+  const basketLines = payable.filter((line) => !voucher(line)).map((line) => ({
     totalMinor: line.unitPriceMinor * line.quantity,
     delivery: line.delivery,
     recurring: line.plan !== null,
@@ -85,8 +88,8 @@ export async function cartSummary(
       productId: line.productId,
       unitMinor: line.unitPriceMinor,
       quantity: line.quantity,
-      discountable: !line.plan && !line.booking && line.unitPriceMinor > 0,
-      valueMinor: today(line),
+      discountable: !line.plan && !line.booking && !voucher(line) && line.unitPriceMinor > 0,
+      valueMinor: voucher(line) ? 0 : today(line),
     })),
     { ships, customerId },
   );
@@ -96,7 +99,7 @@ export async function cartSummary(
   const campaignShippingMinor = freeShipping ? (shipping ?? 0) : 0;
   const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0) + campaignShippingMinor;
   const memberOff = payable.map((line, i) =>
-    member && !line.plan && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
+    member && !line.plan && !voucher(line) && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
   );
   const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
   // The friend's welcome discount (D131) comes next, off goods bought once after campaigns and the group's discount and
@@ -108,7 +111,7 @@ export async function cartSummary(
     ? welcomeFor(
         friend,
         market,
-        payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - campaignOff[i] - memberOff[i]))),
+        payable.map((line, i) => (line.plan || voucher(line) || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - campaignOff[i] - memberOff[i]))),
       )
     : { totalMinor: 0, lines: payable.map(() => 0) };
   const referralOff = welcome.lines;
@@ -117,15 +120,22 @@ export async function cartSummary(
   const code = await previewCartCodes(
     { storeId, market },
     {
-      lines: payable.map((line, i) => ({
-        key: String(i),
-        productId: line.productId,
-        // What the code is taken off: the price after the group's discount for what is bought once.
-        unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
-        quantity: line.quantity,
-        todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
-        recurring: line.plan !== null,
-      })),
+      // A gift card is never in what a code reaches or counts (D300).
+      lines: payable.flatMap((line, i) =>
+        voucher(line)
+          ? []
+          : [
+              {
+                key: String(i),
+                productId: line.productId,
+                // What the code is taken off: the price after the group's discount for what is bought once.
+                unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
+                quantity: line.quantity,
+                todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
+                recurring: line.plan !== null,
+              },
+            ],
+      ),
       shippingMinor: (shipping ?? 0) - campaignShippingMinor,
     },
   );
@@ -141,11 +151,17 @@ export async function cartSummary(
   const renewalShipping =
     applied && Object.keys(applied.renewalUnits).length > 0
       ? basketShipping(
-          payable.map((line, i) => ({
-            totalMinor: renewUnit(line, i) * line.quantity,
-            delivery: line.delivery,
-            recurring: line.plan !== null,
-          })),
+          payable.flatMap((line, i) =>
+            voucher(line)
+              ? []
+              : [
+                  {
+                    totalMinor: renewUnit(line, i) * line.quantity,
+                    delivery: line.delivery,
+                    recurring: line.plan !== null,
+                  },
+                ],
+          ),
           rate,
           { trial },
         ).renewal
@@ -165,7 +181,7 @@ export async function cartSummary(
   // Bonus credits (D130) come last, off goods bought once that are still to pay online: after campaigns, the group's
   // discount and codes, and never off a subscription, the part left for a venue, sign-up fees or shipping.
   const credits = sellerIsHost ? null : await creditState(db(), shop, customerId, cartId, program);
-  const eligible = payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - lineOff(i) - venueOf[i])));
+  const eligible = payable.map((line, i) => (line.plan || voucher(line) || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - lineOff(i) - venueOf[i])));
   const dueBeforeCredits = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - balance;
   const creditPlan = planFor(credits, eligible, dueBeforeCredits);
   const bonusMinor = creditPlan.usingMinor;

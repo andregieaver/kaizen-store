@@ -1252,4 +1252,25 @@ export const da: Messages = {
   },
   storeSummary: (name: string, country: string) => `${name}: webshop med levering i ${country}. Priser inkl. moms.`,
   options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket", rental: "Leje", day: "Hele dage", halfDay: "Halv dag", hour: "Pr. time" },
+  // Gavekort (D300 F2). legal: needs review (fortrydelsessætningen).
+  giftCardLine: {
+    sentTo: (to: string, day: string) => `Sendes på e-mail til ${to} ${day}`,
+    toYou: "Sendes på e-mail til dig, når du har betalt",
+    withdrawal: "Du kan fortryde købet af et gavekort inden for 14 dage, så længe intet af det er brugt.",
+    notDiscounted: "Rabatter og bonuspoint trækkes ikke fra gavekort.",
+  },
+  // Gavekortets e-mail (D300 F2). legal: needs review.
+  giftCardEmail: {
+    subject: (store: string) => `Et gavekort til ${store}`,
+    heading: (amount: string, store: string) => `${amount} at handle for hos ${store}`,
+    from: (name: string) => `Fra ${name}:`,
+    useIt: (store: string) => `Brug koden ved kassen hos ${store}. Det, gavekortet ikke dækker, betales som normalt.`,
+    validUntil: (day: string) => `Det kan bruges til og med ${day}.`,
+    noExpiry: "Det kan bruges, så længe butikken sælger.",
+    keepIt: "Gem denne e-mail: koden er gavekortet, og alle, der har den, kan bruge den.",
+    visit: (store: string) => `Gå til ${store}`,
+    copySubject: (store: string) => `Dit gavekort fra ${store} er på vej`,
+    copyHeading: "Dit gavekort er på vej",
+    copyText: (amount: string, to: string) => `Vi har sendt gavekortet på ${amount} til ${to}. Koden står kun i deres e-mail.`,
+  },
 };

@@ -106,6 +106,7 @@ export const daReturns: ReturnsMessages = {
     booking: "En booking af en tjeneste aflyses eller flyttes fra din ordre efter butikkens regler. Den fortrydes ikke her. Mener du, at du har lovfæstet fortrydelsesret på den, så skriv til butikken.",
     business_order: "Ordren blev lagt for en virksomhed, som ikke har lovbestemt fortrydelsesret.",
     period_over: "Efter vores oplysninger er de 14 dage til at fortryde udløbet. Har du ikke fået oplysninger om fortrydelsesretten, eller modtog du varerne senere, kan fristen være længere: skriv til butikken.",
+    gift_card_spent: "En del af gavekortet er brugt, så købet kan ikke længere fortrydes. Skriv til butikken, hvis noget er forkert.",
   },
   sealedLine: "Fortrydelsesretten gælder kun, så længe forseglingen ikke er brudt.",
   nothingToSend: "Intet at sende tilbage",
