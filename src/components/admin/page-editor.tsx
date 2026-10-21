@@ -34,7 +34,7 @@ import {
 import { layoutOf } from "@/lib/page-layout";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
-import { History, Redo2, Undo2, WandSparkles } from "lucide-react";
+import { History, Redo2, Replace, Undo2, WandSparkles } from "lucide-react";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
 
@@ -50,6 +50,7 @@ import {
   withTranslation,
   type PageLanguage,
 } from "@/lib/page-translation";
+import { replaceInPage, type FindOptions } from "@/lib/page-find-replace";
 import {
   currentGlobal,
   editedGlobals,
@@ -71,6 +72,7 @@ import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureMakerProvider } from "./picture-maker";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
+import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
@@ -180,6 +182,8 @@ export function PageEditor({
   };
   // The page's versions (D305).
   const [versionsOpen, setVersionsOpen] = useState(false);
+  // Find and replace (D307).
+  const [findOpen, setFindOpen] = useState(false);
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
     !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
@@ -212,8 +216,8 @@ export function PageEditor({
    * it reads in that language, and what then differs from the main
    * language's texts becomes its translation.
    */
-  const edit = (update: (page: PageContent) => PageContent) => {
-    remember("edit");
+  const edit = (update: (page: PageContent) => PageContent, kind = "edit") => {
+    remember(kind);
     setContent((current) => {
       let next: PageContent;
       if (!translating) next = update(current);
@@ -283,6 +287,17 @@ export function PageEditor({
   };
   /** The page as the language being written reads. */
   const view = translating ? localizePage(content, locale) : content;
+  /** Replaces the words in the texts chosen, in the language being written: one step of its own (never joined to typing), which Undo takes back. */
+  const replaceWords = (query: string, replacement: string, options: FindOptions, only: ReadonlySet<string>) => {
+    const outcome = replaceInPage(view, query, replacement, options, only);
+    if (outcome.replaced > 0) edit((current) => replaceInPage(current, query, replacement, options, only).content, "replace");
+    const kept = outcome.tooLong.length;
+    setMessage(
+      `${outcome.replaced === 0 ? "Nothing was replaced." : `Replaced ${outcome.replaced === 1 ? "1 match" : `${outcome.replaced} matches`}. Undo takes it back.`}${
+        kept > 0 ? ` ${kept === 1 ? "1 text was" : `${kept} texts were`} left as they were: the new words would make ${kept === 1 ? "it" : "them"} too long.` : ""
+      }`,
+    );
+  };
 
   // The custom field groups this page or article gets now (D118): they follow its categories and tags as they change.
   const fieldGroups =
@@ -380,6 +395,12 @@ export function PageEditor({
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       if (!busy) submit(false);
+      return;
+    }
+    // Ctrl/Cmd + Shift + H opens find and replace.
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "h") {
+      event.preventDefault();
+      setFindOpen(true);
       return;
     }
     // Ctrl/Cmd + Z and Shift + Z (or Ctrl + Y) undo and redo the page, except in a field or a text, which undo their own typing.
@@ -833,6 +854,8 @@ export function PageEditor({
         saveSiteCss={actions.saveSiteCss}
       />
 
+      <FindReplaceDialog open={findOpen} onClose={() => setFindOpen(false)} content={view} onReplace={replaceWords} />
+
       {saved && actions.versions && (
         <PageVersionsDialog
           open={versionsOpen}
@@ -910,6 +933,16 @@ export function PageEditor({
               <Redo2 aria-hidden className="size-5" />
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setFindOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="Find and replace"
+            title="Find and replace (Ctrl+Shift+H)"
+            className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken"
+          >
+            <Replace aria-hidden className="size-5" />
+          </button>
           <p role="status" aria-live="polite" className="text-sm">
             {message ?? (dirty ? "Unsaved changes." : context.draftOnly ? (saved ? "Saved in the profile's draft." : "Not saved yet.") : state ? STATE_TEXT[state] : "Not saved yet.")}
             {/* One undo, only while nothing else has been changed since. */}

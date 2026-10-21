@@ -6,7 +6,8 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * The page builder's undo and redo and a page's versions (D305), and Custom CSS on the live site (D306), as the store's owner uses them:
  * a change undone and redone from the buttons and the keys, a saved version taken back into the editor, and the page's CSS typed on the
- * published page, shown as it is typed and kept when saved.
+ * published page, shown as it is typed and kept when saved. Find and replace (D307): words found across the page, some left as
+ * they are, the rest replaced in one step that Undo takes back.
  */
 test.use({ storageState: OWNER.state });
 test.describe.configure({ mode: "serial" });
@@ -81,6 +82,31 @@ test("a change is undone and redone, from the buttons and the keys, and a saved 
   await expect(page.getByRole("status").filter({ hasText: "Undo takes it back" })).toBeVisible();
   await undo.click();
   await expect(title(page)).toHaveValue("Historie, igjen");
+});
+
+test("words are found and replaced across the page in one step that Undo takes back", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
+  await expect(page.locator("[data-editor-bar]")).toBeVisible();
+  await title(page).fill("Historie og historie");
+  await page.locator("[data-editor-bar]").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+Shift+h");
+  const dialog = page.getByRole("dialog", { name: "Find and replace" });
+  await dialog.getByLabel("Find", { exact: true }).fill("historie");
+  await expect(dialog.getByRole("status")).toHaveText("Found 3 in 2 texts.");
+  await dialog.getByLabel("Replace with").fill("fortid");
+
+  // Lisa leaves the heading as it is.
+  await dialog.getByRole("button", { name: "More choices" }).click();
+  const places = dialog.getByRole("list", { name: "Where it was found" });
+  await places.getByRole("listitem").filter({ hasText: "Heading" }).getByRole("checkbox").uncheck();
+  await dialog.getByRole("button", { name: "Replace all 2" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(title(page)).toHaveValue("fortid og fortid");
+  await expect(page.getByRole("status").filter({ hasText: "Replaced 2 matches." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vi har historie" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(title(page)).toHaveValue("Historie og historie");
 });
 
 test("the page's CSS is typed on the live page, shown as it is typed, and kept when saved", async ({ page }) => {
