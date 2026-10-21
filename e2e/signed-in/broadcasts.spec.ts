@@ -47,10 +47,10 @@ test("a broadcast is written, saved, tested and sent, and its page then says wha
 
   await page.getByRole("button", { name: "Send now" }).click();
   await page.getByRole("button", { name: "Yes, send it" }).click();
-  // The page becomes the send's report at once.
-  await expect(page.getByText("Went to")).toBeVisible();
+  // The page becomes the send's report at once. Exact, or the test's "A test went to …" above would match before the send is saved.
+  await expect(page.getByText("Went to", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Went to")).toBeVisible();
+  await expect(page.getByText("Went to", { exact: true })).toBeVisible();
   await expect(page.getByText("Presses on its links")).toBeVisible();
 
   await page.goto(`/admin/${STORE}/broadcasts`);
