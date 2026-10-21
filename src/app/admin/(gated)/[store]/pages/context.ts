@@ -48,6 +48,7 @@ import {
   storeThemeSectionsAction,
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
+import { storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
 
 /** Where a store's pages (or articles, D57) are edited. */
@@ -136,6 +137,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       unpublish: typed(unpublishStorePageAction),
       remove: typed(deleteStorePageAction),
       duplicate: typed(duplicateStorePageAction),
+      versions: { list: typed(storePageVersionsAction), read: typed(storePageVersionAction) },
       motion: typed(planMotionAction),
       createTerm: typed(createStorePageTermAction),
       createPart: bind(createStorePartAction),

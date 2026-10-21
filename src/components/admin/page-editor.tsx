@@ -34,7 +34,9 @@ import {
 import { layoutOf } from "@/lib/page-layout";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
-import { WandSparkles } from "lucide-react";
+import { History, Redo2, Undo2, WandSparkles } from "lucide-react";
+import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
+import type { PageVersionItem } from "@/lib/page-versions";
 
 import { MAKE_COOL_LABEL, MakeCoolDialog } from "./make-cool-dialog";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
@@ -69,6 +71,7 @@ import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureMakerProvider } from "./picture-maker";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
+import { PageVersionsDialog } from "./page-versions-dialog";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
@@ -169,6 +172,14 @@ export function PageEditor({
   useEffect(() => {
     latest.current = content;
   }, [content]);
+  // Undo and redo (D305): what the page was before each change; letters typed or a slider dragged close together are one step.
+  const [history, setHistory] = useState<EditHistory<PageContent>>(emptyHistory);
+  const remember = (kind: string) => {
+    const before = latest.current;
+    setHistory((h) => record(h, before, kind, Date.now()));
+  };
+  // The page's versions (D305).
+  const [versionsOpen, setVersionsOpen] = useState(false);
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
     !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
@@ -202,6 +213,7 @@ export function PageEditor({
    * language's texts becomes its translation.
    */
   const edit = (update: (page: PageContent) => PageContent) => {
+    remember("edit");
     setContent((current) => {
       let next: PageContent;
       if (!translating) next = update(current);
@@ -218,6 +230,7 @@ export function PageEditor({
   const change = (next: Partial<PageContent>) => edit((current) => ({ ...current, ...next }));
   // The page's CSS is the same in every language, so it changes the page itself, also while translating.
   const changeCss = (css: string) => {
+    remember("css");
     setContent((current) => ({ ...current, css: css || undefined }));
     setDirty(true);
     setMessage(null);
@@ -242,6 +255,31 @@ export function PageEditor({
     changeRows(() => coolUndo.before);
     setCoolUndo(null);
     setMessage("Motion removed again.");
+  };
+  /** Takes back the last change, or puts back the one last taken back. */
+  const step = (direction: "undo" | "redo") => {
+    const moved = (direction === "undo" ? undoStep : redoStep)(history, content);
+    if (!moved) return;
+    setHistory(moved.history);
+    setContent(moved.value);
+    setDirty(true);
+    setMessage(null);
+  };
+  /** A kept version (D305) in the editor, as unsaved changes: one step Undo takes back. */
+  const takeVersion = (json: string, item: PageVersionItem) => {
+    let parsed: PageContent;
+    try {
+      parsed = JSON.parse(json) as PageContent;
+    } catch {
+      setProblems(["This version could not be read."]);
+      return;
+    }
+    remember("version");
+    setContent(refreshUses(parsed, known.current, (id) => !known.current.has(id)));
+    setDirty(true);
+    setMessage(
+      `The version from ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.at))} is in the editor. Save or publish to keep it; Undo takes it back.`,
+    );
   };
   /** The page as the language being written reads. */
   const view = translating ? localizePage(content, locale) : content;
@@ -342,7 +380,15 @@ export function PageEditor({
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       if (!busy) submit(false);
+      return;
     }
+    // Ctrl/Cmd + Z and Shift + Z (or Ctrl + Y) undo and redo the page, except in a field or a text, which undo their own typing.
+    const which = historyKey(event);
+    if (!which || event.defaultPrevented) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target && (target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])") || target.closest("dialog[open]"))) return;
+    event.preventDefault();
+    step(which);
   });
   useEffect(() => {
     const listener = (event: KeyboardEvent) => onKey(event);
@@ -787,6 +833,16 @@ export function PageEditor({
         saveSiteCss={actions.saveSiteCss}
       />
 
+      {saved && actions.versions && (
+        <PageVersionsDialog
+          open={versionsOpen}
+          onClose={() => setVersionsOpen(false)}
+          list={() => actions.versions!.list(saved.id)}
+          read={(version) => actions.versions!.read(saved.id, version)}
+          onUse={takeVersion}
+        />
+      )}
+
       {asking && (
         <PublishWithIssuesDialog
           issues={asking}
@@ -832,6 +888,28 @@ export function PageEditor({
               </button>
             </>
           )}
+          <div className="flex items-center" role="group" aria-label="Undo and redo">
+            <button
+              type="button"
+              onClick={() => step("undo")}
+              disabled={history.past.length === 0}
+              aria-label="Undo"
+              title="Undo (Ctrl+Z)"
+              className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"
+            >
+              <Undo2 aria-hidden className="size-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => step("redo")}
+              disabled={history.future.length === 0}
+              aria-label="Redo"
+              title="Redo (Ctrl+Shift+Z)"
+              className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"
+            >
+              <Redo2 aria-hidden className="size-5" />
+            </button>
+          </div>
           <p role="status" aria-live="polite" className="text-sm">
             {message ?? (dirty ? "Unsaved changes." : context.draftOnly ? (saved ? "Saved in the profile's draft." : "Not saved yet.") : state ? STATE_TEXT[state] : "Not saved yet.")}
             {/* One undo, only while nothing else has been changed since. */}
@@ -896,6 +974,12 @@ export function PageEditor({
                     View {noun}
                   </a>
                 )}
+            {saved && actions.versions && (
+              <button type="button" onClick={() => setVersionsOpen(true)} aria-haspopup="dialog" className="flex items-center gap-1 underline">
+                <History aria-hidden className="size-4" />
+                Versions
+              </button>
+            )}
             {!isVersion && !context.place && (
               <button
                 type="button"

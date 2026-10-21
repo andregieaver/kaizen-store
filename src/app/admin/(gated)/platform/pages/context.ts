@@ -42,6 +42,7 @@ import {
   updateSavedPartAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
+import { platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
 import { planChoices } from "@/lib/plan-offer";
 import { getPublicPlans } from "@/server/public-plans";
 
@@ -105,6 +106,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       unpublish: unpublishPageAction.bind(null, type),
       remove: deletePageAction.bind(null, type),
       duplicate: duplicatePageAction.bind(null, type),
+      versions: { list: platformPageVersionsAction.bind(null, type), read: platformPageVersionAction.bind(null, type) },
       motion: planMotionAction.bind(null, type),
       createTerm: createPageTermAction.bind(null, type),
       createPart: createSavedPartAction,

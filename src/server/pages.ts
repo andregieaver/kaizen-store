@@ -32,6 +32,7 @@ import { findFont, installFonts } from "./fonts";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
+import { keepVersion } from "./page-versions";
 import { scopedTermIds } from "./taxonomy";
 import { getStore } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
@@ -324,6 +325,7 @@ export async function savePage(
             ${account.id}::uuid, ${account.id}::uuid)
           returning id
         `);
+        await keepVersion(tx, { owner, page: String(row.id), kind: publish ? "published" : "saved", content: json, account: account.id });
         return { ok: true, id: String(row.id) };
       }
 
@@ -345,6 +347,7 @@ export async function savePage(
           updated_at = now(), updated_by = ${account.id}::uuid
         where id = ${id}::uuid
       `);
+      await keepVersion(tx, { owner, page: id, kind: publish ? "published" : "saved", content: json, account: account.id });
       // Pages nested under it follow it to its new address; each published one leaves a redirect from the old (a rule in the database).
       const from = String(row.old_slug);
       if (type === "page" && moveAddress && from !== content.slug) {

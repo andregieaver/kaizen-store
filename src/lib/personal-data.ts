@@ -300,6 +300,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   design_variations: "A theme's presets as drafted (docs/theme-showcase-phase-1.md): a name, a key and theme settings, and the platform admin who changed them; never a person's data.",
   theme_shots: "Photographs of themes' looks on demo stores (docs/theme-showcase-phase-2.md): ids, versions, file addresses and the page's measured boxes; never a person's data.",
   theme_install_updates: "A store's theme look before and after an update to a new version (D245), for its undo: theme settings, CSS and layout page ids; never a shopper's data.",
+  page_versions: "A page's content as it was saved, published or changed on the site (D305): the page's own rows, as `pages` holds them, and the staff account that kept it; never a shopper's data.",
   page_theme_detaches: "A page's content before and after the theme migration (D243), for its undo: the page's own rows, as `pages` holds them; never a shopper's data.",
   store_theme_installs: "The themes installed in a store (D241): a title, the theme and version, a look (theme settings, layout page ids, CSS) and the staff account that installed it.",
   design_preset_uses: "Which theme a store applied and the look it replaced (D176): a theme, page ids and CSS, and the staff account that did it.",

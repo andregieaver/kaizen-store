@@ -78,6 +78,26 @@ test("the editing route refuses a request with no session, and one from another 
   expect(malformed.status()).toBe(400);
 });
 
+test("the CSS route (D306) refuses a request with no session, and one from another site", async ({ page, request }) => {
+  const { url, store } = await arranged();
+  await page.goto(url);
+  const id = (await page.locator("article[data-kz-page]").getAttribute("data-kz-page"))!;
+  // No "Custom CSS" for a visitor.
+  await expect(page.getByRole("button", { name: /Custom CSS/ })).toHaveCount(0);
+
+  const read = await request.get(`/api/platform/editor/css?store=${store}&page=${id}`);
+  expect(read.status()).toBe(403);
+  const body = { store, page: id, rev: "0123456789abcdef", pageCss: "body { display: none; }", siteCss: "" };
+  const save = await request.post("/api/platform/editor/css", { data: body });
+  expect(save.status()).toBe(403);
+  const foreign = await request.post("/api/platform/editor/css", { headers: { Origin: "https://elsewhere.example" }, data: body });
+  expect(foreign.status()).toBe(403);
+  expect((await request.get(`/api/platform/editor/css?store=${store}&page=not-a-page`)).status()).toBe(400);
+  // Nothing was changed.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Velkommen hit" })).toBeVisible();
+});
+
 test("the pass for a store's own domain is not given to anyone without the admin's word (D193)", async ({ page, request }) => {
   const { url, store } = await arranged();
   await page.goto(url);

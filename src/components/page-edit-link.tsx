@@ -10,6 +10,8 @@ import { STAFF_EVENT } from "./back-to-admin";
 
 // The editor for the page's words is fetched only when the person turns the mode on (D192): visitors never load it.
 const SiteTextEditor = dynamic(() => import("./inline-edit/site-editor"), { ssr: false });
+// So is the CSS panel (D306).
+const SiteCssEditor = dynamic(() => import("./inline-edit/site-css-editor"), { ssr: false });
 
 const onStaff = (onChange: () => void) => {
   window.addEventListener(STAFF_EVENT, onChange);
@@ -27,6 +29,7 @@ const onStaff = (onChange: () => void) => {
  * headings and texts of the page's own are pressed and typed in where they stand.
  * On a store's own domain it starts with a short visit to the admin, which gives
  * this browser a pass for half an hour (D193); the page then opens in editing.
+ * And "Custom CSS" (D306): the page's own CSS and the site's, typed in a panel and shown on the page as they are typed.
  */
 export function PageEditLink({
   pageId,
@@ -48,6 +51,7 @@ export function PageEditLink({
   // Back from the admin with a pass (D193), the page opens in editing; the mark is taken out of the address below.
   const [editing, setEditing] = useState(() => typeof window !== "undefined" && window.location.hash === EDIT_HASH);
   const [notice, setNotice] = useState<string | null>(null);
+  const [css, setCss] = useState(false);
   const handedOver = useSyncExternalStore(onStaff, () => Boolean(store && adminOrigin && handedOffPath(store)), () => false);
   // This browser was given a pass for the store's own domain (D193): the note of it, the pass itself being a cookie the page cannot read.
   const hasPass = useSyncExternalStore(onStaff, () => Boolean(store && editPassActive(store)), () => false);
@@ -127,6 +131,18 @@ export function PageEditLink({
               {editing ? "Done editing" : "Edit text"}
             </button>
           )}
+          {member && (
+            <button
+              type="button"
+              aria-pressed={css}
+              aria-haspopup="dialog"
+              onClick={() => setCss((open) => !open)}
+              className={`rounded-full border-2 border-foreground px-4 py-2 font-mono text-sm font-medium shadow-lg ${css ? "bg-foreground text-background" : "bg-background/90 text-foreground"}`}
+            >
+              <span aria-hidden>{"{ } "}</span>
+              <span className="font-sans">Custom CSS</span>
+            </button>
+          )}
           {mayStartPass && (
             <button
               type="button"
@@ -145,6 +161,7 @@ export function PageEditLink({
         </div>
       </div>
       {editing && mayEditText && <SiteTextEditor pageId={pageId} store={store} onNotice={setNotice} />}
+      {css && member && <SiteCssEditor pageId={pageId} store={store} onClose={() => setCss(false)} onNotice={setNotice} />}
     </>
   );
 }

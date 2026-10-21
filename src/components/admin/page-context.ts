@@ -1,3 +1,4 @@
+import type { PageVersionItem } from "@/lib/page-versions";
 import type { PickerList } from "@/lib/media-picker";
 import type { Breakpoints } from "@/lib/breakpoints";
 import type { ColourSwatch } from "@/lib/colour";
@@ -156,6 +157,14 @@ export type PageOwnerContext = {
     remove: (id: string) => Promise<{ problems: string[] } | void>;
     /** Makes a draft copy (D126): from what the editor holds (its JSON), or from the saved draft when none is given. */
     duplicate: (id: string, edited?: string) => Promise<DuplicateResult>;
+    /**
+     * A page's versions (D305): the list, newest first, and one version's content (its JSON) for the editor to hold as unsaved changes.
+     * Absent where a page keeps none (a theme's workspace).
+     */
+    versions?: {
+      list: (id: string) => Promise<PageVersionItem[]>;
+      read: (id: string, version: string) => Promise<{ ok: true; content: string } | { ok: false; problem: string }>;
+    };
     /** "Make my page cool" (D128): a motion plan for the rows the editor holds (their JSON); the editor applies it. */
     motion: (rowsJson: string) => Promise<MotionPlanResult>;
     createTerm: (input: { kind: TermKind; name: string; slug?: string; parentId?: string | null }) => Promise<TermsResult>;

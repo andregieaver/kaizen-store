@@ -276,6 +276,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   standing_orders: never("No subscription box list is copied, so nobody is delivered to twice."),
   store_billing: never("The plan and billing belong to the original."),
   store_domains: never("A domain belongs to one store."),
+  page_versions: never("A page's earlier versions (D305) are its own history: a copy starts with its pages as they are now."),
   page_theme_detaches: never("The original's theme migration runs (D243), kept for their undo: a copy's pages are the original's as they are now."),
   theme_purchases: never("What the original paid Kaizena Flow for its premium themes (D286): a copy starts with its own Custom and buys a theme itself when one goes live on it."),
   theme_install_updates: never("Updates of the store's own installed themes (D245); a copy starts with its own Custom."),

@@ -30,7 +30,7 @@ everything here keeps email as the only channel so a second one is a new sender,
 | J | D304 | Accounts in depth: several addresses, order history search, the shopper's own data export from My account; forms that give a code for signing up and tag their subscribers | `customers.customer-accounts`, `customers.signup-forms-and-popups-building-a-list` |
 
 Each unit is its own commit (or a few) with its own migration(s), tests and decision row, shipped before the next starts. Each unit's detailed
-section is written here before it is built; units F to J are outlined in section 8.
+section is written here before it is built; units G to J are outlined in section 9.
 
 ## 2. Rules for every unit
 
@@ -571,11 +571,116 @@ order; a unit never both bought and given; competition with a percentage; the no
 get kind and its value, no stacking). Integration: `checkout-kinds.int.test.ts` holds the cart and the order together for one set and two sets, in
 NOK and in euro.
 
-## 8. Units F to J, outlined
+## 8. Unit F (D300): gift cards
 
-- **F, gift cards (D300).** A product kind `gift_card` sold in a currency, issued at payment (codes kept as hashes, the last four shown), emailed to
-  the buyer or a recipient, spent at checkout as a payment (never a discount: VAT is charged when goods are bought, not when the card is sold), a
-  ledger like the bonus program's, and the liability report (outstanding balance per currency).
+A gift card is money the buyer pays now for someone to spend later in the same store. Under the EU's voucher rules (Directive 2016/1065) a
+card that can be spent on goods with different VAT rates, or in more than one country, is a **multi-purpose voucher**: selling it is not a
+supply, so no VAT is charged when it is sold, and the goods it is spent on carry their VAT as always. Kaizena Flow sells multi-purpose
+vouchers only (a single-purpose voucher, whose VAT is known when sold, is not offered); this and the expiry rules below need an accountant's
+and a lawyer's look before real use, and the words a shopper reads are flagged for legal review.
+
+Built in four steps, each its own commit:
+
+| Step | What |
+|---|---|
+| F1 | The model: `gift_cards` and their append-only ledger `gift_card_entries`, written only by SQL functions; codes kept as hashes; the feature switch `gift_cards`; PGlite tests |
+| F2 | Selling one: a product of kind `gift_card` with its amounts per country, bought in the cart like goods; at payment one card per unit is issued and emailed to the buyer or a recipient on a chosen day |
+| F3 | Spending one: a *Gift card* field at checkout, up to three cards on an order as payments (never a discount), held when the order is placed, captured with the order, back on the card when the order is cancelled or refunded |
+| F4 | The owner's screens and figures: Gift cards (issued, balances, a card's history, issue one by hand, adjust, deactivate), the liability report, the CSV, the AI manager's read-only tool; docs and parity |
+
+### 8.1 F1: the model
+
+- **`commerce.gift_cards`**: `store_id`, `id`, `code_hash` (HMAC-SHA-256 of the normalised code with a key made from `SETTINGS_ENCRYPTION_KEY`
+  for this use alone; unique per store), `last4`, `currency` (ISO 4217, fixed), `initial_minor` (> 0), `issued_at`, `expires_at` (null: never),
+  `status` (`active`, `deactivated`; spent or expired is read from the balance and the date, never stored), how it came to be (`source`: `order`
+  with `order_id` and `order_line_id`, or `staff` with `issued_by` and a `note`), the recipient (`recipient_email`, `recipient_name`,
+  `message`, `send_at`, `sent_at`; null for a card the buyer keeps) and `customer_id` (who it was issued to when signed in, else null).
+  A code is 16 characters from the same alphabet as generated discount codes (D299 E1, no look-alikes), shown in groups of four, made by
+  `randomBytes()`, shown to people only in the email that delivers it and once to staff who issue one by hand; the database never holds it.
+- **`commerce.gift_card_entries`**, append-only (a trigger refuses update and delete): `kind` `issue` (+), `hold` (−, an order placed and not yet
+  paid), `release` (+, that order cancelled unpaid or its hold expired), `spend` (a hold turned final when the order is paid: amount 0, it
+  marks the hold), `refund` (+, a refund of an order paid with the card), `adjust` (±, staff, with a reason), `expire` (−, the balance left at
+  expiry) and `void` (−, the balance when staff deactivate it); each with `amount_minor`, `order_id` where there is one, `account_id` for
+  staff, and an `idempotency_key` unique per card. **A card's balance is only `commerce.gift_card_balance(card)`** (the sum), never stored or
+  worked out in code; the functions `gift_card_issue()`, `gift_card_hold()`, `gift_card_release()`, `gift_card_spend()`, `gift_card_refund()`,
+  `gift_card_adjust()`, `gift_card_expire()` and `gift_card_void()` are the only writers, each locking the card row and refusing a balance below
+  zero, a currency that is not the card's, a card deactivated or expired (except release, refund and expire), and a second call with the same key.
+- **Feature**: `gift_cards` in `FEATURE_IDS` (needs `shop`), off by default; off means no gift card products are offered and the checkout's field
+  is gone, while cards already sold can still be spent and refunded (the money is the customer's), and the admin's Gift cards page stays.
+- **Copying, personal data**: both tables are `never` in `COPY_RULES`. Recipient fields and `customer_id` are personal data (`PERSONAL_DATA`:
+  export section `gift_cards`; erasure clears the recipient and message and the customer link, never the balance or the ledger, which are money).
+- **Expiry**: the store's `gift_card_settings.expiry_months` (default 36, at least 12, or none), fixed on the card when issued. Norway's and
+  the Nordic consumer rules give at least three years in practice; flagged for review per market. The daily job writes `expire` for a card past
+  its date with a balance, once.
+
+### 8.2 F2: selling one
+
+- A product of kind `gift_card` (a kind in `PRODUCT_KINDS` and the `products_kind` check, offered only while the feature is on, through
+  `OFFERED`): its variants are its amounts, a variant's price per market being the card's value in that market's own currency; delivery
+  `digital`, no stock, no shipping, no unit price, never backordered, never a subscription. A demo product (`Demo: Gift card`) in the template.
+- **No VAT on the sale**: a gift card line takes the VAT category `voucher` (a new row of `vat_categories` whose rate is 0 in every country,
+  through `set_vat_rate()`, verified, source the directive), so `decideTax()`, the cart and `placeOrder()` need no case of their own; the
+  invoice line says *Gift card: multi-purpose voucher, VAT is charged when it is spent* (`invoice-text.ts`).
+- **Nothing comes off a gift card**: campaigns, group discounts, codes, the friend's discount and bonus credits never reach a gift card line,
+  and a gift card cannot pay for a gift card (F3). Free shipping thresholds count without it.
+- On the product page the shopper chooses the amount and, optionally, *Send it to someone*: their name, email, a message (the D173 gift
+  rules: `cleanShopperText()`, refused not cut) and a day (today up to a year). These ride on the cart line and are frozen on the order line.
+- **Issued at payment**: `commerce.complete_order_payment()` (and `authorize → paid` the same way) calls `gift_card_issue()` for each unit of
+  each gift card line, once (key `order_line:{id}:{n}`), never for a copied order, a host's order or a Stripe test-mode payment (a test card is
+  issued as `test` and cannot be spent in live mode). The code is made in application code right after (`issueCodes()`, in `after()` and the
+  five-minute job for any missed): the card row exists first with a pending code, the code is made, its hash written once, and the email sent.
+- **Delivered by email** (`gift_card.issued`, in `EMAIL_KINDS` and `NOTIFICATIONS`, required): to the recipient on `send_at` (the buyer gets
+  a copy saying it is on its way, without the code) or else to the buyer at once; the card's amount, the code, the expiry and the store's
+  link, hand-written nb, sv, da and en. A bounced recipient email is told to the buyer; staff can send it again from the card's page.
+- **Withdrawal (D153)**: a gift card is a digital service that has not started until it is spent; while its whole balance is unspent the
+  buyer may withdraw within 14 days, which voids the card and refunds the line. Once any of it is spent, the line is not eligible
+  (`lineEligibility()` reason `gift_card_spent`). Flagged for legal review.
+
+### 8.3 F3: spending one
+
+- **At checkout**, a *Gift card* field beside the discount code (never in the same field: a card is money, a code is a discount): the code is
+  checked live (`findGiftCard()`, by hash, the store's own, the cart's currency, active, not expired, a balance), at most three cards on a
+  cart (`cart_gift_cards`), each shown with the amount it will pay and its balance after. Attempts are limited per cart and per client like
+  VIES checks (`chat_usage` buckets `giftcard:*`), and a wrong code says only *This gift card can't be used*, never whether it exists.
+- **A payment, never a discount**: the order's total and its VAT are what they would be without the card; the cards pay first, in the order
+  added, up to what is due online (`giftCardsPay()`, pure: never more than a card's balance or the amount due); Stripe or Mollie is asked only
+  for the rest (`dueNowMinor`), and an order the cards pay in full is confirmed without a provider (`confirmPaidByGiftCards()`, like
+  `confirmAtVenue()`). `cartSummary()` and `placeOrder()` both use `giftCardsPay()`, and `checkout-kinds.int.test.ts` gets a NOK and a euro
+  scenario (part paid, all paid, two cards).
+- **Held, then spent**: `placeOrder()` writes, under each card's row lock, a `payments` row of provider `gift_card` (pending) and a `hold`
+  entry; `complete_order_payment()` captures it and writes `spend`; `cancel_unpaid_order()` and an expired checkout write `release`. A
+  `gift_card` payment is a captured payment like any other, so an order paid with a card is a sale (`PAID`) and its invoice lists the card as a
+  payment, with VAT on the goods as always.
+- **Refunds** go back where the money came from: `refundOrder()` splits a refund over the captured payments as it does (`splitRefund()`),
+  and the gift card's part goes back on the card through its provider (`providerOf('gift_card').refund()`, a `refund` entry, no API call),
+  even after the card expired (its new balance then expires with the next daily run). Exchanges (D239), order edits (D174) and payment terms
+  (D293) never take a gift card: their pay links are Stripe's.
+- **Never spent on**: a gift card line, a subscription's later renewals (the first order only), a booking deposit's balance at the venue, a
+  draft order (D173), another store, another currency (a card in NOK is not spent in a euro view: the view is changed, or the field says
+  *This gift card is in NOK*).
+
+### 8.4 F4: the owner's screens and figures
+
+- **Products → Gift cards** (`products:read`; writing `products:write`, issuing by hand and adjusting `owner` or a role with `orders:write`
+  and a reason): the list (last four, value, balance, status, issued, to whom), a card's page (its ledger in words, the orders it paid,
+  *Send again*, *Deactivate*), *Issue a gift card* (an amount, a currency the store sells in, an optional recipient; the code is shown once),
+  and the settings card (expiry). Audited `gift_card.*` with ids and amounts, never a code.
+- **The liability report** (Analytics → Finance, `docs/analytics.md` first): outstanding balance per currency now, and per period issued,
+  spent, refunded back, expired and voided, each currency on its own (never added across currencies); a gift card's sale is not net sales
+  (Finance's sales leave `voucher` lines out, and say so), its spending is. The CSV `finance.gift_cards`.
+- **AI manager**: `gift_card_overview` (read-only, `products:read`): counts and the outstanding per currency, never a code or a recipient.
+- **Parity**: `customers.gift-cards` and `analytics.liabilities-gift-card-and-store-credit`.
+
+### 8.5 Tests
+
+PGlite: the ledger's functions (balance never below zero, idempotent, currency fixed, refused on a deactivated or expired card, release and
+refund allowed after expiry), the trigger refusing update and delete. Unit: `giftCardsPay()`, code shape and normalising, eligibility of a
+gift card line for withdrawal. Integration: issued once at payment with its email; test mode not spendable live; spending part and all, two
+cards, held then released on cancel, refunded back on a refund, another store's or currency's card refused, the attempts limit; NOK and euro
+scenarios in `checkout-kinds.int.test.ts`; personal data export and erasure. e2e: buying a card, the email's code spent at checkout.
+
+## 9. Units G to J, outlined
+
 - **G, reviews (D301).** Asked for by email after delivery (a token per order line), written by the buyer (verified purchase), moderated by staff,
   shown on the product page with the average, in the product's JSON-LD only for approved reviews; no reward for a good review.
 - **H, feeds (D302).** One normalised feed per store and market (title, description, price as shown with VAT, availability, GTIN/brand from custom

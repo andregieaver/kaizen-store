@@ -10,6 +10,7 @@ import { pageInput, parsePageContent, type PageContent, type PageType, type Rich
 
 import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
+import { keepVersion } from "./page-versions";
 import { pagesTag } from "./pages";
 import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
 import { refreshTagNow } from "./refresh";
@@ -46,13 +47,13 @@ const EDITABLE_TYPES: readonly PageType[] = ["page", "article"];
 export const revisionOf = (words: string): string => createHash("sha256").update(words).digest("hex").slice(0, 16);
 
 /** The page as it is stored: unauthorised, only to find out whose it is and what kind. */
-async function pageRow(page: string): Promise<Row | null> {
+export async function pageRow(page: string): Promise<Row | null> {
   const [row] = await db().execute<Row>(sql`select id, store_id, type from commerce.pages where id = ${page}::uuid`);
   return row ?? null;
 }
 
 /** Who may change this page's words: a platform admin for Kaizen's own pages, a member whose role can change the website for a store's. */
-async function authorise(store: string | null, row: Row): Promise<{ account: Account; owner: string | null } | null> {
+export async function authorise(store: string | null, row: Row): Promise<{ account: Account; owner: string | null } | null> {
   const type = String(row.type) as PageType;
   if (!EDITABLE_TYPES.includes(type)) return null;
   if (store === null) {
@@ -143,6 +144,7 @@ export async function applyPageText(input: {
         updated_at = now(), updated_by = ${account.id}::uuid
       where id = ${page}::uuid
     `);
+    await keepVersion(tx, { owner, page, kind: "site_text", content: JSON.stringify(next), account: account.id });
     return { ok: true, draftKept: draft !== null && nextDraft === null, slug: String(row.slug), title: next.title, type: String(row.type) as PageType };
   });
   if (!outcome.ok) return outcome;

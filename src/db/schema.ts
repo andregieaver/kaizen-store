@@ -6308,6 +6308,34 @@ export const pages = commerce.table(
 );
 
 /**
+ * A page's versions (D305, `src/server/page-versions.ts`): what each save, publish and change on the live site left, kept so a person can
+ * take an earlier version back into the page builder. Written only by `keepVersion()`, never changed (a trigger refuses it); a page keeps
+ * its newest fifty, and its versions go with it when it is deleted.
+ */
+export const pageVersions = commerce.table(
+  "page_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own pages, as on `pages`. */
+    storeId: uuid("store_id").references(() => stores.id),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    /** What made it: `saved`, `published`, `site_text` (D192) or `site_css` (D306). */
+    kind: text("kind").notNull(),
+    content: jsonb("content").notNull(),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    index("page_versions_page_idx").on(t.pageId, t.createdAt),
+    index("page_versions_store_idx").on(t.storeId),
+    index("page_versions_created_by_idx").on(t.createdBy),
+    check("page_versions_kind", sql`${t.kind} in ('saved', 'published', 'site_text', 'site_css')`),
+  ],
+);
+
+/**
  * Which of a store's pages has a place of its own on its site (D112): its blog
  * (`/blog`), search page (`/search`) or the page shown for an address that is
  * not found, each built in the page builder; without one the site's standard
