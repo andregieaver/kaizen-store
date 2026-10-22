@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { fillWords } from "./admin-fill";
+import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
 import { memberLineOff } from "./customer-tiers";
 import { planPrice } from "./subscriptions";
 
@@ -505,28 +507,41 @@ export function memberOffAfterCampaign(unitMinor: number, quantity: number, camp
   return left - planPrice(left, percent);
 }
 
-/** What a campaign gives, in English for the admin: "20 % off", "3 for 2", "Free product over NOK 500.00". */
+/**
+ * What a campaign gives, for the admin: "20 % off", "3 for 2", "Free product over NOK 500.00"; in English unless given the `discounts`
+ * catalogue's words (D312 A6).
+ */
 export function describeCampaign(
   campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds"> &
     Partial<Pick<Campaign, "amounts" | "tierBasis" | "tiers" | "buyMinQuantity" | "buyMinAmounts" | "getQuantity" | "getKind" | "getPercent" | "getAmounts">>,
   money: (minor: number, marketCode: string) => string,
+  words: DiscountsMessages["describe"] = discountsEn.describe,
 ): string {
   const per = (values: Record<string, number>) => Object.entries(values).map(([market, minor]) => money(minor, market)).join(" / ");
   const over = per(campaign.thresholds);
-  if (campaign.kind === "percent") return `${campaign.percent} % off`;
-  if (campaign.kind === "multi_buy") return `${campaign.buyQuantity} for ${campaign.payQuantity}`;
-  if (campaign.kind === "amount") return `${per(campaign.amounts ?? {}) || "An amount"} off${over ? ` over ${over}` : ""}`;
-  if (campaign.kind === "free_shipping") return over ? `Free shipping over ${over}` : "Free shipping";
+  if (campaign.kind === "percent") return fillWords(words.percentOff, { percent: campaign.percent });
+  if (campaign.kind === "multi_buy") return fillWords(words.multiBuy, { buy: campaign.buyQuantity, pay: campaign.payQuantity });
+  if (campaign.kind === "amount") return fillWords(over ? words.amountOffOver : words.amountOff, { amount: per(campaign.amounts ?? {}) || words.anAmount, over });
+  if (campaign.kind === "free_shipping") return over ? fillWords(words.freeShippingOver, { over }) : words.freeShipping;
   if (campaign.kind === "bxgy") {
-    const buy = campaign.buyMinQuantity ? `Buy ${campaign.buyMinQuantity}` : `Spend ${per(campaign.buyMinAmounts ?? {}) || "an amount"}`;
-    const get = campaign.getKind === "free" ? "free" : campaign.getKind === "percent" ? `at ${campaign.getPercent} % off` : `at ${per(campaign.getAmounts ?? {})} off`;
-    return `${buy}, get ${campaign.getQuantity ?? 1} ${get}`;
+    const buy = campaign.buyMinQuantity
+      ? fillWords(words.buyItems, { n: campaign.buyMinQuantity })
+      : fillWords(words.spend, { amount: per(campaign.buyMinAmounts ?? {}) || words.anAmountLower });
+    const get =
+      campaign.getKind === "free"
+        ? words.getFree
+        : campaign.getKind === "percent"
+          ? fillWords(words.getPercent, { percent: campaign.getPercent ?? 0 })
+          : fillWords(words.getAmount, { amount: per(campaign.getAmounts ?? {}) });
+    return fillWords(words.bxgy, { buy, n: campaign.getQuantity ?? 1, get });
   }
   if (campaign.kind === "tiered") {
-    const steps = (campaign.tiers ?? []).map((tier) => `${tier.percent} % from ${campaign.tierBasis === "quantity" ? `${tier.quantity} items` : per(tier.amounts)}`);
-    return steps.join(", ") || "Tiers";
+    const steps = (campaign.tiers ?? []).map((tier) =>
+      fillWords(words.tierStep, { percent: tier.percent, from: campaign.tierBasis === "quantity" ? fillWords(words.tierItems, { n: tier.quantity ?? "" }) : per(tier.amounts) }),
+    );
+    return steps.join(", ") || words.tiers;
   }
-  return `Free product over ${over || "an amount"}`;
+  return fillWords(words.gift, { over: over || words.anAmountLower });
 }
 
 /** What shoppers read on a line of the cart for a campaign: its name. */

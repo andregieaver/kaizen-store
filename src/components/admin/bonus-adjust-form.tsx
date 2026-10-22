@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { ADJUST_NOTE_MAX, adjustmentQuestion, moneyIn, readAdjustment } from "@/lib/bonus-admin";
 import type { BonusResult } from "@/lib/bonus";
 
@@ -37,6 +39,7 @@ export function BonusAdjustForm({
   const [pending, startTransition] = useTransition();
   const question = useRef<HTMLParagraphElement>(null);
   const money = moneyIn(currency, locale);
+  const w = useAdminText("loyalty").adjust;
 
   useEffect(() => {
     if (confirming) question.current?.focus();
@@ -46,7 +49,7 @@ export function BonusAdjustForm({
     event.preventDefault();
     setDone(null);
     setProblems([]);
-    const read = readAdjustment(amount, note, currency);
+    const read = readAdjustment(amount, note, currency, w);
     if (!read.ok) {
       setErrors({ [read.field]: read.problem });
       window.setTimeout(() => document.getElementById(`bonus-adjust-${read.field}`)?.focus(), 0);
@@ -66,11 +69,7 @@ export function BonusAdjustForm({
         setProblems(result.problems);
         return;
       }
-      setDone(
-        amountMinor > 0
-          ? `Added ${money(amountMinor)} in credits. It is in their history with your reason.`
-          : `Took ${money(-amountMinor)} in credits. It is in their history with your reason.`,
-      );
+      setDone(fillWords(amountMinor > 0 ? w.added : w.took, { amount: money(Math.abs(amountMinor)) }));
       setAmount("");
       setNote("");
     });
@@ -81,10 +80,11 @@ export function BonusAdjustForm({
       {confirming ? (
         <div className="flex flex-col gap-3 rounded-md border border-line p-3 text-sm" aria-busy={pending}>
           <p ref={question} tabIndex={-1} className="font-medium outline-none">
-            {adjustmentQuestion(confirming.amountMinor, who, money)}
+            {adjustmentQuestion(confirming.amountMinor, who, money, w)}
           </p>
           <p>
-            Reason: <span className="whitespace-pre-wrap">{confirming.note}</span>
+            {w.reason}
+            <span className="whitespace-pre-wrap">{confirming.note}</span>
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -93,7 +93,7 @@ export function BonusAdjustForm({
               disabled={pending}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
-              {pending ? "Working …" : confirming.amountMinor > 0 ? "Yes, add the credits" : "Yes, take the credits"}
+              {pending ? w.working : confirming.amountMinor > 0 ? w.yesAdd : w.yesTake}
             </button>
             <button
               type="button"
@@ -101,7 +101,7 @@ export function BonusAdjustForm({
               disabled={pending}
               className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
             >
-              Back
+              {w.back}
             </button>
           </div>
         </div>
@@ -109,7 +109,7 @@ export function BonusAdjustForm({
         <form onSubmit={review} noValidate className="flex flex-col gap-3 text-sm">
           <div className="flex max-w-xs flex-col gap-1">
             <label htmlFor="bonus-adjust-amount" className="font-medium">
-              Amount
+              {w.amount}
               <span className="sr-only"> ({currency})</span>
             </label>
             <div className="flex items-center gap-2">
@@ -136,13 +136,12 @@ export function BonusAdjustForm({
               </p>
             )}
             <p id="bonus-adjust-amount-hint" className="text-muted">
-              Write 50 to add credits, which can be used at once, or -20 to take some away, available credits first and
-              then those still waiting. Available now: {money(availableMinor)}. Credits cannot go below zero.
+              {fillWords(w.amountHint, { available: money(availableMinor) })}
             </p>
           </div>
           <div className="flex max-w-xl flex-col gap-1">
             <label htmlFor="bonus-adjust-note" className="font-medium">
-              Reason
+              {w.reasonLabel}
             </label>
             <textarea
               id="bonus-adjust-note"
@@ -162,12 +161,12 @@ export function BonusAdjustForm({
               </p>
             )}
             <p id="bonus-adjust-note-hint" className="text-muted">
-              Required. It stays in the customer&apos;s history, and staff see it.
+              {w.reasonHint}
             </p>
           </div>
           <div>
             <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
-              Review
+              {w.review}
             </button>
           </div>
         </form>

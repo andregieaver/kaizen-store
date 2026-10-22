@@ -1,3 +1,6 @@
+import { countWords } from "@/lib/admin-fill";
+import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+
 /** The privacy pages' shared classes and day formatting (admin tokens only, D149). */
 export const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal disabled:opacity-60";
 export const label = "flex flex-col gap-1 text-sm font-medium";
@@ -10,25 +13,25 @@ export const buttonSecondary = "inline-flex min-h-10 items-center rounded-pill b
 /** Overdue text: red, and always with words beside it (never colour alone). */
 export const alertText = "text-danger-text";
 
-/** A day for people ("3 Oct 2026"), in the store's own time zone for an instant and as it is for a `yyyy-mm-dd` day. */
-export function dayText(value: Date | string | null | undefined, timeZone = "Europe/Oslo"): string {
+/**
+ * A day for people ("3 Oct 2026"), in the store's own time zone for an instant and as it is for a `yyyy-mm-dd` day, in the admin's
+ * language (`locale`, `ADMIN_LANG_FACTS[lang].locale`).
+ */
+export function dayText(value: Date | string | null | undefined, timeZone = "Europe/Oslo", locale = "en-GB"): string {
   if (!value) return "";
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const d = new Date(`${value}T12:00:00Z`);
-    return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(d);
+    return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(d);
   }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone }).format(d);
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone }).format(d);
 }
 
 /** "12 days left", "Due today", "3 days overdue": the clock in words. */
-export function clockWords(daysLeft: number | null, overdue: boolean): string {
+export function clockWords(daysLeft: number | null, overdue: boolean, words: PrivacyMessages["common"]["clock"] = privacyEn.common.clock): string {
   if (daysLeft === null) return "";
-  if (overdue) {
-    const days = Math.max(1, Math.abs(daysLeft));
-    return `${days} ${days === 1 ? "day" : "days"} overdue`;
-  }
-  if (daysLeft <= 0) return "Due today";
-  return `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
+  if (overdue) return countWords(Math.max(1, Math.abs(daysLeft)), words.overdue);
+  if (daysLeft <= 0) return words.today;
+  return countWords(daysLeft, words.left);
 }

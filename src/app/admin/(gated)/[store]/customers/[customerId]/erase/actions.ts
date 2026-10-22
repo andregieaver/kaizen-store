@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { staffErase } from "@/server/privacy-admin";
 
@@ -14,10 +17,11 @@ import { staffErase } from "@/server/privacy-admin";
  */
 export async function eraseCustomerAction(storeSlug: string, key: string, requestId: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "customers:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
-  if (!z.uuid().safeParse(key).success) return { status: "error", messages: ["There is nobody with that key in this store."] };
+  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "privacy").problems[NO_ACCESS] ?? NO_ACCESS] };
+  const w = adminText(adminLangOf(member.account.adminLocale), "privacy");
+  if (!z.uuid().safeParse(key).success) return { status: "error", messages: [w.actions.nobody] };
   const request = z.uuid().safeParse(requestId).success ? requestId : null;
   const result = await staffErase({ storeId: member.store.id, accountId: member.account.id, requestId: request }, key, String(form.get("confirm") ?? ""));
-  if (!result.ok) return { status: "error", messages: [result.message] };
+  if (!result.ok) return { status: "error", messages: [w.problems[result.message] ?? result.message] };
   redirect(`/admin/${member.store.slug}/privacy/${result.requestId}`);
 }

@@ -4,6 +4,8 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { RETENTION_BASES, type RetentionBasis, type RetentionKind } from "@/lib/retention";
 import { requirePlatformAdmin } from "@/server/auth";
 import { changeRetentionRule, verifyRetentionRule } from "@/server/retention";
@@ -19,18 +21,20 @@ const text = (form: FormData, name: string): string => String(form.get(name) ?? 
 /** Starts a new period for a kind of data. */
 export async function changeRetentionRuleAction(_previous: FormState, form: FormData): Promise<FormState> {
   const account = await requirePlatformAdmin();
+  const words = adminText(adminLangOf(account.adminLocale), "privacy");
+  const w = words.retention.actions;
   const country = text(form, "country").toUpperCase();
-  if (country && !/^[A-Z]{2}$/.test(country)) return { status: "error", messages: ["A country is two letters, such as NO."] };
+  if (country && !/^[A-Z]{2}$/.test(country)) return { status: "error", messages: [w.country] };
   const value = Number(text(form, "periodValue"));
-  if (!Number.isInteger(value)) return { status: "error", messages: ["The period is a whole number."] };
+  if (!Number.isInteger(value)) return { status: "error", messages: [w.wholeNumber] };
   const basis = text(form, "basis");
-  if (!(RETENTION_BASES as readonly string[]).includes(basis)) return { status: "error", messages: ["Say how much of the source was read."] };
+  if (!(RETENTION_BASES as readonly string[]).includes(basis)) return { status: "error", messages: [w.basis] };
   const unit = text(form, "periodUnit");
   const countsFrom = text(form, "countsFrom");
-  if (unit !== "days" && unit !== "months") return { status: "error", messages: ["Choose days or months."] };
-  if (countsFrom !== "event" && countsFrom !== "end_of_year") return { status: "error", messages: ["Choose what the period is counted from."] };
+  if (unit !== "days" && unit !== "months") return { status: "error", messages: [w.unit] };
+  if (countsFrom !== "event" && countsFrom !== "end_of_year") return { status: "error", messages: [w.countsFrom] };
   const sourceUrl = text(form, "sourceUrl");
-  if (sourceUrl && !z.url({ protocol: /^https?$/ }).safeParse(sourceUrl).success) return { status: "error", messages: ["The source address must start with https://."] };
+  if (sourceUrl && !z.url({ protocol: /^https?$/ }).safeParse(sourceUrl).success) return { status: "error", messages: [w.sourceUrl] };
   const result = await changeRetentionRule(account.id, {
     kind: text(form, "kind") as RetentionKind,
     country: country || null,
@@ -44,17 +48,18 @@ export async function changeRetentionRuleAction(_previous: FormState, form: Form
     validFrom: text(form, "validFrom"),
     note: text(form, "note"),
   });
-  if (!result.ok) return { status: "error", messages: [result.problem] };
+  if (!result.ok) return { status: "error", messages: [words.problems[result.problem] ?? result.problem] };
   refresh();
-  return { status: "ok", messages: ["The new period is saved. It starts unreviewed."] };
+  return { status: "ok", messages: [w.saved] };
 }
 
 /** Marks a period as reviewed by a person. */
 export async function verifyRetentionRuleAction(ruleId: string): Promise<FormState> {
   const account = await requirePlatformAdmin();
-  if (!z.uuid().safeParse(ruleId).success) return { status: "error", messages: ["That period no longer exists."] };
+  const words = adminText(adminLangOf(account.adminLocale), "privacy");
+  if (!z.uuid().safeParse(ruleId).success) return { status: "error", messages: [words.retention.actions.gone] };
   const result = await verifyRetentionRule(account.id, ruleId);
-  if (!result.ok) return { status: "error", messages: [result.problem] };
+  if (!result.ok) return { status: "error", messages: [words.problems[result.problem] ?? result.problem] };
   refresh();
-  return { status: "ok", messages: ["Marked as reviewed."] };
+  return { status: "ok", messages: [words.retention.actions.reviewed] };
 }

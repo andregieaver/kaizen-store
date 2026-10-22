@@ -3,6 +3,8 @@ import { Suspense } from "react";
 
 import { RequestsSkeleton } from "@/components/admin/privacy/skeletons";
 import { RequestsView, requestsFilter } from "@/components/admin/privacy/requests-view";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listRequests } from "@/server/privacy-requests";
 
@@ -29,5 +31,16 @@ async function List({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requirePermission(storeSlug, "customers:read");
   const filter = requestsFilter(first((await searchParams).status));
   const requests = await listRequests(member.store.id, { status: "all", limit: 200 });
-  return <RequestsView base={`/admin/${member.store.slug}`} requests={requests} filter={filter} canWrite={memberCan(member, "customers:write")} timeZone={member.store.timeZone} />;
+  const lang = adminLangOf(member.account.adminLocale);
+  return (
+    <RequestsView
+      base={`/admin/${member.store.slug}`}
+      requests={requests}
+      filter={filter}
+      canWrite={memberCan(member, "customers:write")}
+      timeZone={member.store.timeZone}
+      words={adminText(lang, "privacy")}
+      locale={ADMIN_LANG_FACTS[lang].locale}
+    />
+  );
 }

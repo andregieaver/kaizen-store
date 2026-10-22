@@ -16,7 +16,10 @@ import {
 } from "@/lib/customer-tiers";
 import { isPaymentTerms, type PaymentTerms } from "@/lib/payment-terms";
 
+import { fillWords } from "@/lib/admin-fill";
+
 import { audit, type Membership } from "./auth";
+import { schemaProblems, staffWords } from "./customer-tiers";
 import { claimOrders, preRegisterCustomer, sha256, normalEmail } from "./customers";
 import { releaseCompanyTerms } from "./payment-terms";
 import type { SaveResult } from "./settings";
@@ -106,13 +109,14 @@ export function employeePercent(company: Pick<Company, "tierPercent" | "tierActi
 
 /** Creates a company (id null) or changes one. Orders already placed keep what they got. */
 export async function saveCompany({ account, store }: Membership, id: string | null, input: CompanyInput): Promise<SaveResult & { id?: string }> {
+  const words = staffWords(account);
   const parsed = companyInput.safeParse(input);
-  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  if (!parsed.success) return { ok: false, problems: schemaProblems(parsed.error.issues, words) };
   const d = parsed.data;
-  if (id && !(await getCompany(store.id, id))) return { ok: false, problems: ["The company no longer exists."] };
+  if (id && !(await getCompany(store.id, id))) return { ok: false, problems: [words.companyGone] };
   if (d.tierId) {
     const [tier] = await db().execute<Row>(sql`select 1 from commerce.customer_tiers where store_id = ${store.id}::uuid and id = ${d.tierId}::uuid`);
-    if (!tier) return { ok: false, problems: ["The discount group no longer exists."] };
+    if (!tier) return { ok: false, problems: [words.discountGroupGone] };
   }
   try {
     const [row] = id
@@ -130,7 +134,7 @@ export async function saveCompany({ account, store }: Membership, id: string | n
     return { ok: true, id: String(row.id) };
   } catch (error) {
     const code = (error as { cause?: { code?: string }; code?: string }).cause?.code ?? (error as { code?: string }).code;
-    if (code === "23505") return { ok: false, problems: [`The store already has a company called ${d.name}.`] };
+    if (code === "23505") return { ok: false, problems: [fillWords(words.companyTaken, { name: d.name })] };
     throw error;
   }
 }
@@ -139,9 +143,10 @@ export async function saveCompany({ account, store }: Membership, id: string | n
 export async function deleteCompany({ account, store }: Membership, id: string): Promise<SaveResult> {
   const company = await getCompany(store.id, id);
   if (!company) return { ok: true };
-  if (company.members > 0) return { ok: false, problems: ["Accounts belong to this company. Remove them first, or switch the company off."] };
+  const words = staffWords(account);
+  if (company.members > 0) return { ok: false, problems: [words.companyHasAccounts] };
   // Orders on payment terms (D293) name the company until paid: one that still owes keeps the company; paid ones forget it.
-  if (!(await releaseCompanyTerms(store.id, id))) return { ok: false, problems: ["This company still owes for orders on payment terms. Switch it off instead."] };
+  if (!(await releaseCompanyTerms(store.id, id))) return { ok: false, problems: [words.companyOwes] };
   await db().execute(sql`delete from commerce.customer_companies where store_id = ${store.id}::uuid and id = ${id}::uuid`);
   await audit(account.id, store.id, "company.deleted", { name: company.name });
   return { ok: true };
@@ -222,14 +227,15 @@ export async function staffEmailMarket(storeId: string): Promise<EmailMarket | n
 
 /** Makes an account the company's main account: someone with no account yet gets one made ahead of them. */
 export async function addMainAccount({ account, store }: Membership, companyId: string, email: string): Promise<SaveResult> {
+  const words = staffWords(account);
   const address = normalEmail(email);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) return { ok: false, problems: ["That is not an email address."] };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) return { ok: false, problems: [words.notAnEmail] };
   const company = await getCompany(store.id, companyId);
-  if (!company) return { ok: false, problems: ["The company no longer exists."] };
+  if (!company) return { ok: false, problems: [words.companyGone] };
   const customerId = await preRegisterCustomer(store.id, address);
   const [current] = await db().execute<Row>(sql`select company_id from commerce.customers where store_id = ${store.id}::uuid and id = ${customerId}::uuid`);
-  if (current?.company_id && String(current.company_id) !== companyId) return { ok: false, problems: ["That account already belongs to another company."] };
-  if (!current?.company_id && company.members >= company.maxMembers) return { ok: false, problems: ["The company is full."] };
+  if (current?.company_id && String(current.company_id) !== companyId) return { ok: false, problems: [words.otherCompany] };
+  if (!current?.company_id && company.members >= company.maxMembers) return { ok: false, problems: [words.companyFull] };
   await db().execute(sql`
     update commerce.customers set company_id = ${companyId}::uuid, company_role = 'owner', updated_at = now()
     where store_id = ${store.id}::uuid and id = ${customerId}::uuid

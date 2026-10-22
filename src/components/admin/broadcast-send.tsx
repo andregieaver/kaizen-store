@@ -2,6 +2,10 @@
 
 import { useState, useTransition } from "react";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+
+import { useAdminLang, useAdminText } from "./admin-text";
 import { Button } from "./ui";
 
 type Problem = { ok: false; problem: string };
@@ -28,6 +32,9 @@ export function BroadcastSend(props: Props) {
   const [confirming, setConfirming] = useState(false);
   const [when, setWhen] = useState("");
   const [busy, start] = useTransition();
+  const w = useAdminText("marketing");
+  const ws = w.send;
+  const numbers = ADMIN_LANG_FACTS[useAdminLang()].locale;
 
   const run = (work: () => Promise<{ kind: "ok" | "problem"; text: string }>) =>
     start(async () => {
@@ -40,7 +47,7 @@ export function BroadcastSend(props: Props) {
       <div className="flex flex-wrap items-end gap-2">
         {props.locales.length > 1 && (
           <label className="flex flex-col gap-1 text-caption text-ink-2">
-            Language
+            {w.common.language}
             <select value={locale} onChange={(e) => setLocale(e.target.value)} className="min-h-10 rounded-md border border-line bg-card px-3">
               {props.locales.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -55,11 +62,11 @@ export function BroadcastSend(props: Props) {
           onClick={() =>
             run(async () => {
               const r = await props.test(storeSlug, broadcastId, locale);
-              return r.ok ? { kind: "ok", text: `A test went to ${r.to}.` } : { kind: "problem", text: r.problem };
+              return r.ok ? { kind: "ok", text: fillWords(w.common.testWent, { to: r.to }) } : { kind: "problem", text: r.problem };
             })
           }
         >
-          Send a test to yourself
+          {w.common.sendTest}
         </Button>
       </div>
 
@@ -67,15 +74,15 @@ export function BroadcastSend(props: Props) {
         {!confirming ? (
           <div>
             <Button kind="main" disabled={busy || props.people === 0} onClick={() => setConfirming(true)}>
-              Send now
+              {ws.sendNow}
             </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-2 rounded-panel border border-warning-line bg-warning-soft p-3">
             <p className="text-body text-warning-text">
               {props.people === null
-                ? "Send it to everyone it is for? It cannot be taken back."
-                : `Send it to ${props.people.toLocaleString("en-GB")} ${props.people === 1 ? "person" : "people"}? It cannot be taken back.`}
+                ? ws.confirmAll
+                : fillWords(ws.confirmPeople, { people: countWords(props.people, w.common.people, { n: props.people.toLocaleString(numbers) }) })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -85,14 +92,14 @@ export function BroadcastSend(props: Props) {
                   run(async () => {
                     const r = await props.start(storeSlug, broadcastId);
                     setConfirming(false);
-                    return r.ok ? { kind: "ok", text: `Sending to ${r.recipients.toLocaleString("en-GB")}.` } : { kind: "problem", text: r.problem };
+                    return r.ok ? { kind: "ok", text: fillWords(ws.sending, { n: r.recipients.toLocaleString(numbers) }) } : { kind: "problem", text: r.problem };
                   })
                 }
               >
-                {busy ? "Starting…" : "Yes, send it"}
+                {busy ? ws.starting : ws.yes}
               </Button>
               <Button kind="quiet" onClick={() => setConfirming(false)}>
-                Not yet
+                {ws.notYet}
               </Button>
             </div>
           </div>
@@ -100,10 +107,10 @@ export function BroadcastSend(props: Props) {
       </div>
 
       <details>
-        <summary className="cursor-pointer text-body text-ink-2">Send it later</summary>
+        <summary className="cursor-pointer text-body text-ink-2">{ws.later}</summary>
         <div className="mt-2 flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-caption text-ink-2">
-            When (your computer&apos;s time)
+            {ws.whenLocal}
             <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="min-h-10 rounded-md border border-line bg-card px-3" />
           </label>
           <Button
@@ -111,11 +118,11 @@ export function BroadcastSend(props: Props) {
             onClick={() =>
               run(async () => {
                 const r = await props.schedule(storeSlug, broadcastId, new Date(when).toISOString());
-                return r.ok ? { kind: "ok", text: "Scheduled." } : { kind: "problem", text: r.problem };
+                return r.ok ? { kind: "ok", text: ws.scheduled } : { kind: "problem", text: r.problem };
               })
             }
           >
-            Schedule
+            {ws.schedule}
           </Button>
         </div>
       </details>

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
-import { SOURCE_WORDS, STATUS_WORDS, SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
 import { listSubscribers, subscriberCounts } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -28,7 +30,12 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const before = at && id && !Number.isNaN(Date.parse(at)) && /^[0-9a-f-]{36}$/.test(id) ? { at, id } : null;
   const [counts, page] = await Promise.all([subscriberCounts(store.id), listSubscribers(store.id, { query: q, status, before })]);
   const base = `/admin/${store.slug}/subscribers`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: store.timeZone });
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "marketing");
+  const ws = w.subscribers;
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const n = (v: number) => v.toLocaleString(numbers);
+  const date = (iso: string) => new Date(iso).toLocaleDateString(numbers, { dateStyle: "medium", timeZone: store.timeZone });
   const filter = (next: { status?: SubscriberStatus | null; before?: string }) => {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
@@ -44,58 +51,58 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Subscribers"
-        description="People who asked for your emails with news and offers, with the words they agreed to and when. They join from your sign-up forms, checkout and My account, and every email you send them will have a link to leave."
+        title={ws.title}
+        description={ws.description}
         actions={
           memberCan(member, "owner") && total > 0 ? (
             <form method="post" action={`${base}/export`}>
-              <Button type="submit">Export</Button>
+              <Button type="submit">{ws.export}</Button>
             </form>
           ) : undefined
         }
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label="Want your emails" value={counts.subscribed.toLocaleString("en-GB")} href={filter({ status: "subscribed" })} />
-        <KpiTile label="Waiting for their link" value={counts.pending.toLocaleString("en-GB")} context="They have not opened the confirmation email yet." href={filter({ status: "pending" })} />
-        <KpiTile label="Left" value={counts.unsubscribed.toLocaleString("en-GB")} href={filter({ status: "unsubscribed" })} />
+        <KpiTile label={w.segments.wantYourEmails} value={n(counts.subscribed)} href={filter({ status: "subscribed" })} />
+        <KpiTile label={ws.statuses.pending} value={n(counts.pending)} context={ws.waitingContext} href={filter({ status: "pending" })} />
+        <KpiTile label={ws.left} value={n(counts.unsubscribed)} href={filter({ status: "unsubscribed" })} />
       </div>
 
       {total === 0 ? (
         <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          Nobody yet. Add a newsletter form to a page, and people can also tick the box at checkout or switch it on in My account.
+          {ws.empty}
         </p>
       ) : (
         <Card
           compact
-          title={status ? STATUS_WORDS[status] : "Everyone"}
+          title={status ? ws.statuses[status] : ws.everyone}
           aside={
             <form method="get" action={base} className="flex flex-wrap items-center gap-2">
               {status && <input type="hidden" name="status" value={status} />}
-              <input type="search" name="q" defaultValue={q} placeholder="Search by email or name" aria-label="Search by email or name" className="min-h-10 w-64 rounded-md border border-line px-3" />
-              <Button type="submit">Search</Button>
+              <input type="search" name="q" defaultValue={q} placeholder={ws.search} aria-label={ws.search} className="min-h-10 w-64 rounded-md border border-line px-3" />
+              <Button type="submit">{ws.searchButton}</Button>
               {(q || status) && (
                 <Link href={base} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                  Show everyone
+                  {ws.showEveryone}
                 </Link>
               )}
             </form>
           }
         >
           {page.rows.length === 0 ? (
-            <p className="p-4 text-body text-muted">Nobody matches.</p>
+            <p className="p-4 text-body text-muted">{ws.nobodyMatches}</p>
           ) : (
-            <List label="Subscribers">
+            <List label={ws.list}>
               {page.rows.map((row) => (
                 <ListRow key={row.id}>
                   <RowLead
                     title={<span className="block max-w-80 truncate">{row.email}</span>}
                     href={`${base}/${row.id}`}
-                    sub={[row.name, SOURCE_WORDS[row.source], row.status === "subscribed" && !row.confirmed && row.source === "form" ? "not confirmed by email" : null].filter(Boolean).join(" · ")}
+                    sub={[row.name, ws.sources[row.source], row.status === "subscribed" && !row.confirmed && row.source === "form" ? ws.notConfirmed : null].filter(Boolean).join(" · ")}
                   />
                   <RowFact className="hidden sm:block">{date(row.at)}</RowFact>
                   <Chip signal={SIGNAL[row.status]} dot>
-                    {STATUS_WORDS[row.status]}
+                    {ws.statuses[row.status]}
                   </Chip>
                 </ListRow>
               ))}
@@ -104,7 +111,7 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
           {page.more && last && (
             <div className="mt-4">
               <Link href={filter({ before: `${last.at}_${last.id}` })} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                Older
+                {ws.older}
               </Link>
             </div>
           )}

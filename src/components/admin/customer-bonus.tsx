@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { BonusAdjustForm } from "@/components/admin/bonus-adjust-form";
+import { fillWords } from "@/lib/admin-fill";
+import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { entryLabel, isUsableNow, moneyIn, signedMoney } from "@/lib/bonus-admin";
 import type { BonusBalance, BonusEntry, BonusResult } from "@/lib/bonus";
 import { Card, List, ListRow, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
@@ -23,6 +25,7 @@ export function CustomerBonus({
   who,
   adjust,
   now = new Date(),
+  words = loyaltyEn,
 }: {
   /** The program is on for the store. */
   enabled: boolean;
@@ -36,37 +39,40 @@ export function CustomerBonus({
   who: string;
   adjust: (amountMinor: number, note: string) => Promise<BonusResult>;
   now?: Date;
+  /** The `loyalty` catalogue in the account's language; the adjust form reads its own through `useAdminText()`. */
+  words?: LoyaltyMessages;
 }) {
+  const w = words.customerBonus;
   const money = moneyIn(balance.currency, locale);
   const date = (iso: string) =>
     new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const waiting = entries.filter((entry) => isUsableNow(entry, now) === false);
 
   return (
-    <Card title="Bonus credits" compact>
+    <Card title={w.title} compact>
       {!enabled && (
         <p className="mb-3 rounded-md bg-sunken p-3 text-sm">
-          The bonus program is off, so this customer earns and uses no credits now. Their balance is kept.{" "}
+          {w.off}{" "}
           <Link href={`${adminBase}/bonus`} className="underline">
-            Bonus credits
+            {w.pageLink}
           </Link>
         </p>
       )}
       <dl className="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
         <div className="flex flex-col gap-0.5">
-          <dt className="text-muted">Available now</dt>
+          <dt className="text-muted">{w.available}</dt>
           <dd className="text-xl font-medium">{money(balance.availableMinor)}</dd>
         </div>
         <div className="flex flex-col gap-0.5">
-          <dt className="text-muted">Waiting for the return period</dt>
+          <dt className="text-muted">{w.waiting}</dt>
           <dd className="text-xl font-medium">{money(balance.pendingMinor)}</dd>
         </div>
         <div className="col-span-2 flex flex-col gap-0.5 md:col-span-1">
-          <dt className="text-muted">Next to expire</dt>
+          <dt className="text-muted">{w.nextExpire}</dt>
           <dd>
             {balance.expiringSoon
-              ? `${money(balance.expiringSoon.amountMinor)} on ${date(balance.expiringSoon.at)}`
-              : "Nothing is expiring"}
+              ? fillWords(w.expiringOn, { amount: money(balance.expiringSoon.amountMinor), date: date(balance.expiringSoon.at) })
+              : w.nothingExpiring}
           </dd>
         </div>
       </dl>
@@ -74,27 +80,29 @@ export function CustomerBonus({
         <ul className="mb-4 flex list-disc flex-col gap-0.5 pl-5 text-sm">
           {waiting.map((entry) => (
             <li key={entry.id}>
-              {money(entry.amountMinor)} earned
-              {entry.orderNumber ? ` on order #${entry.orderNumber}` : ""} can be used from{" "}
-              {date(entry.availableAt as string)}
+              {fillWords(w.waitingLine, {
+                amount: money(entry.amountMinor),
+                order: entry.orderNumber ? fillWords(w.onOrder, { number: entry.orderNumber }) : "",
+                date: date(entry.availableAt as string),
+              })}
             </li>
           ))}
         </ul>
       )}
 
-      <h3 className="mb-2 text-body-strong text-ink">History</h3>
+      <h3 className="mb-2 text-body-strong text-ink">{w.history}</h3>
       {entries.length === 0 ? (
-        <p className="mb-4 text-sm text-muted">No credits yet.</p>
+        <p className="mb-4 text-sm text-muted">{w.none}</p>
       ) : (
         <div className="mb-4">
-          <List label="Every change to this customer's credits">
+          <List label={w.listLabel}>
             {entries.map((entry) => {
               const orderId = entry.orderNumber ? orderIds[entry.orderNumber] : undefined;
               const usable = isUsableNow(entry, now);
               const notes = [
                 entry.note,
-                usable !== null && entry.availableAt ? (usable ? "Usable" : `Usable from ${date(entry.availableAt)}`) : null,
-                entry.expiresAt ? `Expires ${date(entry.expiresAt)}` : null,
+                usable !== null && entry.availableAt ? (usable ? w.usable : fillWords(w.usableFrom, { date: date(entry.availableAt) })) : null,
+                entry.expiresAt ? fillWords(w.expires, { date: date(entry.expiresAt) }) : null,
               ].filter(Boolean);
               return (
                 <ListRow key={entry.id}>
@@ -102,17 +110,17 @@ export function CustomerBonus({
                     <time dateTime={entry.at}>{date(entry.at)}</time>
                   </RowDate>
                   <RowLead
-                    title={entryLabel(entry)}
+                    title={entryLabel(entry, words.bonusKinds)}
                     sub={
                       notes.length > 0 || entry.orderNumber ? (
                         <>
                           {entry.orderNumber &&
                             (orderId ? (
                               <Link href={`${adminBase}/orders/${orderId}`} className="underline">
-                                Order #{entry.orderNumber}
+                                {fillWords(w.order, { number: entry.orderNumber })}
                               </Link>
                             ) : (
-                              `Order #${entry.orderNumber}`
+                              fillWords(w.order, { number: entry.orderNumber })
                             ))}
                           {entry.orderNumber && notes.length > 0 && " · "}
                           {notes.join(" · ")}
@@ -129,7 +137,7 @@ export function CustomerBonus({
       )}
 
       <details>
-        <summary className="cursor-pointer text-sm underline">Adjust credits</summary>
+        <summary className="cursor-pointer text-sm underline">{w.adjust}</summary>
         <div className="mt-3">
           <BonusAdjustForm
             adjust={adjust}

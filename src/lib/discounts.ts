@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { fillWords } from "./admin-fill";
+import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
 import { planPrice } from "./subscriptions";
 
 /**
@@ -341,16 +343,19 @@ export function reaches(discount: Pick<StoreDiscount, "productIds" | "termIds">,
   return Boolean(discount.productIds?.includes(productId)) || Boolean(reached?.has(productId));
 }
 
-/** What a store's code gives, in English for the admin: "20 % off", "NOK 50.00 off", "Free shipping". */
+/** What a store's code gives, for the admin: "20 % off", "NOK 50.00 off", "Free shipping"; in English unless given the `discounts` catalogue's words (D312 A6). */
 export function describeDiscount(
   discount: Pick<StoreDiscount, "kind" | "percent" | "amounts" | "recurring">,
   money: (minor: number, marketCode: string) => string,
+  words: DiscountsMessages["describe"] = discountsEn.describe,
 ): string {
-  if (discount.kind === "free_shipping") return "Free shipping";
-  if (discount.kind === "percent") return `${discount.percent} % off${discount.recurring ? ", every renewal" : ""}`;
-  return `${Object.entries(discount.amounts)
-    .map(([market, minor]) => money(minor, market))
-    .join(" / ")} off`;
+  if (discount.kind === "free_shipping") return words.freeShipping;
+  if (discount.kind === "percent") return fillWords(discount.recurring ? words.everyRenewal : words.percentOff, { percent: discount.percent });
+  return fillWords(words.amountOff, {
+    amount: Object.entries(discount.amounts)
+      .map(([market, minor]) => money(minor, market))
+      .join(" / "),
+  });
 }
 
 /** Where a code stands today, for the admin's list. */

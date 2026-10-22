@@ -1,6 +1,8 @@
 import { AFFILIATE_REJECTION_LABELS, AFFILIATE_STATUS_LABELS, friendDiscount, referrerReward, type AffiliateAttributionRow, type AffiliateOverview, type AffiliateSettings } from "./affiliates";
+import { countWords, fillWords } from "./admin-fill";
+import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { affiliateSettingsInput } from "./affiliates-schema";
-import { bpsToPercentText, percentTextToBps, type MoneyFormat } from "./bonus-admin";
+import { bpsToPercentText, percentNumber, percentTextToBps, type MoneyFormat } from "./bonus-admin";
 import { formatMoney, minorUnitDigits } from "./money";
 import { formatPriceInput, parsePrice } from "./product-input";
 
@@ -62,35 +64,39 @@ const wholeNumber = (text: string): number | null => (/^\d{1,9}$/.test(text.trim
  * The form read into settings, checked with `affiliateSettingsInput` (the server's own check). Every field that is
  * wrong gets its own message, in the words of the contract where it has them.
  */
-export function readAffiliateForm(values: AffiliateFormValues, currency: string): AffiliateFormRead {
+export function readAffiliateForm(
+  values: AffiliateFormValues,
+  currency: string,
+  w: LoyaltyMessages["affiliate"]["errors"] = loyaltyEn.affiliate.errors,
+): AffiliateFormRead {
   const errors: Partial<Record<AffiliateField, string>> = {};
 
   const friendPercent = wholeNumber(values.friendPercent);
-  if (friendPercent === null) errors.friendPercent = "Write a whole percentage such as 10, or 0 for no welcome discount.";
+  if (friendPercent === null) errors.friendPercent = w.friendPercent;
 
   let friendMaxMinor: number | null = null;
   if (values.friendMax.trim() !== "") {
     friendMaxMinor = parsePrice(values.friendMax, currency);
-    if (friendMaxMinor === null) errors.friendMax = `Write an amount in ${currency} such as 100 or 99,50, or leave it empty for no limit.`;
+    if (friendMaxMinor === null) errors.friendMax = fillWords(w.friendMax, { currency });
   }
 
   const rewardBps = percentTextToBps(values.rewardPercent);
-  if (rewardBps === null) errors.rewardPercent = "Write a percentage such as 5 or 2.5.";
+  if (rewardBps === null) errors.rewardPercent = w.rewardPercent;
 
   let rewardOrders: number | null = null;
   if (values.rewardScope === "limited") {
     rewardOrders = wholeNumber(values.rewardOrders);
-    if (rewardOrders === null) errors.rewardOrders = "Write how many orders earn credits, such as 1.";
+    if (rewardOrders === null) errors.rewardOrders = w.rewardOrders;
   }
 
   let monthlyCapMinor: number | null = null;
   if (values.monthlyCap.trim() !== "") {
     monthlyCapMinor = parsePrice(values.monthlyCap, currency);
-    if (monthlyCapMinor === null) errors.monthlyCap = `Write an amount in ${currency} such as 500, or leave it empty for no limit.`;
+    if (monthlyCapMinor === null) errors.monthlyCap = fillWords(w.monthlyCap, { currency });
   }
 
   const cookieDays = wholeNumber(values.cookieDays);
-  if (cookieDays === null) errors.cookieDays = "Write a number of days, such as 30.";
+  if (cookieDays === null) errors.cookieDays = w.cookieDays;
 
   const parsed = affiliateSettingsInput.safeParse({
     enabled: values.enabled,
@@ -112,7 +118,7 @@ export function readAffiliateForm(values: AffiliateFormValues, currency: string)
     };
     for (const issue of parsed.error.issues) {
       const field = fieldOf[String(issue.path[0])];
-      if (field && !errors[field]) errors[field] = friendly(field, issue.message);
+      if (field && !errors[field]) errors[field] = friendly(field, issue.message, w);
     }
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -120,17 +126,17 @@ export function readAffiliateForm(values: AffiliateFormValues, currency: string)
 }
 
 /** The contract's own messages are kept; the ones zod writes itself (a number out of range) are put in words. */
-function friendly(field: AffiliateField, message: string): string {
+function friendly(field: AffiliateField, message: string, w: LoyaltyMessages["affiliate"]["errors"]): string {
   if (/^(Too small|Too big|Invalid|Number must|Expected)/i.test(message) || message === "Invalid input") {
     switch (field) {
       case "rewardOrders":
-        return "Write a number of orders from 1 to 100.";
+        return w.ordersRange;
       case "cookieDays":
-        return "Write a number of days from 1 to 90.";
+        return w.daysRange;
       case "friendPercent":
-        return "Write a whole percentage from 0 to 50.";
+        return w.friendRange;
       default:
-        return "Check this number.";
+        return w.checkNumber;
     }
   }
   return message;
@@ -146,76 +152,90 @@ export function orderedProblems(errors: Partial<Record<AffiliateField, string>>)
 // ---------------------------------------------------------------------------
 
 /** What the program is, for the owner who has not turned it on. */
-export const AFFILIATE_EXPLANATION =
-  "Signed-in customers get their own link to share. When a friend orders for the first time through it, the friend gets a welcome discount and the customer who shared it earns bonus credits. Only new customers count, and credits are taken back if the order is refunded or cancelled.";
+export const AFFILIATE_EXPLANATION = loyaltyEn.affiliate.explanation;
 
 /** Why the program needs the bonus program. */
-export const AFFILIATE_NEEDS_BONUS =
-  "The reward is bonus credits, so the referral program works only while the bonus program is on. Turn the bonus program on under Bonus credits first.";
+export const AFFILIATE_NEEDS_BONUS = loyaltyEn.affiliate.needsBonus;
 
 /** What turning it on or off does, in the order the owner needs to know it. */
-export const AFFILIATE_ON_NOTES = [
-  "Every signed-in customer gets a link the first time they open Refer a friend in My account. Nobody has to be approved; you can block a customer who abuses it.",
-  "A friend must be signed in to get the welcome discount, and only on their first paid order. Guests are asked to sign in.",
-  "Nobody can refer themselves, and a customer who has ordered before does not count as a friend.",
-  "The link is remembered only for visitors who allow marketing cookies, so the store asks about cookies once the program is on.",
-  "Orders copied from another store and hosts' orders never earn or use it.",
-];
-export const AFFILIATE_OFF_NOTE =
-  "Turning it off stops links working and stops rewards. Credits already earned stay with customers, and orders already placed are rewarded if they are paid while the program is on.";
+export const AFFILIATE_ON_NOTES = loyaltyEn.affiliate.onNotes;
+export const AFFILIATE_OFF_NOTE = loyaltyEn.affiliate.offNote;
 
-/** Days as words. */
-const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
+type RuleWords = LoyaltyMessages["affiliateRules"];
 
 /**
  * The rules in sentences, the way an owner reads them back: the friend's discount, what the referrer earns and when it
  * counts, the limits. `money` formats the credits' currency.
  */
-export function rulesSummary(settings: AffiliateSettings, money: MoneyFormat, pendingDays: number): string[] {
+export function rulesSummary(settings: AffiliateSettings, money: MoneyFormat, pendingDays: number, w: RuleWords = loyaltyEn.affiliateRules): string[] {
   const lines: string[] = [];
+  const days = (n: number) => countWords(n, w.days);
   lines.push(
     settings.friendPercent > 0
-      ? `A friend gets ${settings.friendPercent}% off the goods in their first order${settings.friendMaxMinor !== null ? `, at most ${money(settings.friendMaxMinor)}` : ""}.`
-      : "A friend gets no welcome discount.",
+      ? fillWords(w.friend, {
+          percent: settings.friendPercent,
+          max: settings.friendMaxMinor !== null ? fillWords(w.friendMax, { amount: money(settings.friendMaxMinor) }) : "",
+        })
+      : w.noFriend,
   );
   const who =
-    settings.rewardOrders === null ? "every order" : settings.rewardOrders === 1 ? "the friend's first order" : `the friend's first ${settings.rewardOrders} orders`;
+    settings.rewardOrders === null ? w.every : settings.rewardOrders === 1 ? w.first : fillWords(w.firstN, { n: settings.rewardOrders });
   lines.push(
     settings.rewardBps > 0
-      ? `The customer who shared the link earns ${bpsToPercentText(settings.rewardBps)}% of what the friend pays online for goods, as bonus credits, for ${who}. The credits can be used ${pendingDays <= 0 ? "right after the friend pays" : `${days(pendingDays)} after the friend pays`}.`
-      : "The customer who shared the link earns nothing: the reward is 0%.",
+      ? fillWords(w.reward, {
+          percent: percentNumber(settings.rewardBps, w),
+          who,
+          wait: pendingDays <= 0 ? w.rightAfter : fillWords(w.after, { days: days(pendingDays) }),
+        })
+      : w.noReward,
   );
-  if (settings.monthlyCapMinor !== null) lines.push(`One customer can earn at most ${money(settings.monthlyCapMinor)} a month.`);
-  lines.push(`A visitor's link is remembered for ${days(settings.cookieDays)}, if they allow marketing cookies.`);
+  if (settings.monthlyCapMinor !== null) lines.push(fillWords(w.cap, { amount: money(settings.monthlyCapMinor) }));
+  lines.push(fillWords(w.cookie, { days: days(settings.cookieDays) }));
   return lines;
 }
 
 /** A worked example for the form: a friend's first order of 1,000 (in the credits' currency). */
-export function example(settings: AffiliateSettings, currency: string, locale: string, orderMajor = 1000): string {
+export function example(
+  settings: AffiliateSettings,
+  currency: string,
+  locale: string,
+  orderMajor = 1000,
+  template = loyaltyEn.affiliateRules.example,
+): string {
   const goods = orderMajor * 10 ** minorUnitDigits(currency);
   const off = friendDiscount(goods, settings);
   const reward = referrerReward(goods - off, settings.rewardBps);
   const money = (minor: number) => formatMoney(minor, currency, locale);
-  return `A first order of ${money(goods)} in goods: the friend saves ${money(off)} and pays ${money(goods - off)}; the customer who shared the link earns ${money(reward)} in credits.`;
+  return fillWords(template, { goods: money(goods), off: money(off), pays: money(goods - off), reward: money(reward) });
 }
 
 /** The overview as rows of a list: label and value. */
-export function overviewRows(overview: AffiliateOverview, money: MoneyFormat): { label: string; value: string; hint?: string }[] {
+export function overviewRows(
+  overview: AffiliateOverview,
+  money: MoneyFormat,
+  w: LoyaltyMessages["affiliateOverview"] = loyaltyEn.affiliateOverview,
+): { label: string; value: string; hint?: string }[] {
   return [
-    { label: "Customers with a link", value: String(overview.affiliates) },
-    { label: "Visits to links, last 30 days", value: String(overview.visits30d) },
-    { label: "Orders through links, last 30 days", value: String(overview.orders30d) },
-    { label: "Credits earned by referrers, last 30 days", value: money(overview.rewarded30dMinor) },
-    { label: "Referral credits usable now", value: money(overview.outstandingMinor), hint: "What the store still owes in price reductions for referrals." },
-    { label: "Referral credits pending", value: money(overview.pendingMinor), hint: "Earned, but waiting for the return period." },
-    { label: "Orders that earned nothing, last 30 days", value: String(overview.rejected30d) },
+    { label: w.affiliates, value: String(overview.affiliates) },
+    { label: w.visits, value: String(overview.visits30d) },
+    { label: w.orders, value: String(overview.orders30d) },
+    { label: w.rewarded, value: money(overview.rewarded30dMinor) },
+    { label: w.outstanding, value: money(overview.outstandingMinor), hint: w.outstandingHint },
+    { label: w.pending, value: money(overview.pendingMinor), hint: w.pendingHint },
+    { label: w.rejected, value: String(overview.rejected30d) },
   ];
 }
 
 /** How an attribution's status reads, with the reason when a guard stopped the reward. */
-export function attributionStatus(row: Pick<AffiliateAttributionRow, "status" | "reason">): string {
-  const base = AFFILIATE_STATUS_LABELS[row.status];
-  return row.status === "rejected" && row.reason ? `${base}: ${AFFILIATE_REJECTION_LABELS[row.reason]}` : base;
+export function attributionStatus(
+  row: Pick<AffiliateAttributionRow, "status" | "reason">,
+  w: { statuses: typeof AFFILIATE_STATUS_LABELS; reasons: typeof AFFILIATE_REJECTION_LABELS } = {
+    statuses: AFFILIATE_STATUS_LABELS,
+    reasons: AFFILIATE_REJECTION_LABELS,
+  },
+): string {
+  const base = w.statuses[row.status];
+  return row.status === "rejected" && row.reason ? `${base}: ${w.reasons[row.reason]}` : base;
 }
 
 /** A person for the owner's lists: their name and email, or just the email. */

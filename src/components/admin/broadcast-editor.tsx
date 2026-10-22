@@ -12,8 +12,11 @@ import {
   type BroadcastSuggestion,
   type LanguageContent,
 } from "@/lib/broadcasts";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { compressPicture, extensionOf } from "@/lib/image-compress";
 
+import { useAdminLang, useAdminText } from "./admin-text";
 import { Button, CARD_CLASS } from "./ui";
 
 type Problem = { ok: false; problem: string };
@@ -35,13 +38,7 @@ type Props = {
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3";
 
-const ADD: { type: BroadcastBlock["type"]; label: string }[] = [
-  { type: "heading", label: "Heading" },
-  { type: "paragraph", label: "Text" },
-  { type: "button", label: "Button" },
-  { type: "image", label: "Picture" },
-  { type: "divider", label: "Line" },
-];
+const ADD: BroadcastBlock["type"][] = ["heading", "paragraph", "button", "image", "divider"];
 
 function newBlock(type: BroadcastBlock["type"]): BroadcastBlock {
   switch (type) {
@@ -69,7 +66,10 @@ export function BroadcastEditor(props: Props) {
   const [audience, setAudience] = useState<BroadcastAudience>(props.initial.audience);
   const [segmentId, setSegmentId] = useState<string | null>(props.initial.segmentId ?? props.segments[0]?.id ?? null);
   const [content, setContent] = useState<BroadcastContent>(props.initial.content);
-  const [people, setPeople] = useState<string>("Counting…");
+  const w = useAdminText("marketing");
+  const we = w.email;
+  const numbers = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const [people, setPeople] = useState<string>(w.common.counting);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
@@ -80,14 +80,14 @@ export function BroadcastEditor(props: Props) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       count(storeSlug, audience, audience === "segment" ? segmentId : null).then(
-        (r) => setPeople(r.ok ? `It goes to ${r.people.toLocaleString("en-GB")} ${r.people === 1 ? "person" : "people"} who want your emails, as of now.` : r.problem),
-        () => setPeople("The count could not be made."),
+        (r) => setPeople(r.ok ? fillWords(we.goesTo, { people: countWords(r.people, w.common.people, { n: r.people.toLocaleString(numbers) }) }) : r.problem),
+        () => setPeople(w.common.countFailed),
       );
     }, 300);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [audience, segmentId, count, storeSlug]);
+  }, [audience, segmentId, count, storeSlug, w, we, numbers]);
 
 
   const submit = () =>
@@ -104,23 +104,23 @@ export function BroadcastEditor(props: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <label htmlFor="broadcast-title" className="text-body-strong text-ink">
-          Name
+          {we.name}
         </label>
-        <span className="text-caption text-muted">For you only: subscribers see the subject.</span>
+        <span className="text-caption text-muted">{we.nameHint}</span>
         <input id="broadcast-title" value={title} maxLength={80} onChange={(e) => (setSaved(false), setTitle(e.target.value))} className={`${field} max-w-md`} />
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-body-strong text-ink">Who gets it</legend>
+        <legend className="mb-1 text-body-strong text-ink">{we.whoGetsIt}</legend>
         <label className="flex items-center gap-2 text-body text-ink">
           <input type="radio" name="audience" checked={audience === "everyone"} onChange={() => (setSaved(false), setAudience("everyone"))} />
-          Everyone who wants your emails
+          {we.everyone}
         </label>
         <label className="flex flex-wrap items-center gap-2 text-body text-ink">
           <input type="radio" name="audience" checked={audience === "segment"} disabled={props.segments.length === 0} onChange={() => (setSaved(false), setAudience("segment"))} />
-          The people in a segment who want your emails
+          {we.segment}
           {audience === "segment" && (
-            <select aria-label="Segment" value={segmentId ?? ""} onChange={(e) => (setSaved(false), setSegmentId(e.target.value || null))} className="min-h-10 rounded-md border border-line bg-card px-3">
+            <select aria-label={we.segmentLabel} value={segmentId ?? ""} onChange={(e) => (setSaved(false), setSegmentId(e.target.value || null))} className="min-h-10 rounded-md border border-line bg-card px-3">
               {props.segments.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -129,7 +129,7 @@ export function BroadcastEditor(props: Props) {
             </select>
           )}
         </label>
-        {props.segments.length === 0 && <p className="text-caption text-muted">Make a segment under Marketing → Segments to send to some of them only.</p>}
+        {props.segments.length === 0 && <p className="text-caption text-muted">{we.noSegments}</p>}
         <p role="status" aria-live="polite" className="text-body text-ink-2">
           {people}
         </p>
@@ -155,11 +155,11 @@ export function BroadcastEditor(props: Props) {
       )}
       <div className="flex items-center gap-3">
         <Button kind="main" onClick={submit} disabled={saving}>
-          {saving ? "Saving…" : props.broadcastId ? "Save" : "Save draft"}
+          {saving ? w.common.saving : props.broadcastId ? w.common.save : we.saveDraft}
         </Button>
         {saved && (
           <span role="status" className="text-body text-positive-text">
-            Saved.
+            {w.common.saved}
           </span>
         )}
       </div>
@@ -179,6 +179,8 @@ export function EmailContentFields(props: {
   upload: Props["upload"];
 }) {
   const { storeSlug, content } = props;
+  const wm = useAdminText("marketing");
+  const we = wm.email;
   const [locale, setLocale] = useState(props.locales[0]?.code ?? "nb-NO");
   const current: LanguageContent = content[locale] ?? emptyContent();
   const setCurrent = (next: LanguageContent) => props.onChange({ ...content, [locale]: next });
@@ -192,7 +194,7 @@ export function EmailContentFields(props: {
   return (
     <>
       {props.locales.length > 1 && (
-        <div role="tablist" aria-label="Language" className="flex flex-wrap gap-2">
+        <div role="tablist" aria-label={wm.common.language} className="flex flex-wrap gap-2">
           {props.locales.map((l, i) => (
             <button
               key={l.code}
@@ -203,7 +205,7 @@ export function EmailContentFields(props: {
               className={`rounded-pill border px-3 py-1 text-body ${l.code === locale ? "border-edge bg-sunken text-ink" : "border-line text-ink-2 hover:bg-sunken"}`}
             >
               {l.name}
-              {i === 0 ? " (main)" : content[l.code]?.subject ? "" : " · not written"}
+              {i === 0 ? we.main : content[l.code]?.subject ? "" : we.notWritten}
             </button>
           ))}
         </div>
@@ -214,32 +216,32 @@ export function EmailContentFields(props: {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="broadcast-subject" className="text-body-strong text-ink">
-            Subject
+            {we.subject}
           </label>
           <input id="broadcast-subject" value={current.subject} maxLength={150} onChange={(e) => setCurrent({ ...current, subject: e.target.value })} className={field} />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="broadcast-preview" className="text-body-strong text-ink">
-            Preview line
+            {we.preview}
           </label>
-          <span className="text-caption text-muted">Shown beside the subject in most mail apps. Optional.</span>
+          <span className="text-caption text-muted">{we.previewHint}</span>
           <input id="broadcast-preview" value={current.preview} maxLength={200} onChange={(e) => setCurrent({ ...current, preview: e.target.value })} className={field} />
         </div>
 
-        <ol className="flex flex-col gap-3" aria-label="What the email says">
+        <ol className="flex flex-col gap-3" aria-label={we.blocksLabel}>
           {current.blocks.map((block, i) => (
             <li key={i} className="flex flex-col gap-2 rounded-panel border border-line bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-body-strong text-ink">{ADD.find((a) => a.type === block.type)?.label}</span>
+                <span className="text-body-strong text-ink">{we.blocks[block.type]}</span>
                 <span className="ml-auto flex gap-1">
                   <Button size="dense" kind="quiet" disabled={i === 0} onClick={() => move(i, -1)}>
-                    Up
+                    {we.up}
                   </Button>
                   <Button size="dense" kind="quiet" disabled={i === current.blocks.length - 1} onClick={() => move(i, 1)}>
-                    Down
+                    {we.down}
                   </Button>
                   <Button size="dense" kind="quiet" onClick={() => setCurrent({ ...current, blocks: current.blocks.filter((_, j) => j !== i) })}>
-                    Remove
+                    {wm.common.remove}
                   </Button>
                 </span>
               </div>
@@ -247,13 +249,13 @@ export function EmailContentFields(props: {
             </li>
           ))}
         </ol>
-        {current.blocks.length === 0 && <p className="text-body text-muted">Nothing here yet. Add a heading and some text.</p>}
+        {current.blocks.length === 0 && <p className="text-body text-muted">{we.nothing}</p>}
         {current.blocks.length < BLOCKS_MAX && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-body text-ink-2">Add</span>
-            {ADD.filter((a) => a.type !== "image" || props.upload).map((a) => (
-              <Button key={a.type} size="dense" onClick={() => setCurrent({ ...current, blocks: [...current.blocks, newBlock(a.type)] })}>
-                {a.label}
+            <span className="text-body text-ink-2">{we.add}</span>
+            {ADD.filter((type) => type !== "image" || props.upload).map((type) => (
+              <Button key={type} size="dense" onClick={() => setCurrent({ ...current, blocks: [...current.blocks, newBlock(type)] })}>
+                {we.blocks[type]}
               </Button>
             ))}
           </div>
@@ -278,20 +280,21 @@ function BlockFields({
   upload: Props["upload"];
 }) {
   const id = (name: string) => `block-${index}-${name}`;
+  const we = useAdminText("marketing").email;
   switch (block.type) {
     case "heading":
-      return <input aria-label="Heading" value={block.text} maxLength={150} onChange={(e) => onChange({ ...block, text: e.target.value })} className={field} />;
+      return <input aria-label={we.blocks.heading} value={block.text} maxLength={150} onChange={(e) => onChange({ ...block, text: e.target.value })} className={field} />;
     case "paragraph":
-      return <textarea aria-label="Text" value={block.text} maxLength={3000} rows={4} onChange={(e) => onChange({ ...block, text: e.target.value })} className={`${field} py-2`} />;
+      return <textarea aria-label={we.blocks.paragraph} value={block.text} maxLength={3000} rows={4} onChange={(e) => onChange({ ...block, text: e.target.value })} className={`${field} py-2`} />;
     case "button":
       return (
         <div className="grid gap-2 sm:grid-cols-2">
           <label htmlFor={id("words")} className="flex flex-col gap-1 text-caption text-ink-2">
-            Words on the button
+            {we.buttonWords}
             <input id={id("words")} value={block.text} maxLength={60} onChange={(e) => onChange({ ...block, text: e.target.value })} className={field} />
           </label>
           <label htmlFor={id("url")} className="flex flex-col gap-1 text-caption text-ink-2">
-            Where it goes (a page of your store such as /products, or https://…)
+            {we.buttonUrl}
             <input id={id("url")} value={block.url} maxLength={500} onChange={(e) => onChange({ ...block, url: e.target.value })} className={field} />
           </label>
         </div>
@@ -305,11 +308,11 @@ function BlockFields({
           ) : null}
           <PictureUpload storeSlug={storeSlug} upload={upload} onUploaded={(url) => onChange({ ...block, url })} has={Boolean(block.url)} />
           <label htmlFor={id("alt")} className="flex flex-col gap-1 text-caption text-ink-2">
-            What the picture shows (for people who cannot see it)
+            {we.alt}
             <input id={id("alt")} value={block.alt} maxLength={200} onChange={(e) => onChange({ ...block, alt: e.target.value })} className={field} />
           </label>
           <label htmlFor={id("href")} className="flex flex-col gap-1 text-caption text-ink-2">
-            Where pressing it goes (optional)
+            {we.href}
             <input id={id("href")} value={block.href ?? ""} maxLength={500} onChange={(e) => onChange({ ...block, href: e.target.value.trim() ? e.target.value : null })} className={field} />
           </label>
         </div>
@@ -323,6 +326,7 @@ function BlockFields({
 function PictureUpload({ storeSlug, upload, onUploaded, has }: { storeSlug: string; upload: Props["upload"]; onUploaded: (url: string) => void; has: boolean }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const we = useAdminText("marketing").email;
   if (!upload) return null;
   const choose = async (file: File | undefined) => {
     if (!file) return;
@@ -339,7 +343,7 @@ function PictureUpload({ storeSlug, upload, onUploaded, has }: { storeSlug: stri
       if (result.ok) onUploaded(result.url);
       else setProblem(result.problem);
     } catch {
-      setProblem("The picture could not be read. Try another.");
+      setProblem(we.unreadablePicture);
     } finally {
       setBusy(false);
     }
@@ -347,7 +351,7 @@ function PictureUpload({ storeSlug, upload, onUploaded, has }: { storeSlug: stri
   return (
     <div className="flex flex-col gap-1">
       <label className="inline-flex w-fit cursor-pointer items-center rounded-pill border border-line px-4 py-2 text-body text-ink hover:bg-sunken">
-        {busy ? "Uploading…" : has ? "Choose another picture" : "Choose a picture"}
+        {busy ? we.uploading : has ? we.chooseAnother : we.choosePicture}
         <input type="file" accept="image/*" className="sr-only" disabled={busy} onChange={(e) => choose(e.target.files?.[0])} />
       </label>
       {problem && (
@@ -364,12 +368,13 @@ function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; lo
   const [suggestion, setSuggestion] = useState<BroadcastSuggestion | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  const we = useAdminText("marketing").email;
   return (
     <details className={`${CARD_CLASS} p-4`}>
-      <summary className="cursor-pointer text-body-strong text-ink">Write with AI</summary>
+      <summary className="cursor-pointer text-body-strong text-ink">{we.writeWithAi}</summary>
       <div className="mt-3 flex flex-col gap-2">
         <label htmlFor="broadcast-brief" className="text-caption text-ink-2">
-          In a few words, what is the email about? The AI writes from these words only, never prices or stock.
+          {we.brief}
         </label>
         <textarea id="broadcast-brief" value={brief} maxLength={1000} rows={2} onChange={(e) => setBrief(e.target.value)} className={`${field} py-2`} />
         <div>
@@ -384,7 +389,7 @@ function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; lo
               })
             }
           >
-            {busy ? "Writing…" : "Suggest"}
+            {busy ? we.writing : we.suggest}
           </Button>
         </div>
         {problem && (
@@ -401,9 +406,9 @@ function AiWriter({ storeSlug, locale, suggest, onUse }: { storeSlug: string; lo
                 {p}
               </p>
             ))}
-            <p className="text-caption text-muted">Read it and change what you like. It replaces what this language says now; add the button&apos;s address before you save.</p>
+            <p className="text-caption text-muted">{we.readIt}</p>
             <div>
-              <Button onClick={() => (onUse(suggestion), setSuggestion(null))}>Use this</Button>
+              <Button onClick={() => (onUse(suggestion), setSuggestion(null))}>{we.useThis}</Button>
             </div>
           </div>
         )}

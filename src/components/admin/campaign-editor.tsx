@@ -18,6 +18,9 @@ import {
   type GetKind,
   type TierBasis,
 } from "@/lib/campaigns";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 type Save = (input: CampaignInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type Market = { code: string; name: string; currency: string };
@@ -68,15 +71,8 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
-const KINDS: { value: CampaignKind; title: string; text: string }[] = [
-  { value: "percent", title: "A percentage off", text: "For example 20 % off the chosen products, without a code." },
-  { value: "multi_buy", title: "Buy more, pay for fewer", text: "3 for 2: the cheapest of every three is free." },
-  { value: "amount", title: "An amount off", text: "For example NOK 100 off, optionally when the basket comes to NOK 500." },
-  { value: "tiered", title: "Bigger discounts for buying more", text: "For example 10 % off 2 items and 15 % off 4, or by what the basket comes to." },
-  { value: "free_shipping", title: "Free shipping", text: "No shipping to pay, optionally when the basket comes to an amount." },
-  { value: "bxgy", title: "Buy one thing, get another", text: "For example buy 2 shirts, get a cap free, or buy 2 and get the cheapest at half price." },
-  { value: "gift", title: "A free product", text: "Added to the order, free, when the basket comes to an amount." },
-];
+/** The kinds in the order the editor offers them; their words are the catalogue's (`campaignEditor.kinds`). */
+const KINDS: readonly CampaignKind[] = ["percent", "multi_buy", "amount", "tiered", "free_shipping", "bxgy", "gift"];
 
 /** Kinds that can also come on top of other campaigns. */
 const STACKING: readonly CampaignKind[] = ["percent", "multi_buy", "tiered"];
@@ -109,6 +105,9 @@ export function CampaignEditor({
   save: Save;
   back: string;
 }) {
+  const t = useAdminText("discounts");
+  const f = t.form;
+  const w = t.campaignEditor;
   const router = useRouter();
   const [d, setD] = useState(initial);
   const [problems, setProblems] = useState<string[]>([]);
@@ -169,19 +168,19 @@ export function CampaignEditor({
     const parent = term.parentId ? terms.find((t) => t.id === term.parentId) : null;
     return parent ? `${path(parent)} › ${term.name}` : term.name;
   };
-  const scopeWord = d.kind === "bxgy" ? "What they buy" : d.kind === "gift" || d.kind === "free_shipping" ? "What counts towards the amount" : "What it applies to";
+  const scopeWord = d.kind === "bxgy" ? w.scopeBuy : d.kind === "gift" || d.kind === "free_shipping" ? w.scopeCounts : f.whatItAppliesTo;
   /** Fields for an amount in each country's currency. */
   const perMarket = (values: Record<string, string>, change: (next: Record<string, string>) => void, placeholder: string, prefix: string) => (
     <div className="grid gap-3 sm:grid-cols-3">
       {markets.map((market) => (
         <label key={market.code} className={label}>
-          {market.name} ({market.currency})
+          {fillWords(f.market, { name: market.name, currency: market.currency })}
           <input
             value={values[market.code] ?? ""}
             onChange={(event) => change({ ...values, [market.code]: event.target.value })}
             inputMode="decimal"
             placeholder={placeholder}
-            aria-label={`${prefix}, ${market.name}`}
+            aria-label={fillWords(w.fieldFor, { what: prefix, market: market.name })}
             className={input}
           />
         </label>
@@ -200,7 +199,7 @@ export function CampaignEditor({
     >
       {problems.length > 0 && (
         <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          <p className="font-medium">Nothing was saved yet. Please fix:</p>
+          <p className="font-medium">{f.fix}</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -211,10 +210,10 @@ export function CampaignEditor({
 
       <section aria-labelledby="campaign-heading" className={card}>
         <h2 id="campaign-heading" className="text-title text-ink">
-          The campaign
+          {w.theCampaign}
         </h2>
         <label className={label}>
-          Name
+          {w.name}
           <input
             value={d.name}
             onChange={(event) => set("name", event.target.value)}
@@ -224,18 +223,18 @@ export function CampaignEditor({
             aria-describedby="name-hint"
           />
           <span id="name-hint" className={hint}>
-            Shoppers see it in their cart, at checkout and on their order, so write it for them: “Summer sale”, “3 for 2 on mugs”.
-            {orders > 0 && ` ${orders} ${orders === 1 ? "order has" : "orders have"} got something from it and keep it, whatever you change here.`}
+            {w.nameHint}
+            {orders > 0 && countWords(orders, w.ordersHint)}
           </span>
         </label>
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">What it gives</legend>
+          <legend className="mb-1 text-sm font-medium">{f.whatItGives}</legend>
           {KINDS.map((kind) => (
-            <label key={kind.value} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
-              <input type="radio" name="kind" checked={d.kind === kind.value} onChange={() => set("kind", kind.value)} className="mt-0.5 size-4" />
+            <label key={kind} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
+              <input type="radio" name="kind" checked={d.kind === kind} onChange={() => set("kind", kind)} className="mt-0.5 size-4" />
               <span>
-                <span className="font-medium">{kind.title}</span>
-                <span className={`block ${hint}`}>{kind.text}</span>
+                <span className="font-medium">{w.kinds[kind].title}</span>
+                <span className={`block ${hint}`}>{w.kinds[kind].text}</span>
               </span>
             </label>
           ))}
@@ -243,64 +242,62 @@ export function CampaignEditor({
 
         {d.kind === "percent" && (
           <label className={`${label} max-w-40`}>
-            Percent off
+            {f.percentOff}
             <input type="number" min={1} max={100} value={d.percent} onChange={(event) => set("percent", event.target.value)} required inputMode="numeric" className={input} />
           </label>
         )}
         {d.kind === "amount" && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Amount off, in each country&apos;s currency</p>
-            {perMarket(d.amounts, (next) => set("amounts", next), "Not offered", "Amount off")}
-            <p className={hint}>Shared over the products it applies to by what each costs, never more than they cost. Leave a country empty and the campaign does not run there.</p>
+            <p className="text-sm font-medium">{f.amountPerCountry}</p>
+            {perMarket(d.amounts, (next) => set("amounts", next), f.notOffered, w.amountOff)}
+            <p className={hint}>{w.amountHint}</p>
           </div>
         )}
         {(d.kind === "amount" || d.kind === "free_shipping") && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">When the basket comes to (optional)</p>
-            {perMarket(d.thresholds, (next) => set("thresholds", next), "Any basket", "When the basket comes to")}
-            <p className={hint}>
-              What the products it applies to come to, with VAT{d.kind === "free_shipping" ? ", after any campaign price reductions" : ""}. Empty: any basket. The cart tells shoppers how much more they need.
-            </p>
+            <p className="text-sm font-medium">{w.threshold}</p>
+            {perMarket(d.thresholds, (next) => set("thresholds", next), w.anyBasket, w.basketComesTo)}
+            <p className={hint}>{fillWords(w.thresholdHint, { after: d.kind === "free_shipping" ? w.afterReductions : "" })}</p>
           </div>
         )}
         {d.kind === "free_shipping" && (
-          <p className={hint}>The order&apos;s whole shipping is free, whichever delivery the shopper chooses. Not for subscriptions, which pay shipping on each delivery.</p>
+          <p className={hint}>{w.freeShippingHint}</p>
         )}
         {d.kind === "tiered" && (
           <div className="flex flex-col gap-3">
             <fieldset className="flex flex-wrap gap-4">
-              <legend className="mb-1 text-sm font-medium">Each step counts</legend>
+              <legend className="mb-1 text-sm font-medium">{w.stepCounts}</legend>
               <label className="flex min-h-10 items-center gap-2 text-sm">
                 <input type="radio" name="tierBasis" checked={d.tierBasis === "quantity"} onChange={() => set("tierBasis", "quantity")} className="size-4" />
-                Items bought
+                {w.itemsBought}
               </label>
               <label className="flex min-h-10 items-center gap-2 text-sm">
                 <input type="radio" name="tierBasis" checked={d.tierBasis === "spend"} onChange={() => set("tierBasis", "spend")} className="size-4" />
-                What the basket comes to
+                {w.basketTotal}
               </label>
             </fieldset>
             <ol className="flex flex-col gap-3">
               {d.tiers.map((tier, i) => (
                 <li key={i} className="flex flex-col gap-2 rounded-md border border-line p-3">
                   <div className="flex flex-wrap items-end gap-3">
-                    <span className="text-sm font-medium">Step {i + 1}</span>
+                    <span className="text-sm font-medium">{fillWords(w.step, { n: i + 1 })}</span>
                     {d.tierBasis === "quantity" && (
                       <label className={`${label} w-32`}>
-                        From items
+                        {w.fromItems}
                         <input type="number" min={1} max={TIER_QUANTITY_MAX} value={tier.quantity} onChange={(event) => setTier(i, { quantity: event.target.value })} required inputMode="numeric" className={input} />
                       </label>
                     )}
                     <label className={`${label} w-32`}>
-                      Percent off
+                      {f.percentOff}
                       <input type="number" min={1} max={100} value={tier.percent} onChange={(event) => setTier(i, { percent: event.target.value })} required inputMode="numeric" className={input} />
                     </label>
                     {d.tiers.length > TIERS_MIN && (
                       <button type="button" onClick={() => set("tiers", d.tiers.filter((_, j) => j !== i))} className="min-h-10 rounded-pill px-3 text-sm underline">
-                        Remove step {i + 1}
+                        {fillWords(w.removeStep, { n: i + 1 })}
                       </button>
                     )}
                   </div>
-                  {d.tierBasis === "spend" && perMarket(tier.amounts, (next) => setTier(i, { amounts: next }), "Not offered", `Step ${i + 1} from`)}
+                  {d.tierBasis === "spend" && perMarket(tier.amounts, (next) => setTier(i, { amounts: next }), f.notOffered, fillWords(w.stepFrom, { n: i + 1 }))}
                 </li>
               ))}
             </ol>
@@ -310,69 +307,67 @@ export function CampaignEditor({
                 onClick={() => set("tiers", [...d.tiers, { quantity: "", amounts: {}, percent: "" }])}
                 className="self-start rounded-pill border border-line px-4 py-2 text-sm"
               >
-                Add a step
+                {w.addStep}
               </button>
             )}
-            <p className={hint}>
-              The highest step the shopper reaches applies, to every product it applies to. Each step asks for more and gives more than the one before. The product page shows the steps, and the cart how far the next one is.
-            </p>
+            <p className={hint}>{w.tiersHint}</p>
           </div>
         )}
         {d.kind === "bxgy" && (
           <div className="flex flex-col gap-3">
             <fieldset className="flex flex-wrap gap-4">
-              <legend className="mb-1 text-sm font-medium">They buy</legend>
+              <legend className="mb-1 text-sm font-medium">{w.theyBuy}</legend>
               <label className="flex min-h-10 items-center gap-2 text-sm">
                 <input type="radio" name="buyBasis" checked={d.buyBasis === "items"} onChange={() => set("buyBasis", "items")} className="size-4" />
-                A number of items
+                {w.numberOfItems}
               </label>
               <label className="flex min-h-10 items-center gap-2 text-sm">
                 <input type="radio" name="buyBasis" checked={d.buyBasis === "spend"} onChange={() => set("buyBasis", "spend")} className="size-4" />
-                For an amount
+                {w.forAnAmount}
               </label>
             </fieldset>
             {d.buyBasis === "items" ? (
               <label className={`${label} w-32`}>
-                Items
+                {w.items}
                 <input type="number" min={1} max={BUY_MIN_MAX} value={d.buyMinQuantity} onChange={(event) => set("buyMinQuantity", event.target.value)} required inputMode="numeric" className={input} />
               </label>
             ) : (
-              perMarket(d.buyMinAmounts, (next) => set("buyMinAmounts", next), "Not offered", "They spend")
+              perMarket(d.buyMinAmounts, (next) => set("buyMinAmounts", next), f.notOffered, w.theySpend)
             )}
             <div className="flex flex-wrap items-end gap-3">
               <label className={`${label} w-32`}>
-                They get
+                {w.theyGet}
                 <input type="number" min={1} max={GET_QUANTITY_MAX} value={d.getQuantity} onChange={(event) => set("getQuantity", event.target.value)} required inputMode="numeric" className={input} />
               </label>
               <label className={`${label} w-56`}>
-                At
+                {w.at}
                 <select value={d.getKind} onChange={(event) => set("getKind", event.target.value as GetKind)} className={input}>
-                  <option value="free">No cost</option>
-                  <option value="percent">A percentage off</option>
-                  <option value="amount">An amount off each</option>
+                  <option value="free">{w.getKinds.free}</option>
+                  <option value="percent">{w.getKinds.percent}</option>
+                  <option value="amount">{w.getKinds.amount}</option>
                 </select>
               </label>
               {d.getKind === "percent" && (
                 <label className={`${label} w-32`}>
-                  Percent off
+                  {f.percentOff}
                   <input type="number" min={1} max={100} value={d.getPercent} onChange={(event) => set("getPercent", event.target.value)} required inputMode="numeric" className={input} />
                 </label>
               )}
             </div>
-            {d.getKind === "amount" && perMarket(d.getAmounts, (next) => set("getAmounts", next), "Not offered", "Off each")}
+            {d.getKind === "amount" && perMarket(d.getAmounts, (next) => set("getAmounts", next), f.notOffered, w.offEach)}
             <fieldset className="flex flex-col gap-2">
-              <legend className="mb-1 text-sm font-medium">What they get</legend>
+              <legend className="mb-1 text-sm font-medium">{w.whatTheyGet}</legend>
               <label className="flex min-h-10 items-center gap-3 text-sm">
                 <input type="radio" name="getScope" checked={d.getScope === "same"} onChange={() => set("getScope", "same")} className="size-4" />
-                The same as what they buy (the cheapest)
+                {w.getSame}
               </label>
               <label className="flex min-h-10 items-center gap-3 text-sm">
                 <input type="radio" name="getScope" checked={d.getScope === "some"} onChange={() => set("getScope", "some")} className="size-4" />
-                Other products, categories or tags
+                {w.getOther}
               </label>
             </fieldset>
             {d.getScope === "some" && (
-              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2" aria-label="What they get">
+              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2" aria-label={w.whatTheyGet}>
                 {terms.map((term) => (
                   <li key={`t:${term.id}`}>
                     <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
@@ -392,22 +387,18 @@ export function CampaignEditor({
               </ul>
             )}
             <label className={`${label} max-w-56`}>
-              Times per order (optional)
-              <input type="number" min={1} max={USES_PER_ORDER_MAX} value={d.usesPerOrder} onChange={(event) => set("usesPerOrder", event.target.value)} placeholder="As often as the basket allows" inputMode="numeric" className={input} />
+              {w.usesPerOrder}
+              <input type="number" min={1} max={USES_PER_ORDER_MAX} value={d.usesPerOrder} onChange={(event) => set("usesPerOrder", event.target.value)} placeholder={w.asOften} inputMode="numeric" className={input} />
             </label>
-            <p className={hint}>
-              The shopper puts the items in the basket; the cheapest of what they get comes off, never an item counted as bought. Product pages of both say so.
-            </p>
+            <p className={hint}>{w.bxgyHint}</p>
           </div>
         )}
         {STACKING.includes(d.kind) && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={d.stacks} onChange={(event) => set("stacks", event.target.checked)} className="mt-0.5 size-4" />
             <span>
-              Also apply on top of other campaigns
-              <span className={`block ${hint}`}>
-                Normally a product gets one campaign, the one that gives the shopper most. With this on, {d.kind === "multi_buy" ? "it also works on the items still to be paid for after the other campaigns, so two 3 for 2 free more items" : "the percentage also comes off what the other campaign left"}, one campaign after the other in the order they were made.
-              </span>
+              {w.stacks}
+              <span className={`block ${hint}`}>{fillWords(w.stacksHint, { how: d.kind === "multi_buy" ? w.stacksMulti : w.stacksPercent })}</span>
             </span>
           </label>
         )}
@@ -416,16 +407,19 @@ export function CampaignEditor({
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-end gap-3">
               <label className={`${label} w-32`}>
-                Shopper buys
+                {w.buys}
                 <input type="number" min={2} max={MULTI_BUY_MAX} value={d.buyQuantity} onChange={(event) => set("buyQuantity", event.target.value)} required inputMode="numeric" className={input} />
               </label>
               <label className={`${label} w-32`}>
-                and pays for
+                {w.paysFor}
                 <input type="number" min={1} max={MULTI_BUY_MAX} value={d.payQuantity} onChange={(event) => set("payQuantity", event.target.value)} required inputMode="numeric" className={input} />
               </label>
             </div>
             <p className={hint}>
-              In every full group of {d.buyQuantity || "N"} items the {Number(d.buyQuantity) - Number(d.payQuantity) > 1 ? `${Number(d.buyQuantity) - Number(d.payQuantity)} cheapest are` : "cheapest is"} free. The items can be different products, as long as the campaign applies to them.
+              {fillWords(w.multiHint, {
+                buy: d.buyQuantity || "N",
+                free: countWords(Number(d.buyQuantity) - Number(d.payQuantity) > 1 ? Number(d.buyQuantity) - Number(d.payQuantity) : 1, w.multiFree),
+              })}
             </p>
           </div>
         )}
@@ -433,40 +427,38 @@ export function CampaignEditor({
         {d.kind === "gift" && (
           <>
             <label className={label}>
-              The free product
+              {w.giftProduct}
               <select value={d.giftVariantId} onChange={(event) => set("giftVariantId", event.target.value)} required className={input}>
-                <option value="">Choose a product</option>
+                <option value="">{w.chooseProduct}</option>
                 {gifts.map((gift) => (
                   <option key={gift.variantId} value={gift.variantId}>
                     {gift.label}
                   </option>
                 ))}
               </select>
-              <span className={hint}>Goods you ship yourself. It is only added when it is in stock and the order ships anyway.</span>
+              <span className={hint}>{w.giftHint}</span>
             </label>
             <label className={`${label} w-40`}>
-              How many
+              {w.howMany}
               <input type="number" min={1} max={GIFT_QUANTITY_MAX} value={d.giftQuantity} onChange={(event) => set("giftQuantity", event.target.value)} required inputMode="numeric" className={input} />
             </label>
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">When the basket comes to, in each country&apos;s currency</p>
+              <p className="text-sm font-medium">{w.giftThreshold}</p>
               <div className="grid gap-3 sm:grid-cols-3">
                 {markets.map((market) => (
                   <label key={market.code} className={label}>
-                    {market.name} ({market.currency})
+                    {fillWords(f.market, { name: market.name, currency: market.currency })}
                     <input
                       value={d.thresholds[market.code] ?? ""}
                       onChange={(event) => set("thresholds", { ...d.thresholds, [market.code]: event.target.value })}
                       inputMode="decimal"
-                      placeholder="Not offered"
+                      placeholder={f.notOffered}
                       className={input}
                     />
                   </label>
                 ))}
               </div>
-              <p className={hint}>
-                Counted after any campaign price reductions, before shipping and codes, with VAT. Leave a country empty and the campaign does not run there.
-              </p>
+              <p className={hint}>{w.giftThresholdHint}</p>
             </div>
           </>
         )}
@@ -480,18 +472,18 @@ export function CampaignEditor({
           <legend className="sr-only">{scopeWord}</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="scope" checked={d.scope === "all"} onChange={() => set("scope", "all")} className="size-4" />
-            Everything in the store
+            {f.everything}
           </label>
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="scope" checked={d.scope === "some"} onChange={() => set("scope", "some")} className="size-4" />
-            Only some products, categories or tags
+            {f.some}
           </label>
         </fieldset>
         {d.scope === "some" && (
           <div className="flex flex-col gap-4">
             {categories.length + tags.length > 0 && (
               <fieldset className="flex flex-col gap-2">
-                <legend className="text-sm font-medium">Categories and tags</legend>
+                <legend className="text-sm font-medium">{f.categoriesAndTags}</legend>
                 <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                   {[...categories, ...tags].map((term) => (
                     <li key={term.id}>
@@ -502,11 +494,11 @@ export function CampaignEditor({
                     </li>
                   ))}
                 </ul>
-                <p className={hint}>A category takes in the products in its subcategories.</p>
+                <p className={hint}>{f.subcategories}</p>
               </fieldset>
             )}
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium">Products</legend>
+              <legend className="text-sm font-medium">{f.products}</legend>
               <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                 {products.map((product) => (
                   <li key={product.id}>
@@ -521,57 +513,55 @@ export function CampaignEditor({
           </div>
         )}
         {d.kind !== "gift" && d.kind !== "free_shipping" && (
-          <p className={hint}>
-            Campaigns take money off goods bought once: not appointments, stays, rentals or subscriptions. Where two campaigns apply to the same products, the one that gives the shopper more is used. The buyer&apos;s customer group discount and any discount code come off what is left.
-          </p>
+          <p className={hint}>{w.goodsHint}</p>
         )}
       </section>
 
       <section aria-labelledby="when-heading" className={card}>
         <h2 id="when-heading" className="text-title text-ink">
-          When
+          {w.when}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}>
-            Starts (optional)
+            {f.starts}
             <input type="datetime-local" value={d.startsAt} onChange={(event) => set("startsAt", event.target.value)} className={input} />
           </label>
           <label className={label}>
-            Ends (optional)
+            {f.ends}
             <input type="datetime-local" value={d.endsAt} onChange={(event) => set("endsAt", event.target.value)} className={input} />
           </label>
         </div>
-        <p className={hint}>Norwegian time. It starts and stops by itself; without dates it runs while it is switched on.</p>
+        <p className={hint}>{w.dateHint}</p>
         <label className={`${label} max-w-56`}>
-          Orders it can go to in all (optional)
-          <input type="number" min={1} value={d.usageLimit} onChange={(event) => set("usageLimit", event.target.value)} placeholder="No limit" inputMode="numeric" className={input} />
-          <span className={hint}>An order counts once, however many products it took effect on. It stops by itself when they are used up.</span>
+          {w.usageLimit}
+          <input type="number" min={1} value={d.usageLimit} onChange={(event) => set("usageLimit", event.target.value)} placeholder={f.noLimit} inputMode="numeric" className={input} />
+          <span className={hint}>{w.usageLimitHint}</span>
         </label>
         <label className={`${label} max-w-56`}>
-          Orders for each customer (optional)
-          <input type="number" min={1} value={d.perCustomerLimit} onChange={(event) => set("perCustomerLimit", event.target.value)} placeholder="No limit" inputMode="numeric" className={input} />
-          <span className={hint}>Once per customer is 1. Shoppers must be signed in to My account to get it, so the store knows who they are; the product pages say so.</span>
+          {w.perCustomer}
+          <input type="number" min={1} value={d.perCustomerLimit} onChange={(event) => set("perCustomerLimit", event.target.value)} placeholder={f.noLimit} inputMode="numeric" className={input} />
+          <span className={hint}>{w.perCustomerHint}</span>
         </label>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
-          Switched on
+          {f.switchedOn}
         </label>
       </section>
 
       {markets.length > 1 && (
         <section aria-labelledby="where-heading" className={card}>
           <h2 id="where-heading" className="text-title text-ink">
-            Where
+            {w.where}
           </h2>
           <fieldset className="flex flex-col gap-2">
-            <legend className="sr-only">Countries</legend>
+            <legend className="sr-only">{w.countries}</legend>
             <label className="flex min-h-10 items-center gap-3 text-sm">
               <input type="radio" name="where" checked={d.markets.length === 0} onChange={() => set("markets", [])} className="size-4" />
-              Every country the store sells to
+              {w.everyCountry}
             </label>
             <label className="flex min-h-10 items-center gap-3 text-sm">
               <input type="radio" name="where" checked={d.markets.length > 0} onChange={() => d.markets.length === 0 && set("markets", [markets[0].code])} className="size-4" />
-              Only some countries
+              {w.someCountries}
             </label>
           </fieldset>
           {d.markets.length > 0 && (
@@ -586,27 +576,27 @@ export function CampaignEditor({
               ))}
             </ul>
           )}
-          <p className={hint}>A free product over an amount also needs the amount for each country it runs in.</p>
+          <p className={hint}>{w.whereHint}</p>
         </section>
       )}
 
       <section aria-labelledby="who-heading" className={card}>
         <h2 id="who-heading" className="text-title text-ink">
-          Who
+          {w.who}
         </h2>
         {tiers.length === 0 ? (
-          <p className="text-sm text-muted">It is for every shopper. Make customer groups under Customer groups to give a campaign to some customers only.</p>
+          <p className="text-sm text-muted">{w.noGroups}</p>
         ) : (
           <>
             <fieldset className="flex flex-col gap-2">
-              <legend className="sr-only">Who it is for</legend>
+              <legend className="sr-only">{w.whoFor}</legend>
               <label className="flex min-h-10 items-center gap-3 text-sm">
                 <input type="radio" name="who" checked={d.tierIds.length === 0} onChange={() => set("tierIds", [])} className="size-4" />
-                Every shopper
+                {w.everyShopper}
               </label>
               <label className="flex min-h-10 items-center gap-3 text-sm">
                 <input type="radio" name="who" checked={d.tierIds.length > 0} onChange={() => d.tierIds.length === 0 && set("tierIds", [tiers[0].id])} className="size-4" />
-                Only customers in these groups
+                {f.groupsOnly}
               </label>
             </fieldset>
             {d.tierIds.length > 0 && (
@@ -616,25 +606,23 @@ export function CampaignEditor({
                     <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                       <input type="checkbox" checked={d.tierIds.includes(tier.id)} onChange={(event) => toggle("tierIds", tier.id, event.target.checked)} className="size-4" />
                       {tier.name}
-                      {!tier.active && <span className={hint}> (switched off)</span>}
+                      {!tier.active && <span className={hint}>{f.switchedOffTag}</span>}
                     </label>
                   </li>
                 ))}
               </ul>
             )}
-            <p className={hint}>
-              Shoppers must be signed in to My account. A company&apos;s employees are in its group. A campaign for chosen groups is not announced on product pages, which are the same for everyone.
-            </p>
+            <p className={hint}>{w.groupsHint}</p>
           </>
         )}
       </section>
 
       <div className="flex items-center gap-3">
         <button type="submit" disabled={saving} className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50">
-          {saving ? "Saving …" : "Save campaign"}
+          {saving ? f.saving : w.save}
         </button>
         <a href={back} className="text-sm underline">
-          Cancel
+          {f.cancel}
         </a>
       </div>
     </form>

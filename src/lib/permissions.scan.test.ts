@@ -386,6 +386,7 @@ describe("nothing else decides who the owner is", () => {
     "stores.some((s) => s.role",
     'access.role === "owner" ? "Main account of "',
     'member.role === "owner" ? "Main account" : "Employee"',
+    'member.role === "owner" ? words.mainAccount : words.employee',
     "people.find((p) => p.role",
     'owner.role === "owner" ? "Owner" : "Staff"',
     "s.role === \"owner\"",

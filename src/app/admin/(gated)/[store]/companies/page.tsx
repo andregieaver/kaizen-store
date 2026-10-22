@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
@@ -22,21 +25,23 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
   const off = requireFeature(current, "business");
   if (off) return off;
   const { store } = current;
+  const all = adminText(adminLangOf(current.account.adminLocale), "customers");
+  const words = all.companies;
   const [companies, groups] = await Promise.all([listCompanies(store.id), listTiers(store.id)]);
   const base = `/admin/${store.slug}`;
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="Companies"
-        description={<>A company&apos;s main account invites its employees by email from My account in the store. Everyone in the company gets its group&apos;s discount, employees the share you set.</>}
+        title={words.title}
+        description={words.description}
       />
 
       {companies.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>No companies yet.</p>
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>{words.none}</p>
       ) : (
         <Card compact>
-          <List label="Companies">
+          <List label={words.title}>
             {companies.map((company) => {
               const percent = employeePercent({ ...company });
               return (
@@ -45,16 +50,16 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
                     title={company.name}
                     sub={
                       <>
-                        {company.tierName ? `${company.tierName} (${company.tierPercent} %)${company.tierActive ? "" : ", off"}` : "No group"}
-                        {percent ? ` · employees get ${percent} %` : ""}
+                        {company.tierName ? `${company.tierName} (${company.tierPercent} %)${company.tierActive ? "" : words.off}` : words.noGroup}
+                        {percent ? fillWords(words.employeesGet, { percent }) : ""}
                       </>
                     }
                   />
-                  <RowFact sub={company.pendingInvites > 0 ? `${company.pendingInvites} waiting` : undefined}>
-                    {company.members} of {company.maxMembers} accounts
+                  <RowFact sub={company.pendingInvites > 0 ? fillWords(words.waiting, { n: company.pendingInvites }) : undefined}>
+                    {fillWords(words.accounts, { members: company.members, max: company.maxMembers })}
                   </RowFact>
                   <Chip signal={company.active ? "positive" : "neutral"} dot>
-                    {company.active ? "Active" : "Switched off"}
+                    {company.active ? words.active : words.switchedOff}
                   </Chip>
                 </ListRow>
               );
@@ -63,16 +68,17 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
         </Card>
       )}
 
-      <Card title="New company" className="flex max-w-xl flex-col gap-3" compact>
+      <Card title={words.newCompany} className="flex max-w-xl flex-col gap-3" compact>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, null)} className="flex flex-col gap-3">
           <CompanyFields
             groups={groups}
             main
+            words={all.fields}
             lookup={lookupRegisterCompanyAction.bind(null, store.slug)}
             search={searchRegisterCompaniesAction.bind(null, store.slug)}
           />
           <div>
-            <SubmitButton>Make company</SubmitButton>
+            <SubmitButton>{words.make}</SubmitButton>
           </div>
         </ActionForm>
       </Card>

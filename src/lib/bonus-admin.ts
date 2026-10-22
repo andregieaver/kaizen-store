@@ -1,4 +1,6 @@
 import { BONUS_KIND_LABELS, isGrantKind, earnAmount, restoreShare, type BonusEntry, type BonusOverview, type BonusSettings } from "./bonus";
+import { countWords, fillWords } from "./admin-fill";
+import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { bonusSettingsInput } from "./bonus-schema";
 import { formatMoney, minorUnitDigits } from "./money";
 import { formatPriceInput, parsePrice } from "./product-input";
@@ -87,29 +89,33 @@ const wholeNumber = (text: string): number | null => (/^\d{1,9}$/.test(text.trim
  * The form read into settings, checked with `bonusSettingsInput` (the server's own check). Every field that is wrong
  * gets its own message, in the words of the contract where it has them.
  */
-export function readBonusForm(values: BonusFormValues, currency: string): BonusFormRead {
+export function readBonusForm(
+  values: BonusFormValues,
+  currency: string,
+  w: LoyaltyMessages["bonus"]["errors"] = loyaltyEn.bonus.errors,
+): BonusFormRead {
   const errors: Partial<Record<BonusField, string>> = {};
 
   const earnBps = percentTextToBps(values.earnPercent);
-  if (earnBps === null) errors.earnPercent = "Write a percentage such as 5 or 2.5.";
+  if (earnBps === null) errors.earnPercent = w.earnPercent;
 
   const pendingDays = wholeNumber(values.pendingDays);
-  if (pendingDays === null) errors.pendingDays = "Write a number of days, or 0 to allow use at once.";
+  if (pendingDays === null) errors.pendingDays = w.pendingDays;
 
   const maxRedeemPercent = wholeNumber(values.maxRedeemPercent);
-  if (maxRedeemPercent === null) errors.maxRedeemPercent = "Write a whole percentage such as 50.";
+  if (maxRedeemPercent === null) errors.maxRedeemPercent = w.maxRedeemPercent;
 
   let minRedeemMinor: number | null = 0;
   if (values.minRedeem.trim() !== "") {
     minRedeemMinor = parsePrice(values.minRedeem, currency);
     if (minRedeemMinor === null)
-      errors.minRedeem = `Write an amount in ${currency} such as 50 or 49,50, or leave it empty for no minimum.`;
+      errors.minRedeem = fillWords(w.minRedeem, { currency });
   }
 
   let expiresMonths: number | null = null;
   if (values.expires) {
     expiresMonths = wholeNumber(values.expiresMonths);
-    if (expiresMonths === null) errors.expiresMonths = "Write a number of months, such as 12.";
+    if (expiresMonths === null) errors.expiresMonths = w.expiresMonths;
   }
 
   // What could be read is checked against the contract, so its limits are said in its own words.
@@ -131,7 +137,7 @@ export function readBonusForm(values: BonusFormValues, currency: string): BonusF
     };
     for (const issue of parsed.error.issues) {
       const field = fieldOf[String(issue.path[0])];
-      if (field && !errors[field]) errors[field] = friendly(field, issue.message);
+      if (field && !errors[field]) errors[field] = friendly(field, issue.message, w);
     }
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -139,17 +145,17 @@ export function readBonusForm(values: BonusFormValues, currency: string): BonusF
 }
 
 /** The contract's own messages are kept; the ones zod writes itself (a number out of range) are put in words. */
-function friendly(field: BonusField, message: string): string {
+function friendly(field: BonusField, message: string, w: LoyaltyMessages["bonus"]["errors"]): string {
   if (/^(Too small|Too big|Invalid|Number must|Expected)/i.test(message) || message === "Invalid input") {
     switch (field) {
       case "pendingDays":
-        return "Write a number of days from 0 to 90.";
+        return w.pendingRange;
       case "minRedeem":
-        return "Keep the minimum at a sensible amount.";
+        return w.minRange;
       case "expiresMonths":
-        return "Write a number of months from 1 to 60.";
+        return w.monthsRange;
       default:
-        return "Check this number.";
+        return w.checkNumber;
     }
   }
   return message;
@@ -178,19 +184,19 @@ export function earnExample(
   currency: string,
   locale: string,
   orderMajor = 1000,
+  template = loyaltyEn.bonus.example,
 ): { orderLabel: string; earnLabel: string; sentence: string } {
   const orderMinor = orderMajor * 10 ** minorUnitDigits(currency);
   const orderLabel = formatMoney(orderMinor, currency, locale);
   const earnLabel = formatMoney(earnAmount(orderMinor, earnBps), currency, locale);
-  return { orderLabel, earnLabel, sentence: `A ${orderLabel} order earns ${earnLabel} in credits.` };
+  return { orderLabel, earnLabel, sentence: fillWords(template, { order: orderLabel, earn: earnLabel }) };
 }
 
-const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
-const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
+type RuleWords = LoyaltyMessages["bonusRules"];
 
 /** The wait before credits can be used, as the shopper's texts say it ("right after you pay", "14 days after you pay"). */
-export function waitWords(pendingDays: number): string {
-  return pendingDays <= 0 ? "right after you pay" : `${days(pendingDays)} after you pay`;
+export function waitWords(pendingDays: number, w: RuleWords = loyaltyEn.bonusRules): string {
+  return pendingDays <= 0 ? w.rightAfter : fillWords(w.after, { days: countWords(pendingDays, w.days) });
 }
 
 /**
@@ -199,59 +205,50 @@ export function waitWords(pendingDays: number): string {
  * owner sets: the limit on an order and the least to use. The admin's summary, the confirmation of a change and what
  * the AI manager says all come from here, so they never disagree.
  */
-export function rulesSummary(settings: BonusSettings, money: MoneyFormat, currency: string): string[] {
+export function rulesSummary(settings: BonusSettings, money: MoneyFormat, currency: string, w: RuleWords = loyaltyEn.bonusRules): string[] {
   const lines: string[] = [];
   lines.push(
     settings.earnBps > 0
-      ? `You earn ${bpsToPercentText(settings.earnBps)}% back in bonus credits on what you pay for goods, and the credits are usable ${waitWords(settings.pendingDays)}.`
-      : "Customers earn no bonus credits: credits back is 0%.",
+      ? fillWords(w.earn, { percent: percentNumber(settings.earnBps, w), wait: waitWords(settings.pendingDays, w) })
+      : w.none,
   );
   lines.push(
-    settings.expiresMonths === null
-      ? "Credits come off the price of goods at checkout, up to the store's limit on each order. You pay shipping yourself."
-      : `Credits come off the price of goods at checkout, up to the store's limit on each order; you pay shipping yourself. Credits you do not use expire ${months(settings.expiresMonths)} after you earn them, the oldest first.`,
+    settings.expiresMonths === null ? w.use : fillWords(w.useExpires, { months: countWords(settings.expiresMonths, w.months) }),
   );
-  const least = settings.minRedeemMinor > 0 ? ` At least ${money(settings.minRedeemMinor)} is used at a time.` : "";
-  lines.push(
-    `The store's limit: credits can pay for up to ${settings.maxRedeemPercent}% of an order's goods.${least} 1 credit is worth 1 ${currency}.`,
-  );
-  if (settings.expiresMonths !== null) lines.push("Customers are emailed a reminder before their credits expire.");
+  const least = settings.minRedeemMinor > 0 ? fillWords(w.least, { amount: money(settings.minRedeemMinor) }) : "";
+  lines.push(fillWords(w.limit, { percent: settings.maxRedeemPercent, least, currency }));
+  if (settings.expiresMonths !== null) lines.push(w.reminder);
   return lines;
 }
 
+/** A percentage's number with the words' own decimal mark: "2.5" in English, "2,5" in Norwegian. */
+export function percentNumber(bps: number, w: { decimal: string } = loyaltyEn.bonusRules): string {
+  return bpsToPercentText(bps).replace(".", w.decimal);
+}
+
 /** What the program is, for the owner who has not turned it on. */
-export const BONUS_EXPLANATION =
-  "Customers who are signed in earn credits on what they buy and use them as a price reduction on a later order. Guests earn nothing. Credits wait for the return period before they can be used, and a refund takes back what the refunded part earned.";
+export const BONUS_EXPLANATION = loyaltyEn.bonus.explanation;
 
 /** What turning it on or off does, in the order the owner needs to know it. */
-export const BONUS_ON_NOTES = [
-  "Customers must be signed in to earn or use credits. Guests see nothing to use.",
-  "Existing customers start at zero: only orders paid from now on earn credits.",
-  "Orders copied from another store never earn or use credits.",
-];
-export const BONUS_OFF_NOTE =
-  "Turning it off stops customers earning and using credits. Their balances are kept and count again when you turn it on.";
+export const BONUS_ON_NOTES = loyaltyEn.bonus.onNotes;
+export const BONUS_OFF_NOTE = loyaltyEn.bonus.offNote;
 
 /** The note for accountants that goes with the overview. */
-export const BONUS_ACCOUNTING_NOTE =
-  "Credits are a price reduction when they are used. Talk to your accountant about how to book credits that are still unused.";
+export const BONUS_ACCOUNTING_NOTE = loyaltyEn.bonus.accountingNote;
 
 /** The overview as rows of a list: label and amount. */
 export function overviewRows(
   overview: BonusOverview,
   money: MoneyFormat,
+  w: LoyaltyMessages["bonusOverview"] = loyaltyEn.bonusOverview,
 ): { label: string; value: string; hint?: string }[] {
   return [
-    {
-      label: "Outstanding credits",
-      value: money(overview.outstandingMinor),
-      hint: "Usable now: what the store still owes in price reductions.",
-    },
-    { label: "Pending", value: money(overview.pendingMinor), hint: "Earned, but waiting for the return period." },
-    { label: "Earned, last 30 days", value: money(overview.earned30dMinor) },
-    { label: "Used, last 30 days", value: money(overview.redeemed30dMinor) },
-    { label: "Expired, last 30 days", value: money(overview.expired30dMinor) },
-    { label: "Customers with credits", value: String(overview.customersWithCredits) },
+    { label: w.outstanding, value: money(overview.outstandingMinor), hint: w.outstandingHint },
+    { label: w.pending, value: money(overview.pendingMinor), hint: w.pendingHint },
+    { label: w.earned, value: money(overview.earned30dMinor) },
+    { label: w.used, value: money(overview.redeemed30dMinor) },
+    { label: w.expired, value: money(overview.expired30dMinor) },
+    { label: w.customers, value: String(overview.customersWithCredits) },
   ];
 }
 
@@ -268,7 +265,7 @@ export function signedMoney(minor: number, currency: string, locale: string): st
 }
 
 /** The kind of a ledger line as staff read it. */
-export const entryLabel = (entry: Pick<BonusEntry, "kind">): string => BONUS_KIND_LABELS[entry.kind];
+export const entryLabel = (entry: Pick<BonusEntry, "kind">, w: Record<BonusEntry["kind"], string> = BONUS_KIND_LABELS): string => w[entry.kind];
 
 /** Whether a grant can be used yet (its date has passed), or null for lines that are not grants. */
 export function isUsableNow(entry: Pick<BonusEntry, "kind" | "availableAt">, now: Date): boolean | null {
@@ -288,31 +285,31 @@ export type Adjustment =
  * An adjustment as typed: an amount that adds (50, +50) or removes (-20, −20) credits in the credits' currency, and a
  * reason of 3 to 200 characters. Zero is refused.
  */
-export function readAdjustment(amountText: string, noteText: string, currency: string): Adjustment {
+export function readAdjustment(
+  amountText: string,
+  noteText: string,
+  currency: string,
+  w: LoyaltyMessages["adjust"] = loyaltyEn.adjust,
+): Adjustment {
   const text = amountText.replace(/[\s ]/g, "");
   const negative = /^[-−–]/.test(text);
   const digits = text.replace(/^[-+−–]/, "");
   const amount = digits === "" ? null : parsePrice(digits, currency);
   if (amount === null)
-    return { ok: false, field: "amount", problem: "Write an amount such as 50 to add, or -20 to take away." };
-  if (amount === 0) return { ok: false, field: "amount", problem: "The amount cannot be 0." };
+    return { ok: false, field: "amount", problem: w.amountProblem };
+  if (amount === 0) return { ok: false, field: "amount", problem: w.zero };
   const note = noteText.trim();
   if (note.length < ADJUST_NOTE_MIN)
-    return {
-      ok: false,
-      field: "note",
-      problem: `Write a reason of at least ${ADJUST_NOTE_MIN} characters; the customer's history keeps it.`,
-    };
-  if (note.length > ADJUST_NOTE_MAX)
-    return { ok: false, field: "note", problem: `Keep the reason to ${ADJUST_NOTE_MAX} characters or fewer.` };
+    return { ok: false, field: "note", problem: fillWords(w.noteShort, { min: ADJUST_NOTE_MIN }) };
+  if (note.length > ADJUST_NOTE_MAX) return { ok: false, field: "note", problem: fillWords(w.noteLong, { max: ADJUST_NOTE_MAX }) };
   return { ok: true, amountMinor: negative ? -amount : amount, note };
 }
 
 /** The question before an adjustment is made. */
-export function adjustmentQuestion(amountMinor: number, who: string, money: MoneyFormat): string {
+export function adjustmentQuestion(amountMinor: number, who: string, money: MoneyFormat, w: LoyaltyMessages["adjust"] = loyaltyEn.adjust): string {
   return amountMinor > 0
-    ? `Add ${money(amountMinor)} in credits to ${who}?`
-    : `Take ${money(-amountMinor)} in credits from ${who}?`;
+    ? fillWords(w.addQuestion, { amount: money(amountMinor), who })
+    : fillWords(w.takeQuestion, { amount: money(-amountMinor), who });
 }
 
 /** An adjustment as typed, in words for an approval: "Add 50 in bonus credits to ann@example.com". */

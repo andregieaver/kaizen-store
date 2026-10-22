@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 
 import type { BroadcastContent, BroadcastSuggestion } from "@/lib/broadcasts";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { EmailContentFields } from "./broadcast-editor";
 import { Button } from "./ui";
 
@@ -26,6 +29,7 @@ export function AutomationSwitch({
 }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  const wa = useAdminText("marketing").automations;
   return (
     <div className="flex flex-col items-start gap-2">
       <Button
@@ -39,7 +43,7 @@ export function AutomationSwitch({
           })
         }
       >
-        {busy ? "One moment…" : on ? "Switch off" : (label ?? "Switch on")}
+        {busy ? wa.oneMoment : on ? wa.switchOff : (label ?? wa.switchOn)}
       </Button>
       {problem && (
         <p role="alert" className="text-body text-danger-text">
@@ -75,6 +79,7 @@ export function AutomationEditor(props: Props) {
   const [testLocale, setTestLocale] = useState(props.locales[0]?.code ?? "");
   const [message, setMessage] = useState<{ kind: "ok" | "problem"; text: string } | null>(null);
   const [busy, start] = useTransition();
+  const w = useAdminText("marketing");
 
   const run = (work: () => Promise<{ kind: "ok" | "problem"; text: string }>) =>
     start(async () => {
@@ -86,7 +91,7 @@ export function AutomationEditor(props: Props) {
     run(async () => {
       const written = Object.fromEntries(Object.entries(content).filter(([, c]) => c.subject.trim() || c.preview.trim() || c.blocks.length > 0));
       const r = await props.save(storeSlug, kind, { delayDays: Number(delayDays), content: written });
-      return r.ok ? { kind: "ok", text: "Saved." } : { kind: "problem", text: r.problem };
+      return r.ok ? { kind: "ok", text: w.common.saved } : { kind: "problem", text: r.problem };
     });
 
   return (
@@ -125,11 +130,11 @@ export function AutomationEditor(props: Props) {
       )}
       <div className="flex flex-wrap items-end gap-3">
         <Button kind="main" onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save"}
+          {busy ? w.common.saving : w.common.save}
         </Button>
         {props.locales.length > 1 && (
           <label className="flex flex-col gap-1 text-caption text-ink-2">
-            Test in
+            {w.automations.testIn}
             <select value={testLocale} onChange={(e) => setTestLocale(e.target.value)} className="min-h-10 rounded-md border border-line bg-card px-3">
               {props.locales.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -144,11 +149,11 @@ export function AutomationEditor(props: Props) {
           onClick={() =>
             run(async () => {
               const r = await props.test(storeSlug, kind, testLocale);
-              return r.ok ? { kind: "ok", text: `A test went to ${r.to}.` } : { kind: "problem", text: r.problem };
+              return r.ok ? { kind: "ok", text: fillWords(w.common.testWent, { to: r.to }) } : { kind: "problem", text: r.problem };
             })
           }
         >
-          Send a test to yourself
+          {w.common.sendTest}
         </Button>
       </div>
     </div>

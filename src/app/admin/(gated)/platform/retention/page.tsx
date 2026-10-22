@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { RetentionView } from "@/components/admin/privacy/retention-view";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePlatformAdmin } from "@/server/auth";
 import { retentionOverview } from "@/server/retention";
 
@@ -16,7 +19,19 @@ export const metadata: Metadata = { title: "Data retention" };
 export default async function PlatformRetentionPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
   const overview = await retentionOverview();
-  return <RetentionView overview={overview} verify={(id) => verifyRetentionRuleAction.bind(null, id)} change={changeRetentionRuleAction} today={new Date().toISOString().slice(0, 10)} />;
+  const lang = adminLangOf(account.adminLocale);
+  return (
+    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+      <RetentionView
+        overview={overview}
+        verify={(id) => verifyRetentionRuleAction.bind(null, id)}
+        change={changeRetentionRuleAction}
+        today={new Date().toISOString().slice(0, 10)}
+        words={adminText(lang, "privacy")}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+      />
+    </AdminTextScope>
+  );
 }

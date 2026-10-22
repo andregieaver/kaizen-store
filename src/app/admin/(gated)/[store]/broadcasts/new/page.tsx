@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { BroadcastEditor } from "@/components/admin/broadcast-editor";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 
@@ -15,19 +18,22 @@ export default async function NewBroadcastPage({ params }: PageProps<"/admin/[st
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
   const base = `/admin/${store.slug}/broadcasts`;
+  const lang = adminLangOf(member.account.adminLocale);
+  const wb = adminText(lang, "marketing").broadcasts;
   if (!memberCan(member, "marketing:write")) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader back={{ href: base, label: "Broadcasts" }} title="New broadcast" />
-        <p className="text-body text-muted">Your role may read broadcasts but not write them.</p>
+        <PageHeader back={{ href: base, label: wb.title }} title={wb.newBroadcast} />
+        <p className="text-body text-muted">{wb.mayNotWrite}</p>
       </div>
     );
   }
-  const choices = await broadcastChoices(store);
+  const choices = await broadcastChoices(store, lang);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: base, label: "Broadcasts" }} title="New broadcast" description="Write it, save it, send a test to yourself, then send it." />
+      <PageHeader back={{ href: base, label: wb.title }} title={wb.newBroadcast} description={wb.newDescription} />
       <Card compact>
+        <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
         <BroadcastEditor
           storeSlug={store.slug}
           broadcastId={null}
@@ -38,6 +44,7 @@ export default async function NewBroadcastPage({ params }: PageProps<"/admin/[st
           suggest={suggestBroadcastAction}
           upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
         />
+        </AdminTextScope>
       </Card>
     </div>
   );

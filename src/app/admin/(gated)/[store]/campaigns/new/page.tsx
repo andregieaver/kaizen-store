@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -13,11 +16,15 @@ export default async function NewCampaignPage({ params }: PageProps<"/admin/[sto
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
-  const { store } = gated;
+  const { store, account } = gated;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "discounts").campaigns;
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/campaigns`, label: "Campaigns" }} title="New campaign" />
-      <CampaignForm store={store} campaign={null} />
-    </div>
+    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
+      <div className="flex flex-col gap-6">
+        <PageHeader back={{ href: `/admin/${store.slug}/campaigns`, label: w.title }} title={w.newCampaign} />
+        <CampaignForm store={store} campaign={null} />
+      </div>
+    </AdminTextScope>
   );
 }

@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
 import type { StoreDiscountInput } from "@/lib/discounts";
+
+import { useAdminText } from "./admin-text";
 
 type Save = (input: StoreDiscountInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type Market = { code: string; name: string; currency: string };
@@ -66,6 +69,9 @@ export function DiscountEditor({
   save: Save;
   back: string;
 }) {
+  const t = useAdminText("discounts");
+  const f = t.form;
+  const w = t.editor;
   const router = useRouter();
   const [d, setD] = useState(initial);
   const [problems, setProblems] = useState<string[]>([]);
@@ -124,7 +130,7 @@ export function DiscountEditor({
     >
       {problems.length > 0 && (
         <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          <p className="font-medium">Nothing was saved yet. Please fix:</p>
+          <p className="font-medium">{f.fix}</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -135,10 +141,10 @@ export function DiscountEditor({
 
       <section aria-labelledby="code-heading" className={card}>
         <h2 id="code-heading" className="text-title text-ink">
-          The code
+          {w.theCode}
         </h2>
         <label className={label}>
-          Code shoppers type
+          {w.codeLabel}
           <input
             value={d.code}
             onChange={(event) => set("code", event.target.value.toUpperCase())}
@@ -150,30 +156,23 @@ export function DiscountEditor({
             aria-describedby="code-hint"
           />
           <span id="code-hint" className={hint}>
-            3–40 letters, digits, - or _. Shoppers can type it in any case.
-            {used > 0 &&
-              ` Used by ${used} ${used === 1 ? "order" : "orders"}: they keep what they got, whatever you change here.`}
+            {w.codeHint}
+            {used > 0 && countWords(used, w.usedHint)}
           </span>
         </label>
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">What it gives</legend>
-          {(
-            [
-              ["percent", "A percentage off"],
-              ["fixed", "An amount off"],
-              ["free_shipping", "Free shipping"],
-            ] as const
-          ).map(([value, text]) => (
+          <legend className="mb-1 text-sm font-medium">{f.whatItGives}</legend>
+          {(["percent", "fixed", "free_shipping"] as const).map((value) => (
             <label key={value} className="flex min-h-10 items-center gap-3 text-sm">
               <input type="radio" name="kind" checked={d.kind === value} onChange={() => set("kind", value)} className="size-4" />
-              {text}
+              {w.kinds[value]}
             </label>
           ))}
         </fieldset>
         {d.kind === "percent" && (
           <>
             <label className={`${label} max-w-40`}>
-              Percent off
+              {f.percentOff}
               <input
                 type="number"
                 min={1}
@@ -194,8 +193,8 @@ export function DiscountEditor({
                 className="mt-0.5 size-4"
               />
               <span>
-                Keep the discount on every renewal of a subscription
-                <span className={`block ${hint}`}>Otherwise it only lowers the first payment.</span>
+                {w.recurring}
+                <span className={`block ${hint}`}>{w.recurringHint}</span>
               </span>
             </label>
             )}
@@ -203,49 +202,49 @@ export function DiscountEditor({
         )}
         {d.kind === "fixed" && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Amount off, in each country&apos;s currency</p>
+            <p className="text-sm font-medium">{f.amountPerCountry}</p>
             <div className="grid gap-3 sm:grid-cols-3">
               {markets.map((market) => (
                 <label key={market.code} className={label}>
-                  {market.name} ({market.currency})
+                  {fillWords(f.market, { name: market.name, currency: market.currency })}
                   <input
                     value={d.amounts[market.code] ?? ""}
                     onChange={(event) => set("amounts", { ...d.amounts, [market.code]: event.target.value })}
                     inputMode="decimal"
-                    placeholder="Not offered"
+                    placeholder={f.notOffered}
                     className={input}
                   />
                 </label>
               ))}
             </div>
-            <p className={hint}>Leave a country empty and the code does not work there. It never takes more off than the items cost.</p>
+            <p className={hint}>{w.amountHint}</p>
           </div>
         )}
         {d.kind === "free_shipping" && (
-          <p className="text-sm text-muted">Shipping is free on the order the code is used on (for a subscription, its first delivery).</p>
+          <p className="text-sm text-muted">{w.freeShippingHint}</p>
         )}
       </section>
 
       <section aria-labelledby="applies-heading" className={card}>
         <h2 id="applies-heading" className="text-title text-ink">
-          What it applies to
+          {f.whatItAppliesTo}
         </h2>
         <fieldset className="flex flex-col gap-2">
-          <legend className="sr-only">Products</legend>
+          <legend className="sr-only">{f.products}</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="scope" checked={!some} onChange={() => setSome(false)} className="size-4" />
-            Everything in the store
+            {f.everything}
           </label>
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="scope" checked={some} onChange={() => setSome(true)} className="size-4" />
-            Only some products, categories or tags
+            {f.some}
           </label>
         </fieldset>
         {some && (
           <div className="flex flex-col gap-4">
             {categories.length + tags.length > 0 && (
               <fieldset className="flex flex-col gap-2">
-                <legend className="text-sm font-medium">Categories and tags</legend>
+                <legend className="text-sm font-medium">{f.categoriesAndTags}</legend>
                 <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                   {[...categories, ...tags].map((term) => (
                     <li key={term.id}>
@@ -261,11 +260,11 @@ export function DiscountEditor({
                     </li>
                   ))}
                 </ul>
-                <p className={hint}>A category takes in the products in its subcategories.</p>
+                <p className={hint}>{f.subcategories}</p>
               </fieldset>
             )}
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium">Products</legend>
+              <legend className="text-sm font-medium">{f.products}</legend>
               <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                 {products.map((product) => (
                   <li key={product.id}>
@@ -285,58 +284,58 @@ export function DiscountEditor({
           </div>
         )}
         <label className={`${label} max-w-56`}>
-          Minimum number of items (optional)
+          {w.minQuantity}
           <input
             type="number"
             min={1}
             max={1000}
             value={d.minQuantity}
             onChange={(event) => set("minQuantity", event.target.value)}
-            placeholder="None"
+            placeholder={w.none}
             inputMode="numeric"
             className={input}
           />
-          <span className={hint}>Of what it applies to, bought once (not subscriptions).</span>
+          <span className={hint}>{w.minQuantityHint}</span>
         </label>
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Minimum order (optional)</p>
+          <p className="text-sm font-medium">{w.minOrder}</p>
           <div className="grid gap-3 sm:grid-cols-3">
             {markets.map((market) => (
               <label key={market.code} className={label}>
-                {market.name} ({market.currency})
+                {fillWords(f.market, { name: market.name, currency: market.currency })}
                 <input
                   value={d.minSubtotals[market.code] ?? ""}
                   onChange={(event) => set("minSubtotals", { ...d.minSubtotals, [market.code]: event.target.value })}
                   inputMode="decimal"
-                  placeholder="None"
+                  placeholder={w.none}
                   className={input}
                 />
               </label>
             ))}
           </div>
-          <p className={hint}>What the items must come to before shipping.</p>
+          <p className={hint}>{w.minOrderHint}</p>
         </div>
       </section>
 
       <section aria-labelledby="who-heading" className={card}>
         <h2 id="who-heading" className="text-title text-ink">
-          Who can use it
+          {w.who}
         </h2>
         <fieldset className="flex flex-col gap-2">
-          <legend className="sr-only">Who can use it</legend>
+          <legend className="sr-only">{w.who}</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="who" checked={who === "everyone"} onChange={() => setWho("everyone")} className="size-4" />
-            Every shopper who has the code
+            {w.everyone}
           </label>
           {tiers.length > 0 && (
             <label className="flex min-h-10 items-center gap-3 text-sm">
               <input type="radio" name="who" checked={who === "groups"} onChange={() => setWho("groups")} className="size-4" />
-              Only customers in these groups
+              {f.groupsOnly}
             </label>
           )}
           <label className="flex min-h-10 items-center gap-3 text-sm">
             <input type="radio" name="who" checked={who === "customers"} onChange={() => setWho("customers")} className="size-4" />
-            Only these customers
+            {w.customers}
           </label>
         </fieldset>
         {who === "groups" && (
@@ -351,7 +350,7 @@ export function DiscountEditor({
                     className="size-4"
                   />
                   {tier.name}
-                  {!tier.active && <span className={hint}> (switched off)</span>}
+                  {!tier.active && <span className={hint}>{f.switchedOffTag}</span>}
                 </label>
               </li>
             ))}
@@ -359,7 +358,7 @@ export function DiscountEditor({
         )}
         {who === "customers" && (
           <label className={label}>
-            Their emails
+            {w.emails}
             <textarea
               value={d.customerEmails}
               onChange={(event) => set("customerEmails", event.target.value)}
@@ -367,44 +366,44 @@ export function DiscountEditor({
               placeholder="kari@example.com"
               className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
             />
-            <span className={hint}>One per line, at most 100. Each must be a customer of the store.</span>
+            <span className={hint}>{w.emailsHint}</span>
           </label>
         )}
-        {who !== "everyone" && <p className={hint}>Shoppers must be signed in to My account. A company&apos;s employees are in its group.</p>}
+        {who !== "everyone" && <p className={hint}>{w.signedInHint}</p>}
       </section>
 
       <section aria-labelledby="limits-heading" className={card}>
         <h2 id="limits-heading" className="text-title text-ink">
-          When and how often
+          {w.when}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}>
-            Starts (optional)
+            {f.starts}
             <input type="datetime-local" value={d.startsAt} onChange={(event) => set("startsAt", event.target.value)} className={input} />
           </label>
           <label className={label}>
-            Ends (optional)
+            {f.ends}
             <input type="datetime-local" value={d.endsAt} onChange={(event) => set("endsAt", event.target.value)} className={input} />
           </label>
         </div>
-        <p className={hint}>Norwegian time. Without dates, the code works while it is switched on.</p>
+        <p className={hint}>{w.dateHint}</p>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" checked={d.uniqueCodes} onChange={(event) => set("uniqueCodes", event.target.checked)} className="mt-0.5 size-4" />
           <span>
-            Hand out single-use codes instead
-            <span className={`block ${hint}`}>Shoppers use codes you make on the next page, each once. The code above is then its name only.</span>
+            {w.unique}
+            <span className={`block ${hint}`}>{w.uniqueHint}</span>
           </span>
         </label>
         {!d.uniqueCodes && (
         <>
         <label className={`${label} max-w-56`}>
-          Uses in all (optional)
+          {w.usageLimit}
           <input
             type="number"
             min={1}
             value={d.usageLimit}
             onChange={(event) => set("usageLimit", event.target.value)}
-            placeholder="No limit"
+            placeholder={f.noLimit}
             inputMode="numeric"
             className={input}
           />
@@ -417,33 +416,24 @@ export function DiscountEditor({
             className="mt-0.5 size-4"
           />
           <span>
-            Once per customer
-            <span className={`block ${hint}`}>Shoppers must sign in to My account to use it, so Kaizena Flow knows who they are.</span>
+            {w.oncePerCustomer}
+            <span className={`block ${hint}`}>{w.oncePerCustomerHint}</span>
           </span>
         </label>
         </>
         )}
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
-          Switched on
+          {f.switchedOn}
         </label>
       </section>
 
       <section aria-labelledby="combine-heading" className={card}>
         <h2 id="combine-heading" className="text-title text-ink">
-          Using it with other codes
+          {w.combine}
         </h2>
-        <p className={hint}>
-          A shopper can put up to five codes on one order. Tick the kinds this code may be used with; the other code must allow this one too.
-          Where two cannot be used together, the shopper gets the one that takes more off, and the cart says why of the other.
-        </p>
-        {(
-          [
-            ["products", "Codes on chosen products, categories or tags"],
-            ["order", "Codes on everything"],
-            ["shipping", "Free shipping codes"],
-          ] as const
-        ).map(([kind, words]) => (
+        <p className={hint}>{w.combineHint}</p>
+        {(["products", "order", "shipping"] as const).map((kind) => (
           <label key={kind} className="flex items-center gap-3 text-sm">
             <input
               type="checkbox"
@@ -453,7 +443,7 @@ export function DiscountEditor({
               }
               className="size-4"
             />
-            {words}
+            {w.combines[kind]}
           </label>
         ))}
       </section>
@@ -464,10 +454,10 @@ export function DiscountEditor({
           disabled={saving}
           className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
         >
-          {saving ? "Saving …" : "Save code"}
+          {saving ? f.saving : w.save}
         </button>
         <a href={back} className="text-sm underline">
-          Cancel
+          {f.cancel}
         </a>
       </div>
     </form>

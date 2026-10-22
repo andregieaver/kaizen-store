@@ -25,6 +25,16 @@ import { reviewsEn, type ReviewsMessages } from "./admin-messages/reviews.en";
 import { reviewsNb } from "./admin-messages/reviews.nb";
 import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
 import { fieldsNb } from "./admin-messages/fields.nb";
+import { customersEn, type CustomersMessages } from "./admin-messages/customers.en";
+import { customersNb } from "./admin-messages/customers.nb";
+import { privacyEn, type PrivacyMessages } from "./admin-messages/privacy.en";
+import { privacyNb } from "./admin-messages/privacy.nb";
+import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
+import { marketingNb } from "./admin-messages/marketing.nb";
+import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
+import { discountsNb } from "./admin-messages/discounts.nb";
+import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
+import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
 import { homeNb } from "./admin-messages/home.nb";
 import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
@@ -45,6 +55,11 @@ export type AdminAreaMessages = {
   common: CommonMessages;
   domains: DomainsMessages;
   home: HomeMessages;
+  customers: CustomersMessages;
+  privacy: PrivacyMessages;
+  marketing: MarketingMessages;
+  discounts: DiscountsMessages;
+  loyalty: LoyaltyMessages;
   products: ProductsMessages;
   product: ProductMessages;
   inventory: InventoryMessages;
@@ -68,6 +83,11 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
   home: { en: homeEn, nb: homeNb },
+  customers: { en: customersEn, nb: customersNb },
+  privacy: { en: privacyEn, nb: privacyNb },
+  marketing: { en: marketingEn, nb: marketingNb },
+  discounts: { en: discountsEn, nb: discountsNb },
+  loyalty: { en: loyaltyEn, nb: loyaltyNb },
   products: { en: productsEn, nb: productsNb },
   product: { en: productEn, nb: productNb },
   inventory: { en: inventoryEn, nb: inventoryNb },

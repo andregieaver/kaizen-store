@@ -7,6 +7,9 @@ import { Avatar } from "@/components/avatar";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
@@ -19,6 +22,8 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const all = adminText(adminLangOf(member.account.adminLocale), "customers");
+  const words = all.list;
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";
   const customers = await listCustomers(store.id, { q });
@@ -30,45 +35,45 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
-          title="Customers"
-          description={<>Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.</>}
+          title={words.title}
+          description={words.description}
         />
         {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
         {memberCan(member, "owner") && (
           <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-            Export
+            {words.export}
           </Link>
         )}
       </div>
       <form role="search" className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="customer-search">
-          Search by name or email
+          {words.search}
         </label>
         <input
           id="customer-search"
           name="q"
           type="search"
           defaultValue={q}
-          placeholder="Search by name or email"
+          placeholder={words.search}
           className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm"
         />
         <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          Search
+          {words.searchButton}
         </button>
         {q && (
           <Link href={base} className="flex min-h-10 items-center px-2 text-sm underline">
-            Show everyone
+            {words.showEveryone}
           </Link>
         )}
       </form>
 
       {customers.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          {q ? "No customer matches the search." : "No customers yet. They show here once someone signs up or buys."}
+          {q ? words.noMatch : words.none}
         </p>
       ) : (
         <Card compact>
-          <List label="Customers">
+          <List label={words.title}>
             {customers.map((c) => (
               <ListRow key={c.key} href={`${base}/${c.key}`}>
                 <RowLead
@@ -77,23 +82,21 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
                   sub={
                     <>
                       {c.name && `${c.email} · `}
-                      {accountLabel(c.account)}
+                      {accountLabel(c.account, all.account)}
                     </>
                   }
                 />
                 <RowFact
                   sub={
                     c.liveSubscriptions > 0 && featureOn(store, "subscriptions")
-                      ? c.liveSubscriptions === 1
-                        ? "1 subscription"
-                        : `${c.liveSubscriptions} subscriptions`
+                      ? countWords(c.liveSubscriptions, words.subscriptions)
                       : undefined
                   }
                 >
-                  {c.orders === 1 ? "1 order" : `${c.orders} orders`}
+                  {countWords(c.orders, words.orders)}
                 </RowFact>
-                <RowFact className="hidden sm:block" sub={`Customer since ${date(c.since)}`}>
-                  {c.lastOrderAt ? `Last order ${date(c.lastOrderAt)}` : "No order yet"}
+                <RowFact className="hidden sm:block" sub={fillWords(words.since, { date: date(c.since) })}>
+                  {c.lastOrderAt ? fillWords(words.lastOrder, { date: date(c.lastOrderAt) }) : words.noOrder}
                 </RowFact>
                 <RowAmount>{moneyByCurrency(c.spentMinor, locale) || "–"}</RowAmount>
               </ListRow>

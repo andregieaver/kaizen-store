@@ -1,3 +1,4 @@
+import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { overviewRows } from "@/lib/affiliate-admin";
 import type { AffiliateOverview } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
@@ -7,15 +8,23 @@ import { CARD_CLASS } from "@/components/admin/ui";
  * What the referral program did lately (D131), as the store's own figures. Referral credits are part of what the bonus
  * program owes: they are usable as a price reduction like any other credits. Amounts are in the credits' currency.
  */
-export function AffiliateOverviewCard({ overview, locale }: { overview: AffiliateOverview; locale: string }) {
-  const rows = overviewRows(overview, moneyIn(overview.currency, locale));
+export function AffiliateOverviewCard({
+  overview,
+  locale,
+  words = loyaltyEn,
+}: {
+  overview: AffiliateOverview;
+  locale: string;
+  words?: LoyaltyMessages;
+}) {
+  const rows = overviewRows(overview, moneyIn(overview.currency, locale), words.affiliateOverview);
   return (
     <section
       aria-labelledby="affiliate-overview-heading"
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <h2 id="affiliate-overview-heading" className="text-title text-ink">
-        Referrals at a glance
+        {words.affiliateOverview.heading}
       </h2>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {rows.map((row) => (

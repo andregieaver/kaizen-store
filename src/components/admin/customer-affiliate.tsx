@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
+import { fillWords } from "@/lib/admin-fill";
+import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateResult, CustomerAffiliate } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
@@ -20,6 +22,7 @@ export function CustomerAffiliateSection({
   locale,
   who,
   block,
+  words = loyaltyEn,
 }: {
   data: CustomerAffiliate;
   storeSlug: string;
@@ -27,14 +30,17 @@ export function CustomerAffiliateSection({
   /** The customer as the block buttons name them. */
   who: string;
   block: (blocked: boolean, note: string) => Promise<AffiliateResult>;
+  /** The `loyalty` catalogue in the account's language; the block form reads its own through `useAdminText()`. */
+  words?: LoyaltyMessages;
 }) {
+  const w = words.customerAffiliate;
   const credits = moneyIn(data.currency, locale);
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   return (
-    <Card title="Referrals" compact>
+    <Card title={w.title} compact>
       {data.referredBy && (
         <p className="mb-3 text-sm">
-          Came through the link of{" "}
+          {w.cameThrough}
           <Link href={`/admin/${storeSlug}/customers/${data.referredBy.customerId}`} className="underline">
             {personLabel(data.referredBy.name, data.referredBy.email)}
           </Link>{" "}
@@ -45,21 +51,21 @@ export function CustomerAffiliateSection({
         <>
           <dl className="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
             <div className="flex flex-col gap-0.5">
-              <dt className="text-muted">Their link&apos;s code</dt>
+              <dt className="text-muted">{w.code}</dt>
               <dd className="font-mono">{data.code}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-muted">Friends who ordered</dt>
+              <dt className="text-muted">{w.friends}</dt>
               <dd className="text-xl font-medium">{data.friends}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-muted">Credits earned</dt>
+              <dt className="text-muted">{w.earned}</dt>
               <dd className="text-xl font-medium">{credits(data.earnedMinor)}</dd>
             </div>
           </dl>
           {data.blocked && (
             <p role="note" className="mb-3 rounded-md bg-sunken p-3 text-sm">
-              Blocked: they earn nothing new. {data.blockedReason && <>Reason: {data.blockedReason}</>}
+              {w.blocked} {data.blockedReason && fillWords(w.reason, { reason: data.blockedReason })}
             </p>
           )}
           <div className="mb-4">
@@ -69,7 +75,7 @@ export function CustomerAffiliateSection({
       )}
       {data.attributions.length > 0 && (
         <>
-          <h3 className="mb-2 text-body-strong text-ink">Orders through links</h3>
+          <h3 className="mb-2 text-body-strong text-ink">{w.attributions}</h3>
           <ul className="flex flex-col gap-1 text-sm">
             {data.attributions.map((row) => (
               <li key={row.id}>
@@ -77,8 +83,8 @@ export function CustomerAffiliateSection({
                 <Link href={`/admin/${storeSlug}/orders/${row.orderId}`} className="underline">
                   #{row.orderNumber}
                 </Link>{" "}
-                · {attributionStatus(row)}
-                {row.rewardMinor > 0 && ` · ${moneyIn(row.creditsCurrency, locale)(row.rewardMinor)} in credits`}
+                · {attributionStatus(row, { statuses: words.affiliateStatus, reasons: words.affiliateRejection })}
+                {row.rewardMinor > 0 && fillWords(w.inCredits, { amount: moneyIn(row.creditsCurrency, locale)(row.rewardMinor) })}
               </li>
             ))}
           </ul>

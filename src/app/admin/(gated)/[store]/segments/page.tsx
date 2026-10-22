@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
 import { ButtonLink, Card, CARD_CLASS, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { countSegment, describeRules } from "@/lib/segments";
@@ -19,10 +22,14 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
   const { store } = member;
   const [segments, people, tiers] = await Promise.all([listSegments(store.id), segmentPeople(store), listTiers(store.id)]);
   const now = new Date();
-  const locale = store.markets[0]?.locale ?? "nb-NO";
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "marketing");
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "nb-NO") : numbers;
   const ctx = {
     money: (minor: number) => formatMoney(minor, mainCurrency(store), locale),
     groupName: (id: string) => tiers.find((t) => t.id === id)?.name,
+    words: w.describe,
   };
   const base = `/admin/${store.slug}/segments`;
   const mayWrite = memberCan(member, "marketing:write");
@@ -30,24 +37,24 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Segments"
-        description="Groups of your customers and subscribers by what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date."
-        actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">New segment</ButtonLink> : undefined}
+        title={w.segments.title}
+        description={w.segments.description}
+        actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">{w.segments.newSegment}</ButtonLink> : undefined}
       />
       {segments.length === 0 ? (
         <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          No segments yet. Make one to see, for example, your best customers or the ones who have not ordered for a while.
+          {w.segments.empty}
         </p>
       ) : (
         <Card compact>
-          <List label="Segments">
+          <List label={w.segments.title}>
             {segments.map((s) => {
               const count = s.rules ? countSegment(s.rules, people.people, now) : null;
               return (
                 <ListRow key={s.id}>
-                  <RowLead title={s.name} href={`${base}/${s.id}`} sub={s.rules ? describeRules(s.rules, ctx) : "These rules can no longer be read: open it and save it again."} />
-                  <RowFact sub={count ? `${count.subscribed.toLocaleString("en-GB")} want your emails` : undefined}>
-                    {count ? `${count.people.toLocaleString("en-GB")} ${count.people === 1 ? "person" : "people"}` : "–"}
+                  <RowLead title={s.name} href={`${base}/${s.id}`} sub={s.rules ? describeRules(s.rules, ctx) : w.segments.unreadable} />
+                  <RowFact sub={count ? fillWords(w.segments.wantEmails, { n: count.subscribed.toLocaleString(numbers) }) : undefined}>
+                    {count ? countWords(count.people, w.common.people, { n: count.people.toLocaleString(numbers) }) : "–"}
                   </RowFact>
                 </ListRow>
               );
@@ -55,7 +62,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
           </List>
         </Card>
       )}
-      {people.capped && <p className="text-caption text-muted">Only the 100,000 most recent people are counted.</p>}
+      {people.capped && <p className="text-caption text-muted">{w.segments.capped}</p>}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
+import { countWords } from "@/lib/admin-fill";
+import { loyaltyEn, type LoyaltyMessages } from "@/lib/admin-messages/loyalty.en";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateAttributionRow, AffiliateResult, AffiliateRow } from "@/lib/affiliates";
 import { formatMoney } from "@/lib/money";
@@ -17,6 +19,7 @@ export function ReferrersTable({
   locale,
   canBlock,
   block,
+  words = loyaltyEn,
 }: {
   rows: AffiliateRow[];
   storeSlug: string;
@@ -24,12 +27,14 @@ export function ReferrersTable({
   locale: string;
   canBlock: boolean;
   block: (customerId: string, blocked: boolean, note: string) => Promise<AffiliateResult>;
+  words?: LoyaltyMessages;
 }) {
+  const w = words.affiliateTables;
   if (rows.length === 0) {
-    return <p className="text-sm text-muted">Nobody has a link yet. Customers get theirs when they open Refer a friend in My account.</p>;
+    return <p className="text-sm text-muted">{w.noReferrers}</p>;
   }
   return (
-    <List label="Customers with a referral link">
+    <List label={w.referrersLabel}>
       {rows.map((row) => (
         <ListRow key={row.customerId}>
           <RowLead
@@ -37,7 +42,7 @@ export function ReferrersTable({
             href={`/admin/${storeSlug}/customers/${row.customerId}`}
             sub={
               <>
-                <span className="font-mono">{row.code}</span> · {row.friends === 1 ? "1 friend" : `${row.friends} friends`}
+                <span className="font-mono">{row.code}</span> · {countWords(row.friends, w.friends)}
               </>
             }
           />
@@ -45,7 +50,7 @@ export function ReferrersTable({
             <AffiliateBlockForm blocked={row.blocked} who={row.name.trim().split(/\s+/)[0] || row.email} act={block.bind(null, row.customerId)} />
           ) : (
             <Chip signal={row.blocked ? "danger" : "positive"} dot>
-              {row.blocked ? "Blocked" : "Earning"}
+              {row.blocked ? w.blocked : w.earning}
             </Chip>
           )}
           <RowAmount>{formatMoney(row.earnedMinor, currency, locale)}</RowAmount>
@@ -60,25 +65,28 @@ export function AttributionsTable({
   rows,
   storeSlug,
   locale,
+  words = loyaltyEn,
 }: {
   rows: AffiliateAttributionRow[];
   storeSlug: string;
   locale: string;
+  words?: LoyaltyMessages;
 }) {
-  if (rows.length === 0) return <p className="text-sm text-muted">No order has come through a link yet.</p>;
+  const w = words.affiliateTables;
+  if (rows.length === 0) return <p className="text-sm text-muted">{w.noAttributions}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[48rem] text-left text-sm">
-        <caption className="sr-only">Orders that came through a referral link</caption>
+        <caption className="sr-only">{w.caption}</caption>
         <thead>
           <tr className="border-b border-line">
-            <th scope="col" className="py-2 pr-4 font-medium">Date</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Order</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Referrer</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Friend</th>
-            <th scope="col" className="py-2 pr-4 text-right font-medium">Welcome discount</th>
-            <th scope="col" className="py-2 pr-4 text-right font-medium">Credits</th>
-            <th scope="col" className="py-2 font-medium">Status</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{w.date}</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{w.order}</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{w.referrer}</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{w.friend}</th>
+            <th scope="col" className="py-2 pr-4 text-right font-medium">{w.discount}</th>
+            <th scope="col" className="py-2 pr-4 text-right font-medium">{w.credits}</th>
+            <th scope="col" className="py-2 font-medium">{w.status}</th>
           </tr>
         </thead>
         <tbody>
@@ -104,14 +112,14 @@ export function AttributionsTable({
                     {personLabel(row.friendName, row.friendEmail)}
                   </Link>
                 ) : (
-                  "Deleted customer"
+                  w.deleted
                 )}
               </td>
               <td className="py-2 pr-4 text-right whitespace-nowrap">
                 {row.discountMinor > 0 ? formatMoney(row.discountMinor, row.orderCurrency, locale) : "–"}
               </td>
               <td className="py-2 pr-4 text-right whitespace-nowrap">{row.rewardMinor > 0 ? formatMoney(row.rewardMinor, row.creditsCurrency, locale) : "–"}</td>
-              <td className="py-2">{attributionStatus(row)}</td>
+              <td className="py-2">{attributionStatus(row, { statuses: words.affiliateStatus, reasons: words.affiliateRejection })}</td>
             </tr>
           ))}
         </tbody>

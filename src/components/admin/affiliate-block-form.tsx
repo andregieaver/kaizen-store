@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { BLOCK_NOTE_MAX, BLOCK_NOTE_MIN } from "@/lib/affiliate-admin";
 import type { AffiliateResult } from "@/lib/affiliates";
 
@@ -26,11 +28,12 @@ export function AffiliateBlockForm({
   const [problem, setProblem] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const w = useAdminText("loyalty").block;
 
   function run(nextBlocked: boolean) {
     const reason = note.trim();
     if (nextBlocked && (reason.length < BLOCK_NOTE_MIN || reason.length > BLOCK_NOTE_MAX)) {
-      setProblem(`Write a reason of ${BLOCK_NOTE_MIN} to ${BLOCK_NOTE_MAX} characters.`);
+      setProblem(fillWords(w.reasonProblem, { min: BLOCK_NOTE_MIN, max: BLOCK_NOTE_MAX }));
       return;
     }
     setProblem(null);
@@ -40,7 +43,7 @@ export function AffiliateBlockForm({
         setProblem(result.problems.join(" "));
         return;
       }
-      setDone(nextBlocked ? "Blocked." : "Unblocked.");
+      setDone(nextBlocked ? w.blocked : w.unblocked);
       setOpen(false);
       setNote("");
     });
@@ -55,7 +58,7 @@ export function AffiliateBlockForm({
           onClick={() => run(false)}
           className="min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40"
         >
-          {pending ? "Saving …" : `Unblock ${who}`}
+          {pending ? w.saving : fillWords(w.unblock, { who })}
         </button>
         {problem && <p className="text-sm text-danger-text">{problem}</p>}
         <span role="status" aria-live="polite" className="text-sm text-muted">
@@ -69,7 +72,7 @@ export function AffiliateBlockForm({
     <div className="flex flex-col items-start gap-2">
       {!open ? (
         <button type="button" onClick={() => setOpen(true)} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
-          Block {who}
+          {fillWords(w.block, { who })}
         </button>
       ) : (
         <form
@@ -80,7 +83,7 @@ export function AffiliateBlockForm({
           className="flex w-full max-w-sm flex-col gap-2"
         >
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Reason (kept in the audit log)</span>
+            <span className="font-medium">{w.reason}</span>
             <input
               value={note}
               onChange={(event) => setNote(event.target.value)}
@@ -95,10 +98,10 @@ export function AffiliateBlockForm({
               disabled={pending}
               className="min-h-9 rounded-pill bg-brand px-3 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
-              {pending ? "Saving …" : "Block"}
+              {pending ? w.saving : w.submit}
             </button>
             <button type="button" onClick={() => setOpen(false)} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
-              Cancel
+              {w.cancel}
             </button>
           </div>
           {problem && <p className="text-sm text-danger-text">{problem}</p>}

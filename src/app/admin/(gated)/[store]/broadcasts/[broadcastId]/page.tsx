@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { BroadcastEditor } from "@/components/admin/broadcast-editor";
 import { BroadcastSend } from "@/components/admin/broadcast-send";
 import { Button, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
-import { STATUS_WORDS } from "@/lib/broadcasts";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { marketingProblem } from "@/lib/marketing-words";
 import { audienceCount, broadcastReport, getBroadcast } from "@/server/broadcasts";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -39,32 +43,36 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
   const base = `/admin/${store.slug}/broadcasts`;
   const mayWrite = memberCan(member, "marketing:write");
   const editable = broadcast.status === "draft" || broadcast.status === "scheduled";
-  const date = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "marketing");
+  const wb = w.broadcasts;
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => new Date(iso).toLocaleString(numbers, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   if (editable) {
-    const [choices, emailStore] = await Promise.all([mayWrite ? broadcastChoices(store) : Promise.resolve(null), storeById(store.id)]);
+    const [choices, emailStore] = await Promise.all([mayWrite ? broadcastChoices(store, lang) : Promise.resolve(null), storeById(store.id)]);
     const count = emailStore ? await audienceCount(emailStore, broadcast.audience, broadcast.segmentId) : null;
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
-          back={{ href: base, label: "Broadcasts" }}
+          back={{ href: base, label: wb.title }}
           title={broadcast.title}
           status={
             <Chip signal={broadcast.status === "scheduled" ? "insight" : "neutral"} dot>
-              {STATUS_WORDS[broadcast.status]}
+              {wb.statuses[broadcast.status]}
             </Chip>
           }
-          meta={broadcast.scheduledFor ? [`Goes out ${date(broadcast.scheduledFor)}`] : undefined}
+          meta={broadcast.scheduledFor ? [fillWords(wb.goesOut, { date: date(broadcast.scheduledFor) })] : undefined}
           actions={
             mayWrite ? (
               broadcast.status === "scheduled" ? (
                 <form action={unscheduleBroadcastAction.bind(null, store.slug, broadcast.id)}>
-                  <Button type="submit">Don&apos;t send it then</Button>
+                  <Button type="submit">{wb.dontSend}</Button>
                 </form>
               ) : (
                 <form action={deleteBroadcastAction.bind(null, store.slug, broadcast.id)}>
                   <Button type="submit" kind="danger">
-                    Delete
+                    {w.common.delete}
                   </Button>
                 </form>
               )
@@ -73,12 +81,13 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
         />
         {broadcast.scheduleProblem && (
           <p role="alert" className="rounded-panel border border-warning-line bg-warning-soft p-3 text-body text-warning-text">
-            It was not sent at its time: {broadcast.scheduleProblem}
+            {fillWords(wb.notSentAtTime, { problem: marketingProblem(broadcast.scheduleProblem, w.problems) })}
           </p>
         )}
         {choices ? (
           <>
-            <Card title="Send" description="Send a test to yourself first. Each person gets it once, in their own language where you wrote it." compact>
+            <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+            <Card title={wb.send} description={wb.sendDescription} compact>
               <BroadcastSend
                 storeSlug={store.slug}
                 broadcastId={broadcast.id}
@@ -89,7 +98,7 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                 schedule={scheduleBroadcastAction}
               />
             </Card>
-            <Card title="What it says" compact>
+            <Card title={w.common.whatItSays} compact>
               <BroadcastEditor
                 storeSlug={store.slug}
                 broadcastId={broadcast.id}
@@ -101,9 +110,10 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                 upload={uploadsEnabled() ? uploadBroadcastPictureAction : null}
               />
             </Card>
+            </AdminTextScope>
           </>
         ) : (
-          <p className="text-body text-muted">Your role may read broadcasts but not write or send them.</p>
+          <p className="text-body text-muted">{wb.mayNotSend}</p>
         )}
       </div>
     );
@@ -111,42 +121,45 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
 
   const report = await broadcastReport(store.id, broadcast);
   const c = report.counts;
-  const n = (v: number) => v.toLocaleString("en-GB");
+  const n = (v: number) => v.toLocaleString(numbers);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Broadcasts" }}
+        back={{ href: base, label: wb.title }}
         title={broadcast.title}
         status={
           <Chip signal={broadcast.status === "sent" ? "positive" : broadcast.status === "sending" ? "warning" : "neutral"} dot>
-            {STATUS_WORDS[broadcast.status]}
+            {wb.statuses[broadcast.status]}
           </Chip>
         }
-        meta={[broadcast.startedAt ? `Started ${date(broadcast.startedAt)}` : null, broadcast.finishedAt ? `Ended ${date(broadcast.finishedAt)}` : null].filter((x): x is string => Boolean(x))}
+        meta={[
+          broadcast.startedAt ? fillWords(wb.started, { date: date(broadcast.startedAt) }) : null,
+          broadcast.finishedAt ? fillWords(wb.ended, { date: date(broadcast.finishedAt) }) : null,
+        ].filter((x): x is string => Boolean(x))}
         description={broadcast.audienceWords ?? undefined}
         actions={
           mayWrite && broadcast.status === "sending" ? (
             <form action={stopBroadcastAction.bind(null, store.slug, broadcast.id)}>
               <Button type="submit" kind="danger">
-                Stop sending
+                {wb.stopSending}
               </Button>
             </form>
           ) : undefined
         }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile label="Went to" value={n(c.recipients)} context={c.queued > 0 ? `${n(c.queued)} still to send` : undefined} />
-        <KpiTile label="Sent" value={n(c.sent)} context={c.logged > 0 ? `${n(c.logged)} kept only: email is not set up` : undefined} />
-        <KpiTile label="Delivered" value={n(c.delivered)} context="As the email service reported it." />
-        <KpiTile label="Unsubscribed since" value={n(c.unsubscribed)} />
+        <KpiTile label={wb.wentTo} value={n(c.recipients)} context={c.queued > 0 ? fillWords(wb.stillToSend, { n: n(c.queued) }) : undefined} />
+        <KpiTile label={wb.sent} value={n(c.sent)} context={c.logged > 0 ? fillWords(wb.keptOnly, { n: n(c.logged) }) : undefined} />
+        <KpiTile label={wb.delivered} value={n(c.delivered)} context={wb.deliveredContext} />
+        <KpiTile label={wb.unsubscribedSince} value={n(c.unsubscribed)} />
       </div>
-      <Card title="What else happened" compact>
+      <Card title={wb.whatElse} compact>
         <dl className="grid gap-2 sm:grid-cols-2">
           {[
-            ["Bounced", c.bounced],
-            ["Marked as spam", c.complained],
-            ["Failed", c.failed],
-            ["Skipped (left the list, or stopped)", c.skipped],
+            [wb.bounced, c.bounced],
+            [wb.spam, c.complained],
+            [wb.failed, c.failed],
+            [wb.skipped, c.skipped],
           ].map(([label, value]) => (
             <div key={String(label)} className="flex justify-between gap-4 border-b border-line py-1">
               <dt className="text-body text-ink-2">{label}</dt>
@@ -154,18 +167,18 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
             </div>
           ))}
         </dl>
-        {report.frozen && <p className="mt-3 text-caption text-muted">The addresses were removed 90 days after it was sent; these are the figures kept.</p>}
+        {report.frozen && <p className="mt-3 text-caption text-muted">{wb.frozen}</p>}
       </Card>
-      <Card title="Presses on its links" description="Counted presses, not people: some mail apps open links to check them, and those count too. Opens are not tracked." compact>
+      <Card title={wb.presses} description={wb.pressesDescription} compact>
         {report.links.length === 0 ? (
-          <p className="text-body text-muted">It had no links.</p>
+          <p className="text-body text-muted">{wb.noLinks}</p>
         ) : (
           <table className="w-full text-body">
             <thead>
               <tr className="text-left text-caption text-muted">
-                <th className="py-1 font-normal">Link</th>
-                <th className="py-1 font-normal">Language</th>
-                <th className="py-1 text-right font-normal">Presses</th>
+                <th className="py-1 font-normal">{wb.link}</th>
+                <th className="py-1 font-normal">{w.common.language}</th>
+                <th className="py-1 text-right font-normal">{wb.pressesColumn}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">

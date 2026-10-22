@@ -2,8 +2,11 @@
 
 import { useState, useTransition } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { GENERATE_MAX } from "@/lib/discounts";
 
+import { useAdminLang, useAdminText } from "./admin-text";
 import { Button, Card } from "./ui";
 
 /**
@@ -23,22 +26,21 @@ export function GeneratedCodes({
   exportHref: string;
   generate: (input: unknown) => Promise<{ ok: true; made: number } | { ok: false; problem: string }>;
 }) {
+  const w = useAdminText("discounts").generated;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const number = (n: number) => n.toLocaleString(locale);
   const [count, setCount] = useState("100");
   const [prefix, setPrefix] = useState("");
   const [message, setMessage] = useState<{ kind: "ok" | "problem"; text: string } | null>(null);
   const [busy, start] = useTransition();
   return (
     <Card
-      title="Single-use codes"
-      description={
-        made === 0
-          ? "None made yet. Each code you make works for one order."
-          : `${made.toLocaleString("en-GB")} made, ${used.toLocaleString("en-GB")} used. Each works for one order.`
-      }
+      title={w.title}
+      description={made === 0 ? w.none : fillWords(w.counts, { made: number(made), used: number(used) })}
       aside={
         made > 0 && canWrite && (
           <form method="post" action={exportHref}>
-            <Button type="submit">Download the codes</Button>
+            <Button type="submit">{w.download}</Button>
           </form>
         )
       }
@@ -51,12 +53,12 @@ export function GeneratedCodes({
             start(async () => {
               setMessage(null);
               const r = await generate({ count, prefix });
-              setMessage(r.ok ? { kind: "ok", text: `Made ${r.made.toLocaleString("en-GB")} codes.` } : { kind: "problem", text: r.problem });
+              setMessage(r.ok ? { kind: "ok", text: fillWords(w.made, { n: number(r.made) }) } : { kind: "problem", text: r.problem });
             });
           }}
         >
           <label className="flex flex-col gap-1 text-caption text-ink-2">
-            How many
+            {w.howMany}
             <input
               type="number"
               inputMode="numeric"
@@ -68,7 +70,7 @@ export function GeneratedCodes({
             />
           </label>
           <label className="flex flex-col gap-1 text-caption text-ink-2">
-            Prefix (optional)
+            {w.prefix}
             <input
               value={prefix}
               maxLength={20}
@@ -77,7 +79,7 @@ export function GeneratedCodes({
             />
           </label>
           <Button kind="main" type="submit" disabled={busy}>
-            {busy ? "Making…" : "Make codes"}
+            {busy ? w.making : w.make}
           </Button>
         </form>
       )}

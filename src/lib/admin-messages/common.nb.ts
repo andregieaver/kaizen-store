@@ -23,6 +23,8 @@ export const commonNb: CommonMessages = {
     working: "Arbeider …",
     show: "Vis",
     hide: "Skjul",
+    delete: "Slett",
+    deleting: "Sletter …",
   },
   language: {
     title: "Språk",

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -14,24 +18,7 @@ import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
 
 export const metadata: Metadata = { title: "Campaigns" };
 
-const STATUS = {
-  active: "Running now",
-  off: "Switched off",
-  scheduled: "Starts later",
-  ended: "Ended",
-} as const;
-
 const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight", ended: "neutral" } as const;
-
-const KIND_WORD = {
-  percent: "Percentage off",
-  multi_buy: "Buy more, pay for fewer",
-  gift: "Free product",
-  amount: "Amount off",
-  free_shipping: "Free shipping",
-  tiered: "Buy more, save more",
-  bxgy: "Buy one thing, get another",
-} as const;
 
 /** The store's campaigns (D114): offers without a code, for a time, and what each has given. */
 export default async function CampaignsPage({ params }: PageProps<"/admin/[store]/campaigns">) {
@@ -39,41 +26,40 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
-  const { store } = gated;
+  const { store, account } = gated;
+  const lang = adminLangOf(account.adminLocale);
+  const all = adminText(lang, "discounts");
+  const w = all.campaigns;
   const campaigns = await listCampaigns(store.id);
-  const locale = store.markets[0]?.locale ?? "nb-NO";
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);
   const money = (minor: number, marketCode: string) => formatMoney(minor, currencyOf(marketCode), locale);
-  const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}/campaigns`;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader
-          title="Campaigns"
-          description={<>Offers that need no code: a percentage or an amount off, buy more and pay for fewer (3 for 2), bigger discounts for buying more, free shipping, or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.</>}
-        />
+        <PageHeader title={w.title} description={w.description} />
         <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
-          New campaign
+          {w.newCampaign}
         </Link>
       </div>
       {campaigns.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.
-        </p>
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>{w.empty}</p>
       ) : (
         <Card compact>
-          <List label="Campaigns">
+          <List label={w.title}>
             {campaigns.map((c) => {
               const status = campaignStatus(c);
               const usedUp = c.usageLimit !== null && c.orders >= c.usageLimit && status === "active";
               const reach = c.productIds.length + c.termIds.length;
               const limits = [
-                c.markets.length > 0 && `Only in ${c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code).join(", ")}`,
-                c.perCustomerLimit !== null && `${c.perCustomerLimit === 1 ? "Once" : `${c.perCustomerLimit} orders`} per customer`,
-                c.tierIds.length > 0 && `For ${c.tierIds.length === 1 ? "a customer group" : `${c.tierIds.length} customer groups`}`,
-                c.stacks && "Adds on top",
+                c.markets.length > 0 && fillWords(w.onlyIn, { countries: c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code).join(", ") }),
+                c.perCustomerLimit !== null && countWords(c.perCustomerLimit, w.perCustomer),
+                c.tierIds.length > 0 && countWords(c.tierIds.length, w.groups),
+                c.stacks && w.stacks,
               ].filter(Boolean);
               return (
                 <ListRow key={c.id}>
@@ -82,16 +68,16 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                     href={`${base}/${c.id}`}
                     sub={
                       <>
-                        {KIND_WORD[c.kind]} · {describeCampaign(c, money)}
+                        {w.kinds[c.kind]} · {describeCampaign(c, money, all.describe)}
                         {c.kind === "gift" && c.giftTitle && ` (${c.giftQuantity > 1 ? `${c.giftQuantity} × ` : ""}${c.giftTitle})`}
                         {" · "}
                         {reach === 0
                           ? c.kind === "gift" || c.kind === "free_shipping"
-                            ? "Counts everything"
-                            : "Everything"
+                            ? w.countsEverything
+                            : w.everything
                           : [
-                              c.productIds.length > 0 && `${c.productIds.length} ${c.productIds.length === 1 ? "product" : "products"}`,
-                              c.termIds.length > 0 && `${c.termIds.length} ${c.termIds.length === 1 ? "category or tag" : "categories and tags"}`,
+                              c.productIds.length > 0 && countWords(c.productIds.length, w.products),
+                              c.termIds.length > 0 && countWords(c.termIds.length, w.terms),
                             ]
                               .filter(Boolean)
                               .join(", ")}
@@ -99,36 +85,38 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                       </>
                     }
                   />
-                  <RowFact className="hidden md:block" sub={c.startsAt || c.endsAt ? `to ${c.endsAt ? when.format(new Date(c.endsAt)) : "no end"}` : undefined}>
-                    {c.startsAt || c.endsAt ? (c.startsAt ? `From ${when.format(new Date(c.startsAt))}` : "From now") : "No dates"}
+                  <RowFact
+                    className="hidden md:block"
+                    sub={c.startsAt || c.endsAt ? (c.endsAt ? fillWords(w.to, { date: when.format(new Date(c.endsAt)) }) : w.toNoEnd) : undefined}
+                  >
+                    {c.startsAt || c.endsAt ? (c.startsAt ? fillWords(w.from, { date: when.format(new Date(c.startsAt)) }) : w.fromNow) : w.noDates}
                   </RowFact>
                   <RowFact
                     className="hidden sm:block"
                     sub={Object.entries(c.given)
-                      .map(([currency, minor]) => `${formatMoney(minor, currency, locale)} given`)
+                      .map(([currency, minor]) => fillWords(all.codes.given, { amount: formatMoney(minor, currency, locale) }))
                       .join(", ")}
                   >
-                    {c.orders === 1 ? "1 order" : `${c.orders} orders`}
-                    {c.usageLimit !== null && ` of ${c.usageLimit}`}
+                    {c.usageLimit !== null ? countWords(c.orders, w.ordersOf, { limit: c.usageLimit }) : countWords(c.orders, w.orders)}
                   </RowFact>
                   <Chip signal={usedUp ? "warning" : STATUS_SIGNAL[status]} dot>
-                    {usedUp ? "Used up" : STATUS[status]}
+                    {usedUp ? all.status.used_up : status === "active" ? all.status.running : all.status[status]}
                   </Chip>
                   <RowActions>
                     <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
                       <Button type="submit" kind="quiet" size="dense">
-                        {c.active ? "Switch off" : "Switch on"}
+                        {c.active ? w.switchOff : w.switchOn}
                         <span className="sr-only"> {c.name}</span>
                       </Button>
                     </form>
                     <ButtonLink href={`${base}/${c.id}`} kind="quiet" size="dense">
-                      Edit<span className="sr-only"> {c.name}</span>
+                      {all.codes.edit}<span className="sr-only"> {c.name}</span>
                     </ButtonLink>
                     <DeleteDiscountButton
                       action={deleteCampaignAction.bind(null, store.slug, c.id)}
                       code={c.name}
                       compact
-                      question={`Delete the campaign ${c.name}? Shoppers no longer get it.${c.orders > 0 ? ` The ${c.orders} ${c.orders === 1 ? "order" : "orders"} that got something from it keep it.` : ""}`}
+                      question={fillWords(all.remove.campaignQuestion, { name: c.name }) + (c.orders > 0 ? countWords(c.orders, all.remove.campaignKept) : "")}
                     />
                   </RowActions>
                 </ListRow>
@@ -138,5 +126,6 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
         </Card>
       )}
     </div>
+    </AdminTextScope>
   );
 }

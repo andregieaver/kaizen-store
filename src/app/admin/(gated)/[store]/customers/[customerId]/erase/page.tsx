@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { EraseForm } from "@/components/admin/privacy/erase-form";
 import { ErasurePlanView } from "@/components/admin/privacy/plan-view";
 import { EraseSkeleton } from "@/components/admin/privacy/skeletons";
 import { alertText } from "@/components/admin/privacy/styles";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { findCustomer } from "@/server/customer-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { erasurePreview } from "@/server/privacy-admin";
@@ -44,7 +47,7 @@ export default async function EraseCustomerPage({ params, searchParams }: Props)
 }
 
 async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: string; customerId: string; searchParams: Props["searchParams"] }) {
-  const { store } = await requireWriter(storeSlug);
+  const { store, account } = await requireWriter(storeSlug);
   const ref = await findCustomer(store.id, customerId);
   if (!ref) notFound();
   const requested = first((await searchParams).request);
@@ -52,18 +55,22 @@ async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: str
   const preview = await erasurePreview(store.id, ref.key);
   if (!preview) notFound();
   const locale = store.markets[0]?.locale ?? "en-GB";
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "privacy");
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <PageHeader
-          back={{ href: `/admin/${store.slug}/customers/${ref.key}`, label: "Customer" }}
-          title="Erase personal data"
-          description={<>Read what happens first. Sales the bookkeeping law keeps are kept without the person&apos;s name, address and email until the period ends, then made anonymous. Nothing is deleted from the accounts.</>}
-        />
-        <p className={`mt-2 text-sm font-medium ${alertText}`}>Erasing cannot be undone.</p>
+    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+      <div className="flex flex-col gap-6">
+        <div>
+          <PageHeader
+            back={{ href: `/admin/${store.slug}/customers/${ref.key}`, label: w.erase.customer }}
+            title={w.common.eraseData}
+            description={<>{w.erase.description}</>}
+          />
+          <p className={`mt-2 text-sm font-medium ${alertText}`}>{w.erase.cannotUndo}</p>
+        </div>
+        <ErasurePlanView plan={preview.plan} locale={locale} words={w} dateLocale={ADMIN_LANG_FACTS[lang].locale} />
+        <EraseForm email={preview.email} action={eraseCustomerAction.bind(null, store.slug, ref.key, request)} />
       </div>
-      <ErasurePlanView plan={preview.plan} locale={locale} />
-      <EraseForm email={preview.email} action={eraseCustomerAction.bind(null, store.slug, ref.key, request)} />
-    </div>
+    </AdminTextScope>
   );
 }

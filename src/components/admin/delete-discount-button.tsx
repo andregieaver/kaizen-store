@@ -2,6 +2,10 @@
 
 import { useState, useTransition } from "react";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
+
 /** Deletes a code, after asking; orders that used it keep what they got. */
 export function DeleteDiscountButton({
   action,
@@ -9,7 +13,7 @@ export function DeleteDiscountButton({
   used = 0,
   compact = false,
   question: asked,
-  label = "Delete this code",
+  label,
 }: {
   action: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
   code: string;
@@ -19,9 +23,11 @@ export function DeleteDiscountButton({
   compact?: boolean;
   /** Asks this instead of the store's question. */
   question?: string;
-  /** The full-size button's words. */
+  /** The full-size button's words; "Delete this code" in the admin's language unless given. */
   label?: string;
 }) {
+  const w = useAdminText("discounts").remove;
+  const form = useAdminText("common").form;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   return (
@@ -32,9 +38,7 @@ export function DeleteDiscountButton({
         onClick={() => {
           const question =
             asked ??
-            (used > 0
-              ? `Delete the code ${code}? Shoppers can no longer use it. The ${used} ${used === 1 ? "order" : "orders"} that used it keep their discount.`
-              : `Delete the code ${code}? Shoppers can no longer use it.`);
+            (used > 0 ? countWords(used, w.questionUsed, { code }) : fillWords(w.question, { code }));
           if (!window.confirm(question)) return;
           start(async () => {
             const result = await action();
@@ -47,12 +51,13 @@ export function DeleteDiscountButton({
             : "w-fit text-sm text-danger-text underline disabled:opacity-50"
         }
       >
-        {pending ? "Deleting …" : compact ? (
+        {pending ? form.deleting : compact ? (
           <>
-            Delete<span className="sr-only"> {code}</span>
+            {form.delete}
+            <span className="sr-only"> {code}</span>
           </>
         ) : (
-          label
+          (label ?? w.deleteCode)
         )}
       </button>
       {problem && (

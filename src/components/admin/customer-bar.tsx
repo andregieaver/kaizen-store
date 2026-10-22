@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { Avatar } from "@/components/avatar";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { formatMoney } from "@/lib/money";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS } from "@/components/admin/ui";
@@ -20,8 +22,8 @@ export type CustomerBarData = {
 };
 
 /** The account's standing, in a word or two. */
-export function accountLabel(account: CustomerBarData["account"]): string {
-  return account === "verified" ? "Account" : account === "unverified" ? "Account, email not confirmed" : "Guest";
+export function accountLabel(account: CustomerBarData["account"], words: CustomersMessages["account"] = customersEn.account): string {
+  return account === "verified" ? words.verified : account === "unverified" ? words.unverified : words.guest;
 }
 
 /** "NOK 1 249,00 + SEK 300,00". */
@@ -36,10 +38,10 @@ export function moneyByCurrency(minor: Record<string, number>, locale: string): 
  * its page: the same bar everywhere, one click from the customer's page,
  * which lists all of their orders and subscriptions in turn.
  */
-export function CustomerBar({ customer }: { customer: CustomerBarData }) {
+export function CustomerBar({ customer, words = customersEn }: { customer: CustomerBarData; words?: CustomersMessages }) {
   return (
     <section
-      aria-label="Customer"
+      aria-label={words.bar.label}
       className={`flex flex-wrap items-center gap-4 p-4 ${CARD_CLASS}`}
     >
       <Avatar avatar={avatarFor(customer)} size={44} className="bg-brand font-medium text-brand-ink" />
@@ -47,7 +49,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
         <p className="truncate font-medium">
           {customer.name || customer.email}
           <span className="ml-2 rounded-full bg-sunken px-2 py-0.5 text-xs font-normal text-muted">
-            {customer.badge ?? accountLabel(customer.account)}
+            {customer.badge ?? accountLabel(customer.account, words.account)}
           </span>
         </p>
         <p className="truncate text-sm text-muted">
@@ -59,7 +61,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
         href={customer.href}
         className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
       >
-        Customer details
+        {words.bar.details}
       </Link>
     </section>
   );
@@ -79,6 +81,7 @@ export function storeCustomerBar(
     spentMinor: Record<string, number>;
   },
   locale: string,
+  words: CustomersMessages["bar"] = customersEn.bar,
 ): CustomerBarData {
   const spent = moneyByCurrency(customer.spentMinor, locale);
   return {
@@ -88,11 +91,9 @@ export function storeCustomerBar(
     avatarPath: customer.avatarPath,
     account: customer.account,
     facts: [
-      customer.orders === 1 ? "1 order" : `${customer.orders} orders`,
-      ...(customer.liveSubscriptions > 0
-        ? [customer.liveSubscriptions === 1 ? "1 active subscription" : `${customer.liveSubscriptions} active subscriptions`]
-        : []),
-      ...(spent ? [`${spent} spent`] : []),
+      countWords(customer.orders, words.orders),
+      ...(customer.liveSubscriptions > 0 ? [countWords(customer.liveSubscriptions, words.subscriptions)] : []),
+      ...(spent ? [fillWords(words.spent, { amount: spent })] : []),
     ],
   };
 }

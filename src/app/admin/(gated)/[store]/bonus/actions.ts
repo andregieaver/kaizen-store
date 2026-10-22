@@ -2,7 +2,9 @@
 
 import { refresh, updateTag } from "next/cache";
 
+import { adminText } from "@/lib/admin-text";
 import type { BonusResult } from "@/lib/bonus";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { affiliateTag } from "@/server/affiliates";
 import { checkOwnerRole } from "@/server/permissions";
 import { saveBonusSettings } from "@/server/bonus";
@@ -16,7 +18,7 @@ import { storeTag } from "@/server/stores";
  */
 export async function saveBonusAction(storeSlug: string, raw: unknown): Promise<BonusResult> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { ok: false, problems: ["Only an owner can change the bonus program."] };
+  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").bonusPage.ownerOnly] };
   const result = await saveBonusSettings(member.account, member.store.id, raw);
   if (result.ok) {
     // What the storefront shows about earning credits (cards, cart, account) follows the settings.

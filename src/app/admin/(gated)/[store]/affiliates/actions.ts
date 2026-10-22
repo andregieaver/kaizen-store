@@ -3,8 +3,11 @@
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import type { AffiliateResult } from "@/lib/affiliates";
-import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
+import { actionAdminLang } from "@/server/admin-request-lang";
+import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { affiliateTag, saveAffiliateSettings, setAffiliateBlocked } from "@/server/affiliates";
 import { catalogTag } from "@/server/catalog";
 import { cookiesTag } from "@/server/site-cookies";
@@ -18,7 +21,7 @@ import { featureOn } from "@/lib/store-features";
  */
 export async function saveAffiliateAction(storeSlug: string, raw: unknown): Promise<AffiliateResult> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { ok: false, problems: ["Only an owner can change the referral program."] };
+  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").affiliatePage.ownerOnly] };
   const result = await saveAffiliateSettings(member.account, member.store.id, raw);
   if (result.ok) {
     // What the storefront shows and does about links (the capture in its layouts, the cookie the banner asks about, the
@@ -43,10 +46,11 @@ export async function blockAffiliateAction(
   note: string,
 ): Promise<AffiliateResult> {
   const member = await checkPermission(storeSlug, "marketing:write");
-  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  if (!member) return { ok: false, problems: [adminText(await actionAdminLang(), "loyalty").affiliatePage.noAccess] };
+  const w = adminText(adminLangOf(member.account.adminLocale), "loyalty").affiliatePage;
   // The referral program's page and parts are hidden while its feature is off (D178), and so is every change.
-  if (!featureOn(member.store, "referrals")) return { ok: false, problems: ["The referral program is switched off under Settings, Features."] };
-  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
+  if (!featureOn(member.store, "referrals")) return { ok: false, problems: [w.featureOff] };
+  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: [w.unknownCustomer] };
   const result = await setAffiliateBlocked(member.account, member.store.id, customerId, Boolean(blocked), String(note ?? ""));
   if (result.ok) refresh();
   return result;

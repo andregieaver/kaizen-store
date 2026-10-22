@@ -23,6 +23,8 @@ export const commonEn = {
     working: "Working …",
     show: "Show",
     hide: "Hide",
+    delete: "Delete",
+    deleting: "Deleting …",
   },
   language: {
     title: "Language",

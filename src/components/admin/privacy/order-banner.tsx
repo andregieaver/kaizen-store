@@ -1,4 +1,8 @@
-import { STAFF_TEXT } from "@/lib/privacy-text";
+"use client";
+
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { OrderPrivacy } from "@/server/privacy-pages";
 
 import { dayText } from "./styles";
@@ -9,18 +13,21 @@ import { dayText } from "./styles";
  * `[removed]` where the name, address and email were, and says when. Nothing is shown for an order nothing has happened to.
  */
 export function OrderPrivacyBanner({ privacy }: { privacy: OrderPrivacy | null }) {
+  const staff = useAdminText("privacy").staff;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const day = (value: string) => dayText(value, undefined, locale);
   if (!privacy) return null;
   if (privacy.anonymisedOn) {
     return (
       <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
-        {STAFF_TEXT.anonymisedBanner(dayText(privacy.anonymisedOn))}
+        {fillWords(staff.anonymisedBanner, { when: day(privacy.anonymisedOn) })}
       </p>
     );
   }
   if (privacy.restrictedOn) {
     return (
       <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
-        {STAFF_TEXT.restrictedBanner(dayText(privacy.restrictedOn), privacy.keptUntil ? dayText(privacy.keptUntil) : "the end of the period")}
+        {fillWords(staff.restrictedBanner, { since: day(privacy.restrictedOn), until: privacy.keptUntil ? day(privacy.keptUntil) : staff.endOfPeriod })}
       </p>
     );
   }

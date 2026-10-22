@@ -1,6 +1,8 @@
 import type { FormState } from "@/components/admin/action-form";
 import { PERSONAL_DATA } from "@/lib/personal-data";
-import { describePeriod, isBookkeepingKind, RETENTION_KINDS, type RetentionBasis, type RetentionKind } from "@/lib/retention";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
+import { isBookkeepingKind, RETENTION_KINDS, type Period, type RetentionKind } from "@/lib/retention";
 import type { RetentionOverview, StoredRule } from "@/server/retention";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -10,55 +12,42 @@ import { alertText, card, dayText } from "./styles";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-export const KIND_LABELS: Record<RetentionKind, string> = {
-  bookkeeping: "Orders, invoices and payments (bookkeeping)",
-  host_bookkeeping: "Hosts' orders (bookkeeping)",
-  unpaid_orders: "Orders never paid",
-  email_bodies: "Sent emails (the text and recipients)",
-  security_emails: "Sign-in and password emails",
-  carts: "Carts",
-  delivery_quotes: "Delivery quotes",
-  customer_codes: "Sign-in codes",
-  customer_sessions: "Signed-in browsers",
-  webhook_payloads: "Payment provider events",
-  consents: "Cookie consent log",
-  privacy_request_contact: "Email on a finished privacy request",
-  privacy_requests: "The privacy request log",
-  search_queries: "Search log",
-  visits: "Visit counts",
-  audit_log: "Activity log",
-  form_submissions: "Form submissions",
-  integration_deliveries: "Integration deliveries",
-  abandoned_checkouts: "Abandoned checkouts",
-  recommendation_events: "Recommendation events",
-  ai_usage: "AI usage log",
-  support_transcripts: "Support chat transcripts",
-  support_records: "Anonymised support records",
-};
+export const KIND_LABELS: Record<RetentionKind, string> = privacyEn.retention.kinds;
 
-const BASIS_WORDS: Record<RetentionBasis, string> = {
-  read: "Read at the source",
-  snippet: "Seen in a search result only",
-  secondary: "From a secondary source",
-  fallback: "Safe fallback, not read",
-  policy: "Kaizena Flow's own choice",
-};
+/** What a rule row says in one line in the admin's language, as `describePeriod()` writes it in English. */
+export function periodText(p: Period, w: PrivacyMessages["retention"]["period"] = privacyEn.retention.period): string {
+  if (p.periodUnit === "months" && p.periodValue % 12 === 0) {
+    const base = countWords(p.periodValue / 12, w.years);
+    return p.countsFrom === "end_of_year" ? fillWords(w.fromYearEnd, { period: base }) : base;
+  }
+  return countWords(p.periodValue, p.periodUnit === "months" ? w.months : w.days);
+}
 
 /** A period that is set by a constant in code: the row describes it, and a test holds the two equal. A change here would not change what is enforced. */
 export const setInCode = (rule: Pick<StoredRule, "note">): boolean => /constant is the source/i.test(rule.note);
 
-const countryText = (country: string | null) => (country ? country : "Every other country");
+const countryText = (country: string | null, w: PrivacyMessages["retention"]) => (country ? country : w.everyOtherCountry);
 
-function RuleRow({ rule, verify }: { rule: StoredRule; verify: (id: string) => Action }) {
+function RuleRow({
+  rule,
+  verify,
+  w,
+  day,
+}: {
+  rule: StoredRule;
+  verify: (id: string) => Action;
+  w: PrivacyMessages["retention"];
+  day: (value: string | null) => string;
+}) {
   return (
     <tr className="border-t border-line align-top">
-      <td className="py-2 pr-3">{countryText(rule.country)}</td>
+      <td className="py-2 pr-3">{countryText(rule.country, w)}</td>
       <td className="py-2 pr-3 whitespace-nowrap">
-        {describePeriod(rule)}
-        {setInCode(rule) && <span className="block text-xs text-muted">Set in code: a change here is only a record</span>}
+        {periodText(rule, w.period)}
+        {setInCode(rule) && <span className="block text-xs text-muted">{w.setInCode}</span>}
       </td>
       <td className="py-2 pr-3">
-        <span className="block">{BASIS_WORDS[rule.basis]}</span>
+        <span className="block">{w.bases[rule.basis]}</span>
         <span className="block text-xs text-muted">
           {rule.sourceUrl && /^https?:\/\//i.test(rule.sourceUrl) ? (
             <a href={rule.sourceUrl} target="_blank" rel="noreferrer" className="break-all underline">
@@ -68,16 +57,16 @@ function RuleRow({ rule, verify }: { rule: StoredRule; verify: (id: string) => A
             rule.source
           )}
         </span>
-        <span className="block text-xs text-muted">Checked {dayText(rule.checkedOn)}; in force from {dayText(rule.validFrom)}</span>
+        <span className="block text-xs text-muted">{fillWords(w.checked, { checked: day(rule.checkedOn), from: day(rule.validFrom) })}</span>
       </td>
       <td className="py-2">
         {rule.verifiedAt ? (
-          <span>Reviewed {dayText(rule.verifiedAt)}</span>
+          <span>{fillWords(w.reviewed, { date: day(rule.verifiedAt) })}</span>
         ) : (
           <div className="flex flex-col gap-2">
-            <span className={`text-xs font-medium ${alertText}`}>Not reviewed</span>
-            <StepForm action={verify(rule.id)} successMessage="Marked as reviewed.">
-              Mark reviewed
+            <span className={`text-xs font-medium ${alertText}`}>{w.notReviewed}</span>
+            <StepForm action={verify(rule.id)} successMessage={w.markedReviewed}>
+              {w.markReviewed}
             </StepForm>
           </div>
         )}
@@ -97,13 +86,20 @@ export function RetentionView({
   verify,
   change,
   today,
+  words = privacyEn,
+  locale = "en-GB",
 }: {
   overview: RetentionOverview;
   /** `(ruleId) => action` */
   verify: (id: string) => Action;
   change: Action;
   today: string;
+  /** The privacy screens' words in the admin's language, and its date locale. */
+  words?: PrivacyMessages;
+  locale?: string;
 }) {
+  const w = words.retention;
+  const day = (value: string | null) => dayText(value, undefined, locale);
   const current = overview.rules.filter((r) => r.validTo === null);
   const history = overview.rules.filter((r) => r.validTo !== null);
   const byKind = new Map<RetentionKind, StoredRule[]>();
@@ -112,20 +108,17 @@ export function RetentionView({
   const actions = (a: string) => personal.filter((e) => e.erasure === a).length;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Data retention"
-        description={<>How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them; the rest are Kaizena Flow&apos;s own choice. This is not legal advice.</>}
-      />
+      <PageHeader title={w.title} description={<>{w.description}</>} />
 
       <section aria-labelledby="unreviewed" className={card}>
         <h2 id="unreviewed" className="text-title text-ink">
-          Not reviewed yet
+          {w.unreviewedTitle}
         </h2>
         {overview.unverified === 0 ? (
-          <p className="text-sm text-muted">Every period in force has been reviewed by a person.</p>
+          <p className="text-sm text-muted">{w.allReviewed}</p>
         ) : (
           <p className="text-sm" aria-live="polite">
-            {overview.unverified} {overview.unverified === 1 ? "period is" : "periods are"} in force without a review. They are still the periods the job uses. Work through them with an accountant (the bookkeeping ones first) and mark each reviewed.
+            {countWords(overview.unverified, w.unreviewed)}
           </p>
         )}
       </section>
@@ -134,24 +127,32 @@ export function RetentionView({
         <section key={kind} aria-labelledby={`kind-${kind}`} className={card}>
           <div>
             <h2 id={`kind-${kind}`} className="text-title text-ink">
-              {KIND_LABELS[kind]}
+              {w.kinds[kind]}
             </h2>
-            {isBookkeepingKind(kind) && <p className="text-sm text-muted">The database refuses a bookkeeping period under five years. The financial year is counted as the calendar year.</p>}
+            {isBookkeepingKind(kind) && <p className="text-sm text-muted">{w.floor}</p>}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">
-              <caption className="sr-only">{KIND_LABELS[kind]}: periods in force</caption>
+              <caption className="sr-only">{fillWords(w.inForce, { kind: w.kinds[kind] })}</caption>
               <thead className="text-muted">
                 <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Country</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Kept</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Source</th>
-                  <th scope="col" className="py-2 font-medium">Review</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {w.country}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {w.kept}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {w.source}
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    {w.review}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {(byKind.get(kind) ?? []).map((rule) => (
-                  <RuleRow key={rule.id} rule={rule} verify={verify} />
+                  <RuleRow key={rule.id} rule={rule} verify={verify} w={w} day={day} />
                 ))}
               </tbody>
             </table>
@@ -161,29 +162,24 @@ export function RetentionView({
 
       <section aria-labelledby="change-rule" className={card}>
         <h2 id="change-rule" className="text-title text-ink">
-          Change a period
+          {w.changeTitle}
         </h2>
-        <p className="text-sm text-muted">
-          A change ends the period in force and starts a new one from the date you give, and is written to the activity log. Periods marked &quot;Set in code&quot; are enforced by the application&apos;s own
-          constants: a new row records the decision, but does not change what is removed.
-        </p>
-        <ChangeRuleForm action={change} today={today} kinds={RETENTION_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] }))} />
+        <p className="text-sm text-muted">{w.changeText}</p>
+        <ChangeRuleForm action={change} today={today} kinds={RETENTION_KINDS.map((k) => ({ value: k, label: w.kinds[k] }))} />
       </section>
 
       <section aria-labelledby="register" className={card}>
         <h2 id="register" className="text-title text-ink">
-          The register of personal data
+          {w.registerTitle}
         </h2>
-        <p className="text-sm text-muted">
-          Every table that holds a shopper&apos;s data is listed in the register, with what erasure does to it. A test fails when a table with personal columns is added and not classified.
-        </p>
+        <p className="text-sm text-muted">{w.registerText}</p>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           {(
             [
-              ["delete", "Deleted"],
-              ["anonymise", "Made anonymous"],
-              ["restrict", "Kept restricted"],
-              ["keep", "Kept"],
+              ["delete", words.plan.actions.deleted],
+              ["anonymise", words.plan.actions.anonymised],
+              ["restrict", words.plan.actions.restricted],
+              ["keep", words.plan.actions.kept],
             ] as const
           ).map(([key, text]) => (
             <div key={key} className="rounded-panel border border-line p-3">
@@ -196,33 +192,43 @@ export function RetentionView({
 
       <section aria-labelledby="runs" className={card}>
         <h2 id="runs" className="text-title text-ink">
-          The daily job
+          {w.jobTitle}
         </h2>
         {overview.lastRuns.length === 0 ? (
-          <p className="text-sm text-muted">The job has not run yet.</p>
+          <p className="text-sm text-muted">{w.jobNotRun}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[32rem] text-left text-sm">
-              <caption className="sr-only">The last runs of the retention job</caption>
+              <caption className="sr-only">{w.runsCaption}</caption>
               <thead className="text-muted">
                 <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Ran</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Orders made anonymous</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Rows removed</th>
-                  <th scope="col" className="py-2 font-medium">Problems</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {w.ran}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    {w.ordersAnonymised}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    {w.rowsRemoved}
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    {w.problems}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {overview.lastRuns.map((run) => {
-                  const removed = Object.entries(run.counts).filter(([k]) => k !== "orders").reduce((sum, [, n]) => sum + n, 0);
+                  const removed = Object.entries(run.counts)
+                    .filter(([k]) => k !== "orders")
+                    .reduce((sum, [, n]) => sum + n, 0);
                   return (
                     <tr key={run.at} className="border-t border-line">
-                      <td className="py-2 pr-3 whitespace-nowrap">{dayText(run.at.slice(0, 10))}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{day(run.at.slice(0, 10))}</td>
                       <td className="py-2 pr-3 text-right">{run.counts.orders ?? 0}</td>
                       <td className="py-2 pr-3 text-right">{removed}</td>
                       <td className="py-2">
-                        {run.errors > 0 ? <span className={alertText}>{run.errors} {run.errors === 1 ? "step failed" : "steps failed"}</span> : "None"}
-                        {run.filesLeft > 0 && <span className="block text-xs text-muted">{run.filesLeft} files still to remove</span>}
+                        {run.errors > 0 ? <span className={alertText}>{countWords(run.errors, w.stepsFailed)}</span> : w.none}
+                        {run.filesLeft > 0 && <span className="block text-xs text-muted">{fillWords(w.filesLeft, { n: run.filesLeft })}</span>}
                       </td>
                     </tr>
                   );
@@ -236,12 +242,18 @@ export function RetentionView({
       {history.length > 0 && (
         <section aria-labelledby="history" className={card}>
           <h2 id="history" className="text-title text-ink">
-            Earlier periods
+            {w.earlier}
           </h2>
           <ul className="flex flex-col gap-1 text-sm">
             {history.map((r) => (
               <li key={r.id}>
-                {KIND_LABELS[r.kind]}, {countryText(r.country)}: {describePeriod(r)}, from {dayText(r.validFrom)} to {dayText(r.validTo)}
+                {fillWords(w.earlierRow, {
+                  kind: w.kinds[r.kind],
+                  country: countryText(r.country, w),
+                  period: periodText(r, w.period),
+                  from: day(r.validFrom),
+                  to: day(r.validTo),
+                })}
               </li>
             ))}
           </ul>

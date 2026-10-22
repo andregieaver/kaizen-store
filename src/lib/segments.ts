@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { countWords, fillWords } from "./admin-fill";
+import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
 import { RFM_SEGMENTS, type RfmSegment } from "./analytics-customers";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "./marketing-consent";
 import { tagKey } from "./order-tags";
@@ -146,65 +148,57 @@ export function countSegment(rules: SegmentRules, people: readonly Person[], tod
   return { people: n, subscribed, moneyUnknown: unknown };
 }
 
-const CONSENT_WORDS: Record<Consent, string> = {
-  subscribed: "want your emails",
-  pending: "are waiting for their confirmation link",
-  unsubscribed: "unsubscribed",
-  none: "never asked for your emails",
-};
+const or = (words: readonly string[], w: DescribeWords) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} ${w.or} ${words.at(-1)}`);
 
-const or = (words: readonly string[]) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`);
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+/** The sentences a condition is written in (D312 A6): the marketing catalogue's `describe`, English unless given. */
+export type DescribeWords = MarketingMessages["describe"];
 
 export type DescribeContext = {
   /** Writes an amount of the main currency. */
   money: (minor: number) => string;
   groupName?: (id: string) => string | undefined;
   countryName?: (code: string) => string;
+  words?: DescribeWords;
 };
 
 /** A condition in staff's words: *Ordered at least 2 times*. */
 export function describeCondition(c: Condition, ctx: DescribeContext): string {
+  const w = ctx.words ?? marketingEn.describe;
+  const times = (n: number) => countWords(n, w.times);
+  const days = (n: number) => countWords(n, w.days);
   switch (c.kind) {
     case "consent":
-      return `People who ${or(c.statuses.map((s) => CONSENT_WORDS[s]))}`;
+      return fillWords(w.consent, { list: or(c.statuses.map((s) => w.consentWords[s]), w) });
     case "orders":
-      return c.op === "atLeast"
-        ? `Ordered at least ${plural(c.value, "time", "times")}`
-        : c.op === "atMost"
-          ? `Ordered at most ${plural(c.value, "time", "times")}`
-          : `Ordered exactly ${plural(c.value, "time", "times")}`;
+      return fillWords(c.op === "atLeast" ? w.ordersAtLeast : c.op === "atMost" ? w.ordersAtMost : w.ordersExactly, { times: times(c.value) });
     case "spent":
-      return `${c.op === "atLeast" ? "Spent at least" : "Spent at most"} ${ctx.money(c.minor)} (without VAT)`;
+      return fillWords(c.op === "atLeast" ? w.spentAtLeast : w.spentAtMost, { money: ctx.money(c.minor) });
     case "lastOrder":
-      return c.op === "never"
-        ? "Never ordered"
-        : c.op === "within"
-          ? `Last order in the last ${plural(c.days ?? 0, "day", "days")}`
-          : `Last order more than ${plural(c.days ?? 0, "day", "days")} ago`;
+      return c.op === "never" ? w.neverOrdered : fillWords(c.op === "within" ? w.lastWithin : w.lastBefore, { days: days(c.days ?? 0) });
     case "firstOrder":
-      return c.op === "within" ? `First order in the last ${plural(c.days, "day", "days")}` : `First order more than ${plural(c.days, "day", "days")} ago`;
+      return fillWords(c.op === "within" ? w.firstWithin : w.firstBefore, { days: days(c.days) });
     case "rfm":
-      return `Customer type ${or(c.groups)}`;
+      return fillWords(w.rfm, { list: or(c.groups, w) });
     case "country":
-      return `In ${or(c.codes.map((code) => ctx.countryName?.(code) ?? code.toUpperCase()))}`;
+      return fillWords(w.country, { list: or(c.codes.map((code) => ctx.countryName?.(code) ?? code.toUpperCase()), w) });
     case "language":
-      return `Language ${or(c.codes.map((code) => code.toUpperCase()))}`;
+      return fillWords(w.language, { list: or(c.codes.map((code) => code.toUpperCase()), w) });
     case "group":
-      return `In the customer group ${or(c.ids.map((id) => ctx.groupName?.(id) ?? "a group that no longer exists"))}`;
+      return fillWords(w.group, { list: or(c.ids.map((id) => ctx.groupName?.(id) ?? w.goneGroup), w) });
     case "company":
-      return c.has ? "Buys for a company" : "Does not buy for a company";
+      return c.has ? w.company : w.noCompany;
     case "account":
-      return c.has ? "Has an account" : "Has no account";
+      return c.has ? w.account : w.noAccount;
     case "tag":
-      return `Tagged ${or(c.tags.map((t) => `“${t}”`))}`;
+      return fillWords(w.tag, { list: or(c.tags.map((tag) => fillWords(w.quoted, { tag })), w) });
   }
 }
 
 /** The rules as one line: the conditions joined by "and" or "or"; *Everyone* without any. */
 export function describeRules(rules: SegmentRules, ctx: DescribeContext): string {
-  if (rules.conditions.length === 0) return "Everyone";
-  return rules.conditions.map((c) => describeCondition(c, ctx)).join(rules.match === "all" ? " · and " : " · or ");
+  const w = ctx.words ?? marketingEn.describe;
+  if (rules.conditions.length === 0) return w.everyone;
+  return rules.conditions.map((c) => describeCondition(c, ctx)).join(rules.match === "all" ? w.andJoin : w.orJoin);
 }
 
 /** Ready rule sets offered by *New segment*; each is a normal segment once saved. */

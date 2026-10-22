@@ -3,13 +3,19 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import type { BonusResult } from "@/lib/bonus";
-import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { actionAdminLang } from "@/server/admin-request-lang";
+import { checkPermission } from "@/server/permissions";
 import { adjustBonus } from "@/server/bonus";
 import { findCustomer } from "@/server/customer-admin";
 import { saveStaffFields } from "@/server/field-entities";
 import { addTag, removeTag } from "@/server/segments";
 import type { SaveResult } from "@/server/settings";
+
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "customers").saved;
+const noAccess = async () => adminText(await actionAdminLang(), "customers").saved.noAccess;
 
 /**
  * Saves staff's custom fields for a customer with an account (D120). They are
@@ -18,8 +24,8 @@ import type { SaveResult } from "@/server/settings";
  */
 export async function saveCustomerFieldsAction(storeSlug: string, customerId: string, changes: unknown): Promise<SaveResult> {
   const member = await checkPermission(storeSlug, "customers:write");
-  if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: [wordsOf(member).unknownCustomer] };
   const result = await saveStaffFields(member, "customer", customerId, changes);
   if (result.ok) refresh();
   return result;
@@ -31,9 +37,9 @@ export async function saveCustomerFieldsAction(storeSlug: string, customerId: st
  */
 export async function adjustBonusAction(storeSlug: string, customerId: string, amountMinor: number, note: string): Promise<BonusResult> {
   const member = await checkPermission(storeSlug, "customers:write");
-  if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
-  if (!Number.isSafeInteger(amountMinor) || amountMinor === 0) return { ok: false, problems: ["The amount must be a whole number of minor units, not 0."] };
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: [wordsOf(member).unknownCustomer] };
+  if (!Number.isSafeInteger(amountMinor) || amountMinor === 0) return { ok: false, problems: [wordsOf(member).bonusAmount] };
   const result = await adjustBonus(member.account, member.store.id, customerId, amountMinor, String(note ?? ""));
   if (result.ok) refresh();
   return result;

@@ -237,7 +237,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["order", "drafts"])}>
+    <AdminTextScope texts={adminTexts(lang, ["order", "drafts", "privacy"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
@@ -289,7 +289,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           holdAction={canWrite && !hold && order.status === "paid" && order.ships ? holdOrderAction.bind(null, store.slug, order.id) : null}
         />
       )}
-      {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
+      {customer && (
+        <CustomerBar customer={storeCustomerBar(store.slug, customer, locale, adminText(lang, "customers").bar)} words={adminText(lang, "customers")} />
+      )}
       {owedUnits > 0 && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
           <span className="font-medium">{w.waitingForStock}</span> {countWords(owedUnits, w.owedText)}{" "}

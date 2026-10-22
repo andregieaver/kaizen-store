@@ -1,8 +1,9 @@
 "use client";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { PRIVACY_KINDS, PRIVACY_KIND_LABELS } from "@/lib/privacy-request";
-import { STAFF_TEXT } from "@/lib/privacy-text";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { PRIVACY_KINDS } from "@/lib/privacy-request";
 
 import { card, hint, input, label } from "./styles";
 
@@ -14,42 +15,43 @@ type Action = (state: FormState, form: FormData) => Promise<FormState>;
  * The address is the one staff copy from the person's own message: the system never writes to an address typed by anyone else.
  */
 export function LogRequestForm({ action, today }: { action: Action; today: string }) {
+  const { forms: f, common: c, staff } = useAdminText("privacy");
   return (
     <section aria-labelledby="log-request" className={card}>
       <h2 id="log-request" className="text-title text-ink">
-        Log a request
+        {f.logTitle}
       </h2>
       <ActionForm action={action} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>
-            What the person asks for
+            {f.whatAsked}
             <select name="kind" required defaultValue="export" className={input}>
               {PRIVACY_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {kind === "export" ? "A copy of their data (export)" : "Their data erased"}
+                  {kind === "export" ? f.exportOption : f.erasureOption}
                 </option>
               ))}
             </select>
-            <span className={hint}>{PRIVACY_KIND_LABELS.export} or {PRIVACY_KIND_LABELS.erasure.toLowerCase()}.</span>
+            <span className={hint}>{fillWords(f.kindHint, { export: c.kinds.export, erasure: c.kinds.erasure.toLowerCase() })}</span>
           </label>
           <label className={label}>
-            Their email address
+            {f.email}
             <input name="email" type="email" required autoComplete="off" maxLength={254} className={input} />
-            <span className={hint}>The address they wrote from.</span>
+            <span className={hint}>{f.emailHint}</span>
           </label>
           <label className={label}>
-            Date received
+            {f.received}
             <input name="receivedOn" type="date" required defaultValue={today} max={today} className={input} />
-            <span className={hint}>{STAFF_TEXT.receivedHelp}</span>
+            <span className={hint}>{staff.receivedHelp}</span>
           </label>
           <label className={label}>
-            Note <span className={hint}>(optional, for staff only)</span>
+            {c.note} <span className={hint}>{f.staffNote}</span>
             <textarea name="note" rows={3} maxLength={1000} className={`${input} py-2`} />
           </label>
         </div>
-        <p className="text-sm text-muted">{STAFF_TEXT.clock}</p>
+        <p className="text-sm text-muted">{staff.clock}</p>
         <div>
-          <SubmitButton>Log the request</SubmitButton>
+          <SubmitButton>{f.logButton}</SubmitButton>
         </div>
       </ActionForm>
     </section>

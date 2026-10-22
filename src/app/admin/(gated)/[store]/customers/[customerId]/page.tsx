@@ -11,11 +11,14 @@ import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { PrivacyBanner, PrivacyCard } from "@/components/admin/privacy/privacy-card";
 import { Avatar } from "@/components/avatar";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { exportProblemOf } from "@/lib/privacy-admin";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_SIGNAL } from "@/lib/order-status";
+import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
-import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { customerAffiliate } from "@/server/affiliates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
@@ -47,6 +50,10 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "customers");
+  const words = all.customer;
+  const statuses = adminText(lang, "common").orderStatus;
   const exportParam = (await searchParams).export;
   if (!z.uuid().safeParse(customerId).success) notFound();
   const ref = await findCustomer(store.id, customerId);
@@ -88,15 +95,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const address = customer.address;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["customers", "privacy", "loyalty"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/customers`, label: "Customers" }}
+        back={{ href: `${base}/customers`, label: words.back }}
         title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={48} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
         meta={[
-          accountLabel(customer.account),
-          customer.firstOrderAt && `First order ${date(customer.firstOrderAt)}`,
-          customer.accountCreatedAt && `Account since ${date(customer.accountCreatedAt)}`,
-          customer.lastSignInAt && `Last signed in ${date(customer.lastSignInAt)}`,
+          accountLabel(customer.account, all.account),
+          customer.firstOrderAt && fillWords(words.firstOrder, { date: date(customer.firstOrderAt) }),
+          customer.accountCreatedAt && fillWords(words.accountSince, { date: date(customer.accountCreatedAt) }),
+          customer.lastSignInAt && fillWords(words.lastSignIn, { date: date(customer.lastSignInAt) }),
         ]}
       />
 
@@ -104,11 +112,11 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          ["Orders", String(customer.orders)],
-          ["Spent", spent || "–"],
-          ["Average order", moneyByCurrency(averageMinor, locale) || "–"],
+          [words.figures.orders, String(customer.orders)],
+          [words.figures.spent, spent || "–"],
+          [words.figures.average, moneyByCurrency(averageMinor, locale) || "–"],
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
-          ...(subscriptionsOn ? [["Active subscriptions", String(customer.liveSubscriptions)]] : []),
+          ...(subscriptionsOn ? [[words.figures.subscriptions, String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
           <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
@@ -120,11 +128,11 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <section aria-labelledby="orders" className={card}>
-            <h2 id="orders" className="mb-3 text-title text-ink">Orders</h2>
+            <h2 id="orders" className="mb-3 text-title text-ink">{words.orders}</h2>
             {customer.orderList.length === 0 ? (
-              <p className="text-sm text-muted">No orders yet.</p>
+              <p className="text-sm text-muted">{words.noOrders}</p>
             ) : (
-              <List label="Orders">
+              <List label={words.orders}>
                 {customer.orderList.map((order) => (
                   <ListRow key={order.id}>
                     <RowLead
@@ -132,22 +140,22 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                       href={`${base}/orders/${order.id}`}
                       sub={
                         <>
-                          {order.items === 1 ? "1 item" : `${order.items} items`}
+                          {countWords(order.items, words.items)}
                           {order.subscriptionId && (
                             <>
                               {" · "}
                               <Link href={`${base}/subscriptions/${order.subscriptionId}`} className="underline">
-                                subscription
+                                {words.subscription}
                               </Link>
                             </>
                           )}
-                          {order.refunded && order.status !== "cancelled" && " · refunded in part"}
+                          {order.refunded && order.status !== "cancelled" && words.refundedInPart}
                         </>
                       }
                     />
                     <RowDate>{date(order.placedAt)}</RowDate>
                     <Chip signal={ORDER_STATUS_SIGNAL[order.status]} dot>
-                      {order.status === "cancelled" ? "Cancelled and refunded" : ORDER_STATUS_LABELS[order.status]}
+                      {order.status === "cancelled" ? words.cancelledRefunded : statuses[order.status]}
                     </Chip>
                     <RowAmount>{formatMoney(order.totalMinor, order.currency, locale)}</RowAmount>
                   </ListRow>
@@ -158,22 +166,22 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
           {subscriptionsOn && (
           <section aria-labelledby="subscriptions" className={card}>
-            <h2 id="subscriptions" className="mb-3 text-title text-ink">Subscriptions</h2>
+            <h2 id="subscriptions" className="mb-3 text-title text-ink">{words.subscriptions}</h2>
             {customer.subscriptionList.length === 0 ? (
-              <p className="text-sm text-muted">No subscriptions.</p>
+              <p className="text-sm text-muted">{words.noSubscriptions}</p>
             ) : (
               <ul className="divide-y divide-line text-sm">
                 {customer.subscriptionList.map((s) => (
                   <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                     <span>
                       <Link href={`${base}/subscriptions/${s.id}`} className="font-medium underline">
-                        Subscription #{s.number}
+                        {fillWords(words.subscriptionNumber, { number: s.number })}
                       </Link>
                       <span className="block text-xs text-muted">
-                        {SUBSCRIPTION_STATUS_LABELS[s.status]} ·{" "}
-                        {planSummary({ interval: s.interval as "month", intervalCount: s.intervalCount, discountPercent: 0 })} ·{" "}
-                        {s.orders === 1 ? "1 order" : `${s.orders} orders`}
-                        {s.currentPeriodEnd && ["active", "past_due"].includes(s.status) && ` · renews ${date(s.currentPeriodEnd)}`}
+                        {words.subscriptionStatus[s.status]} ·{" "}
+                        {countWords(s.intervalCount, words.every[(s.interval in words.every ? s.interval : "month") as keyof typeof words.every])} ·{" "}
+                        {countWords(s.orders, all.list.orders)}
+                        {s.currentPeriodEnd && ["active", "past_due"].includes(s.status) && fillWords(words.renews, { date: date(s.currentPeriodEnd) })}
                       </span>
                     </span>
                     <span className="whitespace-nowrap">{formatMoney(s.totalMinor, s.currency, locale)}</span>
@@ -194,6 +202,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               orderIds={Object.fromEntries(customer.orderList.map((o) => [o.number, o.id]))}
               who={customer.name || customer.email}
               adjust={adjustBonusAction.bind(null, store.slug, customer.customerId)}
+              words={adminText(lang, "loyalty")}
             />
           )}
 
@@ -204,6 +213,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               locale={locale}
               who={customer.name || customer.email}
               block={blockAffiliateAction.bind(null, store.slug, customer.customerId)}
+              words={adminText(lang, "loyalty")}
             />
           )}
 
@@ -218,9 +228,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           )}
 
           <section aria-labelledby="emails" className={card}>
-            <h2 id="emails" className="mb-3 text-title text-ink">Emails</h2>
+            <h2 id="emails" className="mb-3 text-title text-ink">{words.emails}</h2>
             {emails.length === 0 ? (
-              <p className="text-sm text-muted">No emails yet.</p>
+              <p className="text-sm text-muted">{words.noEmails}</p>
             ) : (
               <ul className="divide-y divide-line text-sm">
                 {emails.map((email) => (
@@ -238,7 +248,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
         <div className="flex flex-col gap-6">
           <section aria-labelledby="contact" className={`${card} text-sm`}>
-            <h2 id="contact" className="mb-2 text-title text-ink">Contact</h2>
+            <h2 id="contact" className="mb-2 text-title text-ink">{words.contact}</h2>
             <a href={`mailto:${customer.email}`} className="break-all underline">
               {customer.email}
             </a>
@@ -251,7 +261,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             )}
             {address && (
               <>
-                <h3 className="mt-3 mb-1 text-body-strong text-ink">Address</h3>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">{words.address}</h3>
                 <address className="not-italic">
                   {[address.name, address.line1, address.line2, `${address.postalCode ?? ""} ${address.city ?? ""}`, address.country]
                     .filter((part) => part && String(part).trim())
@@ -266,17 +276,17 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           </section>
           {/* Staff's tags on the person (D296): words segments can choose people by. */}
           <section aria-labelledby="tags" className={`${card} text-sm`}>
-            <h2 id="tags" className="mb-2 text-title text-ink">Tags</h2>
+            <h2 id="tags" className="mb-2 text-title text-ink">{words.tags}</h2>
             {tags.length === 0 ? (
-              <p className="text-muted">No tags yet.</p>
+              <p className="text-muted">{words.noTags}</p>
             ) : (
-              <ul className="flex flex-wrap gap-2" aria-label="Tags">
+              <ul className="flex flex-wrap gap-2" aria-label={words.tags}>
                 {tags.map((tag) => (
                   <li key={tag.key} className="inline-flex items-center gap-1 rounded-pill bg-sunken px-3 py-1">
                     {tag.label}
                     {mayTag && (
                       <form action={removeCustomerTagAction.bind(null, store.slug, ref.key, tag.key)}>
-                        <button type="submit" aria-label={`Remove the tag ${tag.label}`} className="rounded-pill px-1 text-muted hover:text-ink">
+                        <button type="submit" aria-label={fillWords(words.removeTag, { tag: tag.label })} className="rounded-pill px-1 text-muted hover:text-ink">
                           ×
                         </button>
                       </form>
@@ -287,42 +297,42 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             )}
             {mayTag && (
               <form action={addCustomerTagAction.bind(null, store.slug, ref.key)} className="mt-3 flex gap-2">
-                <input name="tag" maxLength={40} required aria-label="New tag" placeholder="Add a tag" className="min-h-10 min-w-0 flex-1 rounded-md border border-line px-3" />
-                <SubmitButton>Add</SubmitButton>
+                <input name="tag" maxLength={40} required aria-label={words.newTag} placeholder={words.addTag} className="min-h-10 min-w-0 flex-1 rounded-md border border-line px-3" />
+                <SubmitButton>{words.add}</SubmitButton>
               </form>
             )}
           </section>
           {customer.customerId && (
             <section aria-labelledby="discount" className={`${card} text-sm`}>
-              <h2 id="discount" className="mb-2 text-title text-ink">Discount</h2>
+              <h2 id="discount" className="mb-2 text-title text-ink">{words.discount}</h2>
               {businessOn && access?.companyName && (
                 <p className="mb-2">
-                  {access.role === "owner" ? "Main account of " : "Employee of "}
+                  {access.role === "owner" ? words.mainAccountOf : words.employeeOf}
                   <Link href={`${base}/companies/${access.companyId}`} className="underline">
                     {access.companyName}
                   </Link>
-                  , which gives its discount.
+                  {words.givesDiscount}
                 </p>
               )}
               <ActionForm action={setCustomerGroupAction.bind(null, store.slug, customer.customerId)} className="flex flex-col gap-2">
                 <label className="flex flex-col gap-1 font-medium">
-                  Customer group
+                  {words.group}
                   <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal">
-                    <option value="">None</option>
+                    <option value="">{words.none}</option>
                     {groups.map((group) => (
                       <option key={group.id} value={group.id}>
-                        {group.name} ({group.percent} %){group.active ? "" : ", switched off"}
+                        {group.name} ({group.percent} %){group.active ? "" : words.switchedOffSuffix}
                       </option>
                     ))}
                   </select>
                 </label>
                 <div>
-                  <SubmitButton variant="secondary">Save</SubmitButton>
+                  <SubmitButton variant="secondary">{words.save}</SubmitButton>
                 </div>
               </ActionForm>
               <p className="mt-2 text-xs text-muted">
-                {businessOn && "With a company too, the better of the two discounts applies. "}
-                <Link href={`${base}/customer-groups`} className="underline">Customer groups</Link>
+                {businessOn && words.betterOfTwo}
+                <Link href={`${base}/customer-groups`} className="underline">{words.groupsLink}</Link>
               </p>
             </section>
           )}
@@ -339,28 +349,29 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           )}
 
           <section aria-labelledby="more" className={`${card} text-sm`}>
-            <h2 id="more" className="mb-2 text-title text-ink">Account and preferences</h2>
+            <h2 id="more" className="mb-2 text-title text-ink">{words.more}</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted">Account</dt>
-              <dd>{accountLabel(customer.account)}</dd>
-              <dt className="text-muted">Wishlist</dt>
+              <dt className="text-muted">{words.accountTerm}</dt>
+              <dd>{accountLabel(customer.account, all.account)}</dd>
+              <dt className="text-muted">{words.wishlist}</dt>
               <dd>
                 {customer.account && customer.customerId && customer.wishlistItems > 0 ? (
                   <Link href={`${base}/wishlists?customer=${customer.customerId}`} className="underline">
-                    {customer.wishlistItems === 1 ? "1 item" : `${customer.wishlistItems} items`}
+                    {countWords(customer.wishlistItems, words.items)}
                   </Link>
                 ) : customer.account ? (
-                  "Nothing saved"
+                  words.nothingSaved
                 ) : (
                   "–"
                 )}
               </dd>
-              <dt className="text-muted">Cart reminders</dt>
-              <dd>{customer.cartRemindersOptedOut ? "Said no" : "Allowed"}</dd>
+              <dt className="text-muted">{words.cartReminders}</dt>
+              <dd>{customer.cartRemindersOptedOut ? words.saidNo : words.allowed}</dd>
             </dl>
           </section>
         </div>
       </div>
     </div>
+    </AdminTextScope>
   );
 }

@@ -3,6 +3,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminLangOf } from "@/lib/admin-lang";
+import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import { memberDiscount, tierInput, type MemberDiscount, type TierInput } from "@/lib/customer-tiers";
 
 import { audit, type Membership } from "./auth";
@@ -10,6 +14,21 @@ import { preRegisterCustomer } from "./customers";
 import type { SaveResult } from "./settings";
 
 type Row = Record<string, unknown>;
+
+/** What a staff member's action is answered in (D312 A6): their admin language. */
+export function staffWords(account: { adminLocale?: string | null }): CustomersMessages["saved"] {
+  return adminText(adminLangOf(account.adminLocale), "customers").saved;
+}
+
+/** The form checks' messages (`tierInput`, `companyInput`, which write English) in the reader's words, each once. */
+export function schemaProblems(issues: { message: string }[], words: CustomersMessages["saved"]): string[] {
+  const keys = Object.keys(customersEn.saved.schema) as (keyof CustomersMessages["saved"]["schema"])[];
+  const said = (message: string) => {
+    const key = keys.find((k) => customersEn.saved.schema[k] === message);
+    return key ? words.schema[key] : message;
+  };
+  return [...new Set(issues.map((i) => said(i.message)))];
+}
 type Runner = Pick<ReturnType<typeof db>, "execute">;
 
 /**
@@ -61,10 +80,11 @@ export async function getTier(storeId: string, id: string): Promise<Tier | null>
 
 /** Creates a group (id null) or changes one. Orders already placed keep what they got. */
 export async function saveTier({ account, store }: Membership, id: string | null, input: TierInput): Promise<SaveResult & { id?: string }> {
+  const words = staffWords(account);
   const parsed = tierInput.safeParse(input);
-  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  if (!parsed.success) return { ok: false, problems: schemaProblems(parsed.error.issues, words) };
   const d = parsed.data;
-  if (id && !(await getTier(store.id, id))) return { ok: false, problems: ["The group no longer exists."] };
+  if (id && !(await getTier(store.id, id))) return { ok: false, problems: [words.groupGone] };
   try {
     const [row] = id
       ? await db().execute<Row>(sql`
@@ -79,7 +99,7 @@ export async function saveTier({ account, store }: Membership, id: string | null
     return { ok: true, id: String(row.id) };
   } catch (error) {
     const code = (error as { cause?: { code?: string }; code?: string }).cause?.code ?? (error as { code?: string }).code;
-    if (code === "23505") return { ok: false, problems: [`The store already has a group called ${d.name}.`] };
+    if (code === "23505") return { ok: false, problems: [fillWords(words.groupTaken, { name: d.name })] };
     throw error;
   }
 }
@@ -89,7 +109,7 @@ export async function deleteTier({ account, store }: Membership, id: string): Pr
   const tier = await getTier(store.id, id);
   if (!tier) return { ok: true };
   if (tier.customers + tier.companies > 0) {
-    return { ok: false, problems: ["Customers or companies are in this group. Move them out first, or switch the group off."] };
+    return { ok: false, problems: [staffWords(account).groupInUse] };
   }
   await db().execute(sql`delete from commerce.customer_tiers where store_id = ${store.id}::uuid and id = ${id}::uuid`);
   await audit(account.id, store.id, "tier.deleted", { name: tier.name });
@@ -113,12 +133,13 @@ export async function tierMembers(storeId: string, tierId: string): Promise<Tier
 
 /** Puts a customer in a group, or takes them out (null). */
 export async function setCustomerTier({ account, store }: Membership, customerId: string, tierId: string | null): Promise<SaveResult> {
-  if (tierId && !(await getTier(store.id, tierId))) return { ok: false, problems: ["The group no longer exists."] };
+  const words = staffWords(account);
+  if (tierId && !(await getTier(store.id, tierId))) return { ok: false, problems: [words.groupGone] };
   const [row] = await db().execute<Row>(sql`
     update commerce.customers set tier_id = ${tierId}::uuid, updated_at = now()
     where store_id = ${store.id}::uuid and id = ${customerId}::uuid returning email
   `);
-  if (!row) return { ok: false, problems: ["The customer no longer exists."] };
+  if (!row) return { ok: false, problems: [words.customerGone] };
   await audit(account.id, store.id, "customer.tier", { customerId, tierId });
   return { ok: true };
 }
@@ -129,9 +150,10 @@ export async function setCustomerTier({ account, store }: Membership, customerId
  * first time they sign in, and the group's discount is waiting.
  */
 export async function addToTierByEmail(member: Membership, tierId: string, email: string): Promise<SaveResult> {
+  const words = staffWords(member.account);
   const address = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) return { ok: false, problems: ["That is not an email address."] };
-  if (!(await getTier(member.store.id, tierId))) return { ok: false, problems: ["The group no longer exists."] };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) return { ok: false, problems: [words.notAnEmail] };
+  if (!(await getTier(member.store.id, tierId))) return { ok: false, problems: [words.groupGone] };
   const customerId = await preRegisterCustomer(member.store.id, address);
   return setCustomerTier(member, customerId, tierId);
 }

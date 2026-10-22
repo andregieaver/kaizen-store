@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
 import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
-import { STATUS_WORDS, type BroadcastStatus } from "@/lib/broadcasts";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { BroadcastStatus } from "@/lib/broadcasts";
 import { listBroadcasts } from "@/server/broadcasts";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -22,32 +25,36 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
   const broadcasts = await listBroadcasts(store.id);
   const base = `/admin/${store.slug}/broadcasts`;
   const mayWrite = memberCan(member, "marketing:write");
-  const date = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "marketing");
+  const wb = w.broadcasts;
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => new Date(iso).toLocaleString(numbers, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Broadcasts"
-        description="Emails with news and offers to the people who asked for them: everyone on your list, or a segment. Each person gets it once, with a way to unsubscribe."
-        actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">New broadcast</ButtonLink> : undefined}
+        title={wb.title}
+        description={wb.description}
+        actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">{wb.newBroadcast}</ButtonLink> : undefined}
       />
       {broadcasts.length === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>No broadcasts yet. Write one and send a test to yourself first.</p>
+        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>{wb.empty}</p>
       ) : (
         <Card compact>
-          <List label="Broadcasts">
+          <List label={wb.list}>
             {broadcasts.map((b) => (
               <ListRow key={b.id}>
                 <RowLead
                   title={b.title}
                   href={`${base}/${b.id}`}
-                  sub={b.audienceWords ?? (b.audience === "segment" ? (b.segmentName ? `Segment: ${b.segmentName}` : "Its segment was deleted") : "Everyone who wants your emails")}
+                  sub={b.audienceWords ?? (b.audience === "segment" ? (b.segmentName ? fillWords(wb.segment, { name: b.segmentName }) : wb.segmentGone) : wb.everyone)}
                 />
-                <RowFact sub={b.recipientCount !== null ? `${b.recipientCount.toLocaleString("en-GB")} people` : undefined}>
-                  {b.startedAt ? date(b.startedAt) : b.scheduledFor ? `For ${date(b.scheduledFor)}` : `Saved ${date(b.updatedAt)}`}
+                <RowFact sub={b.recipientCount !== null ? countWords(b.recipientCount, w.common.people, { n: b.recipientCount.toLocaleString(numbers) }) : undefined}>
+                  {b.startedAt ? date(b.startedAt) : b.scheduledFor ? fillWords(wb.forDate, { date: date(b.scheduledFor) }) : fillWords(wb.savedDate, { date: date(b.updatedAt) })}
                 </RowFact>
                 <Chip signal={SIGNAL[b.status]} dot>
-                  {STATUS_WORDS[b.status]}
+                  {wb.statuses[b.status]}
                 </Chip>
               </ListRow>
             ))}

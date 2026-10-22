@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { GeneratedCodes } from "@/components/admin/generated-codes";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { codeItemCounts, getDiscount } from "@/server/discounts";
 import { PageHeader } from "@/components/admin/ui";
@@ -20,17 +24,25 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
-  const { store } = gated;
+  const { store, account } = gated;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "discounts");
   if (!z.uuid().safeParse(discountId).success) notFound();
   const discount = await getDiscount(store.id, discountId);
   if (!discount) notFound();
   const items = discount.uniqueCodes ? await codeItemCounts(store.id, discount.id) : null;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/discounts`, label: "Coupons" }}
+        back={{ href: `/admin/${store.slug}/discounts`, label: w.codes.title }}
         title={<span className="font-mono">{discount.code}</span>}
-        description={<>Used by {discount.used} {discount.used === 1 ? "order" : "orders"}{discount.usageLimit !== null && ` of ${discount.usageLimit} allowed`}.</>}
+        description={
+          <>
+            {countWords(discount.used, w.codes.usedBy)}
+            {discount.usageLimit !== null && fillWords(w.codes.ofAllowed, { limit: discount.usageLimit })}.
+          </>
+        }
       />
       {items && (
         <GeneratedCodes
@@ -48,5 +60,6 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
         used={discount.used}
       />
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { AffiliateOverviewCard } from "@/components/admin/affiliate-overview";
 import { AffiliateSettingsForm } from "@/components/admin/affiliate-settings-form";
 import { AttributionsTable, ReferrersTable } from "@/components/admin/affiliate-tables";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { affiliateOverview, getAffiliateSettings, listAffiliates, listAttributions } from "@/server/affiliates";
 import { getBonusSettings } from "@/server/bonus";
@@ -23,6 +26,9 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
   const off = requireFeature(current, "referrals");
   if (off) return off;
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
+  const words = adminText(lang, "loyalty");
+  const w = words.affiliatePage;
   const [settings, overview, referrers, attributions, bonus] = await Promise.all([
     getAffiliateSettings(store.id),
     affiliateOverview(store.id),
@@ -34,40 +40,43 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
   const working = settings.enabled && settings.bonusOn;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Referral program"
-        description={<>{working ? "The referral program is on." : settings.enabled ? "The referral program is paused: the bonus program is off." : "The referral program is off."}{" "}Signed-in customers share a link; a friend&apos;s first order gets a welcome discount and the customer who shared it earns bonus credits.</>}
-      />
-      <AffiliateOverviewCard overview={overview} locale={locale} />
-      <AffiliateSettingsForm
-        initial={settings}
-        currency={settings.currency}
-        locale={locale}
-        bonusOn={settings.bonusOn}
-        pendingDays={bonus.pendingDays}
-        canEdit={memberCan(current, "owner")}
-        save={saveAffiliateAction.bind(null, store.slug)}
-      />
-      <section aria-labelledby="referrers-heading" className="flex flex-col gap-3">
-        <h2 id="referrers-heading" className="text-title text-ink">
-          Referrers
-        </h2>
-        <ReferrersTable
-          rows={referrers}
-          storeSlug={store.slug}
+    <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title={w.title}
+          description={<>{working ? w.on : settings.enabled ? w.paused : w.off} {w.description}</>}
+        />
+        <AffiliateOverviewCard overview={overview} locale={locale} words={words} />
+        <AffiliateSettingsForm
+          initial={settings}
           currency={settings.currency}
           locale={locale}
-          canBlock
-          block={blockAffiliateAction.bind(null, store.slug)}
+          bonusOn={settings.bonusOn}
+          pendingDays={bonus.pendingDays}
+          canEdit={memberCan(current, "owner")}
+          save={saveAffiliateAction.bind(null, store.slug)}
         />
-      </section>
-      <section aria-labelledby="attributions-heading" className="flex flex-col gap-3">
-        <h2 id="attributions-heading" className="text-title text-ink">
-          Orders through links
-        </h2>
-        <AttributionsTable rows={attributions} storeSlug={store.slug} locale={locale} />
-      </section>
-    </div>
+        <section aria-labelledby="referrers-heading" className="flex flex-col gap-3">
+          <h2 id="referrers-heading" className="text-title text-ink">
+            {w.referrers}
+          </h2>
+          <ReferrersTable
+            rows={referrers}
+            storeSlug={store.slug}
+            currency={settings.currency}
+            locale={locale}
+            canBlock
+            block={blockAffiliateAction.bind(null, store.slug)}
+            words={words}
+          />
+        </section>
+        <section aria-labelledby="attributions-heading" className="flex flex-col gap-3">
+          <h2 id="attributions-heading" className="text-title text-ink">
+            {w.attributions}
+          </h2>
+          <AttributionsTable rows={attributions} storeSlug={store.slug} locale={locale} words={words} />
+        </section>
+      </div>
+    </AdminTextScope>
   );
 }

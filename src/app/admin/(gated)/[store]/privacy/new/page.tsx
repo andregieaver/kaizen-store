@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { LogRequestForm } from "@/components/admin/privacy/request-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/work-dates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
@@ -18,14 +21,18 @@ export default async function NewPrivacyRequestPage({ params }: PageProps<"/admi
   // Logging is for those who may change customers: the page is a 404 to the rest, as the actions refuse them.
   if (!memberCan(member, "customers:write")) notFound();
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "privacy");
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: `/admin/${store.slug}/privacy`, label: "Privacy requests" }}
-        title="Log a request"
-        description={<>Use this for a request that came by email, post or phone, so the clock and the answer are kept in one place.</>}
-      />
-      <LogRequestForm action={logRequestAction.bind(null, store.slug)} today={todayIn(store.timeZone)} />
-    </div>
+    <AdminTextScope texts={adminTexts(lang, ["privacy"])}>
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          back={{ href: `/admin/${store.slug}/privacy`, label: w.common.privacyRequests }}
+          title={w.forms.logTitle}
+          description={<>{w.forms.newDescription}</>}
+        />
+        <LogRequestForm action={logRequestAction.bind(null, store.slug)} today={todayIn(store.timeZone)} />
+      </div>
+    </AdminTextScope>
   );
 }

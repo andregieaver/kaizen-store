@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { listTiers } from "@/server/customer-tiers";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
@@ -24,30 +26,31 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const words = adminText(adminLangOf(gated.account.adminLocale), "customers").groups;
   const groups = await listTiers(store.id);
   const base = `/admin/${store.slug}`;
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="Customer groups"
-        description={<>A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon. Put customers in a group, or give a <Link href={`${base}/companies`} className="underline">company</Link> a group so all its accounts share the discount.</>}
+        title={words.title}
+        description={<>{words.descriptionBefore}<Link href={`${base}/companies`} className="underline">{words.descriptionLink}</Link>{words.descriptionAfter}</>}
       />
 
       {groups.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          No groups yet. Make one, for example Wholesale at 10 %.
+          {words.none}
         </p>
       ) : (
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Group</th>
-                <th scope="col" className="px-4 py-2 font-medium">Discount</th>
-                <th scope="col" className="px-4 py-2 font-medium">Customers</th>
-                <th scope="col" className="px-4 py-2 font-medium">Companies</th>
-                <th scope="col" className="px-4 py-2 font-medium">Status</th>
+                <th scope="col" className="px-4 py-2 font-medium">{words.columns.group}</th>
+                <th scope="col" className="px-4 py-2 font-medium">{words.columns.discount}</th>
+                <th scope="col" className="px-4 py-2 font-medium">{words.columns.customers}</th>
+                <th scope="col" className="px-4 py-2 font-medium">{words.columns.companies}</th>
+                <th scope="col" className="px-4 py-2 font-medium">{words.columns.status}</th>
               </tr>
             </thead>
             <tbody>
@@ -62,7 +65,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
                   <td className="px-4 py-2 tabular-nums">{group.percent} %</td>
                   <td className="px-4 py-2 tabular-nums">{group.customers}</td>
                   <td className="px-4 py-2 tabular-nums">{group.companies}</td>
-                  <td className="px-4 py-2">{group.active ? "Active" : "Switched off"}</td>
+                  <td className="px-4 py-2">{group.active ? words.active : words.switchedOff}</td>
                 </tr>
               ))}
             </tbody>
@@ -70,22 +73,22 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
         </div>
       )}
 
-      <Card title="New group" className="flex max-w-xl flex-col gap-3" compact>
+      <Card title={words.newGroup} className="flex max-w-xl flex-col gap-3" compact>
         <ActionForm action={saveGroupAction.bind(null, store.slug, null)} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Name
-            <input name="name" required maxLength={80} placeholder="Wholesale" className={control} />
+            {words.name}
+            <input name="name" required maxLength={80} placeholder={words.namePlaceholder} className={control} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Discount, percent
+            {words.percent}
             <input name="percent" required inputMode="numeric" pattern="[0-9]{1,3}" placeholder="10" className={`${control} w-32`} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Note (only staff see it)
+            {words.note}
             <input name="note" maxLength={300} className={control} />
           </label>
           <div>
-            <SubmitButton>Make group</SubmitButton>
+            <SubmitButton>{words.make}</SubmitButton>
           </div>
         </ActionForm>
       </Card>

@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { SegmentEditor } from "@/components/admin/segment-editor";
 import { Button, Card, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules } from "@/lib/segments";
@@ -26,28 +30,34 @@ export default async function SegmentPage({ params }: PageProps<"/admin/[store]/
   const segment = await getSegment(store.id, segmentId);
   if (!segment) notFound();
   const mayWrite = memberCan(member, "marketing:write");
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "marketing");
+  const numbers = ADMIN_LANG_FACTS[lang].locale;
   const seesPeople = memberCan(member, "customers:read");
   const [result, tiers, choices] = await Promise.all([
     segment.rules ? evaluateSegment(store, segment.rules) : Promise.resolve(null),
     listTiers(store.id),
-    mayWrite ? editorChoices(store) : Promise.resolve(null),
+    mayWrite ? editorChoices(store, lang) : Promise.resolve(null),
   ]);
-  const locale = store.markets[0]?.locale ?? "nb-NO";
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "nb-NO") : numbers;
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), locale);
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: store.timeZone });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(numbers, { dateStyle: "medium", timeZone: store.timeZone });
+  const n = (v: number) => v.toLocaleString(numbers);
   const base = `/admin/${store.slug}`;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/segments`, label: "Segments" }}
+        back={{ href: `${base}/segments`, label: w.segments.title }}
         title={segment.name}
-        description={segment.rules ? describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name }) : "These rules can no longer be read. Change them below and save."}
+        description={
+          segment.rules ? describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: w.describe }) : w.segments.unreadableHere
+        }
         actions={
           mayWrite ? (
             <form action={deleteSegmentAction.bind(null, store.slug, segment.id)}>
               <Button type="submit" kind="danger">
-                Delete
+                {w.common.delete}
               </Button>
             </form>
           ) : undefined
@@ -56,30 +66,34 @@ export default async function SegmentPage({ params }: PageProps<"/admin/[store]/
 
       {result && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <KpiTile label="People in it" value={result.people.toLocaleString("en-GB")} context={result.capped ? "Of the 100,000 most recent people." : undefined} />
+          <KpiTile label={w.segments.peopleIn} value={n(result.people)} context={result.capped ? w.segments.peopleInCapped : undefined} />
           <KpiTile
-            label="Want your emails"
-            value={result.subscribed.toLocaleString("en-GB")}
-            context={result.moneyUnknown > 0 ? `${result.moneyUnknown} could not be judged on money: their orders are in a currency with no rate.` : undefined}
+            label={w.segments.wantYourEmails}
+            value={n(result.subscribed)}
+            context={result.moneyUnknown > 0 ? fillWords(w.segments.moneyUnknown, { n: n(result.moneyUnknown) }) : undefined}
           />
         </div>
       )}
 
       {result && seesPeople && (
-        <Card title="Who is in it" description={result.people > result.sample.length ? `The first ${result.sample.length} by their last order.` : undefined} compact>
+        <Card
+          title={w.segments.whoIsIn}
+          description={result.people > result.sample.length ? fillWords(w.segments.firstBy, { n: n(result.sample.length) }) : undefined}
+          compact
+        >
           {result.sample.length === 0 ? (
-            <p className="text-body text-muted">Nobody matches these rules today.</p>
+            <p className="text-body text-muted">{w.segments.nobody}</p>
           ) : (
-            <List label="People">
+            <List label={w.segments.peopleList}>
               {result.sample.map((p) => (
                 <ListRow key={p.email}>
                   <RowLead title={<span className="block max-w-80 truncate">{p.name || p.email}</span>} sub={p.name ? p.email : undefined} />
-                  <RowFact className="hidden sm:block" sub={p.lastOrderAt ? `Last order ${date(p.lastOrderAt)}` : "No order"}>
-                    {p.orders === 1 ? "1 order" : `${p.orders} orders`}
+                  <RowFact className="hidden sm:block" sub={p.lastOrderAt ? fillWords(w.segments.lastOrder, { date: date(p.lastOrderAt) }) : w.segments.noOrder}>
+                    {countWords(p.orders, w.segments.orders)}
                   </RowFact>
                   {p.consent === "subscribed" && (
                     <Chip signal="positive" dot>
-                      Wants your emails
+                      {w.segments.wantsYourEmails}
                     </Chip>
                   )}
                 </ListRow>
@@ -90,7 +104,8 @@ export default async function SegmentPage({ params }: PageProps<"/admin/[store]/
       )}
 
       {choices && (
-        <Card title="Rules" compact>
+        <Card title={w.segments.rules} compact>
+          <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
           <SegmentEditor
             storeSlug={store.slug}
             segmentId={segment.id}
@@ -99,6 +114,7 @@ export default async function SegmentPage({ params }: PageProps<"/admin/[store]/
             save={saveSegmentAction}
             {...choices}
           />
+          </AdminTextScope>
         </Card>
       )}
     </div>

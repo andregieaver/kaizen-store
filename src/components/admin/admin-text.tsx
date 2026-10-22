@@ -7,6 +7,12 @@ import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@
 import { commonEn } from "@/lib/admin-messages/common.en";
 import { domainsEn } from "@/lib/admin-messages/domains.en";
 import { homeEn } from "@/lib/admin-messages/home.en";
+import { customersEn } from "@/lib/admin-messages/customers.en";
+import { privacyEn } from "@/lib/admin-messages/privacy.en";
+import { marketingEn } from "@/lib/admin-messages/marketing.en";
+import { discountsEn } from "@/lib/admin-messages/discounts.en";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
+
 import { productsEn } from "@/lib/admin-messages/products.en";
 import { productEn } from "@/lib/admin-messages/product.en";
 import { inventoryEn } from "@/lib/admin-messages/inventory.en";
@@ -34,7 +40,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

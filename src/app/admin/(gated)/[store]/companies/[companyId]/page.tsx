@@ -11,7 +11,10 @@ import { employeePercent, getCompany, listInvites, listMembers } from "@/server/
 import { companyOwes } from "@/server/payment-terms";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { PAYMENT_TERMS, TERMS_LABELS } from "@/lib/payment-terms";
+import { PAYMENT_TERMS } from "@/lib/payment-terms";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
 import { PageHeader } from "@/components/admin/ui";
@@ -39,6 +42,8 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const off = requireFeature(current, "business");
   if (off) return off;
   const { store } = current;
+  const all = adminText(adminLangOf(current.account.adminLocale), "customers");
+  const words = all.company;
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();
@@ -52,58 +57,68 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/companies`, label: "Companies" }}
+        back={{ href: `${base}/companies`, label: words.back }}
         title={<>{company.name}</>}
-        description={<>{!company.active ? "Switched off: its accounts get no discount and it invites no one." : company.tierName && company.tierActive ? `${company.tierName}: ${company.tierPercent} % for the main account${employees ? `, ${employees} % for employees` : ", nothing for employees"}.` : "No customer group, or it is switched off: no discount."}</>}
+        description={
+          !company.active
+            ? words.off
+            : company.tierName && company.tierActive
+              ? fillWords(employees ? words.discount : words.discountNoEmployees, { group: company.tierName, percent: company.tierPercent ?? 0, employees: employees ?? 0 })
+              : words.noDiscount
+        }
       />
 
       <section aria-labelledby="settings" className={card}>
         <h2 id="settings" className="text-title text-ink">
-          Settings
+          {words.settings}
         </h2>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, company.id)} className="flex flex-col gap-3">
           <CompanyFields
             groups={groups}
             values={company}
+            words={all.fields}
             lookup={lookupRegisterCompanyAction.bind(null, store.slug)}
             search={searchRegisterCompaniesAction.bind(null, store.slug)}
           />
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{words.save}</SubmitButton>
           </div>
         </ActionForm>
       </section>
 
       <section aria-labelledby="terms" className={card}>
         <h2 id="terms" className="text-title text-ink">
-          Payment terms
+          {words.terms}
         </h2>
         <p className="text-sm text-muted">
-          With terms, the company&apos;s accounts can choose <em>Pay by invoice</em> at checkout: the order is confirmed at once and the invoice is due after
-          the days you choose. Reminders go three days before and the day after.
+          {words.termsIntro}
         </p>
         {owes.length > 0 && (
           <p className="text-sm text-ink">
-            Owes now:{" "}
+            {words.owesNow}
             {owes
-              .map((o) => `${formatMoney(o.owedMinor, o.currency, locale)} on ${o.orders} ${o.orders === 1 ? "order" : "orders"}${o.overdueMinor > 0 ? `, ${formatMoney(o.overdueMinor, o.currency, locale)} overdue` : ""}`)
+              .map(
+                (o) =>
+                  countWords(o.orders, words.owesLine, { amount: formatMoney(o.owedMinor, o.currency, locale) }) +
+                  (o.overdueMinor > 0 ? fillWords(words.overdue, { amount: formatMoney(o.overdueMinor, o.currency, locale) }) : ""),
+              )
               .join("; ")}
           </p>
         )}
         <ActionForm action={saveCompanyTermsAction.bind(null, store.slug, company.id)} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Terms
+            {words.termsField}
             <select name="terms" defaultValue={company.paymentTerms ?? ""} className={`${control} max-w-xs`}>
-              <option value="">No payment terms</option>
+              <option value="">{words.noTerms}</option>
               {PAYMENT_TERMS.map((terms) => (
                 <option key={terms} value={terms}>
-                  {TERMS_LABELS[terms]}
+                  {words.termsLabels[terms]}
                 </option>
               ))}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Credit limit ({currency}, optional)
+            {fillWords(words.creditLimit, { currency })}
             <input
               name="creditLimit"
               inputMode="decimal"
@@ -111,22 +126,22 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
               className={`${control} max-w-xs`}
             />
             <span className="font-normal text-muted">
-              What the company may owe at once. Leave empty for no limit.
-              {company.creditCurrency && company.creditCurrency !== currency ? ` Kept in ${company.creditCurrency}.` : ""}
+              {words.creditHint}
+              {company.creditCurrency && company.creditCurrency !== currency ? fillWords(words.keptIn, { currency: company.creditCurrency }) : ""}
             </span>
           </label>
           <div>
-            <SubmitButton>Save terms</SubmitButton>
+            <SubmitButton>{words.saveTerms}</SubmitButton>
           </div>
         </ActionForm>
       </section>
 
       <section aria-labelledby="accounts" className={card}>
         <h2 id="accounts" className="text-title text-ink">
-          Accounts ({members.length}/{company.maxMembers})
+          {fillWords(words.accounts, { members: members.length, max: company.maxMembers })}
         </h2>
         {members.length === 0 ? (
-          <p className="text-sm text-muted">No accounts yet. Set a main account below.</p>
+          <p className="text-sm text-muted">{words.noAccounts}</p>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {members.map((member) => (
@@ -137,14 +152,15 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
                   </Link>
                   <span className="block truncate text-muted">
                     {member.name ? `${member.email} · ` : ""}
-                    {member.role === "owner" ? "Main account" : "Employee"} · since {date(member.joinedAt)}
-                    {member.verified ? "" : " · not signed in yet"}
+                    {member.role === "owner" ? words.mainAccount : words.employee}
+                    {fillWords(words.since, { date: date(member.joinedAt) })}
+                    {member.verified ? "" : words.notSignedIn}
                   </span>
                 </span>
                 <ActionForm action={removeCompanyMemberAction.bind(null, store.slug, company.id)} className="flex items-center">
                   <input type="hidden" name="customerId" value={member.id} />
                   <SubmitButton variant="secondary">
-                    Remove<span className="sr-only"> {member.email}</span>
+                    {words.remove}<span className="sr-only"> {member.email}</span>
                   </SubmitButton>
                 </ActionForm>
               </li>
@@ -153,41 +169,42 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         )}
         <ActionForm action={setMainAccountAction.bind(null, store.slug, company.id)} className="flex flex-col gap-2 border-t border-line pt-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Add a main account by email
+            {words.addMain}
             <span className="flex flex-wrap gap-2">
               <input type="email" name="email" required className={`${control} min-w-64 flex-1`} />
-              <SubmitButton variant="secondary">Add</SubmitButton>
+              <SubmitButton variant="secondary">{words.add}</SubmitButton>
             </span>
-            <span className="font-normal text-muted">The main account invites employees and withdraws invitations. An account belongs to one company at most.</span>
+            <span className="font-normal text-muted">{words.addMainHint}</span>
           </label>
         </ActionForm>
       </section>
 
       <section aria-labelledby="invitations" className={card}>
         <h2 id="invitations" className="text-title text-ink">
-          Invitations
+          {words.invitations}
         </h2>
         {invites.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-muted">{words.noneYet}</p>
         ) : (
           <ul className="divide-y divide-line text-sm">
             {invites.map((invite) => {
               const open = invite.status === "pending" && !invite.expired;
-              const label = invite.status === "pending" ? (invite.expired ? "Expired" : "Waiting") : { accepted: "Accepted", revoked: "Withdrawn", ended: "Employee removed" }[invite.status];
+              const label = invite.status === "pending" ? (invite.expired ? words.inviteStatus.expired : words.inviteStatus.waiting) : words.inviteStatus[invite.status];
               return (
                 <li key={invite.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                   <span className="min-w-0">
                     <span className="block truncate">{invite.email}</span>
                     <span className="block text-muted">
-                      {label} · sent {date(invite.createdAt)}
-                      {open ? ` · valid until ${date(invite.expiresAt)}` : ""}
+                      {label}
+                      {fillWords(words.sent, { date: date(invite.createdAt) })}
+                      {open ? fillWords(words.validUntil, { date: date(invite.expiresAt) }) : ""}
                     </span>
                   </span>
                   {open && (
                     <ActionForm action={revokeCompanyInviteAction.bind(null, store.slug, company.id)} className="flex items-center">
                       <input type="hidden" name="inviteId" value={invite.id} />
                       <SubmitButton variant="secondary">
-                        Withdraw<span className="sr-only"> the invitation to {invite.email}</span>
+                        {words.withdraw}<span className="sr-only">{fillWords(words.withdrawFor, { email: invite.email })}</span>
                       </SubmitButton>
                     </ActionForm>
                   )}
@@ -198,22 +215,22 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         )}
         <ActionForm action={inviteToCompanyAction.bind(null, store.slug, company.id)} className="flex flex-col gap-2 border-t border-line pt-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Invite employees as the store
+            {words.invite}
             <textarea name="emails" rows={2} required placeholder="anna@example.com, ola@example.com" className={`${control} py-2`} />
           </label>
           <div>
-            <SubmitButton variant="secondary">Send invitations</SubmitButton>
+            <SubmitButton variant="secondary">{words.sendInvitations}</SubmitButton>
           </div>
         </ActionForm>
       </section>
 
       <section aria-labelledby="delete" className={card}>
         <h2 id="delete" className="text-title text-ink">
-          Delete the company
+          {words.delete}
         </h2>
-        <p className="text-sm text-muted">Only a company with no accounts can be deleted. Otherwise, remove the accounts, or switch the company off above.</p>
+        <p className="text-sm text-muted">{words.deleteHint}</p>
         <ActionForm action={deleteCompanyAction.bind(null, store.slug, company.id)}>
-          <SubmitButton variant="secondary">Delete company</SubmitButton>
+          <SubmitButton variant="secondary">{words.deleteButton}</SubmitButton>
         </ActionForm>
       </section>
     </div>

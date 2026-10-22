@@ -8,6 +8,9 @@ import { CustomerExportForm } from "@/components/admin/data/export-forms";
 import { NEVER_EMAILED_NOTE, NO_CONSENT_NOTE, PERSONAL_DATA_WARNING } from "@/lib/data-admin";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { requireOwnerRole } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Export customers" };
@@ -26,23 +29,24 @@ export default async function CustomerExportPage({ params, searchParams }: Props
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const words = adminText(lang, "customers").export;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
         backHref={`/admin/${store.slug}/customers`}
-        backLabel="Customers"
-        title="Export customers"
-        intro={`A spreadsheet of the store's customers: name, email, phone, address, company, customer group, language, when they joined, how many paid orders they have and whether their address unsubscribed. More than ${DIRECT_EXPORT_MAX_ROWS.toLocaleString("en-GB")} customers are made as a job.`}
+        backLabel={words.back}
+        title={words.title}
+        intro={fillWords(words.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
       />
-      <Notice title="Personal data" tone="warning">
+      <Notice title={words.personal} tone="warning">
         <p>{PERSONAL_DATA_WARNING}</p>
         <p className="mt-1">{NEVER_EMAILED_NOTE}</p>
       </Notice>
-      <Notice title="Marketing consent">
+      <Notice title={words.consent}>
         <p>{NO_CONSENT_NOTE}</p>
         <p className="mt-1">
-          The column marketing_consent says subscribed, pending (waiting for their confirmation link), unsubscribed or none. The column email_opt_out says
-          true for an address that asked for no cart reminders.
+          {words.columns}
         </p>
       </Notice>
       <Suspense fallback={<DataSkeleton />}>

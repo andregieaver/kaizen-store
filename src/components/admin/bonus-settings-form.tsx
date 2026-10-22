@@ -2,10 +2,8 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import {
-  BONUS_EXPLANATION,
-  BONUS_OFF_NOTE,
-  BONUS_ON_NOTES,
   earnExample,
   formFromSettings,
   moneyIn,
@@ -47,6 +45,7 @@ export function BonusSettingsForm({
   const [saved, setSaved] = useState<string | null>(null);
   const [savedOn, setSavedOn] = useState(initial.enabled);
   const [pending, startTransition] = useTransition();
+  const w = useAdminText("loyalty").bonus;
 
   const set = <K extends keyof BonusFormValues>(key: K, value: BonusFormValues[K]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -54,7 +53,7 @@ export function BonusSettingsForm({
   };
 
   // What the draft would be, for the example and the summary; while a field is wrong, the last good reading stays.
-  const draft = readBonusForm(values, currency);
+  const draft = readBonusForm(values, currency, w.errors);
   const [lastGood, setLastGood] = useState<BonusSettings>(initial);
   if (draft.ok && JSON.stringify(draft.settings) !== JSON.stringify(lastGood)) setLastGood(draft.settings);
   const shown = draft.ok ? draft.settings : lastGood;
@@ -64,7 +63,7 @@ export function BonusSettingsForm({
     if (!canEdit) return;
     setSaved(null);
     setServerProblems([]);
-    const read = readBonusForm(values, currency);
+    const read = readBonusForm(values, currency, w.errors);
     if (!read.ok) {
       setErrors(read.errors);
       const first = orderedProblems(read.errors)[0];
@@ -81,13 +80,7 @@ export function BonusSettingsForm({
       setValues(formFromSettings(read.settings, currency));
       const turnedOn = read.settings.enabled && !savedOn;
       setSavedOn(read.settings.enabled);
-      setSaved(
-        turnedOn
-          ? "Saved. The bonus program is on: signed-in customers earn credits on the orders they pay from now. Existing customers start at zero."
-          : read.settings.enabled
-            ? "Saved. The new rules count from now."
-            : "Saved. The bonus program is off. Balances are kept.",
-      );
+      setSaved(turnedOn ? w.savedOn : read.settings.enabled ? w.savedRules : w.savedOff);
     });
   }
 
@@ -145,8 +138,10 @@ export function BonusSettingsView({
   onChange: set,
   onSubmit,
 }: BonusSettingsViewProps) {
+  const words = useAdminText("loyalty");
+  const w = words.bonus;
   const money = moneyIn(currency, locale);
-  const example = earnExample(shown.earnBps, currency, locale);
+  const example = earnExample(shown.earnBps, currency, locale, 1000, w.example);
   const problems = orderedProblems(errors);
 
   return (
@@ -154,9 +149,9 @@ export function BonusSettingsView({
       <fieldset disabled={!canEdit} className="flex min-w-0 flex-col gap-6 border-0 p-0">
         <div className={card} role="group" aria-labelledby="bonus-switch-heading">
           <h2 id="bonus-switch-heading" className="text-title text-ink">
-            Bonus program
+            {w.heading}
           </h2>
-          <p className="text-sm text-muted">{BONUS_EXPLANATION}</p>
+          <p className="text-sm text-muted">{w.explanation}</p>
           <label className="flex items-start gap-2 text-sm">
             <input
               id="bonus-enabled"
@@ -166,35 +161,34 @@ export function BonusSettingsView({
               aria-describedby="bonus-enabled-notes"
               className="mt-0.5 size-4"
             />
-            <span className="font-medium">The bonus program is on</span>
+            <span className="font-medium">{w.switch}</span>
           </label>
           <div id="bonus-enabled-notes" className="rounded-md bg-sunken p-3 text-sm">
             {values.enabled ? (
               <>
-                <p className="mb-1 font-medium">{savedOn ? "While it is on" : "When you turn it on"}</p>
+                <p className="mb-1 font-medium">{savedOn ? w.whileOn : w.whenOn}</p>
                 <ul className="list-disc pl-5">
-                  {BONUS_ON_NOTES.map((note) => (
+                  {w.onNotes.map((note) => (
                     <li key={note}>{note}</li>
                   ))}
                 </ul>
               </>
             ) : (
-              <p>{savedOn ? BONUS_OFF_NOTE : "It is off. Nothing is earned or used, and shoppers see no credits."}</p>
+              <p>{savedOn ? w.offNote : w.offFresh}</p>
             )}
           </div>
         </div>
 
         <fieldset className={card}>
-          <legend className="float-left mb-0 w-full font-medium">Earning credits</legend>
+          <legend className="float-left mb-0 w-full font-medium">{w.earning}</legend>
           <Field
             id="bonus-earnPercent"
-            label="Credits back"
+            label={w.earnLabel}
             suffix="%"
             error={errors.earnPercent}
             hint={
               <>
-                Of what the customer pays online for goods: shipping, anything paid at a venue and the credits they used
-                do not count. Nothing is earned on free gifts.{" "}
+                {w.earnHint}{" "}
                 <strong className="font-medium">{example.sentence}</strong>
               </>
             }
@@ -213,10 +207,10 @@ export function BonusSettingsView({
           </Field>
           <Field
             id="bonus-pendingDays"
-            label="Wait before credits can be used"
-            suffix="days"
+            label={w.pendingLabel}
+            suffix={w.daysUnit}
             error={errors.pendingDays}
-            hint="The return period: credits earned on an order wait this long after it is paid, so a return does not leave you paying out credits. Use 0 to allow use at once."
+            hint={w.pendingHint}
           >
             {(props) => (
               <input
@@ -233,13 +227,13 @@ export function BonusSettingsView({
         </fieldset>
 
         <fieldset className={card}>
-          <legend className="float-left mb-0 w-full font-medium">Using credits</legend>
+          <legend className="float-left mb-0 w-full font-medium">{w.using}</legend>
           <Field
             id="bonus-maxRedeemPercent"
-            label="The most of an order's goods credits can pay"
+            label={w.maxLabel}
             suffix="%"
             error={errors.maxRedeemPercent}
-            hint="Credits take money off goods only, never shipping, and always leave something to pay online, so the order still goes through the normal payment. It is worked out on the goods left after campaigns, customer group discounts and codes."
+            hint={w.maxHint}
           >
             {(props) => (
               <input
@@ -255,10 +249,10 @@ export function BonusSettingsView({
           </Field>
           <Field
             id="bonus-minRedeem"
-            label="Least credits to use at once"
+            label={w.minLabel}
             suffix={currency}
             error={errors.minRedeem}
-            hint="Leave empty for no minimum. A customer with less than this cannot use their credits yet."
+            hint={w.minHint}
           >
             {(props) => (
               <input
@@ -275,7 +269,7 @@ export function BonusSettingsView({
         </fieldset>
 
         <fieldset className={card}>
-          <legend className="float-left mb-0 w-full font-medium">Expiry</legend>
+          <legend className="float-left mb-0 w-full font-medium">{w.expiry}</legend>
           <label className="flex items-start gap-2 text-sm">
             <input
               id="bonus-expires"
@@ -285,19 +279,18 @@ export function BonusSettingsView({
               aria-describedby="bonus-expires-hint"
               className="mt-0.5 size-4"
             />
-            <span>Credits that are not used expire</span>
+            <span>{w.expiresLabel}</span>
           </label>
           <p id="bonus-expires-hint" className="text-sm text-muted">
-            Left off, credits last for ever. When they expire, the oldest credits are used first and expire first, and
-            the customer is emailed a reminder before their credits run out.
+            {w.expiresHint}
           </p>
           {values.expires && (
             <Field
               id="bonus-expiresMonths"
-              label="Expire after"
-              suffix="months"
+              label={w.expireAfter}
+              suffix={w.monthsUnit}
               error={errors.expiresMonths}
-              hint="Counted from the day the credits are earned."
+              hint={w.expireAfterHint}
             >
               {(props) => (
                 <input
@@ -317,26 +310,24 @@ export function BonusSettingsView({
 
       <section aria-labelledby="bonus-summary-heading" className={card}>
         <h2 id="bonus-summary-heading" className="text-title text-ink">
-          What shoppers will read
+          {w.summaryHeading}
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-          {rulesSummary(shown, money, currency).map((line) => (
+          {rulesSummary(shown, money, currency, words.bonusRules).map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
         {!complete && (
-          <p className="text-sm text-muted">
-            This shows the last rules that were complete. Fix the marked fields to update it.
-          </p>
+          <p className="text-sm text-muted">{w.incomplete}</p>
         )}
-        {!shown.enabled && <p className="text-sm text-muted">The program is off, so shoppers see none of this yet.</p>}
+        {!shown.enabled && <p className="text-sm text-muted">{w.offSummary}</p>}
       </section>
 
       <div role="alert" className={errorText}>
         {(problems.length > 0 || serverProblems.length > 0) && (
           <>
             <p className="font-medium">
-              {problems.length > 0 ? "The settings were not saved. Fix this:" : "The settings were not saved:"}
+              {problems.length > 0 ? words.common.notSavedFix : words.common.notSaved}
             </p>
             <ul className="list-disc pl-5">
               {problems.map(({ field, message }) => (
@@ -371,11 +362,11 @@ export function BonusSettingsView({
             disabled={pending}
             className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
           >
-            {pending ? "Saving …" : "Save"}
+            {pending ? words.common.saving : words.common.save}
           </button>
         </div>
       ) : (
-        <p className="text-sm text-muted">Only an owner can change the bonus program. You can see how it is set up.</p>
+        <p className="text-sm text-muted">{w.readOnly}</p>
       )}
     </form>
   );

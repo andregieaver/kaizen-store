@@ -230,7 +230,7 @@ export function sumPerCurrency(rows: { currency: string; minor: number }[]): { c
 }
 
 /** A commission rate as people read it: 1000 is "10 %", 250 is "2.5 %". */
-export const bpsText = (bps: number) => `${(bps / 100).toLocaleString("en-GB", { maximumFractionDigits: 2 })} %`;
+export const bpsText = (bps: number, locale = "en-GB") => `${(bps / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`;
 
 /** The end of a referral's commission window, `months` after it was made. */
 export function referralEnds(createdAt: Date, months: number): Date {
