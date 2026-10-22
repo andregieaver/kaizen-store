@@ -5,6 +5,7 @@ import { JsonLdScript } from "@/components/json-ld";
 import { PlatformPageView, platformPageMetadata } from "@/components/platform-page";
 import { storeBase, storeHref } from "@/lib/paths";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { siteUrl } from "@/lib/site";
 import { platformJsonLd } from "@/lib/structured-data";
 import { languageMeta } from "@/server/platform-lang-meta";
@@ -25,37 +26,34 @@ export async function HomeRoute({ lang, searchParams }: { lang: PlatformLang; se
   const chosen = await platformPageForRole("front");
   if (chosen) return <PlatformPageView page={chosen} url="/" front query={searchParams} lang={lang} />;
   const [demo, seo] = await Promise.all([templateStoreSlug(), getPlatformSeo()]);
+  const w = platformText(lang).home;
   return (
     <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
       <JsonLdScript
         data={platformJsonLd({
           origin: siteUrl(),
           name: seo.title[lang] || seo.title.en || PLATFORM_DEFAULTS.title,
-          description: seo.description[lang] || seo.description.en || PLATFORM_DEFAULTS.description,
+          description: seo.description[lang] || (lang === "en" ? seo.description.en || PLATFORM_DEFAULTS.description : platformText(lang).site.description),
           seo,
         })}
       />
       <h1 className="text-4xl font-semibold tracking-tight">Kaizena Flow</h1>
-      <p className="text-lg">
-        Online stores for Norway and the EU: prices, VAT, product safety and
-        consumer rules handled from the start, and pages that load in under
-        half a second.
-      </p>
-      <p className="text-muted">Kaizena Flow is in a private beta.</p>
+      <p className="text-lg">{w.lead}</p>
+      <p className="text-muted">{w.beta}</p>
       <div className="flex flex-wrap gap-3">
         <Link
           href={platformPath(lang, "/sign-up")}
           className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background"
         >
-          Start your store
+          {w.start}
         </Link>
         {demo && (
           <Link href={storeHref(demo, storeBase(demo))} className="rounded-full border border-border px-5 py-2.5 font-medium">
-            See the demo store
+            {w.demo}
           </Link>
         )}
         <Link href="/admin" className="rounded-full border border-border px-5 py-2.5 font-medium">
-          Sign in
+          {w.signIn}
         </Link>
       </div>
     </main>

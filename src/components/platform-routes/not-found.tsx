@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PageArticle, pageRoomClass } from "@/components/page-article";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { platformPageForRole } from "@/server/platform-roles";
 
 /**
@@ -19,9 +20,9 @@ export async function NotFoundRoute({ lang }: { lang: PlatformLang }) {
   }
   return (
     <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-24">
-      <h1 className="text-2xl font-semibold">This page does not exist.</h1>
+      <h1 className="text-2xl font-semibold">{platformText(lang).notFound.title}</h1>
       <Link href={platformPath(lang, "/")} className="w-fit underline">
-        Kaizena Flow&apos;s front page
+        {platformText(lang).notFound.home}
       </Link>
     </main>
   );

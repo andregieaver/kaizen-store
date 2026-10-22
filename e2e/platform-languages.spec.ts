@@ -24,6 +24,10 @@ test("the English site is as it was, and Norwegian is there only while it is off
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/no\/sign-up$/);
   await expect(page.locator('input[name="locale"]')).toHaveValue("nb-NO");
+  // The chrome and the page's own words are Norwegian (D312 P2).
+  await expect(page.getByRole("heading", { level: 1, name: "Start nettbutikken din" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Be om en nettbutikk" })).toBeVisible();
+  await expect(page.getByLabel("Navnet ditt")).toBeVisible();
   // The site's own links stay in Norwegian; the admin and stores keep their addresses.
   await expect(page.getByRole("contentinfo").getByRole("link", { name: /cookies|informasjonskapsler/i })).toHaveAttribute("href", "/no/cookies");
   const switcher = page.getByRole("navigation", { name: "Språk" });

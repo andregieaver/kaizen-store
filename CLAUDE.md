@@ -1073,7 +1073,10 @@ stand-in is the only fake, and only it is told it is one.
   language is offered only while `platform_settings.locales` names it (`getPlatformLangs()`, `/no` a 404 otherwise) and is turned on only
   once `languageNotReady()` is empty (`LANGUAGE_READINESS`, raised by the step that finishes it). Norwegian legal and financial words come
   from the glossary (`src/lib/i18n-glossary.ts`; its test holds every Norwegian catalogue to it) and legal pages state rights in the law's
-  own words (`LEGAL_WORDING_NB`, proofread by a person; the withdrawal form from the state form Q-0319B).
+  own words (`LEGAL_WORDING_NB`, proofread by a person; the withdrawal form from the state form Q-0319B). The chrome's words (header,
+  footer, the routes' own words, sign-up and its errors, cookies, not found, unsubscribe, the theme cards) are `platformText(lang)`
+  (`src/lib/platform-text.ts`, `src/lib/messages/platform-{en,nb}.ts`, Norwegian by hand), never written into a component
+  (`platform-chrome.scan.test.ts`); a new word of the chrome goes in both catalogues.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

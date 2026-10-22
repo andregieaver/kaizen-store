@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+import type { PlatformMessages } from "@/lib/platform-text";
+
 /**
  * Someone who signed in with Kaizen Life (D95) but has no store yet lands
  * here with what Kaizen Life knows in the address: it fills in the form
  * (the page itself stays the same for everyone) and says why they are
  * here. The request goes to the same queue as any other.
  */
-export function KaizenLifePrefill() {
+export function KaizenLifePrefill({ words }: { words: PlatformMessages["signUp"]["kaizenLife"] }) {
   const [email, setEmail] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -26,8 +28,7 @@ export function KaizenLifePrefill() {
   if (email === null) return null;
   return (
     <p role="status" className="rounded-md border border-border p-3 text-sm">
-      No Kaizena Flow account uses {email || "that email address"} yet. Ask for a store below. If you already have a store under another
-      email, sign in with that and connect Kaizen Life under Your account.
+      {words.noAccount.replace("{email}", email || words.thatEmail)}
     </p>
   );
 }

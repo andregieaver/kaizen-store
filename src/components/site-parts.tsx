@@ -23,8 +23,9 @@ import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
 import { MotionSupport } from "./motion-support";
-import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
-import { platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { builtIn, Brand as KaizenBrand } from "./platform-layout";
+import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { HidingHeader } from "./store-chrome";
 import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink, hasViewChoices } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
@@ -192,7 +193,8 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
 function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext, { kind: "kaizen" }> }) {
   const { chrome, place } = ctx;
   const lang = ctx.lang ?? "en";
-  const m = t("en");
+  const m = t(PLATFORM_LANG_FACTS[lang].messages);
+  const nav = builtIn(lang);
   switch (block.part) {
     case "logo":
       return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} lang={lang} />;
@@ -202,18 +204,18 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       return (
         <Link href="/admin" className={ICON_LINK}>
           <Icon name="user" />
-          <span className="sr-only">{BUILT_IN.signIn}</span>
+          <span className="sr-only">{nav.signIn}</span>
         </Link>
       );
     case "signUp":
       return (
         <Link href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
-          {BUILT_IN.signUp}
+          {nav.signUp}
         </Link>
       );
     case "business": {
       const b = chrome.business;
-      const legal = [b.legalName || "Kaizena Flow", b.organisationNumber && `Org. ${b.organisationNumber}`].filter(Boolean).join(" · ");
+      const legal = [b.legalName || "Kaizena Flow", b.organisationNumber && platformText(lang).site.orgNumber(b.organisationNumber)].filter(Boolean).join(" · ");
       return <Business legal={legal} address={b.postalAddress} email={b.contactEmail} />;
     }
     case "cookies":

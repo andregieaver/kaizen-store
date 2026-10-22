@@ -17,7 +17,8 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
  * language of the site (D312).
  */
 export async function pageStaticParams(nested: boolean) {
-  const pages = await listPublishedPages();
+  // Only addresses a page may have: one made before an address was reserved (a language's `/no`) would otherwise take that route's place.
+  const pages = (await listPublishedPages()).filter((page) => pageSlugProblem(page.slug) === null);
   if (!nested) {
     const top = pages.filter((page) => !page.slug.includes("/"));
     // Cache Components needs at least one entry; "_" simply renders a 404.

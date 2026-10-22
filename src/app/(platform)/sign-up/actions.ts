@@ -8,26 +8,34 @@ import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
 import { contentForLook } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
+import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
+import { platformText, type PlatformMessages } from "@/lib/platform-text";
 
-const input = z.object({
-  name: z.string().trim().min(1, "Enter your name.").max(100),
-  email: z.email("Enter a valid email address."),
-  storeName: z.string().trim().min(1, "Enter a name for your store.").max(80),
-  message: z.string().trim().max(1000, "Keep the message under 1,000 characters."),
-});
+/** The form's checks, in the words of the language it was sent in (D312). */
+function inputIn(errors: PlatformMessages["signUp"]["errors"]) {
+  return z.object({
+    name: z.string().trim().min(1, errors.name).max(100),
+    email: z.email(errors.email),
+    storeName: z.string().trim().min(1, errors.storeName).max(80),
+    message: z.string().trim().max(1000, errors.message),
+  });
+}
 
-const RECEIVED =
-  "Thanks! We have your request. When your store is ready you will get an email with a link to sign in.";
+/** The language the form was sent in: its `locale` field, English for anything else. */
+function langOfForm(formData: FormData): PlatformLang {
+  return langOfLocale(String(formData.get("locale") ?? "")) ?? "en";
+}
 
 /**
  * Records a request to join the beta. The answer is the same whether or not
  * this email has asked before, so the form reveals nothing about who has.
  */
 export async function requestAccess(_state: FormState, formData: FormData): Promise<FormState> {
+  const w = platformText(langOfForm(formData)).signUp;
   // A field people never see; bots fill it in.
-  if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [RECEIVED] };
+  if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [w.received] };
 
-  const parsed = input.safeParse({
+  const parsed = inputIn(w.errors).safeParse({
     name: formData.get("name") ?? "",
     email: String(formData.get("email") ?? "").trim(),
     storeName: formData.get("storeName") ?? "",
@@ -51,7 +59,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       designVariation: look?.variation ?? null,
     });
   } catch {
-    return { status: "error", messages: ["Your request could not be saved. Please try again."] };
+    return { status: "error", messages: [w.failed] };
   }
-  return { status: "ok", messages: [RECEIVED] };
+  return { status: "ok", messages: [w.received] };
 }

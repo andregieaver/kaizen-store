@@ -13,6 +13,7 @@ import { LanguageHint, LanguageSwitch } from "@/components/language-switch";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { siteUrl } from "@/lib/site";
 import { siteIcons } from "@/lib/site-icons";
 import { siteFontStyle } from "@/server/fonts";
@@ -29,7 +30,8 @@ export async function platformRootMetadata(lang: PlatformLang): Promise<Metadata
   const [seo, favicon] = await Promise.all([getPlatformSeo(), getPlatformFavicon()]);
   const own = (texts: Record<string, string>) => texts[lang] || texts.en;
   const title = own(seo.title) || PLATFORM_DEFAULTS.title;
-  const description = own(seo.description) || PLATFORM_DEFAULTS.description;
+  // A language the owner wrote no description in takes the site's own words in it, never the English description.
+  const description = lang === "en" ? own(seo.description) || PLATFORM_DEFAULTS.description : seo.description[lang] || platformText(lang).site.description;
   const image = seo.image
     ? { url: seo.image.url, alt: own(seo.image.alt) || title }
     : { url: "/og.png", alt: title, width: 1200, height: 630 };
@@ -96,7 +98,7 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         <Suspense fallback={null}>
           <OffPayRoutes>
             <Suspense fallback={null}>
-              <KaizenChat />
+              <KaizenChat lang={lang} />
             </Suspense>
             <Suspense fallback={null}>
               <SiteConsent storeId={null} tracking={chrome.tracking} lang={facts.messages} locale={facts.locale} cookiePage={platformPath(lang, "/cookies")} />

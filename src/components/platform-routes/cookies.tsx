@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 
 import { CookiePolicy } from "@/components/consent/cookie-policy";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { siteCookies } from "@/server/site-cookies";
 
 export async function cookiesMetadata(lang: PlatformLang): Promise<Metadata> {
   return {
-    title: "Cookies",
-    description: "The cookies Kaizena Flow's site uses, who sets them, why and for how long.",
+    title: platformText(lang).cookies.title,
+    description: platformText(lang).cookies.description,
     alternates: await languageMeta(lang, "/cookies"),
   };
 }

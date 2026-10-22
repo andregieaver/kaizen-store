@@ -1,6 +1,6 @@
 # Kaizena Flow and the admin in more than one language (D312)
 
-Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/no` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
+Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/no` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. P2 built (2026-10-22): the chrome's words in English and Norwegian catalogues (`platformText(lang)`), held by `platform-chrome.scan.test.ts`. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
 source and the fallback.
 
 The owner's ask: every string of Kaizena Flow's own site (the platform store: front page, Kaizena Flow's pages, sign-up, the theme store,

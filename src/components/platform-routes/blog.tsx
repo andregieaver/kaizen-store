@@ -7,6 +7,7 @@ import { PageEditLink } from "@/components/page-edit-link";
 import { PlatformPageView, platformPageMetadata } from "@/components/platform-page";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { siteUrl } from "@/lib/site";
 import { articleJsonLd } from "@/lib/structured-data";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
@@ -23,8 +24,8 @@ export async function blogMetadata(lang: PlatformLang): Promise<Metadata> {
   const [page, meta] = await Promise.all([platformPageForRole("blog"), languageMeta(lang, "/blog")]);
   if (page) return platformPageMetadata(page, "/blog", { lang, languages: meta.languages });
   return {
-    title: "Blog",
-    description: "News and guides from Kaizena Flow: selling online across the EU, and how the platform works.",
+    title: platformText(lang).blog.title,
+    description: platformText(lang).blog.description,
     alternates: meta,
   };
 }

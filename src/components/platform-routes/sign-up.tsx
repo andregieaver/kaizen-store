@@ -11,13 +11,14 @@ import { KaizenLifePrefill } from "@/app/(platform)/sign-up/kaizen-life-prefill"
 import { ReferralKeeper } from "@/app/(platform)/sign-up/referral-keeper";
 import { ThemeFromAddress } from "@/app/(platform)/sign-up/theme-from-address";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { languageMeta } from "@/server/platform-lang-meta";
 
 /** Sign-up's search texts in `lang` (D312). */
 export async function signUpMetadata(lang: PlatformLang): Promise<Metadata> {
   return {
-    title: "Start your store",
-    description: "Kaizena Flow is in a private beta. Ask for a store and we will set one up for you.",
+    title: platformText(lang).signUp.title,
+    description: platformText(lang).signUp.description,
     alternates: await languageMeta(lang, "/sign-up"),
   };
 }
@@ -32,62 +33,61 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
   // The store templates a new store can start from (D175); with none published, there is nothing to choose.
   // The design profiles to apply after (D176); with none published, there is nothing to choose.
   const designs = await designChoices();
+  const w = platformText(lang).signUp;
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Start your store</h1>
-        <p className="mt-2 text-muted">
-          Kaizena Flow is in a private beta. Tell us who you are and we will set up your store, ready
-          to try with demo products.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">{w.title}</h1>
+        <p className="mt-2 text-muted">{w.intro}</p>
       </div>
-      <KaizenLifePrefill />
+      <KaizenLifePrefill words={w.kaizenLife} />
       <ActionForm action={requestAccess} className="flex flex-col gap-4" replaceOnSuccess id="sign-up-form">
         <ReferralKeeper enabled={referrals.enabled} days={referrals.cookieDays} />
         {/* The language the request was made in, for the emails that answer it (D312 P6). */}
         <input type="hidden" name="locale" value={PLATFORM_LANG_FACTS[lang].locale} />
         <label className={field}>
-          Your name
+          {w.name}
           <input name="name" required autoComplete="name" className={control} />
         </label>
         <label className={field}>
-          Email
+          {w.email}
           <input type="email" name="email" required autoComplete="email" className={control} />
         </label>
         <label className={field}>
-          Store name
+          {w.storeName}
           <input name="storeName" required maxLength={80} autoComplete="organization" className={control} />
-          <span className="font-normal text-muted">You can change it later.</span>
+          <span className="font-normal text-muted">{w.storeNameHint}</span>
         </label>
         {designs.cards.length > 1 && <ThemeFromAddress />}
         {designs.cards.length > 1 && (
           <DesignCards
             cards={designs.cards}
-            legend="Theme (optional)"
-            hint="Your store starts with the theme's look and its demo store's products and pages, which you remove in one press when yours are in. Preview opens it in a new window; see them all on the Themes page."
+            legend={w.themeLegend}
+            hint={w.themeHint}
+            words={platformText(lang).themeCards}
           />
         )}
         <label className={field}>
           <span>
-            What will you sell? <span className="font-normal text-muted">(optional)</span>
+            {w.sell} <span className="font-normal text-muted">{w.optional}</span>
           </span>
           <textarea name="message" rows={3} maxLength={1000} className={`${control} py-2`} />
         </label>
         {/* Hidden from people and screen readers; a filled-in value marks a bot. */}
         <div aria-hidden="true" className="hidden">
           <label>
-            Website
+            {w.website}
             <input name="website" tabIndex={-1} autoComplete="off" />
           </label>
         </div>
         <div>
-          <SubmitButton>Request a store</SubmitButton>
+          <SubmitButton>{w.submit}</SubmitButton>
         </div>
       </ActionForm>
       <p className="text-sm text-muted">
-        Already have an account?{" "}
+        {w.haveAccount}{" "}
         <Link href="/admin/sign-in" className="underline">
-          Sign in
+          {w.signIn}
         </Link>
       </p>
     </main>

@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor, type ChatWidgetProfile } from "@/server/chat-agent";
@@ -122,8 +123,9 @@ export async function StoreChat({ store, market }: { store: Store; market: Marke
 }
 
 /** Kaizen's own chat (D81, D216), on its pages: the agent while it is on, or the desk while support is on. */
-export async function KaizenChat() {
+export async function KaizenChat({ lang = "en" }: { lang?: PlatformLang }) {
   const profile = await chatWidgetFor(null);
   if (!profile) return null;
-  return <ChatWidget site={{}} locale="en-GB" agent={profile} deskName="Kaizena Flow" labels={chatLabels("en", "en-GB", profile, "Kaizena Flow")} />;
+  const { locale, messages } = PLATFORM_LANG_FACTS[lang];
+  return <ChatWidget site={{}} locale={locale} agent={profile} deskName="Kaizena Flow" labels={chatLabels(messages, locale, profile, "Kaizena Flow")} />;
 }
