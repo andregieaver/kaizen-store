@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AdminTextProvider } from "@/components/admin/admin-text";
+import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -16,9 +17,8 @@ import { buttonClass, FocusFrame } from "@/components/admin/ui";
 
 import { signIn, signInWithKaizenLife } from "./actions";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: adminText(await requestAdminLang(), "signIn").titles.signIn };
-}
+/** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
+export const metadata: Metadata = { title: signInEn.titles.signIn };
 
 /** Drawn in the request's language (D312 A1, `requestAdminLang()`), so the whole page waits for the request; an empty frame until then. */
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {

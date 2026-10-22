@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS } from "@/lib/two-step";
@@ -15,11 +16,8 @@ import { recoveryAvailable } from "@/server/recovery-codes";
 
 import { recoveryCodeAction } from "../actions";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: adminText(await requestAdminLang(), "signIn").titles.recovery,
-  };
-}
+/** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
+export const metadata: Metadata = { title: signInEn.titles.recovery };
 
 /**
  * A recovery code in place of the authenticator app (wave 1, 1f). It works once, takes the second step away, ends every session and emails

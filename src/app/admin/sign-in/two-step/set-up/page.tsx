@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { AdminTextProvider } from "@/components/admin/admin-text";
 import { EnrolPanel } from "@/components/admin/two-step-panel";
+import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
@@ -15,9 +16,8 @@ import { getStore } from "@/server/stores";
 import { finishEnrolmentAction, leaveTwoStepAction, startEnrolmentAction } from "../actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: adminText(await requestAdminLang(), "signIn").titles.setUp };
-}
+/** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
+export const metadata: Metadata = { title: signInEn.titles.setUp };
 
 /**
  * Setting up two-step sign-in (wave 1, 1f, docs/wave-1-trust.md 2.6.2): for someone a store or the platform requires it of, who is held

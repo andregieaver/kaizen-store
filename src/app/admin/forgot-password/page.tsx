@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text";
 import { FocusFrame } from "@/components/admin/ui";
+import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
 
 import { requestPasswordReset } from "../sign-in/actions";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: adminText(await requestAdminLang(), "signIn").titles.forgot };
-}
+/** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
+export const metadata: Metadata = { title: signInEn.titles.forgot };
 
 /** In the request's language (D312 A1), so it waits for the request; an empty frame until then. */
 export default function ForgotPasswordPage() {

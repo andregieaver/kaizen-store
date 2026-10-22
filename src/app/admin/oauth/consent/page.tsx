@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { createClient } from "@/lib/supabase/server";
@@ -13,9 +14,8 @@ import { isOwner } from "@/server/kaizen-life";
 import { decideConsentAction } from "./actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: adminText(await requestAdminLang(), "signIn").titles.consent };
-}
+/** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
+export const metadata: Metadata = { title: signInEn.titles.consent };
 
 /** What each scope an app asks for shares: its words in the catalogue. */
 const SCOPE_WORDS = { openid: "whoYouAre", email: "yourEmail", profile: "yourName", phone: "yourPhone" } as const;
