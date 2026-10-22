@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 
+import type { AdminLang } from "@/lib/admin-lang";
 import type { AdminLayoutId } from "@/lib/admin-layouts";
+import { navAreasIn, navItemsIn } from "@/lib/admin-nav-words";
+import { adminText } from "@/lib/admin-text";
 
 import { AdminMain } from "./admin-main";
 import { ByPath } from "./by-path";
@@ -20,14 +23,17 @@ import { AreaLinks, AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea
  * `layout` (docs/admin-style.md section 6, `src/lib/admin-layouts.ts`): `classic` is the above; `rail` puts the tabs in a dark rail
  * of icons at the left (`AdminRail`) and draws a plain top bar with the switcher, the actions and the account, no tabs: a region a
  * layout leaves out is not rendered. Phones draw both the same: the top bar and the slide-out menu.
+ *
+ * `lang` is the account's (D312 A2): the frame's own words are the `shell` catalogue's, and the tabs, sidebars and their headings, written
+ * in English in the levels' navigation, are shown through `navWord()`.
  */
 export function AdminFrame({
   switcher,
   actions,
   account,
-  tabs,
-  groups,
-  areas,
+  tabs: tabsGiven,
+  groups: groupsGiven,
+  areas: areasGiven,
   wide = false,
   tabsLabel,
   menuTitle,
@@ -38,6 +44,7 @@ export function AdminFrame({
   layout = "classic",
   focus,
   home,
+  lang = "en",
   children,
 }: {
   /** The level switcher (`AdminSwitcher`). */
@@ -75,8 +82,14 @@ export function AdminFrame({
   focus?: { pattern: string; back: { href: string; label: string }; title: ReactNode };
   /** The rail's logo tile: where it leads and its name. */
   home?: { href: string; label: string };
+  /** The account's language for the admin. */
+  lang?: AdminLang;
   children: ReactNode;
 }) {
+  const w = adminText(lang, "shell").frame;
+  const tabs = navItemsIn(lang, tabsGiven);
+  const groups = navAreasIn(lang, [{ groups: groupsGiven }])[0].groups;
+  const areas = areasGiven && navAreasIn(lang, areasGiven);
   const workspace = workspaceLinks ? `(?:${fullWidth})|(?:${workspaceLinks})` : fullWidth;
   const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
   const bar = wide ? "" : "max-w-7xl";
@@ -91,32 +104,32 @@ export function AdminFrame({
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
       </svg>
-      <span className="sr-only">Menu</span>
+      <span className="sr-only">{w.menu}</span>
     </button>
   );
   const sidebar = (railed: boolean) =>
     areas ? (
-      <AreaSidebar areas={areas} fallback={groups} label="More" railed={railed} />
+      <AreaSidebar areas={areas} fallback={groups} label={w.more} railed={railed} />
     ) : groups.length > 0 ? (
       <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
         <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
-          <StoreSidebar groups={groups} label="More" />
+          <StoreSidebar groups={groups} label={w.more} />
         </div>
       </aside>
     ) : null;
   const menu = hasMenu && (
-    <MobileMenu title={menuTitle} labels={{ close: "Close menu", menu: "Menu" }}>
+    <MobileMenu title={menuTitle} labels={{ close: w.closeMenu, menu: w.menu }}>
       {areas ? (
         <AreaMenu
           tabs={tabs}
           areas={areas}
           fallback={groups}
-          label="All pages"
+          label={w.allPages}
           footer={menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         />
       ) : (
         <>
-          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
+          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: w.sections, items: tabs }] : []), ...groups]} label={w.allPages} />
           {menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         </>
       )}
@@ -153,7 +166,7 @@ export function AdminFrame({
                   {menuButton}
                   {switcher}
                   {workspaceLinks && (
-                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label="This section" />} otherwise={null} />
+                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label={w.thisSection} />} otherwise={null} />
                   )}
                 </>,
                 focusStart,

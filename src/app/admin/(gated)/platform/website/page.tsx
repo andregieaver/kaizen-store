@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { SectionHub } from "@/components/admin/section-hub";
-import { WEBSITE_ITEMS } from "@/lib/platform-nav";
+import { adminLangOf } from "@/lib/admin-lang";
+import { PLATFORM_HUB_INTROS, WEBSITE_ITEMS } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Website" };
@@ -11,11 +12,12 @@ export const metadata: Metadata = { title: "Website" };
 export default async function PlatformWebsitePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
   return (
     <SectionHub
+      lang={adminLangOf(admin.adminLocale)}
       title="Website"
-      intro="Everything that makes Kaizena Flow's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts."
+      intro={PLATFORM_HUB_INTROS.website}
       items={WEBSITE_ITEMS}
     />
   );

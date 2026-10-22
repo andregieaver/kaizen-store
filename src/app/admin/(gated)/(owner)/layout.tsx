@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
+import { adminText } from "@/lib/admin-text";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
 import { requireAccount } from "@/server/auth";
 import { waitingCount } from "@/server/support";
@@ -32,12 +34,16 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const waiting = desks.length > 0 ? await waitingCount(desks.map((d) => d.desk)) : 0;
   const tabs: NavItem[] = ownerTabs(who, { support: waiting });
   const areas: NavArea[] = ownerAreas(who);
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "shell").levels;
+  const title = owner ? w.controlCenter : w.yourStores;
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.control}
+      lang={lang}
       switcher={
-        <Suspense fallback={<span className="px-2 font-medium">{owner ? "Control center" : "Your stores"}</span>}>
-          <LevelSwitcher account={account} level="control" label={owner ? "Control center" : "Your stores"} />
+        <Suspense fallback={<span className="px-2 font-medium">{title}</span>}>
+          <LevelSwitcher account={account} level="control" label={title} />
         </Suspense>
       }
       account={<AdminAccountMenu account={account} />}
@@ -45,9 +51,9 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
       groups={[]}
       areas={areas}
       wide
-      tabsLabel="Control center sections"
+      tabsLabel={w.controlCenterSections}
       fullWidth={INBOX}
-      menuTitle={<span className="font-medium">{owner ? "Control center" : "Your stores"}</span>}
+      menuTitle={<span className="font-medium">{title}</span>}
     >
       {children}
     </AdminFrame>

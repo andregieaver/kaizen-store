@@ -6,6 +6,7 @@
  */
 
 import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
+import { PAGES_NB } from "./admin-messages/pages.nb";
 import { sectionOf } from "./store-nav";
 
 export type AdminArea = "store" | "platform" | "account";
@@ -1059,13 +1060,18 @@ export function findPages(area: "store" | "platform", query: string, flags: Site
   const scored = pagesFor(area, flags).map((page) => {
     const title = words(page.title);
     const keywords = (page.keywords ?? []).flatMap(words);
+    // Its Norwegian title and words too (D312 A2), so a person asking in Norwegian finds it; only words of four letters or more, so a short
+    // English word ("for", "som") does not match a Norwegian one.
+    const nb = PAGES_NB[`${page.area}:${page.id}`];
+    const nbTitle = words(nb?.title ?? "").filter((w) => w.length >= 4);
+    const nbKeywords = (nb?.keywords ?? []).flatMap(words).filter((w) => w.length >= 4);
     const body = words(`${page.what} ${(page.tasks ?? []).join(" ")} ${page.group}`);
     let score = 0;
     for (const word of asked) {
       const stem = word.slice(0, Math.max(4, word.length - 2));
       const hit = (list: string[]) => list.some((w) => w === word || (stem.length >= 4 && w.startsWith(stem)));
-      if (hit(title)) score += 5;
-      if (hit(keywords)) score += 4;
+      if (hit(title) || (word.length >= 4 && hit(nbTitle))) score += 5;
+      if (hit(keywords) || (word.length >= 4 && hit(nbKeywords))) score += 4;
       if (hit(body)) score += 1;
     }
     // Pages without params are where people start.

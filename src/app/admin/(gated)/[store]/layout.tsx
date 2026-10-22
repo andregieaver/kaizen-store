@@ -7,7 +7,10 @@ import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/ad
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
+import { adminText } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
@@ -76,12 +79,15 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
   // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
   const starter = store.starter ? await starterOfStore(store.id) : null;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "shell");
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
   const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.store}
-      home={{ href: "/admin", label: "Kaizena Flow: all your stores" }}
+      lang={lang}
+      home={{ href: "/admin", label: w.store.homeLabel }}
       before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
       switcher={
         <Suspense fallback={<span className="px-2 font-medium">{store.name}</span>}>
@@ -108,8 +114,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             />
           )}
           <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
-            <span className="hidden sm:inline">View store</span>
-            <span className="sr-only sm:hidden">View store</span>
+            <span className="hidden sm:inline">{w.store.viewStore}</span>
+            <span className="sr-only sm:hidden">{w.store.viewStore}</span>
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -121,33 +127,30 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       groups={[]}
       areas={areas}
       wide
-      tabsLabel="Main sections"
+      tabsLabel={w.levels.storeSections}
       menuTitle={<span className="font-medium">{store.name}</span>}
       menuFooter={
         <>
-          {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">Control center</MenuFooterLink>}
-          <MenuFooterLink href="/admin/stores">All your stores</MenuFooterLink>
-          {account.platformAdmin && <MenuFooterLink href="/admin/platform">Platform</MenuFooterLink>}
-          <MenuFooterLink href="/admin/account">Your account</MenuFooterLink>
+          {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>}
+          <MenuFooterLink href="/admin/stores">{w.store.allYourStores}</MenuFooterLink>
+          {account.platformAdmin && <MenuFooterLink href="/admin/platform">{w.levels.platform}</MenuFooterLink>}
+          <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
         </>
       }
       fullWidth={FULL_WIDTH}
       workspaceLinks={INBOX}
-      focus={{ pattern: SETUP, back: { href: base, label: "Leave setup" }, title: `Setting up ${store.name}` }}
+      focus={{ pattern: SETUP, back: { href: base, label: w.store.leaveSetup }, title: fillWords(w.store.settingUp, { name: store.name }) }}
     >
       {store.starter && starter?.kind === "demo" && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">This store is a demo store{starter.published ? ", live" : ", not published yet"}.</p>
+          <p className="font-medium">{starter.published ? w.store.demoLive : w.store.demoNotPublished}</p>
           <p className="text-muted">
-            {starter.published
-              ? "Every change here shows on it at once, and the theme's page lists it under See it live."
-              : "Publish it from its page to put it live; the theme's page then lists it under See it live."}{" "}
-            It takes no orders, sends no emails to shoppers and is never shown to search engines.
+            {starter.published ? w.store.demoLiveText : w.store.demoDraftText} {w.store.demoRules}
             {account.platformAdmin && (
               <>
                 {" "}
                 <Link href={demoStoreHref(starter.id)} className="font-medium underline underline-offset-2">
-                  Its page
+                  {w.store.itsPage}
                 </Link>
               </>
             )}
@@ -156,16 +159,14 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       )}
       {store.starter && starter?.kind !== "demo" && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">This store is starting content.</p>
+          <p className="font-medium">{w.store.startingContent}</p>
           <p className="text-muted">
-            A theme shown on it is previewed with its products, services, staff, pages, menus, settings and page drafts, and new stores that
-            start from that theme begin with them, as they were when it was last published: changes made here reach new stores when it is
-            published again. It takes no orders and is never shown to search engines.
+            {w.store.startingContentText}
             {account.platformAdmin && (
               <>
                 {" "}
                 <Link href={starter ? demoStoreHref(starter.id) : STARTING_CONTENT_HREF} className="font-medium underline underline-offset-2">
-                  Its page
+                  {w.store.itsPage}
                 </Link>
               </>
             )}
@@ -174,16 +175,14 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       )}
       {!open && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>
+          <p className="font-medium">{store.status === "suspended" ? w.store.suspended : w.store.closed}</p>
           <p className="text-muted">
-            {store.status === "suspended"
-              ? "Kaizena Flow has paused it: it takes no orders and cannot be changed. You can still see and handle what was already sold."
-              : "It takes no orders. Its orders, invoices, returns and customer data stay here to read and download."}
+            {store.status === "suspended" ? w.store.suspendedText : w.store.closedText}
             {isOwner && store.status === "closed" && (
               <>
                 {" "}
                 <Link href={`${base}/settings/close`} className="font-medium underline underline-offset-2">
-                  {ownerMayReopen(store.status, store.closedAt ? new Date(store.closedAt) : null, new Date()) ? "Reopen the store" : "About reopening"}
+                  {ownerMayReopen(store.status, store.closedAt ? new Date(store.closedAt) : null, new Date()) ? w.store.reopen : w.store.aboutReopening}
                 </Link>
               </>
             )}

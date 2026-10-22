@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { SectionHub } from "@/components/admin/section-hub";
-import { SETTINGS_ITEMS } from "@/lib/platform-nav";
+import { adminLangOf } from "@/lib/admin-lang";
+import { PLATFORM_HUB_INTROS, SETTINGS_ITEMS } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -11,11 +12,12 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function PlatformSettingsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
   return (
     <SectionHub
+      lang={adminLangOf(admin.adminLocale)}
       title="Settings"
-      intro="How Kaizena Flow's site is found, what it sets, how it takes payment, its AI, emails and languages."
+      intro={PLATFORM_HUB_INTROS.settings}
       items={SETTINGS_ITEMS}
     />
   );

@@ -1098,7 +1098,10 @@ stand-in is the only fake, and only it is told it is one.
   words are catalogues per area (`src/lib/admin-messages/{area}.{en,nb}.ts`, English the type), read by `adminText(lang, area)` on the
   server and `useAdminText(area)` under the signed-in layout's `AdminTextProvider`; `admin-strings.scan.test.ts` counts English written
   into admin files against `admin-strings.baseline.json`, which only shrinks (rewrite it with `UPDATE_ADMIN_STRINGS=1` after a
-  conversion), so a new admin word goes in a catalogue.
+  conversion), so a new admin word goes in a catalogue. The shell (A2): `AdminFrame` takes `lang` (the `shell` catalogue); the
+  navigation stays English in `store-nav.ts`, `owner-nav.ts` and `platform-nav.ts` and is shown through `navWord()` (`NAV_NB`), so a new
+  section, heading, page label or card line gets its Norwegian in `nav.nb.ts` (`admin-nav-words.test.ts`), and a new `ADMIN_PAGES` entry its
+  Norwegian title and words in `pages.nb.ts` (`PAGES_NB`, matched by `findPages()`; the title the navigation's word, `admin-pages-nb.test.ts`).
   A request to open a store keeps its language (P6, `access_requests.locale`): its emails are `accessEmail()` (`src/lib/access-emails.ts`,
   `platformText(lang).accessEmails`, kinds `platform.access_*`), sent once each by `sendAccessEmail()` in `src/server/platform.ts`, and
   the new owner's admin starts in it. The stores' Norwegian legal starters state every right from `LEGAL_WORDING_NB` and cite its section

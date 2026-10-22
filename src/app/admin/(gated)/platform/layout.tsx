@@ -4,6 +4,8 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -59,12 +61,15 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   const account = await requirePlatformAdmin();
   const [waiting, supportWaiting] = await Promise.all([countPendingRequests(), waitingCount([(await kaizenDesk()).desk])]);
   const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting });
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "shell");
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.platform}
+      lang={lang}
       switcher={
-        <Suspense fallback={<span className="px-2 font-medium">Platform</span>}>
-          <LevelSwitcher account={account} level="platform" label="Platform" />
+        <Suspense fallback={<span className="px-2 font-medium">{w.levels.platform}</span>}>
+          <LevelSwitcher account={account} level="platform" label={w.levels.platform} />
         </Suspense>
       }
       actions={
@@ -83,17 +88,17 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
           }}
         />
       }
-      account={<AdminAccountMenu account={account} role="Platform" />}
+      account={<AdminAccountMenu account={account} role={w.levels.platform} />}
       tabs={tabs}
       groups={[]}
       areas={areas}
       wide
-      tabsLabel="Platform sections"
-      menuTitle={<span className="font-medium">Platform</span>}
+      tabsLabel={w.levels.platformSections}
+      menuTitle={<span className="font-medium">{w.levels.platform}</span>}
       menuFooter={
         <>
-          <MenuFooterLink href="/admin">Control center</MenuFooterLink>
-          <MenuFooterLink href="/admin/account">Your account</MenuFooterLink>
+          <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>
+          <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
         </>
       }
       fullWidth={FULL_WIDTH}

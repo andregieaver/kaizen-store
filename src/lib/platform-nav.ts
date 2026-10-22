@@ -61,6 +61,12 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when."),
 ];
 
+/** What the platform's pages of cards say at the top (D144), shown through `navWord()` like the rest of the navigation (D312 A2). */
+export const PLATFORM_HUB_INTROS = {
+  website: "Everything that makes Kaizena Flow's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts.",
+  settings: "How Kaizena Flow's site is found, what it sets, how it takes payment, its AI, emails and languages.",
+};
+
 /** Addresses inside a section: its hub page and every page in its sidebar. */
 export const sectionPrefixes = (hub: string | null, items: SectionItem[]) => [...(hub ? [`${PLATFORM_BASE}${hub}`] : []), ...items.map((i) => `${PLATFORM_BASE}${i.path}`)];
 

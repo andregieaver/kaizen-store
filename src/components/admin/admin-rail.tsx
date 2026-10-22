@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 
 import { RAIL_NAMES_EVENT, railNamesShown, setRailNames } from "@/lib/admin-rail";
 
+import { useAdminText } from "./admin-text";
 import { NavIcon } from "./nav-icons";
 import { useIsCurrent, type NavItem } from "./store-admin-nav";
 
@@ -34,6 +35,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
   const isCurrent = useIsCurrent();
   const path = usePathname();
   const named = useRailNames();
+  const w = useAdminText("shell").rail;
   const collapsed = Boolean(collapseOn) && new RegExp(collapseOn as string).test(path);
   const main = items.filter((item) => !item.foot);
   const foot = items.filter((item) => item.foot);
@@ -74,7 +76,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
   };
   const Toggle = named ? PanelLeftClose : PanelLeftOpen;
   // Named for what it does to the sidebar: a name with "name" in it would answer every search for a Name field.
-  const toggleLabel = named ? "Narrow the sidebar" : "Widen the sidebar";
+  const toggleLabel = named ? w.narrowSidebar : w.widenSidebar;
   return (
     <div
       data-admin-rail
@@ -98,7 +100,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
         >
           <Toggle aria-hidden className="size-5 shrink-0" />
           <span aria-hidden className="hidden text-caption [[data-rail=names]_&]:inline">
-            Narrow
+            {w.narrow}
           </span>
         </button>
       )}

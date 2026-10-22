@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { useAdminText } from "./admin-text";
 import { NavIcon, type NavIconName } from "./nav-icons";
 
 /**
@@ -95,9 +96,10 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
 /** The slide-out menu on phones: the tabs, and the sidebar of the section being viewed. */
 export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavItem[]; areas: NavArea[]; fallback: NavGroup[]; label: string; footer?: ReactNode }) {
   const groups = useAreaGroups(areas, fallback);
+  const sections = useAdminText("shell").frame.sections;
   return (
     <>
-      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label={label} />
+      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: sections, items: tabs }] : []), ...groups]} label={label} />
       {footer}
     </>
   );

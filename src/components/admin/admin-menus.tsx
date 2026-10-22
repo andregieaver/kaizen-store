@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+import { useAdminText } from "./admin-text";
+
 /**
  * The two menus every admin header has (D107): the level switcher on the
  * left, which reaches every place the person may go, and the account menu on
@@ -98,6 +101,7 @@ export function AdminSwitcher({
   platform: { waiting: number } | null;
 }) {
   const { open, toggle, box, button } = useMenu();
+  const w = useAdminText("shell").switcher;
   const shown = stores.slice(0, 12);
   return (
     <div ref={box} className="relative min-w-0">
@@ -117,30 +121,30 @@ export function AdminSwitcher({
         <Chevron />
       </button>
       {open && (
-        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-panel border border-line bg-card p-2 shadow-xl">
+        <div role="menu" aria-label={w.goTo} className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-panel border border-line bg-card p-2 shadow-xl">
           {owner && (
             <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
-              Control center
-              <span className="ml-auto text-xs font-normal text-muted">{level === "control" ? "" : "all your stores"}</span>
+              {w.controlCenter}
+              <span className="ml-auto text-xs font-normal text-muted">{level === "control" ? "" : w.allYourStoresShort}</span>
               <Here on={level === "control"} />
             </Link>
           )}
           {shown.length > 0 && (
-            <Section id="switch-stores" title="Stores" first={!owner}>
+            <Section id="switch-stores" title={w.stores} first={!owner}>
               {shown.map((s) => {
                 const here = level === "store" && s.slug === currentSlug;
                 return (
                   <Link key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
                     <span className="truncate">{s.name}</span>
-                    {s.suspended && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">Suspended</span>}
-                    {s.role === "admin" && <span className="ml-auto text-xs text-muted">Staff</span>}
+                    {s.suspended && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">{w.suspended}</span>}
+                    {s.role === "admin" && <span className="ml-auto text-xs text-muted">{w.staff}</span>}
                     {here && !(s.role === "admin") && <Here on />}
                   </Link>
                 );
               })}
               {stores.length > shown.length && (
                 <Link role="menuitem" href="/admin/stores" className={`${item} text-muted`}>
-                  All {stores.length} stores
+                  {fillWords(w.allStores, { count: stores.length })}
                 </Link>
               )}
             </Section>
@@ -148,23 +152,25 @@ export function AdminSwitcher({
           {platform && (
             <Section id="switch-kaizen" title="Kaizena Flow" first={!owner && shown.length === 0}>
               <Link role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
-                Platform
-                {platform.waiting > 0 && <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">{platform.waiting} waiting</span>}
+                {w.platform}
+                {platform.waiting > 0 && (
+                  <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">{fillWords(w.waiting, { count: platform.waiting })}</span>
+                )}
                 {platform.waiting === 0 && <Here on={level === "platform"} />}
               </Link>
             </Section>
           )}
-          <Section id="switch-you" title="You" first={!owner && shown.length === 0 && !platform}>
+          <Section id="switch-you" title={w.you} first={!owner && shown.length === 0 && !platform}>
             <Link role="menuitem" href="/admin/account" className={item}>
-              Your account
+              {w.yourAccount}
             </Link>
             {owner && (
               <>
                 <Link role="menuitem" href="/admin/account/billing" className={item}>
-                  Billing
+                  {w.billing}
                 </Link>
                 <Link role="menuitem" href="/admin/account/usage" className={item}>
-                  AI usage
+                  {w.aiUsage}
                 </Link>
               </>
             )}
@@ -178,6 +184,7 @@ export function AdminSwitcher({
 /** The account's menu: who is signed in, their account, the colours, and signing out. The rows come from the server. */
 export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNode; name: string | null; email: string; children: ReactNode }) {
   const { open, toggle, box, button } = useMenu();
+  const w = useAdminText("shell").switcher;
   return (
     <div ref={box} className="relative">
       <button
@@ -186,7 +193,7 @@ export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNo
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account menu, ${email}`}
+        aria-label={fillWords(w.accountMenu, { email })}
         className="flex size-10 items-center justify-center rounded-full hover:bg-sunken"
       >
         {avatar}
