@@ -13,6 +13,7 @@ import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
+import { buildPageInput, editPageInput, getPageInput, pageBuildsInput, publishPageInput, publishSummary } from "./site-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -55,6 +56,39 @@ const returnRef = z.string().trim().min(1).max(64).describe("The return's number
 /** A privacy request by its id, as the log and `list_privacy_requests` give it. */
 const privacyRequestRef = z.string().trim().min(8).max(64).describe("The privacy request's id, as list_privacy_requests gives it.");
 const productRef = z.string().trim().min(1).max(200).describe("The product's id, its handle, or its title as listed.");
+
+/**
+ * The website tools for pages (D308, `docs/ai-autopilot.md` 4), the same for a store and for Kaizena Flow's own site (`PLATFORM_TOOLS`):
+ * read a page, build one, change one and publish one. Everything but publishing works on the page's draft, which only staff see.
+ */
+export const SITE_TOOLS = [
+  tool(
+    "get_page",
+    "One page or article as its draft stands: its texts by key (title, search texts, each heading, text, button and caption, with its longest length), its rows in order by id and number with the parts they hold (an empty picture says so), whether it is on the site, what publishing it would still need (the accessibility checker's problems) and its pictures still being made. Read it before edit_page.",
+    getPageInput,
+  ),
+  tool(
+    "list_page_builds",
+    "The pages build_page was asked to build, most recent first: being built, built as a draft (with its page and editor link, and what the AI left out and why) or not built (with why), and how its pictures are coming along.",
+    pageBuildsInput,
+  ),
+  tool(
+    "build_page",
+    "Builds a new page as a DRAFT with the page studio, from a brief: it plans the sections from the builder's designs, writes each in the site's language, checks every word with the claims filter and saves the draft; pictures are made one at a time after, by the site's picture model. It runs after your answer and takes a minute or two: say so, and use list_page_builds to see when it is done. Give only facts the owner gave you (what they offer, how they work, opening hours, a video's address): the page states nothing else but the site's own, never a price. Publish it with publish_page once the owner has seen it.",
+    buildPageInput,
+  ),
+  tool(
+    "edit_page",
+    "Changes a page's DRAFT, saved as the builder saves it with a version kept: set a text by its key from get_page, replace words everywhere on the page, add a section in one of the page studio's designs (its words written from your brief and the owner's facts, its picture made after), remove a row or move one. Several changes are made in order and saved together; one that cannot be made refuses them all, with why. Words in parts shared with other pages are changed in the builder. A page on the site stays as it is there until publish_page.",
+    editPageInput,
+  ),
+  tool(
+    "publish_page",
+    "Publishes a page's or article's draft, as the builder's Publish does. Refused while the page has problems the accessibility checker blocks on (fix them with edit_page first; the owner can publish past them in the builder) or while it is in a running A/B test. Needs the owner's approval.",
+    publishPageInput,
+    "public",
+  ),
+] as const satisfies readonly OwnerTool[];
 
 export const OWNER_TOOLS = [
   tool(
@@ -264,6 +298,7 @@ export const OWNER_TOOLS = [
     "The store's pages or blog articles: title, address and whether they are published.",
     z.object({ type: z.enum(["page", "article"]).default("page") }),
   ),
+  ...SITE_TOOLS,
   tool(
     "search_insights",
     "What shoppers searched for in the store's search, most often first, and the searches that found nothing.",
@@ -911,6 +946,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return featureSwitchSummaryOf(input);
     case "unpublish_page":
       return `Take the ${input.type === "article" ? "article" : "page"} ${text("page")} off the site, keeping its draft.`;
+    // The page's own title is put in by the server (`publishApprovalWords()`); these words name it as given.
+    case "publish_page":
+      return publishSummary(input.type === "article" ? "article" : "page", null, text("page"));
     case "approve_return":
       return approveSummary(text("return"), text("instructions") || null);
     case "decline_return":

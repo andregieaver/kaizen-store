@@ -10,7 +10,9 @@ import { findClaims } from "@/lib/claims";
 import {
   EMPTY_COPY,
   PICTURES_MAX,
+  SECTIONS_MAX,
   buildPage,
+  buildSection,
   checkPlan,
   copyClaims,
   copyMessages,
@@ -28,13 +30,14 @@ import {
   type PageBrief,
   type PagePlan,
   type PictureJob,
+  type PlanSection,
   type SectionCopy,
   type SiteFacts,
   type SiteLink,
   type StudioMessage,
   type StudioResult,
 } from "@/lib/page-ai";
-import { pageInput, reservedPageSlugs, type PageContent } from "@/lib/page-content";
+import { pageBlocks, pageInput, reservedPageSlugs, richTextPlain, type PageContent, type PageRow } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 
 import { AiError, aiFor, completeText, seeing, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
@@ -345,6 +348,62 @@ export async function buildDraft(
   return { ok: true, pageId: saved.id, pictures, notes: [...notes, ...written.flatMap((w) => (w.note ? [w.note] : []))] };
 }
 
+/** What a row of a page that is there is called for the copywriter: its first heading's words, else its first words. */
+function rowName(row: PageRow, index: number): string {
+  const blocks = pageBlocks({ rows: [row] });
+  const heading = blocks.find((block) => block.type === "heading");
+  const words =
+    heading?.type === "heading"
+      ? heading.text
+      : (() => {
+          const text = blocks.find((block) => block.type === "richText");
+          return text?.type === "richText" ? richTextPlain(text.doc) : "";
+        })();
+  return words.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 80) || `Row ${index + 1}`;
+}
+
+/** Rows of the page around a new section, as sections of the plan its words are written in: a few before it and a few after. */
+const AROUND_SECTION = Math.floor((SECTIONS_MAX - 1) / 2);
+
+/**
+ * A section added to a page that is there (the AI manager's `edit_page`, D308): checked as a plan's section is, in a plan of the page's
+ * rows around it (named by their headings, so the words fit between them and repeat none), its words written by the studio's writer from
+ * its brief and the owner's facts, built into rows with its pictures as jobs (`fillPicture()` places them later). A section the site
+ * cannot have (no products to show, a video address nobody gave) is refused with the studio's reason.
+ */
+export async function sectionForPage(
+  owner: StudioOwner,
+  page: PageContent,
+  wanted: PlanSection,
+  words: string,
+  at: number,
+): Promise<StudioResult<{ rows: PageRow[]; pictures: PictureJob[]; notes: string[] }>> {
+  const connection = await textConnection(owner.storeId);
+  if (typeof connection === "string") return { ok: false, problem: connection };
+  const facts = await siteFacts(owner, connection);
+  if (!facts) return { ok: false, problem: "The store could not be read." };
+  const around = (rows: PageRow[], from: number) => rows.map((row, offset): PlanSection => ({ pattern: "text", name: rowName(row, from + offset), brief: "" }));
+  const before = around(page.rows.slice(Math.max(0, at - AROUND_SECTION), at), Math.max(0, at - AROUND_SECTION));
+  const after = around(page.rows.slice(at, at + AROUND_SECTION), at);
+  const asked = [...before, wanted, ...after];
+  const { plan, notes } = checkPlan({ title: page.title, slug: page.slug, description: "", sections: asked }, facts, words);
+  // The rows around it are always kept: one fewer means the new section was left out, and the note says why.
+  if (plan.sections.length < asked.length) return { ok: false, problem: notes.join(" ") || `"${wanted.name}" cannot be added to this page.` };
+  const index = wanted.pattern === "hero" ? 0 : before.length;
+  const brief = pageBrief.parse({ title: page.title, purpose: wanted.brief, facts: words.split("\n") });
+  const written = await writeSection(connection, facts, brief, plan, index, words);
+  if (written.copy === EMPTY_COPY) return { ok: false, problem: written.note ?? `"${wanted.name}" could not be written.` };
+  const built = buildSection(plan.sections[index], written.copy, facts, { newId: randomUUID, first: at === 0 });
+  const pictures = built.pictures.map((job) => ({
+    ...job,
+    // A picture added later never becomes the page's own: that stays the owner's.
+    thumbnail: false,
+    prompt: picturePrompt({ prompt: job.prompt, alt: job.alt }, brief),
+    alt: findClaims(job.alt, { colours: false }).length > 0 ? "" : job.alt,
+  }));
+  return { ok: true, rows: built.rows, pictures, notes: [...notes, ...(written.note ? [written.note] : [])] };
+}
+
 // ---------------------------------------------------------------------------
 // Pictures
 // ---------------------------------------------------------------------------
@@ -394,16 +453,22 @@ function placePicture(content: PageContent, job: z.infer<typeof pictureJobInput>
  * so pictures made at once never undo each other. A place the owner has
  * filled or taken out meanwhile is left alone.
  */
-export async function fillPicture(owner: StudioOwner, pageId: string, raw: unknown): Promise<StudioResult<{ url: string }>> {
+/**
+ * A picture's outcome; a failure that trying again would not change says so (`outcome`): `gone` when its page or its place is no longer
+ * there, `final` when the site cannot make pictures. The AI manager's job (D308) keeps trying the others.
+ */
+export type PictureFill = { ok: true; url: string } | { ok: false; problem: string; outcome?: "gone" | "final" };
+
+export async function fillPicture(owner: StudioOwner, pageId: string, raw: unknown): Promise<PictureFill> {
   const parsed = pictureJobInput.safeParse(raw);
-  if (!parsed.success) return { ok: false, problem: "The picture could not be read." };
+  if (!parsed.success) return { ok: false, problem: "The picture could not be read.", outcome: "final" };
   const job = parsed.data;
-  const connection = await aiFor(owner.storeId, { feature: "page_studio" });
-  if (!connection?.image) return { ok: false, problem: "Set up a picture model under AI settings to make pictures." };
+  const connection = await aiFor(owner.storeId, { feature: "page_studio", accountId: owner.account.id });
+  if (!connection?.image) return { ok: false, problem: "Set up a picture model under AI settings to make pictures.", outcome: "final" };
   const [page] = await db().execute<Row>(sql`
-    select id from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid and type = 'page'
+    select id from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid and type in ('page', 'article')
   `);
-  if (!page) return { ok: false, problem: "The page is gone." };
+  if (!page) return { ok: false, problem: "The page is gone.", outcome: "gone" };
 
   let made: Awaited<ReturnType<typeof makePicture>>;
   try {
@@ -430,7 +495,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
     return true;
   });
   // The picture stays in the library either way, for the owner to use.
-  if (!placed) return { ok: false, problem: "The picture was made and kept in the media library, but its place on the page has changed." };
+  if (!placed) return { ok: false, problem: "The picture was made and kept in the media library, but its place on the page has changed.", outcome: "gone" };
   return { ok: true, url: picture.url };
 }
 

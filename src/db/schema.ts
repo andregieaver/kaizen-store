@@ -88,6 +88,7 @@ import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../
 import { AUTOMATION_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import { HIDE_REASONS, PUBLISH_MODES, REQUEST_DAYS_DEFAULT, REQUEST_DAYS_MAX, REQUEST_DAYS_MIN, REVIEW_SOURCES, REVIEW_STATUSES } from "../lib/review-status";
 import { TRACKING_PHASES, TRACKING_STOPS } from "../lib/tracking-phases";
+import { PAGE_JOB_KINDS, PAGE_JOB_STATUSES, PAGE_JOB_TRIES } from "../lib/page-jobs";
 import {
   ESTIMATE_DAYS_MAX,
   INFO_MAX,
@@ -12126,5 +12127,46 @@ export const reviewSettings = commerce.table(
     check("review_settings_publish", sql`${t.publish} in (${sqlList(PUBLISH_MODES)})`),
     check("review_settings_days", sql.raw(`request_days between ${REQUEST_DAYS_MIN} and ${REQUEST_DAYS_MAX}`)),
     check("review_settings_requests", sql`not ${t.requestsOn} or ${t.requestsEnabledAt} is not null`),
+  ],
+);
+
+/**
+ * The AI manager's work on pages that runs after its answer (D308, `docs/ai-autopilot.md` 4.1): a page built from a brief (`build`: the
+ * page studio's plan and words, `input` the brief, `page_id` once its draft is saved) and each picture of a page it built or changed
+ * (`picture`: the studio's picture job as built, placed in the page's draft by the studio's own `fillPicture()`). Taken one at a time by
+ * the every-minute job in the name of who asked. A store's (or Kaizena Flow's, with no store); a picture goes with its page.
+ */
+export const pageAiJobs = commerce.table(
+  "page_ai_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own pages. */
+    storeId: uuid("store_id").references(() => stores.id),
+    kind: text("kind").notNull(),
+    /** A build's page once its draft is saved; a picture's page from the start. */
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    /** Who asked: the work is done, metered and saved in their name. */
+    askedBy: uuid("asked_by")
+      .notNull()
+      .references(() => accounts.id),
+    input: jsonb("input").notNull(),
+    status: text("status").notNull().default("waiting"),
+    tries: integer("tries").notNull().default(0),
+    problem: text("problem"),
+    /** What a build came to: the notes the studio gives (sections left out, sentences with claims) and how many pictures were asked. */
+    result: jsonb("result"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("page_ai_jobs_kind", sql`${t.kind} in (${sqlList(PAGE_JOB_KINDS)})`),
+    check("page_ai_jobs_status", sql`${t.status} in (${sqlList(PAGE_JOB_STATUSES)})`),
+    check("page_ai_jobs_tries", sql.raw(`tries between 0 and ${PAGE_JOB_TRIES}`)),
+    check("page_ai_jobs_picture_page", sql`${t.kind} <> 'picture' or ${t.pageId} is not null`),
+    index("page_ai_jobs_waiting_idx").on(t.createdAt).where(sql`${t.status} = 'waiting'`),
+    index("page_ai_jobs_page_idx").on(t.pageId),
+    index("page_ai_jobs_store_idx").on(t.storeId, t.createdAt),
+    index("page_ai_jobs_asked_by_idx").on(t.askedBy),
   ],
 );

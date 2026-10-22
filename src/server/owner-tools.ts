@@ -141,6 +141,7 @@ import {
   writeProductTextsTool,
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
+import { buildPageTool, editPageTool, getPageTool, listPageBuildsTool, preflightPublishPage, publishPageTool } from "./site-tools";
 
 type Row = Record<string, unknown>;
 
@@ -1902,6 +1903,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightProductTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A page that could not be published (gone, in a running test, with a problem the checker blocks on) is refused now, never kept for a yes (D308).
+  if (name === "publish_page") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightPublishPage(ctx, input.input as OwnerToolInput<"publish_page">);
+  }
   // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
   if (name === "set_feature") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1958,6 +1965,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
 }
 
 const HANDLERS: Record<OwnerToolName, Handler> = {
+  // The website's pages (D308): the same handlers serve Kaizena Flow's own site with no store.
+  get_page: (ctx: OwnerToolContext, input: OwnerToolInput<"get_page">) => getPageTool(ctx, input),
+  list_page_builds: (ctx: OwnerToolContext, input: OwnerToolInput<"list_page_builds">) => listPageBuildsTool(ctx, input),
+  build_page: (ctx: OwnerToolContext, input: OwnerToolInput<"build_page">) => buildPageTool(ctx, input),
+  edit_page: (ctx: OwnerToolContext, input: OwnerToolInput<"edit_page">) => editPageTool(ctx, input),
+  publish_page: (ctx: OwnerToolContext, input: OwnerToolInput<"publish_page">) => publishPageTool(ctx, input),
   store_overview: storeOverview,
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
@@ -2081,16 +2094,17 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
   const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);
   if (tool.gate || AUDITED_UNGATED.has(name)) {
-    // The catalogue tools' entries are the Products area's (D308), so a member who may read products sees them in the activity log.
-    const area = PRODUCT_TOOLS.has(name) ? { area: "products" as const } : {};
+    // The catalogue tools' entries are the Products area's and the page tools' the Website's (D308), so a member who may read those sees them in the activity log.
+    const area = PRODUCT_TOOLS.has(name) ? { area: "products" as const } : PAGE_TOOLS.has(name) ? { area: "website" as const } : {};
     await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> }, area);
   }
   return result;
 }
 
-/** Tools that change the store without a gate, written down all the same: a note on an order, and products made or written for (D308). */
-const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts"]);
+/** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
+const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
+const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page"]);
 
 /**
  * Whether a gated tool needs the owner's yes for this call. Most always do; a catalogue tool of `GATED_WHEN_LIVE` only while its product is on

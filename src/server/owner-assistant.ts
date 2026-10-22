@@ -19,6 +19,7 @@ import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { productApprovalWords } from "./product-tools";
+import { publishApprovalWords } from "./site-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
 import { effectiveFeatures } from "@/lib/store-features";
@@ -605,6 +606,8 @@ export async function keepForApproval(
   if (store && (tool === "update_product" || tool === "set_prices" || tool === "set_product_status")) {
     summary = (await productApprovalWords(store, tool, args)) ?? summary;
   }
+  // A page's publish is described with the page's own title (D308).
+  if (tool === "publish_page") summary = await publishApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, args);
   if (store && tool === "unpublish_page") {
     const [page] = await db().execute<Row>(sql`
       select published ->> 'title' as title from commerce.pages where store_id = ${store.id}::uuid and id = ${String(args.page)}::uuid

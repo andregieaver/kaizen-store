@@ -296,7 +296,7 @@ const planPicture = z.object({
 });
 export type PlanPicture = z.infer<typeof planPicture>;
 
-const planSection = z.object({
+export const planSection = z.object({
   pattern: z.enum(PATTERN_KEYS),
   variant: z.string().trim().max(40).optional().catch(undefined),
   name: z.string().trim().min(1).max(80),
@@ -1009,6 +1009,21 @@ export function buildPage(
   // The first picture is the page's own, for lists and sharing, unless the opening has one.
   if (ctx.pictures.length > 0 && !ctx.pictures.some((job) => job.thumbnail)) ctx.pictures[0].thumbnail = true;
   return { content, pictures: ctx.pictures };
+}
+
+/**
+ * One section's rows and picture jobs, built as `buildPage()` builds each, for a section added to a page that is there (the AI manager's
+ * `edit_page`, D308): links only to the site's own addresses; `first` when it becomes the page's first row.
+ */
+export function buildSection(
+  section: PlanSection,
+  copy: SectionCopy,
+  facts: SiteFacts,
+  options: { newId: NewId; first: boolean },
+): { rows: PageRow[]; pictures: PictureJob[] } {
+  const hrefs = new Set(facts.links.map((link) => link.href));
+  const ctx: Ctx = { id: options.newId, facts, allowLink: (href) => hrefs.has(href), pictures: [] };
+  return { rows: sectionRows(ctx, section, copy, options.first), pictures: ctx.pictures };
 }
 
 /** An address from the plan's (or the title), free among the owner's pages: "om-oss", then "om-oss-2". */

@@ -136,6 +136,12 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   stop_experiment: "marketing:write",
   apply_winner: "marketing:write",
   unpublish_page: "website:write",
+  // The website's pages (D308): read with the Pages screen's `website:read`, built, changed and published with its `website:write`.
+  get_page: "website:read",
+  list_page_builds: "website:read",
+  build_page: "website:write",
+  edit_page: "website:write",
+  publish_page: "website:write",
   add_redirect: "website:write",
 };
 
