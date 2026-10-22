@@ -6,6 +6,6 @@ export function generateMetadata(): Promise<Metadata> {
   return blogMetadata("nb");
 }
 
-export default function NorwegianBlog({ searchParams }: PageProps<"/nb/blog">) {
+export default function NorwegianBlog({ searchParams }: PageProps<"/no/blog">) {
   return <BlogRoute lang="nb" searchParams={searchParams} />;
 }

@@ -42,7 +42,7 @@ export default async function LanguagesPage() {
 
       <Card
         title="Kaizena Flow's own site"
-        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (/nb). A language is offered only once its texts are written and its legal pages reviewed."
+        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (Norwegian at /no). A language is offered only once its texts are written and its legal pages reviewed."
         className="flex flex-col gap-3"
         compact
       >

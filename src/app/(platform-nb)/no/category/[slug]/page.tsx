@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { termMetadata, termStaticParams, TermPages } from "@/components/platform-routes/terms";
 
-type Props = PageProps<"/nb/category/[slug]">;
+type Props = PageProps<"/no/category/[slug]">;
 
 export function generateStaticParams() {
   return termStaticParams("category", "page");

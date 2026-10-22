@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ArticleRoute, articleMetadata, articleStaticParams } from "@/components/platform-routes/blog";
 
-type Props = PageProps<"/nb/blog/[slug]">;
+type Props = PageProps<"/no/blog/[slug]">;
 
 export function generateStaticParams() {
   return articleStaticParams();

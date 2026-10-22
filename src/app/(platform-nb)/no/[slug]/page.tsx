@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { PageRoute, pageMetadata, pageStaticParams, slugOf } from "@/components/platform-routes/page";
 
-type Props = PageProps<"/nb/[slug]">;
+type Props = PageProps<"/no/[slug]">;
 
 export function generateStaticParams() {
   return pageStaticParams(false);

@@ -1,6 +1,6 @@
 # Kaizena Flow and the admin in more than one language (D312)
 
-Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/nb` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
+Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/no` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
 source and the fallback.
 
 The owner's ask: every string of Kaizena Flow's own site (the platform store: front page, Kaizena Flow's pages, sign-up, the theme store,
@@ -29,10 +29,10 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
 
 ## 2. Decisions, with what I recommend
 
-1. **Address of Kaizena Flow's own site in Norwegian.** Recommended: a language prefix, `/nb/…` (`kaizenaflow.com/nb`, `/nb/themes`,
-   `/nb/sign-up`), English unprefixed as today, so no English link breaks. `nb`, `sv`, `da`, `en` become reserved page addresses. Never a
+1. **Address of Kaizena Flow's own site in Norwegian.** Recommended: a language prefix, `/no/…` (`kaizenaflow.com/no`, `/no/themes`,
+   `/no/sign-up`; the owner chose `/no` over `/nb`, the language itself tagged `nb`), English unprefixed as today, so no English link breaks. `nb`, `sv`, `da`, `en` become reserved page addresses. Never a
    redirect by the browser's language (the store chooser's rule): the site suggests Norwegian once, in a small bar, to a browser that asks
-   for it. Alternatives: a Norwegian domain (`kaizenaflow.no`) later, pointing at the same `/nb` routes.
+   for it. Alternatives: a Norwegian domain (`kaizenaflow.no`) later, pointing at the same `/no` routes.
 2. **The admin's language.** Per account (`accounts.admin_locale`, `en` or `nb-NO`), chosen on Your account and in the account menu,
    first set from the browser at the first sign-in. Never per store: a person working in two stores reads one admin. The store's own
    languages stay what its shoppers read.
@@ -102,9 +102,9 @@ signed-in browser tests (`e2e/signed-in/`, an owner with `admin_locale = nb-NO`)
 | Step | What | Done when |
 |---|---|---|
 | P0 | The glossary (section 5): every legal, financial, tax, payment and privacy term the site and the admin use, researched with its source | `docs/i18n/glossary-nb.md` and `src/lib/i18n-glossary.ts` reviewed, every entry with a source and a date |
-| P1 | Languages of the platform (3.1): `platform_settings.locales`, `platformLang()`, `/nb` routes, reserved addresses, `<html lang>`, hreflang, sitemap, the language bar | `/nb` draws the site with Norwegian chrome where written and English where not, each marked with its `lang` |
+| P1 | Languages of the platform (3.1): `platform_settings.locales`, `platformLang()`, `/no` routes, reserved addresses, `<html lang>`, hreflang, sitemap, the language bar | `/no` draws the site with Norwegian chrome where written and English where not, each marked with its `lang` |
 | P2 | The site's chrome catalogue in English and Norwegian: header, footer, sign-up and its errors, cookies, unsubscribe, support, not found | the scan finds no English in the platform's chrome |
-| P3 | The theme store in Norwegian: its parts, cards, filters, prices (without VAT, in the store's words), preview bar, listing words per language | `/nb/themes` and every theme page read in Norwegian |
+| P3 | The theme store in Norwegian: its parts, cards, filters, prices (without VAT, in the store's words), preview bar, listing words per language | `/no/themes` and every theme page read in Norwegian |
 | P4 | Kaizena Flow's builder translates (3.2): the front page, the plans page, the theme store's pages and the other content pages in Norwegian | every published Kaizena Flow page has Norwegian texts |
 | P5 | Kaizena Flow's legal pages in Norwegian in the law's own wording (5.2), marked for review; published after the lawyer's read. The stores' Norwegian legal starters (`src/lib/legal-starters/nb.ts`) are checked against the same wording | reviewed and published; until then the English one is binding and says so; every statement of a right cites its section |
 | P6 | Emails from the platform store in the requester's language | the access request emails in Norwegian for a Norwegian request |
@@ -218,7 +218,7 @@ kampanje, rabattkode); numbers, dates and money as `nb-NO` writes them (`1 249,5
 - Each catalogue: English is the type; a key missing in Norwegian fails the typecheck; a plural is an ICU message with a case in its test.
 - `admin-strings.scan.test.ts` and its shrinking baseline; the platform's chrome scan the same.
 - The glossary test (5.3).
-- Signed-in browser tests per admin step with a Norwegian owner, and the platform site at `/nb` in the public e2e: no English text in the
+- Signed-in browser tests per admin step with a Norwegian owner, and the platform site at `/no` in the public e2e: no English text in the
   areas converted, `lang` right on the page and on English stand-ins.
 - The AI manager: a turn of a Norwegian account answers in Norwegian and its approval summaries are Norwegian (a fake model).
 

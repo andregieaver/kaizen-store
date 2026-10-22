@@ -6,11 +6,11 @@ import { englishPath, LANGUAGE_PREFIXES, langOfLocale, langOfPath, languageAlter
 describe("the site's languages (D312 P1)", () => {
   it("puts a language's prefix before the site's own addresses and leaves English as it is", () => {
     expect(platformPath("en", "/themes")).toBe("/themes");
-    expect(platformPath("nb", "/")).toBe("/nb");
-    expect(platformPath("nb", "/themes")).toBe("/nb/themes");
-    expect(platformPath("nb", "/sign-up?theme=orbit#form")).toBe("/nb/sign-up?theme=orbit#form");
-    expect(platformPath("nb", "/?x=1")).toBe("/nb?x=1");
-    expect(platformPath("nb", "/nb/themes")).toBe("/nb/themes");
+    expect(platformPath("nb", "/")).toBe("/no");
+    expect(platformPath("nb", "/themes")).toBe("/no/themes");
+    expect(platformPath("nb", "/sign-up?theme=orbit#form")).toBe("/no/sign-up?theme=orbit#form");
+    expect(platformPath("nb", "/?x=1")).toBe("/no?x=1");
+    expect(platformPath("nb", "/no/themes")).toBe("/no/themes");
   });
 
   it("leaves what is not one of the site's pages as written", () => {
@@ -20,12 +20,14 @@ describe("the site's languages (D312 P1)", () => {
   });
 
   it("reads the language of an address and its English address", () => {
-    expect(langOfPath("/nb")).toBe("nb");
-    expect(langOfPath("/nb/themes/orbit")).toBe("nb");
+    expect(langOfPath("/no")).toBe("nb");
+    expect(langOfPath("/no/themes/orbit")).toBe("nb");
     expect(langOfPath("/themes")).toBeNull();
     expect(langOfPath("/en/themes")).toBeNull();
-    expect(englishPath("/nb")).toBe("/");
-    expect(englishPath("/nb/themes/orbit")).toBe("/themes/orbit");
+    // The language's tag is no address: Norwegian lives at /no, so /nb is just a path.
+    expect(langOfPath("/nb/themes")).toBeNull();
+    expect(englishPath("/no")).toBe("/");
+    expect(englishPath("/no/themes/orbit")).toBe("/themes/orbit");
     expect(englishPath("/themes")).toBe("/themes");
     expect(langOfLocale("nb-NO")).toBe("nb");
     expect(langOfLocale("en-GB")).toBe("en");
@@ -35,8 +37,8 @@ describe("the site's languages (D312 P1)", () => {
   it("names each language's address of a page, and nothing while English is the only one", () => {
     expect(languageAlternates("/themes", [])).toBeUndefined();
     expect(languageAlternates("/themes", ["en"])).toBeUndefined();
-    expect(languageAlternates("/themes", ["en", "nb"])).toEqual({ en: "/themes", nb: "/nb/themes", "x-default": "/themes" });
-    expect(languageAlternates("/", ["nb"])).toEqual({ en: "/", nb: "/nb", "x-default": "/" });
+    expect(languageAlternates("/themes", ["en", "nb"])).toEqual({ en: "/themes", nb: "/no/themes", "x-default": "/themes" });
+    expect(languageAlternates("/", ["nb"])).toEqual({ en: "/", nb: "/no", "x-default": "/" });
   });
 
   it("suggests the browser's first language the site offers, never the page's own", () => {

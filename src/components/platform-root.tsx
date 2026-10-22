@@ -23,7 +23,7 @@ import { siteLayoutFor } from "@/server/site-layouts";
 
 /**
  * Kaizena Flow's own site in one of its languages (D312): the root of `(platform)` (English, at the addresses it always had) and of
- * `(platform-nb)` (Norwegian, under `/nb`). Its search texts are the language's where written, else English.
+ * `(platform-nb)` (Norwegian, under `/no`). Its search texts are the language's where written, else English.
  */
 export async function platformRootMetadata(lang: PlatformLang): Promise<Metadata> {
   const [seo, favicon] = await Promise.all([getPlatformSeo(), getPlatformFavicon()]);

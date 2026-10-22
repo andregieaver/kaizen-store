@@ -1,6 +1,7 @@
 /**
  * The languages Kaizena Flow's own site is drawn in (D312, docs/platform-admin-i18n.md 3.1): English at the addresses it always had, and
- * every other language under its own prefix (`/nb`, `/nb/themes`, `/nb/sign-up`), so no English link breaks. A language is never chosen
+ * every other language under its own prefix (Norwegian `/no`, `/no/themes`, `/no/sign-up`: the country's code people know, while the
+ * language itself is tagged `nb`, Bokmål, for `<html lang>` and `hreflang`), so no English link breaks. A language is never chosen
  * for a visitor by a redirect; the site only suggests one (`suggestedLang()`).
  *
  * Pure: the routes, the sitemap, the metadata and the language bar ask these, and build every address on the site with `platformPath()`.
@@ -16,6 +17,8 @@ export const LANGUAGE_PREFIXES: readonly string[] = ["en", "nb", "nn", "no", "sv
 type LangFacts = {
   /** `<html lang>` and `hreflang`. */
   tag: string;
+  /** The first part of its addresses (`/no/themes`); English has none. */
+  prefix: string;
   /** The BCP 47 locale for dates, numbers and money (`Intl`). */
   locale: string;
   /** Open Graph's `og:locale`. */
@@ -29,8 +32,8 @@ type LangFacts = {
 };
 
 export const PLATFORM_LANG_FACTS: Record<PlatformLang, LangFacts> = {
-  en: { tag: "en", locale: "en-GB", ogLocale: "en_GB", name: "English", english: "English", messages: "en" },
-  nb: { tag: "nb", locale: "nb-NO", ogLocale: "nb_NO", name: "Norsk", english: "Norwegian", messages: "nb" },
+  en: { tag: "en", prefix: "", locale: "en-GB", ogLocale: "en_GB", name: "English", english: "English", messages: "en" },
+  nb: { tag: "nb", prefix: "no", locale: "nb-NO", ogLocale: "nb_NO", name: "Norsk", english: "Norwegian", messages: "nb" },
 };
 
 export function isPlatformLang(value: unknown): value is PlatformLang {
@@ -45,7 +48,7 @@ export function langOfLocale(locale: string): PlatformLang | null {
 
 /**
  * An address of the site in a language: `path` is the English one (`/`, `/themes`, `/sign-up?x=1`, `/blog#a`). English is as given; another
- * language puts its prefix before it (`/nb`, `/nb/themes`). Anything that is not an address of the site's own pages is left as written: another
+ * language puts its prefix before it (`/no`, `/no/themes`). Anything that is not an address of the site's own pages is left as written: another
  * site, a store's (`/s/…`), the admin (`/admin`), `/api`, `/auth`, a referral link (`/r/…`), a file, a fragment alone or `mailto:`.
  */
 export function platformPath(lang: PlatformLang, path: string): string {
@@ -54,7 +57,7 @@ export function platformPath(lang: PlatformLang, path: string): string {
   const pathname = cut === -1 ? path : path.slice(0, cut);
   const rest = cut === -1 ? "" : path.slice(cut);
   if (langOfPath(pathname)) return path;
-  return `/${lang}${pathname === "/" ? "" : pathname}${rest}`;
+  return `/${PLATFORM_LANG_FACTS[lang].prefix}${pathname === "/" ? "" : pathname}${rest}`;
 }
 
 /** Whether an address is one of the site's own pages, which take a language prefix. */
@@ -65,18 +68,19 @@ function isSitePath(path: string): boolean {
   return !/\.[a-z0-9]+$/i.test(first) || first === "";
 }
 
-/** The language a pathname is in by its prefix (`/nb/themes` is Norwegian), or null for English and anything else. */
+/** The language a pathname is in by its prefix (`/no/themes` is Norwegian), or null for English and anything else. */
 export function langOfPath(pathname: string): Exclude<PlatformLang, "en"> | null {
   const first = pathname.split("/")[1] ?? "";
-  if (!isPlatformLang(first) || first === "en") return null;
-  return first;
+  if (first === "") return null;
+  const lang = PLATFORM_LANGS.find((l) => l !== "en" && PLATFORM_LANG_FACTS[l].prefix === first);
+  return lang && lang !== "en" ? lang : null;
 }
 
-/** The English address of a pathname in any language: `/nb/themes` is `/themes`, `/nb` is `/`. */
+/** The English address of a pathname in any language: `/no/themes` is `/themes`, `/no` is `/`. */
 export function englishPath(pathname: string): string {
   const lang = langOfPath(pathname);
   if (!lang) return pathname;
-  const rest = pathname.slice(lang.length + 1);
+  const rest = pathname.slice(PLATFORM_LANG_FACTS[lang].prefix.length + 1);
   return rest === "" ? "/" : rest;
 }
 
