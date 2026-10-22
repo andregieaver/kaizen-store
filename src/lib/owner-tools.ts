@@ -13,7 +13,20 @@ import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
-import { buildPageInput, editPageInput, getPageInput, pageBuildsInput, publishPageInput, publishSummary } from "./site-tools";
+import {
+  buildPageInput,
+  editPageInput,
+  getMenusInput,
+  getPageInput,
+  pageBuildsInput,
+  placeName,
+  publishPageInput,
+  publishSummary,
+  saveMenuInput,
+  setHeaderFooterInput,
+  setPagePlaceInput,
+  type StorePlace,
+} from "./site-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -81,6 +94,17 @@ export const SITE_TOOLS = [
     "edit_page",
     "Changes a page's DRAFT, saved as the builder saves it with a version kept: set a text by its key from get_page, replace words everywhere on the page, add a section in one of the page studio's designs (its words written from your brief and the owner's facts, its picture made after), remove a row or move one. Several changes are made in order and saved together; one that cannot be made refuses them all, with why. Words in parts shared with other pages are changed in the builder. A page on the site stays as it is there until publish_page.",
     editPageInput,
+  ),
+  tool(
+    "get_menus",
+    "The site's menus: each one's links in order (words in the main language, where each goes, how deep) and where it is shown (the standard header or footer, or the pages that hold a menu component); and which menus the standard header and footer show. Read it before save_menu or set_header_footer.",
+    getMenusInput,
+  ),
+  tool(
+    "set_header_footer",
+    "Chooses which of the site's menus the standard header and footer show, and its logo (and the logo for dark backgrounds) from the media library, as Header and footer saves them; anything left out stays as it is. Needs the owner's approval.",
+    setHeaderFooterInput,
+    "public",
   ),
   tool(
     "publish_page",
@@ -299,6 +323,18 @@ export const OWNER_TOOLS = [
     z.object({ type: z.enum(["page", "article"]).default("page") }),
   ),
   ...SITE_TOOLS,
+  tool(
+    "set_page_place",
+    "Shows one of the store's PUBLISHED pages in a place: the front page, the All products page, a special page (blog, search, 404, the cart, checkout, order, account and other working pages, which must hold the shop's own component) or a legal page (terms, privacy and the others: the owner's alone), or the standard page again with page null. A page is in one place at a time. Needs the owner's approval.",
+    setPagePlaceInput,
+    "public",
+  ),
+  tool(
+    "save_menu",
+    "Makes a menu or replaces a menu's links, saved as the menu editor saves it: the store's own pages and articles by address, products by handle, categories and tags by slug, the store's links (front page, All products, account, cart, blog) and web addresses, never another store's. Each link's words in the main language and, where known, the others; a product link may leave them empty for its title. A menu shown on the site needs the owner's approval; a new one, or one shown nowhere, is saved at once. Read get_menus first.",
+    saveMenuInput,
+    "public",
+  ),
   tool(
     "search_insights",
     "What shoppers searched for in the store's search, most often first, and the searches that found nothing.",
@@ -949,6 +985,13 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     // The page's own title is put in by the server (`publishApprovalWords()`); these words name it as given.
     case "publish_page":
       return publishSummary(input.type === "article" ? "article" : "page", null, text("page"));
+    // The pages', menus' and logos' own names are put in by the server (`placeApprovalWords()` and co.); these words name them as given.
+    case "set_page_place":
+      return input.page === null ? `Show the standard ${placeName(text("place") as StorePlace)} again.` : `Show the page ${text("page")} as the ${placeName(text("place") as StorePlace)}.`;
+    case "save_menu":
+      return `${input.menu ? `Change the menu "${text("menu")}"` : `Make the menu "${text("name")}"`} to ${Array.isArray(input.items) ? input.items.length : 0} links.`;
+    case "set_header_footer":
+      return "Change the standard header and footer.";
     case "approve_return":
       return approveSummary(text("return"), text("instructions") || null);
     case "decline_return":

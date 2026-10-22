@@ -19,7 +19,7 @@ import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { productApprovalWords } from "./product-tools";
-import { publishApprovalWords } from "./site-tools";
+import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
 import { effectiveFeatures } from "@/lib/store-features";
@@ -607,7 +607,11 @@ export async function keepForApproval(
     summary = (await productApprovalWords(store, tool, args)) ?? summary;
   }
   // A page's publish is described with the page's own title (D308).
-  if (tool === "publish_page") summary = await publishApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, args);
+  const site = { account: ctx.account, store, invalidate: ctx.invalidate };
+  if (tool === "publish_page") summary = await publishApprovalWords(site, args);
+  if (store && tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
+  if (store && tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
+  if (store && tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
   if (store && tool === "unpublish_page") {
     const [page] = await db().execute<Row>(sql`
       select published ->> 'title' as title from commerce.pages where store_id = ${store.id}::uuid and id = ${String(args.page)}::uuid

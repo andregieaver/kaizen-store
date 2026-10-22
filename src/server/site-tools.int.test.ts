@@ -271,3 +271,70 @@ describe("publish_page", () => {
     expect(entry?.area).toBe("website");
   });
 });
+
+describe("set_page_place, save_menu and set_header_footer", () => {
+  let menuId = "";
+
+  it("makes a new menu at once, refusing a link into another store first", async () => {
+    const items = [
+      { text: "Shop", link: { kind: "products" } },
+      { text: "Our kitchen", link: { kind: "page", slug: "our-kitchen" } },
+    ];
+    expect(await ownerTools.gateNeeded(store.member.store, "save_menu", { name: "Main", items })).toBe(false);
+    const foreign = await refusal(run("save_menu", { name: "Main", items: [...items, { text: "Friends", link: { kind: "url", url: `/s/${other.slug}/no` } }] }));
+    expect(foreign).toContain("goes to another store");
+    expect(await count(sql`select count(*)::int as n from commerce.menus where store_id = ${store.storeId}::uuid and name = 'Main'`)).toBe(0);
+
+    const done = await run("save_menu", { name: "Main", items: [...items, { text: "Instagram", link: { kind: "url", url: "https://www.instagram.com/example" }, new_tab: true }] });
+    expect(done.done).toContain('Made the menu "Main" with 3 links.');
+    expect(done.done).toContain("not shown anywhere yet");
+    menuId = done.menu;
+    const menus = await run("get_menus", {});
+    const main = menus.menus.find((m: Answer) => m.id === menuId);
+    expect(main.items.map((i: Answer) => i.text)).toEqual(["Shop", "Our kitchen", "Instagram"]);
+    expect(main.shown_in).toEqual([]);
+  });
+
+  it("puts the menu and a logo from the library in the standard header, waiting for a yes, and then a change to the menu waits too", async () => {
+    const logo = `https://media.example/${store.storeId}/logo.webp`;
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height)
+      values (${store.storeId}::uuid, 'image', ${logo}, null, 'product-media', ${`${store.storeId}/logo.webp`}, null, 'logo.webp', 'image/webp', 1000, 400, 120)
+    `);
+    expect(await ownerTools.gateNeeded(store.member.store, "set_header_footer", { header_menu: "Main", logo })).toBe(true);
+    expect(await siteTools.headerFooterApprovalWords(ctxOf(store), { header_menu: "Main", logo })).toBe('Change the standard header and footer: the header shows the menu "Main"; a new logo.');
+    expect(await refusal(ownerTools.preflightOwnerTool(ctxOf(store), "set_header_footer", { logo: "https://elsewhere.example/logo.png" }))).toContain("not a picture in the site's media library");
+
+    await run("set_header_footer", { header_menu: "Main", logo });
+    const [row] = await db().execute<Row>(sql`select header_menu_id, navigation from commerce.stores where id = ${store.storeId}::uuid`);
+    expect(String(row.header_menu_id)).toBe(menuId);
+    expect((row.navigation as Answer).logo).toEqual({ url: logo, width: 400, height: 120 });
+    expect(tags).toContain(`store:${store.slug}`);
+
+    expect(await ownerTools.gateNeeded(store.member.store, "save_menu", { menu: "Main", items: [] })).toBe(true);
+    expect(await siteTools.menuApprovalWords(ctxOf(store), { menu: "Main", items: [{ text: "Shop", link: { kind: "products" } }] })).toBe('Change the menu "Main" to 1 link: Shop.');
+  });
+
+  it("shows a published page in a place, refusing a draft before it is kept for a yes", async () => {
+    expect(await ownerTools.gateNeeded(store.member.store, "set_page_place", { place: "front", page: "our-kitchen" })).toBe(true);
+    expect(await refusal(ownerTools.preflightOwnerTool(ctxOf(store), "set_page_place", { place: "front", page: "catering" }))).toContain("Publish the page");
+    expect(await siteTools.placeApprovalWords(ctxOf(store), { place: "front", page: "our-kitchen" })).toBe('Show the page "Our kitchen" as the front page.');
+
+    const done = await run("set_page_place", { place: "front", page: "our-kitchen" });
+    expect(done.done).toBe('"Our kitchen" is the front page now.');
+    const [row] = await db().execute<Row>(sql`select front_page_id from commerce.stores where id = ${store.storeId}::uuid`);
+    const [kitchen] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${store.storeId}::uuid and slug = 'our-kitchen'`);
+    expect(String(row.front_page_id)).toBe(String(kitchen.id));
+    // A page is in one place at a time.
+    expect(await refusal(ownerTools.preflightOwnerTool(ctxOf(store), "set_page_place", { place: "blog", page: "our-kitchen" }))).toContain("front page already");
+
+    await run("set_page_place", { place: "front", page: null });
+    const [after] = await db().execute<Row>(sql`select front_page_id from commerce.stores where id = ${store.storeId}::uuid`);
+    expect(after.front_page_id).toBeNull();
+  });
+
+  it("leaves a legal page to the owner", async () => {
+    const staff = { ...ctxOf(store), holder: { role: "admin" as const, permissions: ["website:read", "website:write"] } };
+    expect(await refusal(ownerTools.preflightOwnerTool(staff, "set_page_place", { place: "terms", page: "our-kitchen" }))).toContain("Only the store's owner");
+  });
+});

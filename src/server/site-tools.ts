@@ -7,26 +7,46 @@ import { blockingIssues, pageIssues, themeSetsOf } from "@/lib/page-a11y";
 import { planSection, type PagePlan, type PictureJob, type StudioMessage } from "@/lib/page-ai";
 import { PAGE_JOB_DAYS, PAGE_JOB_TRIES, type PageJobKind } from "@/lib/page-jobs";
 import type { PageContent, PageRow, PageType } from "@/lib/page-content";
+import { isLegalRole } from "@/lib/legal-roles";
+import { menuInput, parseNavigation, type MenuEntry, type StoreNavigation } from "@/lib/navigation";
+import { storeDomain } from "@/lib/paths";
+import { can, type PermissionHolder } from "@/lib/permissions";
 import {
   applyPageEdits,
   briefClaims,
   briefOf,
   dryRunEdits,
   ownerWordsOf,
+  headerFooterSummary,
+  menuClaims,
+  menuSummary,
+  otherStoreAddress,
   pageOutline,
+  placeName,
+  placeSummary,
   publishSummary,
+  saveMenuInput,
+  setHeaderFooterInput,
+  setPagePlaceInput,
+  toMenuEntries,
   type BuildPageArgs,
   type PageChange,
+  type SaveMenuArgs,
+  type SetHeaderFooterArgs,
+  type StorePlace,
 } from "@/lib/site-tools";
 
-import { activeAccount, passMembership, type Account } from "./auth";
+import { activeAccount, passMembership, type Account, type Membership } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { buildDraft, fillPicture, planPage, sectionForPage, siteFacts, studioAbilities, type StudioOwner } from "./page-ai";
-import { getPageForEdit, pagesTag, savePage } from "./pages";
+import { libraryFilesByUrl } from "./media-library";
+import { listStoreMenus, menuUses, saveStoreMenu } from "./menus";
+import { saveNavigation } from "./navigation";
+import { getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage } from "./pages";
 import { memberCan } from "./permissions";
 import { getPlatformTheme } from "./platform-navigation";
-import type { Store } from "./stores";
+import { storeTag, type Store } from "./stores";
 import { aiFor } from "./ai";
 
 type Row = Record<string, unknown>;
@@ -39,7 +59,7 @@ type Row = Record<string, unknown>;
  * call), in the name of who asked, who must still be allowed to change the site.
  */
 
-export type SiteToolContext = { account: Account; store: Store | null; invalidate: (tag: string) => void };
+export type SiteToolContext = { account: Account; store: Store | null; invalidate: (tag: string) => void; holder?: PermissionHolder };
 
 export type SiteToolDeps = {
   /** Runs the background work after the answer (`after()`); tests run it themselves. */
@@ -490,4 +510,247 @@ export async function prunePageJobs(): Promise<number> {
     delete from commerce.page_ai_jobs where status <> 'waiting' and updated_at < now() - make_interval(days => ${PAGE_JOB_DAYS}) returning id
   `);
   return rows.length;
+}
+
+// Places, menus, the header and footer (D308 A2b) ---------------------------------------
+
+const storeOfCtx = (ctx: SiteToolContext): Store => ctx.store ?? fail("This works on a store's site.");
+/** The person as the store's savers take them: the account and the store (their own checks ask the rest). */
+const memberOf = (ctx: SiteToolContext): Membership => ({ account: ctx.account, store: storeOfCtx(ctx), role: ctx.holder?.role ?? "owner" });
+const mainLocaleOf = (store: Store) => store.localization.locales[0] ?? store.markets[0]?.locale ?? "en";
+
+/** `set_page_place` (gated `public`): one of the store's published pages in a place, or the standard page again, as the Pages list chooses it. */
+export async function setPagePlaceTool(ctx: SiteToolContext, { place, page }: { place: StorePlace; page: string | null }) {
+  const store = storeOfCtx(ctx);
+  if (isLegalRole(place) && !can(ctx.holder ?? { role: "owner" }, "owner")) return fail("Only the store's owner chooses its legal pages.");
+  const pageId = page === null ? null : await findPage(ctx, page, "page");
+  let result: { ok: true } | { ok: false; problems: string[] };
+  try {
+    result =
+      place === "front"
+        ? await setFrontPage(ctx.account, store.id, pageId)
+        : place === "products"
+          ? await setProductsPage(ctx.account, store.id, pageId)
+          : await setPageRole(ctx.account, store.id, place, pageId);
+  } catch (error) {
+    // A place whose page is under a running A/B test is held by the database until the test stops (D148).
+    if (error instanceof Error && /experiment/.test(`${error.message} ${String((error as { cause?: unknown }).cause ?? "")}`)) {
+      return fail("That place's page is in a running A/B test: stop the test before choosing another.");
+    }
+    throw error;
+  }
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(storeTag(store.slug));
+  ctx.invalidate(pagesTag(store.id));
+  const title = pageId ? await pageTitle(ctx, pageId) : null;
+  return { done: title ? `"${title}" is the ${placeName(place)} now.` : `The ${placeName(place)} is the standard one again.` };
+}
+
+async function pageTitle(ctx: SiteToolContext, pageId: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select coalesce(nullif(published ->> 'title', ''), draft ->> 'title') as title from commerce.pages
+    where id = ${pageId}::uuid and store_id is not distinct from ${ownerOf(ctx)}::uuid
+  `);
+  return row?.title ? String(row.title) : null;
+}
+
+/** What a place change would refuse, before it is kept for a yes: a page that is not there, not published, or in another place. */
+export async function preflightPagePlace(ctx: SiteToolContext, { place, page }: { place: StorePlace; page: string | null }): Promise<void> {
+  const store = storeOfCtx(ctx);
+  if (isLegalRole(place) && !can(ctx.holder ?? { role: "owner" }, "owner")) fail("Only the store's owner chooses its legal pages.");
+  if (page === null) return;
+  const pageId = await findPage(ctx, page, "page");
+  const [row] = await db().execute<Row>(sql`
+    select p.published_at is not null as published, s.front_page_id = p.id as front, s.products_page_id = p.id as products,
+      (select role from commerce.page_roles r where r.store_id = s.id and r.page_id = p.id) as role
+    from commerce.pages p join commerce.stores s on s.id = p.store_id where p.id = ${pageId}::uuid
+  `);
+  if (!row?.published) fail(`Publish the page before making it the ${placeName(place)}.`);
+  const taken = row.front ? "front" : row.products ? "products" : row.role ? String(row.role) : null;
+  if (taken && taken !== place) fail(`That page is the ${placeName(taken as StorePlace)} already. Choose another page for the ${placeName(place)}.`);
+}
+
+export async function placeApprovalWords(ctx: SiteToolContext, args: Record<string, unknown>): Promise<string | null> {
+  const parsed = setPagePlaceInput.safeParse(args);
+  if (!parsed.success) return null;
+  if (parsed.data.page === null) return placeSummary(parsed.data.place, null);
+  const pageId = await findPage(ctx, parsed.data.page, "page").catch(() => null);
+  return placeSummary(parsed.data.place, pageId ? await pageTitle(ctx, pageId) : parsed.data.page);
+}
+
+/** A menu of the site by its id or name. */
+async function findMenu(ctx: Pick<SiteToolContext, "store">, ref: string): Promise<{ id: string; name: string; items: MenuEntry[] }> {
+  const menus = await listStoreMenus((ctx.store ?? fail("This works on a store's site.")).id);
+  const menu = menus.find((one) => one.id === ref) ?? menus.find((one) => one.name.toLowerCase() === ref.toLowerCase());
+  return menu ?? fail(`No menu "${ref}" on this site. get_menus lists them.`);
+}
+
+/** Whether a menu is on the site: in the standard header or footer, or in a published page, header or footer. */
+async function menuShown(ctx: Pick<SiteToolContext, "store">, menuId: string): Promise<boolean> {
+  const store = ctx.store ?? fail("This works on a store's site.");
+  const [row] = await db().execute<Row>(sql`
+    select exists (select 1 from commerce.stores s where s.id = ${store.id}::uuid and ${menuId}::uuid in (s.header_menu_id, s.footer_menu_id))
+      or exists (select 1 from commerce.pages p where p.store_id = ${store.id}::uuid and p.published::text like ${`%"${menuId}"%`}) as shown
+  `);
+  return Boolean(row?.shown);
+}
+
+/** `get_menus`: the site's menus, each with its links in order (words in the main language) and where it is shown. */
+export async function getMenusTool(ctx: SiteToolContext) {
+  const store = storeOfCtx(ctx);
+  const main = mainLocaleOf(store);
+  const [menus, uses] = await Promise.all([listStoreMenus(store.id), menuUses(store.id)]);
+  return {
+    menus: menus.map((menu) => {
+      const use = uses.get(menu.id);
+      return {
+        id: menu.id,
+        name: menu.name,
+        shown_in: [...(use?.standard ?? []).map((place) => `the standard ${place}`), ...(use?.pages ?? []).map((page) => `${page.type} "${page.title}"`)],
+        items: menu.items.map((item) => ({
+          text: item.label[main] ?? Object.values(item.label)[0] ?? "",
+          link: item.link,
+          depth: item.depth,
+          ...(item.newTab && { new_tab: true }),
+        })),
+      };
+    }),
+    standard_header: uses ? [...uses].find(([, use]) => use.standard.includes("header"))?.[0] ?? null : null,
+    standard_footer: uses ? [...uses].find(([, use]) => use.standard.includes("footer"))?.[0] ?? null : null,
+    editor: `${adminBase(ctx)}/menus`,
+  };
+}
+
+/** The checks made before a menu is saved or kept for a yes: no link into another store, no claim, a name, the menu there. */
+async function checkedMenu(ctx: SiteToolContext, args: SaveMenuArgs) {
+  const store = storeOfCtx(ctx);
+  const urls = args.items.flatMap((item) => (item.link.kind === "url" ? [item.link.url] : []));
+  const hostOf = (url: string): string | null => {
+    try {
+      return /^https?:/i.test(url) ? new URL(url).hostname.toLowerCase() : null;
+    } catch {
+      return null;
+    }
+  };
+  const hosts = [...new Set(urls.flatMap((url) => hostOf(url) ?? []))];
+  const domains = hosts.length > 0
+    ? await db().execute<Row>(sql`
+        select hostname from commerce.store_domains
+        where store_id <> ${store.id}::uuid and hostname in (${sql.join(hosts.map((host) => sql`${host}`), sql`, `)})
+      `)
+    : [];
+  const otherDomains = new Set(domains.map((row) => String(row.hostname)));
+  const foreign = urls.find((url) => otherStoreAddress(url, store.slug, storeDomain()) || otherDomains.has(hostOf(url) ?? ""));
+  if (foreign) fail(`The link to ${foreign} goes to another store. A store's menus link to its own site and the wider web.`);
+  const claims = menuClaims(args.items);
+  if (claims.length > 0) fail(`Rewrite without claims the site cannot back: ${claims.join(", ")}.`);
+  const existing = args.menu ? await findMenu(ctx, args.menu) : null;
+  const name = args.name ?? existing?.name ?? fail("Give the new menu a name.");
+  const entries = toMenuEntries(args.items, mainLocaleOf(store), existing?.items ?? []);
+  const parsed = menuInput.safeParse({ name, items: entries });
+  if (!parsed.success) fail([...new Set(parsed.error.issues.map((issue) => issue.message))].join(" "));
+  return { existing, name, entries };
+}
+
+/** `save_menu` (gated `public` while the menu is on the site): a menu's links replaced, or a new menu, saved by the menu editor's own save. */
+export async function saveMenuTool(ctx: SiteToolContext, args: SaveMenuArgs) {
+  const store = storeOfCtx(ctx);
+  const { existing, name, entries } = await checkedMenu(ctx, args);
+  const saved = await saveStoreMenu(memberOf(ctx), existing?.id ?? null, { name, items: entries });
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  ctx.invalidate(storeTag(store.slug));
+  const shown = await menuShown(ctx, saved.id);
+  return {
+    done: `${existing ? "Saved" : "Made"} the menu "${name}" with ${entries.length} link${entries.length === 1 ? "" : "s"}.${shown ? "" : " It is not shown anywhere yet: set_header_footer puts it in the standard header or footer."}`,
+    menu: saved.id,
+    editor: `${adminBase(ctx)}/menus`,
+  };
+}
+
+export const preflightSaveMenu = async (ctx: SiteToolContext, args: SaveMenuArgs) => void (await checkedMenu(ctx, args));
+
+/** A menu change waits for a yes only while the menu is on the site (D308): a new menu, or one shown nowhere, is changed at once. */
+export async function menuGateNeeded(ctx: Pick<SiteToolContext, "store">, raw: Record<string, unknown>): Promise<boolean> {
+  const ref = typeof raw.menu === "string" ? raw.menu : null;
+  if (!ref) return false;
+  const menu = await findMenu(ctx, ref).catch(() => null);
+  return menu ? menuShown(ctx, menu.id) : false;
+}
+
+export async function menuApprovalWords(ctx: SiteToolContext, args: Record<string, unknown>): Promise<string | null> {
+  const parsed = saveMenuInput.safeParse(args);
+  if (!parsed.success) return null;
+  const existing = parsed.data.menu ? await findMenu(ctx, parsed.data.menu).catch(() => null) : null;
+  return menuSummary(parsed.data.name ?? existing?.name ?? parsed.data.menu ?? "", parsed.data.items, !existing);
+}
+
+type HeaderFooterChange = {
+  navigation: StoreNavigation;
+  headerMenuId: string | null;
+  footerMenuId: string | null;
+  words: Parameters<typeof headerFooterSummary>[0];
+  /** The store shows a header or footer of its own design (D80), where the standard one's menus do not show. */
+  custom: boolean;
+};
+
+/** A logo from the site's own media library, with the size the library knows. */
+async function libraryLogo(ctx: SiteToolContext, url: string) {
+  const file = (await libraryFilesByUrl(ownerOf(ctx), [url])).get(url);
+  if (!file || file.kind !== "image") fail(`${url} is not a picture in the site's media library.`);
+  if (!file!.width || !file!.height) fail(`The size of ${url} is not known: choose it under Header and footer.`);
+  return { url: file!.url, width: file!.width!, height: file!.height! };
+}
+
+/** The header and footer as they are, with the changes asked laid over them; nothing given is kept. */
+async function headerFooterChange(ctx: SiteToolContext, args: SetHeaderFooterArgs): Promise<HeaderFooterChange> {
+  const store = storeOfCtx(ctx);
+  const [row] = await db().execute<Row>(sql`
+    select navigation, header_menu_id, footer_menu_id, header_id is not null or footer_id is not null as custom from commerce.stores where id = ${store.id}::uuid
+  `);
+  const navigation = parseNavigation(row?.navigation);
+  const words: HeaderFooterChange["words"] = {};
+  const menuId = async (ref: string | null | undefined, now: unknown, place: "header" | "footer") => {
+    if (ref === undefined) return now ? String(now) : null;
+    if (ref === null) {
+      words[place] = null;
+      return null;
+    }
+    const menu = await findMenu(ctx, ref);
+    words[place] = menu.name;
+    return menu.id;
+  };
+  const headerMenuId = await menuId(args.header_menu, row?.header_menu_id, "header");
+  const footerMenuId = await menuId(args.footer_menu, row?.footer_menu_id, "footer");
+  const next: StoreNavigation = { ...navigation };
+  if (args.logo !== undefined) {
+    next.logo = args.logo === null ? null : await libraryLogo(ctx, args.logo);
+    words.logo = args.logo !== null;
+  }
+  if (args.logo_dark !== undefined) {
+    next.logoDark = args.logo_dark === null ? null : await libraryLogo(ctx, args.logo_dark);
+    words.logoDark = args.logo_dark !== null;
+  }
+  return { navigation: next, headerMenuId, footerMenuId, words, custom: Boolean(row?.custom) };
+}
+
+/** `set_header_footer` (gated `public`): which menus the standard header and footer show and the logo, saved by Header and footer's own save. */
+export async function setHeaderFooterTool(ctx: SiteToolContext, args: SetHeaderFooterArgs) {
+  const store = storeOfCtx(ctx);
+  const change = await headerFooterChange(ctx, args);
+  const saved = await saveNavigation(memberOf(ctx), { ...change.navigation, headerMenuId: change.headerMenuId, footerMenuId: change.footerMenuId });
+  if (!saved.ok) return fail(saved.problems.join(" "));
+  ctx.invalidate(storeTag(store.slug));
+  return {
+    done: headerFooterSummary(change.words).replace(/^Change/, "Changed"),
+    note: change.custom ? "The store shows a header or footer of its own design: the standard one's menus show only where it is used." : undefined,
+  };
+}
+
+export const preflightHeaderFooter = async (ctx: SiteToolContext, args: SetHeaderFooterArgs) => void (await headerFooterChange(ctx, args));
+
+export async function headerFooterApprovalWords(ctx: SiteToolContext, args: Record<string, unknown>): Promise<string | null> {
+  const parsed = setHeaderFooterInput.safeParse(args);
+  if (!parsed.success) return null;
+  const change = await headerFooterChange(ctx, parsed.data).catch(() => null);
+  return change ? headerFooterSummary(change.words) : null;
 }

@@ -141,7 +141,22 @@ import {
   writeProductTextsTool,
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
-import { buildPageTool, editPageTool, getPageTool, listPageBuildsTool, preflightPublishPage, publishPageTool } from "./site-tools";
+import {
+  buildPageTool,
+  editPageTool,
+  getMenusTool,
+  getPageTool,
+  listPageBuildsTool,
+  menuGateNeeded,
+  preflightHeaderFooter,
+  preflightPagePlace,
+  preflightPublishPage,
+  preflightSaveMenu,
+  publishPageTool,
+  saveMenuTool,
+  setHeaderFooterTool,
+  setPagePlaceTool,
+} from "./site-tools";
 
 type Row = Record<string, unknown>;
 
@@ -1904,10 +1919,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     return preflightProductTool(ctx, name, input.input as Record<string, unknown>);
   }
   // A page that could not be published (gone, in a running test, with a problem the checker blocks on) is refused now, never kept for a yes (D308).
-  if (name === "publish_page") {
+  if (name === "publish_page" || name === "set_page_place" || name === "save_menu" || name === "set_header_footer") {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
-    return preflightPublishPage(ctx, input.input as OwnerToolInput<"publish_page">);
+    if (name === "publish_page") return preflightPublishPage(ctx, input.input as OwnerToolInput<"publish_page">);
+    if (name === "set_page_place") return preflightPagePlace(ctx, input.input as OwnerToolInput<"set_page_place">);
+    if (name === "save_menu") return preflightSaveMenu(ctx, input.input as OwnerToolInput<"save_menu">);
+    return preflightHeaderFooter(ctx, input.input as OwnerToolInput<"set_header_footer">);
   }
   // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
   if (name === "set_feature") {
@@ -1971,6 +1989,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   build_page: (ctx: OwnerToolContext, input: OwnerToolInput<"build_page">) => buildPageTool(ctx, input),
   edit_page: (ctx: OwnerToolContext, input: OwnerToolInput<"edit_page">) => editPageTool(ctx, input),
   publish_page: (ctx: OwnerToolContext, input: OwnerToolInput<"publish_page">) => publishPageTool(ctx, input),
+  set_page_place: (ctx: OwnerToolContext, input: OwnerToolInput<"set_page_place">) => setPagePlaceTool(ctx, input),
+  get_menus: (ctx: OwnerToolContext) => getMenusTool(ctx),
+  save_menu: (ctx: OwnerToolContext, input: OwnerToolInput<"save_menu">) => saveMenuTool(ctx, input),
+  set_header_footer: (ctx: OwnerToolContext, input: OwnerToolInput<"set_header_footer">) => setHeaderFooterTool(ctx, input),
   store_overview: storeOverview,
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
@@ -2104,7 +2126,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
 /** Tools that change the store without a gate, written down all the same: a note on an order, products made or written for, pages built or changed (D308). */
 const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts", "build_page", "edit_page"]);
 const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
-const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page"]);
+const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
 
 /**
  * Whether a gated tool needs the owner's yes for this call. Most always do; a catalogue tool of `GATED_WHEN_LIVE` only while its product is on
@@ -2113,6 +2135,9 @@ const PAGE_TOOLS = new Set(["build_page", "edit_page", "publish_page"]);
 export async function gateNeeded(store: Store, name: string, raw: unknown): Promise<boolean> {
   const tool = OWNER_TOOLS_BY_NAME[name];
   if (!tool?.gate) return false;
+  const args = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  // A menu waits for a yes only while it is on the site (D308).
+  if (name === "save_menu") return menuGateNeeded({ store }, args);
   if (!GATED_WHEN_LIVE.has(name)) return true;
-  return productGateNeeded(store, typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {});
+  return productGateNeeded(store, args);
 }

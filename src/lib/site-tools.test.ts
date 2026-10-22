@@ -11,7 +11,14 @@ import {
   buildPageInput,
   dryRunEdits,
   editPageInput,
+  headerFooterSummary,
+  menuSummary,
+  otherStoreAddress,
   ownerWordsOf,
+  placeName,
+  placeSummary,
+  saveMenuInput,
+  toMenuEntries,
   pageOutline,
   publishSummary,
   sharedTextKeys,
@@ -187,5 +194,43 @@ describe("a brief for a page", () => {
   it("is described for the owner's approval by the page's title", () => {
     expect(publishSummary("page", "Catering", "catering")).toBe('Publish the page "Catering", so visitors see its draft as it is now.');
     expect(publishSummary("article", null, "news")).toContain("article news");
+  });
+});
+
+describe("menus for the AI manager", () => {
+  it("knows a web address into another store on Kaizena Flow, by path or by host, and lets the wider web be", () => {
+    expect(otherStoreAddress("/s/other-shop/no/products", "mine", null)).toBe(true);
+    expect(otherStoreAddress("/s/mine/no/about", "mine", null)).toBe(false);
+    expect(otherStoreAddress("/about", "mine", null)).toBe(false);
+    expect(otherStoreAddress("https://other-shop.kaizenstores.com/no", "mine", "kaizenstores.com")).toBe(true);
+    expect(otherStoreAddress("https://mine.kaizenstores.com/no", "mine", "kaizenstores.com")).toBe(false);
+    expect(otherStoreAddress("https://kaizenaflow.com/s/other-shop", "mine", "kaizenstores.com")).toBe(true);
+    expect(otherStoreAddress("https://kaizenstores.com/s/other-shop/no", "mine", "kaizenstores.com")).toBe(true);
+    expect(otherStoreAddress("https://www.example.com/s/anything", "mine", "kaizenstores.com")).toBe(false);
+    expect(otherStoreAddress("https://www.instagram.com/mine", "mine", "kaizenstores.com")).toBe(false);
+  });
+
+  it("turns the tool's links into the menu editor's, keeping a mega menu and a picture where the link is still there", () => {
+    const { items } = saveMenuInput.parse({
+      menu: "Main",
+      items: [
+        { text: "Shop", texts: { "sv-SE": "Butik" }, link: { kind: "products" } },
+        { text: "About", link: { kind: "page", slug: "about-us" }, depth: 1, new_tab: true },
+      ],
+    });
+    const before = [{ label: { "nb-NO": "Butikk" }, link: { kind: "products" as const }, depth: 0, mega: { columns: 3 }, image: { url: "/x.webp", width: 10, height: 10 } }];
+    expect(toMenuEntries(items, "nb-NO", before)).toEqual([
+      { label: { "sv-SE": "Butik", "nb-NO": "Shop" }, link: { kind: "products" }, depth: 0, mega: { columns: 3 }, image: { url: "/x.webp", width: 10, height: 10 } },
+      { label: { "nb-NO": "About" }, link: { kind: "page", slug: "about-us" }, depth: 1, newTab: true },
+    ]);
+  });
+
+  it("says what a menu, a place and the header and footer change to, for the owner's approval", () => {
+    const { items } = saveMenuInput.parse({ items: [{ text: "Shop", link: { kind: "products" } }, { link: { kind: "page", slug: "about-us" } }] });
+    expect(menuSummary("Main", items, false)).toBe('Change the menu "Main" to 2 links: Shop, /about-us.');
+    expect(placeName("not_found")).toBe("404 page");
+    expect(placeSummary("front", "Welcome")).toBe('Show the page "Welcome" as the front page.');
+    expect(placeSummary("products", null)).toBe("Show the standard All products page again.");
+    expect(headerFooterSummary({ header: "Main", logo: false })).toBe('Change the standard header and footer: the header shows the menu "Main"; no logo (the site\'s name shows).');
   });
 });

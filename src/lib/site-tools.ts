@@ -1,10 +1,13 @@
 import { z } from "zod";
 
 import { findClaims } from "./claims";
+import { LEGAL_ROLES, LEGAL_ROLE_COPY, isLegalRole } from "./legal-roles";
+import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, menuLinkSchema, type MenuEntry } from "./navigation";
 import { PAGE_JOB_STATUSES } from "./page-jobs";
 import { PATTERNS, pageBrief, type PageBrief, type PatternKey } from "./page-ai";
 import { ROWS_MAX, pageBlocks, richTextPlain, type PageContent, type PageRow, type PageText } from "./page-content";
 import { FIND_MAX, replaceInPage } from "./page-find-replace";
+import { PAGE_ROLES, ROLE_COPY } from "./page-roles";
 import { insertRow, moveRow, removeRow } from "./page-rows";
 import { isSharedBlock } from "./inline-edit";
 import { mapBlockTexts, mapTexts, pageTextLabels, pageTexts } from "./page-translation";
@@ -318,4 +321,166 @@ export function briefClaims(args: BuildPageArgs): string[] {
 /** The publish approval in words, from the page's own title when the server has it. */
 export function publishSummary(type: "page" | "article", title: string | null, ref: string): string {
   return `Publish the ${type === "article" ? "article" : "page"} ${title ? `"${title}"` : ref}, so visitors see its draft as it is now.`;
+}
+
+// ---------------------------------------------------------------------------
+// Places, menus, the header and footer (D308 A2b)
+// ---------------------------------------------------------------------------
+
+/** The places a store's page can be chosen for: its front page, its All products page, a special page (D112, D113) or a legal page (D158). */
+export const STORE_PLACES = ["front", "products", ...PAGE_ROLES, ...LEGAL_ROLES] as const;
+export type StorePlace = (typeof STORE_PLACES)[number];
+
+/** What the admin calls a place, in the owner's words. */
+export function placeName(place: StorePlace): string {
+  if (place === "front") return "front page";
+  if (place === "products") return "All products page";
+  return (isLegalRole(place) ? LEGAL_ROLE_COPY[place].name : ROLE_COPY[place].name).toLowerCase();
+}
+
+export const setPagePlaceInput = z.object({
+  place: z
+    .enum(STORE_PLACES)
+    .describe(`The place: ${STORE_PLACES.map((place) => `${place} (${placeName(place)})`).join(", ")}.`),
+  page: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .nullable()
+    .describe("A published page's id or address, or null for the standard one (the products list on the front, the standard page elsewhere)."),
+});
+
+export const getMenusInput = z.object({});
+
+/** A menu link as the menu editor saves it (`menuLinkSchema`): the site's own pages, products, categories, tags and links, or a web address. */
+const menuItemInput = z.object({
+  text: z.string().trim().max(LABEL_MAX).default("").describe("Its words in the site's main language (a product link may leave it empty for the product's title)."),
+  texts: z.record(z.string(), z.string().trim().max(LABEL_MAX)).default({}).describe("Its words in the site's other languages, by language code."),
+  link: menuLinkSchema.describe("Where it goes: home, products (All products), account, cart, blog, a page or article by its address (slug), a product by its handle, a category or tag by its slug, or a web address (url)."),
+  depth: z.number().int().min(0).max(MENU_MAX_DEPTH).default(0).describe(`How deep under the link before it (0 at the top, at most ${MENU_MAX_DEPTH}).`),
+  new_tab: z.boolean().default(false),
+});
+export type MenuItemArgs = z.output<typeof menuItemInput>;
+
+export const saveMenuInput = z.object({
+  menu: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("The menu to change, by its id or name (get_menus); leave it out to make a new one."),
+  name: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("A new menu's name, or a new name for the menu."),
+  items: z.array(menuItemInput).max(MENU_MAX_ITEMS).describe("Every link of the menu in order, replacing the ones there."),
+});
+export type SaveMenuArgs = z.output<typeof saveMenuInput>;
+
+export const setHeaderFooterInput = z.object({
+  header_menu: z.string().trim().min(1).max(MENU_NAME_MAX).nullable().optional().describe("The menu the standard header shows, by id or name; null for none; left out to keep it."),
+  footer_menu: z.string().trim().min(1).max(MENU_NAME_MAX).nullable().optional().describe("The menu the standard footer shows, as header_menu."),
+  logo: z.string().trim().min(1).max(1000).nullable().optional().describe("The logo's address in the media library; null for none (the site's name shows); left out to keep it."),
+  logo_dark: z.string().trim().min(1).max(1000).nullable().optional().describe("The logo for dark backgrounds, as logo."),
+});
+export type SetHeaderFooterArgs = z.output<typeof setHeaderFooterInput>;
+
+/** Kaizena Flow's own hosts, where `/s/{store}` is a store's address. */
+const PLATFORM_HOSTS = ["kaizenaflow.com", "www.kaizenaflow.com"];
+
+/**
+ * Whether a menu's web address goes to another store on Kaizena Flow: `/s/{other}/…` on the site or on Kaizena Flow's own hosts, or
+ * `{other}.{store domain}`. A store's menus link to its own site and to the wider web, never into another store's shop (a store's domain
+ * of its own is looked up on the server).
+ */
+export function otherStoreAddress(url: string, own: string, storeDomain: string | null): boolean {
+  const pathStore = (path: string) => /^\/s\/([a-z0-9-]+)(?:[/?#]|$)/.exec(path)?.[1] ?? null;
+  if (url.startsWith("/")) {
+    const slug = pathStore(url);
+    return slug !== null && slug !== own;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (storeDomain && host.endsWith(`.${storeDomain}`)) {
+    const sub = host.slice(0, -(storeDomain.length + 1));
+    if (sub !== own && !sub.includes(".")) return true;
+  }
+  if (![...PLATFORM_HOSTS, ...(storeDomain ? [storeDomain, `www.${storeDomain}`] : [])].includes(host)) return false;
+  const slug = pathStore(parsed.pathname);
+  return slug !== null && slug !== own;
+}
+
+/**
+ * A menu's items as the menu editor saves them, from the tool's: the words in the main language and the others, and each existing item's
+ * mega menu and picture kept where the same link is still there (the tool does not set them).
+ */
+export function toMenuEntries(items: readonly MenuItemArgs[], mainLocale: string, before: readonly MenuEntry[]): MenuEntry[] {
+  const kept = new Map(before.map((entry) => [JSON.stringify(entry.link), entry]));
+  return items.map((item) => {
+    const previous = kept.get(JSON.stringify(item.link));
+    const label = Object.fromEntries(
+      Object.entries({ ...item.texts, ...(item.text ? { [mainLocale]: item.text } : {}) }).filter(([, words]) => words.trim() !== ""),
+    );
+    return {
+      label,
+      link: item.link,
+      depth: item.depth,
+      ...(item.new_tab && { newTab: true }),
+      ...(item.depth === 0 && previous?.mega && { mega: previous.mega }),
+      ...(previous?.image && { image: previous.image }),
+    };
+  });
+}
+
+/** The menu's words the claims filter finds. */
+export function menuClaims(items: readonly MenuItemArgs[]): string[] {
+  return claimsIn(items.flatMap((item) => [item.text, ...Object.values(item.texts)]).join("\n"));
+}
+
+/** A menu change in words, for the owner's approval: its name and its top links. */
+export function menuSummary(name: string, items: readonly MenuItemArgs[], isNew: boolean): string {
+  const top = items.filter((item) => item.depth === 0).map((item) => item.text || linkWords(item.link));
+  const list = top.slice(0, 8).join(", ") + (top.length > 8 ? `, and ${top.length - 8} more` : "");
+  return `${isNew ? "Make" : "Change"} the menu "${name}" to ${items.length} link${items.length === 1 ? "" : "s"}${top.length > 0 ? `: ${list}` : ""}.`;
+}
+
+/** A link in a few words, where an item has none of its own. */
+function linkWords(link: MenuItemArgs["link"]): string {
+  switch (link.kind) {
+    case "home":
+      return "the front page";
+    case "products":
+      return "All products";
+    case "account":
+      return "My account";
+    case "cart":
+      return "the cart";
+    case "blog":
+      return "the blog";
+    case "product":
+      return `the product ${link.handle}`;
+    case "page":
+    case "article":
+      return `/${link.slug}`;
+    case "category":
+    case "tag":
+    case "blogCategory":
+      return `${link.kind === "tag" ? "the tag" : "the category"} ${link.slug}`;
+    case "url":
+      return link.url;
+  }
+}
+
+/** A place change in words, for the owner's approval. */
+export function placeSummary(place: StorePlace, title: string | null): string {
+  return title ? `Show the page "${title}" as the ${placeName(place)}.` : `Show the standard ${placeName(place)} again.`;
+}
+
+/** A header and footer change in words, for the owner's approval, from the names the server found. */
+export function headerFooterSummary(change: { header?: string | null; footer?: string | null; logo?: boolean | null; logoDark?: boolean | null }): string {
+  const parts = [
+    change.header !== undefined && (change.header === null ? "the header shows no menu" : `the header shows the menu "${change.header}"`),
+    change.footer !== undefined && (change.footer === null ? "the footer shows no menu" : `the footer shows the menu "${change.footer}"`),
+    change.logo !== undefined && (change.logo ? "a new logo" : "no logo (the site's name shows)"),
+    change.logoDark !== undefined && (change.logoDark ? "a new logo for dark backgrounds" : "no logo for dark backgrounds"),
+  ].filter((part): part is string => typeof part === "string");
+  return parts.length > 0 ? `Change the standard header and footer: ${parts.join("; ")}.` : "Change nothing in the header and footer.";
 }

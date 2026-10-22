@@ -142,6 +142,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   build_page: "website:write",
   edit_page: "website:write",
   publish_page: "website:write",
+  // Places, menus and the header and footer (D308): the Pages list's, Menus' and Header and footer's `website` keys; a legal page is the owner's (asked again by the handler).
+  set_page_place: "website:write",
+  get_menus: "website:read",
+  save_menu: "website:write",
+  set_header_footer: "website:write",
   add_redirect: "website:write",
 };
 
