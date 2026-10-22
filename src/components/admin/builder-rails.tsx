@@ -3,6 +3,10 @@
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useCallback, useSyncExternalStore } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
+
 /**
  * The builder's two sidebars can be folded away to leave the canvas more room (D125): a slim rail with a button to open
  * one again; and an open one can be made wider or narrower by dragging its edge by the canvas (D262). Each side's choices
@@ -121,7 +125,7 @@ export function FoldButton({
   onFold: () => void;
 }) {
   const Icon = ICONS[side].fold;
-  const text = `Hide ${label}`;
+  const text = fillWords(useAdminText("builder").rails.hide, { label });
   return (
     <button
       type="button"
@@ -155,7 +159,7 @@ export function Rail({
   className?: string;
 }) {
   const Icon = ICONS[side].open;
-  const text = `Show ${label}`;
+  const text = fillWords(useAdminText("builder").rails.show, { label });
   return (
     <div
       className={`rounded-panel border border-line bg-card lg:sticky lg:top-4 lg:flex lg:justify-center lg:py-1 ${className}`}
@@ -238,6 +242,7 @@ export function RailResizer({
   /** The sidebar's width now, the other's, and the whole room, as drawn. */
   measure: () => { own: number; other: number; total: number } | null;
 }) {
+  const w = useAdminText("builder").rails;
   // The room between the sidebar and the canvas; its half by the sidebar is what is dragged (the canvas reaches into the other half for its rows' tools).
   if (folded) return <div aria-hidden className="hidden lg:block" />;
   const step = (by: number) => {
@@ -251,13 +256,13 @@ export function RailResizer({
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label={`Width of the ${label}`}
+      aria-label={fillWords(w.width, { label })}
       aria-valuenow={width ?? undefined}
       aria-valuemin={RAIL_WIDTH.min}
       aria-valuemax={RAIL_WIDTH.max}
-      aria-valuetext={width === null ? "Usual width" : `${width} pixels`}
+      aria-valuetext={width === null ? w.usualWidth : fillWords(w.pixels, { n: width })}
       tabIndex={0}
-      title={`Drag to make the ${label} wider or narrower. Double-click for the usual width.`}
+      title={fillWords(w.drag, { label })}
       onPointerDown={(event) => {
         const room = measure();
         if (!room || event.button !== 0) return;

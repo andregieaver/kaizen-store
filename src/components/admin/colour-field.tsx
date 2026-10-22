@@ -5,6 +5,9 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 
 import { HEX6, type ColourSwatch } from "@/lib/colour";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { SavedColours } from "./colour-library";
 
 /**
@@ -44,6 +47,7 @@ export function ColorField(props: Always | Maybe) {
   const { label, value, onChange, mark, muted = "", noSwatches, opacity } = props;
   const id = useId();
   const swatches = useContext(Swatches);
+  const w = useAdminText("blocks").colour;
   // What is being typed, until it is a colour (kept apart per value shown, so a swatch or the picker replaces it).
   const [draft, setDraft] = useState<{ key: string; text: string } | null>(null);
   const key = value ?? "";
@@ -64,7 +68,7 @@ export function ColorField(props: Always | Maybe) {
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="color"
-          aria-label={`${label}: choose`}
+          aria-label={fillWords(w.choose, { label })}
           value={value ?? "#000000"}
           onChange={(event) => set(event.target.value)}
           className="h-10 w-14 cursor-pointer rounded-md border border-line bg-card p-1"
@@ -91,8 +95,8 @@ export function ColorField(props: Always | Maybe) {
               setDraft(null);
               props.onClear?.();
             }}
-            aria-label={`Clear ${label.toLowerCase()}`}
-            title="Clear"
+            aria-label={fillWords(w.clear, { label: label.toLowerCase() })}
+            title={w.clearTitle}
             className="flex size-8 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
           >
             <X aria-hidden className="size-4" />
@@ -101,7 +105,7 @@ export function ColorField(props: Always | Maybe) {
       </div>
       {opacity && <OpacitySlider label={label} colour={value} {...opacity} />}
       {!noSwatches && swatches.length > 0 && (
-        <div role="group" aria-label={`${label}: the theme's colours`} className="flex flex-wrap gap-1.5 pt-1">
+        <div role="group" aria-label={fillWords(w.swatches, { label })} className="flex flex-wrap gap-1.5 pt-1">
           {swatches.map((swatch) => (
             <button
               key={`${swatch.name}${swatch.colour}`}
@@ -140,12 +144,13 @@ function OpacitySlider({
 }) {
   const id = useId();
   const shown = value ?? 100;
+  const w = useAdminText("blocks").colour;
   const set = (next: number) => onChange(next >= 100 ? undefined : Math.max(0, Math.round(next)));
   return (
     <div className={`flex flex-col gap-1 pt-1 ${muted}`}>
       <div className="flex flex-wrap items-center gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Opacity
+          {w.opacity}
         </label>
         {mark}
       </div>
@@ -170,7 +175,7 @@ function OpacitySlider({
           max={100}
           value={shown}
           disabled={colour === undefined}
-          aria-label={`${label}: opacity in per cent`}
+          aria-label={fillWords(w.percent, { label })}
           onChange={(event) => {
             const next = Number.parseInt(event.target.value, 10);
             if (Number.isFinite(next)) set(Math.min(100, Math.max(0, next)));
@@ -180,7 +185,7 @@ function OpacitySlider({
         <span className="text-sm text-muted">%</span>
       </div>
       <span id={`${id}-note`} className="text-xs text-muted">
-        {colour === undefined ? "Choose a colour first." : "100 is solid."}
+        {colour === undefined ? w.chooseFirst : w.solid}
       </span>
     </div>
   );

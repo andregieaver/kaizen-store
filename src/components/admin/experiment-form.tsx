@@ -4,9 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { DEVICES, GOALS, GOAL_WORDS, type Device, type Goal } from "@/lib/experiments";
-import { isTestedPlace, KIND_WORDS, ROLE_NAMES, type TargetKind } from "@/lib/ab-site";
+import { isTestedPlace, type TargetKind } from "@/lib/ab-site";
+import { fillWords } from "@/lib/admin-fill";
+import { experimentProblems } from "@/lib/experiment-words";
 import type { PartInfo } from "@/lib/experiment-parts";
 
+import { useAdminText } from "./admin-text";
 import { RuntimeEstimate } from "./runtime-estimate";
 import { CARD_CLASS } from "@/components/admin/ui";
 
@@ -19,12 +22,10 @@ export type TestablePage = { id: string; slug: string; title: string; kind: Targ
 type Outcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 const SHARES = [
-  { value: 1, label: "All visitors" },
-  { value: 0.5, label: "Half of the visitors" },
-  { value: 0.25, label: "A quarter of the visitors" },
-];
-
-const DEVICE_WORDS: Record<Device, string> = { mobile: "Phones", tablet: "Tablets", desktop: "Computers" };
+  { value: 1, key: "all" },
+  { value: 0.5, key: "half" },
+  { value: 0.25, key: "quarter" },
+] as const;
 
 /**
  * Making an A/B test (D148): which page, what it should improve, and who takes part. The first version is a copy of the
@@ -45,6 +46,8 @@ export function ExperimentForm({
   create: (input: unknown) => Promise<Outcome>;
   base: string;
 }) {
+  const w = useAdminText("experiments");
+  const f = w.form;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -71,7 +74,7 @@ export function ExperimentForm({
     start(async () => {
       const result = await create({
         part: part ? { kind: part.kind, id: part.id } : null,
-        name: name.trim() || (part ? `Test of ${part.label}` : `Test of ${page?.title ?? "a page"}`),
+        name: name.trim() || fillWords(f.testOf, { name: part ? part.label : (page?.title ?? f.aPage) }),
         hypothesis: hypothesis.trim(),
         pageId,
         goal,
@@ -83,16 +86,14 @@ export function ExperimentForm({
         },
       });
       if (result.ok) router.push(`${base}/${result.id}`);
-      else setProblems(result.problems);
+      else setProblems(experimentProblems(result.problems, w));
     });
   };
 
   if (pages.length === 0) {
     return (
       <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-        There is no page to test yet. A page can be tested when it is published and is not a page with a place of
-        its own, and is not in a running test already. The cart, the checkout and the other working pages are tested by a part of them: open one in the page
-        builder and use “A/B test this” on a row around the shop&apos;s own component.
+        {f.noPages}
       </p>
     );
   }
@@ -100,39 +101,41 @@ export function ExperimentForm({
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-6" aria-busy={pending}>
       <section className={card} aria-labelledby="ab-page">
-        <h2 id="ab-page" className="text-title text-ink">{part ? "1. What you are testing" : "1. What do you want to test?"}</h2>
+        <h2 id="ab-page" className="text-title text-ink">{part ? f.step1Part : f.step1}</h2>
         {part ? (
           <p className="text-sm">
-            <span className="font-medium">{part.label}</span> in {page && page.kind !== "page" ? `the ${(page.kind === "role" && isTestedPlace(page.role) ? ROLE_NAMES[page.role] : KIND_WORDS[page.kind].name).toLowerCase()} ` : "the page "}
+            <span className="font-medium">{part.label}</span>{" "}
+            {page && page.kind !== "page"
+              ? fillWords(f.inThe, { kind: (page.kind === "role" && isTestedPlace(page.role) ? w.roles[page.role] : w.kinds[page.kind].name).toLowerCase() })
+              : f.inPage}{" "}
             <span className="font-medium">{page?.title}</span>
             {page?.kind === "page" && ` (/${page.slug})`}.
             <span className={`${hint} block`}>
-              A copy of the page is made as your first new version. You change this part in it; the rest of the page must stay as it is, so the test is
-              about this part only. The page itself stays as it is until you choose a winner.
+              {f.partHint}
             </span>
           </p>
         ) : (
         <label className={label}>
-          What to test
+          {f.whatToTest}
           <select value={pageId} onChange={(e) => setPageId(e.target.value)} className={input}>
             {pages.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.kind === "page" ? `${p.title} (/${p.slug})` : `${p.kind === "role" && isTestedPlace(p.role) ? ROLE_NAMES[p.role] : KIND_WORDS[p.kind].name}: ${p.title}`}
+                {p.kind === "page" ? `${p.title} (/${p.slug})` : `${p.kind === "role" && isTestedPlace(p.role) ? w.roles[p.role] : w.kinds[p.kind].name}: ${p.title}`}
               </option>
             ))}
           </select>
           <span className={hint}>
-            A copy is made as your first new version, for you to change. The original stays as it is until you choose a winner.
-            {page && page.kind !== "page" && ` Visitors in the test see their version ${KIND_WORDS[page.kind].where}.`}
+            {f.copyHint}
+            {page && page.kind !== "page" && ` ${fillWords(f.seenWhere, { where: w.kinds[page.kind].where })}`}
           </span>
         </label>
         )}
       </section>
 
       <section className={card} aria-labelledby="ab-goal">
-        <h2 id="ab-goal" className="text-title text-ink">2. What should get better?</h2>
+        <h2 id="ab-goal" className="text-title text-ink">{f.step2}</h2>
         <fieldset className="flex flex-col gap-2">
-          <legend className="sr-only">What the test should improve</legend>
+          <legend className="sr-only">{f.goalLegend}</legend>
           {GOALS.map((g) => (
             <label key={g} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
               <input type="radio" name="goal" checked={goal === g} onChange={() => {
@@ -141,20 +144,22 @@ export function ExperimentForm({
                   setButton("");
                 }} className="mt-1" />
               <span>
-                <span className="font-medium">{GOAL_WORDS[g].label}</span>
-                <span className="block text-xs text-muted">The winner is the version that helps you {GOAL_WORDS[g].asks}.</span>
+                <span className="font-medium">{w.goals[g].label}</span>
+                <span className="block text-xs text-muted">{fillWords(f.winnerHelps, { asks: w.goals[g].asks })}</span>
               </span>
             </label>
           ))}
         </fieldset>
         {goal === "form" && (
           <label className={label}>
-            Which form?
+            {f.whichForm}
             {forms.length === 0 ? (
-              <span className={hint}>{part ? "There is no email form or newsletter sign-up in this part." : "This page has no email form or newsletter sign-up yet."} Add one in the page builder first, or choose another goal.</span>
+              <span className={hint}>
+                {part ? f.noFormPart : f.noFormPage} {f.addFirst}
+              </span>
             ) : (
               <select value={button} onChange={(e) => setButton(e.target.value)} className={input} required>
-                <option value="">Choose a form</option>
+                <option value="">{f.chooseForm}</option>
                 {forms.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.label}
@@ -162,17 +167,19 @@ export function ExperimentForm({
                 ))}
               </select>
             )}
-            <span className={hint}>A visitor counts once, when the site accepts what they sent: a message, or a sign-up (before they confirm it by email).</span>
+            <span className={hint}>{f.formCounts}</span>
           </label>
         )}
         {goal === "click" && (
           <label className={label}>
-            Which button?
+            {f.whichButton}
             {buttons.length === 0 ? (
-              <span className={hint}>{part ? "There is no button with a text in this part." : "This page has no button with a text yet."} Add one in the page builder first, or choose another goal.</span>
+              <span className={hint}>
+                {part ? f.noButtonPart : f.noButtonPage} {f.addFirst}
+              </span>
             ) : (
               <select value={button} onChange={(e) => setButton(e.target.value)} className={input} required>
-                <option value="">Choose a button</option>
+                <option value="">{f.chooseButton}</option>
                 {buttons.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.label}
@@ -185,50 +192,50 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-name">
-        <h2 id="ab-name" className="text-title text-ink">3. Name and idea</h2>
+        <h2 id="ab-name" className="text-title text-ink">{f.step3}</h2>
         <label className={label}>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={part ? `Test of ${part.label}` : `Test of ${page?.title ?? "the page"}`} className={input} />
+          {f.name}
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={fillWords(f.testOf, { name: part ? part.label : (page?.title ?? f.thePage) })} className={input} />
         </label>
         <label className={label}>
-          What do you think will happen? (optional)
+          {f.hypothesis}
           <textarea
             value={hypothesis}
             onChange={(e) => setHypothesis(e.target.value)}
             maxLength={500}
             rows={2}
-            placeholder="A shorter heading and a bigger button will make more people add to the cart."
+            placeholder={f.hypothesisPlaceholder}
             className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
           />
-          <span className={hint}>Writing it down first keeps you honest about what you were testing.</span>
+          <span className={hint}>{f.hypothesisHint}</span>
         </label>
       </section>
 
       <section className={card} aria-labelledby="ab-who">
-        <h2 id="ab-who" className="text-title text-ink">4. Who takes part?</h2>
+        <h2 id="ab-who" className="text-title text-ink">{f.step4}</h2>
         <label className={label}>
-          Share of visitors in the test
+          {f.share}
           <select value={share} onChange={(e) => setShare(Number(e.target.value))} className={input}>
             {SHARES.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {w.shares[s.key]}
               </option>
             ))}
           </select>
-          <span className={hint}>Visitors who have accepted statistics cookies are split evenly between the versions. The rest see the page as it is and are not counted.</span>
+          <span className={hint}>{f.shareHint}</span>
         </label>
         <fieldset className="flex flex-wrap gap-4 text-sm">
-          <legend className="mb-1 font-medium">Devices</legend>
+          <legend className="mb-1 font-medium">{f.devices}</legend>
           {DEVICES.map((d) => (
             <label key={d} className="flex items-center gap-2">
               <input type="checkbox" checked={devices.includes(d)} onChange={() => toggle(devices, d, setDevices)} />
-              {DEVICE_WORDS[d]}
+              {w.devices[d]}
             </label>
           ))}
         </fieldset>
         {markets.length > 1 && (
           <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1 font-medium">Countries (none ticked: all)</legend>
+            <legend className="mb-1 font-medium">{f.countries}</legend>
             {markets.map((m) => (
               <label key={m.code} className="flex items-center gap-2">
                 <input type="checkbox" checked={chosenMarkets.includes(m.code)} onChange={() => toggle(chosenMarkets, m.code, setChosenMarkets)} />
@@ -240,7 +247,7 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-time">
-        <h2 id="ab-time" className="text-title text-ink">How long will it take? (optional)</h2>
+        <h2 id="ab-time" className="text-title text-ink">{f.howLong}</h2>
         <RuntimeEstimate share={share} versions={2} />
       </section>
 
@@ -253,9 +260,9 @@ export function ExperimentForm({
       )}
       <div className="flex gap-3">
         <button type="submit" disabled={pending} className="min-h-11 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50">
-          {pending ? "Making the test …" : "Make the test"}
+          {pending ? f.making : f.make}
         </button>
-        <span className="self-center text-xs text-muted">Nothing is shown to visitors until you start it.</span>
+        <span className="self-center text-xs text-muted">{f.nothingShown}</span>
       </div>
     </form>
   );

@@ -8,6 +8,9 @@ import { PageArticle } from "@/components/page-article";
 import { ProductLayoutView } from "@/components/product-parts";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreFooter, StoreHeader } from "@/components/store-layout";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { t } from "@/lib/i18n";
 import { pageFonts, type PageContent } from "@/lib/page-content";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
@@ -33,7 +36,8 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
 export default async function ThemePreviewPage({ params, searchParams }: PageProps<"/admin/[store]/settings/design/themes/[install]/preview">) {
   const { store: slug, install: installId } = await params;
   const query = await searchParams;
-  const { store: base } = await requirePermission(slug, "website:read");
+  const { store: base, account } = await requirePermission(slug, "website:read");
+  const { common: c, preview: w } = adminText(adminLangOf(account.adminLocale), "design");
   const preview = await installPreview(base.id, installId);
   const market = base.markets[0];
   if (!preview || !market) notFound();
@@ -57,27 +61,27 @@ export default async function ThemePreviewPage({ params, searchParams }: PagePro
     ]),
   ];
   const here = `/admin/${base.slug}/settings/design/themes/${preview.install.id}/preview`;
-  const shown = wantsProduct ? "a product" : chosen ? `“${chosen.title}”` : "no page";
+  const shown = wantsProduct ? w.aProductShown : chosen ? fillWords(c.quote, { title: chosen.title }) : w.noPageShown;
 
   return (
     <div className="flex min-h-screen flex-col">
       <div role="status" className="sticky top-0 z-50 flex flex-col gap-1.5 bg-foreground px-4 py-2 text-xs text-background">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span className="font-medium">
-            Preview of “{preview.install.title}”{preview.install.live ? ", your live theme" : ""} on {shown}: nothing is saved, and visitors do not see it
+            {fillWords(w.banner, { name: preview.install.title, live: preview.install.live ? w.yourLive : "", shown })}
           </span>
           <Link href={`/admin/${base.slug}/settings/design${preview.install.live ? "" : `/themes/${preview.install.id}`}`} className="underline">
-            Back to the theme
+            {w.back}
           </Link>
         </p>
-        <nav aria-label="Pages to preview" className="flex flex-wrap gap-x-3 gap-y-1">
+        <nav aria-label={w.pagesLabel} className="flex flex-wrap gap-x-3 gap-y-1">
           {preview.pages.slice(0, 30).map((page) => (
             <Link key={page.id} href={`${here}?page=${page.id}`} aria-current={!wantsProduct && chosen?.id === page.id ? "page" : undefined} className="underline aria-[current=page]:no-underline aria-[current=page]:font-medium">
               {page.title}
             </Link>
           ))}
           <Link href={`${here}?product=1`} aria-current={wantsProduct ? "page" : undefined} className="underline aria-[current=page]:no-underline aria-[current=page]:font-medium">
-            A product
+            {w.aProduct}
           </Link>
         </nav>
       </div>
@@ -104,14 +108,14 @@ export default async function ThemePreviewPage({ params, searchParams }: PagePro
                   <ProductLayoutView layout={productLayout} ctx={{ store, market, product, m, campaigns: notices }} inAdmin />
                 </div>
               ) : (
-                <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">This store has no product to show yet.</p>
+                <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">{w.noProduct}</p>
               )
             ) : content && chosen ? (
               <div className="store-page">
                 <PageArticle content={content} place={{ pageId: chosen.id, owner: store.id, market: market.slug, theme: themeLayersOf(store.theme.settings) }} inAdmin />
               </div>
             ) : (
-              <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">This store has no published page to show yet.</p>
+              <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">{w.noPage}</p>
             )}
           </main>
           {preview.footer ? <StoreSiteFooter store={store} market={market} layout={preview.footer} /> : <StoreFooter store={store} market={market} />}

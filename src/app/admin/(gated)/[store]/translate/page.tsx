@@ -8,6 +8,9 @@ import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { translationCoverage } from "@/server/store-translate";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { translateStorePageAction } from "../pages/actions";
 import { applyAction, worklistAction } from "./actions";
@@ -15,35 +18,38 @@ import { applyAction, worklistAction } from "./actions";
 export const metadata: Metadata = { title: "Translate the store" };
 
 export default async function TranslatePage({ params }: PageProps<"/admin/[store]/translate">) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "website").translate;
   const languages = pageLanguages(store.localization.locales);
   const connection = languages.length > 1 ? await aiFor(store.id) : null;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["website"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Translate the store"
-        description={<>Products, menus, pages, articles, categories and tags, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI suggests; you read each text and keep the ones that are right, and nothing is written before you save. Pages are saved as drafts, so nothing is published for you.</>}
-      />
+      <PageHeader title={w.title} description={w.description} />
       {languages.length < 2 ? (
         <p className={`p-5 text-sm ${CARD_CLASS}`}>
           {featureOn(store, "languages") ? (
             <>
-              The store has only one language. Add another under{" "}
-              <Link href={`/admin/${store.slug}/settings/localization`} className="underline">Languages and currencies</Link>.
+              {w.oneLanguage}
+              <Link href={`/admin/${store.slug}/settings/localization`} className="underline">{w.localization}</Link>
+              {w.end}
             </>
           ) : (
             // D178: the store's other languages are hidden, their translations kept.
             <>
-              The store is shown in one language: Several languages is switched off under{" "}
-              <Link href={`/admin/${store.slug}/settings/features`} className="underline">Features</Link>. Translations already made are kept.
+              {w.languagesOff}
+              <Link href={`/admin/${store.slug}/settings/features`} className="underline">{w.features}</Link>
+              {w.languagesOffEnd}
             </>
           )}
         </p>
       ) : !connection?.textModel ? (
         <p className={`p-5 text-sm ${CARD_CLASS}`}>
-          The store has no AI text model. Choose one under{" "}
-          <Link href={`/admin/${store.slug}/settings/ai`} className="underline">Settings → AI</Link>.
+          {w.noModel}
+          <Link href={`/admin/${store.slug}/settings/ai`} className="underline">{w.aiSettings}</Link>
+          {w.end}
         </p>
       ) : (
         <StoreTranslator
@@ -57,5 +63,6 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
         />
       )}
     </div>
+    </AdminTextScope>
   );
 }

@@ -5,8 +5,11 @@ import { useId, useRef, useState, useTransition } from "react";
 
 import { card, field, hint, label, primary, secondary } from "@/components/admin/data/ui";
 import type { Finding } from "@/lib/data-job";
+import { fillWords } from "@/lib/admin-fill";
 import { existingWords, hasError, helpLine, splitFindings, type FieldFindings } from "@/lib/redirect-admin";
-import { redirectSentences } from "@/lib/redirects";
+import { redirectFindings, redirectProblems } from "@/lib/redirect-words";
+
+import { useAdminText } from "../admin-text";
 
 /** What the form asks the server, as the bound actions of the page give it (`checkRedirectAction`, `saveRedirectAction`). */
 export type FormExisting = { kind: "manual"; target: string } | { kind: "automatic" } | null;
@@ -26,10 +29,11 @@ const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text"
 
 /** The findings of one field, one sentence each, under it. The sentence names only addresses (`finding()` never quotes another cell). */
 export function FindingList({ findings, id }: { findings: readonly Finding[]; id?: string }) {
+  const w = useAdminText("redirects");
   if (findings.length === 0) return null;
   return (
     <ul id={id} className="flex flex-col gap-0.5 text-xs">
-      {findings.map((f, i) => (
+      {redirectFindings(findings, w).map((f, i) => (
         <li key={`${f.code}-${i}`} className={SEVERITY_STYLE[f.severity]}>
           {f.text}
         </li>
@@ -37,8 +41,6 @@ export function FindingList({ findings, id }: { findings: readonly Finding[]; id
     </ul>
   );
 }
-
-const EXAMPLE = redirectSentences.fromHelp("/collections/shoes", "/category/shoes");
 
 /**
  * The form that adds a manual redirect or edits one (2.2.2): two fields, *Redirect from* and *Redirect to*, each a path on the store. The server checks the pair
@@ -63,6 +65,7 @@ export function RedirectForm({
   onCancel?: () => void;
   submitLabel?: string;
 }) {
+  const w = useAdminText("redirects");
   const router = useRouter();
   const id = useId();
   const [from, setFrom] = useState(initial.from);
@@ -83,7 +86,7 @@ export function RedirectForm({
       const result = await actions.check({ from: nextFrom, to: nextTo });
       if (ticket !== latest.current) return;
       if (!result.ok) {
-        setProblems(result.problems);
+        setProblems(redirectProblems(result.problems, w));
         return;
       }
       setProblems([]);
@@ -97,14 +100,14 @@ export function RedirectForm({
       setSaved(null);
       const result = await actions.save({ from, to }, editing?.id);
       if (!result.ok) {
-        setProblems(result.problems);
+        setProblems(redirectProblems(result.problems, w));
         setChecked((c) => ({ source: c?.source ?? null, target: c?.target ?? null, existing: c?.existing ?? null, saveable: false, findings: result.findings }));
         return;
       }
       setProblems([]);
       setChecked(null);
       setSaved({
-        text: result.unchanged ? `The redirect from ${result.source} to ${result.target} was already there.` : `${result.created ? "Saved" : "Changed"}: ${result.source} now goes to ${result.target}.`,
+        text: fillWords(result.unchanged ? w.form.already : result.created ? w.form.saved : w.form.changed, { source: result.source, target: result.target }),
         findings: result.findings.filter((f) => f.severity !== "error"),
       });
       if (!editing) {
@@ -117,10 +120,10 @@ export function RedirectForm({
 
   const shown: FieldFindings = checked ? splitFindings(checked.findings) : { from: [], to: [], line: [] };
   const existing = editing && checked?.source === editing.source ? null : (checked?.existing ?? null);
-  const ask = existingWords(existing, checked?.source ?? null);
+  const ask = existingWords(existing, checked?.source ?? null, w);
   const blocked = checked !== null && (!checked.saveable || hasError(checked.findings));
-  const help = checked && !blocked ? helpLine(checked.source, checked.target) : null;
-  const label_ = submitLabel ?? (editing ? "Save the change" : existing?.kind === "manual" ? "Replace the redirect" : "Add the redirect");
+  const help = checked && !blocked ? helpLine(checked.source, checked.target, w) : null;
+  const label_ = submitLabel ?? (editing ? w.form.saveChange : existing?.kind === "manual" ? w.form.replace : w.form.add);
 
   return (
     <form
@@ -134,7 +137,7 @@ export function RedirectForm({
       <div className="grid gap-3 md:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-from`} className={label}>
-            Redirect from
+            {w.form.from}
           </label>
           <input
             id={`${id}-from`}
@@ -153,7 +156,7 @@ export function RedirectForm({
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-to`} className={label}>
-            Redirect to
+            {w.form.to}
           </label>
           <input
             id={`${id}-to`}
@@ -172,7 +175,7 @@ export function RedirectForm({
         </div>
       </div>
       <FindingList findings={shown.line} />
-      <p className={hint}>{help ?? EXAMPLE}</p>
+      <p className={hint}>{help ?? helpLine("/collections/shoes", "/category/shoes", w)}</p>
       {ask && (
         <p role="note" className="rounded-md border border-line bg-card p-2 text-sm">
           {ask}
@@ -180,11 +183,11 @@ export function RedirectForm({
       )}
       <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={busy || from.trim() === "" || to.trim() === "" || blocked} className={primary}>
-          {busy ? "Working …" : label_}
+          {busy ? w.common.working : label_}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} disabled={busy} className={secondary}>
-            Cancel
+            {w.common.cancel}
           </button>
         )}
       </div>

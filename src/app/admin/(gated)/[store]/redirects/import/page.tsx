@@ -10,6 +10,10 @@ import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { KIND_TITLES, momentText } from "@/lib/data-admin";
 import { ACTIVE_IMPORT_STATUSES, STATUS_WORDS } from "@/lib/data-job";
 import { IMPORT_FILE_KEEP_DAYS, REDIRECTS_MAX, REDIRECT_IMPORT_MAX_ROWS } from "@/lib/data-limits";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { redirectPaths } from "@/lib/redirect-admin";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -26,15 +30,11 @@ type Props = PageProps<"/admin/[store]/redirects/import">;
  * continued from its own page. An import never deletes a redirect.
  */
 export default async function RedirectImportPage({ params }: Props) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead
-        slug={store.slug}
-        active="import"
-        title="Import redirects"
-        intro="Bring redirects in from a CSV file: the file this store's export makes, or a Shopify redirect file. You see what the import would do, line by line, before anything is changed."
-      />
+      <RedirectsHead slug={store.slug} active="import" title={w.import.title} intro={w.import.intro} words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -46,36 +46,41 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "website:read");
   if (!memberCan(member, "website:write")) notFound();
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "redirects");
+  const i = w.import;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const jobs = await listJobs(member, "redirect_import", 10);
   const open = jobs.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const base = `${redirectPaths(store.slug).import}`;
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
       {open ? (
-        <Notice title="An import is already open">
+        <Notice title={i.openTitle}>
           <p>
-            {open.inputName ?? "A file"} ({STATUS_WORDS[open.status].toLowerCase()}). Only one import is open at a time.{" "}
+            {open.inputName ?? i.aFile} ({STATUS_WORDS[open.status].toLowerCase()}). {i.openText}{" "}
             <Link href={`${base}/${open.id}`} className="underline underline-offset-2">
-              Continue it
+              {i.continueIt}
             </Link>{" "}
-            or cancel it there to start another.
+            {i.orCancel}
           </p>
         </Notice>
       ) : (
         <RedirectUpload slug={store.slug} start={startRedirectUploadAction.bind(null, store.slug)} register={registerRedirectUploadAction.bind(null, store.slug)} />
       )}
-      <Notice title="What an import does and does not do">
+      <Notice title={i.doesTitle}>
         <ul className="list-disc pl-5">
           <li>
-            Each line is a path on the store, such as <code>/collections/shoes</code> to <code>/category/shoes</code>, without a country: a redirect applies in every country and language. A full address on this store is read as its path.
+            {i.does1a} <code>/collections/shoes</code> {i.does1b} <code>/category/shoes</code>
+            {i.does1c}
           </li>
-          <li>An address that is a live page, product, category, tag or article is refused: a redirect only works from an address that does not exist. A draft or archived product&apos;s address is free.</li>
-          <li>A redirect to another website is refused, a loop is refused, and a chain is saved as its final destination.</li>
-          <li>An address that already has a redirect of its own is replaced or kept, as you choose. A redirect Kaizena Flow made itself is replaced. No redirect is ever deleted by an import.</li>
+          <li>{i.does2}</li>
+          <li>{i.does3}</li>
+          <li>{i.does4}</li>
           <li>
-            At most {REDIRECT_IMPORT_MAX_ROWS.toLocaleString("en-GB")} lines in a file and {REDIRECTS_MAX.toLocaleString("en-GB")} redirects of your own in a store. Start from an export to see the layout:{" "}
+            {fillWords(i.does5, { lines: REDIRECT_IMPORT_MAX_ROWS.toLocaleString(locale), max: REDIRECTS_MAX.toLocaleString(locale) })}{" "}
             <Link href={redirectPaths(store.slug).export} className="underline underline-offset-2">
-              Export redirects
+              {i.exportLink}
             </Link>
             .
           </li>
@@ -84,24 +89,24 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       {jobs.length > 0 && (
         <section aria-labelledby="recent-redirect-imports" className="flex flex-col gap-2">
           <h2 id="recent-redirect-imports" className="text-title text-ink">
-            Recent imports
+            {i.recent}
           </h2>
           <div className={tableShell}>
             <table className="w-full text-sm">
-              <caption className="sr-only">Recent redirect imports of this store</caption>
+              <caption className="sr-only">{i.recentCaption}</caption>
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className={th}>
-                    File
+                    {i.file}
                   </th>
                   <th scope="col" className={th}>
-                    Started
+                    {i.started}
                   </th>
                   <th scope="col" className={th}>
-                    State
+                    {i.state}
                   </th>
                   <th scope="col" className={th}>
-                    <span className="sr-only">Open</span>
+                    <span className="sr-only">{i.open}</span>
                   </th>
                 </tr>
               </thead>
@@ -109,11 +114,11 @@ async function Body({ storeSlug }: { storeSlug: string }) {
                 {jobs.map((job) => (
                   <tr key={job.id} className="border-b border-line last:border-0">
                     <td className={`${td} break-all`}>{job.inputName ?? KIND_TITLES.redirect_import}</td>
-                    <td className={td}>{momentText(job.createdAt, store.timeZone)}</td>
+                    <td className={td}>{momentText(job.createdAt, store.timeZone, locale)}</td>
                     <td className={td}>{STATUS_WORDS[job.status]}</td>
                     <td className={`${td} text-right`}>
                       <Link href={`${base}/${job.id}`} className="underline underline-offset-2">
-                        Open
+                        {i.open}
                       </Link>
                     </td>
                   </tr>
@@ -123,7 +128,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>Your file is kept privately for {IMPORT_FILE_KEEP_DAYS} days after the import ends, then deleted.</p>
-    </>
+      <p className={`${hint} ${card} !p-3`}>{fillWords(i.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+    </AdminTextScope>
   );
 }

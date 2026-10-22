@@ -4,6 +4,9 @@ import { useId, useState, useTransition } from "react";
 
 import { shrinkImage, squareIcon } from "@/lib/image-resize";
 import type { BusinessDetails, Favicon, Logo } from "@/lib/navigation";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 type Upload = (data: FormData) => Promise<{ ok: true; url: string; thumbnailUrl?: string } | { ok: false; problem: string }>;
 type Navigation = {
@@ -52,7 +55,7 @@ export function NavigationEditor({
   initial,
   menus,
   menusHref,
-  copy = STORE_COPY,
+  copy: given,
   business,
   upload,
   save,
@@ -70,6 +73,9 @@ export function NavigationEditor({
   save: Save;
   previewHref: string;
 }) {
+  const w = useAdminText("website").navigation;
+  // The store's words in the admin's language unless the page gives its own (Kaizen's).
+  const copy = given ?? w.copy;
   const [logo, setLogo] = useState<Logo | null>(initial.logo);
   const [logoDark, setLogoDark] = useState<Logo | null>(initial.logoDark);
   const [favicon, setFavicon] = useState<Favicon | null>(initial.favicon);
@@ -89,7 +95,7 @@ export function NavigationEditor({
   return (
     <div className="flex flex-col gap-6 pb-24">
       <LogoField
-        title="Logo"
+        title={w.logo}
         help={copy.logo}
         logo={logo}
         upload={upload}
@@ -100,7 +106,7 @@ export function NavigationEditor({
         }}
       />
       <LogoField
-        title="Logo for dark backgrounds"
+        title={w.logoDark}
         help={copy.logoDark}
         logo={logoDark}
         upload={upload}
@@ -123,21 +129,21 @@ export function NavigationEditor({
       <section aria-labelledby="standard-menus-heading" className={card}>
         <div>
           <h2 id="standard-menus-heading" className="text-title text-ink">
-            Menus
+            {w.menus}
           </h2>
           <p className="text-sm text-muted">
-            Which of your menus the standard header and footer show. Menus are made and changed under{" "}
+            {w.menusHintStart}
             <a href={menusHref} className="underline">
-              Menus
+              {w.menus}
             </a>
-            ; a header or footer you build shows the menus you place in it.
+            {w.menusHintEnd}
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [
-              ["headerMenuId", "Main menu", copy.header],
-              ["footerMenuId", "Footer menu", copy.footer],
+              ["headerMenuId", w.mainMenu, copy.header],
+              ["footerMenuId", w.footerMenu, copy.footer],
             ] as const
           ).map(([key, title, help]) => (
             <label key={key} className={label}>
@@ -151,7 +157,7 @@ export function NavigationEditor({
                 }}
                 className={input}
               >
-                <option value="">None</option>
+                <option value="">{w.none}</option>
                 {menus.map((menu) => (
                   <option key={menu.id} value={menu.id}>
                     {menu.name}
@@ -182,13 +188,13 @@ export function NavigationEditor({
             disabled={saving}
             className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
-            {saving ? "Saving …" : "Save"}
+            {saving ? w.saving : w.save}
           </button>
           <p role="status" aria-live="polite" className="text-sm">
             {result?.ok
               ? copy.saved
               : dirty
-                ? "Unsaved changes."
+                ? w.unsaved
                 : ""}
           </p>
           <a href={previewHref} target="_blank" rel="noopener" className="ml-auto text-sm underline">
@@ -198,7 +204,7 @@ export function NavigationEditor({
       </div>
       {result && !result.ok && (
         <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          <p className="font-medium">Nothing was saved yet. Please fix:</p>
+          <p className="font-medium">{w.fix}</p>
           <ul className="mt-2 list-disc pl-5">
             {result.problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -223,6 +229,7 @@ function FaviconField({
   upload: Upload | null;
   onChange: (favicon: Favicon | null) => void;
 }) {
+  const w = useAdminText("website").navigation;
   const id = useId();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -242,7 +249,7 @@ function FaviconField({
       if (outcome.ok) onChange({ url: outcome.url, smallUrl: outcome.thumbnailUrl ?? outcome.url });
       else setProblem(outcome.problem);
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP, AVIF or SVG.`);
+      setProblem(fillWords(w.iconUnreadable, { name: file.name }));
     } finally {
       setBusy(false);
     }
@@ -252,13 +259,9 @@ function FaviconField({
     <section aria-labelledby={`${id}-heading`} className={card}>
       <div>
         <h2 id={`${id}-heading`} className="text-title text-ink">
-          Icon (favicon)
+          {w.icon}
         </h2>
-        <p className="text-sm text-muted">
-          Shown in browser tabs and bookmarks, and on phones&apos; home screens. A square picture of at least 512 pixels
-          works best: a simple mark rather than the whole logo, as it is shown as small as 16 pixels. Without one,
-          Kaizena Flow&apos;s icon is shown.
-        </p>
+        <p className="text-sm text-muted">{w.iconHint}</p>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {/* As in a browser tab, at the sizes it is shown. */}
@@ -269,16 +272,16 @@ function FaviconField({
           ) : (
             <span aria-hidden className="size-4 rounded-sm bg-line" />
           )}
-          <span className="truncate text-muted">Your site</span>
+          <span className="truncate text-muted">{w.yourSite}</span>
         </div>
         {favicon && (
           // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded icon
-          <img src={favicon.url} alt="Your icon" width={64} height={64} className="size-16 rounded-xl border border-line" />
+          <img src={favicon.url} alt={w.yourIcon} width={64} height={64} className="size-16 rounded-xl border border-line" />
         )}
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {upload ? (
             <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
-              {busy ? "Uploading …" : favicon ? "Replace icon" : "Upload icon"}
+              {busy ? w.uploading : favicon ? w.replaceIcon : w.uploadIcon}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
@@ -291,11 +294,11 @@ function FaviconField({
               />
             </label>
           ) : (
-            <p className="text-muted">Uploads are not set up on this server.</p>
+            <p className="text-muted">{w.uploadsOff}</p>
           )}
           {favicon && (
             <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
-              Remove
+              {w.remove}
             </button>
           )}
         </div>
@@ -325,6 +328,7 @@ function LogoField({
   /** Shows the logo on a dark background, as it will be. */
   dark?: boolean;
 }) {
+  const w = useAdminText("website").navigation;
   const id = useId();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -349,7 +353,7 @@ function LogoField({
       else setProblem(outcome.problem);
       size.close();
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP or AVIF.`);
+      setProblem(fillWords(w.logoUnreadable, { name: file.name }));
     } finally {
       setBusy(false);
     }
@@ -371,15 +375,15 @@ function LogoField({
         >
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded logo
-            <img src={logo.url} alt={`Your ${title.toLowerCase()}`} className="max-h-10 w-auto max-w-56 object-contain" />
+            <img src={logo.url} alt={dark ? w.yourLogoDark : w.yourLogo} className="max-h-10 w-auto max-w-56 object-contain" />
           ) : (
-            <span className="text-sm">No logo</span>
+            <span className="text-sm">{w.noLogo}</span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {upload ? (
             <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
-              {busy ? "Uploading …" : logo ? `Replace ${title.toLowerCase()}` : `Upload ${title.toLowerCase()}`}
+              {busy ? w.uploading : logo ? (dark ? w.replaceLogoDark : w.replaceLogo) : dark ? w.uploadLogoDark : w.uploadLogo}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/avif"
@@ -392,11 +396,11 @@ function LogoField({
               />
             </label>
           ) : (
-            <p className="text-muted">Uploads are not set up on this server.</p>
+            <p className="text-muted">{w.uploadsOff}</p>
           )}
           {logo && (
             <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
-              Remove
+              {w.remove}
             </button>
           )}
         </div>
@@ -412,6 +416,7 @@ function LogoField({
 
 /** Who runs the site: the footer shows it on every page, as the law asks. */
 function BusinessFields({ value, onChange }: { value: BusinessDetails; onChange: (value: BusinessDetails) => void }) {
+  const w = useAdminText("website").navigation;
   const field = (name: keyof BusinessDetails, text: string, props: { type?: string; autoComplete?: string } = {}) => (
     <label className={label}>
       {text}
@@ -427,18 +432,15 @@ function BusinessFields({ value, onChange }: { value: BusinessDetails; onChange:
     <section aria-labelledby="business-heading" className={card}>
       <div>
         <h2 id="business-heading" className="text-title text-ink">
-          Business details
+          {w.business}
         </h2>
-        <p className="text-sm text-muted">
-          Who runs the site, in the footer of every page: Norwegian and EU law ask every web service to say who it is and
-          how to reach it.
-        </p>
+        <p className="text-sm text-muted">{w.businessHint}</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {field("legalName", "Company name", { autoComplete: "organization" })}
-        {field("organisationNumber", "Organisation number")}
-        {field("postalAddress", "Address", { autoComplete: "street-address" })}
-        {field("contactEmail", "Contact email", { type: "email", autoComplete: "email" })}
+        {field("legalName", w.legalName, { autoComplete: "organization" })}
+        {field("organisationNumber", w.organisationNumber)}
+        {field("postalAddress", w.postalAddress, { autoComplete: "street-address" })}
+        {field("contactEmail", w.contactEmail, { type: "email", autoComplete: "email" })}
       </div>
     </section>
   );

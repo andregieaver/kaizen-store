@@ -23,6 +23,12 @@ import {
   type Show,
   type VisibilityChoices,
 } from "@/lib/visibility";
+import { fillWords } from "@/lib/admin-fill";
+import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
+
+import { useAdminText } from "./admin-text";
+
+type DisplayWords = BlocksMessages["display"];
 
 /**
  * Beaver Builder's **Display** (D179 phase 4, `docs/responsive-editing.md` 6), under Breakpoint in the Advanced tab's
@@ -81,6 +87,7 @@ export function DisplayFields({
   const id = useId();
   const kind = displayKind(show);
   const choices = useChoices(setup, kind === "rules");
+  const w = useAdminText("blocks").display;
   const choose = (next: DisplayKind) => {
     if (next === kind) return;
     if (next === "rules") onChange({ rules: [[newCondition(setup.facts[0] ?? "signedIn")]] });
@@ -89,7 +96,7 @@ export function DisplayFields({
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={`${id}-display`} className="text-sm font-medium">
-        Display
+        {w.display}
       </label>
       <select
         id={`${id}-display`}
@@ -101,15 +108,13 @@ export function DisplayFields({
       >
         {DISPLAYS.map((d) => (
           <option key={d} value={d}>
-            {DISPLAY_LABELS[d]}
+            {w.kinds[d] ?? DISPLAY_LABELS[d]}
           </option>
         ))}
       </select>
       <p id={`${id}-hint`} className="text-xs text-muted">
         {locked ??
-          (setup.kaizen
-            ? "Signed in is a person signed in to Kaizena Flow's admin. Hidden parts are left out of the page by the server, not just hidden."
-            : "Signed in is a shopper signed in to their customer account. Hidden parts are left out of the page by the server, not just hidden; search engines see what a signed-out visitor sees.")}
+          (setup.kaizen ? w.kaizenHint : w.storeHint)}
       </p>
       {typeof show === "object" && <RuleBuilder rules={show.rules} onChange={(rules) => onChange(rules.length > 0 ? { rules } : undefined)} setup={setup} choices={choices} />}
     </div>
@@ -130,27 +135,28 @@ export function RuleBuilder({
 }) {
   const first = setup.facts[0] ?? "signedIn";
   const currency = choices?.currency ?? "EUR";
+  const w = useAdminText("blocks").display;
   const setGroup = (index: number, group: ConditionGroup) => onChange(rules.flatMap((g, i) => (i !== index ? [g] : group.length > 0 ? [group] : [])));
   return (
     <div className="flex flex-col gap-2 rounded-md border border-line p-3" data-rule-builder="">
       <p className="text-xs text-muted">
-        Shown when every condition of a group holds, in any group.
-        {choices && choices.timeZone && <> Times are in {setup.kaizen ? "Kaizena Flow's" : "the store's"} time zone, {choices.timeZone}.</>}
+        {w.when}
+        {choices && choices.timeZone && fillWords(setup.kaizen ? w.timesKaizen : w.timesStore, { zone: choices.timeZone })}
       </p>
       {rules.map((group, groupIndex) => (
         <div key={groupIndex} className="flex flex-col gap-2">
           {groupIndex > 0 && (
             <p className="text-center text-eyebrow text-muted uppercase" aria-hidden>
-              Or
+              {w.or}
             </p>
           )}
           <fieldset className="flex flex-col gap-2 rounded-md bg-sunken p-2">
-            <legend className="sr-only">Group {groupIndex + 1}</legend>
+            <legend className="sr-only">{fillWords(w.group, { n: groupIndex + 1 })}</legend>
             {group.map((condition, index) => (
               <div key={index} className="flex flex-col gap-1">
                 {index > 0 && (
                   <p className="text-xs font-medium text-muted" aria-hidden>
-                    And
+                    {w.and}
                   </p>
                 )}
                 <ConditionRow
@@ -158,7 +164,7 @@ export function RuleBuilder({
                   facts={setup.facts}
                   choices={choices}
                   currency={currency}
-                  label={`Group ${groupIndex + 1}, condition ${index + 1}`}
+                  label={fillWords(w.condition, { g: groupIndex + 1, n: index + 1 })}
                   onChange={(next) => setGroup(groupIndex, group.map((c, i) => (i === index ? next : c)))}
                   onRemove={() => setGroup(groupIndex, group.filter((_, i) => i !== index))}
                 />
@@ -169,7 +175,7 @@ export function RuleBuilder({
               onClick={() => setGroup(groupIndex, [...group, newCondition(first, currency)])}
               className="flex min-h-9 items-center gap-1 self-start rounded-pill border border-edge px-2 text-sm"
             >
-              <Plus aria-hidden className="size-4" /> And
+              <Plus aria-hidden className="size-4" /> {w.and}
             </button>
           </fieldset>
         </div>
@@ -179,7 +185,7 @@ export function RuleBuilder({
         onClick={() => onChange([...rules, [newCondition(first, currency)]])}
         className="flex min-h-9 items-center gap-1 self-start rounded-pill border border-edge px-2 text-sm"
       >
-        <Plus aria-hidden className="size-4" /> Or
+        <Plus aria-hidden className="size-4" /> {w.or}
       </button>
     </div>
   );
@@ -207,7 +213,9 @@ function ConditionRow({
 }) {
   const id = useId();
   const info = FACT_INFO[condition.fact];
-  const problem = conditionProblem(condition);
+  const w = useAdminText("blocks").display;
+  const own = conditionProblem(condition);
+  const problem = own ? ((w.problems as Record<string, string>)[own] ?? own) : null;
   const changeOp = (op: Op) => {
     // A company's "is" takes yes or no, its "is one of" companies: the value changes kind with the operator.
     if (condition.fact === "company" && (op === "is") !== (condition.op === "is")) {
@@ -218,7 +226,7 @@ function ConditionRow({
     <div className="flex flex-col gap-2 rounded-md border border-line bg-card p-2" role="group" aria-label={label}>
       <div className="flex flex-wrap items-center gap-2">
         <select
-          aria-label={`${label}: what it asks`}
+          aria-label={fillWords(w.asks, { label })}
           value={condition.fact}
           onChange={(event) => onChange(newCondition(event.target.value as Fact, currency))}
           className={fieldClass}
@@ -226,24 +234,24 @@ function ConditionRow({
           {GROUP_ORDER.map((group) => {
             const inGroup = facts.filter((fact) => FACT_INFO[fact].group === group);
             return inGroup.length === 0 ? null : (
-              <optgroup key={group} label={group}>
+              <optgroup key={group} label={w.groups[group] ?? group}>
                 {inGroup.map((fact) => (
                   <option key={fact} value={fact}>
-                    {FACT_INFO[fact].label}
+                    {w.facts[fact] ?? FACT_INFO[fact].label}
                   </option>
                 ))}
               </optgroup>
             );
           })}
         </select>
-        <select aria-label={`${label}: how it compares`} value={condition.op} onChange={(event) => changeOp(event.target.value as Op)} className={fieldClass}>
+        <select aria-label={fillWords(w.compares, { label })} value={condition.op} onChange={(event) => changeOp(event.target.value as Op)} className={fieldClass}>
           {info.ops.map((op) => (
             <option key={op} value={op}>
-              {OP_LABELS[op]}
+              {w.ops[op] ?? OP_LABELS[op]}
             </option>
           ))}
         </select>
-        <button type="button" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`} className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken">
+        <button type="button" onClick={onRemove} aria-label={fillWords(w.remove, { label: label.toLowerCase() })} className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken">
           <X aria-hidden className="size-4" />
         </button>
       </div>
@@ -267,7 +275,8 @@ function ValueField({
   onChange: (c: Condition) => void;
 }) {
   const set = (value: unknown) => onChange({ ...c, value } as Condition);
-  const loading = <p className="text-xs text-muted">Loading the store’s choices…</p>;
+  const w = useAdminText("blocks").display;
+  const loading = <p className="text-xs text-muted">{w.loading}</p>;
   switch (c.fact) {
     case "signedIn":
     case "boughtBefore":
@@ -275,43 +284,43 @@ function ValueField({
     case "company":
       if (c.op === "is") return <YesNo label={label} value={c.value === true} onChange={set} />;
       if (!choices) return loading;
-      if (choices.companies === null) return <p className="text-xs text-muted">Only staff who may see customers can choose companies; choose “is” to ask whether the visitor has a company account.</p>;
-      return <IdChoice label={label} options={choices.companies} value={c.value as string[]} onChange={set} empty="The store has no company accounts yet." />;
+      if (choices.companies === null) return <p className="text-xs text-muted">{w.noCompanies}</p>;
+      return <IdChoice label={label} options={choices.companies} value={c.value as string[]} onChange={set} empty={w.emptyCompanies} />;
     case "customerGroup":
-      return choices ? <IdChoice label={label} options={choices.groups} value={c.value} onChange={set} empty="The store has no customer groups yet." /> : loading;
+      return choices ? <IdChoice label={label} options={choices.groups} value={c.value} onChange={set} empty={w.emptyGroups} /> : loading;
     case "cartProduct":
-      return choices ? <IdChoice label={label} options={choices.products} value={c.value} onChange={set} empty="The store has no products yet." search /> : loading;
+      return choices ? <IdChoice label={label} options={choices.products} value={c.value} onChange={set} empty={w.emptyProducts} search /> : loading;
     case "cartCategory":
-      return choices ? <IdChoice label={label} options={choices.categories} value={c.value} onChange={set} empty="The store has no product categories yet." /> : loading;
+      return choices ? <IdChoice label={label} options={choices.categories} value={c.value} onChange={set} empty={w.emptyCategories} /> : loading;
     case "buyer":
       return (
-        <select aria-label={`${label}: buyer`} value={c.value} onChange={(event) => set(event.target.value)} className={fieldClass}>
-          <option value="business">A business</option>
-          <option value="private">A private person</option>
+        <select aria-label={fillWords(w.buyer, { label })} value={c.value} onChange={(event) => set(event.target.value)} className={fieldClass}>
+          <option value="business">{w.business}</option>
+          <option value="private">{w.private}</option>
         </select>
       );
     case "country":
-      return choices ? <IdChoice label={label} options={choices.countries.map((x) => ({ id: x.code, name: x.name }))} value={c.value} onChange={set} empty="The store sells to no country yet." /> : loading;
+      return choices ? <IdChoice label={label} options={choices.countries.map((x) => ({ id: x.code, name: x.name }))} value={c.value} onChange={set} empty={w.emptyCountries} /> : loading;
     case "language":
-      return choices ? <IdChoice label={label} options={choices.languages.map((x) => ({ id: x.code, name: x.name }))} value={c.value} onChange={set} empty="No languages." /> : loading;
+      return choices ? <IdChoice label={label} options={choices.languages.map((x) => ({ id: x.code, name: x.name }))} value={c.value} onChange={set} empty={w.emptyLanguages} /> : loading;
     case "currency":
-      return choices ? <IdChoice label={label} options={choices.currencies.map((x) => ({ id: x, name: x }))} value={c.value} onChange={set} empty="No currencies." /> : loading;
+      return choices ? <IdChoice label={label} options={choices.currencies.map((x) => ({ id: x, name: x }))} value={c.value} onChange={set} empty={w.emptyCurrencies} /> : loading;
     case "date":
       return (
         <div className="flex flex-wrap gap-2">
           <label className="flex flex-col gap-1 text-xs">
-            From
+            {w.from}
             <input type="datetime-local" value={c.value.from ?? ""} onChange={(event) => set({ ...c.value, from: event.target.value || undefined })} className={fieldClass} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
-            Until
+            {w.until}
             <input type="datetime-local" value={c.value.to ?? ""} onChange={(event) => set({ ...c.value, to: event.target.value || undefined })} className={fieldClass} />
           </label>
         </div>
       );
     case "weekday":
       return (
-        <div role="group" aria-label={`${label}: days`} className="flex flex-wrap gap-1">
+        <div role="group" aria-label={fillWords(w.daysLabel, { label })} className="flex flex-wrap gap-1">
           {WEEKDAYS.map((day) => {
             const on = c.value.includes(day);
             return (
@@ -322,7 +331,7 @@ function ValueField({
                 onClick={() => set(on ? c.value.filter((d) => d !== day) : [...c.value, day].sort())}
                 className="min-h-9 rounded-pill border border-edge px-2 text-sm aria-pressed:border-brand aria-pressed:bg-inverse aria-pressed:text-inverse-ink"
               >
-                {WEEKDAY_LABELS[day].slice(0, 3)}
+                {((w.days as Record<string, string>)[String(day)] ?? WEEKDAY_LABELS[day]).slice(0, 3)}
               </button>
             );
           })}
@@ -332,14 +341,14 @@ function ValueField({
       return (
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs">
-            From
+            {w.from}
             <input type="time" value={c.value.from} onChange={(event) => set({ ...c.value, from: event.target.value })} className={fieldClass} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
-            Until
+            {w.until}
             <input type="time" value={c.value.to} onChange={(event) => set({ ...c.value, to: event.target.value })} className={fieldClass} />
           </label>
-          <p className="pb-2 text-xs text-muted">A start after the end runs over midnight.</p>
+          <p className="pb-2 text-xs text-muted">{w.midnight}</p>
         </div>
       );
     case "cartValue": {
@@ -351,18 +360,18 @@ function ValueField({
         <div className="flex flex-wrap items-end gap-2">
           {c.op !== "lte" && (
             <label className="flex flex-col gap-1 text-xs">
-              {c.op === "between" ? "From" : "Amount"}
+              {c.op === "between" ? w.from : w.amount}
               <input type="number" min={0} step="any" inputMode="decimal" value={major(c.value.min)} onChange={(event) => set({ ...c.value, min: minor(event.target.value) })} className={`${fieldClass} w-28`} />
             </label>
           )}
           {c.op !== "gte" && (
             <label className="flex flex-col gap-1 text-xs">
-              {c.op === "between" ? "To" : "Amount"}
+              {c.op === "between" ? w.to : w.amount}
               <input type="number" min={0} step="any" inputMode="decimal" value={major(c.value.max)} onChange={(event) => set({ ...c.value, max: minor(event.target.value) })} className={`${fieldClass} w-28`} />
             </label>
           )}
           <label className="flex flex-col gap-1 text-xs">
-            Currency
+            {w.currency}
             <select value={c.value.currency} onChange={(event) => set({ ...c.value, currency: event.target.value })} className={fieldClass}>
               {currencies.map((code) => (
                 <option key={code} value={code}>
@@ -371,7 +380,7 @@ function ValueField({
               ))}
             </select>
           </label>
-          <p className="w-full text-xs text-muted">The cart’s items as the shopper sees them (without VAT for businesses), before shipping and discounts; in another currency, converted at the store’s rates.</p>
+          <p className="w-full text-xs text-muted">{w.cartHint}</p>
         </div>
       );
     }
@@ -380,16 +389,16 @@ function ValueField({
       return (
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs" htmlFor={`${id}-name`}>
-            Parameter
+            {w.parameter}
             <input id={`${id}-name`} value={c.value.name} placeholder="utm_campaign" onChange={(event) => set({ ...c.value, name: event.target.value })} className={fieldClass} />
           </label>
           {needsText && (
             <label className="flex flex-col gap-1 text-xs" htmlFor={`${id}-text`}>
-              Value
+              {w.value}
               <input id={`${id}-text`} value={c.value.text ?? ""} onChange={(event) => set({ ...c.value, text: event.target.value })} className={fieldClass} />
             </label>
           )}
-          <p className="w-full text-xs text-muted">From the page’s address, such as ?utm_campaign=spring. Nothing is kept.</p>
+          <p className="w-full text-xs text-muted">{w.queryHint}</p>
         </div>
       );
     }
@@ -405,10 +414,11 @@ const digitsOf = (currency: string) => {
 };
 
 function YesNo({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  const w = useAdminText("blocks").display;
   return (
-    <select aria-label={`${label}: yes or no`} value={value ? "yes" : "no"} onChange={(event) => onChange(event.target.value === "yes")} className={fieldClass}>
-      <option value="yes">Yes</option>
-      <option value="no">No</option>
+    <select aria-label={fillWords(w.yesNo, { label })} value={value ? "yes" : "no"} onChange={(event) => onChange(event.target.value === "yes")} className={fieldClass}>
+      <option value="yes">{w.yes}</option>
+      <option value="no">{w.no}</option>
     </select>
   );
 }
@@ -430,6 +440,7 @@ export function IdChoice({
   search?: boolean;
 }) {
   const [filter, setFilter] = useState("");
+  const w = useAdminText("blocks").display;
   const known = new Set(options.map((o) => o.id));
   const removed = value.filter((id) => !known.has(id));
   const shown = filter.trim() ? options.filter((o) => o.name.toLowerCase().includes(filter.trim().toLowerCase())) : options;
@@ -437,11 +448,11 @@ export function IdChoice({
   return (
     <div className="flex flex-col gap-1">
       {removed.length > 0 && (
-        <ul className="flex flex-wrap gap-1" aria-label={`${label}: removed`}>
+        <ul className="flex flex-wrap gap-1" aria-label={fillWords(w.removedList, { label })}>
           {removed.map((id) => (
             <li key={id} className="flex items-center gap-1 rounded border border-(--danger) px-2 py-0.5 text-xs text-(--danger)">
-              Removed
-              <button type="button" onClick={() => toggle(id)} aria-label="Take the removed one out" className="rounded hover:bg-sunken">
+              {w.removed}
+              <button type="button" onClick={() => toggle(id)} aria-label={w.takeOut} className="rounded hover:bg-sunken">
                 <X aria-hidden className="size-3" />
               </button>
             </li>
@@ -453,19 +464,19 @@ export function IdChoice({
       ) : (
         <>
           {search && options.length > 8 && (
-            <input type="search" aria-label={`${label}: find`} placeholder="Find…" value={filter} onChange={(event) => setFilter(event.target.value)} className={fieldClass} />
+            <input type="search" aria-label={fillWords(w.find, { label })} placeholder={w.findPlaceholder} value={filter} onChange={(event) => setFilter(event.target.value)} className={fieldClass} />
           )}
-          <div role="group" aria-label={`${label}: choices`} className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+          <div role="group" aria-label={fillWords(w.choices, { label })} className="flex max-h-40 flex-col gap-1 overflow-y-auto">
             {shown.map((option) => (
               <label key={option.id} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={value.includes(option.id)} onChange={() => toggle(option.id)} />
-                {option.name || "(no name)"}
+                {option.name || w.noName}
               </label>
             ))}
           </div>
         </>
       )}
-      {value.length === 0 && options.length > 0 && <p className="text-xs text-muted">Nothing chosen: “is one of” holds for nobody, “is none of” for everybody.</p>}
+      {value.length === 0 && options.length > 0 && <p className="text-xs text-muted">{w.nothingChosen}</p>}
     </div>
   );
 }
@@ -475,15 +486,16 @@ export function IdChoice({
 // ---------------------------------------------------------------------------
 
 /** What an eye says, and its colour: blue for Never, signed in or out; red for conditions (Beaver's colours). */
-export function displayMark(show: Show | undefined): { tone: "plain" | "rules"; text: string } | null {
+export function displayMark(show: Show | undefined, w?: DisplayWords): { tone: "plain" | "rules"; text: string } | null {
   const kind = displayKind(show);
   if (kind === "always") return null;
-  return { tone: kind === "rules" ? "rules" : "plain", text: kind === "never" ? "Never shown" : kind === "rules" ? "Shown by conditions" : DISPLAY_LABELS[kind] };
+  const text = kind === "never" ? (w?.neverShown ?? "Never shown") : kind === "rules" ? (w?.byConditions ?? "Shown by conditions") : (w?.kinds[kind] ?? DISPLAY_LABELS[kind]);
+  return { tone: kind === "rules" ? "rules" : "plain", text };
 }
 
 /** The eye on a part of the canvas whose display is not Always: always there, whatever the size shown. */
 export function DisplayBadge({ show }: { show: Show | undefined }) {
-  const mark = displayMark(show);
+  const mark = displayMark(show, useAdminText("blocks").display);
   if (!mark) return null;
   const Icon = show === "never" ? EyeOff : Eye;
   return (
@@ -504,6 +516,7 @@ export function DisplayBadge({ show }: { show: Show | undefined }) {
 export function DisplayLegend({ parts, onOpen }: { parts: { id: string; name: string; show: Show }[]; onOpen: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const id = useId();
+  const w = useAdminText("blocks").display;
   if (parts.length === 0) return null;
   return (
     <div className="relative">
@@ -515,22 +528,22 @@ export function DisplayLegend({ parts, onOpen }: { parts: { id: string; name: st
         className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm"
       >
         <Eye aria-hidden className="size-4 text-(--chart-1)" strokeWidth={1.75} />
-        Who sees what ({parts.length})
+        {fillWords(w.whoSees, { n: parts.length })}
       </button>
       {open && (
         <div id={id} className="absolute right-0 z-40 mt-1 flex w-80 flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm shadow-md">
           <p className="flex items-center gap-2 text-xs">
-            <Eye aria-hidden className="size-3.5 text-(--chart-1)" /> Blue: never shown, or only to signed-in or signed-out visitors.
+            <Eye aria-hidden className="size-3.5 text-(--chart-1)" /> {w.blue}
           </p>
           <p className="flex items-center gap-2 text-xs">
-            <Eye aria-hidden className="size-3.5 text-(--danger)" /> Red: shown by conditions.
+            <Eye aria-hidden className="size-3.5 text-(--danger)" /> {w.red}
           </p>
           <p className="flex items-center gap-2 text-xs text-muted">
-            <Eye aria-hidden className="size-3.5" /> Grey: hidden at the screen size shown.
+            <Eye aria-hidden className="size-3.5" /> {w.grey}
           </p>
           <ul className="flex flex-col gap-1 border-t border-line pt-2">
             {parts.map((part) => {
-              const mark = displayMark(part.show)!;
+              const mark = displayMark(part.show, w)!;
               return (
                 <li key={part.id}>
                   <button type="button" onClick={() => onOpen(part.id)} className="flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left hover:bg-sunken">

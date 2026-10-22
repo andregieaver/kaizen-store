@@ -5,7 +5,9 @@ import { useId, useMemo, useState } from "react";
 import type { PageContent } from "@/lib/page-content";
 import { FIND_MAX, findInPage, type FindOptions } from "@/lib/page-find-replace";
 
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
+import { countWords, fillWords } from "@/lib/admin-fill";
 
 /**
  * Find and replace (D307): the words typed are found in every text of the page as it is being written (the language chosen), and
@@ -31,6 +33,7 @@ export function FindReplaceDialog({
   // Texts ticked off, by their place; everything found is replaced unless ticked off.
   const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
   const findId = useId();
+  const w = useAdminText("builder").find;
   const replaceId = useId();
 
   const found = useMemo(() => (open ? findInPage(content, query, options) : []), [open, content, query, options]);
@@ -56,12 +59,12 @@ export function FindReplaceDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="Find and replace"
+      title={w.title}
       wide
       footer={
         <>
           <button type="button" onClick={onClose} className="min-h-11 rounded-pill border border-edge px-4 hover:bg-sunken">
-            Close
+            {w.close}
           </button>
           <button
             type="button"
@@ -69,7 +72,7 @@ export function FindReplaceDialog({
             disabled={total === 0}
             className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
-            {total === 0 ? "Replace all" : `Replace ${total === 1 ? "1 match" : `all ${total}`}`}
+            {total === 0 ? w.replaceAll : countWords(total, w.replaceSome)}
           </button>
         </>
       }
@@ -83,7 +86,7 @@ export function FindReplaceDialog({
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <label htmlFor={findId} className="grid gap-1 text-sm">
-            Find
+            {w.find}
             <input
               id={findId}
               value={query}
@@ -97,7 +100,7 @@ export function FindReplaceDialog({
             />
           </label>
           <label htmlFor={replaceId} className="grid gap-1 text-sm">
-            Replace with
+            {w.replaceWith}
             <input
               id={replaceId}
               value={replacement}
@@ -112,15 +115,15 @@ export function FindReplaceDialog({
 
         <p role="status" aria-live="polite" className="text-sm text-ink-2">
           {query === ""
-            ? "Type the words to find. Every text on the page is searched: headings, texts, buttons, captions and descriptions of pictures."
+            ? w.typeWords
             : found.length === 0
-              ? "Not found on this page."
-              : `Found ${found.reduce((sum, f) => sum + f.count, 0)} in ${found.length === 1 ? "1 text" : `${found.length} texts`}.`}
+              ? w.notFound
+              : fillWords(w.found, { n: found.reduce((sum, f) => sum + f.count, 0), texts: countWords(found.length, w.texts) })}
         </p>
 
         <div>
           <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="text-sm underline">
-            {more ? "Fewer choices" : "More choices"}
+            {more ? w.fewer : w.more}
           </button>
           {more && (
             <div className="mt-3 grid gap-3">
@@ -131,7 +134,7 @@ export function FindReplaceDialog({
                     checked={!!options.matchCase}
                     onChange={(event) => setOptions((o) => ({ ...o, matchCase: event.target.checked }))}
                   />
-                  Match case
+                  {w.matchCase}
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -139,11 +142,11 @@ export function FindReplaceDialog({
                     checked={!!options.wholeWords}
                     onChange={(event) => setOptions((o) => ({ ...o, wholeWords: event.target.checked }))}
                   />
-                  Whole words only
+                  {w.wholeWords}
                 </label>
               </div>
               {found.length > 0 && (
-                <ul aria-label="Where it was found" className="grid max-h-80 gap-1 overflow-y-auto rounded-panel border border-line p-2">
+                <ul aria-label={w.where} className="grid max-h-80 gap-1 overflow-y-auto rounded-panel border border-line p-2">
                   {found.map((f) => (
                     <li key={f.key}>
                       <label className="flex items-start gap-2 rounded-lg p-2 text-sm hover:bg-sunken">
@@ -151,7 +154,7 @@ export function FindReplaceDialog({
                         <span className="grid gap-0.5">
                           <span className="text-caption text-muted">
                             {f.label}
-                            {f.count > 1 ? ` · ${f.count} times` : ""}
+                            {f.count > 1 ? ` · ${fillWords(w.times, { n: f.count })}` : ""}
                           </span>
                           <span className="text-ink">
                             {f.before}

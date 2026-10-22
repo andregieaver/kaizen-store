@@ -4,6 +4,9 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEven
 
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
 import { MIN_SHARE, dragWidth, moveEdge, sharesOf } from "@/lib/resize";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 /**
  * Dragging on the page builder's canvas, after Beaver Builder's: a row's side edges change how wide its content may be,
@@ -42,6 +45,7 @@ export function RowWidthHandles({
   /** Takes the row's own width away. */
   onReset: () => void;
 }) {
+  const w = useAdminText("builder").resize;
   const [reading, setReading] = useState<number | null>(null);
   const start = useRef<{ x: number; px: number; scale: number; side: 1 | -1; room: number } | null>(null);
 
@@ -91,12 +95,12 @@ export function RowWidthHandles({
       role="slider"
       tabIndex={0}
       aria-orientation="horizontal"
-      aria-label={`${label}, ${name} edge`}
+      aria-label={fillWords(name === "left" ? w.leftEdge : w.rightEdge, { label })}
       aria-valuemin={CONTENT_MAX_MIN}
       aria-valuemax={CONTENT_MAX_MAX}
       aria-valuenow={value ?? undefined}
-      aria-valuetext={value ? `${value} pixels` : "The theme's content width"}
-      title="Drag to change the content width; Shift for free steps; double-click for the theme's"
+      aria-valuetext={value ? fillWords(w.pixels, { n: value }) : w.themeWidth}
+      title={w.widthTitle}
       data-resize-handle="row-width"
       data-active={reading !== null ? "" : undefined}
       onPointerDown={begin(sign)}
@@ -147,6 +151,7 @@ export function ColumnDividers({
   /** Gives the layout's shares back. */
   onReset: () => void;
 }) {
+  const w = useAdminText("builder").resize;
   const [measured, setMeasured] = useState<{ lefts: number[]; shares: number[] }>({ lefts: [], shares: [] });
   const [reading, setReading] = useState<{ edge: number; shares: number[] } | null>(null);
   const drag = useRef<{ x: number; total: number; shares: number[]; edge: number } | null>(null);
@@ -235,12 +240,12 @@ export function ColumnDividers({
             role="slider"
             tabIndex={0}
             aria-orientation="horizontal"
-            aria-label={`${label}, edge between column ${edge + 1} and ${edge + 2}`}
+            aria-label={fillWords(w.between, { label, a: edge + 1, b: edge + 2 })}
             aria-valuemin={MIN_SHARE}
             aria-valuemax={100 - MIN_SHARE}
             aria-valuenow={measured.shares[edge]}
-            aria-valuetext={`${measured.shares[edge]} percent for the column before it. Arrow keys move it by one percent, with Shift by five; Delete gives back the layout's widths`}
-            title="Drag to share the row's width; double-click for the layout's"
+            aria-valuetext={fillWords(w.share, { n: measured.shares[edge] })}
+            title={w.shareTitle}
             data-resize-handle="column"
             data-active={shares ? "" : undefined}
             onPointerDown={begin(edge)}

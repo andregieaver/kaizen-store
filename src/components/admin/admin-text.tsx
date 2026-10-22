@@ -12,6 +12,12 @@ import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { marketingEn } from "@/lib/admin-messages/marketing.en";
 import { discountsEn } from "@/lib/admin-messages/discounts.en";
 import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
+import { builderEn } from "@/lib/admin-messages/builder.en";
+import { blocksEn } from "@/lib/admin-messages/blocks.en";
+import { websiteEn } from "@/lib/admin-messages/website.en";
+import { designEn } from "@/lib/admin-messages/design.en";
+import { redirectsEn } from "@/lib/admin-messages/redirects.en";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 import { productsEn } from "@/lib/admin-messages/products.en";
 import { productEn } from "@/lib/admin-messages/product.en";
@@ -40,7 +46,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

@@ -1,5 +1,7 @@
 import { erfc, MIN_PER_ARM } from "./experiment-stats";
 import { GOAL_WORDS, MAX_RUN_DAYS, MIN_DAYS, type Goal } from "./experiments";
+import { countWords, fillWords } from "./admin-fill";
+import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
 import { formatMoney } from "./money";
 
 /**
@@ -174,9 +176,7 @@ export type Verdict = {
   detail: string;
 };
 
-const percent = (share: number) => `${Math.abs(Math.round(share * 100)).toLocaleString("en-GB")} %`;
-const sure = (chance: number) => (chance > 0.99 ? "more than 99 %" : chance < 0.01 ? "less than 1 %" : `${Math.round(chance * 100)} %`);
-const rateWords = (rate: number) => `${(rate * 100).toLocaleString("en-GB", { maximumFractionDigits: rate < 0.1 ? 2 : 1 })} %`;
+const percentIn = (share: number, locale = "en-GB") => `${Math.abs(Math.round(share * 100)).toLocaleString(locale)} %`;
 const letter = (key: string) => key.toUpperCase();
 
 export type VerdictInput = {
@@ -191,23 +191,33 @@ export type VerdictInput = {
   minDays: number;
   currency: string;
   locale: string;
+  /** The words, in the account's language (D312 A7); English, as the AI manager reads it, unless given. */
+  words?: ExperimentsMessages;
+  /** How numbers are written in those words; en-GB unless given. */
+  numberLocale?: string;
 };
 
 /** The results in words and one of six verdicts; the rule is fixed here: nothing is said before the minimum, a broken split says so first. */
 export function verdictOf(input: VerdictInput): Verdict {
   const { goal, figures, days } = input;
+  const all = input.words ?? experimentsEn;
+  const w = all.verdict;
+  const nl = input.numberLocale ?? "en-GB";
+  const pct = (share: number) => percentIn(share, nl);
+  const sure = (chance: number) => (chance > 0.99 ? w.moreThan99 : chance < 0.01 ? w.lessThan1 : `${Math.round(chance * 100)} %`);
+  const rateWords = (rate: number) => `${(rate * 100).toLocaleString(nl, { maximumFractionDigits: rate < 0.1 ? 2 : 1 })} %`;
   const kind = GOAL_WORDS[goal].kind;
   const original = figures.find((f) => f.key === "a");
   const others = figures.filter((f) => f.key !== "a");
   const visitors = figures.reduce((sum, f) => sum + f.visitors, 0);
-  const basis = `${visitors.toLocaleString("en-GB")} visitors who accepted statistics cookies, over ${days} ${days === 1 ? "day" : "days"}`;
-  if (!original || others.length === 0) return { kind: "few", best: null, headline: "There are no results yet.", detail: "Nobody has seen the test yet." };
+  const basis = countWords(days, w.basis, { n: visitors.toLocaleString(nl), days });
+  if (!original || others.length === 0) return { kind: "few", best: null, headline: w.noResults, detail: w.nobody };
   if (input.splitP < 0.001) {
     return {
       kind: "broken",
       best: null,
-      headline: "Something is wrong with how visitors are divided, so the results cannot be trusted.",
-      detail: `The versions have a different share of visitors than they should (a chance of ${input.splitP < 0.0001 ? "under 1 in 10,000" : "under 1 in 1,000"} if it were luck). Check that every version loads for everyone, then start a new test. ${basis}.`,
+      headline: w.broken,
+      detail: fillWords(w.brokenDetail, { chance: input.splitP < 0.0001 ? w.under10000 : w.under1000, basis }),
     };
   }
   const floor = Math.max(input.minVisitors, MIN_PER_ARM);
@@ -221,34 +231,34 @@ export function verdictOf(input: VerdictInput): Verdict {
     if (kind === "rate") {
       const more = c.diff >= 0;
       return c.relative === null
-        ? `${name} got ${rateWords(c.version)} (the original ${rateWords(c.original)}).`
-        : `${name} got ${percent(c.relative)} ${more ? "more" : "fewer"} visitors who ${GOAL_WORDS[goal].per} than the original (${rateWords(c.original)} to ${rateWords(c.version)}).`;
+        ? fillWords(w.rateNoChange, { name, version: rateWords(c.version), original: rateWords(c.original) })
+        : fillWords(more ? w.rateMore : w.rateFewer, { name, change: pct(c.relative), per: all.goals[goal].per, original: rateWords(c.original), version: rateWords(c.version) });
     }
     const money = (v: number) => formatMoney(Math.round(v), input.currency, input.locale);
     return c.relative === null
-      ? `${name} earned ${money(c.version)} per visitor (the original ${money(c.original)}).`
-      : `${name} earned ${percent(c.relative)} ${c.diff >= 0 ? "more" : "less"} per visitor than the original (${money(c.original)} to ${money(c.version)}).`;
+      ? fillWords(w.moneyNoChange, { name, version: money(c.version), original: money(c.original) })
+      : fillWords(c.diff >= 0 ? w.moneyMore : w.moneyLess, { name, change: pct(c.relative), original: money(c.original), version: money(c.version) });
   };
   if (fewest < floor || days < input.minDays) {
     const needVisitors = Math.max(0, floor - fewest);
     const needDays = Math.max(0, input.minDays - days);
-    const need = [needVisitors > 0 && `${needVisitors.toLocaleString("en-GB")} more visitors for the version with the fewest`, needDays > 0 && `${needDays} more ${needDays === 1 ? "day" : "days"}`].filter(Boolean).join(" and ");
+    const need = [needVisitors > 0 && fillWords(w.needVisitors, { n: needVisitors.toLocaleString(nl) }), needDays > 0 && countWords(needDays, w.needDays)].filter(Boolean).join(w.and);
     return {
       kind: fewest < floor ? "few" : "early",
       best: null,
-      headline: "Too early to say.",
-      detail: `${leading ? `${describe(leading)} That is only the start: it can still change. ` : ""}Wait for ${need}. ${basis}.`,
+      headline: w.early,
+      detail: fillWords(w.earlyDetail, { start: leading ? fillWords(w.earlyStart, { describe: describe(leading) }) : "", need, basis }),
     };
   }
-  if (!leading) return { kind: "few", best: null, headline: "There are no results yet.", detail: basis };
+  if (!leading) return { kind: "few", best: null, headline: w.noResults, detail: basis };
   const winners = comparisons.filter((c) => c.low > 0).sort((x, y) => y.chanceBetter - x.chanceBetter);
   if (winners.length > 0) {
-    const w = winners[0];
+    const win = winners[0];
     return {
       kind: "better",
-      best: w.key,
-      headline: `${letter(w.key)} is better than the original.`,
-      detail: `${describe(w)} We are ${sure(w.chanceBetter)} sure ${letter(w.key)} is better. This is based on ${basis}.`,
+      best: win.key,
+      headline: fillWords(w.better, { name: letter(win.key) }),
+      detail: fillWords(w.betterDetail, { describe: describe(win), sure: sure(win.chanceBetter), name: letter(win.key), basis }),
     };
   }
   const worse = comparisons.filter((c) => c.high < 0).sort((x, y) => x.chanceBetter - y.chanceBetter)[0];
@@ -256,15 +266,15 @@ export function verdictOf(input: VerdictInput): Verdict {
     return {
       kind: "worse",
       best: null,
-      headline: "The original is better.",
-      detail: `${describe(worse)} We are ${sure(1 - worse.chanceBetter)} sure the original is better than ${letter(worse.key)}. This is based on ${basis}. Keep the original.`,
+      headline: w.worse,
+      detail: fillWords(w.worseDetail, { describe: describe(worse), sure: sure(1 - worse.chanceBetter), name: letter(worse.key), basis }),
     };
   }
   return {
     kind: "even",
     best: null,
-    headline: "No clear difference between the versions.",
-    detail: `${describe(leading)} That is within what chance alone could do. This is based on ${basis}. Keep the original, or try a bolder change.`,
+    headline: w.even,
+    detail: fillWords(w.evenDetail, { describe: describe(leading), basis }),
   };
 }
 
@@ -301,6 +311,9 @@ export function estimateRuntime(input: {
   eligiblePerDay: number;
   trafficShare: number;
   minDays?: number;
+  /** The words and how numbers are written (D312 A7); English unless given. */
+  words?: ExperimentsMessages;
+  numberLocale?: string;
 }): RuntimeEstimate | null {
   const perVersion = visitorsPerVersion(input.baseline, input.relativeChange);
   const perDay = input.eligiblePerDay * input.trafficShare;
@@ -309,15 +322,18 @@ export function estimateRuntime(input: {
   const weeks = Math.ceil(Math.max(raw, input.minDays ?? MIN_DAYS) / 7);
   const days = weeks * 7;
   const tooLong = days > 42;
-  const change = percent(input.relativeChange);
+  const nl = input.numberLocale ?? "en-GB";
+  const w = (input.words ?? experimentsEn).estimate;
+  const change = percentIn(input.relativeChange, nl);
+  const n = perVersion.toLocaleString(nl);
   return {
     perVersion,
     days,
     tooLong,
     sentence:
       days > MAX_RUN_DAYS
-        ? `To see a ${change} change you would need about ${perVersion.toLocaleString("en-GB")} visitors for each version, which is more than ${MAX_RUN_DAYS} days at today's traffic. Choose a goal with more activity (adding to the cart, or a click), or a bolder change.`
-        : `To see a ${change} change you need about ${perVersion.toLocaleString("en-GB")} visitors for each version: about ${days} days at today's traffic.${tooLong ? " That is long: a goal with more activity (adding to the cart, or a click) or a bolder change would answer sooner." : ""}`,
+        ? fillWords(w.tooLong, { change, n, max: MAX_RUN_DAYS })
+        : `${fillWords(w.days, { change, n, days })}${tooLong ? w.long : ""}`,
   };
 }
 

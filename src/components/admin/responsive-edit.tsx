@@ -5,7 +5,6 @@ import { createContext, useCallback, useContext, useId, useState, type ReactNode
 
 import {
   SIZES,
-  SIZE_LABELS,
   TYPICAL_SCREENS,
   ZOOMS,
   clampWidth,
@@ -18,6 +17,10 @@ import {
 import { clearAt, sizeSource, visibilityPatch, type SizeField, type SizeSource } from "@/lib/responsive";
 import type { Show } from "@/lib/visibility";
 
+import { builderEn, type BuilderMessages } from "@/lib/admin-messages/builder.en";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { DisplayFields, showPatch, type DisplaySetup } from "./display-fields";
 import type { SizeOverrides } from "@/lib/page-content";
 
@@ -52,6 +55,9 @@ export function DeviceIcon({ size, className = "size-4" }: { size: Size; classNa
 export function SizeSwitch({ label }: { label: string }) {
   const { size, choose } = useSizeEdit();
   const [open, setOpen] = useState(false);
+  const words = useAdminText("builder");
+  const sizes = words.sizes;
+  const w = words.responsive;
   const id = useId();
   return (
     <span className="inline-flex items-center gap-0.5" data-size-switch="">
@@ -59,22 +65,22 @@ export function SizeSwitch({ label }: { label: string }) {
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`${label}: edited at ${SIZE_LABELS[size]}. Choose a screen size`}
-        title="Edit at a screen size"
+        aria-label={fillWords(w.editedAt, { label, size: sizes[size] })}
+        title={w.editAtSize}
         onClick={() => setOpen((o) => !o)}
         className="flex size-7 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink aria-expanded:bg-sunken aria-expanded:text-ink"
       >
         <DeviceIcon size={size} />
       </button>
       {open && (
-        <span id={id} role="group" aria-label="Screen sizes" className="inline-flex items-center gap-0.5 rounded border border-line bg-card p-0.5">
+        <span id={id} role="group" aria-label={w.screenSizes} className="inline-flex items-center gap-0.5 rounded border border-line bg-card p-0.5">
           {SIZES.map((s) => (
             <button
               key={s}
               type="button"
               aria-pressed={s === size}
-              aria-label={SIZE_LABELS[s]}
-              title={SIZE_LABELS[s]}
+              aria-label={sizes[s]}
+              title={sizes[s]}
               onClick={() => {
                 choose(s);
                 setOpen(false);
@@ -91,9 +97,10 @@ export function SizeSwitch({ label }: { label: string }) {
 }
 
 /** Where a field's value comes from at the size edited: set there, inherited from a larger size, or the default. */
-export function sizeNote(source: SizeSource, size: Size): string {
-  if (source.own) return `Set for ${SIZE_LABELS[size]}`;
-  return source.from ? `From ${SIZE_LABELS[source.from]}` : "Default";
+export function sizeNote(source: SizeSource, size: Size, words: Pick<BuilderMessages, "sizes" | "responsive"> = builderEn): string {
+  const w = words.responsive;
+  if (source.own) return fillWords(w.setFor, { size: words.sizes[size] });
+  return source.from ? fillWords(w.from, { size: words.sizes[source.from] }) : w.default;
 }
 
 /** Classes that grey a field's value while it is only inherited at the size edited (its own once changed). */
@@ -119,6 +126,8 @@ export function SizeMark({
 }) {
   const { size } = useSizeEdit();
   const source = sizeSource(part, size, field);
+  const words = useAdminText("builder");
+  const w = words.responsive;
   return (
     <span className="ml-1 inline-flex flex-wrap items-center gap-1 align-middle text-xs font-normal">
       <SizeSwitch label={label} />
@@ -126,13 +135,13 @@ export function SizeMark({
         (source.own ? (
           <>
             <span data-size-own="" className="rounded bg-sunken px-1.5 py-0.5 text-ink">
-              {sizeNote(source, size)}
+              {sizeNote(source, size, words)}
             </span>
             <button
               type="button"
               onClick={() => onPatch(clearAt(part, size, field))}
-              aria-label={`Clear ${label.toLowerCase()} for ${SIZE_LABELS[size]}, to take it from the larger sizes again`}
-              title="Clear: take it from the larger sizes"
+              aria-label={fillWords(w.clearLabel, { label: label.toLowerCase(), size: words.sizes[size] })}
+              title={w.clearTitle}
               className="flex size-6 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
             >
               <X aria-hidden className="size-3.5" />
@@ -140,7 +149,7 @@ export function SizeMark({
           </>
         ) : (
           <span data-size-from="" className="text-muted">
-            {sizeNote(source, size)}
+            {sizeNote(source, size, words)}
           </span>
         ))}
     </span>
@@ -180,12 +189,14 @@ export function VisibilityFields({
 }) {
   const hidden = new Set(part.visibility?.hideAt ?? []);
   const hint = useId();
+  const words = useAdminText("builder");
+  const w = words.responsive;
   return (
     <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
-      <legend className="float-left mb-1 w-full font-medium">Visibility</legend>
+      <legend className="float-left mb-1 w-full font-medium">{w.visibility}</legend>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium" id={`${hint}-label`}>
-          Breakpoint
+          {w.breakpoint}
         </span>
         <div role="group" aria-labelledby={`${hint}-label`} aria-describedby={hint} className="flex flex-wrap gap-2">
           {SIZES.map((size) => {
@@ -197,19 +208,18 @@ export function VisibilityFields({
                 aria-pressed={shown}
                 disabled={Boolean(locked)}
                 onClick={() => onChange(visibilityPatch(part, size, !shown))}
-                title={`${SIZE_LABELS[size]}: ${shown ? "shown" : "hidden"}`}
+                title={fillWords(shown ? w.shownAt : w.hiddenAt, { size: words.sizes[size] })}
                 className="flex min-h-10 items-center gap-2 rounded-pill border border-edge px-3 text-sm text-muted aria-pressed:border-brand aria-pressed:bg-inverse aria-pressed:text-inverse-ink disabled:opacity-50"
               >
                 <DeviceIcon size={size} />
-                <span>{SIZE_LABELS[size]}</span>
-                <span className="sr-only">{shown ? ", shown" : ", hidden"}</span>
+                <span>{words.sizes[size]}</span>
+                <span className="sr-only">{shown ? w.shownSr : w.hiddenSr}</span>
               </button>
             );
           })}
         </div>
         <p id={hint} className="text-xs text-muted">
-          {locked ??
-            "Pressed: shown at that screen size. A part hidden at a size is left out there on the site; the editor keeps it, faded, with a grey eye."}
+          {locked ?? w.pressed}
         </p>
       </div>
       {/* Display (phase 4, docs/responsive-editing.md 6): always, never, signed in, signed out or by conditions, left out by the server. */}
@@ -227,16 +237,17 @@ export function VisibilityFields({
 
 /** The grey eye on a part of the canvas hidden at some sizes: shown (by the canvas's rules) only at those sizes. */
 export function HiddenBadge({ hideAt }: { hideAt: Size[] | undefined }) {
+  const words = useAdminText("builder");
   if (!hideAt || hideAt.length === 0) return null;
-  const names = hideAt.map((size) => SIZE_LABELS[size]).join(", ");
+  const names = hideAt.map((size) => words.sizes[size]).join(", ");
   return (
     <span
       data-builder-hidden=""
-      title={`Hidden on the site at: ${names}`}
+      title={fillWords(words.responsive.hiddenOnSite, { names })}
       className="pointer-events-none absolute top-1 right-1 z-20 hidden items-center gap-1 rounded border border-line bg-sunken px-1.5 py-0.5 text-[11px] text-muted shadow-sm"
     >
       <Eye aria-hidden className="size-3.5" />
-      <span>Hidden</span>
+      <span>{words.responsive.hidden}</span>
     </span>
   );
 }
@@ -356,40 +367,42 @@ export function ResponsiveBar({
 }) {
   const range = sizeRange(breakpoints, view.size);
   const id = useId();
+  const words = useAdminText("builder");
+  const w = words.responsive;
   return (
     <div
       role="toolbar"
-      aria-label="Responsive editing"
+      aria-label={w.editing}
       data-responsive-bar=""
       className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-line bg-card px-3 py-2 shadow-sm"
     >
       <label className="flex items-center gap-2 text-sm font-medium">
         <DeviceIcon size={view.size} />
-        <span className="sr-only">Screen size</span>
+        <span className="sr-only">{w.screenSize}</span>
         <select value={view.size} onChange={(event) => onSize(event.target.value as Size)} className={barField}>
           {SIZES.map((size) => {
             const r = sizeRange(breakpoints, size);
             return (
               <option key={size} value={size}>
-                {SIZE_LABELS[size]} ({size === "xl" ? `${r.min} px and wider` : size === "sm" ? `under ${r.max + 1} px` : `${r.min}–${r.max} px`})
+                {words.sizes[size]} ({size === "xl" ? fillWords(w.wider, { n: r.min }) : size === "sm" ? fillWords(w.under, { n: r.max + 1 }) : `${r.min}–${r.max} px`})
               </option>
             );
           })}
         </select>
       </label>
       <span className="flex items-center gap-1.5 text-sm" aria-describedby={`${id}-range`}>
-        <PixelsField label="Width in pixels" value={view.width} min={range.min} max={range.max} onCommit={onWidth} />
+        <PixelsField label={w.width} value={view.width} min={range.min} max={range.max} onCommit={onWidth} />
         <span aria-hidden className="text-muted">
           ×
         </span>
-        <PixelsField label="Height in pixels" value={view.height} min={320} max={4000} onCommit={onHeight} />
+        <PixelsField label={w.height} value={view.height} min={320} max={4000} onCommit={onHeight} />
         <span className="text-muted">px</span>
       </span>
       <span id={`${id}-range`} className="sr-only">
-        The width stays between {range.min} and {range.max} pixels for {SIZE_LABELS[view.size]}.
+        {fillWords(w.range, { min: range.min, max: range.max, size: words.sizes[view.size] })}
       </span>
       <label className="flex items-center gap-2 text-sm">
-        Zoom
+        {w.zoom}
         <select value={view.zoom} onChange={(event) => onZoom(Number(event.target.value))} className={barField}>
           {(ZOOMS.includes(view.zoom as (typeof ZOOMS)[number]) ? ZOOMS : [...ZOOMS, view.zoom]).map((zoom) => (
             <option key={zoom} value={zoom}>
@@ -398,14 +411,14 @@ export function ResponsiveBar({
           ))}
         </select>
       </label>
-      <p className="hidden text-xs text-muted lg:block">Settings you change now are for {SIZE_LABELS[view.size]} and smaller.</p>
+      <p className="hidden text-xs text-muted lg:block">{fillWords(w.forSize, { size: words.sizes[view.size] })}</p>
       <button
         type="button"
         onClick={onExit}
         aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
         className="ml-auto min-h-9 rounded-pill border border-edge px-3 text-sm font-medium hover:bg-sunken"
       >
-        Exit
+        {w.exit}
       </button>
     </div>
   );
@@ -413,37 +426,39 @@ export function ResponsiveBar({
 
 /** The builder's toolbar button that turns responsive mode on and off. */
 export function ResponsiveToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  const w = useAdminText("builder").responsive;
   return (
     <button
       type="button"
       aria-pressed={on}
       onClick={onToggle}
       aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
-      title="Responsive editing (Ctrl or ⌘ + Shift + R)"
+      title={w.toggleTitle}
       className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
     >
       <span aria-hidden className="flex items-center gap-0.5">
         <Monitor className="size-4" strokeWidth={1.75} />
         <Smartphone className="size-3.5" strokeWidth={1.75} />
       </span>
-      Responsive
+      {w.toggle}
     </button>
   );
 }
 
 /** The toolbar switch for parts hidden at the size shown: faded with an eye (the default), or left out as on the site. */
 export function HiddenPartsToggle({ hide, onChange }: { hide: boolean; onChange: (hide: boolean) => void }) {
+  const w = useAdminText("builder").responsive;
   return (
     <button
       type="button"
       role="switch"
       aria-checked={hide}
       onClick={() => onChange(!hide)}
-      title="Parts hidden at the size shown, never shown, or shown only to some visitors (by sign-in or conditions)"
+      title={w.hiddenTitle}
       className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
     >
       <Eye aria-hidden className="size-4" strokeWidth={1.75} />
-      {hide ? "Hidden parts left out" : "Hidden parts shown faded"}
+      {hide ? w.leftOut : w.faded}
     </button>
   );
 }

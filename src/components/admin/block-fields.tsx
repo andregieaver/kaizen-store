@@ -110,7 +110,6 @@ import {
   CUSTOM_ITEMS_MAX,
   TABS_LOOKS,
   EMPTY_DOC,
-  HEADING_SIZES,
   ITEM_TITLE_MAX,
   ITEMS_MAX,
   BUTTON_SHAPES,
@@ -119,10 +118,8 @@ import {
   BUTTON_VARIANTS,
   DUAL_GAP_MAX,
   FIELD_DISPLAYS,
-  FONT_WEIGHTS,
   LOOP_COLUMNS,
   LOOP_LAYOUTS,
-  LOOP_SLOTS,
   TILE_FIELDS_MAX,
   HEADING_MAX,
   isLinkAddress,
@@ -139,7 +136,6 @@ import {
   type LoopConfig,
   type LoopLayout,
   type LoopSlot,
-  type HeadingSize,
   type FaqBlock,
   type FaqChildType,
   type FaqItem,
@@ -155,7 +151,6 @@ import {
   type ButtonVariant,
   type DualButtonBlock,
   type DualButtonSide,
-  type FontWeight,
   type ColumnsBlock,
   type PageBlock,
   type SeparatorBlock,
@@ -163,6 +158,11 @@ import {
   type SizeOverrides,
 } from "@/lib/page-content";
 
+import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
+import { fillWords } from "@/lib/admin-fill";
+
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { useAdminLang, useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
 
@@ -289,8 +289,15 @@ export const BLOCK_EDITORS: Editors = {
 };
 
 /** The editor for a block, if its kind has one here. */
-export function editorFor(block: PageBlock): BlockEditor<PageBlock> | undefined {
-  return BLOCK_EDITORS[block.type] as BlockEditor<PageBlock> | undefined;
+export function editorFor(block: PageBlock, words?: BlocksMessages): BlockEditor<PageBlock> | undefined {
+  const editor = BLOCK_EDITORS[block.type] as BlockEditor<PageBlock> | undefined;
+  if (!editor || !words) return editor;
+  const title = (words.titles as Record<string, string>)[block.type] ?? editor.title;
+  const font = editor.font && {
+    label: editor.font.label === "Font of the names" ? words.font.names : editor.font.label === "Font of the captions" ? words.font.captions : words.font.label,
+    fallback: words.font.fallback,
+  };
+  return { ...editor, title, font };
 }
 
 // ---------------------------------------------------------------------------
@@ -366,6 +373,7 @@ export function NumberField({
   muted?: string;
 }) {
   const id = useId();
+  const w = useAdminText("blocks");
   return (
     <div className={`flex flex-col gap-1 ${muted}`}>
       <div className="flex flex-wrap items-center gap-1">
@@ -388,11 +396,11 @@ export function NumberField({
           }}
           className={`${fieldClass} w-28`}
         />
-        {unit && <span className="text-sm text-muted">{unit}</span>}
+        {unit && <span className="text-sm text-muted">{(w.units as Record<string, string>)[unit] ?? unit}</span>}
       </div>
       {/* A field in pixels has a slider with the value over its thumb (D183). */}
       {unit && /^(px|pixels)$/.test(unit) && max > min && (
-        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={`${label}, slider`} onChange={onChange} className="max-w-64" />
+        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={fillWords(w.common.slider, { label })} onChange={onChange} className="max-w-64" />
       )}
     </div>
   );
@@ -501,10 +509,11 @@ export function OptionalColor({
   fallback: string;
   onChange: (color: string | undefined) => void;
 }) {
+  const w = useAdminText("blocks").common;
   return (
     <div className="flex flex-col gap-3">
       <Check
-        label={`Own ${label.toLowerCase()}`}
+        label={fillWords(w.own, { label: label.toLowerCase() })}
         hint={hint}
         checked={value !== undefined}
         onChange={(on) => onChange(on ? fallback : undefined)}
@@ -519,11 +528,7 @@ export function OptionalColor({
 }
 
 
-const ALIGN_OPTIONS = [
-  { value: "left", label: "Left" },
-  { value: "center", label: "Centre" },
-  { value: "right", label: "Right" },
-] as const;
+const ALIGNS = ["left", "center", "right"] as const;
 
 
 /**
@@ -531,7 +536,7 @@ const ALIGN_OPTIONS = [
  * override of the size (`setAt()`), the inherited one greyed with where it comes from, and a × to give it back.
  */
 export function TextAlignFields({
-  what = "Text alignment",
+  what: asked,
   value: part,
   onChange,
 }: {
@@ -540,13 +545,15 @@ export function TextAlignFields({
   onChange: (patch: { align?: TextAlign | undefined; at?: SizeOverrides | undefined }) => void;
 }) {
   const { size } = useSizeEdit();
+  const w = useAdminText("blocks");
+  const what = asked ?? w.common.textAlign;
   const source = sizeSource(part, size, "align");
   return (
     <Choices
       legend={what}
       mark={<SizeMark part={part} field="align" label={what} onPatch={onChange} />}
       muted={inheritedClass(source, size)}
-      options={ALIGN_OPTIONS}
+      options={ALIGNS.map((value) => ({ value, label: w.lists.positions[value] }))}
       value={valueAt(part, "align", size) ?? "left"}
       onChange={(align) => onChange(setAt(part, size, { align: size === "xl" && align === "left" ? undefined : align }))}
     />
@@ -557,34 +564,31 @@ export function TextAlignFields({
 /** A button's kind, size, corners and colours (D49): a button's, or a content grid's tile buttons (D51). */
 export function ButtonLookFields({ look, onChange }: { look: ButtonLook; onChange: (patch: Partial<ButtonLook>) => void }) {
   const variant = look.variant ?? "filled";
+  const w = useAdminText("blocks");
   return (
     <>
       <Choices
-        legend="Style"
-        options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: BUTTON_VARIANTS[v] }))}
+        legend={w.button.style}
+        options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: w.lists.buttonVariants[v] }))}
         value={variant}
         onChange={(v) => onChange({ variant: v === "filled" ? undefined : v })}
       />
       <Choices
-        legend="Size"
-        options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: BUTTON_SIZES[size] }))}
+        legend={w.button.size}
+        options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: w.lists.buttonSizes[size] }))}
         value={look.size ?? "md"}
         onChange={(size) => onChange({ size: size === "md" ? undefined : size })}
       />
       <Choices
-        legend="Corners"
+        legend={w.button.corners}
         disabled={variant === "text"}
-        options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: BUTTON_SHAPES[shape] }))}
+        options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: w.lists.buttonShapes[shape] }))}
         value={look.shape ?? "rounded"}
         onChange={(shape) => onChange({ shape: shape === "rounded" ? undefined : shape })}
       />
       <OptionalColor
-        label="Button colour"
-        hint={
-          variant === "filled"
-            ? "Fills the button; otherwise the site's text colour."
-            : "Colours the outline and text; otherwise the site's text colour."
-        }
+        label={w.button.colour}
+        hint={variant === "filled" ? w.button.fillsHint : w.button.outlineHint}
         value={look.fill}
         fallback="#1d4ed8"
         onChange={(fill) => onChange({ fill })}
@@ -598,7 +602,7 @@ export function LinkFields({
   label,
   href,
   newTab,
-  placeholder = "Start your store",
+  placeholder: asked,
   onChange,
 }: {
   label: string;
@@ -608,33 +612,35 @@ export function LinkFields({
   onChange: (patch: { label?: string; href?: string; newTab?: boolean }) => void;
 }) {
   const id = useId();
+  const w = useAdminText("blocks").link;
+  const placeholder = asked ?? w.placeholder;
   const address = href.trim();
-  const problem = address === "" ? "It shows on the site once it has an address." : isLinkAddress(address) ? null : "Use a web address (https://…), a page on the site (/about), mailto: or tel:.";
+  const problem = address === "" ? w.noAddress : isLinkAddress(address) ? null : w.badAddress;
   return (
     <div className="flex flex-col gap-4">
-      <TextField label="Text" value={label} max={BUTTON_LABEL_MAX} placeholder={placeholder} onChange={(value) => onChange({ label: value })} />
+      <TextField label={w.text} value={label} max={BUTTON_LABEL_MAX} placeholder={placeholder} onChange={(value) => onChange({ label: value })} />
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
-          Address
+          {w.address}
         </label>
         <input
           id={`${id}-href`}
           value={href}
           maxLength={2000}
           spellCheck={false}
-          placeholder="https://… or /about"
+          placeholder={w.addressPlaceholder}
           aria-invalid={Boolean(problem && address)}
           aria-describedby={`${id}-hint`}
           onChange={(event) => onChange({ href: event.target.value })}
           className={`${fieldClass} aria-invalid:border-danger-text`}
         />
         <span id={`${id}-hint`} className={`text-xs ${problem && address ? "text-danger-text " : "text-muted"}`}>
-          {problem ?? "A page on this site, another site, an email or a phone number."}
+          {problem ?? w.addressHint}
         </span>
       </div>
       <Check
-        label="Open in a new tab"
-        hint="Screen readers are told it opens a new tab."
+        label={w.newTab}
+        hint={w.newTabHint}
         checked={Boolean(newTab)}
         onChange={(on) => onChange({ newTab: on || undefined })}
       />
@@ -673,6 +679,7 @@ export function ItemsEditor<T extends { id: string }>({
   children: (item: T, change: (patch: Partial<T>) => void) => ReactNode;
 }) {
   const [open, setOpen] = useState<string | null>(items[0]?.id ?? null);
+  const w = useAdminText("blocks").items;
   const change = (id: string, patch: Partial<T>) => onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   const move = (index: number, by: number) => onChange(arrayMove(items, index, index + by));
   const sensors = useSensors(
@@ -688,7 +695,7 @@ export function ItemsEditor<T extends { id: string }>({
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm font-medium">{label}</legend>
-      {items.length === 0 && <p className="text-sm text-muted">None yet.</p>}
+      {items.length === 0 && <p className="text-sm text-muted">{w.none}</p>}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dropped}>
         <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-2">
@@ -713,14 +720,14 @@ export function ItemsEditor<T extends { id: string }>({
                     </span>
                     {name}
                   </button>
-                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${name} up`} className={smallButton}>
+                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={fillWords(w.moveUp, { name })} className={smallButton}>
                     ↑
                   </button>
                   <button
                     type="button"
                     onClick={() => move(index, 1)}
                     disabled={index === items.length - 1}
-                    aria-label={`Move ${name} down`}
+                    aria-label={fillWords(w.moveDown, { name })}
                     className={smallButton}
                   >
                     ↓
@@ -736,19 +743,19 @@ export function ItemsEditor<T extends { id: string }>({
                         onChange(next);
                         setOpen(copy.id);
                       }}
-                      aria-label={`Duplicate ${name}`}
+                      aria-label={fillWords(w.duplicateName, { name })}
                       className={smallButton}
                     >
-                      Duplicate
+                      {w.duplicate}
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => onChange(items.filter((i) => i.id !== item.id))}
-                    aria-label={`Remove ${name}`}
+                    aria-label={fillWords(w.removeName, { name })}
                     className={`${smallButton} text-danger-text `}
                   >
-                    Remove
+                    {w.remove}
                   </button>
                 </SortableItem>
               );
@@ -768,7 +775,7 @@ export function ItemsEditor<T extends { id: string }>({
       >
         {addLabel}
       </button>
-      {items.length >= max && <p className="text-xs text-muted">At most {max}.</p>}
+      {items.length >= max && <p className="text-xs text-muted">{fillWords(w.atMost, { max })}</p>}
     </fieldset>
   );
 }
@@ -779,6 +786,7 @@ export function ItemsEditor<T extends { id: string }>({
  */
 function SortableItem({ id, name, body, children }: { id: string; name: string; body: ReactNode; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const w = useAdminText("blocks").items;
   return (
     <li
       ref={setNodeRef}
@@ -790,7 +798,7 @@ function SortableItem({ id, name, body, children }: { id: string; name: string; 
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Drag ${name} to move it`}
+          aria-label={fillWords(w.drag, { name })}
           className="min-h-9 cursor-grab touch-none rounded px-1.5 text-muted hover:bg-sunken active:cursor-grabbing"
         >
           <span aria-hidden>⠿</span>
@@ -807,25 +815,26 @@ function SortableItem({ id, name, body, children }: { id: string; name: string; 
 // ---------------------------------------------------------------------------
 
 /** Options for `Choices` from a record of labels. */
-const optionsOf = <T extends string>(labels: Record<T, string>) =>
-  (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label }));
+const optionsOf = <T extends string>(labels: Record<T, string>, own?: Partial<Record<T, string>>) =>
+  (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label: own?.[value] ?? label }));
 
 /** A separator line (D91): its style, thickness, colour, width and place. */
 function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) {
+  const w = useAdminText("blocks");
   return (
     <>
-      <Choices legend="Line" options={optionsOf(SEPARATOR_LINES)} value={block.line ?? "solid"} onChange={(line) => onChange({ line })} />
-      <NumberField label="Thickness" value={block.thickness ?? 1} min={1} max={SEPARATOR_THICKNESS_MAX} unit="pixels" onChange={(thickness) => onChange({ thickness })} />
+      <Choices legend={w.separator.line} options={optionsOf(SEPARATOR_LINES, w.lists.separatorLines)} value={block.line ?? "solid"} onChange={(line) => onChange({ line })} />
+      <NumberField label={w.separator.thickness} value={block.thickness ?? 1} min={1} max={SEPARATOR_THICKNESS_MAX} unit="pixels" onChange={(thickness) => onChange({ thickness })} />
       <OptionalColor
-        label="Colour"
-        hint="The site's border colour unless you choose one."
+        label={w.separator.colour}
+        hint={w.separator.colourHint}
         value={block.color}
         fallback="#d4d4d8"
         onChange={(color) => onChange({ color })}
       />
-      <NumberField label="Width" value={block.width ?? 100} min={10} max={100} unit="% of the column" onChange={(width) => onChange({ width })} />
+      <NumberField label={w.separator.width} value={block.width ?? 100} min={10} max={100} unit="% of the column" onChange={(width) => onChange({ width })} />
       {(block.width ?? 100) < 100 && (
-        <Choices legend="Position" options={optionsOf(SEPARATOR_POSITIONS)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
+        <Choices legend={w.separator.position} options={optionsOf(SEPARATOR_POSITIONS, w.lists.positions)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
       )}
     </>
   );
@@ -837,30 +846,29 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
  */
 function ColumnsFields({ block, onChange }: BlockEditorProps<ColumnsBlock>) {
   const stacking = block.stack === undefined ? "phones" : block.stack ? "always" : "never";
+  const w = useAdminText("blocks").columns;
   return (
     <>
-      <p className="text-sm text-muted">
-        Drag components into its columns, and columns into it, out of it or onto a line of their own. Each column has its own settings.
-      </p>
+      <p className="text-sm text-muted">{w.intro}</p>
       <Choices
-        legend="One under another"
+        legend={w.stack}
         options={[
-          { value: "phones", label: "On phones" },
-          { value: "never", label: "Never" },
-          { value: "always", label: "Always" },
+          { value: "phones", label: w.onPhones },
+          { value: "never", label: w.never },
+          { value: "always", label: w.always },
         ]}
         value={stacking}
         onChange={(value) => onChange({ stack: value === "phones" ? undefined : value === "always" })}
       />
       <ReverseColumns block={block} onChange={onChange} />
-      <NumberField label="Space between the columns" value={block.gap ?? 32} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
-      <Check label="Columns as tall as the tallest" checked={Boolean(block.equalHeight)} onChange={(equalHeight) => onChange({ equalHeight: equalHeight || undefined })} />
+      <NumberField label={w.gap} value={block.gap ?? 32} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
+      <Check label={w.equal} checked={Boolean(block.equalHeight)} onChange={(equalHeight) => onChange({ equalHeight: equalHeight || undefined })} />
       <Choices
-        legend="Where their content sits"
+        legend={w.where}
         options={[
-          { value: "top", label: "Top" },
-          { value: "middle", label: "Middle" },
-          { value: "bottom", label: "Bottom" },
+          { value: "top", label: w.top },
+          { value: "middle", label: w.middle },
+          { value: "bottom", label: w.bottom },
         ]}
         value={block.verticalAlign ?? "top"}
         onChange={(verticalAlign) => onChange({ verticalAlign: verticalAlign === "top" ? undefined : verticalAlign })}
@@ -872,21 +880,23 @@ function ColumnsFields({ block, onChange }: BlockEditorProps<ColumnsBlock>) {
 /** Whether a Columns component's last column comes first at the size edited, side by side or one under another (D179). */
 function ReverseColumns({ block, onChange }: Pick<BlockEditorProps<ColumnsBlock>, "block" | "onChange">) {
   const { size } = useSizeEdit();
+  const w = useAdminText("blocks").columns;
   return (
     <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(block, size, "reverse"), size)}`}>
       <Check
-        label="Reverse column order"
-        hint="The last column comes first."
+        label={w.reverse}
+        hint={w.reverseHint}
         checked={valueAt(block, "reverse", size) === true}
         onChange={(on) => onChange(setAt(block, size, { reverse: size === "xl" ? on || undefined : on }))}
       />
-      <SizeMark part={block} field="reverse" label="Reverse column order" onPatch={onChange} />
+      <SizeMark part={block} field="reverse" label={w.reverse} onPatch={onChange} />
     </div>
   );
 }
 
 /** A dual button's two buttons (D91): each one's text, address and new tab. */
 function DualButtonFields({ block, onChange }: BlockEditorProps<DualButtonBlock>) {
+  const w = useAdminText("blocks").dual;
   const side = (which: "first" | "second", title: string, placeholder: string) => (
     <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
       <legend className="px-1 text-sm font-medium">{title}</legend>
@@ -901,14 +911,16 @@ function DualButtonFields({ block, onChange }: BlockEditorProps<DualButtonBlock>
   );
   return (
     <>
-      {side("first", "First button", "Shop now")}
-      {side("second", "Second button", "Read more")}
+      {side("first", w.first, w.firstPlaceholder)}
+      {side("second", w.second, w.secondPlaceholder)}
     </>
   );
 }
 
 /** A dual button's look (D91): each button's style and colours, then their shared size, corners, weight, spacing and place. */
 function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.dual;
   const look = (which: "first" | "second", title: string, fallback: ButtonVariant) => {
     const side: DualButtonSide = block[which];
     const variant = side.variant ?? fallback;
@@ -916,10 +928,10 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
     return (
       <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">{title}</legend>
-        <Choices legend="Style" options={optionsOf(BUTTON_VARIANTS)} value={variant} onChange={(v) => set({ variant: v })} />
+        <Choices legend={all.button.style} options={optionsOf(BUTTON_VARIANTS, all.lists.buttonVariants)} value={variant} onChange={(v) => set({ variant: v })} />
         <OptionalColor
-          label="Button colour"
-          hint={variant === "filled" ? "Fills the button; otherwise the site's accent colour." : "Colours the outline and text; otherwise the site's text colour."}
+          label={all.button.colour}
+          hint={variant === "filled" ? w.accentHint : all.button.outlineHint}
           value={side.fill}
           fallback="#1d4ed8"
           onChange={(fill) => set({ fill })}
@@ -929,14 +941,14 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
   };
   return (
     <>
-      {look("first", "First button", "filled")}
-      {look("second", "Second button", "filled")}
-      <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size: ButtonSize) => onChange({ size: size === "md" ? undefined : size })} />
-      <Choices legend="Corners" options={optionsOf(BUTTON_SHAPES)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
+      {look("first", w.first, "filled")}
+      {look("second", w.second, "filled")}
+      <Choices legend={all.button.size} options={optionsOf(BUTTON_SIZES, all.lists.buttonSizes)} value={block.size ?? "md"} onChange={(size: ButtonSize) => onChange({ size: size === "md" ? undefined : size })} />
+      <Choices legend={all.button.corners} options={optionsOf(BUTTON_SHAPES, all.lists.buttonShapes)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
       <ButtonHoverField value={block.hover} onChange={(hover) => onChange({ hover })} />
-      <NumberField label="Space between" value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
+      <NumberField label={w.gap} value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
       <DualStackField block={block} onChange={onChange} />
-      <TextAlignFields what="Position" value={block} onChange={onChange} />
+      <TextAlignFields what={w.position} value={block} onChange={onChange} />
     </>
   );
 }
@@ -944,16 +956,17 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
 /** A dual button's two one under another, each as wide as the column, at the size edited (D179). */
 function DualStackField({ block, onChange }: { block: DualButtonBlock; onChange: (patch: Partial<DualButtonBlock>) => void }) {
   const { size } = useSizeEdit();
+  const w = useAdminText("blocks").dual;
   const source = sizeSource(block, size, "stack");
   return (
     <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(source, size)}`}>
       <Check
-        label="One under another"
-        hint="Each as wide as the column."
+        label={w.stack}
+        hint={w.stackHint}
         checked={valueAt(block, "stack", size) === true}
         onChange={(on) => onChange(setAt(block, size, { stack: size === "xl" ? on || undefined : on }))}
       />
-      <SizeMark part={block} field="stack" label="One under another" onPatch={onChange} />
+      <SizeMark part={block} field="stack" label={w.stack} onPatch={onChange} />
     </div>
   );
 }
@@ -966,23 +979,25 @@ const newItemId = () =>
 function PanelItemsFields({
   items,
   noun,
-  names = { title: "Title", body: "Text" },
+  names: asked,
   onChange,
 }: {
   items: PanelItem[];
-  /** What one is called: "Section", "Tab". */
-  noun: string;
+  /** What one is: a section of an accordion, or a tab. */
+  noun: "section" | "tab";
   /** What its title and text are called. */
   names?: { title: string; body: string };
   onChange: (items: PanelItem[]) => void;
 }) {
+  const w = useAdminText("blocks").panels;
+  const names = asked ?? { title: w.title, body: w.text };
   return (
     <ItemsEditor
-      label={`${noun}s`}
+      label={noun === "section" ? w.sections : w.tabs}
       items={items}
       max={ITEMS_MAX}
-      addLabel={`Add a ${noun.toLowerCase()}`}
-      nameOf={(item, index) => item.title.trim() || `${noun} ${index + 1} (no title yet)`}
+      addLabel={noun === "section" ? w.addSection : w.addTab}
+      nameOf={(item, index) => item.title.trim() || fillWords(noun === "section" ? w.section : w.tab, { n: index + 1 })}
       newItem={() => ({ id: newItemId(), title: "", body: EMPTY_DOC })}
       onChange={onChange}
     >
@@ -998,10 +1013,11 @@ function PanelItemsFields({
 
 /** An accordion's sections (D91). */
 function AccordionFields({ block, onChange }: BlockEditorProps<AccordionBlock>) {
+  const w = useAdminText("blocks").panels;
   return (
     <>
-      <PanelItemsFields items={block.items} noun="Section" onChange={(items) => onChange({ items })} />
-      <p className="text-xs text-muted">A section without a title is left out on the site.</p>
+      <PanelItemsFields items={block.items} noun="section" onChange={(items) => onChange({ items })} />
+      <p className="text-xs text-muted">{w.sectionLeftOut}</p>
     </>
   );
 }
@@ -1014,33 +1030,37 @@ function AccordionStyleFields({
   block: AccordionBlock | FaqBlock;
   onChange: (patch: Partial<Pick<AccordionBlock, "openFirst" | "single" | "look">>) => void;
 }) {
+  const all = useAdminText("blocks");
+  const w = all.panels;
   return (
     <>
-      <Check label={block.type === "faq" ? "First question open" : "First section open"} hint="Shown open when the page loads." checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
-      <Check label="One open at a time" hint={block.type === "faq" ? "Opening a question closes the one that was open." : "Opening a section closes the one that was open."} checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
-      <Choices legend="Look" options={optionsOf(ACCORDION_LOOKS)} value={block.look ?? "lines"} onChange={(look) => onChange({ look: look === "lines" ? undefined : look })} />
+      <Check label={block.type === "faq" ? w.firstQuestion : w.firstSection} hint={w.firstHint} checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
+      <Check label={w.single} hint={block.type === "faq" ? w.singleQuestion : w.singleSection} checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
+      <Choices legend={w.look} options={optionsOf(ACCORDION_LOOKS, all.lists.accordionLooks)} value={block.look ?? "lines"} onChange={(look) => onChange({ look: look === "lines" ? undefined : look })} />
     </>
   );
 }
 
 /** Tabs' titles and texts (D91). */
 function TabsFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
+  const w = useAdminText("blocks").panels;
   return (
     <>
-      <PanelItemsFields items={block.items} noun="Tab" onChange={(items) => onChange({ items })} />
-      <p className="text-xs text-muted">A tab without a title is left out on the site. The first tab shows when the page loads.</p>
+      <PanelItemsFields items={block.items} noun="tab" onChange={(items) => onChange({ items })} />
+      <p className="text-xs text-muted">{w.tabLeftOut}</p>
     </>
   );
 }
 
 /** How tabs look (D91). */
 function TabsStyleFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
+  const all = useAdminText("blocks");
   return (
     <>
-      <Choices legend="Look" options={optionsOf(TABS_LOOKS)} value={block.look ?? "underline"} onChange={(look) => onChange({ look: look === "underline" ? undefined : look })} />
+      <Choices legend={all.panels.look} options={optionsOf(TABS_LOOKS, all.lists.tabsLooks)} value={block.look ?? "underline"} onChange={(look) => onChange({ look: look === "underline" ? undefined : look })} />
       <Choices
-        legend="Tabs"
-        options={optionsOf(TABS_ALIGNS)}
+        legend={all.panels.tabsAlign}
+        options={optionsOf(TABS_ALIGNS, all.lists.tabsAligns)}
         value={block.tabsAlign ?? "start"}
         onChange={(tabsAlign) => onChange({ tabsAlign: tabsAlign === "start" ? undefined : tabsAlign })}
       />
@@ -1050,26 +1070,27 @@ function TabsStyleFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
 
 /** Questions and their answers (D91), each answer with components of its own under its text (D208). */
 function FaqFields({ block, onChange, context }: BlockEditorProps<FaqBlock>) {
+  const w = useAdminText("blocks").faq;
   return (
     <>
       <ItemsEditor
-        label="Questions"
+        label={w.questions}
         items={block.items}
         max={ITEMS_MAX}
-        addLabel="Add a question"
-        nameOf={(item, index) => item.title.trim() || `Question ${index + 1} (no title yet)`}
+        addLabel={w.add}
+        nameOf={(item, index) => item.title.trim() || fillWords(w.unnamed, { n: index + 1 })}
         newItem={(): FaqItem => ({ id: newItemId(), title: "", body: EMPTY_DOC })}
         onChange={(items) => onChange({ items })}
       >
         {(item, change) => (
           <>
-            <TextField label="Question" value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
-            <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label="Answer" />
+            <TextField label={w.question} value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+            <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label={w.answer} />
             <AnswerPartsFields blocks={item.blocks ?? []} editPart={context.editPart} onChange={(blocks) => change({ blocks: blocks.length > 0 ? blocks : undefined })} />
           </>
         )}
       </ItemsEditor>
-      <p className="text-xs text-muted">A question shows on the site once it has an answer: its text, or a component under it.</p>
+      <p className="text-xs text-muted">{w.shows}</p>
     </>
   );
 }
@@ -1089,10 +1110,10 @@ const ANSWER_PART_NAMES: Record<FaqChildType, string> = {
 };
 
 /** A component's few words in the list: its text, else what it is. */
-function answerPartName(block: PageBlock): string {
+function answerPartName(block: PageBlock, names: Record<FaqChildType, string> = ANSWER_PART_NAMES): string {
   const words =
     block.type === "button" ? inlinePlain(block.label) : block.type === "dualButton" ? [block.first.label, block.second.label].map(inlinePlain).filter(Boolean).join(" · ") : blockText(block);
-  const kind = isFaqChildType(block.type) ? ANSWER_PART_NAMES[block.type] : block.type;
+  const kind = isFaqChildType(block.type) ? names[block.type] : block.type;
   return words.trim() ? `${kind}: ${words.trim().slice(0, 60)}${words.trim().length > 60 ? "…" : ""}` : kind;
 }
 
@@ -1103,6 +1124,8 @@ function answerPartName(block: PageBlock): string {
 function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]; editPart?: (blockId: string) => void; onChange: (blocks: PageBlock[]) => void }) {
   const id = useId();
   const [kind, setKind] = useState<FaqChildType>("button");
+  const w = useAdminText("blocks").faq;
+  const nameOf = (block: PageBlock) => answerPartName(block, w.parts);
   const full = blocks.length >= FAQ_CHILDREN_MAX;
   const move = (from: number, to: number) => {
     if (to < 0 || to >= blocks.length) return;
@@ -1114,26 +1137,26 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
   const small = "min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40";
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3" data-answer-parts="">
-      <legend className="px-1 text-sm font-medium">Components under the answer</legend>
-      {blocks.length === 0 && <p className="text-xs text-muted">None yet. Add a button, a picture, a table or more under the answer&apos;s text.</p>}
+      <legend className="px-1 text-sm font-medium">{w.under}</legend>
+      {blocks.length === 0 && <p className="text-xs text-muted">{w.noneYet}</p>}
       {blocks.length > 0 && (
         <ol className="flex flex-col gap-1">
           {blocks.map((child, index) => (
             <li key={child.id} className="flex flex-wrap items-center gap-1 rounded-md bg-sunken px-2 py-1">
-              <span className="mr-auto min-w-0 truncate text-sm">{answerPartName(child)}</span>
+              <span className="mr-auto min-w-0 truncate text-sm">{nameOf(child)}</span>
               {editPart && (
                 <button type="button" className={small} onClick={() => editPart(child.id)}>
-                  Edit
+                  {w.edit}
                 </button>
               )}
-              <button type="button" className={small} disabled={index === 0} onClick={() => move(index, index - 1)} aria-label={`Move ${answerPartName(child)} up`}>
+              <button type="button" className={small} disabled={index === 0} onClick={() => move(index, index - 1)} aria-label={fillWords(w.moveUp, { name: nameOf(child) })}>
                 ↑
               </button>
-              <button type="button" className={small} disabled={index === blocks.length - 1} onClick={() => move(index, index + 1)} aria-label={`Move ${answerPartName(child)} down`}>
+              <button type="button" className={small} disabled={index === blocks.length - 1} onClick={() => move(index, index + 1)} aria-label={fillWords(w.moveDown, { name: nameOf(child) })}>
                 ↓
               </button>
-              <button type="button" className={small} onClick={() => onChange(blocks.filter((b) => b.id !== child.id))} aria-label={`Remove ${answerPartName(child)}`}>
-                Remove
+              <button type="button" className={small} onClick={() => onChange(blocks.filter((b) => b.id !== child.id))} aria-label={fillWords(w.removeName, { name: nameOf(child) })}>
+                {w.remove}
               </button>
             </li>
           ))}
@@ -1141,11 +1164,11 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
       )}
       <div className="flex flex-wrap items-end gap-2">
         <label htmlFor={`${id}-kind`} className="flex flex-col gap-1 text-xs font-medium">
-          Component
+          {w.component}
           <select id={`${id}-kind`} value={kind} onChange={(event) => setKind(event.target.value as FaqChildType)} className="min-h-9 rounded-md border border-line bg-card px-2 text-sm font-normal">
             {FAQ_CHILD_TYPES.map((type) => (
               <option key={type} value={type}>
-                {ANSWER_PART_NAMES[type]}
+                {w.parts[type]}
               </option>
             ))}
           </select>
@@ -1161,23 +1184,24 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
           }}
           className="min-h-9 rounded-pill border border-line px-3 text-sm disabled:opacity-40"
         >
-          Add
+          {w.addPart}
         </button>
-        {full && <span className="text-xs text-muted">An answer holds at most {FAQ_CHILDREN_MAX} components.</span>}
+        {full && <span className="text-xs text-muted">{fillWords(w.full, { max: FAQ_CHILDREN_MAX })}</span>}
       </div>
-      {!editPart && blocks.length > 0 && <p className="text-xs text-muted">Change these components where the questions are used on a page.</p>}
+      {!editPart && blocks.length > 0 && <p className="text-xs text-muted">{w.elsewhere}</p>}
     </fieldset>
   );
 }
 
 /** How FAQs open and look, and whether search engines are given them as questions and answers (D91). */
 function FaqStyleFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
+  const w = useAdminText("blocks").faq;
   return (
     <>
       <AccordionStyleFields block={block} onChange={onChange} />
       <Check
-        label="Tell search engines these are questions and answers"
-        hint="Adds schema.org's FAQPage to the page, which search engines and AI assistants read."
+        label={w.structured}
+        hint={w.structuredHint}
         checked={block.structuredData !== false}
         onChange={(on) => onChange({ structuredData: on ? undefined : false })}
       />
@@ -1187,56 +1211,56 @@ function FaqStyleFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
 
 /** A video (D91): where it comes from, the video, its title and the picture shown before it plays. */
 function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.video;
   const embedded = block.source !== "upload";
   const link = block.link.trim();
   const found = embedded && link !== "" && embedUrl(block.source as "youtube" | "vimeo", link) !== null;
   return (
     <>
-      <Choices legend="Video from" options={optionsOf(VIDEO_SOURCES)} value={block.source} onChange={(source) => onChange({ source })} />
+      <Choices legend={w.from} options={optionsOf(VIDEO_SOURCES, all.lists.videoSources)} value={block.source} onChange={(source) => onChange({ source })} />
       {embedded ? (
         <TextField
-          label={`Address on ${EMBED_NAMES[block.source as "youtube" | "vimeo"]}`}
+          label={fillWords(w.addressOn, { site: EMBED_NAMES[block.source as "youtube" | "vimeo"] })}
           value={block.link}
           max={500}
           placeholder={block.source === "youtube" ? "https://www.youtube.com/watch?v=…" : "https://vimeo.com/…"}
           hint={
             link === ""
-              ? "Paste the address from the video's Share button."
-              : found
-                ? `Found. Nothing loads from ${EMBED_NAMES[block.source as "youtube" | "vimeo"]} until a visitor presses play.`
-                : `That is not the address of a video on ${EMBED_NAMES[block.source as "youtube" | "vimeo"]}.`
+              ? w.paste
+              : fillWords(found ? w.found : w.notVideo, { site: EMBED_NAMES[block.source as "youtube" | "vimeo"] })
           }
           onChange={(value) => onChange({ link: value })}
         />
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Video</p>
+          <p className="text-sm font-medium">{w.video}</p>
           {block.video && <p className="break-all text-sm text-muted">{block.video.url.split("/").pop()}</p>}
           <div className="flex flex-wrap items-center gap-3">
             <VideoUploadButton
               startVideo={context.startVideo}
               upload={context.upload}
-              label={block.video ? "Choose another video" : "Upload a video"}
+              label={block.video ? w.another : w.upload}
               onUploaded={({ video, poster }) => onChange({ video, ...(poster && !block.poster ? { poster } : {}) })}
             />
             {block.video && (
               <button type="button" onClick={() => onChange({ video: null })} className={smallButton}>
-                Remove
+                {w.remove}
               </button>
             )}
           </div>
-          <p className="text-xs text-muted">MP4 or WebM, up to 50 MB. A still from the video is kept as its picture.</p>
+          <p className="text-xs text-muted">{w.formats}</p>
         </div>
       )}
       <TextField
-        label="Title"
+        label={w.title}
         value={block.title}
         max={VIDEO_TITLE_MAX}
-        hint="What the video is, for people using screen readers and in the player."
+        hint={w.titleHint}
         onChange={(title) => onChange({ title })}
       />
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Picture before it plays</p>
+        <p className="text-sm font-medium">{w.poster}</p>
         {block.poster && (
           // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
           <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-line object-cover" />
@@ -1244,20 +1268,18 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
         <div className="flex flex-wrap items-center gap-3">
           <ImageUploadButton
             upload={context.upload}
-            label={block.poster ? "Choose another picture" : "Choose a picture"}
+            label={block.poster ? w.anotherPicture : w.choosePicture}
             current={block.poster}
             onUploaded={(poster) => onChange({ poster })}
           />
           {block.poster && (
             <button type="button" onClick={() => onChange({ poster: null })} className={smallButton}>
-              Remove
+              {w.remove}
             </button>
           )}
         </div>
         <p className="text-xs text-muted">
-          {embedded
-            ? "Shown with a play button; without one, a plain dark panel. YouTube's and Vimeo's own pictures are not used, as loading them would tell those sites about every visitor."
-            : "Shown until the video plays."}
+          {embedded ? w.posterEmbedded : w.posterUpload}
         </p>
       </div>
     </>
@@ -1266,21 +1288,23 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
 
 /** A video's shape and, uploaded, how it plays (D91). */
 function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.video;
   return (
     <>
-      <Choices legend="Shape" options={optionsOf(VIDEO_RATIOS)} value={block.ratio ?? "16:9"} onChange={(ratio) => onChange({ ratio: ratio === "16:9" ? undefined : ratio })} />
+      <Choices legend={w.shape} options={optionsOf(VIDEO_RATIOS, all.lists.videoRatios)} value={block.ratio ?? "16:9"} onChange={(ratio) => onChange({ ratio: ratio === "16:9" ? undefined : ratio })} />
       {block.source === "upload" && (
         <>
           <Check
-            label="Start by itself"
-            hint="Starts muted and loops, as browsers only start videos without sound; stays still for visitors who prefer less motion."
+            label={w.autoplay}
+            hint={w.autoplayHint}
             checked={Boolean(block.autoplay)}
             onChange={(autoplay) => onChange({ autoplay: autoplay || undefined })}
           />
-          <Check label="Loop" checked={Boolean(block.loop) || Boolean(block.autoplay)} disabled={Boolean(block.autoplay)} onChange={(loop) => onChange({ loop: loop || undefined })} />
+          <Check label={w.loop} checked={Boolean(block.loop) || Boolean(block.autoplay)} disabled={Boolean(block.autoplay)} onChange={(loop) => onChange({ loop: loop || undefined })} />
           <Check
-            label="Show the player's controls"
-            hint="A video that does not start by itself always has them, so it can be played."
+            label={w.controls}
+            hint={w.controlsHint}
             checked={block.controls !== false || !block.autoplay}
             disabled={!block.autoplay}
             onChange={(controls) => onChange({ controls: controls ? undefined : false })}
@@ -1294,11 +1318,13 @@ function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
 /** The owner's HTML and what names it (D91). */
 function HtmlFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
   const id = useId();
+  const w = useAdminText("blocks").html;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   return (
     <>
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          HTML
+          {w.html}
         </label>
         <textarea
           id={id}
@@ -1312,22 +1338,18 @@ function HtmlFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
           onChange={(event) => onChange({ html: event.target.value })}
           className={`${fieldClass} py-2 font-mono text-xs leading-relaxed`}
         />
-        <p className="text-xs text-muted">
-          HTML, styles and scripts, such as a form or a widget from another service. It runs in a frame of its own, so it cannot reach the
-          site&apos;s cookies or sign-ins, and the site&apos;s styles do not reach it (only its font and text colour). {block.html.length.toLocaleString("en")}{" "}
-          of {HTML_MAX.toLocaleString("en")} characters.
-        </p>
+        <p className="text-xs text-muted">{fillWords(w.about, { count: block.html.length.toLocaleString(locale), max: HTML_MAX.toLocaleString(locale) })}</p>
       </div>
       <TextField
-        label="Title"
+        label={w.title}
         value={block.title}
         max={200}
-        hint="What it is, such as “Newsletter sign-up”, for people using screen readers."
+        hint={w.titleHint}
         onChange={(title) => onChange({ title })}
       />
       <Check
-        label="Wait until the visitor presses Show"
-        hint="For content from another service that may set cookies: nothing loads until the visitor asks for it."
+        label={w.wait}
+        hint={w.waitHint}
         checked={Boolean(block.waitForClick)}
         onChange={(waitForClick) => onChange({ waitForClick: waitForClick || undefined })}
       />
@@ -1337,19 +1359,20 @@ function HtmlFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
 
 /** The HTML's height: its content's, or set (D91). */
 function HtmlStyleFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
+  const w = useAdminText("blocks").html;
   return (
     <>
       <Choices
-        legend="Height"
+        legend={w.height}
         options={[
-          { value: "fit", label: "Fits its content" },
-          { value: "set", label: "Set" },
+          { value: "fit", label: w.fits },
+          { value: "set", label: w.set },
         ]}
         value={block.height === undefined ? "fit" : "set"}
         onChange={(mode) => onChange({ height: mode === "fit" ? undefined : 400 })}
       />
       {block.height !== undefined && (
-        <NumberField label="Height" value={block.height} min={20} max={HTML_HEIGHT_MAX} unit="px" onChange={(height) => onChange({ height })} />
+        <NumberField label={w.height} value={block.height} min={20} max={HTML_HEIGHT_MAX} unit="px" onChange={(height) => onChange({ height })} />
       )}
     </>
   );
@@ -1357,12 +1380,13 @@ function HtmlStyleFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
 
 /** Testimonials written in by the owner (D91). */
 function TestimonialsFields({ block, onChange, context }: BlockEditorProps<TestimonialsBlock>) {
+  const w = useAdminText("blocks").testimonials;
   const source = (
     <Choices
-      legend="Testimonials from"
+      legend={w.from}
       options={[
-        { value: "custom", label: "Written here" },
-        { value: "google", label: "Google reviews" },
+        { value: "custom", label: w.custom },
+        { value: "google", label: w.google },
       ]}
       value={block.source ?? "custom"}
       onChange={(value) => onChange({ source: value === "google" ? "google" : undefined })}
@@ -1372,20 +1396,16 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
     return (
       <>
         {source}
-        <p className="text-sm text-muted">
-          Your business&apos;s rating and newest reviews on Google, in the page&apos;s language, with Google named as their source. Set up
-          the Google key and choose your business under Integrations, Google reviews (Kaizena Flow&apos;s under Platform, Google reviews). They
-          are asked of Google each time the page is shown, as Google does not allow keeping them.
-        </p>
+        <p className="text-sm text-muted">{w.googleAbout}</p>
         <Choices
-          legend="Only reviews with at least"
-          options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: n === 1 ? "Any stars" : `${n} stars` }))}
+          legend={w.atLeast}
+          options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: n === 1 ? w.anyStars : fillWords(w.stars, { n }) }))}
           value={String(block.minRating ?? 1)}
           onChange={(value) => onChange({ minRating: value === "1" ? undefined : Number(value) })}
         />
         <Choices
-          legend="At most"
-          hint="Google gives the five most relevant"
+          legend={w.atMost}
+          hint={w.atMostHint}
           options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: String(n) }))}
           value={String(block.limit ?? 5)}
           onChange={(value) => onChange({ limit: value === "5" ? undefined : Number(value) })}
@@ -1397,33 +1417,33 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
     <>
       {source}
       <ItemsEditor<Testimonial>
-        label="Testimonials"
+        label={w.label}
         items={block.items}
         max={ITEMS_MAX}
-        addLabel="Add a testimonial"
-        nameOf={(item, index) => item.name.trim() || `Testimonial ${index + 1}${item.quote.trim() ? "" : " (no words yet)"}`}
+        addLabel={w.add}
+        nameOf={(item, index) => item.name.trim() || `${fillWords(w.unnamed, { n: index + 1 })}${item.quote.trim() ? "" : w.noWords}`}
         newItem={() => ({ id: newItemId(), quote: "", name: "", role: "", picture: null })}
         onChange={(items) => onChange({ items })}
       >
         {(item, change) => (
           <>
-            <TextField label="What they said" value={item.quote} max={TESTIMONIAL_QUOTE_MAX} multiline onChange={(quote) => change({ quote })} />
-            <TextField label="Name" value={item.name} max={TESTIMONIAL_NAME_MAX} onChange={(name) => change({ name })} />
+            <TextField label={w.said} value={item.quote} max={TESTIMONIAL_QUOTE_MAX} multiline onChange={(quote) => change({ quote })} />
+            <TextField label={w.name} value={item.name} max={TESTIMONIAL_NAME_MAX} onChange={(name) => change({ name })} />
             <TextField
-              label="Title, company or place"
+              label={w.role}
               value={item.role}
               max={TESTIMONIAL_NAME_MAX}
-              placeholder="Customer in Bergen"
+              placeholder={w.rolePlaceholder}
               onChange={(role) => change({ role })}
             />
             <Choices
-              legend="Stars"
-              options={[{ value: "0", label: "None" }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: "★".repeat(n) }))]}
+              legend={w.starsLegend}
+              options={[{ value: "0", label: w.none }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: "★".repeat(n) }))]}
               value={String(item.rating ?? 0)}
               onChange={(value) => change({ rating: value === "0" ? undefined : Number(value) })}
             />
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Picture</p>
+              <p className="text-sm font-medium">{w.picture}</p>
               <div className="flex flex-wrap items-center gap-3">
                 {item.picture && (
                   // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
@@ -1431,13 +1451,13 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
                 )}
                 <ImageUploadButton
                   upload={context.upload}
-                  label={item.picture ? "Choose another" : "Choose a picture"}
+                  label={item.picture ? w.chooseAnother : w.choose}
                   current={item.picture}
                   onUploaded={(picture) => change({ picture })}
                 />
                 {item.picture && (
                   <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
-                    Remove
+                    {w.remove}
                   </button>
                 )}
               </div>
@@ -1445,9 +1465,7 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
           </>
         )}
       </ItemsEditor>
-      <p className="text-xs text-muted">
-        Use only what customers really said, with their permission to show it. A testimonial without words is left out on the site.
-      </p>
+      <p className="text-xs text-muted">{w.honest}</p>
     </>
   );
 }
@@ -1465,25 +1483,27 @@ export function CarouselFields({ value, onChange }: { value: CarouselSettings | 
   const id = useId();
   // What is typed in the seconds field until it is a number in range; it settles on leaving the field.
   const [typed, setTyped] = useState<string | null>(null);
+  const all = useAdminText("blocks");
+  const w = all.carousel;
   return (
     <div className="flex flex-col gap-4">
-      <Check label="Arrows" hint="Previous and next buttons under the tiles." checked={resolved.arrows} onChange={(arrows) => set({ arrows })} />
-      <Check label="Dots" hint="One dot for each page of tiles, each a button. Left out when everything fits on one page." checked={resolved.dots} onChange={(dots) => set({ dots })} />
+      <Check label={w.arrows} hint={w.arrowsHint} checked={resolved.arrows} onChange={(arrows) => set({ arrows })} />
+      <Check label={w.dots} hint={w.dotsHint} checked={resolved.dots} onChange={(dots) => set({ dots })} />
       <Choices<CarouselSnap>
-        legend="Where a tile rests"
-        options={(Object.keys(CAROUSEL_SNAPS) as CarouselSnap[]).map((snap) => ({ value: snap, label: CAROUSEL_SNAPS[snap] }))}
+        legend={w.rests}
+        options={(Object.keys(CAROUSEL_SNAPS) as CarouselSnap[]).map((snap) => ({ value: snap, label: all.lists.carouselSnaps[snap] }))}
         value={resolved.snap}
         onChange={(snap) => set({ snap })}
       />
       <Check
-        label="Go back to the first tile"
-        hint="Past the last tile, the next arrow returns to the first. The tiles are not copied, so nothing is read twice."
+        label={w.rewind}
+        hint={w.rewindHint}
         checked={resolved.rewind}
         onChange={(rewind) => set({ rewind })}
       />
       <Check
-        label="Move by itself"
-        hint="Automatic movement is unwelcome to many visitors, so leave it off unless the page needs it."
+        label={w.autoplay}
+        hint={w.autoplayHint}
         checked={seconds !== undefined}
         onChange={(on) => {
           setTyped(null);
@@ -1494,7 +1514,7 @@ export function CarouselFields({ value, onChange }: { value: CarouselSettings | 
         <div className="flex flex-col gap-2 pl-7">
           <div className="flex items-center gap-2 text-sm">
             <label htmlFor={`${id}-seconds`} className="font-medium">
-              Seconds on each page
+              {w.seconds}
             </label>
             <input
               id={`${id}-seconds`}
@@ -1514,48 +1534,44 @@ export function CarouselFields({ value, onChange }: { value: CarouselSettings | 
               }}
               className="min-h-10 w-20 rounded-md border border-line bg-card px-2 text-sm"
             />
-            <span className="text-muted">
-              ({AUTOPLAY_SECONDS.min} to {AUTOPLAY_SECONDS.max})
-            </span>
+            <span className="text-muted">{fillWords(w.range, { min: AUTOPLAY_SECONDS.min, max: AUTOPLAY_SECONDS.max })}</span>
           </div>
           <p className="text-xs text-muted">
-            It never moves for visitors who ask their device for less motion. It stops for good when a visitor scrolls, drags, clicks or tabs into it, waits while the
-            pointer is over it or the tab is hidden, and always has a Pause button.
-            {resolved.rewind ? "" : " Without going back to the first tile, it stops at the last."}
+            {w.safe}
+            {resolved.rewind ? "" : w.stopsAtLast}
           </p>
         </div>
       )}
-      <p className="text-xs text-muted">
-        A carousel scrolls its tiles sideways. Not included: slides laid out freely (a hero slider with text and buttons over a picture), vertical sliders, fade or
-        cube effects, thumbnails and video slides. With the arrows and dots both off, visitors scroll with touch, the wheel or the arrow keys.
-      </p>
+      <p className="text-xs text-muted">{w.about}</p>
     </div>
   );
 }
 
 /** How testimonials are laid out and look (D91). */
 function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<TestimonialsBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.testimonials;
   return (
     <>
       <Choices
-        legend="Show as"
+        legend={w.showAs}
         options={[
-          { value: "grid", label: "Grid" },
-          { value: "carousel", label: "Carousel" },
+          { value: "grid", label: w.grid },
+          { value: "carousel", label: w.carousel },
         ]}
         value={block.display ?? "grid"}
         onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined })}
       />
       <Choices
-        legend={block.display === "carousel" ? "To a screen" : "Columns"}
-        hint="one on phones"
+        legend={block.display === "carousel" ? w.toScreen : w.columns}
+        hint={w.onPhones}
         options={TESTIMONIAL_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
         value={String(block.columns ?? 3)}
         onChange={(value) => onChange({ columns: value === "3" ? undefined : (Number(value) as TestimonialsBlock["columns"]) })}
       />
       {block.display === "carousel" && <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />}
-      <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
-      <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
+      <Choices legend={w.look} options={optionsOf(TESTIMONIAL_LOOKS, all.lists.testimonialLooks)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
+      <Check label={w.showStars} checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
     </>
   );
 }
@@ -1563,17 +1579,20 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
 /** A gallery's pictures and videos (D209), in the order they are dragged into, each with its description and caption. */
 function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlock>) {
   const sourceId = useId();
+  const all = useAdminText("blocks");
+  const w = all.gallery;
+  const v = all.video;
   return (
     <>
       <ItemsEditor<GalleryItem>
-        label="Pictures and videos"
+        label={w.label}
         items={block.items}
         max={GALLERY_ITEMS_MAX}
-        addLabel="Add a picture"
+        addLabel={w.add}
         nameOf={(item, index) => {
-          const what = item.kind === "image" ? "Picture" : "Video";
+          const what = item.kind === "image" ? w.picture : w.video;
           const words = item.alt.trim() || item.caption.trim();
-          return `${what} ${index + 1}${words ? `: ${words.slice(0, 40)}` : galleryItemShows(item) ? "" : item.kind === "image" ? " (no picture yet)" : " (no video yet)"}`;
+          return `${what} ${index + 1}${words ? `: ${words.slice(0, 40)}` : galleryItemShows(item) ? "" : item.kind === "image" ? w.noPicture : w.noVideo}`;
         }}
         newItem={(): GalleryItem => ({ id: newItemId(), kind: "image", picture: null, alt: "", caption: "" })}
         onChange={(items) => onChange({ items })}
@@ -1585,8 +1604,8 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
           return (
             <>
               <Choices<GalleryKind>
-                legend="This is a"
-                options={(Object.keys(GALLERY_KINDS) as GalleryKind[]).map((kind) => ({ value: kind, label: GALLERY_KINDS[kind] }))}
+                legend={w.thisIs}
+                options={(Object.keys(GALLERY_KINDS) as GalleryKind[]).map((kind) => ({ value: kind, label: all.lists.galleryKinds[kind] }))}
                 value={item.kind}
                 onChange={(kind) => change(kind === "image" ? { kind, source: undefined, video: undefined, link: undefined } : { kind })}
               />
@@ -1594,7 +1613,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                 <>
                   <div className="flex flex-col gap-1">
                     <label htmlFor={`${sourceId}-${item.id}`} className="text-sm font-medium">
-                      Video from
+                      {v.from}
                     </label>
                     <select
                       id={`${sourceId}-${item.id}`}
@@ -1604,7 +1623,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                     >
                       {(Object.keys(VIDEO_SOURCES) as VideoSource[]).map((key) => (
                         <option key={key} value={key}>
-                          {VIDEO_SOURCES[key]}
+                          {all.lists.videoSources[key]}
                         </option>
                       ))}
                     </select>
@@ -1616,29 +1635,27 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                         <VideoUploadButton
                           startVideo={context.startVideo}
                           upload={context.upload}
-                          label={item.video ? "Choose another video" : "Upload a video"}
+                          label={item.video ? v.another : v.upload}
                           onUploaded={({ video, poster }) => change({ video, ...(poster && !item.picture ? { picture: poster } : {}) })}
                         />
                         {item.video && (
                           <button type="button" onClick={() => change({ video: null })} className={smallButton}>
-                            Remove
+                            {v.remove}
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-muted">MP4 or WebM, up to 50 MB. A still from the video is kept as its picture.</p>
+                      <p className="text-xs text-muted">{v.formats}</p>
                     </div>
                   ) : (
                     <TextField
-                      label={`Address on ${EMBED_NAMES[source]}`}
+                      label={fillWords(v.addressOn, { site: EMBED_NAMES[source] })}
                       value={item.link ?? ""}
                       max={500}
                       placeholder={source === "youtube" ? "https://www.youtube.com/watch?v=…" : "https://vimeo.com/…"}
                       hint={
                         link === ""
-                          ? "Paste the address from the video's Share button."
-                          : found
-                            ? `Found. Nothing loads from ${EMBED_NAMES[source]} until a visitor presses play.`
-                            : `That is not the address of a video on ${EMBED_NAMES[source]}.`
+                          ? v.paste
+                          : fillWords(found ? v.found : v.notVideo, { site: EMBED_NAMES[source] })
                       }
                       onChange={(value) => change({ link: value || undefined })}
                     />
@@ -1646,7 +1663,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                 </>
               )}
               <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium">{item.kind === "image" ? "Picture" : "Picture shown for the video"}</p>
+                <p className="text-sm font-medium">{item.kind === "image" ? w.picture : w.pictureForVideo}</p>
                 <div className="flex flex-wrap items-center gap-3">
                   {item.picture && (
                     // eslint-disable-next-line @next/next/no-img-element -- the owner's own picture, shown small
@@ -1654,34 +1671,34 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                   )}
                   <ImageUploadButton
                     upload={context.upload}
-                    label={item.picture ? "Choose another" : item.kind === "image" ? "Upload a picture" : "Choose a picture"}
+                    label={item.picture ? w.chooseAnother : item.kind === "image" ? w.uploadPicture : w.choosePicture}
                     current={item.picture ? { ...item.picture, alt: item.alt } : null}
                     // A picture made by prompt (D283) is described by what it was asked for; a video keeps its own title.
                     onUploaded={(picture, made) => change({ picture, ...(made && item.kind === "image" ? { alt: made.alt } : {}) })}
                   />
                   {item.picture && (
                     <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
-                      Remove
+                      {v.remove}
                     </button>
                   )}
                 </div>
                 {item.kind === "video" && source !== "upload" && (
-                  <p className="text-xs text-muted">Without one, a dark tile with a play button. YouTube&apos;s and Vimeo&apos;s own pictures are not used, as loading them would tell those sites about every visitor.</p>
+                  <p className="text-xs text-muted">{w.darkTile}</p>
                 )}
               </div>
               <TextField
-                label={item.kind === "image" ? "Alt text" : "Title"}
+                label={item.kind === "image" ? w.alt : w.title}
                 value={item.alt}
                 max={GALLERY_TEXT_MAX}
-                hint={item.kind === "image" ? "What the picture shows, for people who cannot see it." : "What the video is, for people using screen readers."}
+                hint={item.kind === "image" ? w.altHint : w.titleHint}
                 onChange={(alt) => change({ alt })}
               />
-              <TextField label="Caption (optional)" value={item.caption} max={GALLERY_TEXT_MAX} hint="Shown under the tile and in the lightbox." onChange={(caption) => change({ caption })} />
+              <TextField label={w.caption} value={item.caption} max={GALLERY_TEXT_MAX} hint={w.captionHint} onChange={(caption) => change({ caption })} />
             </>
           );
         }}
       </ItemsEditor>
-      <p className="text-xs text-muted">Drag a piece by its handle to change the order. A piece with no picture or video is left out on the site.</p>
+      <p className="text-xs text-muted">{w.order}</p>
     </>
   );
 }
@@ -1690,41 +1707,43 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
 function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>) {
   const { size } = useSizeEdit();
   const carousel = block.view === "carousel";
+  const all = useAdminText("blocks");
+  const w = all.gallery;
   return (
     <>
       <Choices<GalleryView>
-        legend="Show as"
-        options={(Object.keys(GALLERY_VIEWS) as GalleryView[]).map((view) => ({ value: view, label: GALLERY_VIEWS[view] }))}
+        legend={w.showAs}
+        options={(Object.keys(GALLERY_VIEWS) as GalleryView[]).map((view) => ({ value: view, label: all.lists.galleryViews[view] }))}
         value={block.view ?? "grid"}
         onChange={(view) => onChange({ view: view === "grid" ? undefined : view })}
       />
       <Choices
-        legend={carousel ? "Tiles in view" : "Columns"}
-        hint="at the screen size edited"
-        mark={<SizeMark part={block} field="columns" label="Columns" onPatch={onChange} />}
+        legend={carousel ? w.inView : w.columns}
+        hint={w.atSize}
+        mark={<SizeMark part={block} field="columns" label={w.columns} onPatch={onChange} />}
         muted={inheritedClass(sizeSource(block, size, "columns"), size)}
         options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
         value={String(galleryColumns(block, size))}
         onChange={(n) => onChange(setAt(block, size, { columns: Number(n) }))}
       />
       <Choices<GalleryRatio>
-        legend="Tile shape"
-        options={(Object.keys(GALLERY_RATIOS) as GalleryRatio[]).map((ratio) => ({ value: ratio, label: GALLERY_RATIOS[ratio] }))}
+        legend={w.shape}
+        options={(Object.keys(GALLERY_RATIOS) as GalleryRatio[]).map((ratio) => ({ value: ratio, label: all.lists.galleryRatios[ratio] }))}
         value={block.ratio ?? GALLERY_DEFAULTS.ratio}
         onChange={(ratio) => onChange({ ratio: ratio === GALLERY_DEFAULTS.ratio ? undefined : ratio })}
       />
-      <NumberField label="Space between" value={block.gap ?? GALLERY_DEFAULTS.gap} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap: gap === GALLERY_DEFAULTS.gap ? undefined : gap })} />
+      <NumberField label={w.gap} value={block.gap ?? GALLERY_DEFAULTS.gap} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap: gap === GALLERY_DEFAULTS.gap ? undefined : gap })} />
       <Check
-        label="Open full size in a lightbox"
-        hint="A press on a tile shows it over the page, with the previous and the next: arrows, the keyboard's arrow keys or a swipe."
+        label={w.lightbox}
+        hint={w.lightboxHint}
         checked={block.lightbox !== false}
         onChange={(on) => onChange({ lightbox: on ? undefined : false })}
       />
-      <Check label="Show the captions" hint="Under the tiles; the lightbox shows them still." checked={block.showCaptions !== false} onChange={(on) => onChange({ showCaptions: on ? undefined : false })} />
+      <Check label={w.captions} hint={w.captionsHint} checked={block.showCaptions !== false} onChange={(on) => onChange({ showCaptions: on ? undefined : false })} />
       <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
-        <legend className="float-left mb-1 w-full font-medium">Zoom on hover</legend>
+        <legend className="float-left mb-1 w-full font-medium">{w.zoom}</legend>
         <NumberField
-          label="How much a picture grows"
+          label={w.grows}
           value={block.hoverZoom ?? GALLERY_DEFAULTS.hoverZoom}
           min={GALLERY_LIMITS.hoverZoom.min}
           max={GALLERY_LIMITS.hoverZoom.max}
@@ -1732,14 +1751,14 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
           onChange={(hoverZoom) => onChange({ hoverZoom: hoverZoom === GALLERY_DEFAULTS.hoverZoom ? undefined : hoverZoom })}
         />
         <Check
-          label="Its own speed"
-          hint="Otherwise it takes the site's hover time, set in the Theme tab."
+          label={w.ownSpeed}
+          hint={w.ownSpeedHint}
           checked={block.hoverZoomMs !== undefined}
           onChange={(on) => onChange({ hoverZoomMs: on ? GALLERY_DEFAULTS.hoverZoomMs : undefined })}
         />
         {block.hoverZoomMs !== undefined && (
           <NumberField
-            label="Time to grow"
+            label={w.timeToGrow}
             value={block.hoverZoomMs}
             min={GALLERY_LIMITS.hoverZoomMs.min}
             max={GALLERY_LIMITS.hoverZoomMs.max}
@@ -1753,14 +1772,14 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
           {SIZES.every((s) => galleryColumns(block, s) === 1) ? (
             <>
               <Choices<GalleryTransition>
-                legend="From one tile to the next"
-                options={(Object.keys(GALLERY_TRANSITIONS) as GalleryTransition[]).map((transition) => ({ value: transition, label: GALLERY_TRANSITIONS[transition] }))}
+                legend={w.transition}
+                options={(Object.keys(GALLERY_TRANSITIONS) as GalleryTransition[]).map((transition) => ({ value: transition, label: all.lists.galleryTransitions[transition] }))}
                 value={block.transition ?? "slide"}
                 onChange={(transition) => onChange({ transition: transition === "slide" ? undefined : transition })}
               />
               {block.transition === "fade" && (
                 <NumberField
-                  label="Time to fade"
+                  label={w.timeToFade}
                   value={block.fadeMs ?? GALLERY_DEFAULTS.fadeMs}
                   min={GALLERY_LIMITS.fadeMs.min}
                   max={GALLERY_LIMITS.fadeMs.max}
@@ -1770,7 +1789,7 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
               )}
             </>
           ) : (
-            <p className="text-xs text-muted">A fade from tile to tile is offered when one tile is in view at every screen size.</p>
+            <p className="text-xs text-muted">{w.fadeOnlyOne}</p>
           )}
           <CarouselFields value={block.carousel} onChange={(settings) => onChange({ carousel: settings })} />
         </>
@@ -1781,21 +1800,23 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
 
 /** The logos of the brands, each with a name that shows under it (D204). */
 function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.brands;
   return (
     <>
       <ItemsEditor<BrandItem>
-        label="Brands"
+        label={w.label}
         items={block.items}
         max={CUSTOM_ITEMS_MAX}
-        addLabel="Add a brand"
-        nameOf={(item, index) => item.name.trim() || `Brand ${index + 1}${item.picture ? "" : " (no logo yet)"}`}
+        addLabel={w.add}
+        nameOf={(item, index) => item.name.trim() || `${fillWords(w.unnamed, { n: index + 1 })}${item.picture ? "" : w.noLogo}`}
         newItem={() => ({ id: newItemId(), name: "", picture: null })}
         onChange={(items) => onChange({ items })}
       >
         {(item, change) => (
           <>
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Logo</p>
+              <p className="text-sm font-medium">{w.logo}</p>
               <div className="flex flex-wrap items-center gap-3">
                 {item.picture && (
                   // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, shown as it is
@@ -1803,31 +1824,31 @@ function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock
                 )}
                 <ImageUploadButton
                   upload={context.upload}
-                  label={item.picture ? "Choose another" : "Upload a logo"}
+                  label={item.picture ? w.chooseAnother : w.upload}
                   // A logo is the brand's own: a picture model may not draw one (D283).
                   make={false}
                   onUploaded={(picture) => change({ picture })}
                 />
                 {item.picture && (
                   <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
-                    Remove
+                    {w.remove}
                   </button>
                 )}
               </div>
             </div>
-            <TextField label="Name" hint="Shown under the logo, and read out when the logo is not shown." value={item.name} max={100} onChange={(name) => change({ name })} />
+            <TextField label={w.name} hint={w.nameHint} value={item.name} max={100} onChange={(name) => change({ name })} />
             <TextField
-              label="Links to (optional)"
+              label={w.links}
               value={item.href ?? ""}
               max={2000}
-              placeholder="https://… or /about"
-              hint={!item.href?.trim() || isLinkAddress(item.href.trim()) ? undefined : "Use a web address (https://…), a page on the site (/about), mailto: or tel:."}
+              placeholder={all.link.addressPlaceholder}
+              hint={!item.href?.trim() || isLinkAddress(item.href.trim()) ? undefined : all.link.badAddress}
               onChange={(href) => change({ href: href || undefined })}
             />
           </>
         )}
       </ItemsEditor>
-      <p className="text-xs text-muted">A brand with neither a logo nor a name is left out on the site.</p>
+      <p className="text-xs text-muted">{w.leftOut}</p>
     </>
   );
 }
@@ -1837,18 +1858,20 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
   const { size } = useSizeEdit();
   const carousel = block.view === "carousel";
   const movement: BrandsMotion = block.movement ?? "continuous";
+  const all = useAdminText("blocks");
+  const w = all.brands;
   return (
     <>
       <Choices<BrandsView>
-        legend="Show as"
-        options={(Object.keys(BRANDS_VIEWS) as BrandsView[]).map((view) => ({ value: view, label: BRANDS_VIEWS[view] }))}
+        legend={w.showAs}
+        options={(Object.keys(BRANDS_VIEWS) as BrandsView[]).map((view) => ({ value: view, label: all.lists.brandsViews[view] }))}
         value={block.view ?? "grid"}
         onChange={(view) => onChange({ view: view === "grid" ? undefined : view })}
       />
       <Choices
-        legend={carousel ? "Logos in view" : "Logos in a row"}
-        hint="at the screen size edited"
-        mark={<SizeMark part={block} field="columns" label="Logos in a row" onPatch={onChange} />}
+        legend={carousel ? w.inView : w.inRow}
+        hint={all.gallery.atSize}
+        mark={<SizeMark part={block} field="columns" label={w.inRow} onPatch={onChange} />}
         muted={inheritedClass(sizeSource(block, size, "columns"), size)}
         options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
         value={String(brandColumns(block, size))}
@@ -1857,16 +1880,16 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
       {carousel && (
         <>
           <Choices<BrandsMotion>
-            legend="Movement"
-            options={(Object.keys(BRANDS_MOTIONS) as BrandsMotion[]).map((key) => ({ value: key, label: BRANDS_MOTIONS[key] }))}
+            legend={w.movement}
+            options={(Object.keys(BRANDS_MOTIONS) as BrandsMotion[]).map((key) => ({ value: key, label: all.lists.brandsMotions[key] }))}
             value={movement}
             onChange={(value) => onChange({ movement: value === "continuous" ? undefined : value })}
           />
           {movement === "none" ? (
-            <p className="text-xs text-muted">Visitors move it one logo at a time: with arrows on a computer, by swiping on a phone.</p>
+            <p className="text-xs text-muted">{w.byVisitors}</p>
           ) : movement === "continuous" ? (
             <NumberField
-              label="Seconds for a logo to pass"
+              label={w.speed}
               value={block.speed ?? BRANDS_DEFAULTS.speed}
               min={BRANDS_LIMITS.speed.min}
               max={BRANDS_LIMITS.speed.max}
@@ -1875,7 +1898,7 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
             />
           ) : (
             <NumberField
-              label="Seconds between steps"
+              label={w.interval}
               value={block.interval ?? BRANDS_DEFAULTS.interval}
               min={BRANDS_LIMITS.interval.min}
               max={BRANDS_LIMITS.interval.max}
@@ -1883,26 +1906,26 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
               onChange={(interval) => onChange({ interval: interval === BRANDS_DEFAULTS.interval ? undefined : interval })}
             />
           )}
-          {movement !== "none" && <p className="text-xs text-muted">It stops under the pointer or the keyboard&apos;s focus, and stands still for visitors who prefer less motion.</p>}
+          {movement !== "none" && <p className="text-xs text-muted">{w.stops}</p>}
         </>
       )}
       <NumberField
-        label="Tallest logo"
+        label={w.tallest}
         value={block.logoHeight ?? BRANDS_DEFAULTS.logoHeight}
         min={BRANDS_LIMITS.logoHeight.min}
         max={BRANDS_LIMITS.logoHeight.max}
         unit="pixels"
         onChange={(logoHeight) => onChange({ logoHeight: logoHeight === BRANDS_DEFAULTS.logoHeight ? undefined : logoHeight })}
       />
-      <NumberField label="Space between" value={block.gap ?? BRANDS_DEFAULTS.gap} min={0} max={200} unit="pixels" onChange={(gap) => onChange({ gap: gap === BRANDS_DEFAULTS.gap ? undefined : gap })} />
-      <Check label="Show the names" hint="Under each logo." checked={block.showNames !== false} onChange={(show) => onChange({ showNames: show ? undefined : false })} />
+      <NumberField label={w.gap} value={block.gap ?? BRANDS_DEFAULTS.gap} min={0} max={200} unit="pixels" onChange={(gap) => onChange({ gap: gap === BRANDS_DEFAULTS.gap ? undefined : gap })} />
+      <Check label={w.showNames} hint={w.showNamesHint} checked={block.showNames !== false} onChange={(show) => onChange({ showNames: show ? undefined : false })} />
       <Choices
-        legend="Logo colour"
-        hint="Brand colour, white, black and a custom colour fill each logo's shape: best with logos on a see-through background"
+        legend={w.colour}
+        hint={w.colourHint}
         options={[
-          { value: "original", label: "As uploaded" },
-          { value: "grey", label: "Greyscale" },
-          ...(Object.keys(BRAND_TINTS) as BrandTint[]).map((tint) => ({ value: tint, label: BRAND_TINTS[tint] })),
+          { value: "original", label: w.original },
+          { value: "grey", label: w.grey },
+          ...(Object.keys(BRAND_TINTS) as BrandTint[]).map((tint) => ({ value: tint, label: all.lists.brandTints[tint] })),
         ]}
         value={block.tint ?? (block.greyscale ? "grey" : "original")}
         onChange={(choice) =>
@@ -1915,12 +1938,12 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
         }
       />
       {block.tint === "custom" && (
-        <OptionalColor label="Custom colour" hint="The colour every logo is drawn in." value={block.tintColor} fallback="#1d4ed8" onChange={(tintColor) => onChange({ tintColor })} />
+        <OptionalColor label={w.custom} hint={w.customHint} value={block.tintColor} fallback="#1d4ed8" onChange={(tintColor) => onChange({ tintColor })} />
       )}
       {(block.greyscale || block.tint) && (
         <Check
-          label="Original colours on hover"
-          hint="A logo shows itself as uploaded under the pointer, or when it has the keyboard's focus."
+          label={w.hoverOriginal}
+          hint={w.hoverOriginalHint}
           checked={Boolean(block.colourOnHover)}
           onChange={(on) => onChange({ colourOnHover: on || undefined })}
         />
@@ -1932,14 +1955,16 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
 /** The profiles social media buttons link to (D91). */
 function SocialLinksFields({ block, onChange }: BlockEditorProps<SocialLinksBlock>) {
   const networkId = useId();
+  const w = useAdminText("blocks").social;
+  const networkName = (network: SocialNetwork) => (w.networks as Record<string, string>)[network] ?? SOCIAL_NETWORKS[network];
   return (
     <>
       <ItemsEditor<SocialLink>
-        label="Links"
+        label={w.links}
         items={block.links}
         max={ITEMS_MAX}
-        addLabel="Add a link"
-        nameOf={(link) => `${SOCIAL_NETWORKS[link.network]}${link.href.trim() ? "" : " (no address yet)"}`}
+        addLabel={w.add}
+        nameOf={(link) => `${networkName(link.network)}${link.href.trim() ? "" : w.noAddress}`}
         newItem={() => ({ id: newItemId(), network: "facebook", href: "" })}
         onChange={(links) => onChange({ links })}
       >
@@ -1950,7 +1975,7 @@ function SocialLinksFields({ block, onChange }: BlockEditorProps<SocialLinksBloc
             <>
               <div className="flex flex-col gap-1">
                 <label htmlFor={`${networkId}-${link.id}`} className="text-sm font-medium">
-                  Network
+                  {w.network}
                 </label>
                 <select
                   id={`${networkId}-${link.id}`}
@@ -1960,24 +1985,24 @@ function SocialLinksFields({ block, onChange }: BlockEditorProps<SocialLinksBloc
                 >
                   {(Object.keys(SOCIAL_NETWORKS) as SocialNetwork[]).map((network) => (
                     <option key={network} value={network}>
-                      {SOCIAL_NETWORKS[network]}
+                      {networkName(network)}
                     </option>
                   ))}
                 </select>
               </div>
               <TextField
-                label={link.network === "email" ? "Email address" : link.network === "phone" ? "Phone number" : "Address of the profile"}
+                label={link.network === "email" ? w.email : link.network === "phone" ? w.phone : w.profile}
                 value={link.href}
                 max={500}
                 placeholder={socialPlaceholder(link.network)}
-                hint={works ? undefined : "That is not an address this link can go to."}
+                hint={works ? undefined : w.bad}
                 onChange={(href) => change({ href })}
               />
             </>
           );
         }}
       </ItemsEditor>
-      <p className="text-xs text-muted">Links open in a new tab. A link without an address is left out on the site.</p>
+      <p className="text-xs text-muted">{w.newTab}</p>
     </>
   );
 }
@@ -1985,37 +2010,40 @@ function SocialLinksFields({ block, onChange }: BlockEditorProps<SocialLinksBloc
 /** How social media buttons look (D91). */
 function SocialLinksStyleFields({ block, onChange }: BlockEditorProps<SocialLinksBlock>) {
   const look = block.look ?? "plain";
+  const all = useAdminText("blocks");
+  const w = all.social;
   return (
     <>
-      <Choices legend="Look" options={optionsOf(SOCIAL_LOOKS)} value={look} onChange={(value) => onChange({ look: value === "plain" ? undefined : value })} />
+      <Choices legend={w.look} options={optionsOf(SOCIAL_LOOKS, all.lists.socialLooks)} value={look} onChange={(value) => onChange({ look: value === "plain" ? undefined : value })} />
       {look !== "plain" && (
-        <Choices legend="Shape" options={optionsOf(SOCIAL_SHAPES)} value={block.shape ?? "circle"} onChange={(shape) => onChange({ shape: shape === "circle" ? undefined : shape })} />
+        <Choices legend={w.shape} options={optionsOf(SOCIAL_SHAPES, all.lists.socialShapes)} value={block.shape ?? "circle"} onChange={(shape) => onChange({ shape: shape === "circle" ? undefined : shape })} />
       )}
       <Choices
-        legend="Colours"
-        options={optionsOf(SOCIAL_COLORS)}
+        legend={w.colours}
+        options={optionsOf(SOCIAL_COLORS, all.lists.socialColors)}
         value={block.colors ?? "brand"}
         onChange={(colors) => onChange({ colors: colors === "brand" ? undefined : colors, ...(colors !== "custom" && { color: undefined }) })}
       />
-      {block.colors === "custom" && <ColorField label="Colour" value={block.color ?? "#111111"} onChange={(color) => onChange({ color })} />}
-      <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size) => onChange({ size: size === "md" ? undefined : size })} />
-      <NumberField label="Space between" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
+      {block.colors === "custom" && <ColorField label={w.colour} value={block.color ?? "#111111"} onChange={(color) => onChange({ color })} />}
+      <Choices legend={w.size} options={optionsOf(BUTTON_SIZES, all.lists.buttonSizes)} value={block.size ?? "md"} onChange={(size) => onChange({ size: size === "md" ? undefined : size })} />
+      <NumberField label={w.gap} value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
       <Choices
-        legend="Place"
-        options={optionsOf(SEPARATOR_POSITIONS)}
+        legend={w.place}
+        options={optionsOf(SEPARATOR_POSITIONS, all.lists.positions)}
         value={block.position ?? "left"}
         onChange={(position) => onChange({ position: position === "left" ? undefined : position })}
       />
-      <Check label="Show the networks' names" checked={Boolean(block.showNames)} onChange={(showNames) => onChange({ showNames: showNames || undefined })} />
+      <Check label={w.showNames} checked={Boolean(block.showNames)} onChange={(showNames) => onChange({ showNames: showNames || undefined })} />
     </>
   );
 }
 
 /** Chooses one of the icon list's icons (D91). */
 function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: IconName) => void }) {
+  const w = useAdminText("blocks").icons;
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">Icon: {ICONS[value]}</legend>
+      <legend className="mb-1 text-sm font-medium">{fillWords(w.icon, { name: ICONS[value] })}</legend>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-1">
         {(Object.keys(ICONS) as IconName[]).map((icon) => (
           <button
@@ -2039,14 +2067,16 @@ function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: Ico
 
 /** An icon list's lines (D91). */
 function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.iconList;
   return (
     <>
       <ItemsEditor<IconListItem>
-        label="Lines"
+        label={w.lines}
         items={block.items}
         max={ITEMS_MAX}
-        addLabel="Add a line"
-        nameOf={(item, index) => item.text.trim() || `Line ${index + 1} (no words yet)`}
+        addLabel={w.add}
+        nameOf={(item, index) => item.text.trim() || fillWords(w.unnamed, { n: index + 1 })}
         // A new line takes the icon of the one before, as lists mostly share one.
         newItem={() => ({ id: newItemId(), icon: block.items.at(-1)?.icon ?? "check", text: "", href: "" })}
         onChange={(items) => onChange({ items })}
@@ -2055,13 +2085,13 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
           const address = item.href.trim();
           return (
             <>
-              <TextField label="Words" value={item.text} max={ICON_LIST_TEXT_MAX} placeholder="Free delivery over 500 kr" onChange={(text) => change({ text })} />
+              <TextField label={w.words} value={item.text} max={ICON_LIST_TEXT_MAX} placeholder={w.wordsPlaceholder} onChange={(text) => change({ text })} />
               <TextField
-                label="Links to (optional)"
+                label={w.links}
                 value={item.href}
                 max={2000}
-                placeholder="https://… or /about"
-                hint={address === "" || isLinkAddress(address) ? undefined : "Use a web address (https://…), a page on the site (/about), mailto: or tel:."}
+                placeholder={all.link.addressPlaceholder}
+                hint={address === "" || isLinkAddress(address) ? undefined : all.link.badAddress}
                 onChange={(href) => change({ href })}
               />
               <IconPicker value={item.icon} onChange={(icon) => change({ icon })} />
@@ -2069,7 +2099,7 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
           );
         }}
       </ItemsEditor>
-      <p className="text-xs text-muted">A line without words is left out on the site. The icons are for looks: the words say what each line means.</p>
+      <p className="text-xs text-muted">{w.leftOut}</p>
     </>
   );
 }
@@ -2086,6 +2116,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   const set = (next: string[][]) => onChange({ rows: next });
   const setTable = (next: TableData) => onChange({ rows: next.rows, sections: next.sections });
   const table: TableData = { rows, sections: block.sections };
+  const w = useAdminText("blocks").table;
   const isHeader = (r: number) => Boolean(block.header) && r === 0;
   // The cell last typed in: an icon from the palette goes into it, at the cursor (D201).
   const lastCell = useRef<{ r: number; c: number; input: HTMLInputElement } | null>(null);
@@ -2114,8 +2145,8 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
         <input
           value={block.sections?.[r] ?? ""}
           maxLength={200}
-          placeholder="Section title (optional)"
-          aria-label={`Section title above row ${r + 1}`}
+          placeholder={w.sectionTitle}
+          aria-label={fillWords(w.sectionAbove, { n: r + 1 })}
           className="h-8 w-full rounded border border-dashed border-line bg-sunken px-2 font-medium"
           onChange={(event) => setTable(setSection(table, r, event.target.value))}
         />
@@ -2123,7 +2154,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
       <td>
         <span className="flex items-center gap-1">
           {handle}
-          <button type="button" className={ICON_BUTTON} aria-label={`Remove the divider above row ${r + 1}`} title="Remove this divider" onClick={() => setTable(setSection(table, r, null))}>
+          <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.removeDivider, { n: r + 1 })} title={w.removeDividerTitle} onClick={() => setTable(setSection(table, r, null))}>
             ×
           </button>
         </span>
@@ -2137,7 +2168,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                     <input
                       value={text}
                       maxLength={TABLE_CELL_MAX}
-                      aria-label={block.header && r === 0 ? `Heading of column ${c + 1}` : `Row ${r + 1}, column ${c + 1}`}
+                      aria-label={block.header && r === 0 ? fillWords(w.headingOf, { c: c + 1 }) : fillWords(w.cell, { r: r + 1, c: c + 1 })}
                       className={`h-8 w-32 rounded border border-line bg-card px-2 ${block.header && r === 0 ? "font-medium" : ""}`}
                       onFocus={(event) => (lastCell.current = { r, c, input: event.currentTarget })}
                       onChange={(event) => set(setCell(rows, r, c, event.target.value))}
@@ -2147,14 +2178,14 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                 <td>
                   <span className="flex items-center gap-1">
                     {handle}
-                    <button type="button" className={ICON_BUTTON} aria-label={`Add a row after row ${r + 1}`} title="Add a row after" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table, r))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.addRowAfter, { n: r + 1 })} title={w.addRowAfterTitle} disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table, r))}>
                       +
                     </button>
-                    <button type="button" className={ICON_BUTTON} aria-label={`Remove row ${r + 1}`} title="Remove this row" disabled={rows.length <= 1} onClick={() => setTable(removeRowFrom(table, r))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.removeRow, { n: r + 1 })} title={w.removeRowTitle} disabled={rows.length <= 1} onClick={() => setTable(removeRowFrom(table, r))}>
                       ×
                     </button>
                     {!isHeader(r) && block.sections?.[r] == null && (
-                      <button type="button" className={ICON_BUTTON} aria-label={`Add a divider above row ${r + 1}`} title="Add a section divider above" onClick={() => setTable(setSection(table, r, ""))}>
+                      <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.addDivider, { n: r + 1 })} title={w.addDividerTitle} onClick={() => setTable(setSection(table, r, ""))}>
                         ―
                       </button>
                     )}
@@ -2164,8 +2195,8 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   );
   return (
     <>
-      <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
-      <TextField label="Title (optional)" value={block.caption ?? ""} max={200} placeholder="Sizes and prices" onChange={(caption) => onChange({ caption: caption || undefined })} />
+      <Check label={w.header} hint={w.headerHint} checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
+      <TextField label={w.caption} value={block.caption ?? ""} max={200} placeholder={w.captionPlaceholder} onChange={(caption) => onChange({ caption: caption || undefined })} />
       <div className="overflow-x-auto rounded border border-line p-2">
         <table className="border-separate border-spacing-1 text-sm">
           <thead>
@@ -2173,10 +2204,10 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
               {rows[0]?.map((_, c) => (
                 <th key={c} scope="col" className="font-normal">
                   <span className="flex items-center justify-center gap-1">
-                    <button type="button" className={ICON_BUTTON} aria-label={`Add a column after column ${c + 1}`} title="Add a column after" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows, c))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.addColumnAfter, { n: c + 1 })} title={w.addColumnAfterTitle} disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows, c))}>
                       +
                     </button>
-                    <button type="button" className={ICON_BUTTON} aria-label={`Remove column ${c + 1}`} title="Remove this column" disabled={columns <= 1} onClick={() => set(removeColumn(rows, c))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={fillWords(w.removeColumn, { n: c + 1 })} title={w.removeColumnTitle} disabled={columns <= 1} onClick={() => set(removeColumn(rows, c))}>
                       ×
                     </button>
                   </span>
@@ -2197,14 +2228,14 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                   const out: ReactNode[] = [];
                   if (block.sections?.[r] != null) {
                     out.push(
-                      <SortableRows key={`div-${r}`} id={`div-${index}`} label={`the divider above row ${r + 1}`}>
+                      <SortableRows key={`div-${r}`} id={`div-${index}`} label={fillWords(w.dividerAbove, { n: r + 1 })}>
                         {(handle) => dividerLine(r, handle)}
                       </SortableRows>,
                     );
                     index++;
                   }
                   out.push(
-                    <SortableRows key={`row-${r}`} id={`row-${index}`} label={`row ${r + 1}`}>
+                    <SortableRows key={`row-${r}`} id={`row-${index}`} label={fillWords(w.row, { n: r + 1 })}>
                       {(handle) => rowLine(cells, r, handle)}
                     </SortableRows>,
                   );
@@ -2218,16 +2249,13 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="min-h-9 rounded border border-line px-3 text-sm hover:bg-card disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table))}>
-          Add row
+          {w.addRow}
         </button>
         <button type="button" className="min-h-9 rounded border border-line px-3 text-sm hover:bg-card disabled:opacity-40" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows))}>
-          Add column
+          {w.addColumn}
         </button>
       </div>
-      <p className="text-xs text-muted">
-        Up to {TABLE_ROWS_MAX} rows and {TABLE_COLUMNS_MAX} columns. Cells take the same simple markup as headings (bold, line breaks). The ― button
-        puts a section divider, with a title if you like, above a row.
-      </p>
+      <p className="text-xs text-muted">{fillWords(w.limits, { rows: TABLE_ROWS_MAX, columns: TABLE_COLUMNS_MAX })}</p>
       <TableIconPalette onPick={putIcon} />
     </>
   );
@@ -2236,19 +2264,20 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
 /** The icons that can go in a cell (D201): the common ones as buttons, the rest from a list; each puts `{{name}}` in the cell last typed in. */
 const TABLE_ICONS: IconName[] = ["check", "x", "minus", "plus", "circleCheck", "circleAlert", "star", "heart", "thumbsUp", "info"];
 function TableIconPalette({ onPick }: { onPick: (name: IconName) => void }) {
+  const w = useAdminText("blocks").table;
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm font-medium">Icons in cells</legend>
-      <p className="text-xs text-muted">Click in a cell, then press an icon to put it there, with or without words. In the text it is written like {"{{check}}"}.</p>
+      <legend className="text-sm font-medium">{w.icons}</legend>
+      <p className="text-xs text-muted">{fillWords(w.iconsHint, { token: "{{check}}" })}</p>
       <div className="flex flex-wrap items-center gap-1">
         {TABLE_ICONS.map((name) => (
           // The press keeps the focus in the cell, so the icon goes where the cursor is.
-          <button key={name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(name)} aria-label={`Put ${ICONS[name]} in the cell`} title={ICONS[name]} className="flex size-9 items-center justify-center rounded border border-line hover:bg-card">
+          <button key={name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(name)} aria-label={fillWords(w.putIcon, { name: ICONS[name] })} title={ICONS[name]} className="flex size-9 items-center justify-center rounded border border-line hover:bg-card">
             <ListIcon name={name} className="size-5" />
           </button>
         ))}
-        <select aria-label="More icons" value="" onChange={(event) => event.target.value && onPick(event.target.value as IconName)} className="h-9 rounded border border-line bg-card px-2 text-sm">
-          <option value="">More…</option>
+        <select aria-label={w.moreIcons} value="" onChange={(event) => event.target.value && onPick(event.target.value as IconName)} className="h-9 rounded border border-line bg-card px-2 text-sm">
+          <option value="">{w.more}</option>
           {(Object.keys(ICONS) as IconName[]).map((name) => (
             <option key={name} value={name}>
               {ICONS[name]}
@@ -2263,8 +2292,9 @@ function TableIconPalette({ onPick }: { onPick: (name: IconName) => void }) {
 /** One row of the table's grid (a body of its own, with the divider above it) that can be dragged by its handle (D200). */
 function SortableRows({ id, label, children }: { id: string; label: string; children: (handle: ReactNode) => ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const w = useAdminText("blocks").table;
   const handle = (
-    <button type="button" {...attributes} {...listeners} aria-label={`Drag ${label} to move it`} title="Drag to move this row" className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}>
+    <button type="button" {...attributes} {...listeners} aria-label={fillWords(w.drag, { name: label })} title={w.dragTitle} className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}>
       <span aria-hidden>⠿</span>
     </button>
   );
@@ -2277,45 +2307,43 @@ function SortableRows({ id, label, children }: { id: string; label: string; chil
 
 /** How a table looks and behaves on a phone (D194). */
 function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.table;
   return (
     <>
       <Choices
-        legend="On a phone"
-        options={optionsOf(TABLE_MOBILE)}
+        legend={w.onPhone}
+        options={optionsOf(TABLE_MOBILE, all.lists.tableMobile)}
         value={block.mobile ?? "stack"}
         onChange={(mobile) => onChange({ mobile: mobile === "stack" ? undefined : mobile })}
       />
       <p className="text-xs text-muted">
-        {(block.mobile ?? "stack") === "stack"
-          ? "Each row becomes a card: every value is shown under its column's name (from the header row)."
-          : "The table keeps its columns and scrolls sideways on a narrow screen."}
+        {(block.mobile ?? "stack") === "stack" ? w.stackHint : w.scrollHint}
       </p>
-      <Choices legend="Scroll inside the table" options={optionsOf(TABLE_FIXED)} value={block.fixedHeader ?? "popup"} onChange={(fixedHeader) => onChange({ fixedHeader: fixedHeader === "popup" ? undefined : fixedHeader })} />
-      <p className="text-xs text-muted">
-        A long table scrolls in a box of its own, so its header, and each section title under it, stay in view. In a pop-up the pop-up then needs no scrollbar.
-      </p>
+      <Choices legend={w.scrollInside} options={optionsOf(TABLE_FIXED, all.lists.tableFixed)} value={block.fixedHeader ?? "popup"} onChange={(fixedHeader) => onChange({ fixedHeader: fixedHeader === "popup" ? undefined : fixedHeader })} />
+      <p className="text-xs text-muted">{w.scrollInsideHint}</p>
       {(block.fixedHeader ?? "popup") !== "never" && (
-        <NumberField label="Height before it scrolls (0: 70 % of the screen)" value={block.maxHeight ?? 0} min={0} max={TABLE_MAX_HEIGHT_MAX} unit="px" onChange={(maxHeight) => onChange({ maxHeight: maxHeight >= 120 ? maxHeight : undefined })} />
+        <NumberField label={w.maxHeight} value={block.maxHeight ?? 0} min={0} max={TABLE_MAX_HEIGHT_MAX} unit="px" onChange={(maxHeight) => onChange({ maxHeight: maxHeight >= 120 ? maxHeight : undefined })} />
       )}
-      <Check label="First column names the row" hint="Bold, and read out as the row's heading." checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
-      <Check label="Shade every other row" checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
-      <OptionalColor label="Icon colour" hint="The cell's text colour unless chosen." value={block.iconColor} fallback="#16a34a" onChange={(iconColor) => onChange({ iconColor })} />
+      <Check label={w.rowHeaders} hint={w.rowHeadersHint} checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
+      <Check label={w.striped} checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
+      <OptionalColor label={w.iconColour} hint={w.iconColourHint} value={block.iconColor} fallback="#16a34a" onChange={(iconColor) => onChange({ iconColor })} />
       {block.header && (
         <>
-          <OptionalColor label="Header text colour" hint="The page's text colour unless chosen." value={block.headerColor} fallback="#111111" onChange={(headerColor) => onChange({ headerColor })} />
-          <OptionalColor label="Header background" hint="No background unless chosen. A phone shows the stacked cards without the header row." value={block.headerBackground} fallback="#f5f5f4" onChange={(headerBackground) => onChange({ headerBackground })} />
+          <OptionalColor label={w.headerColour} hint={w.pageText} value={block.headerColor} fallback="#111111" onChange={(headerColor) => onChange({ headerColor })} />
+          <OptionalColor label={w.headerBackground} hint={w.headerBackgroundHint} value={block.headerBackground} fallback="#f5f5f4" onChange={(headerBackground) => onChange({ headerBackground })} />
         </>
       )}
       {block.sections?.some((title) => title != null) && (
         <>
-          <OptionalColor label="Section text colour" hint="The page's text colour unless chosen." value={block.sectionColor} fallback="#111111" onChange={(sectionColor) => onChange({ sectionColor })} />
-          <OptionalColor label="Section background" hint="The theme's surface colour unless chosen." value={block.sectionBackground} fallback="#f5f5f4" onChange={(sectionBackground) => onChange({ sectionBackground })} />
+          <OptionalColor label={w.sectionColour} hint={w.pageText} value={block.sectionColor} fallback="#111111" onChange={(sectionColor) => onChange({ sectionColor })} />
+          <OptionalColor label={w.sectionBackground} hint={w.surface} value={block.sectionBackground} fallback="#f5f5f4" onChange={(sectionBackground) => onChange({ sectionBackground })} />
         </>
       )}
       {block.striped && (
         <>
-          <OptionalColor label="Shaded rows' text colour" hint="The page's text colour unless chosen." value={block.stripeColor} fallback="#111111" onChange={(stripeColor) => onChange({ stripeColor })} />
-          <OptionalColor label="Shaded rows' background" hint="The theme's surface colour unless chosen." value={block.stripeBackground} fallback="#f5f5f4" onChange={(stripeBackground) => onChange({ stripeBackground })} />
+          <OptionalColor label={w.stripeColour} hint={w.pageText} value={block.stripeColor} fallback="#111111" onChange={(stripeColor) => onChange({ stripeColor })} />
+          <OptionalColor label={w.stripeBackground} hint={w.surface} value={block.stripeBackground} fallback="#f5f5f4" onChange={(stripeBackground) => onChange({ stripeBackground })} />
         </>
       )}
     </>
@@ -2324,28 +2352,30 @@ function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
 
 /** How an icon list is laid out and its icons look (D91). */
 function IconListStyleFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
+  const all = useAdminText("blocks");
+  const w = all.iconList;
   return (
     <>
-      <Choices legend="Lines" options={optionsOf(ICON_LIST_LAYOUTS)} value={block.layout ?? "column"} onChange={(layout) => onChange({ layout: layout === "column" ? undefined : layout })} />
+      <Choices legend={w.layout} options={optionsOf(ICON_LIST_LAYOUTS, all.lists.iconListLayouts)} value={block.layout ?? "column"} onChange={(layout) => onChange({ layout: layout === "column" ? undefined : layout })} />
       {block.layout === "row" && (
         <Choices
-          legend="Place"
-          options={optionsOf(SEPARATOR_POSITIONS)}
+          legend={w.place}
+          options={optionsOf(SEPARATOR_POSITIONS, all.lists.positions)}
           value={block.position ?? "left"}
           onChange={(position) => onChange({ position: position === "left" ? undefined : position })}
         />
       )}
-      <Choices legend="Icon size" options={optionsOf(BUTTON_SIZES)} value={block.iconSize ?? "md"} onChange={(iconSize) => onChange({ iconSize: iconSize === "md" ? undefined : iconSize })} />
-      <OptionalColor label="Icon colour" hint="The theme's accent unless chosen." value={block.iconColor} fallback="#2563eb" onChange={(iconColor) => onChange({ iconColor })} />
+      <Choices legend={w.iconSize} options={optionsOf(BUTTON_SIZES, all.lists.buttonSizes)} value={block.iconSize ?? "md"} onChange={(iconSize) => onChange({ iconSize: iconSize === "md" ? undefined : iconSize })} />
+      <OptionalColor label={w.iconColour} hint={w.iconColourHint} value={block.iconColor} fallback="#2563eb" onChange={(iconColor) => onChange({ iconColor })} />
       <GradientText
-        label="Gradient icons"
-        hint="The icons are filled with these colours instead of the icon colour."
+        label={w.gradient}
+        hint={w.gradientHint}
         value={block.iconGradient}
         onChange={(iconGradient) => onChange({ iconGradient })}
         mark={null}
         muted=""
       />
-      <NumberField label="Space between lines" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
+      <NumberField label={w.gap} value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
     </>
   );
 }
@@ -2358,19 +2388,18 @@ function RecipientsField({ value, onChange }: { value: string[]; onChange: (reci
     .map((address) => address.trim().toLowerCase())
     .filter(Boolean);
   const wrong = typed.filter((address) => !isEmail(address));
+  const w = useAdminText("blocks").form;
   return (
     <TextField
-      label="Send to"
+      label={w.sendTo}
       value={text}
       max={1500}
       multiline
-      placeholder="you@example.com"
+      placeholder={w.sendToPlaceholder}
       hint={
         wrong.length > 0
-          ? `Not email addresses: ${wrong.join(", ")}`
-          : typed.length > FORM_RECIPIENTS_MAX
-            ? `A form sends to at most ${FORM_RECIPIENTS_MAX} addresses.`
-            : `Up to ${FORM_RECIPIENTS_MAX} email addresses, one per line. They are never shown on the site; until there is one, the form does not show there.`
+          ? fillWords(w.notEmails, { list: wrong.join(", ") })
+          : fillWords(typed.length > FORM_RECIPIENTS_MAX ? w.tooMany : w.recipientsHint, { max: FORM_RECIPIENTS_MAX })
       }
       onChange={(next) => {
         setText(next);
@@ -2397,72 +2426,77 @@ function FormTexts({
   onChange: (patch: { submitLabel?: string; successMessage?: string }) => void;
   usual: { submit: string; success: string; when?: string };
 }) {
+  const w = useAdminText("blocks").form;
   return (
     <>
-      <TextField label="Button text" value={block.submitLabel} max={BUTTON_LABEL_MAX} placeholder={usual.submit} hint="Empty, the usual words in the page's language." onChange={(submitLabel) => onChange({ submitLabel })} />
+      <TextField label={w.buttonText} value={block.submitLabel} max={BUTTON_LABEL_MAX} placeholder={usual.submit} hint={w.usualWords} onChange={(submitLabel) => onChange({ submitLabel })} />
       <TextField
-        label="Thank-you message"
+        label={w.thanks}
         value={block.successMessage}
         max={FORM_TEXT_MAX}
         multiline
         placeholder={usual.success}
-        hint={`${usual.when ?? "Shown in place of the form once sent."} Empty, the usual words in the page's language.`}
+        hint={`${usual.when ?? w.whenSent} ${w.usualWords}`}
         onChange={(successMessage) => onChange({ successMessage })}
       />
     </>
   );
 }
 
-const LABEL_HINTS: Partial<Record<FormFieldKind, string>> = { name: "Name", email: "Email", phone: "Phone", textarea: "Message" };
+/** The usual words of a form in the admin's own language: what the page shows when the owner writes none. */
+const usualForm = (lang: string) => t(lang === "nb" ? "nb" : "en").form;
 
 /** An email form's questions and where it sends (D93). */
 function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) {
-  const en = t("en").form;
+  const en = usualForm(useAdminLang());
+  const all = useAdminText("blocks");
+  const w = all.form;
+  const labelHints = w.labelHints as Partial<Record<FormFieldKind, string>>;
   return (
     <>
       <RecipientsField value={block.recipients} onChange={(recipients) => onChange({ recipients })} />
       <TextField
-        label="Email subject"
+        label={w.subject}
         value={block.subject}
         max={FORM_LABEL_MAX}
-        placeholder={en.messageSubject("the site's name")}
-        hint="What the emails you get are called. Visitors never see it."
+        placeholder={en.messageSubject(w.siteName)}
+        hint={w.subjectHint}
         onChange={(subject) => onChange({ subject })}
       />
       <ItemsEditor<FormField>
-        label="Questions"
+        label={w.questions}
         items={block.fields}
         max={FORM_FIELDS_MAX}
-        addLabel="Add a question"
-        nameOf={(field, index) => field.label.trim() || LABEL_HINTS[field.kind] || `Question ${index + 1} (${FORM_FIELD_KINDS[field.kind].toLowerCase()}, no words yet)`}
+        addLabel={w.add}
+        nameOf={(field, index) => field.label.trim() || labelHints[field.kind] || fillWords(w.unnamed, { n: index + 1, kind: all.lists.formFieldKinds[field.kind].toLowerCase() })}
         newItem={() => ({ id: newItemId(), kind: "text", label: "" })}
         onChange={(fields) => onChange({ fields })}
       >
         {(field, change) => (
           <>
             <Choices
-              legend="Kind"
-              options={optionsOf(FORM_FIELD_KINDS)}
+              legend={w.kind}
+              options={optionsOf(FORM_FIELD_KINDS, all.lists.formFieldKinds)}
               value={field.kind}
               onChange={(kind) => change({ kind, ...(kind === "select" && !field.options?.length && { options: [""] }) })}
             />
             <TextField
-              label={LABELLED_KINDS.includes(field.kind) ? "Question" : "Question (optional)"}
+              label={LABELLED_KINDS.includes(field.kind) ? w.question : w.questionOptional}
               value={field.label}
               max={FORM_LABEL_MAX}
-              placeholder={LABEL_HINTS[field.kind]}
-              hint={LABELLED_KINDS.includes(field.kind) ? undefined : "Empty, the usual word in the page's language."}
+              placeholder={labelHints[field.kind]}
+              hint={LABELLED_KINDS.includes(field.kind) ? undefined : w.usualWord}
               onChange={(label) => change({ label })}
             />
             {field.kind === "select" && (
               <OptionsField value={field.options ?? []} onChange={(options) => change({ options })} />
             )}
             {field.kind !== "checkbox" && field.kind !== "select" && (
-              <TextField label="Hint inside the field (optional)" value={field.placeholder ?? ""} max={FORM_LABEL_MAX} onChange={(placeholder) => change({ placeholder: placeholder || undefined })} />
+              <TextField label={w.placeholder} value={field.placeholder ?? ""} max={FORM_LABEL_MAX} onChange={(placeholder) => change({ placeholder: placeholder || undefined })} />
             )}
             <Check
-              label={field.kind === "checkbox" ? "Must be ticked" : "Must be answered"}
-              hint={field.kind === "email" ? "The first email address asked for is the one your reply goes to." : undefined}
+              label={field.kind === "checkbox" ? w.mustTick : w.mustAnswer}
+              hint={field.kind === "email" ? w.replyTo : undefined}
               checked={Boolean(field.required)}
               onChange={(required) => change({ required: required || undefined })}
             />
@@ -2470,14 +2504,14 @@ function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) 
         )}
       </ItemsEditor>
       <Check
-        label="Ask for consent"
-        hint="A tick box visitors must tick to send, such as agreeing to how their message is used."
+        label={w.consent}
+        hint={w.consentHint}
         checked={block.consent !== undefined}
         onChange={(on) => onChange({ consent: on ? "" : undefined })}
       />
       {block.consent !== undefined && (
         <div className="pl-7">
-          <TextField label="The tick box's words" value={block.consent} max={FORM_TEXT_MAX} multiline placeholder="I agree that you store my message to answer it." onChange={(consent) => onChange({ consent })} />
+          <TextField label={w.consentWords} value={block.consent} max={FORM_TEXT_MAX} multiline placeholder={w.consentPlaceholder} onChange={(consent) => onChange({ consent })} />
         </div>
       )}
       <FormTexts block={block} onChange={onChange} usual={{ submit: en.send, success: en.sent }} />
@@ -2488,13 +2522,14 @@ function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) 
 /** A choice's options, one per line. */
 function OptionsField({ value, onChange }: { value: string[]; onChange: (options: string[]) => void }) {
   const [text, setText] = useState(value.join("\n"));
+  const w = useAdminText("blocks").form;
   return (
     <TextField
-      label="Choices"
+      label={w.choices}
       value={text}
       max={FORM_OPTIONS_MAX * (FORM_LABEL_MAX + 1)}
       multiline
-      hint={`One per line, up to ${FORM_OPTIONS_MAX}.`}
+      hint={fillWords(w.choicesHint, { max: FORM_OPTIONS_MAX })}
       onChange={(next) => {
         setText(next);
         onChange(
@@ -2517,52 +2552,52 @@ function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> |
     const kept = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as FormButton;
     (onChange as (patch: { button?: FormButton }) => void)({ button: Object.keys(kept).length ? kept : undefined });
   };
+  const all = useAdminText("blocks");
   return (
     <>
       {block.type === "newsletter" && (
         <Choices
-          legend="Field and button"
-          options={optionsOf(NEWSLETTER_LAYOUTS)}
+          legend={all.form.layout}
+          options={optionsOf(NEWSLETTER_LAYOUTS, all.lists.newsletterLayouts)}
           value={block.layout ?? "inline"}
           onChange={(layout) => (onChange as (patch: Partial<NewsletterBlock>) => void)({ layout: layout === "inline" ? undefined : layout })}
         />
       )}
       <ButtonLookFields look={look} onChange={set} />
-      <Check label="Button as wide as the form" checked={Boolean(look.fullWidth)} onChange={(fullWidth) => set({ fullWidth: fullWidth || undefined })} />
+      <Check label={all.form.fullWidth} checked={Boolean(look.fullWidth)} onChange={(fullWidth) => set({ fullWidth: fullWidth || undefined })} />
     </>
   );
 }
 
 /** A newsletter sign-up (D93). */
 function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>) {
-  const en = t("en").form;
+  const en = usualForm(useAdminLang());
+  const w = useAdminText("blocks").form;
   return (
     <>
       <RecipientsField value={block.recipients} onChange={(recipients) => onChange({ recipients })} />
       <Check
-        label="Confirm the address first (double opt-in)"
-        hint="The visitor gets an email with a link, and the sign-up is sent to you only once they open it. Recommended: it proves the consent and keeps out addresses typed by others."
+        label={w.doubleOptIn}
+        hint={w.doubleOptInHint}
         checked={block.confirm !== false}
         onChange={(confirm) => onChange({ confirm: confirm ? undefined : false })}
       />
-      <Check label="Ask for a name too" hint="Never required." checked={Boolean(block.askName)} onChange={(askName) => onChange({ askName: askName || undefined })} />
-      <TextField label="Hint inside the email field" value={block.placeholder} max={FORM_LABEL_MAX} placeholder={en.emailPlaceholder} onChange={(placeholder) => onChange({ placeholder })} />
+      <Check label={w.askName} hint={w.askNameHint} checked={Boolean(block.askName)} onChange={(askName) => onChange({ askName: askName || undefined })} />
+      <TextField label={w.emailHint} value={block.placeholder} max={FORM_LABEL_MAX} placeholder={en.emailPlaceholder} onChange={(placeholder) => onChange({ placeholder })} />
       <TextField
-        label="Consent"
+        label={w.newsletterConsent}
         value={block.consent}
         max={FORM_TEXT_MAX}
         multiline
         placeholder={en.newsletterConsent}
-        hint="The words visitors tick to sign up; sent to you with each sign-up. Empty, the usual words in the page's language."
+        hint={w.newsletterConsentHint}
         onChange={(consent) => onChange({ consent })}
       />
       <FormTexts block={block} onChange={onChange} usual={{
           submit: en.subscribe,
           success: block.confirm === false ? en.subscribed : en.confirmed,
           when:
-            block.confirm === false
-              ? "Shown in place of the form once signed up."
-              : "Shown when the visitor comes back from the link in their email; right after signing up, they are asked to check their email.",
+            block.confirm === false ? w.whenSignedUp : w.whenConfirmed,
         }} />
     </>
   );
@@ -2608,14 +2643,24 @@ const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
   customer: "customer",
   order: "order",
 };
+type FieldWords = BlocksMessages["fields"];
+
 /** What the fields are on, for a sentence: "the product", "the page or article". */
-const thing = (entities: readonly FieldEntity[]) => entities.map((entity) => FIELD_ENTITY_NOUN[entity]).join(" or ");
+const thing = (entities: readonly FieldEntity[], w?: FieldWords) =>
+  entities.map((entity) => (w ? w.noun[entity] : FIELD_ENTITY_NOUN[entity])).join(w ? w.or : " or ");
+/** The kinds of thing as a plural, for a sentence: "products and variants". */
+const thingsOf = (entities: readonly FieldEntity[], w?: FieldWords) =>
+  entities.map((entity) => (w ? w.plural[entity] : ENTITY_WORDS[entity])).join(w ? w.and : " and ");
 
 /** A group or a repeater is picked as one field, so its option says what it holds. */
-const structureNote = (def: FieldDef) =>
-  def.type === "group" || def.type === "repeater" ? ` (${def.type}, ${def.subFields?.length ?? 0} fields)` : "";
-const fieldOption = (def: FieldDef) =>
-  `${def.label}${structureNote(def)}${def.access === "public" ? "" : " (not shown on the site)"}`;
+const structureNote = (def: FieldDef, w?: FieldWords) =>
+  def.type === "group" || def.type === "repeater"
+    ? w
+      ? fillWords(w.structure, { kind: w.kinds[def.type], n: def.subFields?.length ?? 0 })
+      : ` (${def.type}, ${def.subFields?.length ?? 0} fields)`
+    : "";
+const fieldOption = (def: FieldDef, w?: FieldWords) =>
+  `${def.label}${structureNote(def, w)}${def.access === "public" ? "" : (w?.notShown ?? " (not shown on the site)")}`;
 
 /**
  * What a component shows of the custom fields: `group` a whole group (none
@@ -2642,11 +2687,13 @@ export function FieldsSettingsFields({
   const storeHasGroups = useFieldGroups(["store"]).length > 0;
   const sourceId = useId();
   const id = useId();
+  const all = useAdminText("blocks");
+  const w = all.fields;
   const chosen = value.fieldId ? `f:${value.fieldId}` : value.groupId ? `g:${value.groupId}` : "";
   const known =
     chosen === "" ||
     groups.some((group) => (value.fieldId ? group.fields.some((f) => f.id === value.fieldId) : group.id === value.groupId));
-  const words = entities.map((entity) => ENTITY_WORDS[entity]).join(" and ");
+  const words = thingsOf(entities, w);
   const single = mode === "field" || Boolean(value.fieldId);
   const wholeGroup = !single && Boolean(value.groupId);
   const pick = (next: string) => {
@@ -2662,7 +2709,7 @@ export function FieldsSettingsFields({
     storeHasGroups || ofStore ? (
       <div className="flex flex-col gap-1">
         <label htmlFor={sourceId} className="text-sm font-medium">
-          Fields of
+          {w.fieldsOf}
         </label>
         <select
           id={sourceId}
@@ -2670,8 +2717,8 @@ export function FieldsSettingsFields({
           onChange={(event) => onChange({ source: event.target.value === "store" ? "store" : undefined, groupId: undefined, fieldId: undefined })}
           className={fieldClass}
         >
-          <option value="own">{`This ${thing(own)}`}</option>
-          <option value="store">The store (its own custom fields)</option>
+          <option value="own">{fillWords(w.this, { thing: thing(own, w) })}</option>
+          <option value="store">{w.ofStore}</option>
         </select>
       </div>
     ) : null;
@@ -2680,9 +2727,7 @@ export function FieldsSettingsFields({
     return (
       <div className="flex flex-col gap-5">
         {sourceSelect}
-        <p className="rounded-md bg-sunken p-3 text-sm text-muted">
-          There are no custom fields for {words} yet. Make a group under Custom fields in the store&apos;s menu, then choose it here.
-        </p>
+        <p className="rounded-md bg-sunken p-3 text-sm text-muted">{fillWords(w.none, { words })}</p>
       </div>
     );
   }
@@ -2692,42 +2737,42 @@ export function FieldsSettingsFields({
       {sourceSelect}
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          {mode === "field" ? "Field" : mode === "group" ? "Group" : "Shows"}
+          {mode === "field" ? w.field : mode === "group" ? w.group : w.shows}
         </label>
         <select id={id} value={chosen} onChange={(event) => pick(event.target.value)} className={fieldClass}>
-          {mode !== "field" && <option value="">{`Every group that applies to the ${thing(entities)}`}</option>}
-          {mode === "field" && <option value="">Choose a field</option>}
-          {!known && <option value={chosen}>A field or group that is gone</option>}
+          {mode !== "field" && <option value="">{fillWords(w.everyGroup, { thing: thing(entities, w) })}</option>}
+          {mode === "field" && <option value="">{w.chooseField}</option>}
+          {!known && <option value={chosen}>{w.gone}</option>}
           {groups.map((group) => (
             <optgroup key={group.id} label={group.name}>
-              {mode !== "field" && <option value={`g:${group.id}`}>{`The whole group: ${group.name}`}</option>}
-              {mode !== "group" && group.fields.map((def) => <option key={def.id} value={`f:${def.id}`}>{fieldOption(def)}</option>)}
+              {mode !== "field" && <option value={`g:${group.id}`}>{fillWords(w.wholeGroup, { name: group.name })}</option>}
+              {mode !== "group" && group.fields.map((def) => <option key={def.id} value={`f:${def.id}`}>{fieldOption(def, w)}</option>)}
             </optgroup>
           ))}
         </select>
-        <p className="text-xs text-muted">Only fields set to be shown on the site are drawn, and only those with a value. A field with none draws nothing.</p>
+        <p className="text-xs text-muted">{w.onlyShown}</p>
       </div>
       <Choices
-        legend="Show as"
-        options={(Object.keys(FIELD_DISPLAYS) as FieldDisplay[]).map((display) => ({ value: display, label: FIELD_DISPLAYS[display] }))}
+        legend={w.showAs}
+        options={(Object.keys(FIELD_DISPLAYS) as FieldDisplay[]).map((display) => ({ value: display, label: all.lists.fieldDisplays[display] }))}
         value={value.display ?? "table"}
         onChange={(display) => onChange({ display: display === "table" ? undefined : display })}
       />
-      <Check label="Label of each field" hint="Beside its value." checked={value.showLabel !== false} onChange={(on) => onChange({ showLabel: on ? undefined : false })} />
+      <Check label={w.label} hint={w.labelHint} checked={value.showLabel !== false} onChange={(on) => onChange({ showLabel: on ? undefined : false })} />
       {!single && (
         <Check
-          label="Group name as a heading"
+          label={w.groupHeading}
           checked={value.showHeading !== false}
           onChange={(on) => onChange({ showHeading: on ? undefined : false })}
         />
       )}
       {(single || (value.showHeading !== false && wholeGroup)) && (
         <TextField
-          label="Heading text"
+          label={w.heading}
           value={value.heading ?? ""}
           max={HEADING_MAX}
-          placeholder={single ? "No heading" : "The group's name"}
-          hint={single ? "Over the field; none unless you write one." : "Empty: the group's name. With every group chosen, each shows under its own name."}
+          placeholder={single ? w.noHeading : w.groupName}
+          hint={single ? w.headingSingle : w.headingGroup}
           onChange={(heading) => onChange({ heading: heading || undefined })}
         />
       )}
@@ -2774,10 +2819,11 @@ export function BindFields({
   const storeHasGroups = useFieldGroups(["store"]).length > 0;
   const id = useId();
   const sourceId = useId();
+  const w = useAdminText("blocks").fields;
   if (entities === null || !canBind(blockType) || (groups.length === 0 && !bind && !storeHasGroups)) return null;
   const options = bindOptions(blockType, groups);
   const known = !bind || options.some((option) => option.fields.some((def) => def.id === bind.fieldId));
-  const noun = thing(ofStore ? ["store"] : entities);
+  const noun = thing(ofStore ? ["store"] : entities, w);
   const bound = (fieldId: string, fallback: boolean | undefined): FieldBinding => ({
     fieldId,
     ...(ofStore && { source: "store" as const }),
@@ -2788,7 +2834,7 @@ export function BindFields({
       {!storeOnly && storeHasGroups && (
         <div className="flex flex-col gap-1">
           <label htmlFor={sourceId} className="text-sm font-medium">
-            Fields of
+            {w.fieldsOf}
           </label>
           <select
             id={sourceId}
@@ -2799,14 +2845,14 @@ export function BindFields({
             }}
             className={fieldClass}
           >
-            <option value="own">{`This ${thing(entities)}`}</option>
-            <option value="store">The store (its own custom fields)</option>
+            <option value="own">{fillWords(w.this, { thing: thing(entities, w) })}</option>
+            <option value="store">{w.ofStore}</option>
           </select>
         </div>
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Take from field
+          {w.takeFrom}
         </label>
         <select
           id={id}
@@ -2814,26 +2860,22 @@ export function BindFields({
           onChange={(event) => onChange(event.target.value ? bound(event.target.value, bind?.fallback) : undefined)}
           className={fieldClass}
         >
-          <option value="">No, use what is written here</option>
-          {bind && !known && <option value={bind.fieldId}>A field that is gone or cannot be used here</option>}
+          <option value="">{w.useOwn}</option>
+          {bind && !known && <option value={bind.fieldId}>{w.cannotUse}</option>}
           {options.map(({ group, fields }) => (
             <optgroup key={group.id} label={group.name}>
               {fields.map((def) => (
-                <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`}</option>
+                <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : w.notShown}`}</option>
               ))}
             </optgroup>
           ))}
         </select>
-        <p className="text-xs text-muted">
-          {options.length === 0
-            ? `None of the ${noun}'s fields is of a kind this can take yet.`
-            : `Shows the value of the ${noun}'s field, in the shopper's language. Only fields set to be shown on the site can be used, and a ${noun} with no value for it shows nothing here.`}
-        </p>
+        <p className="text-xs text-muted">{fillWords(options.length === 0 ? w.noneOfKind : w.showsValue, { noun })}</p>
       </div>
       {bind && (
         <Check
-          label="Keep my own content when the field is empty"
-          hint="What is written or chosen below then shows, rather than nothing."
+          label={w.keepOwn}
+          hint={w.keepOwnHint}
           checked={Boolean(bind.fallback)}
           onChange={(on) => onChange(bound(bind.fieldId, on))}
         />
@@ -2846,20 +2888,20 @@ export function BindFields({
 export function BindBadge({ bind }: { bind: FieldBinding }) {
   const groups = useContext(FieldGroupsContext);
   const def = (groups ?? []).flatMap((group) => group.fields).find((f) => f.id === bind.fieldId);
+  const w = useAdminText("blocks").fields;
   return (
     <p className="mb-1 w-fit rounded border border-dashed border-line px-1.5 py-0.5 text-[11px] text-muted">
-      {`From field: ${def?.label ?? "one that is gone"}${bind.fallback ? " (own content if empty)" : ""}`}
+      {`${fillWords(w.badge, { name: def?.label ?? w.badgeGone })}${bind.fallback ? w.badgeFallback : ""}`}
     </p>
   );
 }
 
 /** The page component that shows the fields of the page or article it is on. */
 function CustomFieldFields({ block, onChange }: BlockEditorProps<CustomFieldBlock>) {
+  const w = useAdminText("blocks").fields;
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-muted">
-        Shows the custom fields of the page or article this is on, or of the store itself, in the shopper&apos;s language. Nothing shows where there is no value.
-      </p>
+      <p className="text-sm text-muted">{w.customIntro}</p>
       <FieldsSettingsFields value={block} entities={["page", "article"]} mode="either" onChange={onChange} />
     </div>
   );
@@ -2885,22 +2927,20 @@ export function LoopSettingsFields({
   const id = useId();
   const repeaters = groups.flatMap((group) => group.fields.filter(isLoopable).map((def) => ({ group, def })));
   const chosen = repeaters.find(({ def }) => def.id === value.fieldId);
-  const words = entities.map((entity) => ENTITY_WORDS[entity]).join(" and ");
+  const all = useAdminText("blocks");
+  const w = all.fields;
+  const words = thingsOf(entities, w);
   const layout = value.layout ?? "cards";
 
   if (repeaters.length === 0) {
-    return (
-      <p className="rounded-md bg-sunken p-3 text-sm text-muted">
-        There is no repeater among the custom fields for {words} yet. Add a field of the kind Repeater to a group under Custom fields in the store&apos;s menu, then choose it here.
-      </p>
-    );
+    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">{fillWords(w.noRepeater, { words })}</p>;
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Repeater
+          {w.repeater}
         </label>
         <select
           id={id}
@@ -2915,24 +2955,24 @@ export function LoopSettingsFields({
           }}
           className={fieldClass}
         >
-          <option value="">Choose a repeater</option>
-          {value.fieldId && !chosen && <option value={value.fieldId}>A repeater that is gone</option>}
+          <option value="">{w.chooseRepeater}</option>
+          {value.fieldId && !chosen && <option value={value.fieldId}>{w.repeaterGone}</option>}
           {repeaters.map(({ group, def }) => (
-            <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`}</option>
+            <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : w.notShown}`}</option>
           ))}
         </select>
-        <p className="text-xs text-muted">Each row of the repeater is drawn as one card, line or column. Only a repeater set to be shown on the site draws, and only rows with something in them.</p>
+        <p className="text-xs text-muted">{w.eachRow}</p>
       </div>
       <Choices
-        legend="Layout"
-        options={(Object.keys(LOOP_LAYOUTS) as LoopLayout[]).map((key) => ({ value: key, label: LOOP_LAYOUTS[key] }))}
+        legend={w.layout}
+        options={(Object.keys(LOOP_LAYOUTS) as LoopLayout[]).map((key) => ({ value: key, label: all.lists.loopLayouts[key] }))}
         value={layout}
         onChange={(next) => onChange({ layout: next === "cards" ? undefined : next })}
       />
       {layout !== "list" && (
         <Choices
-          legend="Columns"
-          hint="on larger screens"
+          legend={w.columns}
+          hint={w.larger}
           options={LOOP_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
           value={String(value.columns ?? 3)}
           onChange={(next) => onChange({ columns: (Number(next) === 3 ? undefined : Number(next)) as LoopColumns | undefined })}
@@ -2940,7 +2980,7 @@ export function LoopSettingsFields({
       )}
       {chosen && (
         <div className="flex flex-col gap-3 rounded-md border border-line p-3">
-          <p className="text-sm font-medium">What each row shows</p>
+          <p className="text-sm font-medium">{w.rowShows}</p>
           {LOOP_SLOT_KEYS.map((slot) => (
             <SlotPicker
               key={slot}
@@ -2951,32 +2991,24 @@ export function LoopSettingsFields({
             />
           ))}
           <Check
-            label="The whole card is the link"
-            hint="Otherwise the title is the link, or the link's own words when there is no title."
+            label={w.wholeCard}
+            hint={w.wholeCardHint}
             checked={Boolean(value.linkWholeCard)}
             onChange={(on) => onChange({ linkWholeCard: on ? true : undefined })}
           />
         </div>
       )}
       <TextField
-        label="Heading"
+        label={w.loopHeading}
         value={value.heading ?? ""}
         max={HEADING_MAX}
-        placeholder="No heading"
-        hint="Over the loop; none unless you write one."
+        placeholder={w.noHeading}
+        hint={w.loopHeadingHint}
         onChange={(heading) => onChange({ heading: heading || undefined })}
       />
     </div>
   );
 }
-
-const SLOT_HINTS: Record<LoopSlot, string> = {
-  image: "A picture field.",
-  title: "A short text, choice or number.",
-  text: "A text, text area or rich text.",
-  link: "A link or file field.",
-  badge: "A short text, choice or number, as a small label.",
-};
 
 function SlotPicker({
   slot,
@@ -2990,13 +3022,15 @@ function SlotPicker({
   onChange: (sub: string | undefined) => void;
 }) {
   const id = useId();
+  const all = useAdminText("blocks");
+  const w = all.fields;
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm">
-        {LOOP_SLOTS[slot]}
+        {all.lists.loopSlots[slot]}
       </label>
       <select id={id} value={value ?? ""} onChange={(event) => onChange(event.target.value || undefined)} className={fieldClass} disabled={choices.length === 0}>
-        <option value="">{choices.length === 0 ? `No sub field fits (${SLOT_HINTS[slot]})` : "Nothing"}</option>
+        <option value="">{choices.length === 0 ? fillWords(w.noFit, { hint: w.slots[slot] }) : w.nothing}</option>
         {choices.map((sub) => (
           <option key={sub.id} value={sub.id}>
             {sub.label}
@@ -3024,6 +3058,7 @@ export function TileFieldsPicker({
 }) {
   const options = tileFieldOptions(useFieldGroups([entity]));
   const offered = new Set(options.flatMap((option) => option.fields.map((def) => def.id)));
+  const w = useAdminText("blocks").fields;
   // What was chosen for another kind of thing is not on these tiles: it goes at the next change.
   const chosen = value.filter((id) => offered.has(id));
   if (options.length === 0) return null;
@@ -3034,11 +3069,9 @@ export function TileFieldsPicker({
   return (
     <fieldset className="flex flex-col gap-2 border-t border-line pt-4">
       <legend className="float-left mb-2 w-full text-sm font-medium">
-        Show fields on tiles <span className="font-normal text-muted">(up to {TILE_FIELDS_MAX})</span>
+        {w.onTiles} <span className="font-normal text-muted">{fillWords(w.upTo, { max: TILE_FIELDS_MAX })}</span>
       </legend>
-      <p className="text-xs text-muted">
-        Each tile shows the field&apos;s label and value under its title, when the item has one. Only fields set to be shown on the site are drawn.
-      </p>
+      <p className="text-xs text-muted">{w.onTilesHint}</p>
       {options.map(({ group, fields }) => (
         <div key={group.id} className="flex flex-col gap-1">
           <p className="text-xs font-medium text-muted">{group.name}</p>
@@ -3046,7 +3079,7 @@ export function TileFieldsPicker({
             <Check
               key={def.id}
               label={def.label}
-              hint={def.access === "public" ? undefined : "Not shown on the site yet"}
+              hint={def.access === "public" ? undefined : w.notShownYet}
               checked={chosen.includes(def.id)}
               disabled={!chosen.includes(def.id) && chosen.length >= TILE_FIELDS_MAX}
               onChange={(on) => toggle(def.id, on)}
@@ -3060,11 +3093,10 @@ export function TileFieldsPicker({
 
 /** The page component that draws a repeater's rows of the page or article it is on. */
 function FieldLoopFields({ block, onChange }: BlockEditorProps<FieldLoopBlock>) {
+  const w = useAdminText("blocks").fields;
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-muted">
-        Draws the rows of a repeater of the page or article this is on, in the shopper&apos;s language, each as a card, line or column. A page with no rows shows nothing here.
-      </p>
+      <p className="text-sm text-muted">{w.loopIntro}</p>
       <LoopSettingsFields value={block} entities={["page", "article"]} onChange={onChange} />
     </div>
   );
@@ -3077,13 +3109,15 @@ export function LoopStandIn({ value, entities }: { value: LoopConfig; entities: 
   const layout = value.layout ?? "cards";
   const columns = layout === "list" ? 1 : (value.columns ?? 3);
   const slots = def ? validSlots(def, value.slots) : {};
+  const all = useAdminText("blocks");
+  const w = all.fields;
   const named = LOOP_SLOT_KEYS.flatMap((slot) => {
     const sub = slots[slot] && def?.subFields?.find((f) => f.id === slots[slot]);
-    return sub ? [`${LOOP_SLOTS[slot].toLowerCase()}: ${sub.label}`] : [];
+    return sub ? [`${all.lists.loopSlots[slot].toLowerCase()}: ${sub.label}`] : [];
   });
   return (
     <span className="flex flex-col gap-2 text-sm">
-      <span className="font-medium">{`Field loop: ${def ? def.label : value.fieldId ? "a repeater that is gone" : "choose a repeater"}`}</span>
+      <span className="font-medium">{fillWords(w.loopTitle, { name: def ? def.label : value.fieldId ? w.repeaterGoneLower : w.chooseOne })}</span>
       {def ? (
         <>
           <span className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(columns, 3)}, minmax(0, 1fr))` }}>
@@ -3100,12 +3134,12 @@ export function LoopStandIn({ value, entities }: { value: LoopConfig; entities: 
               </span>
             ))}
           </span>
-          <span className="text-xs text-muted">{named.length > 0 ? `Each row: ${named.join(", ")}.` : "Choose which sub field fills each slot in the settings."}</span>
+          <span className="text-xs text-muted">{named.length > 0 ? fillWords(w.eachRowSlots, { list: named.join(", ") }) : w.chooseSlots}</span>
         </>
       ) : (
-        <span className="text-xs text-muted">Choose a repeater in the settings.</span>
+        <span className="text-xs text-muted">{w.chooseRepeaterSettings}</span>
       )}
-      <span className="text-xs text-muted">The rows are read from each {thing(entities)} where it is shown; a thing with none draws nothing.</span>
+      <span className="text-xs text-muted">{fillWords(w.rowsRead, { thing: thing(entities, w) })}</span>
     </span>
   );
 }
@@ -3129,10 +3163,11 @@ export function FieldsStandIn({
   const field = value.fieldId ? groups.flatMap((g) => g.fields).find((f) => f.id === value.fieldId) : undefined;
   const publicFields = (g: FieldGroup) => g.fields.filter((f) => f.access === "public");
   const display = value.display ?? "table";
-
+  const w = useAdminText("blocks").fields;
+  const store = value.source === "store" ? w.ofTheStore : "";
   const title = single
-    ? `Custom field${value.source === "store" ? " of the store" : ""}: ${field?.label ?? "choose one"}`
-    : `Custom fields${value.source === "store" ? " of the store" : ""}: ${value.groupId ? (shownGroups[0]?.name ?? "a group that is gone") : "every group that applies"}`;
+    ? fillWords(w.oneField, { store, name: field?.label ?? w.chooseOneField })
+    : fillWords(w.manyFields, { store, name: value.groupId ? (shownGroups[0]?.name ?? w.groupGone) : w.everyApplies });
   const names = single ? (field ? [field] : []) : shownGroups.flatMap(publicFields);
   const label = (name: string, n: number) =>
     display === "cards" ? (
@@ -3154,12 +3189,10 @@ export function FieldsStandIn({
         <span className={display === "cards" ? "grid grid-cols-2 gap-2" : "flex flex-col"}>{names.map((f, n) => label(f.label, n))}</span>
       ) : (
         <span className="text-xs text-muted">
-          {single && !field
-            ? "Choose a field in the settings."
-            : "None of its fields is set to be shown on the site yet. Set a field's access to Shown on the site."}
+          {single && !field ? w.chooseFieldSettings : w.noneShown}
         </span>
       )}
-      <span className="text-xs text-muted">The values are read from each {thing(entities)} where it is shown; a field with none draws nothing.</span>
+      <span className="text-xs text-muted">{fillWords(w.valuesRead, { thing: thing(entities, w) })}</span>
     </span>
   );
 }

@@ -1,3 +1,4 @@
+import { countWords, fillWords } from "./admin-fill";
 import type { PageRow } from "./page-content";
 import { sectionStyleLabel, type SectionStyles } from "./section-styles";
 import { detachThemeValues } from "./theme-detach";
@@ -13,11 +14,60 @@ import type { ThemeElements } from "./theme-elements";
 export const LAYOUT_KINDS = ["header", "footer", "productLayout"] as const;
 export type LayoutKind = (typeof LAYOUT_KINDS)[number];
 
-const LAYOUT_WORDS: Record<LayoutKind, { name: string; standard: string }> = {
-  header: { name: "header", standard: "the standard header" },
-  footer: { name: "footer", standard: "the standard footer" },
-  productLayout: { name: "product page layout", standard: "the standard product page" },
+/**
+ * The words `whatChanges()` writes, in English unless an admin catalogue's `design.changes` is given (D312 A7). `{name}`-style placeholders;
+ * a `{ one, many }` pair is chosen by its count. `styles` names the core section styles; another style's name is made from its key.
+ */
+export const CHANGES_WORDS = {
+  quote: "“{title}”",
+  layouts: {
+    header: { name: "header", standard: "the standard header" },
+    footer: { name: "footer", standard: "the standard footer" },
+    productLayout: { name: "product page layout", standard: "the standard product page" },
+  },
+  untitled: "Untitled {name}",
+  layoutChanges: "The {layout} changes from {from} to {to}.",
+  styleUse: { one: "{n} page uses the section style {style}", many: "{n} pages use the section style {style}" },
+  styleHas: "{where}; {target} has it.",
+  styleToPlain: "{where}; {target} does not have it, so those rows take its Plain style.",
+  styleToElements: "{where}; {target} has neither it nor a Plain style, so those rows take its site-wide elements.",
+  settings: { one: "{n} setting", many: "{n} settings" },
+  pages: { one: "{n} page", many: "{n} pages" },
+  own: { one: "{settings} on {pages} is your own and stays as it is.", many: "{settings} on {pages} are your own and stay as they are." },
+  repeating: {
+    one: "{settings} on {pages} only repeats your current theme, so it keeps today's look rather than {target}'s. Use “Let pages follow the theme” first to change that.",
+    many: "{settings} on {pages} only repeat your current theme, so they keep today's look rather than {target}'s. Use “Let pages follow the theme” first to change that.",
+  },
+  fonts: { one: "{target} uses a font your current theme does not: {fonts}.", many: "{target} uses fonts your current theme does not: {fonts}." },
+  cssOwn: "Your current CSS stays with {live}; {target} has its own.",
+  cssNone: "Your current CSS stays with {live}; {target} has none.",
+  cssFit: "CSS written for one layout may not fit another: look at the preview before you switch.",
+  styles: {} as Record<string, string>,
 };
+
+type Pair = { one: string; many: string };
+export type ChangesWords = {
+  quote: string;
+  layouts: Record<LayoutKind, { name: string; standard: string }>;
+  untitled: string;
+  layoutChanges: string;
+  styleUse: Pair;
+  styleHas: string;
+  styleToPlain: string;
+  styleToElements: string;
+  settings: Pair;
+  pages: Pair;
+  own: Pair;
+  repeating: Pair;
+  fonts: Pair;
+  cssOwn: string;
+  cssNone: string;
+  cssFit: string;
+  styles: Record<string, string>;
+};
+
+const fill = fillWords;
+const count = countWords;
 
 /** One look, as the summary needs it: the theme's layers, its fonts, its CSS and its layouts' names (null: the standard one). */
 export type LookFacts = {
@@ -47,19 +97,17 @@ export type WhatChanges = {
   lines: string[];
 };
 
-const quoted = (title: string) => `“${title}”`;
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-function layoutName(kind: LayoutKind, layout: { id: string | null; title: string | null }): string {
-  return layout.id ? quoted(layout.title || `Untitled ${LAYOUT_WORDS[kind].name}`) : LAYOUT_WORDS[kind].standard;
+function layoutName(kind: LayoutKind, layout: { id: string | null; title: string | null }, w: ChangesWords): string {
+  return layout.id ? fill(w.quote, { title: layout.title || fill(w.untitled, { name: w.layouts[kind].name }) }) : w.layouts[kind].standard;
 }
 
-/** What switching from `live` to `target` does to `pages`. */
-export function whatChanges(live: LookFacts, target: LookFacts, pages: PageFacts[]): WhatChanges {
+/** What switching from `live` to `target` does to `pages`, in the words given (English unless an admin catalogue's are). */
+export function whatChanges(live: LookFacts, target: LookFacts, pages: PageFacts[], w: ChangesWords = CHANGES_WORDS): WhatChanges {
+  const quoted = (title: string) => fill(w.quote, { title });
   const layouts = LAYOUT_KINDS.filter((kind) => (live.layouts[kind].id ?? null) !== (target.layouts[kind].id ?? null)).map((kind) => ({
     kind,
-    from: layoutName(kind, live.layouts[kind]),
-    to: layoutName(kind, target.layouts[kind]),
+    from: layoutName(kind, live.layouts[kind], w),
+    to: layoutName(kind, target.layouts[kind], w),
   }));
 
   // The section styles rows name (D242), counted by page.
@@ -71,7 +119,7 @@ export function whatChanges(live: LookFacts, target: LookFacts, pages: PageFacts
   const has = (name: string) => Boolean(target.sections?.[name]);
   const styles: StyleUse[] = [...used.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, count]) => ({ name, label: sectionStyleLabel(name), pages: count, has: has(name), plain: has("plain") }));
+    .map(([name, count]) => ({ name, label: w.styles[name] ?? sectionStyleLabel(name), pages: count, has: has(name), plain: has("plain") }));
 
   const own = { settings: 0, pages: 0 };
   const repeating = { settings: 0, pages: 0 };
@@ -92,23 +140,20 @@ export function whatChanges(live: LookFacts, target: LookFacts, pages: PageFacts
   const css = { live: live.css.trim().length > 0, target: target.css.trim().length > 0 };
 
   const lines: string[] = [];
-  for (const layout of layouts) lines.push(`The ${LAYOUT_WORDS[layout.kind].name} changes from ${layout.from} to ${layout.to}.`);
+  for (const layout of layouts) lines.push(fill(w.layoutChanges, { layout: w.layouts[layout.kind].name, from: layout.from, to: layout.to }));
+  const target_ = quoted(target.title);
   for (const style of styles) {
-    const where = `${plural(style.pages, "page uses", "pages use")} the section style ${style.label}`;
-    if (style.has) lines.push(`${where}; ${quoted(target.title)} has it.`);
-    else if (style.plain) lines.push(`${where}; ${quoted(target.title)} does not have it, so those rows take its Plain style.`);
-    else lines.push(`${where}; ${quoted(target.title)} has neither it nor a Plain style, so those rows take its site-wide elements.`);
+    const where = count(style.pages, w.styleUse, { style: style.label });
+    lines.push(fill(style.has ? w.styleHas : style.plain ? w.styleToPlain : w.styleToElements, { where, target: target_ }));
   }
   if (own.settings > 0) {
-    lines.push(`${plural(own.settings, "setting", "settings")} on ${plural(own.pages, "page", "pages")} ${own.settings === 1 ? "is" : "are"} your own and stay as ${own.settings === 1 ? "it is" : "they are"}.`);
+    lines.push(count(own.settings, w.own, { settings: count(own.settings, w.settings), pages: count(own.pages, w.pages) }));
   }
   if (repeating.settings > 0) {
-    lines.push(
-      `${plural(repeating.settings, "setting", "settings")} on ${plural(repeating.pages, "page", "pages")} only repeat${repeating.settings === 1 ? "s" : ""} your current theme, so ${repeating.settings === 1 ? "it keeps" : "they keep"} today's look rather than ${quoted(target.title)}'s. Use “Let pages follow the theme” first to change that.`,
-    );
+    lines.push(count(repeating.settings, w.repeating, { settings: count(repeating.settings, w.settings), pages: count(repeating.pages, w.pages), target: target_ }));
   }
-  if (fontsAdded.length > 0) lines.push(`${quoted(target.title)} uses ${fontsAdded.length === 1 ? "a font" : "fonts"} your current theme does not: ${fontsAdded.join(", ")}.`);
-  if (css.live && live.css !== target.css) lines.push(`Your current CSS stays with ${quoted(live.title)}; ${quoted(target.title)} ${css.target ? "has its own" : "has none"}.`);
-  if (css.live || css.target) lines.push("CSS written for one layout may not fit another: look at the preview before you switch.");
+  if (fontsAdded.length > 0) lines.push(count(fontsAdded.length, w.fonts, { target: target_, fonts: fontsAdded.join(", ") }));
+  if (css.live && live.css !== target.css) lines.push(fill(css.target ? w.cssOwn : w.cssNone, { live: quoted(live.title), target: target_ }));
+  if (css.live || css.target) lines.push(w.cssFit);
   return { layouts, styles, own, repeating, fontsAdded, css, lines };
 }

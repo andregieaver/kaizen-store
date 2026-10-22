@@ -6,7 +6,8 @@ import { useEffect, useId, type RefObject } from "react";
 import { POINTER_HOVER, partFx, type FxProps } from "@/lib/motion-attrs";
 import { initMotion } from "@/lib/motion-runtime";
 import type { BackgroundMotion, EnterMotion, MotionTarget, PartMotion } from "@/lib/motion";
-import { REDUCED_NOTE, useReducedMotion } from "./motion-fields";
+import { useReducedMotion } from "./motion-fields";
+import { useAdminText } from "./admin-text";
 
 /**
  * The canvas's motion preview (D128): off, the canvas draws exactly as it always did; on, rows, columns, components
@@ -74,8 +75,10 @@ export function MotionPreviewToggle({
 }) {
   const reduced = useReducedMotion();
   const help = useId();
+  const w = useAdminText("builder").motion;
+  const reducedNote = useAdminText("blocks").motion.reduced;
   return (
-    <div role="toolbar" aria-label="Canvas" className="flex flex-wrap items-center gap-3">
+    <div role="toolbar" aria-label={w.canvas} className="flex flex-wrap items-center gap-3">
       <button
         type="button"
         role="switch"
@@ -90,17 +93,15 @@ export function MotionPreviewToggle({
         >
           <span className="size-3 rounded-full bg-card" />
         </span>
-        Preview motion
+        {w.preview}
       </button>
       {on && (
         <button type="button" onClick={onReplay} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
-          Replay
+          {w.replay}
         </button>
       )}
       <p id={help} className="text-xs text-muted">
-        {reduced
-          ? REDUCED_NOTE
-          : "Plays the effects on the canvas. Parts with effects show a wave in their tools. Visitors who prefer less motion see none."}
+        {reduced ? reducedNote : w.plays}
       </p>
     </div>
   );
@@ -108,8 +109,9 @@ export function MotionPreviewToggle({
 
 /** The little wave in a part's tools that says it has motion (`hasMotion`). */
 export function MotionMark() {
+  const w = useAdminText("builder").motion;
   return (
-    <span title="Has motion effects" className="ml-1 inline-flex items-center align-middle">
+    <span title={w.has} className="ml-1 inline-flex items-center align-middle">
       <svg
         viewBox="0 0 24 24"
         aria-hidden
@@ -121,7 +123,7 @@ export function MotionMark() {
       >
         <path d="M2 12c3-7 6-7 10 0s7 7 10 0" />
       </svg>
-      <span className="sr-only">Has motion effects</span>
+      <span className="sr-only">{w.has}</span>
     </span>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { ThemeChanges } from "@/components/admin/theme-changes";
 import { ThemeEditor } from "@/components/admin/theme-editor";
 import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowLead, PageHeader } from "@/components/admin/ui";
@@ -9,6 +10,9 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { installPreview, whatChangesFor } from "@/server/theme-preview";
 import { listSavedThemes } from "@/server/themes";
 import { themeCharge } from "@/server/theme-prices";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { chargeButton, chargeLine, chargeToken } from "@/lib/theme-prices";
 
 import { deleteSavedThemeAction, installStoreFontAction, saveSavedThemeAction, switchThemeAction } from "../../actions";
@@ -26,13 +30,17 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const added = (await searchParams).added === "1";
   const member = await requirePermission(slug, "website:read");
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "design");
+  const w = all.install;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const preview = await installPreview(store.id, installId);
   if (!preview) notFound();
   const design = `/admin/${store.slug}/settings/design`;
   if (preview.install.live) redirect(design);
   const canChange = memberCan(member, "website:write");
   const [changes, saved, charge] = await Promise.all([
-    whatChangesFor(store.id, installId),
+    whatChangesFor(store.id, installId, all.changes),
     listSavedThemes(store.id),
     // A premium theme (D286): what switching to it costs the store, said before the button that agrees to it.
     preview.install.presetId ? themeCharge(store.id, preview.install.presetId) : null,
@@ -40,50 +48,51 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
   const { install } = preview;
   const previewHref = `/admin/${store.slug}/settings/design/themes/${install.id}/preview`;
   const layouts = [
-    { name: "Header", page: preview.header, href: preview.header && `/admin/${store.slug}/headers/${preview.header.id}` },
-    { name: "Footer", page: preview.footer, href: preview.footer && `/admin/${store.slug}/footers/${preview.footer.id}` },
-    { name: "Product page", page: preview.productLayout, href: preview.productLayout && `/admin/${store.slug}/product-layouts/${preview.productLayout.id}` },
+    { name: w.layouts.header, page: preview.header, href: preview.header && `/admin/${store.slug}/headers/${preview.header.id}` },
+    { name: w.layouts.footer, page: preview.footer, href: preview.footer && `/admin/${store.slug}/footers/${preview.footer.id}` },
+    { name: w.layouts.productLayout, page: preview.productLayout, href: preview.productLayout && `/admin/${store.slug}/product-layouts/${preview.productLayout.id}` },
   ];
+  const switchName = fillWords(w.switchTo, { name: install.title });
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["design"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: design, label: "Design" }}
-        title={`Customise “${install.title}”`}
-        status={<Chip signal="neutral">Installed, not live</Chip>}
-        meta={[install.version !== null ? `Version ${install.version}` : null]}
-        description="Make this theme ready before you switch to it. Visitors keep seeing your live theme until you switch, and switching never changes your words, pictures, videos, links or menus."
+        back={{ href: design, label: w.back }}
+        title={fillWords(w.title, { name: install.title })}
+        status={<Chip signal="neutral">{w.notLive}</Chip>}
+        meta={[install.version !== null ? fillWords(all.common.version, { n: install.version }) : null]}
+        description={w.description}
         actions={
           <ButtonLink href={previewHref} target="_blank" kind="main" size="header">
-            Preview on your pages
+            {w.previewOnPages}
           </ButtonLink>
         }
       />
       {added && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          “{install.title}” is in your theme library, not live: visitors see nothing of it until you switch. Preview it on your own pages,
-          change it here if you like, then switch when it is ready.
+          {fillWords(w.added, { name: install.title })}
         </p>
       )}
       {canChange && (
-        <Card title="Switch to it" description="Makes this theme live at once. Your live theme stays in your library with every change you made to it, so you can switch back." compact>
-          {charge && chargeLine(charge) && <p className="mb-3 text-sm text-ink">{chargeLine(charge)}</p>}
+        <Card title={w.switchTitle} description={w.switchDescription} compact>
+          {charge && chargeLine(charge, all.charge, locale) && <p className="mb-3 text-sm text-ink">{chargeLine(charge, all.charge, locale)}</p>}
           <ActionForm action={switchThemeAction.bind(null, store.slug)}>
             <input type="hidden" name="install" value={install.id} />
             {charge?.kind === "now" && <input type="hidden" name="charge" value={chargeToken(charge.price)} />}
-            <SubmitButton>{charge ? chargeButton(charge, `Switch to “${install.title}”`) : `Switch to “${install.title}”`}</SubmitButton>
+            <SubmitButton>{charge ? chargeButton(charge, switchName, all.charge, locale) : switchName}</SubmitButton>
           </ActionForm>
         </Card>
       )}
-      {changes && <ThemeChanges live={changes.live} target={changes.target} changes={changes.changes} />}
-      <Card title="Its layouts" description="The header, footer and product page this theme uses. They are pages of your store: editing one changes it in this theme only, unless your live theme uses it too." compact>
-        <List label="Layouts">
+      {changes && <ThemeChanges live={changes.live} target={changes.target} changes={changes.changes} lang={lang} />}
+      <Card title={w.layoutsTitle} description={w.layoutsDescription} compact>
+        <List label={w.layoutsLabel}>
           {layouts.map((layout) => (
             <ListRow key={layout.name}>
-              <RowLead title={layout.name} sub={layout.page ? `“${layout.page.title}”` : "The standard one"} />
+              <RowLead title={layout.name} sub={layout.page ? fillWords(all.common.quote, { title: layout.page.title }) : w.standard} />
               {canChange && layout.href && (
                 <RowActions>
-                  <ButtonLink href={layout.href}>Edit<span className="sr-only"> the {layout.name.toLowerCase()}</span></ButtonLink>
+                  <ButtonLink href={layout.href}>{all.common.edit}<span className="sr-only"> {fillWords(w.editThe, { name: layout.name.toLowerCase() })}</span></ButtonLink>
                 </RowActions>
               )}
             </ListRow>
@@ -105,21 +114,22 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
               installFont: installStoreFontAction.bind(null, store.slug),
             }}
           />
-          <Card title="Its own CSS" description="CSS for the whole site, used only while this theme is live. Your live theme keeps its own." compact>
+          <Card title={w.cssTitle} description={w.cssDescription} compact>
             <ActionForm action={saveInstallCssAction.bind(null, store.slug, install.id)} className="flex flex-col gap-3">
               <label className="flex flex-col gap-1.5 text-sm">
                 <span className="sr-only">CSS</span>
                 <textarea name="css" rows={10} defaultValue={preview.css} spellCheck={false} className="rounded-lg border border-line bg-card px-3 py-2 font-mono text-sm" />
               </label>
               <div>
-                <SubmitButton>Save CSS</SubmitButton>
+                <SubmitButton>{w.saveCss}</SubmitButton>
               </div>
             </ActionForm>
           </Card>
         </>
       ) : (
-        <p className="text-body text-ink-2">You may look at this theme and its preview; changing it needs permission to change the website.</p>
+        <p className="text-body text-ink-2">{w.lookOnly}</p>
       )}
     </div>
+    </AdminTextScope>
   );
 }

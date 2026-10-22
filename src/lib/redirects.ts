@@ -10,6 +10,8 @@
  * The rules: never from a live address (a draft's or archived product's address is not live), never from a working page, never to another website, never a
  * loop, a chain stored as its final destination (and followed at serve time, at most 10 hops, in one response), at most 100,000 manual redirects a store.
  */
+import { countWords } from "./admin-fill";
+import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
 import { finding, type Finding } from "./data-job";
 import { REDIRECTS_MAX, REDIRECT_HOPS_MAX } from "./data-limits";
 import { isWorkingPath, normaliseSource, normaliseTarget, pathOfTarget, type AddressContext, type SourceReading, type TargetReading } from "./redirect-path";
@@ -263,16 +265,16 @@ export function redirectStatus(row: Pick<RedirectRow, "kind" | "source" | "targe
 }
 
 /** What the list says for a status. */
-export function redirectStatusWords(status: RedirectStatus, more = 0): string {
+export function redirectStatusWords(status: RedirectStatus, more = 0, w: RedirectsMessages = redirectsEn): string {
   switch (status) {
     case "active":
-      return "Active";
+      return w.status.active;
     case "not_used":
-      return "Not used: this address is live";
+      return w.status.not_used;
     case "target_missing":
-      return "Target not found";
+      return w.status.target_missing;
     case "chain":
-      return `Goes through ${more} more redirect${more === 1 ? "" : "s"}`;
+      return countWords(more, w.status.chain);
   }
 }
 

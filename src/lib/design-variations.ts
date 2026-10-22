@@ -1,3 +1,4 @@
+import { fillWords } from "./admin-fill";
 import { slugify } from "./slug";
 import {
   VARIATIONS_MAX,
@@ -92,13 +93,20 @@ export function installedLook(snapshot: DesignSnapshot, key: string | null): { s
   return laid ? { snapshot: laid, missing: false } : { snapshot: own, missing: true };
 }
 
+/** The words `presetLine()` writes, in English unless an admin catalogue's `design.presetLine` is given (D312 A7). */
+export const PRESET_LINE_WORDS = {
+  gone: "This version no longer has the {name} preset, so the theme's own look is used.",
+  back: "The {name} preset is back in this version.",
+};
+export type PresetLineWords = { gone: string; back: string };
+
 /** The line *What's new* says when a version no longer has the install's preset, or brings it back. */
-export function presetLine(before: DesignSnapshot | null, after: DesignSnapshot, key: string | null): string | null {
+export function presetLine(before: DesignSnapshot | null, after: DesignSnapshot, key: string | null, w: PresetLineWords = PRESET_LINE_WORDS): string | null {
   if (!key) return null;
   const had = before ? variationsOf(before).find((v) => v.key === key) : undefined;
   const has = variationsOf(after).find((v) => v.key === key);
-  if (had && !has) return `This version no longer has the ${had.name} preset, so the theme's own look is used.`;
-  if (!had && has && before) return `The ${has.name} preset is back in this version.`;
+  if (had && !has) return fillWords(w.gone, { name: had.name });
+  if (!had && has && before) return fillWords(w.back, { name: has.name });
   return null;
 }
 

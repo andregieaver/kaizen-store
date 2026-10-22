@@ -1,3 +1,4 @@
+import { fillWords } from "./admin-fill";
 import { z } from "zod";
 
 import { baseScheme } from "./color-mode";
@@ -444,24 +445,43 @@ export function contrastRatio(a: string, b: string): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
+/** The words `themeWarnings()` writes, in English unless an admin catalogue's `design.readability` is given (D312 A7). */
+export const READABILITY_WORDS = {
+  pairs: {
+    textOnBackground: "Text on the background",
+    mutedOnBackground: "Secondary text on the background",
+    textOnSurface: "Text on the surface colour",
+    textOnAccent: "Text on the accent colour",
+  },
+  sets: { light: "light", dark: "dark" },
+  hard: "{what} in the {set} colours is hard to read ({ratio}:1; aim for 4.5:1).",
+  decimal: ".",
+};
+export type ReadabilityWords = {
+  pairs: { [K in keyof typeof READABILITY_WORDS.pairs]: string };
+  sets: { light: string; dark: string };
+  hard: string;
+  decimal: string;
+};
+
 /**
  * Colour pairs that fall below WCAG AA for normal text (4.5:1), in the sets
  * the theme shows; the editor warns about them rather than refusing, so an
  * owner can work through a palette.
  */
-export function themeWarnings(settings: ThemeSettings): string[] {
+export function themeWarnings(settings: ThemeSettings, w: ReadabilityWords = READABILITY_WORDS): string[] {
   // Both sets show where the device decides or the visitor may choose (D99).
   const sets = settings.mode === "auto" || settings.visitorSwitch ? (["light", "dark"] as const) : ([settings.mode] as const);
   const pairs: [PaletteKey, PaletteKey, string][] = [
-    ["text", "background", "Text on the background"],
-    ["muted", "background", "Secondary text on the background"],
-    ["text", "surface", "Text on the surface colour"],
-    ["accentText", "accent", "Text on the accent colour"],
+    ["text", "background", w.pairs.textOnBackground],
+    ["muted", "background", w.pairs.mutedOnBackground],
+    ["text", "surface", w.pairs.textOnSurface],
+    ["accentText", "accent", w.pairs.textOnAccent],
   ];
   return sets.flatMap((set) =>
     pairs.flatMap(([a, b, what]) => {
       const ratio = contrastRatio(settings[set][a], settings[set][b]);
-      return ratio < 4.5 ? [`${what} in the ${set} colours is hard to read (${ratio.toFixed(1)}:1; aim for 4.5:1).`] : [];
+      return ratio < 4.5 ? [fillWords(w.hard, { what, set: w.sets[set], ratio: ratio.toFixed(1).replace(".", w.decimal) })] : [];
     }),
   );
 }

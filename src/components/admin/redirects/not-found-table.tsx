@@ -6,7 +6,12 @@ import { useId, useState, useTransition } from "react";
 import { field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { momentText } from "@/lib/data-admin";
 import type { Finding } from "@/lib/data-job";
-import { SUGGESTION_KIND, requestsWords, suggestionWords } from "@/lib/redirect-admin";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { requestsWords, suggestionKind, suggestionWords } from "@/lib/redirect-admin";
+import { redirectProblems } from "@/lib/redirect-words";
+
+import { useAdminLang, useAdminText } from "../admin-text";
 
 import { FindingList } from "./redirect-form";
 
@@ -33,26 +38,27 @@ export type ReportActions = {
  * *Restore* brings it back). A row that was redirected here says so at once and keeps no buttons. Every change goes through the page's bound actions.
  */
 export function NotFoundTable({ rows, timeZone, actions, canWrite }: { rows: MissingRow[]; timeZone: string; actions: ReportActions; canWrite: boolean }) {
+  const t = useAdminText("redirects").report.table;
   return (
     <div className={tableShell}>
       <table className="w-full text-sm">
-        <caption className="sr-only">Addresses that were asked for and not found, most asked first</caption>
+        <caption className="sr-only">{t.caption}</caption>
         <thead>
           <tr className="border-b border-line">
             <th scope="col" className={th}>
-              Address
+              {t.address}
             </th>
             <th scope="col" className={th}>
-              Requests
+              {t.requests}
             </th>
             <th scope="col" className={`${th} hidden md:table-cell`}>
-              Last asked
+              {t.lastAsked}
             </th>
             <th scope="col" className={th}>
-              A redirect?
+              {t.covered}
             </th>
             <th scope="col" className={th}>
-              {canWrite ? "Fix it" : <span className="sr-only">Fix it</span>}
+              {canWrite ? t.fix : <span className="sr-only">{t.fix}</span>}
             </th>
           </tr>
         </thead>
@@ -67,6 +73,9 @@ export function NotFoundTable({ rows, timeZone, actions, canWrite }: { rows: Mis
 }
 
 function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow; timeZone: string; actions: ReportActions; canWrite: boolean }) {
+  const w = useAdminText("redirects");
+  const t = w.report.table;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const router = useRouter();
   const id = useId();
   const [done, setDone] = useState<string | null>(null);
@@ -84,7 +93,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
       setFindings([]);
       const result = await actions.redirect(row.path, to);
       if (!result.ok) {
-        setProblems(result.problems);
+        setProblems(redirectProblems(result.problems, w));
         setFindings(result.findings ?? []);
         return;
       }
@@ -98,7 +107,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
       setProblems([]);
       const result = await (ignored ? actions.restore(row.path) : actions.ignore(row.path));
       if (!result.ok) {
-        setProblems(result.problems);
+        setProblems(redirectProblems(result.problems, w));
         return;
       }
       setHiddenNow(!ignored);
@@ -111,26 +120,26 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
         <code className="break-all text-xs">{row.path}</code>
       </td>
       <td className={td}>
-        <span className="whitespace-nowrap">{requestsWords(row.requests, row.crawlers)}</span>
+        <span className="whitespace-nowrap">{requestsWords(row.requests, row.crawlers, w, locale)}</span>
       </td>
-      <td className={`${td} hidden md:table-cell`}>{momentText(row.lastAsked, timeZone)}</td>
-      <td className={td}>{done ? "Yes, just now" : row.covered ? "Yes" : ignored ? "Hidden" : "No"}</td>
+      <td className={`${td} hidden md:table-cell`}>{momentText(row.lastAsked, timeZone, locale)}</td>
+      <td className={td}>{done ? t.justNow : row.covered ? t.yes : ignored ? t.hidden : t.no}</td>
       <td className={td}>
         {done ? (
           <p className="text-sm">
-            Redirects to <code className="break-all text-xs">{done}</code>.
+            {t.redirectsTo} <code className="break-all text-xs">{done}</code>.
           </p>
         ) : !canWrite || row.covered ? null : (
           <div className="flex flex-col gap-2">
             {row.suggestions.length > 0 && (
-              <ul className="flex flex-col gap-1" aria-label={`Suggested targets for ${row.path}`}>
+              <ul className="flex flex-col gap-1" aria-label={fillWords(t.suggestedFor, { path: row.path })}>
                 {row.suggestions.map((s) => (
                   <li key={s.path}>
-                    <button type="button" disabled={pending} onClick={() => redirect(s.path)} className={`${primary} !min-h-9 !px-3 !text-xs`} aria-label={`${suggestionWords(s.path)} (${SUGGESTION_KIND[s.kind] ?? s.kind}: ${s.title})`}>
-                      {suggestionWords(s.path)}
+                    <button type="button" disabled={pending} onClick={() => redirect(s.path)} className={`${primary} !min-h-9 !px-3 !text-xs`} aria-label={`${suggestionWords(s.path, w)} (${suggestionKind(s.kind, w)}: ${s.title})`}>
+                      {suggestionWords(s.path, w)}
                     </button>
                     <span className={`${hint} ml-2`}>
-                      {SUGGESTION_KIND[s.kind] ?? s.kind}: {s.title}
+                      {suggestionKind(s.kind, w)}: {s.title}
                     </span>
                   </li>
                 ))}
@@ -145,25 +154,25 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
                 }}
               >
                 <label htmlFor={`${id}-to`} className="text-xs font-medium">
-                  Redirect {row.path} to
+                  {fillWords(t.redirectPathTo, { path: row.path })}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   <input id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="/category/shoes" autoComplete="off" spellCheck={false} className={`${field} min-w-40 flex-1 font-mono`} />
                   <button type="submit" disabled={pending || target.trim() === ""} className={primary}>
-                    Add the redirect
+                    {t.add}
                   </button>
                   <button type="button" onClick={() => setForm(false)} className={secondary}>
-                    Cancel
+                    {w.common.cancel}
                   </button>
                 </div>
               </form>
             ) : (
               <div className="flex flex-wrap gap-3 text-xs">
                 <button type="button" onClick={() => setForm(true)} className="underline underline-offset-2">
-                  {row.suggestions.length > 0 ? "Another target …" : "Redirect …"}
+                  {row.suggestions.length > 0 ? t.another : t.redirect}
                 </button>
                 <button type="button" disabled={pending} onClick={toggleIgnored} className="underline underline-offset-2">
-                  {ignored ? "Restore" : "Ignore"}
+                  {ignored ? t.restore : t.ignore}
                 </button>
               </div>
             )}
@@ -179,7 +188,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
         )}
         {canWrite && row.covered && ignored && (
           <button type="button" disabled={pending} onClick={toggleIgnored} className="text-xs underline underline-offset-2">
-            Restore
+            {t.restore}
           </button>
         )}
       </td>

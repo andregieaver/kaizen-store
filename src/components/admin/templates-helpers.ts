@@ -1,12 +1,19 @@
+import { builderEn } from "@/lib/admin-messages/builder.en";
+import type { BuilderMessages } from "@/lib/admin-messages/builder.en";
+import { fillWords } from "@/lib/admin-fill";
 import type { PageType } from "@/lib/page-content";
-import { LAYOUT_TYPE_LABELS, layoutFits } from "@/lib/page-layout";
+import { layoutFits } from "@/lib/page-layout";
 import type { SavedPartKind } from "@/lib/saved-parts";
-import { KIND_LABELS, KIND_ORDER, type TemplateItem, type TemplateSource } from "@/lib/templates";
+import { KIND_ORDER, type TemplateItem, type TemplateSource } from "@/lib/templates";
 
 /**
  * The pure parts of the builder's Templates tab and its modal (D125): grouping by kind, filtering in the browser, and the
  * words for the states a list can be in. Kept apart from the components so they are tested without drawing anything.
  */
+
+/** The templates' words (D312 A7): English unless the admin's language is given. */
+export type TemplateWords = BuilderMessages["templates"];
+const EN = builderEn.templates;
 
 export type KindFilter = "all" | SavedPartKind;
 
@@ -15,24 +22,22 @@ export type TemplateFilters = { kind: KindFilter; activeOnly: boolean; query: st
 export const NO_FILTERS: TemplateFilters = { kind: "all", activeOnly: false, query: "" };
 
 /** The kind chips of the modal, in the order of the groups. */
-export const KIND_FILTERS: readonly { value: KindFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  ...KIND_ORDER.map((kind) => ({ value: kind, label: KIND_LABELS[kind].many })),
+export const kindFilters = (words: TemplateWords = EN): readonly { value: KindFilter; label: string }[] => [
+  { value: "all", label: words.all },
+  ...KIND_ORDER.map((kind) => ({ value: kind, label: words.kinds[kind].many })),
 ];
+export const KIND_FILTERS = kindFilters();
 
 /** How a source is named in a sentence ("No templates activated from …"). */
-export const SOURCE_PHRASES: Record<TemplateSource, string> = {
-  stores: "your other stores",
-  marketplace: "the marketplace",
-};
+export const SOURCE_PHRASES: Record<TemplateSource, string> = EN.sourcePhrases;
 
 export type TemplateGroup = { kind: SavedPartKind; label: string; items: TemplateItem[] };
 
 /** Page layouts, then rows, columns and components, each in the order given; a kind with nothing in it is left out. */
-export function groupTemplates(items: readonly TemplateItem[]): TemplateGroup[] {
+export function groupTemplates(items: readonly TemplateItem[], words: TemplateWords = EN): TemplateGroup[] {
   return KIND_ORDER.flatMap((kind) => {
     const own = items.filter((item) => item.kind === kind);
-    return own.length > 0 ? [{ kind, label: KIND_LABELS[kind].many, items: own }] : [];
+    return own.length > 0 ? [{ kind, label: words.kinds[kind].many, items: own }] : [];
   });
 }
 
@@ -48,8 +53,8 @@ export const forPage = (items: readonly TemplateItem[], pageType: PageType): Tem
   activated(items).filter((item) => fitsPage(item, pageType));
 
 /** "For articles": the kind of page a page layout is made for; null for the other kinds. */
-export const forLabel = (item: Pick<TemplateItem, "kind" | "pageType">): string | null =>
-  item.kind === "page" && item.pageType !== null ? `For ${LAYOUT_TYPE_LABELS[item.pageType].many}` : null;
+export const forLabel = (item: Pick<TemplateItem, "kind" | "pageType">, words: TemplateWords = EN): string | null =>
+  item.kind === "page" && item.pageType !== null ? fillWords(words.forType, { many: words.layoutTypes[item.pageType].many }) : null;
 
 /** What the page has room for, so a template that would not fit is not offered. */
 export type PageRoom = { pageType: PageType; rowsFull: boolean; blocksFull: boolean };
@@ -58,16 +63,14 @@ export type PageRoom = { pageType: PageType; rowsFull: boolean; blocksFull: bool
  * Why a template cannot be used on this page, in words for the person; null when it can. A page layout is for one kind
  * of page only (and always fits by replacing the rows, so a full page does not stop it); the rest need room.
  */
-export function blockedReason(item: Pick<TemplateItem, "kind" | "pageType">, room: PageRoom): string | null {
+export function blockedReason(item: Pick<TemplateItem, "kind" | "pageType">, room: PageRoom, words: TemplateWords = EN): string | null {
   if (item.kind === "page") {
     if (fitsPage(item, room.pageType)) return null;
-    const own = item.pageType === null ? null : LAYOUT_TYPE_LABELS[item.pageType].many;
-    return own
-      ? `Made for ${own}, so it cannot be used on ${LAYOUT_TYPE_LABELS[room.pageType].many}.`
-      : "It does not say which kind of page it is for.";
+    const own = item.pageType === null ? null : words.layoutTypes[item.pageType].many;
+    return own ? fillWords(words.madeFor, { own, here: words.layoutTypes[room.pageType].many }) : words.noType;
   }
-  if (item.kind === "block") return room.blocksFull ? "This page has no room for more blocks." : null;
-  return room.rowsFull ? "This page has no room for more rows." : null;
+  if (item.kind === "block") return room.blocksFull ? words.noBlocks : null;
+  return room.rowsFull ? words.noRows : null;
 }
 
 /** Lower case without accents, so "kafé" is found by "cafe" and "Kaizen" by "kaizen". */
@@ -101,36 +104,15 @@ export const patchTemplate = (
   patch: Partial<TemplateItem>,
 ): TemplateItem[] => items.map((item) => (item.id === id ? { ...item, ...patch } : item));
 
-/** What the tab says when nothing from a source is switched on. */
-/** Kaizen's own builder (D236): its templates are its own saved parts, always on. */
-const OWN_NONE = {
-  title: "No templates yet",
-  hint: "Save a page, row, column or component as a template (Save as template, or from Saved) and it is listed here.",
-};
-
-export function noneActivated(source: TemplateSource, own = false): { title: string; hint: string } {
-  if (own) return OWN_NONE;
-  return {
-    title: `No templates activated from ${SOURCE_PHRASES[source]}`,
-    hint:
-      source === "stores"
-        ? "Page layouts, rows, columns and components you share from your other stores can be switched on here. Browse them to choose."
-        : "Browse the marketplace and switch on the templates you want to build with. Kaizena Flow's start out on.",
-  };
+/** What the tab says when nothing from a source is switched on; Kaizen's own builder (D236) has its own saved parts, always on. */
+export function noneActivated(source: TemplateSource, own = false, words: TemplateWords = EN): { title: string; hint: string } {
+  if (own) return words.ownNone;
+  return { title: fillWords(words.noneTitle, { source: words.sourcePhrases[source] }), hint: words.noneHint[source] };
 }
 
 /** What the modal says when a source has nothing to list at all. */
-export function nothingShared(source: TemplateSource, own = false): { title: string; hint: string } {
-  if (own) return OWN_NONE;
-  return source === "stores"
-    ? {
-        title: "Your other stores have not shared anything yet",
-        hint: "Share a saved page layout, row, column or component with My stores (under Saved, or when you save it) and it appears here.",
-      }
-    : {
-        title: "Nothing in the marketplace yet",
-        hint: "Templates shared with the marketplace by Kaizena Flow and other stores appear here.",
-      };
+export function nothingShared(source: TemplateSource, own = false, words: TemplateWords = EN): { title: string; hint: string } {
+  return own ? words.ownNone : words.nothing[source];
 }
 
 /** The widths a template can be previewed at (D127): the full width of the preview, a tablet's and a phone's. */

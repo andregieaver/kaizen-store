@@ -38,7 +38,7 @@ import { History, Redo2, Replace, Undo2, WandSparkles } from "lucide-react";
 import { emptyHistory, historyKey, record, redo as redoStep, undo as undoStep, type History as EditHistory } from "@/lib/edit-history";
 import type { PageVersionItem } from "@/lib/page-versions";
 
-import { MAKE_COOL_LABEL, MakeCoolDialog } from "./make-cool-dialog";
+import { MakeCoolDialog } from "./make-cool-dialog";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
@@ -64,6 +64,9 @@ import type { Term } from "@/lib/taxonomy";
 import type { EditablePage, PageState } from "@/server/pages";
 
 import { CssPanel } from "./css-panel";
+import { useAdminLang, useAdminText } from "./admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColourLibraryProvider } from "./colour-library";
@@ -74,7 +77,7 @@ import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
-import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
+import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -82,11 +85,6 @@ const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 const small = "min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40";
 const hint = "text-xs font-normal text-muted";
 
-const STATE_TEXT: Record<PageState, string> = {
-  draft: "Draft: not on the site",
-  published: "Published",
-  changed: "Published, with changes not yet published",
-};
 
 /** A new page starts with one full-width row holding an empty text block. */
 function startingRows(type: PageType, owner: string | null, menus: StandardMenus): PageRow[] {
@@ -133,6 +131,9 @@ export function PageEditor({
   context: PageOwnerContext;
 }) {
   const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
+  const w = useAdminText("builder");
+  const ew = w.editor;
+  const dateLocale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [terms, setTerms] = useState(initialTerms);
   // The address a title makes, kept under the page's parent; the platform's reserved addresses are only for the top level.
   const slugFromTitle = (title: string, current = "") =>
@@ -246,19 +247,19 @@ export function PageEditor({
     const before = content.rows;
     const result = applyMotionPlan(before, plan);
     if (result.changed === 0) {
-      setMessage("Nothing to add: your page already has motion wherever it fits.");
+      setMessage(ew.coolNothing);
       return;
     }
     changeRows(() => result.rows);
     setCoolUndo({ before, after: result.rows });
     setMotionRequest((n) => n + 1);
-    setMessage(`${plan.summary}${plan.aiUsed ? "" : " (Your store has no AI set up, so a standard design was used.)"}`);
+    setMessage(`${plan.summary}${plan.aiUsed ? "" : ` ${ew.coolNoAi}`}`);
   };
   const undoCool = () => {
     if (!coolUndo) return;
     changeRows(() => coolUndo.before);
     setCoolUndo(null);
-    setMessage("Motion removed again.");
+    setMessage(ew.coolRemoved);
   };
   /** Takes back the last change, or puts back the one last taken back. */
   const step = (direction: "undo" | "redo") => {
@@ -275,14 +276,16 @@ export function PageEditor({
     try {
       parsed = JSON.parse(json) as PageContent;
     } catch {
-      setProblems(["This version could not be read."]);
+      setProblems([ew.versionUnreadable]);
       return;
     }
     remember("version");
     setContent(refreshUses(parsed, known.current, (id) => !known.current.has(id)));
     setDirty(true);
     setMessage(
-      `The version from ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.at))} is in the editor. Save or publish to keep it; Undo takes it back.`,
+      fillWords(ew.versionTaken, {
+        when: new Intl.DateTimeFormat(dateLocale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.at)),
+      }),
     );
   };
   /** The page as the language being written reads. */
@@ -292,11 +295,7 @@ export function PageEditor({
     const outcome = replaceInPage(view, query, replacement, options, only);
     if (outcome.replaced > 0) edit((current) => replaceInPage(current, query, replacement, options, only).content, "replace");
     const kept = outcome.tooLong.length;
-    setMessage(
-      `${outcome.replaced === 0 ? "Nothing was replaced." : `Replaced ${outcome.replaced === 1 ? "1 match" : `${outcome.replaced} matches`}. Undo takes it back.`}${
-        kept > 0 ? ` ${kept === 1 ? "1 text was" : `${kept} texts were`} left as they were: the new words would make ${kept === 1 ? "it" : "them"} too long.` : ""
-      }`,
-    );
+    setMessage(`${outcome.replaced === 0 ? ew.replacedNone : countWords(outcome.replaced, ew.replaced)}${kept > 0 ? ` ${countWords(kept, ew.tooLong)}` : ""}`);
   };
 
   // The custom field groups this page or article gets now (D118): they follow its categories and tags as they change.
@@ -348,7 +347,7 @@ export function PageEditor({
     startBusy(async () => {
       setProblems([]);
       if (theme.current.dirty) {
-        const failed = await theme.current.save().catch(() => ["The theme could not be saved. Changing it needs access to the website settings."]);
+        const failed = await theme.current.save().catch(() => [w.theme.couldNotSave]);
         if (failed) {
           setProblems(failed);
           return;
@@ -378,7 +377,7 @@ export function PageEditor({
       if (latest.current === sent && !sameJson(outcome.page.draft, sent)) setContent(outcome.page.draft);
       setDirty(false);
       setSaved(outcome.page);
-      setMessage(publish ? `Published at ${context.place ? context.place.address : `${siteBase}/${outcome.page.slug}`}.` : "Draft saved.");
+      setMessage(publish ? fillWords(ew.publishedAt, { address: context.place ? context.place.address : `${siteBase}/${outcome.page.slug}` }) : ew.draftSaved);
       // A new page moves to its own address; the editor there says what happened.
       if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
     });
@@ -424,7 +423,7 @@ export function PageEditor({
       if (outcome.status === "error") setProblems(outcome.problems);
       else {
         setSaved(outcome.page);
-        setMessage(`Taken off the site. The ${noun} is a draft again.`);
+        setMessage(ew.unpublished[noun]);
       }
     });
 
@@ -470,7 +469,7 @@ export function PageEditor({
   const testPart = (target: { kind: "row" | "column" | "block"; id: string }) => {
     if (!saved || !context.experimentsHref) return;
     if (dirty || saved.state === "changed") {
-      setProblems(["Publish your changes first: an A/B test starts from the page as it is published."]);
+      setProblems([ew.publishFirst]);
       return;
     }
     router.push(`${context.experimentsHref}?page=${saved.id}&kind=${target.kind}&part=${encodeURIComponent(target.id)}`);
@@ -521,7 +520,7 @@ export function PageEditor({
         checks={
           issues
             ? { count: issues.length, panel: <PageIssuesPanel issues={issues} /> }
-            : { count: 0, panel: <p className="text-sm text-muted">Checks are not available for this page right now.</p> }
+            : { count: 0, panel: <p className="text-sm text-muted">{ew.checksUnavailable}</p> }
         }
         shopParts={shape === "page" && context.owner !== null}
         siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner) : null}
@@ -573,9 +572,9 @@ export function PageEditor({
                 onShow={setLocale}
               />
             )}
-            <section aria-label={layout ? "Name" : "Title and address"} className={card}>
+            <section aria-label={layout ? ew.name : ew.titleAndAddress} className={card}>
               <label className={label}>
-                {layout ? `${noun[0].toUpperCase()}${noun.slice(1)} name` : translating ? `Title in ${language.name}` : "Title"}
+                {layout ? ew.nameOf[noun] : translating ? fillWords(ew.titleIn, { lang: language.name }) : ew.title}
                 <input
                   value={view.title}
                   maxLength={PAGE_TITLE_MAX}
@@ -590,14 +589,14 @@ export function PageEditor({
                   }}
                   placeholder={
                     context.type === "article"
-                      ? "What we learned this spring"
+                      ? ew.placeholders.article
                       : context.type === "header"
-                        ? "Header with a centred logo"
+                        ? ew.placeholders.header
                         : context.type === "footer"
-                          ? "Footer with four columns"
+                          ? ew.placeholders.footer
                           : layout
-                            ? "Wide pictures"
-                            : "About us"
+                            ? ew.placeholders.layout
+                            : ew.placeholders.page
                   }
                   className={`${input} min-h-12 text-xl font-medium`}
                 />
@@ -605,17 +604,15 @@ export function PageEditor({
               {layout ? (
                 <p className={hint}>
                   {context.type === "product_layout"
-                    ? "Only for you: shoppers see the product it is used for."
+                    ? ew.layoutHint
                     : context.type === "variant"
-                      ? `A version of ${shape === "product_layout" ? "a product layout" : shape === "header" || shape === "footer" ? `the ${shape}` : "a page"} for an A/B test: visitors in the test see it where they would have seen the original. Publish your changes to put them in the test, before it starts.`
-                      : `Only for you: once chosen, visitors see the ${context.type} on every page.`}
+                      ? ew.versionHint[shape === "product_layout" ? "product_layout" : shape === "header" ? "header" : shape === "footer" ? "footer" : "page"]
+                      : ew.siteLayoutHint[context.type === "footer" ? "footer" : "header"]}
                 </p>
               ) : translating ? (
-                <p className={hint}>
-                  The address, {content.slug}, is the same in every language. Change it in {main.name}.
-                </p>
+                <p className={hint}>{fillWords(ew.addressSame, { slug: content.slug, main: main.name })}</p>
               ) : context.place ? (
-                <p className={hint}>Shown at {context.place.address} once published; until then, and after Unpublish, the standard page shows there.</p>
+                <p className={hint}>{fillWords(ew.placeHint, { address: context.place.address })}</p>
               ) : (
               <SlugField
                 slug={content.slug}
@@ -637,14 +634,13 @@ export function PageEditor({
               )}
               {moving && !translating && !layout && !context.place && (
                 <p className="rounded-md bg-sunken p-3 text-sm">
-                  When you publish, <strong>{siteBase}/{liveSlug}</strong> will lead to <strong>{siteBase}/{content.slug}</strong> for good
-                  (a permanent redirect), so links and search results keep working.
+                  {ew.movingBefore} <strong>{siteBase}/{liveSlug}</strong> {ew.movingMiddle} <strong>{siteBase}/{content.slug}</strong> {ew.movingAfter}
                 </p>
               )}
             </section>
             {!translating && context.type === "footer" && (
               <section className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
-                <h2 className="text-title text-ink">Reveal on scroll</h2>
+                <h2 className="text-title text-ink">{ew.reveal}</h2>
                 <label className="flex items-start gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -653,11 +649,8 @@ export function PageEditor({
                     className="mt-0.5 size-4"
                   />
                   <span>
-                    Fixed footer
-                    <span className="block text-xs text-muted">
-                      The footer stays at the bottom of the screen, under the page, and is revealed as the page scrolls away. Where the page
-                      is too short to cover it, the footer is where it always is.
-                    </span>
+                    {ew.fixedFooter}
+                    <span className="block text-xs text-muted">{ew.fixedFooterHint}</span>
                   </span>
                 </label>
               </section>
@@ -678,23 +671,22 @@ export function PageEditor({
             {context.type === "article" && (
               <section aria-labelledby="author-heading" className={card}>
                 <h2 id="author-heading" className="text-title text-ink">
-                  Author
+                  {ew.author}
                 </h2>
                 <div className="flex flex-col gap-1">
                   <label className={label}>
-                    Written by
+                    {ew.writtenBy}
                     <input
                       value={content.author ?? ""}
                       maxLength={AUTHOR_MAX}
                       onChange={(event) => change({ author: event.target.value })}
-                      placeholder="Name"
+                      placeholder={ew.name}
                       aria-describedby="author-hint"
                       className={input}
                     />
                   </label>
                   <span id="author-hint" className={hint}>
-                    Shown under the title with the date, and told to search engines. Empty shows{" "}
-                    {context.owner === null ? "Kaizena Flow" : "the store"} as the author.
+                    {context.owner === null ? ew.authorHintKaizen : ew.authorHint}
                   </span>
                 </div>
               </section>
@@ -702,7 +694,7 @@ export function PageEditor({
             {!context.place && (
               <section aria-labelledby="terms-heading" className={card}>
                 <h2 id="terms-heading" className="text-title text-ink">
-                  Categories and tags
+                  {ew.terms}
                 </h2>
                 <TermPicker
                   terms={terms}
@@ -737,19 +729,19 @@ export function PageEditor({
             />
             <section aria-labelledby="visibility-heading" className={card}>
               <h2 id="visibility-heading" className="text-title text-ink">
-                Who may read it
+                {ew.whoMayRead}
               </h2>
               <Switch
                 checked={content.searchEngines}
                 onChange={(searchEngines) => change({ searchEngines })}
-                title="Search engines"
-                help="Google, Bing and others may list the page. Off: the page asks not to be indexed and is left out of the sitemap."
+                title={ew.searchEngines}
+                help={ew.searchEnginesHint}
               />
               <Switch
                 checked={content.aiAssistants}
                 onChange={(aiAssistants) => change({ aiAssistants })}
-                title="AI assistants"
-                help="ChatGPT, Claude, Perplexity and others may read the page. Off: it is left out of llms.txt and robots.txt asks AI crawlers to stay away."
+                title={ew.aiAssistants}
+                help={ew.aiAssistantsHint}
               />
             </section>
             </>
@@ -757,10 +749,10 @@ export function PageEditor({
             {translating && view.thumbnail && (
               <section aria-labelledby="thumbnail-alt-heading" className={card}>
                 <h2 id="thumbnail-alt-heading" className="text-title text-ink">
-                  Picture
+                  {ew.picture}
                 </h2>
                 <label className={label}>
-                  Description of the picture in {language.name}
+                  {fillWords(w.translate.altIn, { lang: language.name })}
                   <textarea
                     value={view.thumbnail.alt}
                     maxLength={ALT_MAX}
@@ -768,17 +760,17 @@ export function PageEditor({
                     onChange={(event) => view.thumbnail && change({ thumbnail: { ...view.thumbnail, alt: event.target.value } })}
                     className={`${input} py-2`}
                   />
-                  <span className={hint}>In {main.name}: {content.thumbnail?.alt || "no description"}</span>
+                  <span className={hint}>{fillWords(ew.inMainAlt, { main: main.name, alt: content.thumbnail?.alt || ew.noDescription })}</span>
                 </label>
               </section>
             )}
             {!layout && (
             <section aria-labelledby="excerpt-heading" className={card}>
               <h2 id="excerpt-heading" className="text-title text-ink">
-                Excerpt
+                {ew.excerpt}
               </h2>
               <label className={label}>
-                A short text for lists
+                {ew.excerptLabel}
                 <textarea
                   value={view.excerpt ?? ""}
                   maxLength={EXCERPT_FIELD_MAX}
@@ -786,31 +778,26 @@ export function PageEditor({
                   onChange={(event) => change({ excerpt: event.target.value || undefined })}
                   className={`${input} py-2`}
                 />
-                <span className={hint}>
-                  Shown on a content grid&apos;s tiles when <em>Excerpt</em> is ticked there. Empty uses the search description, then the start
-                  of the text.
-                </span>
+                <span className={hint}>{ew.excerptHint}</span>
               </label>
             </section>
             )}
             {!layout && (
             <section aria-labelledby="search-heading" className={card}>
               <h2 id="search-heading" className="text-title text-ink">
-                Search and sharing
+                {ew.searchSharing}
               </h2>
               <SearchSnippetFields
                 value={view.seo}
                 onChange={(seo) => change({ seo })}
                 fallback={{
-                  title: view.title || `The ${noun}'s title`,
+                  title: view.title || ew.titleOf[noun],
                   description: excerpt || defaultDescription,
                 }}
                 url={`${origin}${siteBase}/${content.slug}`}
                 lang={language.locale}
               />
-              <p className={hint}>
-                Empty fields use the title and the start of the text. When shared, the page shows its picture.
-              </p>
+              <p className={hint}>{ew.searchHint}</p>
             </section>
             )}
           </>
@@ -819,7 +806,7 @@ export function PageEditor({
 
       {problems.length > 0 && (
         <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          <p className="font-medium">Nothing was saved yet. Please fix:</p>
+          <p className="font-medium">{ew.notSavedFix}</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -838,7 +825,7 @@ export function PageEditor({
         onClose={() => setTemplateOpen(false)}
         onSaved={(next) => {
           updateParts(next);
-          setMessage(SAVED_AS_TEMPLATE);
+          setMessage(w.templates.savedAsTemplate);
         }}
       />
 
@@ -846,7 +833,7 @@ export function PageEditor({
         open={cssOpen}
         onClose={() => setCssOpen(false)}
         noun={noun}
-        siteName={context.owner === null ? "Kaizena Flow's site" : "your store"}
+        siteName={context.owner === null ? ew.kaizenSite : ew.yourStore}
         pageCss={content.css ?? ""}
         onPageCss={changeCss}
         siteCss={siteCss}
@@ -889,7 +876,7 @@ export function PageEditor({
               disabled={busy}
               className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
             >
-              {busy ? "Saving …" : "Save"}
+              {busy ? w.savedPart.saving : w.savedPart.save}
             </button>
           ) : (
             <>
@@ -899,7 +886,7 @@ export function PageEditor({
                 disabled={busy}
                 className="min-h-11 rounded-pill border border-edge px-4 font-medium disabled:opacity-50"
               >
-                Save draft
+                {ew.saveDraft}
               </button>
               <button
                 type="button"
@@ -907,17 +894,17 @@ export function PageEditor({
                 disabled={busy}
                 className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
               >
-                {busy ? "Saving …" : saved?.published ? "Publish changes" : "Publish"}
+                {busy ? w.savedPart.saving : saved?.published ? ew.publishChanges : ew.publish}
               </button>
             </>
           )}
-          <div className="flex items-center" role="group" aria-label="Undo and redo">
+          <div className="flex items-center" role="group" aria-label={ew.undoRedo}>
             <button
               type="button"
               onClick={() => step("undo")}
               disabled={history.past.length === 0}
-              aria-label="Undo"
-              title="Undo (Ctrl+Z)"
+              aria-label={ew.undo}
+              title={ew.undoKey}
               className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"
             >
               <Undo2 aria-hidden className="size-5" />
@@ -926,8 +913,8 @@ export function PageEditor({
               type="button"
               onClick={() => step("redo")}
               disabled={history.future.length === 0}
-              aria-label="Redo"
-              title="Redo (Ctrl+Shift+Z)"
+              aria-label={ew.redo}
+              title={ew.redoKey}
               className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken disabled:opacity-40"
             >
               <Redo2 aria-hidden className="size-5" />
@@ -937,18 +924,18 @@ export function PageEditor({
             type="button"
             onClick={() => setFindOpen(true)}
             aria-haspopup="dialog"
-            aria-label="Find and replace"
-            title="Find and replace (Ctrl+Shift+H)"
+            aria-label={ew.findReplace}
+            title={ew.findReplaceKey}
             className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken"
           >
             <Replace aria-hidden className="size-5" />
           </button>
           <p role="status" aria-live="polite" className="text-sm">
-            {message ?? (dirty ? "Unsaved changes." : context.draftOnly ? (saved ? "Saved in the profile's draft." : "Not saved yet.") : state ? STATE_TEXT[state] : "Not saved yet.")}
+            {message ?? (dirty ? ew.unsaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
             {/* One undo, only while nothing else has been changed since. */}
             {coolUndo && coolUndo.after === content.rows && (
               <button type="button" onClick={undoCool} className="ml-2 underline">
-                Undo
+                {ew.undo}
               </button>
             )}
           </p>
@@ -956,8 +943,8 @@ export function PageEditor({
             <button
               type="button"
               onClick={() => setCoolOpen(true)}
-              aria-label={MAKE_COOL_LABEL}
-              title={MAKE_COOL_LABEL}
+              aria-label={w.cool.label}
+              title={w.cool.label}
               className="flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken"
             >
               <WandSparkles aria-hidden className="size-5" />
@@ -977,40 +964,40 @@ export function PageEditor({
             className="flex min-h-11 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
           >
             <span aria-hidden className="font-mono">{"{ }"}</span>
-            Custom CSS
-            {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-insight-solid" title="Has custom CSS" />}
+            {ew.customCss}
+            {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-insight-solid" title={ew.hasCss} />}
           </button>
           {context.draftOnly ? (
             <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
               <span className="text-muted">{context.draftOnly.note}</span>
               <a href={context.draftOnly.preview} target="_blank" rel="noopener" className="underline">
-                Preview the draft{dirty ? " (last saved)" : ""}
+                {ew.previewTheDraft}{dirty ? ` ${ew.lastSaved}` : ""}
               </a>
             </div>
           ) : (
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             {saved && (
               <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
-                Preview draft{dirty ? " (last saved)" : ""}
+                {ew.previewDraft}{dirty ? ` ${ew.lastSaved}` : ""}
               </a>
             )}
             {context.place
               ? liveSlug &&
                 context.place.view && (
                   <a href={context.place.view} target="_blank" rel="noopener" className="underline">
-                    View {noun}
+                    {ew.view[noun]}
                   </a>
                 )
               : liveSlug &&
                 !layout && (
                   <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
-                    View {noun}
+                    {ew.view[noun]}
                   </a>
                 )}
             {saved && actions.versions && (
               <button type="button" onClick={() => setVersionsOpen(true)} aria-haspopup="dialog" className="flex items-center gap-1 underline">
                 <History aria-hidden className="size-4" />
-                Versions
+                {ew.versions}
               </button>
             )}
             {!isVersion && !context.place && (
@@ -1020,39 +1007,39 @@ export function PageEditor({
                 aria-haspopup="dialog"
                 className="underline"
               >
-                Save as template
+                {ew.saveAsTemplate}
               </button>
             )}
             {saved && !isVersion && !context.place && (
               <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
-                Duplicate
+                {w.tools.duplicate}
               </button>
             )}
             {saved?.published && !isVersion && (
               <button type="button" onClick={unpublish} disabled={busy} className="underline disabled:opacity-50">
-                Unpublish
+                {ew.unpublish}
               </button>
             )}
             {saved &&
               !isVersion &&
               (confirmDelete ? (
                 <span className="flex items-center gap-2">
-                  Delete for good?
+                  {ew.deleteForGood}
                   <button
                     type="button"
                     onClick={remove}
                     disabled={busy}
                     className="min-h-9 rounded-pill bg-danger-soft px-3 text-danger-text disabled:opacity-50"
                   >
-                    Delete {noun}
+                    {ew.deleteThis[noun]}
                   </button>
                   <button type="button" onClick={() => setConfirmDelete(false)} className="underline">
-                    Keep it
+                    {w.dialogs.keepIt}
                   </button>
                 </span>
               ) : (
                 <button type="button" onClick={() => setConfirmDelete(true)} className="text-danger-text underline">
-                  Delete
+                  {w.tools.delete}
                 </button>
               ))}
           </div>
@@ -1090,6 +1077,7 @@ function SlugField({
   onFollow: () => void;
 }) {
   const id = useId();
+  const sw = useAdminText("builder").editor.slug;
   const problem = slug ? pageSlugProblem(slug, reserved) : null;
   const parent = pageParentPath(slug);
   // Not under itself or a page nested under it; a parent that has since been deleted stays chosen until it is changed.
@@ -1101,7 +1089,7 @@ function SlugField({
       {(choices.length > 0 || parent !== "") && (
         <div className="mb-1 flex flex-col gap-1">
           <label htmlFor={parentId} className="text-sm font-medium">
-            Parent page
+            {sw.parent}
           </label>
           <select
             id={parentId}
@@ -1109,7 +1097,7 @@ function SlugField({
             onChange={(event) => onChange(joinPagePath(event.target.value, pageSegment(slug)))}
             className="min-h-10 rounded-md border border-line bg-transparent px-2 text-sm"
           >
-            <option value="">None (top level)</option>
+            <option value="">{sw.none}</option>
             {!known && <option value={parent}>/{parent}</option>}
             {choices.map((p) => (
               <option key={p.slug} value={p.slug}>
@@ -1120,7 +1108,7 @@ function SlugField({
         </div>
       )}
       <label htmlFor={id} className="text-sm font-medium">
-        Address
+        {sw.address}
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center rounded-md border border-line focus-within:outline-2">
@@ -1140,7 +1128,7 @@ function SlugField({
         </div>
         {!follows && (
           <button type="button" onClick={onFollow} className={small}>
-            Make from title
+            {sw.fromTitle}
           </button>
         )}
       </div>
@@ -1151,7 +1139,7 @@ function SlugField({
               {origin.replace(/^https?:\/\//, "")}
               {siteBase}/{slug}
             </span>
-            {follows ? "Made from the title as you type. Edit it to choose your own." : "Lowercase letters, digits and hyphens."}
+            {follows ? sw.follows : sw.rule}
           </>
         )}
       </span>
@@ -1171,6 +1159,7 @@ function Switch({
   help: string;
 }) {
   const id = useId();
+  const sw = useAdminText("builder").editor.switch;
   return (
     <div className="flex items-start gap-3">
       <input
@@ -1184,7 +1173,7 @@ function Switch({
       />
       <div className="flex flex-col gap-0.5">
         <label htmlFor={id} className="text-sm font-medium">
-          {title}: {checked ? "welcome" : "kept out"}
+          {fillWords(checked ? sw.welcome : sw.keptOut, { title })}
         </label>
         <span id={`${id}-help`} className={hint}>
           {help}
@@ -1205,6 +1194,7 @@ function ThumbnailField({
 }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const tw = useAdminText("builder").editor.thumb;
 
   const choose = async (file: File | undefined) => {
     if (!file || !upload) return;
@@ -1226,7 +1216,7 @@ function ThumbnailField({
       else setProblem(outcome.problem);
       size.close();
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.`);
+      setProblem(fillWords(tw.unreadable, { name: file.name }));
     } finally {
       setBusy(false);
     }
@@ -1236,22 +1226,22 @@ function ThumbnailField({
     <section aria-labelledby="thumbnail-heading" className={card}>
       <div>
         <h2 id="thumbnail-heading" className="text-title text-ink">
-          Picture
+          {tw.title}
         </h2>
-        <p className="text-sm text-muted">Shown when the page is shared, and in lists. Wide pictures work best.</p>
+        <p className="text-sm text-muted">{tw.intro}</p>
       </div>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
         <img src={value.url} alt="" className="aspect-[1200/630] w-full rounded-md border border-line object-cover" />
       ) : (
         <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-md border border-dashed border-line bg-sunken text-sm text-muted">
-          No picture
+          {tw.none}
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {upload ? (
           <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
-            {busy ? "Uploading …" : value ? "Replace picture" : "Upload picture"}
+            {busy ? tw.uploading : value ? tw.replace : tw.upload}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/avif"
@@ -1264,27 +1254,27 @@ function ThumbnailField({
             />
           </label>
         ) : (
-          <p className="text-muted">Uploads are not set up on this server.</p>
+          <p className="text-muted">{tw.noUploads}</p>
         )}
         <LibraryButton onPicked={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt || picture.alt })} />
         {value && (
           <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
-            Remove
+            {tw.remove}
           </button>
         )}
       </div>
       {value && (
         <label className={label}>
-          Description of the picture
+          {tw.alt}
           <textarea
             value={value.alt}
             maxLength={ALT_MAX}
             rows={2}
             onChange={(event) => onChange({ ...value, alt: event.target.value })}
-            placeholder="What the picture shows, for people who cannot see it"
+            placeholder={tw.altPlaceholder}
             className={`${input} py-2`}
           />
-          <span className={hint}>Leave it empty only if the picture is decoration.</span>
+          <span className={hint}>{tw.altHint}</span>
         </label>
       )}
       {problem && (
@@ -1312,10 +1302,11 @@ function LanguageField({
   progress: (locale: string) => { done: number; of: number };
 }) {
   const [main, ...others] = languages;
+  const lw = useAdminText("builder").editor.language;
   return (
     <section aria-labelledby="language-heading" className={card}>
       <h2 id="language-heading" className="text-title text-ink">
-        Language
+        {lw.title}
       </h2>
       <div role="radiogroup" aria-labelledby="language-heading" className="flex flex-wrap gap-2">
         {languages.map((language) => {
@@ -1334,15 +1325,12 @@ function LanguageField({
                 className="sr-only"
               />
               <span className="font-medium">{language.name}</span>
-              <span className="text-xs opacity-80">{done ? `${done.done} of ${done.of} texts` : "Main language"}</span>
+              <span className="text-xs opacity-80">{done ? fillWords(lw.progress, { done: done.done, of: done.of }) : lw.main}</span>
             </label>
           );
         })}
       </div>
-      <p className={hint}>
-        The page is built in {main.name}. In {others.map((l) => l.name).join(", ")}, you translate its texts; a text not
-        translated shows in {main.name}.
-      </p>
+      <p className={hint}>{fillWords(lw.hint, { main: main.name, others: others.map((l) => l.name).join(", ") })}</p>
     </section>
   );
 }
@@ -1370,6 +1358,7 @@ function TranslateWithAi({
   onShow: (locale: string) => void;
 }) {
   const [main, ...others] = languages;
+  const aw = useAdminText("builder").editor.ai;
   // Translating into the language being written, or into every other language.
   const [target, setTarget] = useState<string>(others.some((l) => l.locale === current) ? current : "all");
   const [mode, setMode] = useState<TranslateMode>("missing");
@@ -1397,9 +1386,9 @@ function TranslateWithAi({
         }
         onTranslated(language.locale, outcome.done);
         const done = Object.keys(outcome.done).length;
-        lines.push(`${language.name}: ${done} of ${items.length} texts translated.`);
-        for (const skipped of outcome.skipped.slice(0, 5)) lines.push(`Left in ${main.name}: ${skipped.label}. ${skipped.reason}`);
-        if (outcome.skipped.length > 5) lines.push(`…and ${outcome.skipped.length - 5} more left in ${main.name}.`);
+        lines.push(fillWords(aw.translated, { lang: language.name, done, of: items.length }));
+        for (const skipped of outcome.skipped.slice(0, 5)) lines.push(fillWords(aw.leftIn, { main: main.name, label: skipped.label, reason: skipped.reason }));
+        if (outcome.skipped.length > 5) lines.push(fillWords(aw.more, { n: outcome.skipped.length - 5, main: main.name }));
       }
       setResult({ ok, lines });
       if (ok && targets.length === 1 && first) onShow(first.locale);
@@ -1408,12 +1397,12 @@ function TranslateWithAi({
   return (
     <section aria-labelledby="translate-ai-heading" className={card}>
       <h2 id="translate-ai-heading" className="text-title text-ink">
-        Translate with AI
+        {aw.title}
       </h2>
       <label className={label}>
-        Into
+        {aw.into}
         <select value={target} onChange={(event) => setTarget(event.target.value)} disabled={busy} className={input}>
-          {others.length > 1 && <option value="all">All other languages</option>}
+          {others.length > 1 && <option value="all">{aw.allOthers}</option>}
           {others.map((language) => (
             <option key={language.locale} value={language.locale}>
               {language.name}
@@ -1421,18 +1410,18 @@ function TranslateWithAi({
           ))}
         </select>
       </label>
-      <div role="radiogroup" aria-label="Which texts" className="flex flex-col gap-2 text-sm">
+      <div role="radiogroup" aria-label={aw.which} className="flex flex-col gap-2 text-sm">
         <label className="flex items-start gap-2">
           <input type="radio" name="translate-mode" checked={mode === "missing"} onChange={() => setMode("missing")} disabled={busy} className="mt-1" />
-          <span>Only texts not translated yet</span>
+          <span>{aw.missing}</span>
         </label>
         <label className="flex items-start gap-2">
           <input type="radio" name="translate-mode" checked={mode === "all"} onChange={() => setMode("all")} disabled={busy} className="mt-1" />
-          <span>Translate everything again, replacing the translations there are</span>
+          <span>{aw.everything}</span>
         </label>
       </div>
       <button type="button" onClick={run} disabled={busy || total === 0} className={small}>
-        {busy ? "Translating…" : total === 0 ? "Nothing to translate" : `Translate ${total} ${total === 1 ? "text" : "texts"}`}
+        {busy ? aw.translating : total === 0 ? aw.nothing : countWords(total, aw.translate)}
       </button>
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-xs">
         {result?.lines.map((line, index) => (
@@ -1440,11 +1429,9 @@ function TranslateWithAi({
             {line}
           </p>
         ))}
-        {result?.ok && <p className="text-muted">Read them over, then save the page.</p>}
+        {result?.ok && <p className="text-muted">{aw.readOver}</p>}
       </div>
-      <p className={hint}>
-        Only the page&apos;s words go to the AI, translated from {main.name}. Nothing is saved until you save the page.
-      </p>
+      <p className={hint}>{fillWords(aw.hint, { main: main.name })}</p>
     </section>
   );
 }
@@ -1472,12 +1459,13 @@ function HeaderOverlayFields({
   manageHref: string;
 }) {
   const id = useId();
+  const ow = useAdminText("builder").editor.overlay;
   const where = value?.where ?? "none";
   const choices = [
-    { value: "none", label: "Above the page" },
-    { value: "everywhere", label: "Over every page" },
-    ...(kaizen ? [] : [{ value: "front", label: "Over the front page" }]),
-    { value: "terms", label: "Over pages in categories or tags" },
+    { value: "none", label: ow.none },
+    { value: "everywhere", label: ow.everywhere },
+    ...(kaizen ? [] : [{ value: "front", label: ow.front }]),
+    { value: "terms", label: ow.terms },
   ] as const;
   const set = (next: string) =>
     onChange(
@@ -1488,14 +1476,11 @@ function HeaderOverlayFields({
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
       <h2 id={`${id}-heading`} className="text-title text-ink">
-        Over the page
+        {ow.title}
       </h2>
-      <p className="text-xs text-muted">
-        The header can lie over the top of a page whose first row has a background of its own (a picture, a video or a
-        colour), see-through until the visitor scrolls. Pages that start without one keep it above.
-      </p>
+      <p className="text-xs text-muted">{ow.intro}</p>
       <fieldset className="flex flex-col gap-2">
-        <legend className="sr-only">Where the header goes</legend>
+        <legend className="sr-only">{ow.where}</legend>
         {choices.map((choice) => (
           <label key={choice.value} className="flex items-center gap-2 text-sm">
             <input type="radio" name={`${id}-where`} checked={where === choice.value} onChange={() => set(choice.value)} className="size-4" />
@@ -1522,10 +1507,10 @@ function HeaderOverlayFields({
               onChange={(event) => onChange({ ...value, textColor: event.target.checked ? "#ffffff" : undefined })}
               className="size-4"
             />
-            Own text colour over the page
+            {ow.ownColour}
           </label>
-          {value.textColor && <ColorField label="Text colour" value={value.textColor} onChange={(textColor) => onChange({ ...value, textColor })} />}
-          <p className="text-xs text-muted">White suits a dark picture or video; scrolled, the header has its usual colours again.</p>
+          {value.textColor && <ColorField label={ow.textColour} value={value.textColor} onChange={(textColor) => onChange({ ...value, textColor })} />}
+          <p className="text-xs text-muted">{ow.white}</p>
         </div>
       )}
     </section>

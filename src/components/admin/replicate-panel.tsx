@@ -6,7 +6,6 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   ITERATIONS,
   PHASES,
-  STEPS,
   clock,
   finished,
   stepStates,
@@ -16,6 +15,9 @@ import {
   type ReplicaPass,
 } from "@/lib/replicate";
 import { reportMarkdown, type ReplicaReport } from "@/lib/replicate-report";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
+import { useAdminText } from "./admin-text";
 
 /**
  * Copying another website's page (D150), on the AI studio's page: the owner types an address and how many times the AI
@@ -39,14 +41,14 @@ const LEVEL_STYLE: Record<LogLevel, string> = {
 };
 const LEVEL_MARK: Record<LogLevel, string> = { info: "·", ok: "✓", warn: "!", error: "✕" };
 
-async function ask<T>(url: string, init?: RequestInit): Promise<{ ok: true; body: T } | { ok: false; problem: string }> {
+async function ask<T>(w: WebsiteMessages["replicate"], url: string, init?: RequestInit): Promise<{ ok: true; body: T } | { ok: false; problem: string }> {
   try {
     const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) }, cache: "no-store" });
     const body = (await response.json().catch(() => null)) as (T & { problem?: string }) | null;
-    if (!response.ok || body === null) return { ok: false, problem: body?.problem ?? (response.status === 504 ? "The server took too long; trying again." : "The server did not answer.") };
+    if (!response.ok || body === null) return { ok: false, problem: body?.problem ?? (response.status === 504 ? w.tooLong : w.noAnswer) };
     return { ok: true, body };
   } catch {
-    return { ok: false, problem: "The connection was lost." };
+    return { ok: false, problem: w.lost };
   }
 }
 
@@ -67,6 +69,7 @@ export function ReplicatePanel({
   aiSees: boolean;
   settingsHref: string;
 }) {
+  const w = useAdminText("website").replicate;
   const base = `/admin/${storeSlug}/pages/ai/replicate`;
   const ids = useId();
   const [job, setJob] = useState<ReplicaJob | null>(initial);
@@ -107,12 +110,12 @@ export function ReplicatePanel({
       driving.current = true;
       let failures = 0;
       const watch = window.setInterval(async () => {
-        const status = await ask<{ job: ReplicaJob }>(`${base}/${id}`);
+        const status = await ask<{ job: ReplicaJob }>(w, `${base}/${id}`);
         if (status.ok && mounted.current) setJob(status.body.job);
       }, 1500);
       try {
         while (mounted.current) {
-          const result = await ask<{ job: ReplicaJob }>(`${base}/${id}/tick`, { method: "POST", body: "{}" });
+          const result = await ask<{ job: ReplicaJob }>(w, `${base}/${id}/tick`, { method: "POST", body: "{}" });
           if (!mounted.current) break;
           if (result.ok) {
             failures = 0;
@@ -135,7 +138,7 @@ export function ReplicatePanel({
         driving.current = false;
       }
     },
-    [base],
+    [base, w],
   );
 
   // A job left standing is taken up again where it stopped.
@@ -148,17 +151,17 @@ export function ReplicatePanel({
     event.preventDefault();
     setProblem(null);
     setStarting(true);
-    const result = await ask<{ ok: boolean; job?: ReplicaJob; problem?: string }>(base, { method: "POST", body: JSON.stringify({ url, iterations, confirmed }) });
+    const result = await ask<{ ok: boolean; job?: ReplicaJob; problem?: string }>(w, base, { method: "POST", body: JSON.stringify({ url, iterations, confirmed }) });
     setStarting(false);
     if (!result.ok) return setProblem(result.problem);
-    if (!result.body.ok || !result.body.job) return setProblem(result.body.problem ?? "The copy could not be started.");
+    if (!result.body.ok || !result.body.job) return setProblem(result.body.problem ?? w.notStarted);
     setJob(result.body.job);
     void drive(result.body.job.id);
   }
 
   async function abort() {
     if (!job) return;
-    const result = await ask<{ job: ReplicaJob }>(`${base}/${job.id}/abort`, { method: "POST", body: "{}" });
+    const result = await ask<{ job: ReplicaJob }>(w, `${base}/${job.id}/abort`, { method: "POST", body: "{}" });
     if (result.ok) setJob(result.body.job);
     else setProblem(result.problem);
   }
@@ -169,23 +172,20 @@ export function ReplicatePanel({
     <section aria-labelledby={`${ids}-title`} className={`${card} flex flex-col gap-4`}>
       <div>
         <h2 id={`${ids}-title`} className="text-title text-ink">
-          Copy a page from another website
+          {w.title}
         </h2>
-        <p className="max-w-3xl text-sm text-muted">
-          Give the address of a page. The AI opens it in a browser, studies its design and layout, copies its text, downloads its pictures, videos and fonts, and rebuilds it in the page builder as a draft. Then
-          it compares its copy with the original at computer and phone width and improves it, as many times as you allow.
-        </p>
+        <p className="max-w-3xl text-sm text-muted">{w.intro}</p>
       </div>
 
       {!job && (
         <form onSubmit={start} className="flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex min-w-72 flex-1 flex-col gap-1 text-sm font-medium" htmlFor={`${ids}-url`}>
-              Address of the page
+              {w.address}
               <input id={`${ids}-url`} type="text" inputMode="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/landing-page" className={field} autoComplete="off" spellCheck={false} />
             </label>
             <label className="flex w-40 flex-col gap-1 text-sm font-medium" htmlFor={`${ids}-passes`}>
-              Improving passes
+              {w.passes}
               <input
                 id={`${ids}-passes`}
                 type="number"
@@ -198,23 +198,21 @@ export function ReplicatePanel({
               />
             </label>
             <button type="submit" className={primary} disabled={starting || !confirmed || url.trim() === ""}>
-              {starting ? "Starting…" : "Replicate"}
+              {starting ? w.starting : w.replicate}
             </button>
           </div>
           <p id={`${ids}-passes-help`} className="text-xs text-muted">
-            Each pass takes a minute or two and compares the copy with the original, then fixes what differs ({ITERATIONS.min}–{ITERATIONS.max}). More passes are closer, and take longer.
+            {fillWords(w.passesHelp, { min: ITERATIONS.min, max: ITERATIONS.max })}
           </p>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />
-            <span>
-              I have the right to copy this page&apos;s text, pictures and design (it is mine, or I have its owner&apos;s permission). The copy is saved as a draft and is not published or shown to search engines until I decide.
-            </span>
+            <span>{w.right}</span>
           </label>
           {!aiSees && (
             <p className="text-sm text-muted">
-              No AI model that looks at pictures is set up, so the copy is made by measuring alone, without the AI judging colours and shapes.{" "}
+              {w.noVision}
               <Link href={`${settingsHref}#vision`} className="underline">
-                Choose a model that sees pictures
+                {w.chooseVision}
               </Link>
               .
             </p>
@@ -238,7 +236,7 @@ export function ReplicatePanel({
           {finished(job.status) && (
             <div>
               <button type="button" className={secondary} onClick={() => setJob(null)}>
-                Copy another page
+                {w.another}
               </button>
             </div>
           )}
@@ -253,8 +251,9 @@ function minutes(seconds: number): string {
 }
 
 function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number; onAbort: () => void }) {
+  const w = useAdminText("website").replicate;
   const done = finished(job.status);
-  const label = job.status === "done" ? "Finished" : job.status === "failed" ? "Stopped with a problem" : job.status === "aborted" ? "Aborted" : job.abortRequested ? "Stopping…" : STEPS[job.phase];
+  const label = job.status === "done" ? w.finished : job.status === "failed" ? w.failed : job.status === "aborted" ? w.aborted : job.abortRequested ? w.stopping : w.steps[job.phase];
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -264,12 +263,12 @@ function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number;
           </p>
           <p className="text-xs text-muted" aria-live="polite">
             {label}
-            {job.phase === "refine" && !done ? ` · pass ${Math.min(job.iteration, job.iterationsMax)} of ${job.iterationsMax}` : ""} · {minutes(elapsed)}
+            {job.phase === "refine" && !done ? fillWords(w.passOf, { n: Math.min(job.iteration, job.iterationsMax), of: job.iterationsMax }) : ""} · {minutes(elapsed)}
           </p>
         </div>
         {!done && (
           <button type="button" onClick={onAbort} disabled={job.abortRequested} className={`${secondary} border-danger-text/50 text-danger-text`}>
-            {job.abortRequested ? "Stopping…" : "Abort"}
+            {job.abortRequested ? w.stopping : w.abort}
           </button>
         )}
       </div>
@@ -278,7 +277,7 @@ function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number;
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={job.progress}
-        aria-label="Progress of the copy"
+        aria-label={w.progress}
         className="h-2.5 overflow-hidden rounded-full bg-sunken"
       >
         <div
@@ -294,6 +293,7 @@ function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number;
 }
 
 function Stepper({ job }: { job: ReplicaJob }) {
+  const w = useAdminText("website").replicate;
   const states = stepStates(job);
   return (
     <ol className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
@@ -309,7 +309,7 @@ function Stepper({ job }: { job: ReplicaJob }) {
             >
               {state === "done" ? "✓" : index + 1}
             </span>
-            <span className={state === "active" ? "font-medium" : ""}>{STEPS[phase]}</span>
+            <span className={state === "active" ? "font-medium" : ""}>{w.steps[phase]}</span>
           </li>
         );
       })}
@@ -318,13 +318,14 @@ function Stepper({ job }: { job: ReplicaJob }) {
 }
 
 function ScoreChips({ passes, view }: { passes: ReplicaPass[]; view: "desktop" | "mobile" }) {
+  const w = useAdminText("website").replicate;
   const values = passes.map((pass) => ({ iteration: pass.iteration, match: view === "desktop" ? pass.desktop.match : (pass.mobile?.match ?? null) }));
   if (values.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5 text-xs" aria-label="Match with the original after each pass">
+    <ul className="flex flex-wrap gap-1.5 text-xs" aria-label={w.matchAfter}>
       {values.map((value) => (
         <li key={value.iteration} className="rounded-full border border-line px-2 py-0.5">
-          {value.iteration === 0 ? "First copy" : `Pass ${value.iteration}`}: <strong>{value.match === null ? "–" : `${value.match}%`}</strong>
+          {value.iteration === 0 ? w.firstCopy : fillWords(w.pass, { n: value.iteration })}: <strong>{value.match === null ? "–" : `${value.match}%`}</strong>
         </li>
       ))}
     </ul>
@@ -333,6 +334,7 @@ function ScoreChips({ passes, view }: { passes: ReplicaPass[]; view: "desktop" |
 
 /** The original beside the copy as it is now; scrolling one scrolls the other. */
 function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "mobile"; setView: (view: "desktop" | "mobile") => void }) {
+  const w = useAdminText("website").replicate;
   const left = useRef<HTMLDivElement>(null);
   const right = useRef<HTMLDivElement>(null);
   const syncing = useRef(false);
@@ -353,11 +355,11 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-body-strong text-ink">Live preview</h3>
-        <div role="group" aria-label="Width" className="inline-flex overflow-hidden rounded-md border border-line text-sm">
+        <h3 className="text-body-strong text-ink">{w.live}</h3>
+        <div role="group" aria-label={w.width} className="inline-flex overflow-hidden rounded-md border border-line text-sm">
           {(["desktop", "mobile"] as const).map((name) => (
             <button key={name} type="button" onClick={() => setView(name)} aria-pressed={view === name} className={`px-3 py-1.5 ${view === name ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}>
-              {name === "desktop" ? "Computer" : "Phone"}
+              {name === "desktop" ? w.computer : w.phone}
             </button>
           ))}
         </div>
@@ -365,20 +367,21 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
       <ScoreChips passes={job.passes} view={view} />
       <div className={`flex gap-3 ${view === "mobile" ? "justify-center" : ""}`}>
         <figure className={`flex flex-col gap-1 ${shown}`}>
-          <figcaption className="text-xs font-medium text-muted">Original</figcaption>
+          <figcaption className="text-xs font-medium text-muted">{w.original}</figcaption>
           <div ref={left} onScroll={() => follow(left.current, right.current)} className="h-[520px] overflow-auto rounded-md border border-line bg-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element -- a photograph of another site's page, drawn at its own size */}
-            {original ? <img src={original} alt="The original page" className="block w-full" /> : <Empty text="Not looked at yet" />}
+            {original ? <img src={original} alt={w.originalAlt} className="block w-full" /> : <Empty text={w.notLooked} />}
           </div>
         </figure>
         <figure className={`flex flex-col gap-1 ${shown}`}>
           <figcaption className="text-xs font-medium text-muted">
-            Copy{job.previews.copy.iteration !== null ? (job.previews.copy.iteration === 0 ? " — first build" : ` — after pass ${job.previews.copy.iteration}`) : ""}
-            {score ? ` · ${score.match}% match` : ""}
+            {w.copy}
+            {job.previews.copy.iteration !== null ? (job.previews.copy.iteration === 0 ? w.firstBuild : fillWords(w.afterPass, { n: job.previews.copy.iteration })) : ""}
+            {score ? fillWords(w.match, { n: score.match }) : ""}
           </figcaption>
           <div ref={right} onScroll={() => follow(right.current, left.current)} className="h-[520px] overflow-auto rounded-md border border-line bg-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element -- a photograph of the draft, drawn at its own size */}
-            {copy ? <img src={copy} alt="The copy as it is now" className="block w-full" /> : <Empty text={finished(job.status) ? "No copy was made" : "The copy appears here once it is built"} />}
+            {copy ? <img src={copy} alt={w.copyAlt} className="block w-full" /> : <Empty text={finished(job.status) ? w.noCopy : w.appearsHere} />}
           </div>
         </figure>
       </div>
@@ -391,27 +394,24 @@ function Empty({ text }: { text: string }) {
 }
 
 function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
+  const w = useAdminText("website").replicate;
   const summary = job.summary!;
   const tone = summary.outcome === "done" ? "border-line" : "border-warning-text/50";
   return (
     <div className={`flex flex-col gap-3 rounded-lg border ${tone} bg-sunken p-4`} aria-labelledby={`${job.id}-summary`}>
       <h3 id={`${job.id}-summary`} className="text-body-strong text-ink">
-        {summary.outcome === "done" ? "Summary" : summary.outcome === "aborted" ? "Summary of what was done before it was stopped" : "The copy could not be finished"}
+        {summary.outcome === "done" ? w.summary : summary.outcome === "aborted" ? w.summaryAborted : w.notFinished}
       </h3>
       {summary.finalMatch.desktop !== null && (
         <p className="text-sm">
-          Match with the original: <strong>{summary.finalMatch.desktop}%</strong> on computers
-          {summary.finalMatch.mobile !== null ? (
-            <>
-              , <strong>{summary.finalMatch.mobile}%</strong> on phones
-            </>
-          ) : null}
+          {fillWords(w.matchComputers, { n: summary.finalMatch.desktop })}
+          {summary.finalMatch.mobile !== null ? fillWords(w.matchPhones, { n: summary.finalMatch.mobile }) : null}
           .
         </p>
       )}
       {summary.wentWell.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium">What went well</h4>
+          <h4 className="text-sm font-medium">{w.wentWell}</h4>
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {summary.wentWell.map((line) => (
               <li key={line} className="flex gap-2">
@@ -426,7 +426,7 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
       )}
       {summary.problems.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium">What failed or is not as it was</h4>
+          <h4 className="text-sm font-medium">{w.problems}</h4>
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {summary.problems.map((line) => (
               <li key={line} className="flex gap-2">
@@ -443,20 +443,21 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
       {summary.page ? (
         <div className="flex flex-wrap gap-2">
           <Link href={`${pagesHref}/${summary.page.id}/preview`} className={primary} target="_blank">
-            Preview the copy
+            {w.preview}
           </Link>
           <Link href={`${pagesHref}/${summary.page.id}`} className={secondary}>
-            Open it in the page builder
+            {w.open}
           </Link>
         </div>
       ) : null}
-      <p className="text-xs text-muted">The copy is a draft: its address, search texts and links are the original&apos;s, and it is hidden from search engines until you publish it. Its text is the original&apos;s and may need to be changed to be yours.</p>
+      <p className="text-xs text-muted">{w.draftNote}</p>
     </div>
   );
 }
 
 /** The report for whoever improves the replicator: the findings at a glance, and the whole of it as Markdown to copy or save. */
 function ReportCard({ report }: { report: ReplicaReport }) {
+  const w = useAdminText("website").replicate;
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const markdown = () => reportMarkdown(report);
   const copy = async () => {
@@ -485,28 +486,26 @@ function ReportCard({ report }: { report: ReplicaReport }) {
   const tone = { high: "text-danger-text", medium: "text-warning-text", low: "text-muted" } as const;
   return (
     <div className="flex flex-col gap-2 rounded-md border border-line bg-card p-3">
-      <h4 className="text-sm font-medium">Report for improving the replicator</h4>
-      <p className="text-xs text-muted">
-        Every gap the copy has, with what was counted in the original, the change that would close it and the files to start in. Copy it and use it as the brief for a change to the replicator or the page builder.
-      </p>
+      <h4 className="text-sm font-medium">{w.report}</h4>
+      <p className="text-xs text-muted">{w.reportHint}</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={secondary} onClick={copy}>
-          {state === "copied" ? "Copied" : state === "failed" ? "Could not copy: use Download" : "Copy the report"}
+          {state === "copied" ? w.copied : state === "failed" ? w.couldNotCopy : w.copyReport}
         </button>
         <button type="button" className={secondary} onClick={download}>
-          Download as Markdown
+          {w.download}
         </button>
       </div>
       {report.findings.length > 0 ? (
         <details>
           <summary className="cursor-pointer text-sm">
-            {report.findings.length} finding{report.findings.length === 1 ? "" : "s"}
+            {countWords(report.findings.length, w.findings)}
           </summary>
           <ol className="mt-2 flex flex-col gap-2 text-sm">
             {report.findings.map((finding) => (
               <li key={finding.id}>
                 <span className={`text-xs font-medium uppercase ${tone[finding.severity]}`}>{finding.severity}</span> <span className="font-medium">{finding.title}</span>
-                <span className="text-xs text-muted"> — {finding.area === "builder" ? "builder component missing" : finding.area === "both" ? "builder and replicator" : "replicator"}</span>
+                <span className="text-xs text-muted">{finding.area === "builder" ? w.builderMissing : finding.area === "both" ? w.both : w.replicator}</span>
                 <ul className="mt-0.5 list-disc pl-5 text-xs text-muted">
                   {finding.evidence.slice(0, 3).map((line) => (
                     <li key={line}>{line}</li>
@@ -517,13 +516,14 @@ function ReportCard({ report }: { report: ReplicaReport }) {
           </ol>
         </details>
       ) : (
-        <p className="text-sm">Nothing was found that the copy lacks.</p>
+        <p className="text-sm">{w.nothingLacking}</p>
       )}
     </div>
   );
 }
 
 function Log({ log }: { log: ReplicaLogEntry[] }) {
+  const w = useAdminText("website").replicate;
   const box = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   useEffect(() => {
@@ -533,7 +533,7 @@ function Log({ log }: { log: ReplicaLogEntry[] }) {
   if (log.length === 0) return null;
   return (
     <details open className="rounded-md border border-line">
-      <summary className="cursor-pointer px-3 py-2 text-sm font-medium">What the AI is doing</summary>
+      <summary className="cursor-pointer px-3 py-2 text-sm font-medium">{w.doing}</summary>
       <div
         ref={box}
         onScroll={(e) => {

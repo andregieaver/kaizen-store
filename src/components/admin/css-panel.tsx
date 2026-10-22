@@ -2,7 +2,15 @@
 
 import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { CSS_MAX, cssProblem } from "@/lib/custom-css";
+
+import { useAdminText } from "./admin-text";
+
+type Nouned = { layout: string; header: string; footer: string; version: string; article: string; page: string };
+
+/** A word for what is being edited, `page` when it is none of the others. */
+const byNoun = (words: Nouned, noun: string) => (noun in words ? words[noun as keyof Nouned] : words.page);
 
 /**
  * The page builder's CSS panel (D100): a side panel over the editor's right
@@ -40,7 +48,8 @@ export function CssPanel({
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, start] = useTransition();
   const panel = useRef<HTMLDivElement>(null);
-  const tabs = { page: `This ${noun}`, site: "Global" } as const;
+  const w = useAdminText("builder").css;
+  const tabs = { page: byNoun(w.thisTab, noun), site: w.global } as const;
 
   // Opened, the panel takes the focus; Escape closes it.
   useEffect(() => {
@@ -66,7 +75,7 @@ export function CssPanel({
       const result = await saveSiteCss(siteCss);
       if (result.ok) {
         setSavedSite(siteCss);
-        setStatus({ ok: true, text: `Saved. Every page of ${siteName} has it now.` });
+        setStatus({ ok: true, text: fillWords(w.saved, { site: siteName }) });
       } else {
         setStatus({ ok: false, text: result.problems.join(" ") });
       }
@@ -86,13 +95,13 @@ export function CssPanel({
     >
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 id={`${id}-title`} className="text-title text-ink">
-          Custom CSS
+          {w.title}
         </h2>
-        <button type="button" onClick={onClose} className="min-h-9 rounded-pill px-3 text-sm hover:bg-sunken" aria-label="Close custom CSS">
-          Close
+        <button type="button" onClick={onClose} className="min-h-9 rounded-pill px-3 text-sm hover:bg-sunken" aria-label={w.closeLabel}>
+          {w.close}
         </button>
       </div>
-      <div role="tablist" aria-label="Where the CSS applies" className="flex gap-1 border-b border-line px-3">
+      <div role="tablist" aria-label={w.where} className="flex gap-1 border-b border-line px-3">
         {(Object.keys(tabs) as (keyof typeof tabs)[]).map((key) => (
           <button
             key={key}
@@ -114,11 +123,11 @@ export function CssPanel({
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${tab}`} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
         <p className="text-xs text-muted">
           {tab === "page"
-            ? `Only on this ${noun}. Saved with it, and on the site once it is published. The canvas shows it as you type where it can; Preview draft shows it exactly.`
-            : `On every page of ${siteName}, its headers and footers too. It goes live when you save it here, not with this ${noun}.`}
+            ? byNoun(w.pageHint, noun)
+            : fillWords(byNoun(w.siteHint, noun), { site: siteName })}
         </p>
         <label htmlFor={`${id}-css`} className="sr-only">
-          {tab === "page" ? `CSS for this ${noun}` : `CSS for every page of ${siteName}`}
+          {tab === "page" ? byNoun(w.pageField, noun) : fillWords(w.siteField, { site: siteName })}
         </label>
         <textarea
           key={tab}
@@ -141,12 +150,11 @@ export function CssPanel({
           {problem ? (
             <p role="alert" className="text-danger-text">
               {problem}{" "}
-              {tab === "page" ? `Until it is fixed, the canvas leaves it out and the ${noun} cannot be saved.` : "Until it is fixed, it cannot be saved."}
+              {tab === "page" ? byNoun(w.pageBroken, noun) : w.siteBroken}
             </p>
           ) : (
             <p className="text-muted">
-              Style parts by the classes and ids you give them under Advanced. Pictures and fonts come from your site or media
-              library only.
+              {w.help}
             </p>
           )}
         </div>
@@ -158,10 +166,10 @@ export function CssPanel({
               disabled={saving || !siteChanged || problem !== null}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
-              {saving ? "Saving …" : "Save global CSS"}
+              {saving ? w.saving : w.save}
             </button>
             <p role="status" aria-live="polite" className={`text-sm ${status && !status.ok ? "text-danger-text " : ""}`}>
-              {status?.text ?? (siteChanged ? "Not saved yet." : "")}
+              {status?.text ?? (siteChanged ? w.notSaved : "")}
             </p>
           </div>
         )}

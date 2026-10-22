@@ -33,6 +33,18 @@ import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.
 import { marketingNb } from "./admin-messages/marketing.nb";
 import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
 import { discountsNb } from "./admin-messages/discounts.nb";
+import { builderEn, type BuilderMessages } from "./admin-messages/builder.en";
+import { builderNb } from "./admin-messages/builder.nb";
+import { blocksEn, type BlocksMessages } from "./admin-messages/blocks.en";
+import { blocksNb } from "./admin-messages/blocks.nb";
+import { websiteEn, type WebsiteMessages } from "./admin-messages/website.en";
+import { websiteNb } from "./admin-messages/website.nb";
+import { designEn, type DesignMessages } from "./admin-messages/design.en";
+import { designNb } from "./admin-messages/design.nb";
+import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
+import { redirectsNb } from "./admin-messages/redirects.nb";
+import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
+import { experimentsNb } from "./admin-messages/experiments.nb";
 import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
@@ -60,6 +72,12 @@ export type AdminAreaMessages = {
   marketing: MarketingMessages;
   discounts: DiscountsMessages;
   loyalty: LoyaltyMessages;
+  builder: BuilderMessages;
+  blocks: BlocksMessages;
+  website: WebsiteMessages;
+  design: DesignMessages;
+  redirects: RedirectsMessages;
+  experiments: ExperimentsMessages;
   products: ProductsMessages;
   product: ProductMessages;
   inventory: InventoryMessages;
@@ -88,6 +106,12 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   marketing: { en: marketingEn, nb: marketingNb },
   discounts: { en: discountsEn, nb: discountsNb },
   loyalty: { en: loyaltyEn, nb: loyaltyNb },
+  builder: { en: builderEn, nb: builderNb },
+  blocks: { en: blocksEn, nb: blocksNb },
+  website: { en: websiteEn, nb: websiteNb },
+  design: { en: designEn, nb: designNb },
+  redirects: { en: redirectsEn, nb: redirectsNb },
+  experiments: { en: experimentsEn, nb: experimentsNb },
   products: { en: productsEn, nb: productsNb },
   product: { en: productEn, nb: productNb },
   inventory: { en: inventoryEn, nb: inventoryNb },

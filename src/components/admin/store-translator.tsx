@@ -3,9 +3,12 @@
 import { useState, useTransition } from "react";
 
 import { batchItems, type TranslateMode, type TranslateResult } from "@/lib/page-translate-ai";
-import { SCOPE_WORDS, TRANSLATE_SCOPES, unitItems, type Accepted, type TranslateScope, type Unit } from "@/lib/store-translate";
+import { TRANSLATE_SCOPES, unitItems, type Accepted, type TranslateScope, type Unit } from "@/lib/store-translate";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { ApplyResult } from "@/server/store-translate";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 const box = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40";
@@ -34,6 +37,7 @@ export function StoreTranslator({
   coverage: Record<string, Record<TranslateScope, number>>;
   actions: Actions;
 }) {
+  const w = useAdminText("website").translate;
   const [main, ...others] = languages;
   const [locale, setLocale] = useState(others[0].locale);
   const [scopes, setScopes] = useState<TranslateScope[]>([...TRANSLATE_SCOPES]);
@@ -77,7 +81,7 @@ export function StoreTranslator({
       const got: Suggestions = {};
       const skipped: typeof left = [];
       for (const [n, batch] of batches.entries()) {
-        setProgress(`Translating ${n + 1} of ${batches.length} …`);
+        setProgress(fillWords(w.translating, { n: n + 1, of: batches.length }));
         const result = await actions.translate({ from: main.name, to: target.name, items: batch });
         if (!result.ok) {
           setProblem(result.problem);
@@ -114,7 +118,7 @@ export function StoreTranslator({
       let saved = 0;
       const messages: string[] = [];
       for (let i = 0; i < accepted.length; i += 100) {
-        setProgress(`Saving ${Math.min(i + 100, accepted.length)} of ${accepted.length} …`);
+        setProgress(fillWords(w.savingOf, { n: Math.min(i + 100, accepted.length), of: accepted.length }));
         const result = await actions.apply(locale, accepted.slice(i, i + 100));
         if (!result.ok) {
           setProblem(result.problem);
@@ -126,15 +130,15 @@ export function StoreTranslator({
       }
       setProgress(null);
       reset();
-      setNotes([`${saved} saved in ${target.name}.`, ...messages, ...(saved > 0 ? ["Pages were saved as drafts: publish them when you have read them."] : [])]);
+      setNotes([fillWords(w.saved, { n: saved, language: target.name }), ...messages, ...(saved > 0 ? [w.draftsNote] : [])]);
     });
 
   const counts = coverage[locale];
   const groups: { title: string; hint?: string; units: Unit[] }[] = [
-    { title: "Ready to keep", units: units.filter((u) => !u.legal) },
+    { title: w.ready, units: units.filter((u) => !u.legal) },
     {
-      title: "Legal texts: read these yourself",
-      hint: "Terms, privacy, returns, withdrawal and safety information have legal weight, and a machine translation of them needs a person's review. They start unticked.",
+      title: w.legal,
+      hint: w.legalHint,
       units: units.filter((u) => u.legal),
     },
   ];
@@ -142,9 +146,9 @@ export function StoreTranslator({
   return (
     <div className="flex flex-col gap-6">
       <section className={box} aria-labelledby="translate-what">
-        <h2 id="translate-what" className="text-title text-ink">1. What to translate</h2>
+        <h2 id="translate-what" className="text-title text-ink">{w.step1}</h2>
         <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
-          Into
+          {w.into}
           <select
             value={locale}
             onChange={(event) => {
@@ -160,7 +164,7 @@ export function StoreTranslator({
           </select>
         </label>
         <fieldset className="flex flex-col gap-2 text-sm" disabled={busy}>
-          <legend className="font-medium">From {main.name}</legend>
+          <legend className="font-medium">{fillWords(w.from, { language: main.name })}</legend>
           {TRANSLATE_SCOPES.map((scope) => (
             <label key={scope} className="flex items-center gap-2">
               <input
@@ -171,44 +175,44 @@ export function StoreTranslator({
                   reset();
                 }}
               />
-              {SCOPE_WORDS[scope].name}
-              <span className="text-muted">({counts?.[scope] ?? 0} without {target.name})</span>
+              {w.scopes[scope]}
+              <span className="text-muted">{fillWords(w.without, { n: counts?.[scope] ?? 0, language: target.name })}</span>
             </label>
           ))}
         </fieldset>
-        <div role="radiogroup" aria-label="Which texts" className="flex flex-col gap-2 text-sm">
+        <div role="radiogroup" aria-label={w.whichTexts} className="flex flex-col gap-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" name="mode" checked={mode === "missing"} onChange={() => { setMode("missing"); reset(); }} disabled={busy} />
-            Only what is not translated yet
+            {w.missing}
           </label>
           <label className="flex items-center gap-2">
             <input type="radio" name="mode" checked={mode === "all"} onChange={() => { setMode("all"); reset(); }} disabled={busy} />
-            Everything again, suggesting new texts for what is translated already
+            {w.all}
           </label>
         </div>
         <div>
           <button type="button" onClick={find} disabled={busy || scopes.length === 0} className={button}>
-            Find texts
+            {w.find}
           </button>
         </div>
       </section>
 
       {work && (
         <section className={box} aria-labelledby="translate-ai">
-          <h2 id="translate-ai" className="text-title text-ink">2. Translate with AI</h2>
+          <h2 id="translate-ai" className="text-title text-ink">{w.step2}</h2>
           {work.units.length === 0 ? (
-            <p className="text-sm">Nothing to translate: {target.name} has it all.</p>
+            <p className="text-sm">{fillWords(w.nothing, { language: target.name })}</p>
           ) : (
             <>
               <p className="text-sm">
-                {work.units.length} {work.units.length === 1 ? "thing" : "things"} with {unitItems(work.units).length} texts
-                {work.total > work.units.length && ` (the first ${work.units.length} of ${work.total}: run it again for the rest)`}.
-                Only their words go to the AI, never prices or stock.
+                {countWords(work.units.length, w.things, { texts: unitItems(work.units).length })}
+                {work.total > work.units.length && fillWords(w.firstOf, { n: work.units.length, total: work.total })}
+                {w.onlyWords}
               </p>
               {!suggestions && (
                 <div>
                   <button type="button" onClick={translateAll} disabled={busy} className={primary}>
-                    Translate into {target.name}
+                    {fillWords(w.translateInto, { language: target.name })}
                   </button>
                 </div>
               )}
@@ -219,7 +223,7 @@ export function StoreTranslator({
 
       {suggestions && (
         <section className={box} aria-labelledby="translate-review">
-          <h2 id="translate-review" className="text-title text-ink">3. Read, and keep what is right</h2>
+          <h2 id="translate-review" className="text-title text-ink">{w.step3}</h2>
           {groups.map(
             (group) =>
               group.units.length > 0 && (
@@ -259,7 +263,7 @@ export function StoreTranslator({
                                         value={value}
                                         onChange={(event) => setEdited((e) => ({ ...e, [key]: event.target.value }))}
                                         rows={Math.min(8, Math.max(1, Math.ceil(value.length / 50)))}
-                                        aria-label={`${item.label} in ${target.name}`}
+                                        aria-label={fillWords(w.inLanguage, { label: item.label, language: target.name })}
                                         className="w-full rounded-md border border-line bg-card px-2 py-1 text-sm"
                                       />
                                     ) : (
@@ -279,23 +283,23 @@ export function StoreTranslator({
           )}
           {left.length > 0 && (
             <div className="flex flex-col gap-1 text-xs text-muted">
-              <p className="font-medium">Left as they are, in {main.name}:</p>
+              <p className="font-medium">{fillWords(w.left, { language: main.name })}</p>
               <ul className="list-disc pl-5">
                 {left.slice(0, 15).map((entry) => (
                   <li key={entry.key}>{entry.label}: {entry.reason}</li>
                 ))}
-                {left.length > 15 && <li>…and {left.length - 15} more.</li>}
+                {left.length > 15 && <li>{fillWords(w.andMore, { n: left.length - 15 })}</li>}
               </ul>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={save} disabled={busy || picked.length === 0} className={primary}>
-              Save {picked.length} in {target.name}
+              {fillWords(w.save, { n: picked.length, language: target.name })}
             </button>
             <button type="button" onClick={reset} disabled={busy} className={button}>
-              Start over
+              {w.startOver}
             </button>
-            <span className="text-xs text-muted">Pages are saved as drafts; products, menus and custom fields are live once saved.</span>
+            <span className="text-xs text-muted">{w.saveNote}</span>
           </div>
         </section>
       )}

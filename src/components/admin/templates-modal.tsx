@@ -3,11 +3,14 @@
 import { useEffect, useId, useState } from "react";
 
 import type { PageType } from "@/lib/page-content";
-import { TEMPLATE_SOURCES, TEMPLATE_SOURCE_LABELS, type TemplateItem, type TemplateSource } from "@/lib/templates";
+import { fillWords } from "@/lib/admin-fill";
+import { TEMPLATE_SOURCES, type TemplateItem, type TemplateSource } from "@/lib/templates";
+
+import { useAdminText } from "./admin-text";
 
 import { Modal } from "./modal";
 import {
-  KIND_FILTERS,
+  kindFilters,
   NO_FILTERS,
   filterTemplates,
   fitsPage,
@@ -47,11 +50,12 @@ export function TemplatesModal({
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
+  const w = useAdminText("builder").templates;
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Templates"
+      title={w.title}
       wide
       footer={
         <button
@@ -59,7 +63,7 @@ export function TemplatesModal({
           onClick={onClose}
           className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
-          Done
+          {w.done}
         </button>
       }
     >
@@ -89,18 +93,19 @@ function Browser({
     if (open) load(source);
   }, [open, source, load]);
 
+  const w = useAdminText("builder").templates;
   const list = controller.lists[source];
-  const shown = groupTemplates(filterTemplates(list.items, filters));
+  const shown = groupTemplates(filterTemplates(list.items, filters), w);
   const select = (index: number) => {
     const next = TEMPLATE_SOURCES[(index + TEMPLATE_SOURCES.length) % TEMPLATE_SOURCES.length];
     onSource(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
-  const nothing = nothingShared(source, own);
+  const nothing = nothingShared(source, own, w);
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="Where templates come from" hidden={own} className="grid grid-cols-2 border-b border-line">
+      <div role="tablist" aria-label={w.whereFrom} hidden={own} className="grid grid-cols-2 border-b border-line">
         {TEMPLATE_SOURCES.map((each, index) => (
           <button
             key={each}
@@ -117,7 +122,7 @@ function Browser({
             }}
             className="min-h-11 border-b-2 border-transparent px-2 text-sm font-medium text-muted aria-selected:border-brand aria-selected:text-ink"
           >
-            {TEMPLATE_SOURCE_LABELS[each]}
+            {w.sources[each]}
           </button>
         ))}
       </div>
@@ -125,19 +130,19 @@ function Browser({
       <div id={`${id}-panel`} role={own ? undefined : "tabpanel"} aria-labelledby={own ? undefined : `${id}-${source}`} className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <label htmlFor={`${id}-search`} className="sr-only">
-            Search templates
+            {w.search}
           </label>
           <input
             id={`${id}-search`}
             type="search"
             value={filters.query}
             onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-            placeholder="Search by name, publisher or what is in it"
+            placeholder={w.searchPlaceholder}
             className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div role="group" aria-label="Kind" className="flex flex-wrap gap-2">
-              {KIND_FILTERS.map((chip) => (
+            <div role="group" aria-label={w.kindGroup} className="flex flex-wrap gap-2">
+              {kindFilters(w).map((chip) => (
                 <button
                   key={chip.value}
                   type="button"
@@ -157,7 +162,7 @@ function Browser({
                 onChange={(event) => setFilters({ ...filters, activeOnly: event.target.checked })}
                 className="size-5 shrink-0 accent-brand"
               />
-              Activated only
+              {w.activatedOnly}
             </label>
           </div>
         </div>
@@ -170,36 +175,36 @@ function Browser({
               onClick={() => load(source, true)}
               className="min-h-9 rounded-pill border border-edge px-3 text-xs text-ink"
             >
-              Try again
+              {w.tryAgain}
             </button>
           </div>
         ) : list.status !== "ready" ? (
           <p role="status" className="text-sm text-muted">
-            Loading templates …
+            {w.loading}
           </p>
         ) : list.items.length === 0 ? (
           <EmptyState title={nothing.title} hint={nothing.hint} />
         ) : shown.length === 0 ? (
-          <EmptyState title="No templates match" hint="Try another search, or take a filter off.">
+          <EmptyState title={w.noMatch.title} hint={w.noMatch.hint}>
             <button
               type="button"
               onClick={() => setFilters(NO_FILTERS)}
               className="min-h-9 rounded-pill border border-edge px-3 text-xs"
             >
-              Clear filters
+              {w.clear}
             </button>
           </EmptyState>
         ) : (
           shown.map((group) => (
             <section
               key={group.kind}
-              aria-label={`Template ${group.label.toLowerCase()}`}
+              aria-label={fillWords(w.group, { kind: group.label.toLowerCase() })}
               className="flex flex-col gap-2"
             >
               <h3 className={groupHeading}>{group.label}</h3>
               <ul className="flex flex-col gap-2">
                 {group.items.map((item) => {
-                  const reason = blockedReason(item, { pageType, rowsFull, blocksFull });
+                  const reason = blockedReason(item, { pageType, rowsFull, blocksFull }, w);
                   return (
                     <li key={item.id} className="flex flex-col gap-1 rounded-md border border-line p-3">
                       <div className="flex flex-wrap items-start gap-3">
@@ -209,7 +214,7 @@ function Browser({
                             <PageTypeBadge item={item} warn={!fitsPage(item, pageType)} />
                             {item.active && !own && (
                               <span className="rounded-full bg-sunken px-1.5 py-px text-[11px] leading-4 text-muted">
-                                Activated
+                                {w.activated}
                               </span>
                             )}
                           </span>
@@ -229,19 +234,19 @@ function Browser({
                             hidden={own}
                             onClick={() => controller.setActive(source, item.id, !item.active)}
                             disabled={controller.busy.has(item.id)}
-                            aria-label={`${item.active ? "Deactivate" : "Activate"} ${item.name}`}
+                            aria-label={fillWords(item.active ? w.deactivateLabel : w.activateLabel, { name: item.name })}
                             className={`min-h-9 shrink-0 rounded-pill px-3 text-xs font-medium disabled:opacity-50 ${
                               item.active ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                             }`}
                           >
-                            {item.active ? "Deactivate" : "Activate"}
+                            {item.active ? w.deactivate : w.activate}
                           </button>
                         </CardButtons>
                       </div>
                       <Problems problems={[...(controller.problems[item.id] ?? []), ...(use.issues[item.id] ?? [])]} />
                       {use.added === item.id && (
                         <p role="status" className="text-xs text-muted">
-                          Added to the page.
+                          {w.added}
                         </p>
                       )}
                     </li>

@@ -5,8 +5,13 @@ import { useState, useTransition } from "react";
 
 import { hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { REDIRECT_BULK_DELETE_MAX } from "@/lib/data-limits";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { deleteSelectedWords, kindWords, madeByWords, usedWords } from "@/lib/redirect-admin";
 import { redirectStatusWords, type RedirectKind, type RedirectStatus } from "@/lib/redirects";
+import { redirectProblems } from "@/lib/redirect-words";
+
+import { useAdminLang, useAdminText } from "../admin-text";
 
 import { RedirectForm, type RedirectFormActions } from "./redirect-form";
 
@@ -39,13 +44,15 @@ const STATUS_STYLE: Record<RedirectStatus, string> = {
 
 /** The status of a row in words, never by colour alone. */
 export function StatusText({ status, more }: { status: RedirectStatus; more: number }) {
-  return <span className={STATUS_STYLE[status]}>{redirectStatusWords(status, more)}</span>;
+  const w = useAdminText("redirects");
+  return <span className={STATUS_STYLE[status]}>{redirectStatusWords(status, more, w)}</span>;
 }
 
 /** The row's target: the current address of the thing for an automatic redirect, and what the shopper meets when it is not live. */
 export function TargetCell({ row }: { row: Pick<TableRow, "kind" | "target" | "readOnly"> }) {
+  const w = useAdminText("redirects");
   if (row.target) return <code className="break-all text-xs">{row.target}</code>;
-  return <span className={hint}>{row.kind === "manual" ? "" : "Not live now: shoppers get the not-found page"}</span>;
+  return <span className={hint}>{row.kind === "manual" ? "" : w.table.notLive}</span>;
 }
 
 /**
@@ -55,6 +62,8 @@ export function TargetCell({ row }: { row: Pick<TableRow, "kind" | "target" | "r
  * The page asks the server for the rows; every change goes through the page's bound actions and refreshes the list.
  */
 export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: TableRow[]; timeZone: string; actions: RedirectTableActions; canWrite: boolean }) {
+  const w = useAdminText("redirects");
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<string | null>(null);
@@ -79,12 +88,12 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
       setNotice(null);
       const result = await actions.remove(ids);
       if (!result.ok) {
-        setProblems(result.problems);
+        setProblems(redirectProblems(result.problems, w));
         return;
       }
       setAsking(null);
       setSelected(new Set());
-      setNotice(`${result.deleted} redirect${result.deleted === 1 ? "" : "s"} deleted.`);
+      setNotice(countWords(result.deleted, w.table.deleted));
       router.refresh();
     });
 
@@ -92,25 +101,25 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
   return (
     <div className="flex flex-col gap-3" aria-busy={pending}>
       {canWrite && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-panel bg-sunken p-3 text-sm" role="group" aria-label="Selected redirects">
+        <div className="flex flex-wrap items-center gap-3 rounded-panel bg-sunken p-3 text-sm" role="group" aria-label={w.table.selected}>
           {asking && asking.length > 1 ? (
             <>
-              <span>Delete {asking.length} redirects? Browsers that have seen them may keep following them for a while.</span>
+              <span>{fillWords(w.table.askMany, { n: asking.length })}</span>
               <button type="button" disabled={pending} onClick={() => remove(asking)} className={primary}>
-                {pending ? "Deleting …" : "Yes, delete"}
+                {pending ? w.common.deleting : w.common.yesDelete}
               </button>
               <button type="button" disabled={pending} onClick={() => setAsking(null)} className={secondary}>
-                Not yet
+                {w.common.notYet}
               </button>
             </>
           ) : (
             <>
-              <span>{selected.size} selected</span>
+              <span>{fillWords(w.table.selectedCount, { n: selected.size })}</span>
               <button type="button" disabled={selected.size > REDIRECT_BULK_DELETE_MAX} onClick={() => setAsking([...selected])} className={secondary}>
-                {deleteSelectedWords(selected.size, REDIRECT_BULK_DELETE_MAX)}
+                {deleteSelectedWords(selected.size, REDIRECT_BULK_DELETE_MAX, w, locale)}
               </button>
               <button type="button" onClick={() => setSelected(new Set())} className="underline underline-offset-2">
-                Clear the selection
+                {w.table.clearSelection}
               </button>
             </>
           )}
@@ -128,14 +137,14 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
       </div>
       <div className={tableShell}>
         <table className="w-full text-sm">
-          <caption className="sr-only">The store&apos;s redirects, newest first</caption>
+          <caption className="sr-only">{w.table.caption}</caption>
           <thead>
             <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={`${th} w-8`}>
                   <input
                     type="checkbox"
-                    aria-label="Select every redirect on this page"
+                    aria-label={w.table.selectAll}
                     checked={all}
                     disabled={selectable.length === 0}
                     onChange={(e) => setSelected(e.target.checked ? new Set(selectable.map((r) => r.id)) : new Set())}
@@ -144,25 +153,25 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
                 </th>
               )}
               <th scope="col" className={th}>
-                From
+                {w.table.from}
               </th>
               <th scope="col" className={th}>
-                To
+                {w.table.to}
               </th>
               <th scope="col" className={th}>
-                Kind
+                {w.table.kind}
               </th>
               <th scope="col" className={`${th} hidden lg:table-cell`}>
-                Used
+                {w.table.used}
               </th>
               <th scope="col" className={`${th} hidden lg:table-cell`}>
-                Made
+                {w.table.made}
               </th>
               <th scope="col" className={th}>
-                Status
+                {w.table.status}
               </th>
               <th scope="col" className={th}>
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{w.table.actions}</span>
               </th>
             </tr>
           </thead>
@@ -221,13 +230,15 @@ function RowGroup({
   pending: boolean;
   actions: RedirectTableActions;
 }) {
+  const w = useAdminText("redirects");
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const manual = row.kind === "manual";
   return (
     <>
       <tr className="border-b border-line last:border-0">
         {canWrite && (
           <td className={td}>
-            {!row.readOnly && <input type="checkbox" aria-label={`Select the redirect from ${row.source}`} checked={selected} onChange={(e) => onSelect(e.target.checked)} className="size-4" />}
+            {!row.readOnly && <input type="checkbox" aria-label={fillWords(w.table.selectRow, { source: row.source })} checked={selected} onChange={(e) => onSelect(e.target.checked)} className="size-4" />}
           </td>
         )}
         <td className={td}>
@@ -236,9 +247,9 @@ function RowGroup({
         <td className={td}>
           <TargetCell row={row} />
         </td>
-        <td className={td}>{kindWords(row.kind)}</td>
-        <td className={`${td} hidden lg:table-cell`}>{usedWords(row.hits, row.lastHitAt, timeZone)}</td>
-        <td className={`${td} hidden lg:table-cell`}>{madeByWords(row)}</td>
+        <td className={td}>{kindWords(row.kind, w)}</td>
+        <td className={`${td} hidden lg:table-cell`}>{usedWords(row.hits, row.lastHitAt, timeZone, w, locale)}</td>
+        <td className={`${td} hidden lg:table-cell`}>{madeByWords(row, w)}</td>
         <td className={td}>
           <StatusText status={row.status} more={row.more} />
         </td>
@@ -247,21 +258,21 @@ function RowGroup({
             <span className="flex flex-wrap justify-end gap-2">
               {asking ? (
                 <>
-                  <span className="text-xs">Delete it?</span>
+                  <span className="text-xs">{w.table.deleteIt}</span>
                   <button type="button" disabled={pending} onClick={onDelete} className="underline underline-offset-2">
-                    Yes, delete
+                    {w.common.yesDelete}
                   </button>
                   <button type="button" disabled={pending} onClick={() => onAsk(false)} className="underline underline-offset-2">
-                    Keep
+                    {w.table.keep}
                   </button>
                 </>
               ) : (
                 <>
-                  <button type="button" onClick={() => onEdit(!editing)} className="underline underline-offset-2" aria-label={`${manual ? "Edit" : "Replace"} the redirect from ${row.source}`}>
-                    {manual ? "Edit" : "Replace"}
+                  <button type="button" onClick={() => onEdit(!editing)} className="underline underline-offset-2" aria-label={fillWords(manual ? w.table.editLabel : w.table.replaceLabel, { source: row.source })}>
+                    {manual ? w.table.edit : w.table.replace}
                   </button>
-                  <button type="button" onClick={() => onAsk(true)} className="underline underline-offset-2" aria-label={`Delete the redirect from ${row.source}`}>
-                    Delete
+                  <button type="button" onClick={() => onAsk(true)} className="underline underline-offset-2" aria-label={fillWords(w.table.deleteLabel, { source: row.source })}>
+                    {w.table.delete}
                   </button>
                 </>
               )}
@@ -276,8 +287,8 @@ function RowGroup({
               <RedirectForm actions={actions} initial={{ from: row.source, to: row.target ?? "" }} editing={{ id: row.id, source: row.source }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} />
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-sm">Kaizena Flow made this redirect when an address changed, so it cannot be edited. Make a redirect of your own from the same address to replace it.</p>
-                <RedirectForm actions={actions} initial={{ from: row.source, to: "" }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} submitLabel="Replace it with this redirect" />
+                <p className="text-sm">{w.table.automaticNote}</p>
+                <RedirectForm actions={actions} initial={{ from: row.source, to: "" }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} submitLabel={w.table.replaceWith} />
               </div>
             )}
           </td>

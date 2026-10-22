@@ -7,6 +7,7 @@ import { FontLinks } from "@/components/font-links";
 import { fontClass } from "@/lib/fonts";
 import { type SiteFonts } from "@/lib/fonts-schema";
 
+import { useAdminText } from "./admin-text";
 import { FontPicker, type InstallFont } from "./font-picker";
 
 /**
@@ -23,30 +24,28 @@ export function SiteFontsForm({
   action: (state: FormState, form: FormData) => Promise<FormState>;
   install: InstallFont;
 }) {
+  const { editor: e, fonts: w } = useAdminText("design");
   const [heading, setHeading] = useState(fonts.heading);
   const [body, setBody] = useState(fonts.body);
   return (
-    <ActionForm action={action} className="flex flex-col gap-5" successMessage="Saved. The site uses these fonts now.">
+    <ActionForm action={action} className="flex flex-col gap-5" successMessage={w.siteSaved}>
       <input type="hidden" name="heading" value={heading ?? ""} />
       <input type="hidden" name="body" value={body ?? ""} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <FontPicker label="Headings" value={heading} onChange={setHeading} install={install} defaultLabel="The body font" />
-        <FontPicker label="Body text" value={body} onChange={setBody} install={install} defaultLabel="The system's font" />
+        <FontPicker label={e.headings} value={heading} onChange={setHeading} install={install} defaultLabel={e.theBodyFont} />
+        <FontPicker label={e.bodyText} value={body} onChange={setBody} install={install} defaultLabel={e.systemFont} />
       </div>
 
       <FontLinks families={[heading, body]} />
       <figure className="flex flex-col gap-2 rounded-panel border border-line p-5">
-        <figcaption className="text-xs text-muted">Sample</figcaption>
+        <figcaption className="text-xs text-muted">{w.sample}</figcaption>
         <div className={body ? fontClass(body) : undefined}>
-          <p className={`text-metric text-ink tabular-nums ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>
-          <p className="mt-2 max-w-prose">
-            Each cup is thrown by hand in our workshop and glazed in small batches, so no two are quite alike. Free delivery
-            on orders over 500 kr.
-          </p>
+          <p className={`text-metric text-ink tabular-nums ${heading ? fontClass(heading) : ""}`}>{w.sampleHeading}</p>
+          <p className="mt-2 max-w-prose">{w.sampleText}</p>
         </div>
       </figure>
       <div>
-        <SubmitButton>Save fonts</SubmitButton>
+        <SubmitButton>{w.saveFonts}</SubmitButton>
       </div>
     </ActionForm>
   );

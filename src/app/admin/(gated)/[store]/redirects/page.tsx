@@ -7,8 +7,11 @@ import { RedirectForm } from "@/components/admin/redirects/redirect-form";
 import { RedirectTable } from "@/components/admin/redirects/redirect-table";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { card, field, hint, primary, secondary } from "@/components/admin/data/ui";
-import { FILTER_CHOICES, emptyListWords, listHref, manualCountWords, pageOf, redirectPaths } from "@/lib/redirect-admin";
-import { redirectSentences } from "@/lib/redirects";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { emptyListWords, filterChoices, listHref, manualCountWords, pageOf, redirectPaths } from "@/lib/redirect-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { REDIRECT_FILTERS, listRedirects, type RedirectFilter } from "@/server/redirects";
 
@@ -26,15 +29,11 @@ const first = (value: string | string[] | undefined): string => (typeof value ==
  * changes; pages and articles keep theirs (shown read only). Needs the right to read the website; changing needs the right to change it.
  */
 export default async function RedirectsPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead
-        slug={store.slug}
-        active="list"
-        title="Redirects"
-        intro={`When an address on ${store.name} moves, a redirect sends shoppers and search engines to the new one, in every country and language. Kaizena Flow makes one itself when a product, category or tag changes its address. Here you add your own, for example for an old shop's addresses, and see how often each is used.`}
-      />
+      <RedirectsHead slug={store.slug} active="list" title={w.list.title} intro={fillWords(w.list.intro, { store: store.name })} words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -45,6 +44,10 @@ export default async function RedirectsPage({ params, searchParams }: Props) {
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requirePermission(storeSlug, "website:read");
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "redirects");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const l = w.list;
   const query = await searchParams;
   const q = first(query.q).slice(0, 200);
   const rawFilter = first(query.filter);
@@ -58,22 +61,22 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     remove: deleteRedirectsAction.bind(null, store.slug),
   };
   return (
-    <>
-      <p className={`${card} !p-3 text-sm`}>{redirectSentences.permanent}</p>
+    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+      <p className={`${card} !p-3 text-sm`}>{w.sentences.permanent}</p>
       {canWrite && (
         <section aria-labelledby="add-redirect" className="flex flex-col gap-2">
           <h2 id="add-redirect" className="text-title text-ink">
-            Add a redirect
+            {l.add}
           </h2>
           <RedirectForm actions={actions} />
           <p className={hint}>
-            Many addresses at once?{" "}
+            {l.manyAtOnce}{" "}
             <Link href={redirectPaths(store.slug).import} className="underline underline-offset-2">
-              Import a CSV file
+              {l.importLink}
             </Link>
-            . Not sure which addresses are broken?{" "}
+            . {l.notSure}{" "}
             <Link href={redirectPaths(store.slug).report} className="underline underline-offset-2">
-              See the pages shoppers could not find
+              {l.reportLink}
             </Link>
             .
           </p>
@@ -82,23 +85,23 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       <section aria-labelledby="all-redirects" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="all-redirects" className="text-title text-ink">
-            Your redirects
+            {l.yours}
           </h2>
-          <p className="text-sm text-muted">{manualCountWords(list.manual, list.limit)}</p>
+          <p className="text-sm text-muted">{manualCountWords(list.manual, list.limit, w, locale)}</p>
         </div>
-        <form method="get" action={base} className="flex flex-wrap items-end gap-2" role="search" aria-label="Search the redirects">
+        <form method="get" action={base} className="flex flex-wrap items-end gap-2" role="search" aria-label={l.searchRegion}>
           <div className="flex min-w-48 flex-1 flex-col gap-1">
             <label htmlFor="redirect-q" className="text-sm font-medium">
-              Search
+              {l.searchLabel}
             </label>
-            <input id="redirect-q" name="q" defaultValue={q} placeholder="An old or a new address" autoComplete="off" className={`${field} font-mono`} />
+            <input id="redirect-q" name="q" defaultValue={q} placeholder={l.searchPlaceholder} autoComplete="off" className={`${field} font-mono`} />
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="redirect-filter" className="text-sm font-medium">
-              Kind
+              {l.kind}
             </label>
             <select id="redirect-filter" name="filter" defaultValue={filter} className={field}>
-              {FILTER_CHOICES.map((c) => (
+              {filterChoices(w).map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
@@ -106,34 +109,34 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             </select>
           </div>
           <button type="submit" className={primary}>
-            Search
+            {l.search}
           </button>
           {(q !== "" || filter !== "all") && (
             <Link href={base} className={secondary}>
-              Clear
+              {l.clear}
             </Link>
           )}
         </form>
         {list.rows.length === 0 ? (
-          <p className="rounded-panel bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter)}</p>
+          <p className="rounded-panel bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter, w)}</p>
         ) : (
           <RedirectTable rows={list.rows} timeZone={store.timeZone} actions={actions} canWrite={canWrite} />
         )}
         {list.pages > 1 && (
-          <nav aria-label="Pages" className="flex items-center justify-between text-sm">
+          <nav aria-label={l.pagesNav} className="flex items-center justify-between text-sm">
             {list.page > 1 ? (
               <Link href={listHref(base, { q, filter, page: list.page - 1 })} className="underline underline-offset-2">
-                Newer redirects
+                {l.newer}
               </Link>
             ) : (
               <span />
             )}
             <span className={hint}>
-              Page {list.page} of {list.pages}, {list.total.toLocaleString("en-GB")} redirects
+              {fillWords(l.pageOfTotal, { page: list.page, pages: list.pages, total: list.total.toLocaleString(locale) })}
             </span>
             {list.page < list.pages ? (
               <Link href={listHref(base, { q, filter, page: list.page + 1 })} className="underline underline-offset-2">
-                Older redirects
+                {l.older}
               </Link>
             ) : (
               <span />
@@ -141,9 +144,9 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </nav>
         )}
         <p className={hint}>
-          {redirectSentences.atLeast} A redirect that was deleted may keep working in a browser that has seen it.
+          {w.sentences.atLeast} {l.deletedKeepsWorking}
         </p>
       </section>
-    </>
+    </AdminTextScope>
   );
 }

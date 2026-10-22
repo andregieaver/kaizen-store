@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useId, useState, type ReactNode }
 
 import { FALLBACK_SIZE, PICKER_MOST, PICKER_PAGE, type PickerList, type PickerPicture } from "@/lib/media-picker";
 
+import { useAdminText } from "./admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { Modal } from "./modal";
 
 /**
@@ -38,7 +40,8 @@ export async function pickedFrom(item: PickerPicture): Promise<PickedPicture> {
 }
 
 /** The button that opens the library to choose a picture; draws nothing where the editor has no library to list. */
-export function LibraryButton({ label = "Choose from the library", onPicked }: { label?: string; onPicked: (picture: PickedPicture) => void }) {
+export function LibraryButton({ label, onPicked }: { label?: string; onPicked: (picture: PickedPicture) => void }) {
+  const w = useAdminText("website").picker;
   const list = useMediaPicker();
   const [open, setOpen] = useState(false);
   if (!list) return null;
@@ -49,7 +52,7 @@ export function LibraryButton({ label = "Choose from the library", onPicked }: {
         onClick={() => setOpen(true)}
         className="w-fit rounded-pill border border-edge px-3 py-2 text-sm focus-visible:outline-2"
       >
-        {label}
+        {label ?? w.choose}
       </button>
       {open && <LibraryDialog list={list} onClose={() => setOpen(false)} onPicked={onPicked} />}
     </>
@@ -57,6 +60,7 @@ export function LibraryButton({ label = "Choose from the library", onPicked }: {
 }
 
 function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose: () => void; onPicked: (picture: PickedPicture) => void }) {
+  const w = useAdminText("website").picker;
   const searchId = useId();
   const [text, setText] = useState("");
   const [query, setQuery] = useState("");
@@ -83,12 +87,12 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
         setProblem(null);
       })
       .catch(() => {
-        if (!stale) setProblem("The library could not be read. Try again.");
+        if (!stale) setProblem(w.unreadable);
       });
     return () => {
       stale = true;
     };
-  }, [list, query, limit]);
+  }, [list, query, limit, w.unreadable]);
 
   const choose = async (item: PickerPicture) => {
     setChoosing(item.id);
@@ -98,17 +102,17 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
   };
 
   return (
-    <Modal open onClose={onClose} title="Choose from the library" wide>
+    <Modal open onClose={onClose} title={w.choose} wide>
       <div className="flex flex-col gap-4 p-5">
         <div className="flex flex-col gap-1">
           <label htmlFor={searchId} className="text-sm font-medium">
-            Search the pictures
+            {w.search}
           </label>
           <input
             id={searchId}
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="A word, or part of a file name"
+            placeholder={w.placeholder}
             className="min-h-10 rounded-md border border-line bg-card px-3 text-sm"
           />
         </div>
@@ -117,9 +121,9 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
             {problem}
           </p>
         )}
-        {!result && !problem && <p className="text-sm text-muted">Reading the library …</p>}
+        {!result && !problem && <p className="text-sm text-muted">{w.reading}</p>}
         {result && result.items.length === 0 && (
-          <p className="text-sm text-muted">{query ? "No picture matches. Try another word." : "The library has no pictures yet. Upload one first."}</p>
+          <p className="text-sm text-muted">{query ? w.noMatch : w.empty}</p>
         )}
         {result && result.items.length > 0 && (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -145,7 +149,7 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
             onClick={() => setLimit((n) => Math.min(n + PICKER_PAGE, PICKER_MOST))}
             className="w-fit rounded-pill border border-edge px-3 py-2 text-sm"
           >
-            Show more ({result.items.length} of {result.total})
+            {fillWords(w.more, { shown: result.items.length, total: result.total })}
           </button>
         )}
       </div>

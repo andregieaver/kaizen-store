@@ -2,13 +2,17 @@
  * What the admin's pages for redirects, the 404 report and the category and tag search texts say and decide (wave 2, second run, D168,
  * `docs/wave-2-redirects.md` 2.2, 2.3, 2.4, 5.4), pure: addresses of the pages, the filters' words, how a row's use and maker are told, how a finding is shown
  * under the field it is about, and the sentences a saved product or category says when its address changed. No database and nothing a person typed beyond the
- * addresses themselves, which the pages pass in already in their normal form: a view test holds these. The admin is English only and these words are in no
- * catalogue.
+ * addresses themselves, which the pages pass in already in their normal form: a view test holds these. Their words are the `redirects` catalogue (D312 A7):
+ * each function takes them as its last argument and says the English ones when none are given.
  */
+import { countWords, fillWords } from "./admin-fill";
+import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
 import { momentText, wholeNumber } from "./data-admin";
 import type { Finding } from "./data-job";
 import { NOT_FOUND_WINDOWS } from "./data-limits";
-import { KIND_WORDS, findingField, redirectSentences, type RedirectKind } from "./redirects";
+import { findingField, redirectSentences, type RedirectKind } from "./redirects";
+
+type W = RedirectsMessages;
 
 // ---------------------------------------------------------------------------
 // Addresses of the pages
@@ -24,25 +28,23 @@ export const redirectPaths = (slug: string) => ({
 
 /** The tabs on every redirect page. */
 export type RedirectTab = "list" | "report" | "import" | "export";
-export const REDIRECT_TABS: readonly { id: RedirectTab; label: string }[] = [
-  { id: "list", label: "Redirects" },
-  { id: "report", label: "Pages not found" },
-  { id: "import", label: "Import" },
-  { id: "export", label: "Export" },
+export const redirectTabs = (w: W = redirectsEn): readonly { id: RedirectTab; label: string }[] => [
+  { id: "list", label: w.tabs.list },
+  { id: "report", label: w.tabs.report },
+  { id: "import", label: w.tabs.import },
+  { id: "export", label: w.tabs.export },
 ];
+export const REDIRECT_TABS = redirectTabs();
 
 // ---------------------------------------------------------------------------
 // The list
 // ---------------------------------------------------------------------------
 
 /** The kind filter of the list (2.2.1), by the value in the address. */
-export const FILTER_CHOICES: readonly { value: "all" | "manual" | "products" | "terms" | "pages"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "manual", label: "Manual" },
-  { value: "products", label: "Automatic: products" },
-  { value: "terms", label: "Automatic: categories and tags" },
-  { value: "pages", label: "Pages and articles" },
-];
+const FILTER_VALUES = ["all", "manual", "products", "terms", "pages"] as const;
+export const filterChoices = (w: W = redirectsEn): readonly { value: (typeof FILTER_VALUES)[number]; label: string }[] =>
+  FILTER_VALUES.map((value) => ({ value, label: w.list.filters[value] }));
+export const FILTER_CHOICES = filterChoices();
 
 export type ListQuery = { q?: string; filter?: string; page?: number };
 
@@ -66,36 +68,38 @@ export const pageOf = (value: unknown): number => {
 type Maker = { kind: RedirectKind | "page" | "article"; origin: string; createdBy: string | null; readOnly?: boolean };
 
 /** The kind as the list names it. */
-export const kindWords = (kind: RedirectKind | "page" | "article"): string => KIND_WORDS[kind];
+export const kindWords = (kind: RedirectKind | "page" | "article", w: W = redirectsEn): string => w.kinds[kind];
 
 /** Who made a row: a person, or how the system did. */
-export function madeByWords(row: Maker): string {
-  if (row.origin === "system" || row.kind !== "manual") return "Automatic";
-  const via = row.origin === "import" ? "Imported" : row.origin === "report" ? "From the pages-not-found report" : row.origin === "assistant" ? "By the AI manager" : "Added";
-  return row.createdBy ? `${via} by ${row.createdBy}` : via;
+export function madeByWords(row: Maker, w: W = redirectsEn): string {
+  if (row.origin === "system" || row.kind !== "manual") return w.made.automatic;
+  const via = row.origin === "import" ? w.made.imported : row.origin === "report" ? w.made.report : row.origin === "assistant" ? w.made.assistant : w.made.added;
+  return row.createdBy ? fillWords(w.made.by, { via, name: row.createdBy }) : via;
 }
 
 /** How much a redirect was used: a lower bound, and when it was last. Pages' and articles' redirects are not counted. */
-export function usedWords(hits: number | null, lastHitAt: string | null, timeZone: string): string {
-  if (hits === null) return "Not counted";
-  if (hits <= 0) return "Not used yet";
-  const last = lastHitAt ? `, last ${momentText(lastHitAt, timeZone)}` : "";
-  return `At least ${wholeNumber(hits)}${last}`;
+export function usedWords(hits: number | null, lastHitAt: string | null, timeZone: string, w: W = redirectsEn, locale = "en-GB"): string {
+  if (hits === null) return w.used.notCounted;
+  if (hits <= 0) return w.used.notUsed;
+  const last = lastHitAt ? fillWords(w.used.last, { when: momentText(lastHitAt, timeZone, locale) }) : "";
+  return `${fillWords(w.used.atLeast, { n: wholeNumber(hits, locale) })}${last}`;
 }
 
 /** The count in the list's header: `12 of 100,000 manual redirects`. */
-export const manualCountWords = (n: number, max: number): string => redirectSentences.count(n, max);
+export const manualCountWords = (n: number, max: number, w: W = redirectsEn, locale = "en"): string =>
+  fillWords(w.sentences.count, { n: n.toLocaleString(locale), max: max.toLocaleString(locale) });
 
 /** What the list says when there is nothing to show. */
-export function emptyListWords(q: string, filter: string): string {
-  if (q.trim() !== "") return "No redirect matches the search.";
-  if (filter === "manual") return "You have no redirects of your own yet. Add one above, import a file, or use the pages-not-found report.";
-  if (filter === "all") return "No redirects yet. Kaizena Flow makes one when a product, category or tag changes its address; add your own above.";
-  return "No redirects of this kind yet.";
+export function emptyListWords(q: string, filter: string, w: W = redirectsEn): string {
+  if (q.trim() !== "") return w.list.empty.search;
+  if (filter === "manual") return w.list.empty.manual;
+  if (filter === "all") return w.list.empty.all;
+  return w.list.empty.kind;
 }
 
 /** The most rows one request may delete, said beside the button. */
-export const deleteSelectedWords = (n: number, max: number): string => (n > max ? `Choose at most ${wholeNumber(max)} at a time.` : `Delete ${wholeNumber(n)} selected`);
+export const deleteSelectedWords = (n: number, max: number, w: W = redirectsEn, locale = "en-GB"): string =>
+  n > max ? fillWords(w.table.atMost, { max: wholeNumber(max, locale) }) : fillWords(w.table.deleteSelected, { n: wholeNumber(n, locale) });
 
 // ---------------------------------------------------------------------------
 // The form's findings, shown under the field they are about
@@ -114,14 +118,14 @@ export function splitFindings(findings: readonly Finding[]): FieldFindings {
 export const hasError = (findings: readonly Finding[]): boolean => findings.some((f) => f.severity === "error");
 
 /** The line under the two fields once both are readable: where shoppers will go. */
-export function helpLine(source: string | null, target: string | null): string | null {
-  return source && target ? redirectSentences.fromHelp(source, target) : null;
+export function helpLine(source: string | null, target: string | null, w: W = redirectsEn): string | null {
+  return source && target ? fillWords(w.sentences.fromHelp, { from: source, to: target }) : null;
 }
 
 /** What the form asks when the address already has a redirect, or null. */
-export function existingWords(existing: { kind: "manual"; target: string } | { kind: "automatic" } | null, source: string | null): string | null {
+export function existingWords(existing: { kind: "manual"; target: string } | { kind: "automatic" } | null, source: string | null, w: W = redirectsEn): string | null {
   if (!existing || !source) return null;
-  return existing.kind === "manual" ? redirectSentences.replaceAsk(source, existing.target) : redirectSentences.automaticReplaced(source);
+  return existing.kind === "manual" ? fillWords(w.sentences.replaceAsk, { from: source, old: existing.target }) : fillWords(w.sentences.automaticReplaced, { from: source });
 }
 
 // ---------------------------------------------------------------------------
@@ -165,37 +169,38 @@ export function reportHref(base: string, query: ReportQuery): string {
 }
 
 /** The window words: `Last 30 days`. */
-export const windowWords = (days: number): string => `Last ${days} days`;
+export const windowWords = (days: number, w: W = redirectsEn): string => fillWords(w.report.window, { n: days });
 
 /** The windows in the order the tabs show them (7, 30, 90). */
 export const WINDOW_ORDER: readonly number[] = [...NOT_FOUND_WINDOWS].sort((a, b) => a - b);
 
 /** `12 requests, 3 by robots`: shoppers and robots together with the robots' share. */
-export function requestsWords(requests: number, crawlers: number): string {
-  const base = `${wholeNumber(requests)} request${requests === 1 ? "" : "s"}`;
-  return crawlers > 0 ? `${base}, ${wholeNumber(crawlers)} by robots` : base;
+export function requestsWords(requests: number, crawlers: number, w: W = redirectsEn, locale = "en-GB"): string {
+  const base = countWords(requests, w.report.requests, { n: wholeNumber(requests, locale) });
+  return crawlers > 0 ? `${base}${fillWords(w.report.byRobots, { n: wholeNumber(crawlers, locale) })}` : base;
 }
 
 /** The report's one-line account of what is shown, written from the report's own numbers. */
-export function reportSummaryWords(shown: number, distinct: number, days: number): string {
-  if (distinct === 0) return `No missing address was asked for in the last ${days} days.`;
-  if (shown >= distinct) return `${wholeNumber(distinct)} different address${distinct === 1 ? "" : "es"} asked for in the last ${days} days.`;
-  return `Showing ${wholeNumber(shown)} of ${wholeNumber(distinct)} different addresses asked for in the last ${days} days.`;
+export function reportSummaryWords(shown: number, distinct: number, days: number, w: W = redirectsEn, locale = "en-GB"): string {
+  if (distinct === 0) return fillWords(w.report.summary.none, { days });
+  if (shown >= distinct) return countWords(distinct, w.report.summary.all, { n: wholeNumber(distinct, locale), days });
+  return fillWords(w.report.summary.some, { shown: wholeNumber(shown, locale), n: wholeNumber(distinct, locale), days });
 }
 
 /** What the report says about addresses it could not count (a day's cap of different addresses was reached), or null. */
-export function uncountedWords(uncounted: { requests: number; days: number }): string | null {
+export function uncountedWords(uncounted: { requests: number; days: number }, w: W = redirectsEn, locale = "en-GB"): string | null {
   if (uncounted.requests <= 0) return null;
-  const days = `${wholeNumber(uncounted.days)} day${uncounted.days === 1 ? "" : "s"}`;
-  const requests = `${wholeNumber(uncounted.requests)} request${uncounted.requests === 1 ? "" : "s"}`;
-  return `On ${days} more different addresses were asked for than a day can list, so ${requests} ${uncounted.requests === 1 ? "is" : "are"} not counted by address.`;
+  const days = countWords(uncounted.days, w.report.days, { n: wholeNumber(uncounted.days, locale) });
+  const requests = countWords(uncounted.requests, w.report.requests, { n: wholeNumber(uncounted.requests, locale) });
+  return countWords(uncounted.requests, w.report.uncounted, { days, requests });
 }
 
 /** The words of the one-click button of a suggestion. */
-export const suggestionWords = (path: string): string => `Redirect to ${path}`;
+export const suggestionWords = (path: string, w: W = redirectsEn): string => fillWords(w.report.table.redirectTo, { path });
 
 /** The suggestion's kind as a small label beside the button. */
-export const SUGGESTION_KIND: Record<string, string> = { product: "Product", category: "Category", tag: "Tag", page: "Page", article: "Article" };
+export const SUGGESTION_KIND: Record<string, string> = redirectsEn.report.suggestionKinds;
+export const suggestionKind = (kind: string, w: W = redirectsEn): string => (w.report.suggestionKinds as Record<string, string>)[kind] ?? kind;
 
 // ---------------------------------------------------------------------------
 // The import
@@ -204,51 +209,44 @@ export const SUGGESTION_KIND: Record<string, string> = { product: "Product", cat
 export type { ExistingChoice } from "./redirect-plan";
 
 /** The one option of an import: what happens when an address already has a redirect of its own (2.2.4 step 2). */
-export const EXISTING_WORDS: Record<"replace" | "skip", { label: string; help: string }> = {
-  replace: {
-    label: "Replace its target with the one in the file",
-    help: "The address keeps one redirect: the file's. This is what Shopify does. Redirects that are not in the file are never touched.",
-  },
-  skip: {
-    label: "Keep the redirect that is there and skip the line",
-    help: "The line is listed as skipped and nothing about that address changes.",
-  },
-};
+export const existingChoiceWords = (w: W = redirectsEn): Record<"replace" | "skip", { label: string; help: string }> => ({ replace: w.import.options.replace, skip: w.import.options.skip });
+export const EXISTING_WORDS = existingChoiceWords();
 
 /** The confirmation before an import is applied: what it writes, and what it never does. */
-export function importConfirmation(toCreate: number, toReplace: number): string {
-  return `This will create ${wholeNumber(toCreate)} and replace ${wholeNumber(toReplace)} redirects. Redirects are permanent, and nothing is deleted. Each line is checked again as it is written, so a line may be skipped if the store changed since the check. Lines are saved in groups, so you cannot undo an import as a whole.`;
+export function importConfirmation(toCreate: number, toReplace: number, w: W = redirectsEn, locale = "en-GB"): string {
+  return fillWords(w.import.apply.confirm, { create: wholeNumber(toCreate, locale), replace: wholeNumber(toReplace, locale) });
 }
 
 /** What a line of a check or an import says happened (or would): one phrase for the item's outcome and, for a dry run, its prediction. */
-export function lineResultWords(outcome: string, will: string | null): string {
+export function lineResultWords(outcome: string, will: string | null, w: W = redirectsEn): string {
+  const l = w.import.lines_;
   if (outcome === "checked") {
     switch (will) {
       case "created":
-        return "Would be created";
+        return l.wouldCreate;
       case "updated":
-        return "Would replace the redirect";
+        return l.wouldReplace;
       case "unchanged":
-        return "Already there";
+        return l.already;
       case "skipped":
-        return "Would be skipped";
+        return l.wouldSkip;
       case "failed":
-        return "Would not be imported";
+        return l.wouldFail;
       default:
-        return "Checked";
+        return l.checked;
     }
   }
   switch (outcome) {
     case "created":
-      return "Created";
+      return l.created;
     case "updated":
-      return "Replaced";
+      return l.replaced;
     case "unchanged":
-      return "Already there";
+      return l.already;
     case "skipped":
-      return "Skipped";
+      return l.skipped;
     case "failed":
-      return "Not imported";
+      return l.failed;
     default:
       return outcome;
   }

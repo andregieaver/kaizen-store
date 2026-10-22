@@ -16,9 +16,14 @@ import type { VideoUpload } from "@/server/media";
 import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
 import { pagesTag } from "@/server/pages";
 import { storeTag } from "@/server/stores";
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { termsTag } from "@/server/taxonomy";
 
 const id = z.uuid();
+
+/** The library's refusals in the account's language (D312 A7). */
+const said = async () => adminText(await actionAdminLang(), "website").mediaProblems;
 
 /** The store's pages and catalogue show library alt texts (D89): their caches go when one changes. */
 function altTextsChanged(storeId: string) {
@@ -39,7 +44,7 @@ export async function describeMediaAction(storeSlug: string, mediaId: string, te
 /** Writes one picture's alt texts with the store's AI (D89), over staff's too: someone asked for it. */
 export async function writeAltTextAction(storeSlug: string, mediaId: string): Promise<AltResult> {
   const { account, store } = await requirePermission(storeSlug, "website:write");
-  if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
+  if (!id.safeParse(mediaId).success) return { ok: false, problem: (await said()).gone };
   const result = await writeAltText({ storeId: store.id, storeSlug: store.slug }, mediaId, { replace: true });
   if (result.ok) {
     await audit(account.id, store.id, "store.media_alt_written", { mediaId, count: 1 });
@@ -52,7 +57,7 @@ export async function writeAltTextAction(storeSlug: string, mediaId: string): Pr
 export async function writeAltTextsAction(storeSlug: string, run: unknown): Promise<AltRun> {
   const { account, store } = await requirePermission(storeSlug, "website:write");
   const parsed = altRunInput.safeParse(run);
-  if (!parsed.success) return { written: 0, failed: 0, remaining: 0, problem: "Start the run again." };
+  if (!parsed.success) return { written: 0, failed: 0, remaining: 0, problem: (await said()).startAgain };
   const result = await writeAltTexts({ storeId: store.id, storeSlug: store.slug }, { since: new Date(parsed.data.since), rewrite: parsed.data.rewrite });
   if (result.written > 0) {
     await audit(account.id, store.id, "store.media_alt_written", { count: result.written });
@@ -66,7 +71,7 @@ export async function deleteMediaAction(storeSlug: string, mediaId: string): Pro
   const held = await checkPermission(storeSlug, "website:write");
   if (!held) return { ok: false, problem: NO_ACCESS };
   const { account, store } = held;
-  if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
+  if (!id.safeParse(mediaId).success) return { ok: false, problem: (await said()).gone };
   return deleteMedia({ storeId: store.id, storeSlug: store.slug }, account.id, mediaId);
 }
 
@@ -75,7 +80,7 @@ export async function deleteManyMediaAction(storeSlug: string, mediaIds: unknown
   const held = await checkPermission(storeSlug, "website:write");
   if (!held) return { deleted: 0, kept: 0, problem: NO_ACCESS };
   const parsed = z.array(id).min(1).max(MEDIA_DELETE_MAX).safeParse(mediaIds);
-  if (!parsed.success) return { deleted: 0, kept: 0, problem: "Choose between 1 and 100 files." };
+  if (!parsed.success) return { deleted: 0, kept: 0, problem: (await said()).chooseRange };
   const { account, store } = held;
   const result = await deleteMediaMany({ storeId: store.id, storeSlug: store.slug }, account.id, parsed.data);
   if (result.deleted > 0) altTextsChanged(store.id);
@@ -109,7 +114,7 @@ export async function compressPictureAction(storeSlug: string, mediaId: string, 
   if (!held) return { ok: false, problem: NO_ACCESS };
   const image = formData.get("image");
   const thumbnail = formData.get("thumbnail");
-  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: (await said()).compressAgain };
   const owner = { storeId: held.store.id, storeSlug: held.store.slug };
   const outcome = await replacePicture(owner, held.account.id, mediaId, image, thumbnail);
   if (outcome.ok) addressesMoved(held.store);
@@ -123,7 +128,7 @@ export async function startCompressedVideoAction(storeSlug: string, mediaId: str
   const held = await checkPermission(storeSlug, "website:write");
   if (!held) return { ok: false, problem: NO_ACCESS };
   const parsed = videoFile.safeParse(file);
-  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: (await said()).compressAgain };
   return startVideoReplacement({ storeId: held.store.id, storeSlug: held.store.slug }, mediaId, parsed.data);
 }
 
@@ -132,7 +137,7 @@ export async function finishCompressedVideoAction(storeSlug: string, mediaId: st
   const held = await checkPermission(storeSlug, "website:write");
   if (!held) return { ok: false, problem: NO_ACCESS };
   const parsed = z.string().min(3).max(300).safeParse(path);
-  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: (await said()).compressAgain };
   const outcome = await replaceVideo({ storeId: held.store.id, storeSlug: held.store.slug }, held.account.id, mediaId, parsed.data);
   if (outcome.ok) addressesMoved(held.store);
   return outcome;

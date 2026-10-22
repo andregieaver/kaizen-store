@@ -17,11 +17,15 @@ import {
   unscheduleExperimentAction,
   updateDraftAction,
 } from "@/app/admin/(gated)/[store]/experiments/actions";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { experimentProblems } from "@/lib/experiment-words";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 import { Button, Card, CARD_CLASS } from "@/components/admin/ui";
 
 import { PAGE_TYPE_COPY } from "./page-type-copy";
+import { useAdminLang, useAdminText } from "./admin-text";
 import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
@@ -31,10 +35,9 @@ const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-br
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
-const DEVICE_WORDS: Record<Device, string> = { mobile: "Phones", tablet: "Tablets", desktop: "Computers" };
-
 /** Runs a server action from a click: shows what it says is wrong, refreshes the page on success. */
 function useRun() {
+  const words = useAdminText("experiments");
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -45,7 +48,7 @@ function useRun() {
       if (result.ok) {
         then?.();
         router.refresh();
-      } else setProblems(result.problems);
+      } else setProblems(experimentProblems(result.problems, words));
     });
   };
   return { pending, problems, run, router, setProblems };
@@ -65,6 +68,8 @@ function Problems({ problems }: { problems: string[] }) {
 /** A draft: its versions to change, its settings, and the start button, which says in words what is still missing. */
 export function DraftPanel({ store, test, markets }: { store: string; test: ExperimentInfo; markets: { code: string; name: string }[] }) {
   const { pending, problems, run, router } = useRun();
+  const w = useAdminText("experiments");
+  const d = w.draft;
   const base = `/admin/${store}/experiments`;
   const [name, setName] = useState(test.name);
   const [hypothesis, setHypothesis] = useState(test.hypothesis);
@@ -96,11 +101,11 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
   return (
     <div className="flex flex-col gap-6">
       <Card
-        title="1. Change a version"
+        title={d.step1}
         aside={
           test.variants.length < MAX_VARIANTS && (
             <Button type="button" disabled={pending} onClick={() => run(() => addVariantAction(store, test.id))}>
-              Add another version
+              {d.addVersion}
             </Button>
           )
         }
@@ -109,14 +114,8 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
       >
         <p className="text-sm text-muted">
           {test.part
-            ? `The original is your page as it is. Each other version starts as a copy of it: open it in the page builder and change ${test.part.label}, then publish it there. Everything else on the page has to stay as it is, so the test is about that part only.${
-                test.part.modal
-                  ? test.part.modal.byItself
-                    ? " To see whether the popup helps at all, delete its row in a version: a popup that opens by itself may be left out. Keep its address name, and keep it a modal, in the others."
-                    : " A link or a class elsewhere opens this popup, so it stays in every version: change what it says and how it looks, and keep its address name."
-                  : ""
-              }`
-            : "The original is your page as it is. Each other version starts as a copy of it: open it in the page builder, change the thing you want to try (a heading, a picture, a button), and publish it there. Change one thing at a time, so you know what made the difference."}
+            ? `${fillWords(d.partIntro, { part: test.part.label })}${test.part.modal ? (test.part.modal.byItself ? d.partByItself : d.partLinked) : ""}`
+            : d.pageIntro}
         </p>
         <ul className="flex flex-col gap-2">
           {test.variants.map((v) => (
@@ -124,22 +123,22 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
               <span>
                 <span className="font-medium">{v.name}</span>
                 <span className="block text-xs text-muted">
-                  {Math.round(v.share * 100)} % of the visitors in the test
-                  {v.key !== "a" && (v.changed ? " · changed" : " · not changed yet")}
+                  {fillWords(d.shareOf, { n: Math.round(v.share * 100) })}
+                  {v.key !== "a" && (v.changed ? d.changed : d.notChanged)}
                 </span>
                 {v.scope === "outside" && (
                   <span role="alert" className="block text-xs text-danger-text">
-                    Changes more than {test.part?.label}: put everything else back as it was.
+                    {fillWords(d.outside, { part: test.part?.label ?? "" })}
                   </span>
                 )}
                 {v.scope === "missing" && (
                   <span role="alert" className="block text-xs text-danger-text">
-                    No longer has {test.part?.label}.
+                    {fillWords(d.missing, { part: test.part?.label ?? "" })}
                   </span>
                 )}
                 {v.scope === "modal" && (
                   <span role="alert" className="block text-xs text-danger-text">
-                    Changes the address name of {test.part?.label}, or whether it is a modal: keep both.
+                    {fillWords(d.modal, { part: test.part?.label ?? "" })}
                   </span>
                 )}
               </span>
@@ -147,21 +146,21 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                 {v.pageId && (
                   <>
                     <Link href={`${base}/variants/${v.pageId}`} className="underline">
-                      Change it
+                      {d.changeIt}
                     </Link>
                     <Link href={`${base}/variants/${v.pageId}/preview`} className="underline">
-                      Preview
+                      {d.preview}
                     </Link>
                   </>
                 )}
                 {v.key === "a" && (
                   <Link href={`/admin/${store}/${PAGE_TYPE_COPY[test.page.type].segment}/${test.page.id}/preview`} className="underline">
-                    Preview
+                    {d.preview}
                   </Link>
                 )}
                 {v.key !== "a" && test.variants.length > 2 && (
                   <button type="button" disabled={pending} onClick={() => run(() => removeVariantAction(store, test.id, v.key))} className="text-danger-text underline">
-                    Remove
+                    {d.remove}
                   </button>
                 )}
               </span>
@@ -170,42 +169,42 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </ul>
       </Card>
 
-      <Card title="2. Check the settings" className="flex flex-col gap-4" compact>
+      <Card title={d.step2} className="flex flex-col gap-4" compact>
         <label className={label}>
-          Name
+          {d.name}
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className={input} />
         </label>
         <label className={label}>
-          What do you think will happen?
+          {d.hypothesis}
           <textarea value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} maxLength={500} rows={2} className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal" />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>
-            Share of visitors in the test
+            {d.share}
             <select value={share} onChange={(e) => setShare(Number(e.target.value))} className={input}>
-              <option value={1}>All visitors</option>
-              <option value={0.5}>Half of the visitors</option>
-              <option value={0.25}>A quarter of the visitors</option>
+              <option value={1}>{w.shares.all}</option>
+              <option value={0.5}>{w.shares.half}</option>
+              <option value={0.25}>{w.shares.quarter}</option>
             </select>
           </label>
           <label className={label}>
-            Shortest run, in days
+            {d.minDays}
             <input type="number" min={1} max={90} value={minDays} onChange={(e) => setMinDays(Number(e.target.value))} className={input} />
-            <span className="text-xs font-normal text-muted">No winner is announced before this, so a lucky first days do not decide it. Whole weeks work best.</span>
+            <span className="text-xs font-normal text-muted">{d.minDaysHint}</span>
           </label>
         </div>
         <fieldset className="flex flex-wrap gap-4 text-sm">
-          <legend className="mb-1 font-medium">Devices</legend>
-          {DEVICES.map((d) => (
-            <label key={d} className="flex items-center gap-2">
-              <input type="checkbox" checked={devices.includes(d)} onChange={() => toggle(devices, d, setDevices)} />
-              {DEVICE_WORDS[d]}
+          <legend className="mb-1 font-medium">{d.devices}</legend>
+          {DEVICES.map((device) => (
+            <label key={device} className="flex items-center gap-2">
+              <input type="checkbox" checked={devices.includes(device)} onChange={() => toggle(devices, device, setDevices)} />
+              {w.devices[device]}
             </label>
           ))}
         </fieldset>
         {markets.length > 1 && (
           <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1 font-medium">Countries (none ticked: all)</legend>
+            <legend className="mb-1 font-medium">{d.countries}</legend>
             {markets.map((m) => (
               <label key={m.code} className="flex items-center gap-2">
                 <input type="checkbox" checked={chosen.includes(m.code)} onChange={() => toggle(chosen, m.code, setChosen)} />
@@ -215,24 +214,23 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           </fieldset>
         )}
         <details className="text-sm">
-          <summary className="cursor-pointer font-medium">How long will it take?</summary>
+          <summary className="cursor-pointer font-medium">{d.howLong}</summary>
           <div className="mt-3">
             <RuntimeEstimate share={share} versions={test.variants.length} minDays={minDays} />
           </div>
         </details>
         <div className="flex items-center gap-3">
           <button type="button" disabled={pending} onClick={save} className={button}>
-            Save settings
+            {d.save}
           </button>
-          {saved && <span role="status" className="text-sm text-muted">Saved.</span>}
+          {saved && <span role="status" className="text-sm text-muted">{d.saved}</span>}
         </div>
       </Card>
 
       <Problems problems={problems} />
-      <Card title="3. Start the test" className="flex flex-col gap-3" compact>
+      <Card title={d.step3} className="flex flex-col gap-3" compact>
         <p className="text-sm text-muted">
-          Visitors who have accepted statistics cookies will be shown the versions from the next page view. The test runs for at least {test.minDays} days and
-          you can stop it at any time. The page itself does not change until you choose a winner.
+          {fillWords(d.startIntro, { days: test.minDays })}
         </p>
         {test.scheduleProblem && (
           <p role="alert" className="rounded-md border border-warning-text p-3 text-sm">
@@ -241,10 +239,10 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         )}
         <div className="flex flex-wrap items-end gap-3">
           <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
-            Start the test now
+            {d.startNow}
           </button>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Or start it at
+            {d.orAt}
             <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal" />
           </label>
           <button
@@ -253,23 +251,23 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
             onClick={() => run(() => scheduleExperimentAction(store, test.id, new Date(at).toISOString()))}
             className={button}
           >
-            Schedule the start
+            {d.schedule}
           </button>
         </div>
         <div className="flex flex-wrap gap-3">
           {confirmDelete ? (
             <span className="flex items-center gap-2 text-sm">
-              Delete this draft and its versions?
+              {d.deleteAsk}
               <button type="button" disabled={pending} onClick={() => run(() => deleteDraftAction(store, test.id), () => router.push(base))} className="min-h-10 rounded-pill bg-danger-soft px-4 text-danger-text disabled:opacity-50">
-                Delete
+                {d.delete}
               </button>
               <button type="button" onClick={() => setConfirmDelete(false)} className="underline">
-                Keep it
+                {d.keepIt}
               </button>
             </span>
           ) : (
             <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm text-danger-text underline">
-              Delete the draft
+              {d.deleteDraft}
             </button>
           )}
         </div>
@@ -281,6 +279,9 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
 /** What can be done to a test that has started: stop it, choose a winner or keep the original, and rename it. */
 export function RunPanel({ store, test }: { store: string; test: ExperimentInfo }) {
   const { pending, problems, run } = useRun();
+  const w = useAdminText("experiments");
+  const r = w.run;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [confirm, setConfirm] = useState<string | null>(null);
   const [name, setName] = useState(test.name);
   const [renaming, setRenaming] = useState(false);
@@ -289,62 +290,88 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
     <div className="flex flex-col gap-4">
       <Problems problems={problems} />
       {test.status === "scheduled" && test.scheduledStart && (
-        <Card title={<>Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</>} description="The test starts by itself then, if everything is still in order; if not, it goes back to a draft and says why. Until then visitors see your page as it is, and the versions are locked. To change anything, take it back to a draft." className="flex flex-col gap-3" compact>
+        <Card
+          title={<>{fillWords(r.starts, { date: new Date(test.scheduledStart).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) })}</>}
+          description={r.scheduledText}
+          className="flex flex-col gap-3"
+          compact
+        >
           <div className="flex flex-wrap gap-3">
             <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
-              Start now
+              {r.startNow}
             </button>
             <button type="button" disabled={pending} onClick={() => run(() => unscheduleExperimentAction(store, test.id))} className={button}>
-              Back to a draft
+              {r.backToDraft}
             </button>
           </div>
         </Card>
       )}
       {test.status === "running" && (
-        <Card title="Running" description={<>Stopping ends the test for everyone: they see your page as it is again, and what was counted is kept. Only stop when you want to decide.{test.plannedEnd && ` It is planned to run until ${new Date(test.plannedEnd).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" })}.`}</>} className="flex flex-col gap-3" compact>
+        <Card
+          title={r.running}
+          description={
+            <>
+              {r.runningText}
+              {test.plannedEnd && fillWords(r.plannedEnd, { date: new Date(test.plannedEnd).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }) })}
+            </>
+          }
+          className="flex flex-col gap-3"
+          compact
+        >
           {confirm === "stop" ? (
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              Stop the test now?
+              {r.stopAsk}
               <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-pill bg-danger-soft px-4 text-danger-text disabled:opacity-50">
-                Stop the test
+                {r.stop}
               </button>
               <button type="button" onClick={() => setConfirm(null)} className="underline">
-                Keep it running
+                {r.keepRunning}
               </button>
             </div>
           ) : (
             <div>
               <button type="button" onClick={() => setConfirm("stop")} className={button}>
-                Stop the test
+                {r.stop}
               </button>
             </div>
           )}
         </Card>
       )}
       {test.status === "stopped" && (
-        <Card title="Decide" description={<>The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}{test.part ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.` : "A version replaces the page's content at once; the address stays."}{test.stopReason === "guardrail" && " Kaizena Flow stopped it because a version was clearly selling less."}{test.stopReason === "planned_end" && " It stopped itself at its planned end."}</>} className="flex flex-col gap-3" compact>
+        <Card
+          title={r.decide}
+          description={
+            <>
+              {r.decideText} {test.part ? fillWords(r.decidePart, { part: test.part.label }) : r.decidePage}
+              {test.stopReason === "guardrail" && r.guardrail}
+              {test.stopReason === "planned_end" && r.plannedStop}
+            </>
+          }
+          className="flex flex-col gap-3"
+          compact
+        >
           <div className="flex flex-wrap gap-3">
             {test.variants
               .filter((v) => v.key !== "a")
               .map((v) =>
                 confirm === `apply-${v.key}` ? (
                   <span key={v.key} className="flex flex-wrap items-center gap-2 text-sm">
-                    {test.part ? `Replace ${test.part.label} with the one in ${v.name}?` : `Replace the page with ${v.name}?`}
+                    {test.part ? fillWords(r.replacePart, { part: test.part.label, name: v.name }) : fillWords(r.replacePage, { name: v.name })}
                     <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-pill bg-brand px-4 text-brand-ink disabled:opacity-50">
-                      Yes, use {v.name}
+                      {fillWords(r.yesUse, { name: v.name })}
                     </button>
                     <button type="button" onClick={() => setConfirm(null)} className="underline">
-                      Cancel
+                      {r.cancel}
                     </button>
                   </span>
                 ) : (
                   <button key={v.key} type="button" onClick={() => setConfirm(`apply-${v.key}`)} className={primary}>
-                    Use {v.name}
+                    {fillWords(r.use, { name: v.name })}
                   </button>
                 ),
               )}
             <button type="button" disabled={pending} onClick={() => run(() => discardExperimentAction(store, test.id))} className={button}>
-              Keep the original
+              {r.keepOriginal}
             </button>
           </div>
         </Card>
@@ -352,23 +379,23 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
       {(test.status === "applied" || test.status === "discarded") && (
         <p className={`p-4 text-sm ${CARD_CLASS}`}>
           {test.status === "applied"
-            ? `${test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "A version"} is now your page.`
-            : "The original was kept."}{" "}
-          The test is finished and its results stay here.
+            ? fillWords(r.applied, { name: test.variants.find((v) => v.key === test.appliedVariant)?.name ?? r.aVersion })
+            : r.discarded}{" "}
+          {r.finished}
         </p>
       )}
       {test.status !== "applied" && test.status !== "discarded" && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
           {renaming ? (
             <>
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label="Name" className={`${input} max-w-xs`} />
+              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={r.name} className={`${input} max-w-xs`} />
               <button type="button" disabled={pending} onClick={() => run(() => renameExperimentAction(store, test.id, { name }), () => setRenaming(false))} className={button}>
-                Save name
+                {r.saveName}
               </button>
             </>
           ) : (
             <button type="button" onClick={() => setRenaming(true)} className="underline">
-              Rename
+              {r.rename}
             </button>
           )}
         </div>

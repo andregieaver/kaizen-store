@@ -1,6 +1,9 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 /** As the card shows them (`themeUpdates()` in `src/server/design-presets.ts`). */
 export type UpdateWaiting = { installId: string; title: string; live: boolean; from: number | null; to: number; followsUpdates: boolean; whatsNew: string[] };
@@ -9,8 +12,6 @@ export type ThemeFollowing = { installId: string; title: string; live: boolean; 
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
-const LAYOUT_WORDS: Record<string, string> = { header: "header", footer: "footer", productLayout: "product page" };
-const version = (n: number | null) => (n === null ? "the first version" : `version ${n}`);
 
 /**
  * Updates of the store's installed themes (D245, `docs/theme-phase-2.md` step 4): what is waiting, with *What's new*, *Update now* and whether
@@ -25,6 +26,7 @@ export function ThemeUpdates({
   undo,
   follow,
   description,
+  lang = "en",
 }: {
   available: UpdateWaiting[];
   made: UpdateMade[];
@@ -36,33 +38,24 @@ export function ThemeUpdates({
   follow: Action | null;
   /** What the card says above the updates; a store's words unless given (Kaizena Flow's own site has its own, D253). */
   description?: string;
+  /** The admin's language (D312 A7); English unless given. */
+  lang?: AdminLang;
 }) {
   if (available.length === 0 && made.length === 0 && installs.length === 0) return null;
+  const { common: c, updates: w } = adminText(lang, "design");
+  const version = (n: number | null) => (n === null ? c.firstVersion : fillWords(c.versionLower, { n }));
   return (
-    <Card
-      title="Theme updates"
-      description={
-        description ?? (
-        <>
-          When Kaizena Flow publishes a new version of a theme you installed, it can update by itself or wait for you. An update keeps every
-          change you made: your own settings and CSS stay, and a header, footer or product page you edited stays yours, with the new one added as
-          a draft beside it. Your words, pictures, products and menus are never touched. You can undo an update for {keepDays} days, as long as
-          the theme has not changed since.
-        </>
-        )
-      }
-      compact
-    >
+    <Card title={w.title} description={description ?? fillWords(w.description, { days: keepDays })} compact>
       <div className="flex flex-col gap-5">
         {available.map((item) => (
-          <section key={item.installId} aria-label={`${item.title}: update`} className="flex flex-col gap-2 rounded-panel border border-line p-4">
+          <section key={item.installId} aria-label={fillWords(w.updateLabel, { name: item.title })} className="flex flex-col gap-2 rounded-panel border border-line p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-body-strong text-ink">
-                {item.title}: {version(item.from)} → version {item.to}
+                {fillWords(w.fromTo, { name: item.title, from: version(item.from), to: item.to })}
                 {item.live && (
                   <span className="ml-2">
                     <Chip signal="positive" dot>
-                      Live
+                      {c.live}
                     </Chip>
                   </span>
                 )}
@@ -71,35 +64,35 @@ export function ThemeUpdates({
                 <ActionForm action={update}>
                   <input type="hidden" name="install" value={item.installId} />
                   <SubmitButton>
-                    Update now<span className="sr-only"> {item.title}</span>
+                    {w.updateNow}<span className="sr-only"> {item.title}</span>
                   </SubmitButton>
                 </ActionForm>
               )}
             </div>
             {item.whatsNew.length > 0 ? (
-              <ul aria-label="What's new" className="flex list-disc flex-col gap-1 pl-5 text-body text-ink-2">
+              <ul aria-label={w.whatsNew} className="flex list-disc flex-col gap-1 pl-5 text-body text-ink-2">
                 {item.whatsNew.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
             ) : (
-              <p className="text-body text-ink-2">The theme&apos;s makers did not say what is new, and nothing changed that can be named.</p>
+              <p className="text-body text-ink-2">{w.nothingNamed}</p>
             )}
-            <p className="text-caption text-muted">{item.followsUpdates ? "It will update by itself within a few minutes unless you switch that off below." : "It waits for you to update it."}</p>
+            <p className="text-caption text-muted">{item.followsUpdates ? w.byItselfSoon : w.waits}</p>
           </section>
         ))}
         {installs.length > 0 && (
-          <List label="How each theme is updated">
+          <List label={w.howUpdated}>
             {installs.map((item) => (
               <ListRow key={item.installId}>
-                <RowLead title={item.title} sub={`${version(item.version)} · ${item.followsUpdates ? "updates by itself" : "waits for you"}`} />
+                <RowLead title={item.title} sub={`${version(item.version)} · ${item.followsUpdates ? w.updatesByItself : w.waitsForYou}`} />
                 {follow && (
                   <RowActions>
                     <ActionForm action={follow}>
                       <input type="hidden" name="install" value={item.installId} />
                       <input type="hidden" name="follows" value={item.followsUpdates ? "off" : "on"} />
                       <SubmitButton variant="secondary">
-                        {item.followsUpdates ? "Let me update it" : "Update it by itself"}
+                        {item.followsUpdates ? w.letMe : w.byItself}
                         <span className="sr-only"> ({item.title})</span>
                       </SubmitButton>
                     </ActionForm>
@@ -110,28 +103,28 @@ export function ThemeUpdates({
           </List>
         )}
         {made.length > 0 && (
-          <List label="Latest updates">
+          <List label={w.latest}>
             {made.map((item) => (
               <ListRow key={item.id}>
                 <RowLead
-                  title={`${item.title}: ${version(item.from)} → ${version(item.to)}`}
+                  title={fillWords(w.madeTitle, { name: item.title, from: version(item.from), to: version(item.to) })}
                   sub={[
-                    `${item.at.slice(0, 10)}, ${item.automatic ? "by itself" : "by hand"}`,
-                    item.own > 0 ? `${item.own} of your own ${item.own === 1 ? "setting" : "settings"} kept` : null,
-                    item.layoutsKept.length > 0 ? `your ${item.layoutsKept.map((kind) => LAYOUT_WORDS[kind] ?? kind).join(" and ")} kept` : null,
+                    fillWords(w.madeWhen, { date: item.at.slice(0, 10), how: item.automatic ? w.automatic : w.byHand }),
+                    item.own > 0 ? countWords(item.own, w.ownKept) : null,
+                    item.layoutsKept.length > 0 ? fillWords(w.layoutsKept, { layouts: item.layoutsKept.map((kind) => w.layouts[kind] ?? kind).join(w.and) }) : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 />
                 {item.undoneAt ? (
-                  <Chip signal="neutral">Undone {item.undoneAt.slice(0, 10)}</Chip>
+                  <Chip signal="neutral">{fillWords(c.undone, { date: item.undoneAt.slice(0, 10) })}</Chip>
                 ) : (
                   undo && (
                     <RowActions>
                       <ActionForm action={undo}>
                         <input type="hidden" name="update" value={item.id} />
                         <SubmitButton variant="secondary">
-                          Undo<span className="sr-only"> the update of {item.title}</span>
+                          {c.undo}<span className="sr-only"> {fillWords(w.undoName, { name: item.title })}</span>
                         </SubmitButton>
                       </ActionForm>
                     </RowActions>

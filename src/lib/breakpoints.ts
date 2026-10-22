@@ -26,14 +26,20 @@ export const BREAKPOINT_MAX = 2560;
  */
 export const BREAKPOINT_GAP = 160;
 
+/** The words `breakpointsProblem()` writes, in English unless an admin catalogue's `design.breakpoints` is given (D312 A7). */
+export const BREAKPOINT_WORDS = {
+  range: "Screen sizes start between {min} and {max} pixels, in whole pixels.",
+  gap: "Each screen size starts at least {gap} pixels after the one before it: Medium, then Large, then Extra large.",
+};
+
 /** Why a set of widths cannot be used, or null: each within 480–2560, rising, at least `BREAKPOINT_GAP` apart. */
-export function breakpointsProblem(value: Breakpoints): string | null {
+export function breakpointsProblem(value: Breakpoints, words: { range: string; gap: string } = BREAKPOINT_WORDS): string | null {
   const widths = [value.md, value.lg, value.xl];
   if (widths.some((w) => !Number.isInteger(w) || w < BREAKPOINT_MIN || w > BREAKPOINT_MAX)) {
-    return `Screen sizes start between ${BREAKPOINT_MIN} and ${BREAKPOINT_MAX} pixels, in whole pixels.`;
+    return words.range.replace("{min}", String(BREAKPOINT_MIN)).replace("{max}", String(BREAKPOINT_MAX));
   }
   if (value.lg - value.md < BREAKPOINT_GAP || value.xl - value.lg < BREAKPOINT_GAP) {
-    return `Each screen size starts at least ${BREAKPOINT_GAP} pixels after the one before it: Medium, then Large, then Extra large.`;
+    return words.gap.replace("{gap}", String(BREAKPOINT_GAP));
   }
   return null;
 }

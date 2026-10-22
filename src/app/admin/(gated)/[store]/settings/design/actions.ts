@@ -5,9 +5,14 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { designChoice } from "@/lib/design-presets";
 import { BUILDER_WRITE } from "@/lib/permissions";
-import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
+import { actionAdminLang } from "@/server/admin-request-lang";
+import type { Membership } from "@/server/auth";
+import { checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, installDesignPreset, restoreDesignLook, undoThemeUpdate, updateThemeInstall } from "@/server/design-presets";
 import { presetChoice } from "@/lib/design-variations";
@@ -18,6 +23,12 @@ import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
+
+/** The refusal for a person without access, in their language (D312 A7). */
+const noAccess = async () => adminText(await actionAdminLang(), "design").actions.noAccess;
+
+/** The words of a member's answers (D312 A7). */
+const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "design");
 
 const read = (payload: string): unknown => {
   try {
@@ -80,11 +91,11 @@ export async function installStoreFontAction(storeSlug: string, fontFamily: stri
 /** Whether phones open the slide-out cart once something is added (D64). */
 export async function saveCartBehaviourAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   await setOpenCartOnAdd(member, formData.get("openCartOnAdd") === "on");
   // Product pages pass the choice to their add-to-cart buttons.
   updateTag(storeTag(member.store.slug));
-  return { status: "ok", messages: ["Saved."] };
+  return { status: "ok", messages: [wordsOf(member).actions.saved] };
 }
 
 /** The price a person agreed to for a premium theme (D286), as the form's `charge` sends it; only one that could be a price passes. */
@@ -99,9 +110,9 @@ const agreedCharge = (formData: FormData): string | null => {
  */
 export async function applyDesignAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const presetId = designChoice(formData.get("design"));
-  if (!presetId) return { status: "error", messages: ["Choose a theme."] };
+  if (!presetId) return { status: "error", messages: [wordsOf(member).actions.chooseTheme] };
   // A premium theme (D286): the price the owner was shown and agreed to, which the database checks.
   const charge = agreedCharge(formData);
   const result = await applyDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")), charge);
@@ -109,109 +120,117 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
   if (charge) after(() => chargeDueThemePurchases({ storeId: member.store.id }));
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
-  return { status: "ok", messages: [`Applied. Your look from before stays in your theme library as “${result.previous}”, and can be put back here.${notes}`] };
+  return { status: "ok", messages: [`${fillWords(wordsOf(member).actions.applied, { name: result.previous })}${notes}`] };
 }
 
 /** Makes one of the store's installed themes live (D241); the live one is put away with every change made to it. */
 export async function switchThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const charge = agreedCharge(formData);
   const result = await switchToInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id, charge);
   if (!result.ok) return { status: "error", messages: result.problems };
   if (charge) after(() => chargeDueThemePurchases({ storeId: member.store.id }));
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
-  return { status: "ok", messages: [`${result.title} is live. ${result.from} stays in your theme library.${notes}`] };
+  return { status: "ok", messages: [`${fillWords(wordsOf(member).actions.switched, { name: result.title, from: result.from })}${notes}`] };
 }
 
 /** Removes an installed theme that is not live (D241). */
 export async function removeThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await removeInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [`${result.title} is removed from your theme library.`] };
+  return { status: "ok", messages: [fillWords(wordsOf(member).actions.removed, { name: result.title })] };
 }
 
 /** Puts back the store's look from before its latest design profile (D176). */
 export async function restoreDesignAction(storeSlug: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await restoreDesignLook(member.store.id, member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
-  return { status: "ok", messages: [`The look from before ${result.presetTitle} is back.`] };
+  return { status: "ok", messages: [fillWords(wordsOf(member).actions.restored, { name: result.presetTitle })] };
 }
 
-const settingsWord = (n: number) => `${n} ${n === 1 ? "setting" : "settings"}`;
-const pagesWord = (n: number) => `${n} ${n === 1 ? "page" : "pages"}`;
+const settingsWord = (member: Membership, n: number) => countWords(n, wordsOf(member).common.settings);
+const pagesWord = (member: Membership, n: number) => countWords(n, wordsOf(member).common.pages);
 
 /** Counts the settings on the store's pages that only repeat the live theme (D243); nothing is changed. */
 export async function countThemeFollowAction(storeSlug: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const w = wordsOf(member).actions;
   const report = await detachDryRun(member.store.id);
-  if (!report) return { status: "error", messages: ["That store no longer exists."] };
-  if (report.followed === 0) return { status: "ok", messages: ["Your pages repeat nothing of the theme: there is nothing to take out."] };
+  if (!report) return { status: "error", messages: [w.storeGone] };
+  if (report.followed === 0) return { status: "ok", messages: [w.nothingRepeats] };
   const on = report.pages.filter((p) => p.followed > 0).length;
-  return { status: "ok", messages: [`${settingsWord(report.followed)} on ${pagesWord(on)} only repeat the theme and would follow it. ${settingsWord(report.own)} are your own and stay.`] };
+  return {
+    status: "ok",
+    messages: [fillWords(w.wouldFollow, { settings: settingsWord(member, report.followed), pages: pagesWord(member, on), own: settingsWord(member, report.own) })],
+  };
 }
 
 /** Takes out of the store's pages the settings that only repeat the live theme (D243): they look the same and follow it from then on. */
 export async function runThemeFollowAction(storeSlug: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await runDetach(member.store.id, member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
-  if (result.pages === 0) return { status: "ok", messages: ["Your pages repeat nothing of the theme: nothing was changed."] };
+  const w = wordsOf(member).actions;
+  if (result.pages === 0) return { status: "ok", messages: [w.nothingChanged] };
   for (const tag of designTags(member.store)) updateTag(tag);
-  return { status: "ok", messages: [`${settingsWord(result.followed)} on ${pagesWord(result.pages)} now follow the theme. Your pages look as before.`] };
+  return { status: "ok", messages: [fillWords(w.followed, { settings: settingsWord(member, result.followed), pages: pagesWord(member, result.pages) })] };
 }
 
 /** Undoes a run of the page migration (D243), page by page while a page is as the run left it. */
 export async function undoThemeFollowAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await undoDetach(member.store.id, String(formData.get("run") ?? ""), member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
-  const since = result.changedSince > 0 ? ` ${pagesWord(result.changedSince)} changed since kept the change.` : "";
-  return { status: "ok", messages: [`${pagesWord(result.restored)} put back as they were.${since}`] };
+  const w = wordsOf(member).actions;
+  const since = result.changedSince > 0 ? fillWords(w.changedSince, { pages: pagesWord(member, result.changedSince) }) : "";
+  return { status: "ok", messages: [`${fillWords(w.putBack, { pages: pagesWord(member, result.restored) })}${since}`] };
 }
 
 /** Updates an installed theme to its theme's latest version now (D245), keeping the owner's own changes. */
 export async function updateThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await updateThemeInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
-  const own = result.own > 0 ? ` ${result.own} of your own ${result.own === 1 ? "setting stays" : "settings stay"}.` : "";
+  const w = wordsOf(member).actions;
+  const own = result.own > 0 ? countWords(result.own, w.ownStay) : "";
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
-  return { status: "ok", messages: [`${result.title} is now version ${result.version}.${own}${notes}`] };
+  return { status: "ok", messages: [`${fillWords(w.updated, { name: result.title, version: result.version })}${own}${notes}`] };
 }
 
 /** Undoes an update of an installed theme (D245) while nothing has changed since. */
 export async function undoThemeUpdateAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const result = await undoThemeUpdate(member.store.id, String(formData.get("update") ?? ""), member.account.id);
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
-  return { status: "ok", messages: [`${result.title} is back as it was before the update.`] };
+  return { status: "ok", messages: [fillWords(wordsOf(member).actions.undoneUpdate, { name: result.title })] };
 }
 
 /** Whether an installed theme updates by itself (D245). */
 export async function followUpdatesAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const follows = formData.get("follows") === "on";
   const result = await setFollowsUpdates(member.store.id, String(formData.get("install") ?? ""), member.account.id, follows);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [follows ? `${result.title} will update by itself.` : `${result.title} waits for you to update it.`] };
+  const w = wordsOf(member).actions;
+  return { status: "ok", messages: [fillWords(follows ? w.followsOn : w.followsOff, { name: result.title })] };
 }
 
 /**
@@ -220,9 +239,9 @@ export async function followUpdatesAction(storeSlug: string, _state: FormState, 
  */
 export async function installThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "website:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
   const presetId = designChoice(formData.get("design"));
-  if (!presetId) return { status: "error", messages: ["Choose a theme."] };
+  if (!presetId) return { status: "error", messages: [wordsOf(member).actions.chooseTheme] };
   const result = await installDesignPreset(member.store.id, presetId, member.account.id, {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);

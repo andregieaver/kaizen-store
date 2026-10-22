@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import { themeLayersOf } from "@/lib/section-styles";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
-import { whatChanges, type LayoutKind, type LookFacts, type PageFacts, type WhatChanges } from "@/lib/theme-changes";
+import { whatChanges, type ChangesWords, type LayoutKind, type LookFacts, type PageFacts, type WhatChanges } from "@/lib/theme-changes";
 import { themeFontFamilies } from "@/lib/theme-elements";
 
 import { installLook, liveLook, type InstalledLook, type InstallWithLook } from "./theme-installs";
@@ -94,7 +94,7 @@ async function lookFacts(storeId: string, title: string, look: InstalledLook): P
  * *What changes* when the store switches from its live theme to an installed one (D244): `whatChanges()` over the two looks and the store's
  * pages and articles as visitors see them (published, else the draft). Null for an install that is not the store's or is live already.
  */
-export async function whatChangesFor(storeId: string, installId: string): Promise<{ live: string; target: string; changes: WhatChanges } | null> {
+export async function whatChangesFor(storeId: string, installId: string, words?: ChangesWords): Promise<{ live: string; target: string; changes: WhatChanges } | null> {
   const [live, target] = await Promise.all([liveLook(storeId), installLook(storeId, installId)]);
   if (!live || !target || target.live) return null;
   const rows = await db().execute<Row>(sql`
@@ -106,5 +106,5 @@ export async function whatChangesFor(storeId: string, installId: string): Promis
     return content ? [{ title: content.title, rows: content.rows }] : [];
   });
   const [from, to] = await Promise.all([lookFacts(storeId, live.title, live), lookFacts(storeId, target.title, target.look)]);
-  return { live: live.title, target: target.title, changes: whatChanges(from, to, pages) };
+  return { live: live.title, target: target.title, changes: whatChanges(from, to, pages, words) };
 }

@@ -1,6 +1,9 @@
 import { useId, type ReactNode } from "react";
 
-import { KIND_LABELS, type TemplateItem } from "@/lib/templates";
+import { fillWords } from "@/lib/admin-fill";
+import type { TemplateItem } from "@/lib/templates";
+
+import { useAdminText } from "./admin-text";
 
 import { forLabel } from "./templates-helpers";
 
@@ -19,7 +22,7 @@ export function KaizenBadge() {
 export function Publisher({ item }: { item: Pick<TemplateItem, "publisher" | "fromKaizen"> }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
-      <span className="truncate">By {item.publisher}</span>
+      <span className="truncate">{fillWords(useAdminText("builder").templates.by, { publisher: item.publisher })}</span>
       {item.fromKaizen && <KaizenBadge />}
     </span>
   );
@@ -51,7 +54,7 @@ export const groupHeading = "text-eyebrow text-muted uppercase";
 
 /** "For articles": what kind of page a page layout is made for (D127). Nothing for the other kinds. `warn` when it does not fit this page. */
 export function PageTypeBadge({ item, warn = false }: { item: Pick<TemplateItem, "kind" | "pageType">; warn?: boolean }) {
-  const label = forLabel(item);
+  const label = forLabel(item, useAdminText("builder").templates);
   if (!label) return null;
   return (
     <span
@@ -91,27 +94,28 @@ export function CardButtons({
   children?: ReactNode;
 }) {
   const reasonId = useId();
+  const w = useAdminText("builder").templates;
   return (
     <>
       <div className="flex shrink-0 flex-wrap gap-1">
         <button
           type="button"
           onClick={(event) => onPreview(event.currentTarget)}
-          aria-label={`Preview ${item.name}`}
+          aria-label={fillWords(w.previewOf, { name: item.name })}
           className={cardButton}
         >
-          Preview
+          {w.preview}
         </button>
         <button
           type="button"
           onClick={onUse}
           disabled={disabled || reason !== null}
-          aria-label={`Use ${KIND_LABELS[item.kind].one.toLowerCase()} ${item.name}`}
+          aria-label={fillWords(w.useOf, { kind: w.kinds[item.kind].one.toLowerCase(), name: item.name })}
           aria-describedby={reason ? reasonId : undefined}
           title={reason ?? undefined}
           className={cardButton}
         >
-          {using ? "Adding …" : "Use"}
+          {using ? w.adding : w.use}
         </button>
         {children}
       </div>

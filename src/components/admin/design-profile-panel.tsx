@@ -4,8 +4,12 @@ import type { OfferedDesign } from "@/lib/design-presets";
 
 import { DesignPreviewLink } from "./design-cards";
 import { Card, Chip } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { platformText } from "@/lib/platform-text";
 import { themeStoreUrl } from "@/lib/theme-host";
-import { chargeButton, chargeLine, chargeToken, type ThemeCharge } from "@/lib/theme-prices";
+import { chargeButton, chargeLine, chargeToken, type ChargeWords, type ThemeCharge } from "@/lib/theme-prices";
 
 /** A design profile offered to a store, with where its preview is, and what making it live costs the store (D286; none: free). */
 export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean; charge?: ThemeCharge };
@@ -41,6 +45,7 @@ export function DesignProfilePanel({
   restore,
   canChange,
   closedNote,
+  lang = "en",
 }: {
   designs: PanelDesign[];
   /** The latest profile applied whose look from before can be put back. */
@@ -52,33 +57,37 @@ export function DesignProfilePanel({
   canChange: boolean;
   /** Why nothing can be changed, when it cannot. */
   closedNote?: string;
+  /** The admin's language (D312 A7); English unless given. */
+  lang?: AdminLang;
 }) {
+  const all = adminText(lang, "design");
+  const { common: c, add: w } = all;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const cards = platformText(lang).themeCards;
   return (
-    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back. Add one to your themes to preview and customise it first; visitors see nothing until you switch. <a href={themeStoreUrl()} target="_blank" rel="noopener" className="underline underline-offset-2">See every theme in the theme store<span className="sr-only"> (opens in a new window)</span></a>.</>} className="flex flex-col gap-4" compact>
+    <Card title={w.title} description={<>{w.description} <a href={themeStoreUrl(undefined, lang)} target="_blank" rel="noopener" className="underline underline-offset-2">{w.seeAll}<span className="sr-only">{w.opensNew}</span></a>.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
           <p>
-            Applied last: <strong>{latest.presetTitle}</strong> on {latest.appliedAt.slice(0, 10)}.
-            {latest.previousInstall ? (
-              <> The look from before is “{latest.previousInstall}” in your theme library.</>
-            ) : (
-              latest.savedTheme && <> The theme from before is the saved theme “{latest.savedTheme}”.</>
-            )}
+            {fillWords(w.appliedLast, { name: latest.presetTitle, date: latest.appliedAt.slice(0, 10) })}
+            {latest.previousInstall
+              ? fillWords(w.beforeInstall, { name: latest.previousInstall })
+              : latest.savedTheme && fillWords(w.beforeSaved, { name: latest.savedTheme })}
           </p>
           {canChange && restore && (
             <ActionForm action={restore}>
-              <SubmitButton variant="secondary">Put back the look from before {latest.presetTitle}</SubmitButton>
+              <SubmitButton variant="secondary">{fillWords(w.putBack, { name: latest.presetTitle })}</SubmitButton>
             </ActionForm>
           )}
         </div>
       )}
       {designs.length === 0 ? (
-        <p className="text-sm text-muted">No themes are offered yet.</p>
+        <p className="text-sm text-muted">{w.none}</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {panelLooks(designs).map((design) => {
-            const name = design.preset ? `${design.title} · ${design.preset.name}` : design.title;
+            const name = design.preset ? fillWords(c.lookName, { theme: design.title, preset: design.preset.name }) : design.title;
             return (
               <li key={`${design.id}:${design.preset?.key ?? ""}`} className="flex flex-col overflow-hidden rounded-panel border border-line">
                 <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
@@ -88,45 +97,45 @@ export function DesignProfilePanel({
                   )}
                   <h3 className="text-body-strong text-ink">
                     {name}
-                    {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
+                    {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{w.notPublished}</span>}
                   </h3>
-                  {design.preset ? <p>A preset of {design.title}: its own colours, fonts and buttons.</p> : design.summary && <p>{design.summary}</p>}
-                  <ChargeNote charge={design.charge} />
+                  {design.preset ? <p>{fillWords(w.presetOf, { theme: design.title })}</p> : design.summary && <p>{design.summary}</p>}
+                  <ChargeNote charge={design.charge} words={{ yours: w.yours, premium: w.premium, charge: all.charge, locale }} />
                   {canChange && install && (
                     <ActionForm action={install} className="mt-auto">
                       <input type="hidden" name="design" value={design.id} />
                       {design.preset && <input type="hidden" name="preset" value={design.preset.key} />}
                       <SubmitButton variant="secondary">
-                        Add to my themes<span className="sr-only"> ({name})</span>
+                        {w.addToMine}<span className="sr-only"> ({name})</span>
                       </SubmitButton>
                     </ActionForm>
                   )}
                   {canChange && apply && (
                     <details className={install ? undefined : "mt-auto"}>
                       <summary className="flex min-h-10 cursor-pointer items-center font-medium underline-offset-2 hover:underline">
-                        Apply<span className="sr-only"> {name}</span>…
+                        {w.apply}<span className="sr-only"> {name}</span>…
                       </summary>
                       <div className="mt-2 flex flex-col gap-2">
-                        <p>Applying {name}:</p>
+                        <p>{fillWords(w.applying, { name })}</p>
                         <ul className="list-disc pl-5">
-                          <li>installs it and makes it live: colours, fonts, buttons, corners, product cards, light and dark;</li>
-                          <li>adds its header, footer and product page layout as new pages and uses them (yours stay, unchosen);</li>
-                          <li>replaces the store&apos;s custom CSS;</li>
-                          <li>keeps your products, pages, menus, logo, name and business details as they are.</li>
+                          <li>{w.installs}</li>
+                          <li>{w.addsLayouts}</li>
+                          <li>{w.replacesCss}</li>
+                          <li>{w.keeps}</li>
                         </ul>
-                        <p>Your look now stays in your theme library with every change you made to it, and you can switch back to it at any time.</p>
-                        {design.charge && chargeLine(design.charge) && <p className="text-body-strong text-ink">{chargeLine(design.charge)}</p>}
+                        <p>{w.stays}</p>
+                        {design.charge && chargeLine(design.charge, all.charge, locale) && <p className="text-body-strong text-ink">{chargeLine(design.charge, all.charge, locale)}</p>}
                         <ActionForm action={apply}>
                           <input type="hidden" name="design" value={design.id} />
                           {design.preset && <input type="hidden" name="preset" value={design.preset.key} />}
                           {design.charge?.kind === "now" && <input type="hidden" name="charge" value={chargeToken(design.charge.price)} />}
-                          <SubmitButton>{design.charge ? chargeButton(design.charge, `Apply ${name}`) : `Apply ${name}`}</SubmitButton>
+                          <SubmitButton>{design.charge ? chargeButton(design.charge, fillWords(w.applyName, { name }), all.charge, locale) : fillWords(w.applyName, { name })}</SubmitButton>
                         </ActionForm>
                       </div>
                     </details>
                   )}
                 </div>
-                <DesignPreviewLink href={design.previewHref} title={name} />
+                <DesignPreviewLink href={design.previewHref} title={name} words={cards} />
               </li>
             );
           })}
@@ -137,12 +146,19 @@ export function DesignProfilePanel({
 }
 
 /** What a premium theme costs this store, under its summary (D286): its price and when it is paid, or that the store has it. */
-export function ChargeNote({ charge }: { charge?: ThemeCharge }) {
+export function ChargeNote({
+  charge,
+  words = { yours: "Yours", premium: "Premium" },
+}: {
+  charge?: ThemeCharge;
+  /** In the admin's language (D312 A7); English unless given. */
+  words?: { yours: string; premium: string; charge?: ChargeWords; locale?: string };
+}) {
   if (!charge || charge.kind === "free") return null;
   return (
     <p className="flex flex-wrap items-center gap-2 text-caption text-muted">
-      <Chip signal={charge.kind === "owned" ? "positive" : "insight"}>{charge.kind === "owned" ? "Yours" : "Premium"}</Chip>
-      <span>{chargeLine(charge)}</span>
+      <Chip signal={charge.kind === "owned" ? "positive" : "insight"}>{charge.kind === "owned" ? words.yours : words.premium}</Chip>
+      <span>{chargeLine(charge, words.charge, words.locale)}</span>
     </p>
   );
 }

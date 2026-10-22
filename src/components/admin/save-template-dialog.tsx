@@ -2,10 +2,12 @@
 
 import { useId, useState, useTransition } from "react";
 
-import { LAYOUT_TYPE_LABELS, type PageLayout } from "@/lib/page-layout";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { PageLayout } from "@/lib/page-layout";
 import { SAVED_NAME_MAX, type SavedPart } from "@/lib/saved-parts";
 import type { PartSharing } from "@/lib/templates";
 
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import type { PageOwnerContext } from "./page-context";
 import { SharingChoice } from "./templates-sharing";
@@ -41,8 +43,9 @@ export function SaveTemplateDialog({
   /** The saved parts after this one was added. */
   onSaved: (parts: SavedPart[]) => void;
 }) {
+  const w = useAdminText("builder").templates;
   return (
-    <Modal open={open} onClose={onClose} title="Save as template">
+    <Modal open={open} onClose={onClose} title={w.saveTitle}>
       {open && (
         <Form
           create={create}
@@ -71,11 +74,13 @@ function Form({
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const rows = layout.rows.length;
-  const kind = LAYOUT_TYPE_LABELS[layout.pageType].one;
+  const w = useAdminText("builder").templates;
+  const type = layout.pageType;
+  const names = { kind: w.layoutTypes[type].one, this: w.this[type], the: w.the[type] };
 
   const submit = () =>
     start(async () => {
-      if (rows === 0) return setProblems([`This ${kind} has no rows to save yet.`]);
+      if (rows === 0) return setProblems([fillWords(w.saveNoRows, names)]);
       try {
         const result = await create({
           kind: "page",
@@ -89,7 +94,7 @@ function Form({
           onClose();
         } else setProblems(result.problems);
       } catch {
-        setProblems(["It could not be saved. Try again."]);
+        setProblems([w.saveFailed]);
       }
     });
 
@@ -102,12 +107,10 @@ function Form({
       className="flex flex-col gap-3"
     >
       <p className="text-sm text-muted">
-        Saves this {kind}&apos;s layout: its {rows} {rows === 1 ? "row" : "rows"}
-        {layout.css ? " and its custom CSS" : ""}, as they are in the editor now. The {kind}&apos;s title, address and
-        other settings stay with it.
+        {fillWords(w.saveIntro, { ...names, rows: countWords(rows, w.rows), css: layout.css ? w.saveCss : "" })}
       </p>
       <label htmlFor={`${id}-name`} className="text-sm font-medium">
-        Name
+        {w.name}
       </label>
       <input
         id={`${id}-name`}
@@ -129,14 +132,14 @@ function Form({
       )}
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onClose} className="min-h-10 rounded-pill border border-edge px-4 text-sm">
-          Cancel
+          {w.cancel}
         </button>
         <button
           type="submit"
           disabled={busy}
           className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
-          {busy ? "Saving …" : "Save template"}
+          {busy ? w.saving : w.save}
         </button>
       </div>
     </form>

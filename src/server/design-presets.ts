@@ -35,7 +35,7 @@ import {
   type OfferedDesign,
   type SnapshotNotes,
 } from "@/lib/design-presets";
-import { installedLook, presetLine, publishedVariations, variationSnapshot, variationsOf, type DraftVariation } from "@/lib/design-variations";
+import { installedLook, presetLine, publishedVariations, variationSnapshot, variationsOf, type DraftVariation, type PresetLineWords } from "@/lib/design-variations";
 import { pageInput, parsePageContent, type PageContent } from "@/lib/page-content";
 import { copyRow } from "@/lib/page-rows";
 import { storeOrigins } from "@/lib/paths";
@@ -47,7 +47,7 @@ import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/th
 import { withCoreStyles } from "@/lib/launch-themes";
 import { OWN_SLOTS, THEME_SLUG, isThemePicture, readListing, themeLooks, type OwnSlot, type ThemeListing } from "@/lib/theme-store";
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
-import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook } from "@/lib/theme-update";
+import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook, type WhatsNewWords } from "@/lib/theme-update";
 
 import { audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
@@ -1813,7 +1813,7 @@ export type MadeUpdate = { id: string; title: string; from: number | null; to: n
 /** The store's installs that have a newer version waiting (D245), with *What's new* across every version between, and its latest updates. */
 export type FollowingInstall = { installId: string; title: string; live: boolean; version: number | null; followsUpdates: boolean };
 
-export async function themeUpdates(storeId: string): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
+export async function themeUpdates(storeId: string, words?: UpdateWords): Promise<{ available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] }> {
   if (!isUuid(storeId)) return { available: [], made: [], installs: [] };
   const rows = await db().execute<Row>(sql`
     select i.id, i.title, i.live, i.follows_updates, i.variation, cur.number as current_number, cur.snapshot as current_snapshot,
@@ -1834,7 +1834,7 @@ export async function themeUpdates(storeId: string): Promise<{ available: Availa
     where u.store_id = ${storeId}::uuid
     order by u.created_at desc limit 10
   `);
-  return updatesView(rows, made);
+  return updatesView(rows, made, words);
 }
 
 /** How long an update's log is kept for its undo. */
@@ -2141,8 +2141,11 @@ export async function platformThemeUpdates(): Promise<{ available: AvailableUpda
   return updatesView(rows, made);
 }
 
+/** The words *What's new* is written in (D312 A7): English unless an admin catalogue's are given. */
+export type UpdateWords = { whatsNew: WhatsNewWords; preset: PresetLineWords };
+
 /** What `themeUpdates()` and `platformThemeUpdates()` show, from their rows: the installs, what is waiting with *What's new*, and what was made. */
-function updatesView(rows: Row[], made: Row[]): { available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] } {
+function updatesView(rows: Row[], made: Row[], words?: UpdateWords): { available: AvailableUpdate[]; made: MadeUpdate[]; installs: FollowingInstall[] } {
   const number = (value: unknown) => (value === null || value === undefined ? null : Number(value));
   const available = rows.flatMap((row): AvailableUpdate[] => {
     const newer = (Array.isArray(row.newer) ? row.newer : []) as { number: number; snapshot: unknown; notes: string | null }[];
@@ -2154,11 +2157,11 @@ function updatesView(rows: Row[], made: Row[]): { available: AvailableUpdate[]; 
     for (const version of newer) {
       const snap = parseDesignSnapshot(version.snapshot);
       if (!snap) continue;
-      const preset = presetLine(previous, snap, variation);
+      const preset = presetLine(previous, snap, variation, words?.preset);
       if (preset && !lines.includes(preset)) lines.push(preset);
       const before = previous ? installedLook(previous, variation).snapshot : null;
       const after = installedLook(snap, variation).snapshot;
-      for (const line of before ? whatsNew(before, after, version.notes) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
+      for (const line of before ? whatsNew(before, after, version.notes, words?.whatsNew) : version.notes ? [version.notes] : []) if (!lines.includes(line)) lines.push(line);
       previous = snap;
     }
     return [{ installId: String(row.id), title: String(row.title), live: row.live === true, from: number(row.current_number), to: Number(newer.at(-1)!.number), followsUpdates: row.follows_updates === true, whatsNew: lines }];

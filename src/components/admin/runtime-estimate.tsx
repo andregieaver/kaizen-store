@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { estimateRuntime } from "@/lib/experiment-results";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
 import { MIN_DAYS } from "@/lib/experiments";
+
+import { useAdminLang, useAdminText } from "./admin-text";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -15,6 +19,9 @@ const hint = "text-xs font-normal text-muted";
  * page-view numbers to base it on, so it says so rather than inventing them.
  */
 export function RuntimeEstimate({ share, versions, minDays = MIN_DAYS }: { share: number; versions: number; minDays?: number }) {
+  const words = useAdminText("experiments");
+  const w = words.estimate;
+  const numberLocale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [perDay, setPerDay] = useState("");
   const [rate, setRate] = useState("");
   const [change, setChange] = useState("20");
@@ -22,31 +29,31 @@ export function RuntimeEstimate({ share, versions, minDays = MIN_DAYS }: { share
     const visitors = Number(perDay);
     const baseline = Number(rate.replace(",", ".")) / 100;
     if (!(visitors > 0) || !(baseline > 0 && baseline < 1)) return null;
-    return estimateRuntime({ baseline, relativeChange: Number(change) / 100, versions, eligiblePerDay: visitors, trafficShare: share, minDays });
-  }, [perDay, rate, change, share, versions, minDays]);
+    return estimateRuntime({ baseline, relativeChange: Number(change) / 100, versions, eligiblePerDay: visitors, trafficShare: share, minDays, words, numberLocale });
+  }, [perDay, rate, change, share, versions, minDays, words, numberLocale]);
 
   return (
     <div className="flex flex-col gap-3">
       <p className={hint}>
-        A test needs enough visitors before it can say anything. Tell us roughly how many visitors a day see this and accept cookies, and how many of them do
-        the thing you want today.
+        {w.intro}
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className={label}>
-          Visitors a day
+          {w.perDay}
           <input inputMode="numeric" value={perDay} onChange={(e) => setPerDay(e.target.value)} placeholder="200" className={input} />
         </label>
         <label className={label}>
-          Who do it today (%)
+          {w.rate}
           <input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3" className={input} />
         </label>
         <label className={label}>
-          Change worth finding
+          {w.change}
           <select value={change} onChange={(e) => setChange(e.target.value)} className={input}>
-            <option value="10">10 % more</option>
-            <option value="20">20 % more</option>
-            <option value="30">30 % more</option>
-            <option value="50">50 % more</option>
+            {["10", "20", "30", "50"].map((n) => (
+              <option key={n} value={n}>
+                {fillWords(w.more, { n })}
+              </option>
+            ))}
           </select>
         </label>
       </div>

@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { convertMinor } from "@/lib/currency";
 import { harmedVersion, splitCheckP, verdictOf, type VariantFigures, type Verdict } from "@/lib/experiment-results";
+import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { mainCurrency } from "@/lib/markets";
 
@@ -55,7 +56,13 @@ function percentile(sorted: number[], share: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (at - lo);
 }
 
-export async function experimentResults(store: Pick<Store, "id" | "markets" | "localization">, test: ExperimentInfo, now = new Date()): Promise<ExperimentResults> {
+/** `say` writes the verdict in the account's words (D312 A7); without it the verdict is English, as the AI manager's tools read it. */
+export async function experimentResults(
+  store: Pick<Store, "id" | "markets" | "localization">,
+  test: ExperimentInfo,
+  now = new Date(),
+  say?: { words: ExperimentsMessages; numberLocale: string },
+): Promise<ExperimentResults> {
   const [exposures, events, orders, daysRows] = await Promise.all([
     db().execute<Row>(sql`
       select variant, count(*)::int as visitors from commerce.experiment_exposures where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid group by variant
@@ -173,6 +180,7 @@ export async function experimentResults(store: Pick<Store, "id" | "markets" | "l
     minDays: test.minDays,
     currency,
     locale: store.markets[0]?.locale ?? "en",
+    ...(say && { words: say.words, numberLocale: say.numberLocale }),
   });
   const harmed = harmedVersion(
     figures,

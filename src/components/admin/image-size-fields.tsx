@@ -5,6 +5,9 @@ import { useId, useState } from "react";
 import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, imageDisplaySize, type ImageBlock } from "@/lib/page-content";
 import type { BlockPatch } from "@/lib/page-rows";
 import { setAt, sizeSource, valueAt } from "@/lib/responsive";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 import { TextAlignFields } from "./block-fields";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
@@ -27,6 +30,7 @@ export function widthPatch(px: number, natural: number, min: number): number | u
 export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChange: (patch: BlockPatch<ImageBlock>) => void }) {
   const id = useId();
   const hintId = `${id}-hint`;
+  const w = useAdminText("blocks").imageSize;
   // A block bound to a field shows the field's picture, whose size is not known here: its limit is the stand-in's, whatever
   // picture the block keeps of its own for when the field is empty.
   const bound = Boolean(block.bind);
@@ -61,13 +65,13 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
     <div className="flex flex-col gap-5">
       <fieldset disabled={!natural || tooSmall} className={`flex flex-col gap-2 ${inheritedClass(source, size)}`}>
         <legend className="text-sm font-medium">
-          Width
-          <SizeMark part={block} field="maxWidth" label="Width" onPatch={onChange} />
+          {w.width}
+          <SizeMark part={block} field="maxWidth" label={w.width} onPatch={onChange} />
         </legend>
         <div className="flex min-h-10 flex-wrap items-center gap-3">
           <input
             id={`${id}-range`}
-            aria-label="Width in pixels"
+            aria-label={w.inPixels}
             type="range"
             min={min}
             max={natural?.width ?? min}
@@ -75,14 +79,14 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
             value={shown?.width ?? min}
             onChange={(event) => set(Number(event.target.value))}
             aria-describedby={hintId}
-            aria-valuetext={shown ? `${shown.width} pixels wide` : undefined}
+            aria-valuetext={shown ? fillWords(w.wide, { n: shown.width }) : undefined}
             className="w-48"
           />
           <output htmlFor={`${id}-range`} className="w-16 text-sm tabular-nums">
-            {shown ? `${shown.width} px` : "—"}
+            {shown ? fillWords(w.px, { n: shown.width }) : "—"}
           </output>
           <label className="flex items-center gap-2 text-sm">
-            <span className="sr-only">Width in pixels, typed</span>
+            <span className="sr-only">{w.typed}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -98,7 +102,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
               aria-describedby={hintId}
               className="min-h-10 w-20 rounded-md border border-line bg-card px-3 text-sm tabular-nums"
             />
-            <span className="text-muted">pixels</span>
+            <span className="text-muted">{w.pixels}</span>
           </label>
           <button
             type="button"
@@ -106,20 +110,20 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
             disabled={maxWidth === undefined}
             className="min-h-10 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50"
           >
-            Own size
+            {w.own}
           </button>
         </div>
         <p id={hintId} className="text-xs text-muted">
           {!natural
-            ? "Add a picture on the General tab to set its width."
+            ? w.addPicture
             : tooSmall
-              ? "This picture is too small to make smaller."
-              : `${block.shape ? "Own size with this shape" : "Own size"}: ${natural.width} × ${natural.height} pixels. A picture is never shown larger than that, and in a narrower column or on a phone it shrinks to fit.${bound ? " A picture from a field is limited to 1600 pixels wide here." : ""}`}
+              ? w.tooSmall
+              : `${fillWords(w.natural, { own: block.shape ? w.ownShape : w.own, w: natural.width, h: natural.height })}${bound ? w.bound : ""}`}
         </p>
       </fieldset>
       <div className="flex flex-col gap-2">
-        <TextAlignFields what="Position" value={block} onChange={onChange} />
-        <p className="text-xs text-muted">Where the picture sits when it is narrower than its column. A left or right margin set under Spacing takes the place of this, so leave those at 0.</p>
+        <TextAlignFields what={w.position} value={block} onChange={onChange} />
+        <p className="text-xs text-muted">{w.positionHint}</p>
       </div>
     </div>
   );

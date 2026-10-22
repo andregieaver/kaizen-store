@@ -13,6 +13,11 @@ import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { pagesTag } from "@/server/pages";
 import { STORES_TAG } from "@/server/seo";
 import { applyTranslations, translationWorklist, type ApplyResult } from "@/server/store-translate";
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
+
+/** The page's refusals in the account's language (D312 A7). */
+const said = async () => adminText(await actionAdminLang(), "website").translate.problems;
 import { storeTag } from "@/server/stores";
 
 // Anyone who works on a store's products and pages can translate them; what the
@@ -31,9 +36,9 @@ export async function worklistAction(storeSlug: string, input: unknown): Promise
   const member = await checkPermission(storeSlug, "website:read");
   if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = worklistInput.safeParse(input);
-  if (!parsed.success) return { ok: false, problem: "Choose a language and something to translate." };
+  if (!parsed.success) return { ok: false, problem: (await said()).choose };
   if (!member.store.localization.locales.slice(1).includes(parsed.data.locale)) {
-    return { ok: false, problem: "That is not one of the store's other languages." };
+    return { ok: false, problem: (await said()).notOther };
   }
   const { units, total } = await translationWorklist(member, parsed.data.locale, parsed.data.scopes, parsed.data.mode as TranslateMode);
   return { ok: true, units, total };
@@ -51,7 +56,7 @@ export async function applyAction(storeSlug: string, locale: string, accepted: u
   const member = await checkPermission(storeSlug, "website:write");
   if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = acceptedInput.safeParse(accepted);
-  if (!parsed.success) return { ok: false, problem: "The translations could not be read. Reload the page and try again." };
+  if (!parsed.success) return { ok: false, problem: (await said()).unreadable };
   const result = await applyTranslations(member, locale, parsed.data);
   if (result.ok && result.saved > 0) {
     updateTag(catalogTag(member.store.id));

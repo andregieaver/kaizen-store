@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { REDIRECT_TABS, redirectPaths, type RedirectTab } from "@/lib/redirect-admin";
+import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
+import { redirectPaths, redirectTabs, type RedirectTab } from "@/lib/redirect-admin";
 import { PageHeader } from "@/components/admin/ui";
 
 /**
@@ -9,7 +10,21 @@ import { PageHeader } from "@/components/admin/ui";
  * report of pages not found, import and export). Full width like the other admin pages; the admin's tokens only. The active tab is marked with
  * `aria-current`, so it works without a script.
  */
-export function RedirectsHead({ slug, active, title, intro, back }: { slug: string; active: RedirectTab; title: string; intro: ReactNode; back?: { href: string; label: string } }) {
+export function RedirectsHead({
+  slug,
+  active,
+  title,
+  intro,
+  back,
+  words = redirectsEn,
+}: {
+  slug: string;
+  active: RedirectTab;
+  title: string;
+  intro: ReactNode;
+  back?: { href: string; label: string };
+  words?: RedirectsMessages;
+}) {
   const paths = redirectPaths(slug);
   return (
     <header className="flex flex-col gap-3">
@@ -19,8 +34,8 @@ export function RedirectsHead({ slug, active, title, intro, back }: { slug: stri
         </Link>
       )}
       <PageHeader title={<>{title}</>} description={<>{intro}</>} />
-      <nav aria-label="Redirects" className="flex flex-wrap gap-1 border-b border-line text-sm">
-        {REDIRECT_TABS.map((tab) => (
+      <nav aria-label={words.tabs.label} className="flex flex-wrap gap-1 border-b border-line text-sm">
+        {redirectTabs(words).map((tab) => (
           <Link
             key={tab.id}
             href={paths[tab.id]}

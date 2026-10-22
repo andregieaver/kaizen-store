@@ -3,8 +3,10 @@
 import { useDeferredValue, useEffect, useId, useState, type ReactNode } from "react";
 
 import { FontLinks } from "@/components/font-links";
+import { countWords } from "@/lib/admin-fill";
 import { catalogFont, fontClass, fontSlug, FONT_CATEGORIES, type CatalogFont, type CatalogRow, type FontCategory } from "@/lib/fonts";
 
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 
 /** Makes a family ready on the sites (downloads it into Kaizen), before it is chosen. */
@@ -60,6 +62,7 @@ export function FontPicker({
   /** Beside the label: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
   mark?: ReactNode;
 }) {
+  const w = useAdminText("design").fonts;
   const [open, setOpen] = useState(false);
   const labelId = useId();
   return (
@@ -82,7 +85,7 @@ export function FontPicker({
         <span id={`${labelId}-value`} className={value ? `${fontClass(value)} text-lg` : "text-sm text-muted"}>
           {value ?? defaultLabel}
         </span>
-        <span className="shrink-0 text-sm underline">Change</span>
+        <span className="shrink-0 text-sm underline">{w.change}</span>
       </button>
       {open && (
         <FontDialog
@@ -116,6 +119,8 @@ function FontDialog({
   onClose: () => void;
   onChoose: (family: string | undefined) => void;
 }) {
+  const w = useAdminText("design").fonts;
+  const kindName = (category: FontCategory) => w.categories[category] ?? FONT_CATEGORIES[category];
   const [fonts, setFonts] = useState<CatalogFont[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
@@ -155,7 +160,7 @@ function FontDialog({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row">
           <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-            Search Google Fonts
+            {w.search}
             <input
               type="search"
               value={query}
@@ -164,12 +169,12 @@ function FontDialog({
                 setQuery(event.target.value);
                 setShown(SHOWN);
               }}
-              placeholder="Lora, Inter, Playfair…"
+              placeholder={w.placeholder}
               className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Kind
+            {w.kind}
             <select
               value={category}
               onChange={(event) => {
@@ -178,10 +183,10 @@ function FontDialog({
               }}
               className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
             >
-              <option value="all">All kinds</option>
-              {Object.entries(FONT_CATEGORIES).map(([key, name]) => (
+              <option value="all">{w.allKinds}</option>
+              {(Object.keys(FONT_CATEGORIES) as FontCategory[]).map((key) => (
                 <option key={key} value={key}>
-                  {name}
+                  {kindName(key)}
                 </option>
               ))}
             </select>
@@ -189,7 +194,7 @@ function FontDialog({
         </div>
 
         <p className="text-sm text-muted">
-          Fonts are copied to Kaizena Flow when chosen and load from the site itself, so visitors&apos; browsers never contact Google.
+          {w.copied}
         </p>
         {problem && (
           <p role="alert" className="text-sm text-danger-text">
@@ -208,14 +213,14 @@ function FontDialog({
 
         {failed ? (
           <p role="alert" className="text-sm text-danger-text">
-            The list of fonts could not be loaded. Close this and try again.
+            {w.failed}
           </p>
         ) : !fonts ? (
-          <p className="text-sm text-muted">Loading the fonts…</p>
+          <p className="text-sm text-muted">{w.loading}</p>
         ) : (
           <>
             <p className="text-sm text-muted" aria-live="polite">
-              {matches.length === 0 ? "No fonts match." : `${matches.length} ${matches.length === 1 ? "font" : "fonts"}, most popular first.`}
+              {matches.length === 0 ? w.noMatch : countWords(matches.length, w.count)}
             </p>
             <PreviewFaces fonts={visible} />
             <ul className="grid gap-2 sm:grid-cols-2">
@@ -232,7 +237,7 @@ function FontDialog({
                       {f.family}
                     </span>
                     <span className="text-xs text-muted">
-                      {busy === f.family ? "Getting it ready…" : `${FONT_CATEGORIES[f.category]} · ${f.weights.length} ${f.weights.length === 1 ? "weight" : "weights"}`}
+                      {busy === f.family ? w.gettingReady : countWords(f.weights.length, w.weights, { kind: kindName(f.category) })}
                     </span>
                   </button>
                 </li>
@@ -244,7 +249,7 @@ function FontDialog({
                 onClick={() => setShown((n) => n + SHOWN)}
                 className="min-h-10 self-center rounded-pill border border-edge px-4 text-sm"
               >
-                Show more
+                {w.showMore}
               </button>
             )}
           </>

@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 
 import type { PageType } from "@/lib/page-content";
-import { TEMPLATE_SOURCES, TEMPLATE_SOURCE_LABELS, type TemplateItem, type TemplateSource } from "@/lib/templates";
+import { fillWords } from "@/lib/admin-fill";
+import { TEMPLATE_SOURCES, type TemplateItem, type TemplateSource } from "@/lib/templates";
+
+import { useAdminText } from "./admin-text";
 
 import { forPage, groupTemplates, noneActivated, blockedReason } from "./templates-helpers";
 import type { TemplateController } from "./templates-lists";
@@ -51,17 +54,16 @@ export function TemplatesTab({
   }, [shown, source, load]);
 
   const list = controller.lists[source];
-  const groups = groupTemplates(forPage(list.items, pageType));
-  const empty = noneActivated(source, own);
+  const w = useAdminText("builder").templates;
+  const groups = groupTemplates(forPage(list.items, pageType), w);
+  const empty = noneActivated(source, own, w);
 
   return (
     <>
       <p className="text-xs text-muted">
-        {own
-          ? "Kaizena Flow's own templates: page layouts, rows, columns and components saved as templates. Press Preview to see one first, or Use to add a copy to the page."
-          : "Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to change, and later edits by whoever shared it never reach it."}
+        {own ? w.introOwn : w.intro}
       </p>
-      <div role="group" aria-label="Templates from" hidden={own} className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">
+      <div role="group" aria-label={w.from} hidden={own} className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">
         {TEMPLATE_SOURCES.map((each) => (
           <button
             key={each}
@@ -70,7 +72,7 @@ export function TemplatesTab({
             onClick={() => onSource(each)}
             className="min-h-9 rounded px-2 text-xs font-medium text-muted aria-pressed:bg-card aria-pressed:text-ink aria-pressed:shadow-sm"
           >
-            {TEMPLATE_SOURCE_LABELS[each]}
+            {w.sources[each]}
           </button>
         ))}
       </div>
@@ -83,12 +85,12 @@ export function TemplatesTab({
             onClick={() => load(source, true)}
             className="min-h-9 rounded-pill border border-edge px-3 text-xs text-ink"
           >
-            Try again
+            {w.tryAgain}
           </button>
         </div>
       ) : list.status !== "ready" ? (
         <p role="status" className="text-xs text-muted">
-          Loading templates …
+          {w.loading}
         </p>
       ) : groups.length === 0 ? (
         <EmptyState title={empty.title} hint={empty.hint} />
@@ -96,7 +98,7 @@ export function TemplatesTab({
         groups.map((group) => (
           <section
             key={group.kind}
-            aria-label={`Template ${group.label.toLowerCase()}`}
+            aria-label={fillWords(w.group, { kind: group.label.toLowerCase() })}
             className="flex flex-col gap-2"
           >
             <h3 className={groupHeading}>{group.label}</h3>
@@ -112,7 +114,7 @@ export function TemplatesTab({
                   </div>
                   <CardButtons
                     item={item}
-                    reason={blockedReason(item, { pageType, rowsFull, blocksFull })}
+                    reason={blockedReason(item, { pageType, rowsFull, blocksFull }, w)}
                     using={use.using === item.id}
                     disabled={use.using !== null}
                     onPreview={(opener) => onPreview(item, source, opener)}
@@ -121,7 +123,7 @@ export function TemplatesTab({
                   <Problems problems={use.issues[item.id]} />
                   {use.added === item.id && (
                     <p role="status" className="text-xs text-muted">
-                      Added to the page.
+                      {w.added}
                     </p>
                   )}
                 </li>
@@ -136,7 +138,7 @@ export function TemplatesTab({
         onClick={onBrowse}
         className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
       >
-        Browse templates
+        {w.browse}
       </button>
     </>
   );

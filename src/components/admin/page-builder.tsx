@@ -2,12 +2,12 @@
 
 import { ButtonHoverField, HoverTimingFields } from "./hover-fields";
 import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
-import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
+import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeAttributes, themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
 import { ROW_GAP, meetsAbove } from "@/lib/row-join";
-import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
-import { CORE_SECTION_LABELS, SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
+import { THEME_ELEMENT_KEYS, elementAsPart, elementFromPart, rowWidthPatch, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
+import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import { InlineHeadingEditor } from "@/components/inline-edit/heading-editor";
 import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
@@ -71,7 +71,7 @@ import {
 } from "react";
 
 import { ContentGridView } from "@/components/content-grid";
-import { INLINE_HINT, inlinePlain } from "@/lib/inline-text";
+import { inlinePlain } from "@/lib/inline-text";
 import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
@@ -80,6 +80,9 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
+import { useAdminText } from "./admin-text";
+import type { BuilderMessages } from "@/lib/admin-messages/builder.en";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { MenuGlide } from "@/components/menu-glide";
 import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
@@ -180,7 +183,6 @@ import {
   type Sides,
   type Spacing,
   PRODUCT_PARTS,
-  SITE_PARTS,
   COLUMN_JUSTIFY,
   LOGO_HEIGHT,
   RELATED_MAX,
@@ -255,7 +257,7 @@ import type { GridData } from "@/lib/content-grid";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies } from "@/lib/fonts";
 import { type SiteFonts } from "@/lib/fonts-schema";
-import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
+import { SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";
 import { copiedItems, customGridData, sourceChoice } from "@/lib/custom-grid";
@@ -467,73 +469,8 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
   return slot && lines ? { slot, anchor: slotAnchor(lines[slot.line], slot.index, slot.reversed) } : null;
 }
 
-const blockLabels: Record<BlockType, string> = {
-  richText: "Rich text",
-  columns: "Columns",
-  heading: "Heading",
-  image: "Image",
-  button: "Button",
-  contentGrid: "Content grid",
-  product: "Product",
-  site: "Site",
-  menu: "Menu",
-  search: "Search",
-  plans: "Plans",
-  themeStore: "Theme store",
-  customField: "Custom fields",
-  fieldLoop: "Field loop",
-  storePart: "Shop page",
-  separator: "Separator line",
-  dualButton: "Dual button",
-  accordion: "Accordion",
-  tabs: "Tabs",
-  faq: "FAQs",
-  video: "Video",
-  html: "HTML",
-  testimonials: "Testimonials",
-  socialLinks: "Social media",
-  iconList: "Icon list",
-  table: "Table",
-  brands: "Brands",
-  gallery: "Gallery",
-  emailForm: "Email form",
-  newsletter: "Newsletter",
-};
 /** The palette's components, in order. */
 const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
-/** What a block is called when asking before it is deleted. */
-const blockThis: Record<BlockType, string> = {
-  richText: "this text",
-  columns: "these columns and everything in them",
-  heading: "this heading",
-  image: "this picture",
-  button: "this button",
-  contentGrid: "this content grid",
-  product: "this product component",
-  site: "this site component",
-  menu: "this menu",
-  search: "this search",
-  plans: "these plans",
-  themeStore: "this theme store component",
-  customField: "these custom fields",
-  fieldLoop: "this field loop",
-  storePart: "this shop component",
-  separator: "this separator line",
-  dualButton: "these buttons",
-  accordion: "this accordion",
-  tabs: "these tabs",
-  faq: "these questions",
-  video: "this video",
-  html: "this HTML",
-  testimonials: "these testimonials",
-  socialLinks: "these social media links",
-  iconList: "this icon list",
-  table: "this table",
-  brands: "these brands",
-  gallery: "this gallery",
-  emailForm: "this form",
-  newsletter: "this newsletter sign-up",
-};
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
@@ -710,6 +647,8 @@ export function PageBuilder({
   css?: string[];
   aside: ReactNode;
 }) {
+  const w = useAdminText("builder");
+  const fw = w.frame;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -778,7 +717,7 @@ export function PageBuilder({
   /** Parts hidden at the size shown: faded with an eye, or left out as on the site. */
   const [hideHidden, setHideHidden] = useState(false);
   // The parts some visitors do not see (D179 phase 4), for the legend over the canvas.
-  const displayed = useMemo(() => displayedParts(rows), [rows]);
+  const displayed = useMemo(() => displayedParts(rows, w), [rows, w]);
   const toggleResponsive = responsive.toggle;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -1094,22 +1033,22 @@ export function PageBuilder({
   const announce = (id: string | number) => {
     const key = String(id);
     const row = rows.findIndex((r) => r.id === key);
-    if (row >= 0) return `row ${row + 1}`;
-    if (key === "palette:column") return "a new column";
-    if (key.startsWith("nest:")) return "nested in a column";
+    if (row >= 0) return fillWords(fw.announceRow, { n: row + 1 });
+    if (key === "palette:column") return fw.announceNewColumn;
+    if (key.startsWith("nest:")) return fw.announceNested;
     // A line's strip is named by its row: `line:{row}:{place}` (D187).
     const strip = /^line:(.+):(\d+)$/.exec(key);
     if (strip) {
       const at = rows.findIndex((r) => r.id === strip[1]);
-      return at >= 0 ? `a new line in row ${at + 1}` : "a new line";
+      return at >= 0 ? fillWords(fw.announceNewLineIn, { n: at + 1 }) : fw.announceNewLine;
     }
     for (const [r, each] of rows.entries()) {
       const column = each.columns.findIndex((c) => `column:${c.id}` === key);
-      if (column >= 0) return `row ${r + 1}, column ${column + 1}`;
+      if (column >= 0) return fillWords(fw.announceColumn, { row: r + 1, column: column + 1 });
     }
     const block = findBlock(rows, key);
-    if (block) return `a block in row ${rows.findIndex((r) => r.id === block.rowId) + 1}`;
-    return "the page";
+    if (block) return fillWords(fw.announceBlock, { n: rows.findIndex((r) => r.id === block.rowId) + 1 });
+    return fw.announcePage;
   };
 
   const actions: Actions = {
@@ -1130,7 +1069,7 @@ export function PageBuilder({
     onColumn: setLastColumn,
     blocksFull,
     lang,
-    globalName: (id) => parts.find((p) => p.id === id)?.name ?? "Global",
+    globalName: (id) => parts.find((p) => p.id === id)?.name ?? fw.global,
     motionPreview: motionOn,
     onTest: translate === null ? onTestPart : undefined,
   };
@@ -1161,13 +1100,13 @@ export function PageBuilder({
         }}
         accessibility={{
           announcements: {
-            onDragStart: ({ active }) => `Picked up ${announce(active.id)}.`,
-            onDragOver: ({ over }) => (over ? `Over ${announce(over.id)}.` : undefined),
-            onDragEnd: ({ over }) => (over ? `Dropped at ${announce(over.id)}.` : "Dropped."),
-            onDragCancel: () => "Moving was cancelled.",
+            onDragStart: ({ active }) => fillWords(fw.pickedUp, { what: announce(active.id) }),
+            onDragOver: ({ over }) => (over ? fillWords(fw.over, { what: announce(over.id) }) : undefined),
+            onDragEnd: ({ over }) => (over ? fillWords(fw.droppedAt, { what: announce(over.id) }) : fw.dropped),
+            onDragCancel: () => fw.cancelled,
           },
           screenReaderInstructions: {
-            draggable: "To move it, press Space or Enter, then the arrow keys, and Space or Enter again to drop it.",
+            draggable: fw.instructions,
           },
         }}
       >
@@ -1177,13 +1116,13 @@ export function PageBuilder({
           className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
           style={{ "--builder-cols": railTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
         >
-          {leftFolded && <Rail side="left" label="building blocks" controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
+          {leftFolded && <Rail side="left" label={fw.leftLabel} controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
             <TranslateNote
               translate={translate}
               id={`${panelId}-left`}
               hidden={leftFolded}
-              header={<FoldButton side="left" label="building blocks" controls={`${panelId}-left`} onFold={() => setLeftFolded(true)} />}
+              header={<FoldButton side="left" label={fw.leftLabel} controls={`${panelId}-left`} onFold={() => setLeftFolded(true)} />}
             />
           ) : (
           <Sidebar
@@ -1233,7 +1172,7 @@ export function PageBuilder({
           )}
           <RailResizer
             side="left"
-            label="building blocks"
+            label={fw.leftLabel}
             folded={leftFolded}
             width={leftWidth}
             onWidth={setLeftWidth}
@@ -1254,7 +1193,7 @@ export function PageBuilder({
                   onReplay={() => setMotionRun((n) => n + 1)}
                 />
               </div>
-              <div role="toolbar" aria-label="Screen sizes" className="flex flex-wrap items-center gap-2">
+              <div role="toolbar" aria-label={fw.screenSizes} className="flex flex-wrap items-center gap-2">
                 <DisplayLegend parts={displayed} onOpen={(id) => setDialog(displayDialog(rows, id))} />
                 <HiddenPartsToggle hide={hideHidden} onChange={setHideHidden} />
                 <ResponsiveToggle on={responsive.view !== null} onToggle={responsive.toggle} />
@@ -1308,37 +1247,37 @@ export function PageBuilder({
 
           <RailResizer
             side="right"
-            label="settings"
+            label={fw.rightLabel}
             folded={rightFolded}
             width={rightWidth}
             onWidth={setRightWidth}
             measure={() => measureRails(columnsRef.current, panelId, "right")}
           />
           {rightFolded && (
-            <Rail side="right" label="settings" controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
+            <Rail side="right" label={fw.rightLabel} controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
           )}
           {/* On phones the title and settings come first. */}
           <div id={`${panelId}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 lg:order-none lg:pb-6 ${STANDALONE}`}>
-            <RailHeader side="right" label="settings" controls={`${panelId}-right`} onFold={() => setRightFolded(true)} />
+            <RailHeader side="right" label={fw.rightLabel} controls={`${panelId}-right`} onFold={() => setRightFolded(true)} />
             {aside}
           </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
           {dragging?.kind === "palette-row" ? (
-            <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
+            <Tile label={w.layouts[dragging.layout]} preview={<LayoutPreview layout={dragging.layout} />} lifted />
           ) : dragging?.kind === "palette-column" ? (
-            <Tile label="Column" preview={<LayoutPreview layout="1" />} lifted />
+            <Tile label={w.sidebar.column} preview={<LayoutPreview layout="1" />} lifted />
           ) : dragging?.kind === "palette-block" ? (
             <Tile
               label={
                 dragging.part
                   ? dragging.type === "site"
-                    ? SITE_PARTS[dragging.part as SitePart]
+                    ? w.siteParts[dragging.part as SitePart]
                     : dragging.type === "storePart"
                       ? shopPartCopy(dragging.part as ShopPart).name
-                      : PRODUCT_PARTS[dragging.part as ProductPart]
-                  : blockLabels[dragging.type]
+                      : w.productParts[dragging.part as ProductPart]
+                  : w.blockNames[dragging.type]
               }
               preview={dragging.type === "storePart" && dragging.part ? <ShopPartIcon part={dragging.part as ShopPart} /> : <BlockIcon type={dragging.type} />}
               lifted
@@ -1426,15 +1365,11 @@ export function PageBuilder({
 // The left sidebar
 // ---------------------------------------------------------------------------
 
-const TABS = [
-  { key: "components", label: "Components" },
-  { key: "rows", label: "Rows" },
-  { key: "saved", label: "Saved" },
-] as const;
+const TABS = [{ key: "components" }, { key: "rows" }, { key: "saved" }] as const;
 /** Only where a store can share and use templates (D125). */
-const TEMPLATES_TAB = { key: "templates", label: "Templates" } as const;
+const TEMPLATES_TAB = { key: "templates" } as const;
 /** Where the page checker's findings are (wave 1, 1e): a tab of its own, with how many there are in its label. */
-const CHECKS_TAB = { key: "checks", label: "Checks" } as const;
+const CHECKS_TAB = { key: "checks" } as const;
 type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key | typeof CHECKS_TAB.key;
 
 /** What the Templates tab needs (D125); on Kaizen's own pages, Kaizen's own templates only (D236, `own`). */
@@ -1525,6 +1460,9 @@ function Sidebar({
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
+  const w = useAdminText("builder");
+  const fw = w.frame;
+  const sw = w.sidebar;
   const id = useId();
   // The shop's components the store's features let it use (D178): a section with none is not drawn, and a component behind no feature
   // (the Cookies page) is in More, as a website needs it as much as a shop.
@@ -1545,25 +1483,25 @@ function Sidebar({
     <aside
       id={panelId}
       hidden={hidden}
-      aria-label="Building blocks"
+      aria-label={sw.buildingBlocks}
       className={`flex min-w-0 flex-col rounded-lg border border-border bg-background ${STANDALONE}`}
     >
       <div className="border-b border-border px-4 py-1.5">
         {themePanel ? (
           <RailTabsHeader
             side="left"
-            label="building blocks"
+            label={fw.leftLabel}
             controls={panelId}
             onFold={onFold}
             tabs={[
-              { key: "blocks", label: "Building blocks", panel: `${id}-blocks` },
-              { key: "theme", label: "Theme", panel: `${id}-theme` },
+              { key: "blocks", label: sw.buildingBlocks, panel: `${id}-blocks` },
+              { key: "theme", label: sw.theme, panel: `${id}-theme` },
             ]}
             value={showing}
             onChange={setMode}
           />
         ) : (
-          <RailHeader side="left" label="building blocks" controls={panelId} onFold={onFold} />
+          <RailHeader side="left" label={fw.leftLabel} controls={panelId} onFold={onFold} />
         )}
       </div>
       {themePanel && (
@@ -1572,7 +1510,7 @@ function Sidebar({
         </div>
       )}
       <div id={`${id}-blocks`} role={themePanel ? "tabpanel" : undefined} hidden={showing !== "blocks"} className="flex flex-col">
-      <div role="tablist" aria-label="Building blocks" className={`grid border-b border-border ${tabs.length >= 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div role="tablist" aria-label={sw.buildingBlocks} className={`grid border-b border-border ${tabs.length >= 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
         {tabs.map((t, index) => (
           <button
             key={t.key}
@@ -1589,7 +1527,7 @@ function Sidebar({
             }}
             className="min-h-11 truncate border-b-2 border-transparent px-1 text-xs font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
           >
-            {t.key === "checks" && checks && checks.count > 0 ? `${t.label} (${checks.count})` : t.label}
+            {t.key === "checks" && checks && checks.count > 0 ? `${sw.tabs[t.key]} (${checks.count})` : sw.tabs[t.key]}
           </button>
         ))}
       </div>
@@ -1605,50 +1543,50 @@ function Sidebar({
           {t.key === "components" && (
             <>
               <p className="text-xs text-muted">
-                Drag a component into a column, or press it to add it to the column you last worked in.
+                {sw.componentsHint}
               </p>
               {productParts && (
                 <>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">The product</h3>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.theProduct}</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {PRODUCT_PART_KEYS.filter((part) => partFeatureOn({ type: "product", part }, features)).map((part) => (
                       <PaletteTile
                         key={part}
                         id={`palette:product:${part}`}
                         data={{ kind: "palette-block", type: "product", part }}
-                        label={PRODUCT_PARTS[part]}
+                        label={w.productParts[part]}
                         preview={<BlockIcon type="product" />}
                         onAdd={() => onAddBlock("product", part)}
                         disabled={blocksFull}
                       />
                     ))}
                   </div>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Around it</h3>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.aroundIt}</h3>
                 </>
               )}
               {siteParts && (
                 <>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">The site</h3>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.theSite}</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {siteParts.map((part) => (
                       <PaletteTile
                         key={part}
                         id={`palette:site:${part}`}
                         data={{ kind: "palette-block", type: "site", part }}
-                        label={SITE_PARTS[part]}
+                        label={w.siteParts[part]}
                         preview={<BlockIcon type="site" />}
                         onAdd={() => onAddBlock("site", part)}
                         disabled={blocksFull}
                       />
                     ))}
                   </div>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.more}</h3>
                 </>
               )}
               {shop && shopPages.length > 0 && (
                 <>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Shop pages</h3>
-                  <p className="text-xs text-muted">Each draws its working page where the page you choose for it is shown, and nothing elsewhere.</p>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.shopPages}</h3>
+                  <p className="text-xs text-muted">{sw.shopPagesHint}</p>
                   <div className="grid grid-cols-2 gap-3">
                     {shopPages.map((part) => (
                       <PaletteTile
@@ -1686,11 +1624,11 @@ function Sidebar({
                 ))}
               {themeStoreParts.length > 0 && (
                 <>
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Theme store</h3>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.themeStore}</h3>
                   <p className="text-xs text-muted">
                     {themeStoreParts.length > 1
-                      ? "Each draws the theme the page's address names, and nothing for a theme it has nothing for."
-                      : "Every published theme, with its filters."}
+                      ? sw.themeStoreParts
+                      : sw.themeStoreList}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {themeStoreParts.map((part) => (
@@ -1708,7 +1646,7 @@ function Sidebar({
                 </>
               )}
               {((shop && (shopPages.length > 0 || pieceGroups.length > 0)) || themeStoreParts.length > 0) && (
-                <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
+                <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.more}</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
                 {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
@@ -1716,7 +1654,7 @@ function Sidebar({
                     key={type}
                     id={`palette:block:${type}`}
                     data={{ kind: "palette-block", type }}
-                    label={blockLabels[type]}
+                    label={w.blockNames[type]}
                     preview={<BlockIcon type={type} />}
                     onAdd={() => onAddBlock(type)}
                     disabled={blocksFull}
@@ -1741,8 +1679,7 @@ function Sidebar({
           {t.key === "rows" && (
             <>
               <p className="text-xs text-muted">
-                Drag a row onto the page, or press it to add it at the end. Each row holds its columns side by side;
-                on phones they stack. A row can have several lines of columns.
+                {sw.rowsHint}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {ROW_LAYOUT_KEYS.map((layout) => (
@@ -1750,20 +1687,17 @@ function Sidebar({
                     key={layout}
                     id={`palette:row:${layout}`}
                     data={{ kind: "palette-row", layout }}
-                    label={ROW_LAYOUTS[layout].label}
+                    label={w.layouts[layout]}
                     preview={<LayoutPreview layout={layout} />}
                     onAdd={() => onAddRow(layout)}
                     disabled={rowsFull}
                   />
                 ))}
               </div>
-              <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Column</h3>
-              <p className="text-xs text-muted">
-                Drag a column into a row, in among its columns, or under them on a line of its own. The columns of the line then share its
-                width evenly again. Pressed, it is added beside the column you last pointed at.
-              </p>
+              <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.column}</h3>
+              <p className="text-xs text-muted">{sw.columnHint}</p>
               <div className="grid grid-cols-2 gap-3">
-                <PaletteTile id="palette:column" data={{ kind: "palette-column" }} label="Column" preview={<LayoutPreview layout="1" />} onAdd={onAddColumn} disabled={false} />
+                <PaletteTile id="palette:column" data={{ kind: "palette-column" }} label={sw.column} preview={<LayoutPreview layout="1" />} onAdd={onAddColumn} disabled={false} />
               </div>
               {themeSections && (
                 <ThemeSectionsList actions={themeSections.actions} shown={tab === "rows" && !hidden} onPlace={themeSections.onPlace} disabled={rowsFull} />
@@ -1822,6 +1756,7 @@ function PaletteTile({
   disabled: boolean;
 }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({ id, data, disabled });
+  const sw = useAdminText("builder").saved;
   return (
     <button
       ref={setNodeRef}
@@ -1829,7 +1764,7 @@ function PaletteTile({
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
       onClick={onAdd}
       disabled={disabled}
-      aria-label={`Add ${label.toLowerCase()}`}
+      aria-label={fillWords(sw.add, { label: label.toLowerCase() })}
       className={`touch-none text-left disabled:opacity-40 ${isDragging ? "opacity-40" : ""}`}
     >
       <Tile label={label} preview={preview} />
@@ -1878,26 +1813,19 @@ function SavedList({
   /** Where parts can be shared (D125): each shows who can use it and lets the store change that. */
   sharing: { setSharing: TemplateActions["setSharing"]; onChanged: (id: string, sharing: PartSharing) => void } | null;
 }) {
+  const w = useAdminText("builder");
   if (parts.length === 0) {
-    return (
-      <p className="text-xs text-muted">
-        Nothing saved yet. Open a row&apos;s, column&apos;s or component&apos;s settings (the wrench) and choose Save as, or
-        save a whole page&apos;s layout with Save as template under the page.
-      </p>
-    );
+    return <p className="text-xs text-muted">{w.saved.none}</p>;
   }
   return (
     <>
-      <p className="text-xs text-muted">
-        Drag one onto the page to use it, or press it to change it. A global one stays the same on every page that uses it; any
-        other is a copy each page keeps. A page layout is used whole, on its own kind of page.
-      </p>
+      <p className="text-xs text-muted">{w.saved.hint}</p>
       {(["page", "row", "column", "block"] as const).map((kind) => {
         const own = parts.filter((p) => p.kind === kind);
         if (own.length === 0) return null;
         return (
-          <section key={kind} aria-label={SAVED_KIND_LABELS[kind].many} className="flex flex-col gap-2">
-            <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{SAVED_KIND_LABELS[kind].many}</h3>
+          <section key={kind} aria-label={w.savedKinds[kind].many} className="flex flex-col gap-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{w.savedKinds[kind].many}</h3>
             <ul className="flex flex-col gap-1">
               {own.map((part) => (
                 <li key={part.id} className="flex flex-col gap-1">
@@ -1938,6 +1866,7 @@ function SavedLayoutItem({
   showSharing: boolean;
 }) {
   const reasonId = useId();
+  const sw = useAdminText("builder").saved;
   const rows = part.content.rows.length;
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border p-2">
@@ -1950,7 +1879,7 @@ function SavedLayoutItem({
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-sm">{part.name}</span>
           <span className="flex flex-wrap items-center gap-1 text-xs text-muted">
-            {rows} {rows === 1 ? "row" : "rows"}
+            {countWords(rows, sw.rows)}
             <PageTypeBadge item={{ kind: "page", pageType: part.content.pageType }} warn={reason !== null} />
             {showSharing && part.sharing !== "private" && <SharingBadge sharing={part.sharing} />}
           </span>
@@ -1961,20 +1890,20 @@ function SavedLayoutItem({
           type="button"
           onClick={onUse}
           disabled={reason !== null}
-          aria-label={`Use page layout ${part.name}`}
+          aria-label={fillWords(sw.useLayout, { name: part.name })}
           aria-describedby={reason ? reasonId : undefined}
           title={reason ?? undefined}
           className="min-h-9 rounded-md border border-border px-3 text-xs font-medium hover:bg-surface disabled:opacity-50"
         >
-          Use
+          {sw.use}
         </button>
         <button
           type="button"
           onClick={onManage}
-          aria-label={`${part.name}, saved page layout: open to rename, share or delete`}
+          aria-label={fillWords(sw.manageLayout, { name: part.name })}
           className="min-h-9 rounded-md border border-border px-3 text-xs hover:bg-surface"
         >
-          Manage
+          {sw.manage}
         </button>
       </div>
       {reason && (
@@ -2008,13 +1937,14 @@ function SavedItem({ part, onOpen, showSharing = false }: { part: PlainPart; onO
     id: `saved:${part.id}`,
     data: { kind: "saved", partId: part.id, part: part.kind } satisfies DragData,
   });
+  const w = useAdminText("builder");
   return (
     <button
       ref={setNodeRef}
       type="button"
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
       onClick={onOpen}
-      aria-label={`${part.name}, saved ${part.global ? "global " : ""}${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: open to change or add`}
+      aria-label={fillWords(part.global ? w.saved.openGlobal : w.saved.open, { name: part.name, kind: w.savedKinds[part.kind].one.toLowerCase() })}
       className={`w-full touch-none text-left ${isDragging ? "opacity-40" : ""}`}
     >
       <SavedTile part={part} showSharing={showSharing} />
@@ -2023,6 +1953,7 @@ function SavedItem({ part, onOpen, showSharing = false }: { part: PlainPart; onO
 }
 
 function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedPart | null; lifted?: boolean; showSharing?: boolean }) {
+  const w = useAdminText("builder");
   if (!part || part.kind === "page") return null;
   return (
     <span
@@ -2044,8 +1975,8 @@ function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedP
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-sm">{part.name}</span>
         <span className="text-xs text-muted">
-          {SAVED_KIND_LABELS[part.kind].one}
-          {part.global && <span className="font-medium text-violet-700 dark:text-violet-300"> · Global</span>}
+          {w.savedKinds[part.kind].one}
+          {part.global && <span className="font-medium text-violet-700 dark:text-violet-300"> · {w.frame.global}</span>}
           {showSharing && part.sharing !== "private" && (
             <>
               {" "}
@@ -2060,27 +1991,29 @@ function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedP
 
 /** A block on its way to another place: its kind and the start of its text. */
 function BlockPreview({ block }: { block: PageBlock | null }) {
+  const w = useAdminText("builder");
   if (!block) return null;
   const text = (blockText(block) || (block.type === "button" ? inlinePlain(block.label) : "")).replace(/\s+/g, " ").trim();
   return (
     <div className="w-64 rounded-md border border-foreground bg-background p-3 shadow-xl">
-      <p className="text-xs text-muted">{blockLabels[block.type]}</p>
-      <p className="truncate text-sm">{text || "Empty"}</p>
+      <p className="text-xs text-muted">{w.blockNames[block.type]}</p>
+      <p className="truncate text-sm">{text || w.saved.empty}</p>
     </div>
   );
 }
 
 /** A column on its way to another place: how many blocks it takes, and the start of its text. */
 function ColumnPreview({ column }: { column: PageColumn | null }) {
+  const w = useAdminText("builder");
   if (!column) return null;
   const text = column.blocks.map(blockText).join(" ").replace(/\s+/g, " ").trim();
   const count = column.blocks.length;
   return (
     <div className="w-64 rounded-md border-2 border-dashed border-blue-600 bg-background p-3 shadow-xl">
       <p className="text-xs text-muted">
-        Column · {count === 1 ? "1 component" : `${count} components`}
+        {w.sidebar.column} · {countWords(count, w.saved.components)}
       </p>
-      <p className="truncate text-sm">{text || "Empty"}</p>
+      <p className="truncate text-sm">{text || w.saved.empty}</p>
     </div>
   );
 }
@@ -2381,6 +2314,7 @@ function Canvas({
   /** Nothing is written on the page yet. */
   blank: boolean;
 }) {
+  const w = useAdminText("builder");
   const section = (
     <section
       aria-labelledby="content-heading"
@@ -2395,7 +2329,7 @@ function Canvas({
       style={view ? { zoom: view.zoom / 100, minHeight: view.height } : undefined}
     >
       <h2 id="content-heading" className="sr-only">
-        Content
+        {w.canvas.content}
       </h2>
       {/* The page's container (D179): the part rules' sizes are its width. */}
       <div
@@ -2408,7 +2342,7 @@ function Canvas({
               <RowItem
                 key={row.id}
                 row={row}
-                name={`Row ${index + 1}`}
+                name={fillWords(w.tools.row, { n: index + 1 })}
                 first={index === 0}
                 meets={meetsAbove(rows[index - 1], row)}
                 line={target?.id === row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
@@ -2511,6 +2445,7 @@ function CanvasEnd({
   onStartFromLayout: (() => void) | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-end", data: { kind: "canvas-end" } satisfies DragData });
+  const cw = useAdminText("builder").canvas;
   if (!empty && !active) return <div ref={setNodeRef} className="-mt-8" />;
   return (
     <div
@@ -2521,11 +2456,11 @@ function CanvasEnd({
     >
       {empty ? (
         <div className="flex flex-col items-center gap-3">
-          <p>The page is empty. Drag a row here from Rows, or press one to add it.</p>
+          <p>{cw.empty}</p>
           {onStartFromLayout && <StartFromLayout onStart={onStartFromLayout} />}
         </div>
       ) : (
-        "Drop here to put it last, in a row of its own."
+        cw.dropLast
       )}
     </div>
   );
@@ -2533,13 +2468,14 @@ function CanvasEnd({
 
 /** For a page with nothing on it (D127): begin with a whole page layout from the templates instead. */
 function StartFromLayout({ onStart }: { onStart: () => void }) {
+  const cw = useAdminText("builder").canvas;
   return (
     <button
       type="button"
       onClick={onStart}
       className="min-h-10 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-surface"
     >
-      Start from a page layout
+      {cw.startFromLayout}
     </button>
   );
 }
@@ -2599,6 +2535,7 @@ function Tools({
   onTest?: () => void;
 }) {
   const tool = toolClass;
+  const tw = useAdminText("builder").tools;
   const lower = label.toLowerCase();
   return (
     <div
@@ -2616,15 +2553,15 @@ function Tools({
           type="button"
           onClick={onDuplicate}
           disabled={duplicateDisabled}
-          aria-label={`Duplicate ${lower}`}
-          title="Duplicate"
+          aria-label={fillWords(tw.duplicateThis, { what: lower })}
+          title={tw.duplicate}
           className={tool}
         >
           <Icon name="copy" />
         </button>
       )}
       {onTest && (
-        <button type="button" onClick={onTest} aria-label={`A/B test ${lower}`} title="A/B test this" className={tool}>
+        <button type="button" onClick={onTest} aria-label={fillWords(tw.testThis, { what: lower })} title={tw.test} className={tool}>
           <Icon name="flask" />
         </button>
       )}
@@ -2633,8 +2570,8 @@ function Tools({
           type="button"
           onClick={onDelete}
           disabled={deleteDisabled}
-          aria-label={`Delete ${lower}`}
-          title="Delete"
+          aria-label={fillWords(tw.deleteThis, { what: lower })}
+          title={tw.delete}
           className={tool}
         >
           <Icon name="trash" />
@@ -2653,9 +2590,9 @@ function Tools({
 /** How the canvas marks a part among globals' uses (D98). */
 type PartMark = { kind: "global" | "local"; text: string };
 
-function markOf(part: PageRow | PageColumn | PageBlock, actions: Actions): PartMark | null {
-  if (part.global) return { kind: "global", text: `Global: ${actions.globalName(part.global)}` };
-  if (part.local) return { kind: "local", text: "Only this page" };
+function markOf(part: PageRow | PageColumn | PageBlock, actions: Actions, w: BuilderMessages): PartMark | null {
+  if (part.global) return { kind: "global", text: fillWords(w.tools.globalMark, { name: actions.globalName(part.global) }) };
+  if (part.local) return { kind: "local", text: w.tools.onlyThisPage };
   return null;
 }
 
@@ -2666,8 +2603,15 @@ const markAttributes = (part: PageRow | PageColumn | PageBlock) => ({
 });
 
 /** What a row's layout is called where it is named for a screen reader: its one layout, or how many lines of columns it has (D187). */
-const rowLayoutLabel = (row: PageRow): string =>
-  row.moreLines ? `${row.moreLines.length + 1} lines of columns` : ROW_LAYOUTS[row.layout].label.toLowerCase();
+const rowLayoutLabel = (row: PageRow, w: BuilderMessages): string =>
+  row.moreLines ? fillWords(w.tools.lines, { n: row.moreLines.length + 1 }) : w.layouts[row.layout].toLowerCase();
+
+/** A column's name in its own tools: without the row it is in ("Row 1, column 2" is "Column 2"). */
+function withoutRow(name: string, w: BuilderMessages): string {
+  const pattern = new RegExp(`^${w.tools.row.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("\\{n\\}", "\\d+")}, `);
+  const rest = name.replace(pattern, "");
+  return rest === name ? name : rest.charAt(0).toUpperCase() + rest.slice(1);
+}
 
 function RowItem({
   row,
@@ -2716,6 +2660,8 @@ function RowItem({
       const own = ownRow(rows);
       return own ? patchRow(rows, row.id, size === "xl" ? { contentMax: undefined } : clearAt(own, size, "contentMax")) : rows;
     });
+  const w = useAdminText("builder");
+  const tw = w.tools;
 
   return (
     <li
@@ -2726,7 +2672,7 @@ function RowItem({
       data-builder-modal={row.modal ? "" : undefined}
       {...markAttributes(row)}
       tabIndex={0}
-      aria-label={`${name}, ${rowLayoutLabel(row)}`}
+      aria-label={`${name}, ${rowLayoutLabel(row, w)}`}
       // Meeting the row above (D262): its band's own -1rem and the list's room between rows taken back.
       style={{ ...frame.style, ...(meets && { marginTop: `calc(-1rem - ${ROW_GAP})` }), transform: CSS.Translate.toString(transform), transition }}
       // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
@@ -2735,26 +2681,26 @@ function RowItem({
       {!actions.translating && (
       <Tools
         label={name}
-        tag={row.modal ? "Modal" : undefined}
+        tag={row.modal ? tw.modal : undefined}
         motion={hasMotion(row)}
-        mark={markOf(row, actions)}
+        mark={markOf(row, actions, w)}
         handle={
           <button
             type="button"
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
-            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            aria-label={fillWords(tw.drag, { what: name.toLowerCase() })}
             className={handleClass}
           >
             <Icon name="grip" />
           </button>
         }
         onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, columnId: null })}
-        editLabel="Settings"
+        editLabel={tw.settings}
         onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
         onTest={actions.onTest ? () => actions.onTest!({ kind: "row", id: row.id }) : undefined}
-        onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
+        onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: fillWords(tw.rowAndAll, { what: name.toLowerCase() }), run: remove }) : remove())}
       />
       )}
       <Line at={line} />
@@ -2811,6 +2757,7 @@ function ColumnLinesView({
   const lines = linesOf(holder);
   const dragColumn = movesColumn(dragging);
   const gapPx = valueAt(holder, "gap", size) ?? 32;
+  const tw = useAdminText("builder").tools;
   return (
     <div className={`relative ${grid.className}`} style={grid.style}>
       {lines.map((line, l) => {
@@ -2826,7 +2773,7 @@ function ColumnLinesView({
                 lineIndex={l}
                 lineCount={line.columns.length}
                 nested={nested}
-                name={`${name}, column ${offset + i + 1}`}
+                name={fillWords(tw.columnIn, { name, n: offset + i + 1 })}
                 dragging={dragging}
                 target={target}
                 actions={actions}
@@ -2837,7 +2784,7 @@ function ColumnLinesView({
               <ColumnDividers
                 count={line.columns.length}
                 signature={line.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(holder, "gap", size) ?? ""}`}
-                label={lines.length > 1 ? `${name}, line ${l + 1}` : name}
+                label={lines.length > 1 ? fillWords(tw.lineIn, { name, n: l + 1 }) : name}
                 onShares={(shares) => actions.onRows((rows) => setLineShares(rows, holder.id, l, size, shares))}
                 onReset={() => actions.onRows((rows) => clearLineShares(rows, holder.id, l, size))}
               />
@@ -2865,6 +2812,7 @@ function ColumnLinesView({
  */
 function NewLineZone({ rowId, at, place, height }: { rowId: string; at: number; place: "before" | "after"; height: number }) {
   const { setNodeRef, isOver } = useDroppable({ id: `line:${rowId}:${at}`, data: { kind: "line", rowId, at } satisfies DragData });
+  const cw = useAdminText("builder").canvas;
   return (
     <div
       ref={setNodeRef}
@@ -2876,7 +2824,7 @@ function NewLineZone({ rowId, at, place, height }: { rowId: string; at: number; 
       <span className={`block w-full ${isOver ? "h-1 rounded bg-blue-600" : "border-t-2 border-dashed border-blue-400/70"}`} />
       {isOver && (
         <span className="absolute left-1/2 -translate-x-1/2 rounded bg-blue-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-white shadow">
-          New line
+          {cw.newLine}
         </span>
       )}
     </div>
@@ -2922,6 +2870,8 @@ function ColumnItem({
   // While columns or a row's layout are dragged, a column of the page (never a nested one, nor the one dragged) takes them nested (D294).
   const nestHere = !nested && !actions.translating && nestsColumns(dragging) && !(dragging?.kind === "column" && dragging.columnId === column.id);
   const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
+  const w = useAdminText("builder");
+  const tw = w.tools;
   const columnLine = target?.id === `column:${column.id}` ? (target.after ? "after" : "before") : null;
   // A block from its own column shows its new place by moving; anything else by a line.
   const line = (blockId: string) =>
@@ -2952,36 +2902,36 @@ function ColumnItem({
         column.link && (
           <Tools
             side="right"
-            label={name.replace(/^Row \d+, c/, "C")}
+            label={withoutRow(name, w)}
             onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
-            editLabel="Translate"
+            editLabel={tw.translate}
           />
         )
       ) : (
       <Tools
         side="right"
-        label={name.replace(/^Row \d+, c/, "C")}
+        label={withoutRow(name, w)}
         motion={hasMotion(column)}
-        mark={markOf(column, actions)}
+        mark={markOf(column, actions, w)}
         handle={
           <button
             type="button"
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
-            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            aria-label={fillWords(tw.drag, { what: name.toLowerCase() })}
             className={handleClass}
           >
             <Icon name="grip" />
           </button>
         }
         onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
-        editLabel="Settings"
+        editLabel={tw.settings}
         onDuplicate={() => actions.onRows((rows) => duplicateColumn(rows, column.id, newId))}
         duplicateDisabled={lineCount >= LINE_COLUMNS_MAX}
         onTest={actions.onTest ? () => actions.onTest!({ kind: "column", id: column.id }) : undefined}
         onDelete={() =>
-          columnHasText(column) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and its text`, run: remove }) : remove()
+          columnHasText(column) ? actions.open({ kind: "delete", what: fillWords(tw.columnAndText, { what: name.toLowerCase() }), run: remove }) : remove()
         }
         deleteDisabled={count <= 1}
       />
@@ -2994,7 +2944,7 @@ function ColumnItem({
       <PartBackground background={column.background} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
       {column.link && (
         <span className="pointer-events-none absolute top-0 right-0 z-10 max-w-[80%] -translate-y-full truncate rounded-t bg-foreground/80 px-1.5 py-0.5 text-[11px] text-background">
-          Links to {column.link.href || "…"}
+          {fillWords(tw.linksTo, { href: column.link.href || "…" })}
         </span>
       )}
       {nestHere && column.blocks.length > 0 && <NestZone columnId={column.id} at="start" />}
@@ -3007,7 +2957,7 @@ function ColumnItem({
             index={index}
             parentStagger={column.motion?.enter?.stagger}
             parentEnter={column.motion?.enter}
-            name={`${name}, ${blockLabels[block.type].toLowerCase()} ${index + 1}`}
+            name={fillWords(tw.blockIn, { name, block: w.blockNames[block.type].toLowerCase(), n: index + 1 })}
             line={line(block.id)}
             dragging={dragging}
             target={target}
@@ -3021,15 +2971,15 @@ function ColumnItem({
             droppingBlock ? "border-blue-600" : "border-border"
           }`}
         >
-          Drag a component here
+          {tw.dragHere}
           <button
             type="button"
             onClick={() => actions.onAddBlock("richText", column.id)}
             disabled={actions.blocksFull}
-            aria-label={`Add rich text to ${name.toLowerCase()}`}
+            aria-label={fillWords(tw.addTextTo, { what: name.toLowerCase() })}
             className="underline hover:text-foreground disabled:opacity-40"
           >
-            or add rich text
+            {tw.orAddText}
           </button>
         </div>
       )}
@@ -3045,6 +2995,7 @@ function ColumnItem({
  */
 function NestZone({ columnId, at }: { columnId: string; at: "start" | "end" }) {
   const { setNodeRef, isOver } = useDroppable({ id: `nest:${columnId}:${at}`, data: { kind: "nest", columnId, at } satisfies DragData });
+  const cw = useAdminText("builder").canvas;
   return (
     <div
       ref={setNodeRef}
@@ -3054,7 +3005,7 @@ function NestZone({ columnId, at }: { columnId: string; at: "start" | "end" }) {
         isOver ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200" : "border-blue-400/70 text-muted"
       }`}
     >
-      Nest columns here
+      {cw.nestHere}
     </div>
   );
 }
@@ -3107,6 +3058,8 @@ function BlockItem({
     // The keyboard goes on from the block.
     window.requestAnimationFrame(() => blockElement.current?.focus({ preventScroll: true }));
   };
+  const w = useAdminText("builder");
+  const tw = w.tools;
 
   return (
     <div
@@ -3135,31 +3088,31 @@ function BlockItem({
       className={isDragging ? "opacity-40" : ""}
     >
       {actions.translating ? (
-        <Tools label={blockLabels[block.type]} onEdit={edit} editLabel="Translate" />
+        <Tools label={w.blockNames[block.type]} onEdit={edit} editLabel={tw.translate} />
       ) : (
       <Tools
-        label={blockLabels[block.type]}
+        label={w.blockNames[block.type]}
         motion={hasMotion(block)}
-        mark={markOf(block, actions)}
+        mark={markOf(block, actions, w)}
         handle={
           <button
             type="button"
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
-            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            aria-label={fillWords(tw.drag, { what: name.toLowerCase() })}
             className={handleClass}
           >
             <Icon name="grip" />
           </button>
         }
         onEdit={edit}
-        editLabel="Edit"
+        editLabel={tw.edit}
         onDuplicate={() => actions.onRows((rows) => duplicateBlock(rows, block.id, newId))}
         onTest={actions.onTest ? () => actions.onTest!({ kind: "block", id: block.id }) : undefined}
         onDelete={() =>
           blockHasText(block)
-            ? actions.open({ kind: "delete", what: blockThis[block.type], run: remove })
+            ? actions.open({ kind: "delete", what: w.blockThis[block.type], run: remove })
             : remove()
         }
       />
@@ -3197,7 +3150,7 @@ function BlockItem({
           <InlineRichEditor
             doc={block.doc}
             point={actions.inline?.point ?? null}
-            label={`Text in ${name}`}
+            label={fillWords(tw.textIn, { name })}
             onChange={(doc) => actions.onRows((rows) => patchBlock<RichTextBlock>(rows, block.id, { doc }))}
             onDone={endInline}
           />
@@ -3231,21 +3184,21 @@ function BlockItem({
           <div className="flex flex-col gap-2">
             {block.recipients.length === 0 && (
               <p className="rounded-md bg-surface p-3 text-sm text-muted">
-                Not shown on the site until it has an address to send to. Double-click or use the wrench.
+                {w.canvas.formNoRecipients}
               </p>
             )}
             <SiteForm form={publicForm(block)} store={null} lang={actions.lang} preview />
           </div>
         ) : block.type === "testimonials" && block.source === "google" ? (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">
-            Google reviews of your business show here on the site, as Google has them when the page is shown.
+            {w.canvas.googleReviews}
           </p>
         ) : blockHasContent(block) && (!bindingOf(block) || blockOwnContent(block)) ? (
           <PageBlockView block={block} renderChildren={(children) => <AnswerParts blocks={children} actions={actions} />} />
         ) : bindingOf(block) ? (
-          <p className="rounded-md bg-surface p-3 text-sm text-muted">Takes its content from a field where it is shown.</p>
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.canvas.bound}</p>
         ) : (
-          <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[block.type]}</p>
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.emptyBlock[block.type]}</p>
         )}
       </div>
     </div>
@@ -3257,6 +3210,7 @@ function BlockItem({
  * (the FAQ's open with a double press outside them). They are added, ordered and taken out in the FAQ's General tab.
  */
 function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Actions }) {
+  const w = useAdminText("builder");
   return blocks.map((child) => {
     const box = blockBox(child, "canvas");
     const open = () => actions.open({ kind: "edit-block", blockId: child.id });
@@ -3267,8 +3221,8 @@ function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Action
         data-answer-part=""
         role="button"
         tabIndex={0}
-        aria-label={`${blockLabels[child.type]} in the answer: edit`}
-        title={`${blockLabels[child.type]}: press to edit`}
+        aria-label={fillWords(w.tools.inAnswer, { block: w.blockNames[child.type] })}
+        title={fillWords(w.tools.pressToEdit, { block: w.blockNames[child.type] })}
         onClickCapture={(event) => {
           // A link or button in it must not take the builder away; a press opens its settings.
           event.preventDefault();
@@ -3287,46 +3241,13 @@ function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Action
       >
         <div className={box.className || undefined} style={box.style}>
           <FontLinks families={blockFonts(child)} />
-          {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[child.type]}</p>}
+          {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.emptyBlock[child.type]}</p>}
         </div>
       </div>
     );
   });
 }
 
-/** What the canvas shows for a block with nothing to show yet. */
-const EMPTY_BLOCK: Record<BlockType, string> = {
-  columns: "Columns. Drag components into them.",
-  richText: "Empty text. Click to write, or use the wrench for its settings.",
-  heading: "Empty heading. Click to write it, or use the wrench for its settings.",
-  image: "No picture yet. Double-click or use the wrench to choose one.",
-  button: "A button needs its text and an address. Double-click or use the wrench.",
-  contentGrid: "Content grid.",
-  product: "Product component.",
-  site: "Site component.",
-  menu: "A menu: double-click or use the wrench to choose which.",
-  search: "Search.",
-  plans: "Kaizena Flow's plans: the plans and their prices show where the page is seen.",
-  themeStore: "The theme store: the themes show where the page is seen.",
-  customField: "Custom fields.",
-  fieldLoop: "A field loop: double-click or use the wrench to choose a repeater.",
-  storePart: "A shop page component.",
-  separator: "Separator line.",
-  dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
-  accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
-  tabs: "Tabs: each needs a title. Double-click or use the wrench.",
-  faq: "Questions and answers: each needs both. Double-click or use the wrench.",
-  video: "No video yet. Double-click or use the wrench to upload one or give a YouTube or Vimeo address.",
-  html: "No HTML yet. Double-click or use the wrench to paste some.",
-  testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
-  socialLinks: "Social media: each link needs its address. Double-click or use the wrench.",
-  iconList: "An icon list: each line needs its words. Double-click or use the wrench.",
-  brands: "Brand logos: add logos and names. Double-click or use the wrench.",
-  gallery: "A gallery: add pictures and videos. Double-click or use the wrench.",
-  table: "An empty table: write in its cells. Double-click or use the wrench.",
-  emailForm: "An email form: it needs its questions and where to send. Double-click or use the wrench.",
-  newsletter: "A newsletter sign-up: it needs where to send. Double-click or use the wrench.",
-};
 
 export { ColorField };
 
@@ -3335,16 +3256,16 @@ export { ColorField };
 // ---------------------------------------------------------------------------
 
 /** The parts with a display other than Always, named as the canvas names them (D179 phase 4). */
-function displayedParts(rows: PageRow[]): { id: string; name: string; show: Show }[] {
+function displayedParts(rows: PageRow[], w: BuilderMessages): { id: string; name: string; show: Show }[] {
   const found: { id: string; name: string; show: Show }[] = [];
   rows.forEach((row, r) => {
-    const rowName = `Row ${r + 1}`;
+    const rowName = fillWords(w.tools.row, { n: r + 1 });
     if (row.visibility?.show) found.push({ id: row.id, name: rowName, show: row.visibility.show });
     row.columns.forEach((column, c) => {
-      const columnName = `${rowName}, column ${c + 1}`;
+      const columnName = fillWords(w.tools.columnIn, { name: rowName, n: c + 1 });
       if (column.visibility?.show) found.push({ id: column.id, name: columnName, show: column.visibility.show });
       column.blocks.forEach((block, b) => {
-        if (block.visibility?.show) found.push({ id: block.id, name: `${columnName}, ${blockLabels[block.type].toLowerCase()} ${b + 1}`, show: block.visibility.show });
+        if (block.visibility?.show) found.push({ id: block.id, name: fillWords(w.tools.blockIn, { name: columnName, block: w.blockNames[block.type].toLowerCase(), n: b + 1 }), show: block.visibility.show });
       });
     });
   });
@@ -3413,6 +3334,9 @@ function Dialogs({
 }) {
   // The screen size the fields edit (D179 phase 2): Extra large is the parts' own settings, a smaller size its overrides.
   const { size } = useSizeEdit();
+  const w = useAdminText("builder");
+  const dw = w.dialogs;
+  const blockWords = useAdminText("blocks");
   // Who sees a part (D179 phase 4): the facts the page offers and the store's choices.
   const displaySetup = useDisplaySetup(grid, pageType);
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
@@ -3426,7 +3350,7 @@ function Dialogs({
   const plainPatch = (target: Styled) => (patch: Partial<PartBase>) => onRows((current) => patchPart(current, target, patch));
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
-      Done
+      {dw.done}
     </button>
   );
   const saveAs = (part: SavedPartDraft) =>
@@ -3440,13 +3364,13 @@ function Dialogs({
         onClick={() => open({ kind: "save-as", part, back: dialog })}
         className="min-h-10 rounded-md border border-border px-4 text-sm"
       >
-        Save as…
+        {dw.saveAs}
       </button>
-      <GlobalControls id={part.content.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? "Global"} />
+      <GlobalControls id={part.content.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? w.frame.global} />
     </div>
     );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
-  const editor = block ? editorFor(block) : undefined;
+  const editor = block ? editorFor(block, blockWords) : undefined;
   /** Opens a component in an FAQ's answer in its own settings (D208). */
   const editPart = (blockId: string) => open({ kind: "edit-block", blockId });
   // A Columns component's column (D294) is set in the row its columns are laid out in.
@@ -3479,7 +3403,7 @@ function Dialogs({
         {/* Beaver's Visibility (D179): by screen size, and who sees it (phase 4). A modal opens over any size, so it has Display only. */}
         {row?.modal ? (
           <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-            <legend className="float-left mb-1 w-full font-medium">Visibility</legend>
+            <legend className="float-left mb-1 w-full font-medium">{dw.visibility}</legend>
             <DisplayFields
               show={part.visibility?.show}
               setup={displaySetup}
@@ -3494,9 +3418,9 @@ function Dialogs({
             display={inAnswer ? undefined : { setup: displaySetup, locked: displayLocked(part) ?? undefined }}
             locked={
               block?.type === "site" && block.part === "withdrawal"
-                ? "The withdrawal link is for every visitor, so it shows at every size."
+                ? dw.withdrawalEverySize
                 : block?.type === "site" && block.part === "menuButton"
-                  ? "The menu button shows on Small only, where the menu is folded into it."
+                  ? dw.menuButtonSmall
                   : undefined
             }
           />
@@ -3509,7 +3433,7 @@ function Dialogs({
     const part = partOf(rows, target);
     if (!part) return null;
     if (target.kind === "block" && findBlock(rows, target.id)?.parent) {
-      return <p className="text-sm text-muted">A component in an answer does not move: it shows as the question opens.</p>;
+      return <p className="text-sm text-muted">{dw.answerNoMotion}</p>;
     }
     const kind: MotionPart =
       target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind };
@@ -3531,7 +3455,7 @@ function Dialogs({
    * The Typography panel (D179 phase 3) of the row, column or block a dialog is for: a group per kind of text it has, at the
    * size the builder edits; families are installed as they are chosen (D59). `familyDefault` says what no family means.
    */
-  const typographyFields = (target: Styled, familyDefault = "Inherited") => {
+  const typographyFields = (target: Styled, familyDefault: string = dw.fonts.inherited) => {
     const part = partOf(rows, target);
     if (!part) return null;
     return (
@@ -3569,7 +3493,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "richText"}
         onClose={onClose}
-        title="Edit rich text"
+        title={dw.editRichText}
         footer={
           block && (
             <>
@@ -3597,13 +3521,13 @@ function Dialogs({
                   onChange={(doc) =>
                     onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
                   }
-                  label="Text"
+                  label={dw.text}
                 />
               </div>
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3617,7 +3541,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "image"}
         onClose={onClose}
-        title="Image"
+        title={w.blockNames.image}
         footer={
           block && (
             <>
@@ -3652,7 +3576,7 @@ function Dialogs({
                   onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
                 />
                 <ImageSizeFields block={block} onChange={(patch) => onRows((current) => patchBlock<ImageBlock>(current, block.id, patch))} />
-                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3666,7 +3590,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "heading"}
         onClose={onClose}
-        title="Heading"
+        title={w.blockNames.heading}
         footer={
           block && (
             <>
@@ -3696,7 +3620,7 @@ function Dialogs({
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's heading font")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.heading)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3710,7 +3634,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "button"}
         onClose={onClose}
-        title="Button"
+        title={w.blockNames.button}
         footer={
           block && (
             <>
@@ -3741,7 +3665,7 @@ function Dialogs({
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
                 />
-                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3790,7 +3714,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "product"}
         onClose={onClose}
-        title={block?.type === "product" ? PRODUCT_PARTS[block.part] : "Product"}
+        title={block?.type === "product" ? w.productParts[block.part] : w.blockNames.product}
         footer={
           block && (
             <>
@@ -3809,7 +3733,7 @@ function Dialogs({
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3823,7 +3747,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "site"}
         onClose={onClose}
-        title={block?.type === "site" ? SITE_PARTS[block.part] : "Site"}
+        title={block?.type === "site" ? w.siteParts[block.part] : w.blockNames.site}
         footer={
           block && (
             <>
@@ -3840,7 +3764,7 @@ function Dialogs({
             general={<SiteFields block={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3854,7 +3778,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "menu"}
         onClose={onClose}
-        title="Menu"
+        title={w.blockNames.menu}
         footer={
           block && (
             <>
@@ -3879,7 +3803,7 @@ function Dialogs({
             style={
               <>
                 <TextAlignFields
-                  what="Position"
+                  what={dw.position}
                   value={block}
                   onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
                 />
@@ -3887,7 +3811,7 @@ function Dialogs({
                   value={block.itemHover}
                   onChange={(itemHover) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { itemHover }))}
                 />
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3901,7 +3825,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "themeStore"}
         onClose={onClose}
-        title={block?.type === "themeStore" ? THEME_STORE_PART_COPY[block.part].name : "Theme store"}
+        title={block?.type === "themeStore" ? THEME_STORE_PART_COPY[block.part].name : w.blockNames.themeStore}
         footer={block && done}
       >
         {block?.type === "themeStore" && (
@@ -3910,7 +3834,7 @@ function Dialogs({
             general={<ThemeStoreFields block={block} onChange={(patch) => onRows((current) => patchBlock<ThemeStoreBlock>(current, block.id, patch))} />}
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3924,7 +3848,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "plans"}
         onClose={onClose}
-        title="Plans"
+        title={w.blockNames.plans}
         footer={
           block && (
             <>
@@ -3947,7 +3871,7 @@ function Dialogs({
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3961,7 +3885,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "search"}
         onClose={onClose}
-        title="Search"
+        title={w.blockNames.search}
         footer={
           block && (
             <>
@@ -3977,15 +3901,15 @@ function Dialogs({
             key={block.id}
             general={
               <Check
-                label="Show what was searched for"
-                hint="The results, with the filters and what the search understood. Off, it is only the search box, which leads to your search page: right for a 404 page or a header."
+                label={dw.searchResults}
+                hint={dw.searchResultsHint}
                 checked={block.results !== false}
                 onChange={(results) => onRows((current) => patchBlock<SearchBlock>(current, block.id, { results: results ? undefined : false }))}
               />
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3999,7 +3923,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "storePart"}
         onClose={onClose}
-        title="Shop page"
+        title={w.blockNames.storePart}
         footer={
           block && (
             <>
@@ -4016,13 +3940,13 @@ function Dialogs({
             general={
               <div className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Shows
+                  {dw.shows}
                   <select
                     value={block.part}
                     onChange={(event) => onRows((current) => patchBlock<StorePartBlock>(current, block.id, { part: event.target.value as ShopPart }))}
                     className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
                   >
-                    <optgroup label="Whole pages">
+                    <optgroup label={dw.wholePages}>
                       {STORE_PART_KEYS.map((part) => (
                         <option key={part} value={part}>
                           {STORE_PARTS[part].name}
@@ -4042,13 +3966,13 @@ function Dialogs({
                 </label>
                 <p className="text-sm text-muted">{shopPartCopy(block.part).hint}</p>
                 <p className="text-sm text-muted">
-                  It shows only on the page you choose for it under Pages, in the special pages, and nothing elsewhere.
+                  {dw.shopPartWhere}
                 </p>
               </div>
             }
             style={
               <>
-                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -4062,7 +3986,7 @@ function Dialogs({
       <SettingsPanel
         open={block?.type === "contentGrid"}
         onClose={onClose}
-        title="Content grid"
+        title={w.blockNames.contentGrid}
         footer={
           block && (
             <>
@@ -4090,7 +4014,7 @@ function Dialogs({
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
                 />
-                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -4104,7 +4028,7 @@ function Dialogs({
       <SettingsPanel
         open={Boolean(row)}
         onClose={onClose}
-        title={column ? "Column" : "Row"}
+        title={column ? w.savedKinds.column.one : w.savedKinds.row.one}
         footer={
           row && (
             <>
@@ -4126,8 +4050,8 @@ function Dialogs({
                 />
                 <div className="flex flex-col gap-4 border-t border-border pt-4">
                   <Check
-                    label="Components side by side"
-                    hint="In a line that wraps when it runs out of room, rather than one under another, as a header's icons."
+                    label={dw.inline}
+                    hint={dw.inlineHint}
                     checked={Boolean(column.inline)}
                     onChange={(inline) =>
                       onRows((current) => patchColumn(current, column.id, inline ? { inline } : { inline: undefined, justify: undefined }))
@@ -4135,8 +4059,8 @@ function Dialogs({
                   />
                   {column.inline && (
                     <Choices
-                      legend="Where they sit"
-                      options={(Object.keys(COLUMN_JUSTIFY) as ColumnJustify[]).map((value) => ({ value, label: COLUMN_JUSTIFY[value] }))}
+                      legend={dw.whereTheySit}
+                      options={(Object.keys(COLUMN_JUSTIFY) as ColumnJustify[]).map((value) => ({ value, label: dw.justify[value] }))}
                       value={column.justify ?? "start"}
                       onChange={(justify) => onRows((current) => patchColumn(current, column.id, { justify: justify === "start" ? undefined : justify }))}
                     />
@@ -4144,11 +4068,8 @@ function Dialogs({
                 </div>
                 <ColumnSizeFields column={column} row={row} onChange={(patch) => onRows((current) => patchColumn(current, column.id, patch))} />
                 <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-                  <legend className="float-left mb-2 w-full text-sm font-medium">Row layout</legend>
-                  <p className="text-sm text-muted">
-                    A column&apos;s width comes from its row&apos;s layout. With fewer columns, the text of the
-                    columns that go moves to the last one.
-                  </p>
+                  <legend className="float-left mb-2 w-full text-sm font-medium">{dw.rowLayout}</legend>
+                  <p className="text-sm text-muted">{dw.columnWidthFromRow}</p>
                   {layoutChoice(row)}
                 </fieldset>
               </>
@@ -4169,7 +4090,7 @@ function Dialogs({
                     target="column"
                     motion={column.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
-                    mark={<SizeMark part={column} field="background" label="Background" onPatch={plainPatch({ kind: "column", id: column.id })} />}
+                    mark={<SizeMark part={column} field="background" label={dw.background} onPatch={plainPatch({ kind: "column", id: column.id })} />}
                   />,
                 )}
                 {typographyFields({ kind: "column", id: column.id })}
@@ -4186,9 +4107,7 @@ function Dialogs({
             key={row.id}
             general={
               <>
-                <p className="text-sm text-muted">
-                  With fewer columns, the text of the columns that go moves to the last one.
-                </p>
+                <p className="text-sm text-muted">{dw.fewerColumns}</p>
                 {layoutChoice(row)}
                 <RowFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
                 <ModalFields row={row} rows={rows} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
@@ -4212,7 +4131,7 @@ function Dialogs({
                     target="row"
                     motion={row.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
-                    mark={<SizeMark part={row} field="background" label="Background" onPatch={plainPatch({ kind: "row", id: row.id })} />}
+                    mark={<SizeMark part={row} field="background" label={dw.background} onPatch={plainPatch({ kind: "row", id: row.id })} />}
                   />,
                 )}
                 {typographyFields({ kind: "row", id: row.id })}
@@ -4229,11 +4148,11 @@ function Dialogs({
       <Modal
         open={dialog?.kind === "delete"}
         onClose={onClose}
-        title="Delete?"
+        title={dw.deleteTitle}
         footer={
           <>
             <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-border px-4 text-sm">
-              Keep it
+              {dw.keepIt}
             </button>
             <button
               type="button"
@@ -4243,14 +4162,12 @@ function Dialogs({
               }}
               className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white"
             >
-              Delete
+              {w.tools.delete}
             </button>
           </>
         }
       >
-        <p className="text-sm">
-          Delete {dialog?.kind === "delete" ? dialog.what : ""}? Until you save the draft, the saved page keeps it.
-        </p>
+        <p className="text-sm">{fillWords(dw.deleteText, { what: dialog?.kind === "delete" ? dialog.what : "" })}</p>
       </Modal>
 
       {dialog?.kind === "save-as" && (
@@ -4307,22 +4224,19 @@ function Dialogs({
 
 /** In place of the sidebar while translating: what can be done here, and where the rest is. */
 function TranslateNote({ translate, id, hidden, header }: { translate: Translating; id: string; hidden: boolean; header: ReactNode }) {
+  const tw = useAdminText("builder").translate;
   return (
     <section id={id} hidden={hidden} aria-labelledby="translate-heading" className={`flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm ${STANDALONE}`}>
       <div className="flex items-start justify-between gap-2">
         <h2 id="translate-heading" className="font-medium">
-          Translating into {translate.name}
+          {fillWords(tw.into, { lang: translate.name })}
         </h2>
         {header}
       </div>
       <p>
-        Point at a text on the page and press <strong>Translate</strong> (or double-click it) to write it in {translate.name}.
-        The title and search texts are on the right.
+        {tw.pointBefore} <strong>{tw.press}</strong> {fillWords(tw.pointAfter, { lang: translate.name })}
       </p>
-      <p className="text-muted">
-        A text you leave as it is shows in {translate.mainName}. Rows, pictures and settings are the same in every
-        language: change them in {translate.mainName}.
-      </p>
+      <p className="text-muted">{fillWords(tw.leftAsIs, { main: translate.mainName })}</p>
     </section>
   );
 }
@@ -4331,10 +4245,11 @@ const translateField = "min-h-10 w-full rounded-md border border-border bg-backg
 
 /** The main language's text beside the one being written. */
 function Original({ mainName, text }: { mainName: string; text: string }) {
+  const tw = useAdminText("builder").translate;
   if (!text.trim()) return null;
   return (
     <div className="rounded-md bg-surface p-3 text-sm">
-      <span className="block text-xs text-muted">In {mainName}</span>
+      <span className="block text-xs text-muted">{fillWords(tw.inMain, { main: mainName })}</span>
       <span className="whitespace-pre-line">{text}</span>
     </div>
   );
@@ -4383,8 +4298,9 @@ function TranslateText({
 
 /** A saved component of a newer kind (D91), with its General fields from `BLOCK_EDITORS`. */
 function SavedBlockFields({ block, upload, onChange }: { block: PageBlock; upload: Upload | null; onChange: (patch: Partial<PageBlock>) => void }) {
-  const editor = editorFor(block);
-  if (!editor) return <p className="text-sm text-muted">{blockLabels[block.type]}: change its settings where it is used.</p>;
+  const editor = editorFor(block, useAdminText("blocks"));
+  const w = useAdminText("builder");
+  if (!editor) return <p className="text-sm text-muted">{fillWords(w.savedPart.whereUsed, { block: w.blockNames[block.type] })}</p>;
   return <editor.General block={block} context={{ upload, startVideo: null }} onChange={onChange} />;
 }
 
@@ -4403,8 +4319,9 @@ function TranslateBlockTexts({
   onChange: (block: PageBlock) => void;
 }) {
   const fields = blockTextFields(block);
+  const tw = useAdminText("builder").translate;
   const was = new Map(original ? blockTextFields(original).map((field) => [field.key, field.value]) : []);
-  if (fields.length === 0) return <p className="text-sm text-muted">This component has no text of its own.</p>;
+  if (fields.length === 0) return <p className="text-sm text-muted">{tw.noText}</p>;
   return (
     <div className="flex flex-col gap-5">
       {fields.map((field) => {
@@ -4412,7 +4329,7 @@ function TranslateBlockTexts({
         return typeof field.value === "string" ? (
           <TranslateText
             key={field.key}
-            label={`${field.label} in ${name}`}
+            label={fillWords(tw.fieldIn, { label: field.label, lang: name })}
             value={field.value}
             max={field.max}
             original={typeof before === "string" ? before : ""}
@@ -4422,7 +4339,7 @@ function TranslateBlockTexts({
           />
         ) : (
           <div key={field.key} className="flex flex-col gap-3">
-            <RichTextEditor value={field.value} onChange={(doc) => onChange(setBlockText(block, field.key, doc))} label={`${field.label} in ${name}`} />
+            <RichTextEditor value={field.value} onChange={(doc) => onChange(setBlockText(block, field.key, doc))} label={fillWords(tw.fieldIn, { label: field.label, lang: name })} />
             <Original mainName={mainName} text={before && typeof before !== "string" ? richTextPlain(before) : ""} />
           </div>
         );
@@ -4449,6 +4366,8 @@ function TranslateDialogs({
   translate: Translating;
 }) {
   const { name, mainName, source } = translate;
+  const w = useAdminText("builder");
+  const tw = w.translate;
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const original = block ? findBlock(source, block.id)?.block : null;
   // A Columns component's column (D294) is set in the row its columns are laid out in.
@@ -4464,24 +4383,24 @@ function TranslateDialogs({
       case "richText":
         return (
           <div className="flex flex-col gap-3">
-            <RichTextEditor key={b.id} value={b.doc} onChange={(doc) => set<RichTextBlock>({ doc })} label={`Text in ${name}`} />
+            <RichTextEditor key={b.id} value={b.doc} onChange={(doc) => set<RichTextBlock>({ doc })} label={fillWords(tw.textIn, { lang: name })} />
             <Original mainName={mainName} text={o?.type === "richText" ? richTextPlain(o.doc) : ""} />
           </div>
         );
       case "heading":
         return (
-          <TranslateText label={`Heading in ${name}`} value={b.text} max={HEADING_MAX} original={was("text")} mainName={mainName} onChange={(text) => set<HeadingBlock>({ text })} />
+          <TranslateText label={fillWords(tw.headingIn, { lang: name })} value={b.text} max={HEADING_MAX} original={was("text")} mainName={mainName} onChange={(text) => set<HeadingBlock>({ text })} />
         );
       case "button":
         return (
-          <TranslateText label={`Button text in ${name}`} value={b.label} max={BUTTON_LABEL_MAX} original={was("label")} mainName={mainName} onChange={(label) => set<ButtonBlock>({ label })} />
+          <TranslateText label={fillWords(tw.buttonIn, { lang: name })} value={b.label} max={BUTTON_LABEL_MAX} original={was("label")} mainName={mainName} onChange={(label) => set<ButtonBlock>({ label })} />
         );
       case "image":
         return (
           <div className="flex flex-col gap-5">
             {b.image && (
               <TranslateText
-                label={`Description of the picture in ${name}`}
+                label={fillWords(tw.altIn, { lang: name })}
                 value={b.image.alt}
                 max={ALT_MAX}
                 original={o?.type === "image" ? (o.image?.alt ?? "") : ""}
@@ -4490,17 +4409,17 @@ function TranslateDialogs({
                 onChange={(alt) => set<ImageBlock>({ image: b.image && { ...b.image, alt } })}
               />
             )}
-            <TranslateText label={`Caption in ${name}`} value={b.caption} max={ALT_MAX} original={was("caption")} mainName={mainName} onChange={(caption) => set<ImageBlock>({ caption })} />
+            <TranslateText label={fillWords(tw.captionIn, { lang: name })} value={b.caption} max={ALT_MAX} original={was("caption")} mainName={mainName} onChange={(caption) => set<ImageBlock>({ caption })} />
           </div>
         );
       case "product":
         return (
           <div className="flex flex-col gap-5">
             <p className="text-sm text-muted">
-              The product shows its own texts in {name}.{b.heading ? " Here is the component's own heading." : " This component has no text of its own."}
+              {fillWords(tw.productTexts, { lang: name })} {b.heading ? tw.productHeading : tw.noText}
             </p>
             {b.heading && (
-              <TranslateText label={`Heading in ${name}`} value={b.heading} max={HEADING_MAX} original={was("heading")} mainName={mainName} onChange={(heading) => set<ProductBlock>({ heading })} />
+              <TranslateText label={fillWords(tw.headingIn, { lang: name })} value={b.heading} max={HEADING_MAX} original={was("heading")} mainName={mainName} onChange={(heading) => set<ProductBlock>({ heading })} />
             )}
           </div>
         );
@@ -4512,10 +4431,10 @@ function TranslateDialogs({
         return (
           <div className="flex flex-col gap-5">
             <p className="text-sm text-muted">
-              The tiles show each page or product in {name} by themselves. Here are the grid&apos;s own texts.
+              {fillWords(tw.gridTexts, { lang: name })}
             </p>
-            <TranslateText label={`Button text in ${name}`} value={b.buttonLabel} max={BUTTON_LABEL_MAX} original={was("buttonLabel")} mainName={mainName} onChange={(buttonLabel) => set<ContentGridBlock>({ buttonLabel })} />
-            <TranslateText label={`Text when nothing matches, in ${name}`} value={b.emptyText} max={300} original={was("emptyText")} mainName={mainName} onChange={(emptyText) => set<ContentGridBlock>({ emptyText })} />
+            <TranslateText label={fillWords(tw.buttonIn, { lang: name })} value={b.buttonLabel} max={BUTTON_LABEL_MAX} original={was("buttonLabel")} mainName={mainName} onChange={(buttonLabel) => set<ContentGridBlock>({ buttonLabel })} />
+            <TranslateText label={fillWords(tw.emptyIn, { lang: name })} value={b.emptyText} max={300} original={was("emptyText")} mainName={mainName} onChange={(emptyText) => set<ContentGridBlock>({ emptyText })} />
           </div>
         );
       default:
@@ -4525,18 +4444,18 @@ function TranslateDialogs({
   };
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
-      Done
+      {w.dialogs.done}
     </button>
   );
   return (
     <>
-      <Modal open={Boolean(block)} onClose={onClose} title={block ? `Translate ${blockLabels[block.type].toLowerCase()}` : "Translate"} footer={done} wide>
+      <Modal open={Boolean(block)} onClose={onClose} title={block ? fillWords(tw.translateThis, { block: w.blockNames[block.type].toLowerCase() }) : w.tools.translate} footer={done} wide>
         {block && texts(block, original)}
       </Modal>
-      <Modal open={Boolean(column?.link)} onClose={onClose} title="Translate the column's link" footer={done}>
+      <Modal open={Boolean(column?.link)} onClose={onClose} title={tw.columnLink} footer={done}>
         {column?.link && (
           <TranslateText
-            label={`Description of the link in ${name}`}
+            label={fillWords(tw.linkIn, { lang: name })}
             value={column.link.label}
             max={200}
             original={originalColumn?.link?.label ?? ""}
@@ -4575,6 +4494,7 @@ function SpacingFields({
 }) {
   const id = useId();
   const { size } = useSizeEdit();
+  const fw = useAdminText("builder").fields;
   const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
     const number = Math.max(kind === "margin" ? -SPACING_MAX : 0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
     const sides = { ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]), [side]: number };
@@ -4589,16 +4509,14 @@ function SpacingFields({
       {(["margin", "padding"] as const).map((kind) => (
         <fieldset key={kind} className={`flex flex-col gap-2 ${sized ? inheritedClass(sizeSource(sized.part, size, kind), size) : ""}`}>
           <legend className="text-sm font-medium">
-            {kind === "margin" ? "Margin" : "Padding"}{" "}
-            <span className="font-normal text-muted">
-              ({kind === "margin" ? "space outside" : "space inside"}, in pixels)
-            </span>
-            {sized && <SizeMark part={sized.part} field={kind} label={kind === "margin" ? "Margin" : "Padding"} onPatch={sized.onPatch} />}
+            {fw[kind]}{" "}
+            <span className="font-normal text-muted">({kind === "margin" ? fw.marginHint : fw.paddingHint})</span>
+            {sized && <SizeMark part={sized.part} field={kind} label={fw[kind]} onPatch={sized.onPatch} />}
           </legend>
           <div className="grid grid-cols-4 gap-2">
             {SIDES.map((side) => (
               <label key={side} htmlFor={`${id}-${kind}-${side}`} className="flex flex-col gap-1 text-xs text-muted">
-                {side[0].toUpperCase() + side.slice(1)}
+                {fw.sides[side]}
                 <input
                   id={`${id}-${kind}-${side}`}
                   type="number"
@@ -4615,7 +4533,7 @@ function SpacingFields({
                   min={kind === "margin" ? -SPACING_MAX : 0}
                   max={SPACING_MAX}
                   step={2}
-                  label={`${kind === "margin" ? "Margin" : "Padding"} ${side}, slider`}
+                  label={fillWords(fw.sideSlider, { what: fw[kind], side: fw.sides[side].toLowerCase() })}
                   onChange={(next) => set(kind, side, String(next))}
                 />
               </label>
@@ -4638,6 +4556,7 @@ function ImageFields({
   onChange: (block: ImageBlock) => void;
 }) {
   const id = useId();
+  const iw = useAdminText("builder").image;
   return (
     <div className="flex flex-col gap-4">
       {block.image ? (
@@ -4645,53 +4564,51 @@ function ImageFields({
         <img src={block.image.url} alt="" className="max-h-72 w-full rounded-md border border-border bg-surface object-contain" />
       ) : (
         <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
-          No picture yet
+          {iw.none}
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
         <ImageUploadButton
           upload={upload}
-          label={block.image ? "Replace picture" : "Upload picture"}
+          label={block.image ? iw.replace : iw.upload}
           current={block.image}
           // A picture made by prompt (D283) comes described by what it was asked for.
           onUploaded={(image, made) => onChange({ ...block, image: { ...image, alt: made?.alt ?? block.image?.alt ?? "" } })}
         />
         {block.image && (
           <button type="button" onClick={() => onChange({ ...block, image: null })} className="px-2 py-2 text-sm underline">
-            Remove
+            {iw.remove}
           </button>
         )}
       </div>
       {block.image && (
-        <p className="text-xs text-muted">
-          Own size: {block.image.width} × {block.image.height} pixels. A picture is never shown larger than that.
-        </p>
+        <p className="text-xs text-muted">{fillWords(iw.ownSize, { width: block.image.width, height: block.image.height })}</p>
       )}
       {block.image && (
         <label htmlFor={`${id}-alt`} className="flex flex-col gap-1 text-sm font-medium">
-          Description
+          {iw.description}
           <textarea
             id={`${id}-alt`}
             rows={2}
             maxLength={300}
             value={block.image.alt}
             onChange={(event) => block.image && onChange({ ...block, image: { ...block.image, alt: event.target.value } })}
-            placeholder="What the picture shows, for people who cannot see it"
+            placeholder={iw.descriptionPlaceholder}
             className="rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
           />
-          <span className="text-xs font-normal text-muted">Leave it empty only if the picture is decoration.</span>
+          <span className="text-xs font-normal text-muted">{iw.decoration}</span>
         </label>
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
-          Link <span className="font-normal text-muted">(optional)</span>
+          {iw.link} <span className="font-normal text-muted">({iw.optional})</span>
         </label>
         <input
           id={`${id}-href`}
           value={block.href ?? ""}
           maxLength={2000}
           spellCheck={false}
-          placeholder="https://… or /about"
+          placeholder={iw.addressPlaceholder}
           aria-invalid={Boolean(block.href?.trim() && !isLinkAddress(block.href.trim()))}
           aria-describedby={`${id}-href-hint`}
           onChange={(event) => onChange({ ...block, href: event.target.value || undefined })}
@@ -4701,22 +4618,20 @@ function ImageFields({
           id={`${id}-href-hint`}
           className={`text-xs ${block.href?.trim() && !isLinkAddress(block.href.trim()) ? "text-red-700 dark:text-red-400" : "text-muted"}`}
         >
-          {block.href?.trim() && !isLinkAddress(block.href.trim())
-            ? "Use a web address (https://…), a page on the site (/about), an anchor (#contact), mailto: or tel:."
-            : "Makes the picture a link. Describe the picture above, or the link has no name for screen readers."}
+          {block.href?.trim() && !isLinkAddress(block.href.trim()) ? iw.badAddress : iw.linkHint}
         </span>
       </div>
       {block.href?.trim() && (
         <Check
-          label="Open in a new tab"
-          hint="Screen readers are told it opens a new tab."
+          label={iw.newTab}
+          hint={iw.newTabHint}
           checked={Boolean(block.newTab)}
           onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
         />
       )}
       <label htmlFor={`${id}-caption`} className="flex flex-col gap-1 text-sm font-medium">
         <span>
-          Caption <span className="font-normal text-muted">(optional, shown under the picture)</span>
+          {iw.caption} <span className="font-normal text-muted">({iw.captionHint})</span>
         </span>
         <input
           id={`${id}-caption`}
@@ -4730,18 +4645,14 @@ function ImageFields({
   );
 }
 
-const SETTINGS_TABS = [
-  { key: "general", label: "General" },
-  { key: "style", label: "Style" },
-  { key: "motion", label: "Motion" },
-  { key: "advanced", label: "Advanced" },
-] as const;
+const SETTINGS_TABS = [{ key: "general" }, { key: "style" }, { key: "motion" }, { key: "advanced" }] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
 
 /** A settings dialog's four tabs (D48, D128): what it holds, how it looks, how it moves, and its id and classes. */
 function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
   const [tab, setTab] = useState<SettingsTab>("general");
   const id = useId();
+  const fw = useAdminText("builder").fields;
   const select = (index: number) => {
     const next = SETTINGS_TABS[(index + SETTINGS_TABS.length) % SETTINGS_TABS.length].key;
     setTab(next);
@@ -4749,7 +4660,7 @@ function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
   };
   return (
     <div className="flex flex-col gap-5">
-      <div role="tablist" aria-label="Settings" className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
+      <div role="tablist" aria-label={fw.settings} className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
         {SETTINGS_TABS.map((t, index) => (
           <button
             key={t.key}
@@ -4766,7 +4677,7 @@ function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
             }}
             className="min-h-11 border-b-2 border-transparent px-3 text-sm font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
           >
-            {t.label}
+            {fw.tabs[t.key]}
           </button>
         ))}
       </div>
@@ -4837,24 +4748,25 @@ function BackgroundFields({
   };
   const media = value?.type === "image" || value?.type === "video" ? value : null;
   const kept = { overlay: media?.overlay ?? null, ...(media?.blur ? { blur: media.blur } : {}) };
+  const bw = useAdminText("builder").background;
   return (
     <div className="flex flex-col gap-4">
       <Choices
-        legend="Background"
+        legend={bw.legend}
         mark={mark}
         options={[
-          { value: "none", label: "None" },
-          { value: "color", label: "Colour" },
-          { value: "image", label: "Picture" },
-          { value: "gradient", label: "Gradient" },
-          ...(startVideo !== undefined ? [{ value: "video" as const, label: "Video" }] : []),
+          { value: "none", label: bw.kinds.none },
+          { value: "color", label: bw.kinds.color },
+          { value: "image", label: bw.kinds.image },
+          { value: "gradient", label: bw.kinds.gradient },
+          ...(startVideo !== undefined ? [{ value: "video" as const, label: bw.kinds.video }] : []),
         ]}
         value={kind}
         onChange={choose}
       />
       {kind === "color" && value?.type === "color" && (
         <ColorField
-          label="Background colour"
+          label={bw.colour}
           value={value.color}
           onChange={(color) => onChange({ ...value, color })}
           opacity={{
@@ -4869,19 +4781,15 @@ function BackgroundFields({
       {(kind === "none" || kind === "color") && (
         <>
           <Check
-            label="Blur what is behind"
-            hint={
-              kind === "none"
-                ? "Frosted glass: whatever lies behind shows through, blurred, such as a picture under a header that lies over the page."
-                : "Frosted glass: with a see-through colour, whatever lies behind shows through it, blurred."
-            }
+            label={bw.blurBehind}
+            hint={kind === "none" ? bw.blurBehindNone : bw.blurBehindColour}
             checked={Boolean(backdropBlur)}
             onChange={(on) => onBackdropBlur(on ? 12 : undefined)}
           />
           {backdropBlur ? (
             <div className="pl-7">
               <RangeField
-                label="Blur"
+                label={bw.blur}
                 min={1}
                 max={BACKDROP_BLUR_MAX}
                 step={1}
@@ -4902,13 +4810,13 @@ function BackgroundFields({
             </div>
           ) : (
             <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
-              {kind === "video" ? "No video yet" : "No picture yet"}
+              {kind === "video" ? bw.noVideo : bw.noPicture}
             </div>
           )}
           {kind === "image" ? (
             <ImageUploadButton
               upload={upload}
-              label={media?.type === "image" ? "Replace picture" : "Upload picture"}
+              label={media?.type === "image" ? bw.replacePicture : bw.uploadPicture}
               current={media?.type === "image" ? media.image : null}
               onUploaded={(uploaded) => onChange({ type: "image", image: uploaded, ...kept })}
             />
@@ -4916,15 +4824,15 @@ function BackgroundFields({
             <VideoUploadButton
               startVideo={startVideo ?? null}
               upload={upload}
-              label={media?.type === "video" ? "Replace video" : "Upload video"}
+              label={media?.type === "video" ? bw.replaceVideo : bw.uploadVideo}
               onUploaded={(uploaded) => onChange({ type: "video", ...uploaded, ...kept })}
             />
           )}
           {media?.type === kind && (
             <>
               <Check
-                label={kind === "video" ? "Colour over the video" : "Colour over the picture"}
-                hint="Makes text on it easier to read."
+                label={kind === "video" ? bw.overVideo : bw.overPicture}
+                hint={bw.overHint}
                 checked={Boolean(media.overlay)}
                 onChange={(on) => onChange({ ...media, overlay: on ? { color: "#000000", opacity: 40 } : null })}
               />
@@ -4932,15 +4840,15 @@ function BackgroundFields({
                 <OverlayFields overlay={media.overlay} onChange={(overlay) => onChange({ ...media, overlay })} />
               )}
               <Check
-                label={kind === "video" ? "Blur the video" : "Blur the picture"}
-                hint="Softens a busy background behind text."
+                label={kind === "video" ? bw.blurVideo : bw.blurPicture}
+                hint={bw.blurHint}
                 checked={Boolean(media.blur)}
                 onChange={(on) => onChange(withBlur(media, on ? 6 : 0))}
               />
               {media.blur ? (
                 <div className="pl-7">
                   <RangeField
-                    label="Blur"
+                    label={bw.blur}
                     min={1}
                     max={BLUR_MAX}
                     step={1}
@@ -4965,20 +4873,20 @@ function BackgroundFields({
       )}
       {onFixed && backgroundMoves(value) && (
         <Check
-          label="Fixed background"
-          hint="The background stays where it is on the screen while the page scrolls, and the row's content moves over it. The row is a window onto it: give it a height as a share of the screen's. A fixed background does not move with effects."
+          label={bw.fixed}
+          hint={bw.fixedHint}
           checked={Boolean(fixed)}
           onChange={onFixed}
         />
       )}
       {onAlign && fixed && (value?.type === "image" || value?.type === "video") && (
         <Choices
-          legend="Background position"
-          hint="which part of the picture shows where it is cut to fit the screen"
+          legend={bw.position}
+          hint={bw.positionHint}
           options={[
-            { value: "top", label: "Top" },
-            { value: "middle", label: "Middle" },
-            { value: "bottom", label: "Bottom" },
+            { value: "top", label: bw.top },
+            { value: "middle", label: bw.middle },
+            { value: "bottom", label: bw.bottom },
           ]}
           value={align ?? "middle"}
           onChange={(next) => onAlign(next === "middle" ? undefined : next)}
@@ -5050,11 +4958,12 @@ function OverlayFields({
   overlay: { color: string; opacity: number };
   onChange: (overlay: { color: string; opacity: number }) => void;
 }) {
+  const bw = useAdminText("builder").background;
   return (
     <div className="flex flex-wrap items-end gap-6 pl-7">
-      <ColorField label="Overlay colour" value={overlay.color} onChange={(color) => onChange({ ...overlay, color })} />
+      <ColorField label={bw.overlayColour} value={overlay.color} onChange={(color) => onChange({ ...overlay, color })} />
       <RangeField
-        label="Opacity"
+        label={bw.opacity}
         min={0}
         max={100}
         step={5}
@@ -5084,10 +4993,12 @@ function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (patch: 
   const choices = sectionStyleChoices(sections);
   const current = row.sectionStyle;
   const known = current === undefined || choices.includes(current);
+  const rw = useAdminText("builder").row;
+  const styleName = useStyleName();
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
-        Section style
+        {rw.sectionStyle}
       </label>
       <select
         id={id}
@@ -5095,17 +5006,23 @@ function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (patch: 
         onChange={(event) => onChange({ sectionStyle: event.target.value || undefined })}
         className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
       >
-        <option value="">None: the site&apos;s look</option>
+        <option value="">{rw.sectionNone}</option>
         {choices.map((name) => (
           <option key={name} value={name}>
-            {sectionStyleLabel(name)}
+            {styleName(name)}
           </option>
         ))}
-        {!known && current && <option value={current}>{sectionStyleLabel(current)} (not in this theme: drawn as Plain)</option>}
+        {!known && current && <option value={current}>{fillWords(rw.sectionMissing, { name: styleName(current) })}</option>}
       </select>
-      <p className="text-xs text-muted">The theme gives the row and what is in it the style&apos;s look; what you set yourself still wins. Another theme restyles it.</p>
+      <p className="text-xs text-muted">{rw.sectionHint}</p>
     </div>
   );
+}
+
+/** A section style's name in the account's language: the core styles' from the design words (D312 A7), a theme's own as it is written. */
+function useStyleName(): (name: string) => string {
+  const names = useAdminText("design").changes.styles;
+  return (name) => names[name] ?? sectionStyleLabel(name);
 }
 
 /** A row's width and what it holds, the same two choices on a row and on the theme's Row (D48, D190). */
@@ -5121,24 +5038,25 @@ function RowWidthChoices({
   onContentWidth: (contentWidth: "content" | "full") => void;
 }) {
   const full = width === "full";
+  const rw = useAdminText("builder").row;
   return (
     <>
       <Choices
-        legend="Row width"
+        legend={rw.rowWidth}
         options={[
-          { value: "content", label: "Content width" },
-          { value: "full", label: "Full width" },
+          { value: "content", label: rw.contentWidth },
+          { value: "full", label: rw.fullWidth },
         ]}
         value={width}
         onChange={onWidth}
       />
       <Choices
-        legend="Content width"
-        hint={full ? "what the row holds" : "for a full-width row"}
+        legend={rw.contentWidth}
+        hint={full ? rw.whatItHolds : rw.forFullWidth}
         disabled={!full}
         options={[
-          { value: "content", label: "Content width" },
-          { value: "full", label: "Full width" },
+          { value: "content", label: rw.contentWidth },
+          { value: "full", label: rw.fullWidth },
         ]}
         value={contentWidth}
         onChange={onContentWidth}
@@ -5153,6 +5071,7 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
   const theme = useContext(ThemeRowWidths);
   const width = row.width ?? theme.width ?? "content";
   const contentWidth = row.contentWidth ?? theme.contentWidth ?? "content";
+  const rw = useAdminText("builder").row;
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <SectionStyleField row={row} onChange={onChange} />
@@ -5165,24 +5084,24 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
       <ContentMaxField row={row} limited={width !== "full" || contentWidth !== "full"} onChange={onChange} />
       <RowHeightField row={row} onChange={onChange} />
       <Check
-        label="As tall as the screen"
-        hint="At least the height of the browser window."
+        label={rw.fullHeight}
+        hint={rw.fullHeightHint}
         checked={Boolean(row.fullHeight)}
         onChange={(fullHeight) => onChange({ fullHeight })}
       />
       <RowSizeFields row={row} onChange={onChange} />
       <Check
-        label="Equal column height"
-        hint="Every column as tall as the tallest, so their backgrounds line up."
+        label={rw.equalHeight}
+        hint={rw.equalHeightHint}
         checked={Boolean(row.equalHeight)}
         onChange={(equalHeight) => onChange({ equalHeight })}
       />
       <Choices
-        legend="Column content"
+        legend={rw.columnContent}
         options={[
-          { value: "top", label: "Top" },
-          { value: "middle", label: "Middle" },
-          { value: "bottom", label: "Bottom" },
+          { value: "top", label: rw.top },
+          { value: "middle", label: rw.middle },
+          { value: "bottom", label: rw.bottom },
         ]}
         value={row.align ?? "top"}
         onChange={(align) => onChange({ align: align === "top" ? undefined : align })}
@@ -5201,13 +5120,14 @@ function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: Row
   const value = valueAt(row, "height", size) ?? null;
   const [draft, setDraft] = useState<string | null>(null);
   const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  const rw = useAdminText("builder").row;
   return (
     <div className={`flex flex-col gap-1 ${inheritedClass(sizeSource(row, size, "height"), size)}`}>
       <div className="flex flex-wrap items-center gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Height <span className="font-normal text-muted">(% of the screen&apos;s height, {ROW_HEIGHT_VH.min} to {ROW_HEIGHT_VH.max})</span>
+          {rw.height} <span className="font-normal text-muted">({fillWords(rw.heightHint, { min: ROW_HEIGHT_VH.min, max: ROW_HEIGHT_VH.max })})</span>
         </label>
-        <SizeMark part={row} field="height" label="Height" onPatch={back} />
+        <SizeMark part={row} field="height" label={rw.height} onPatch={back} />
       </div>
       <input
         id={id}
@@ -5215,7 +5135,7 @@ function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: Row
         inputMode="numeric"
         min={ROW_HEIGHT_VH.min}
         max={ROW_HEIGHT_VH.max}
-        placeholder="As tall as its content"
+        placeholder={rw.heightPlaceholder}
         value={draft ?? value ?? ""}
         onChange={(event) => {
           const next = event.target.value;
@@ -5233,14 +5153,14 @@ function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: Row
         max={100}
         step={5}
         unit="vh"
-        label="Height, slider"
+        label={fillWords(rw.slider, { what: rw.height })}
         onChange={(next) => {
           setDraft(null);
           onChange(setAt(row, size, { height: next }));
         }}
         className="max-w-64"
       />
-      <p className="text-xs text-muted">At least this tall; taller if its content is. Empty: as tall as its content.</p>
+      <p className="text-xs text-muted">{rw.heightNote}</p>
     </div>
   );
 }
@@ -5256,13 +5176,14 @@ function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether
   // What is typed until it is a width the row can have.
   const [draft, setDraft] = useState<string | null>(null);
   const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  const rw = useAdminText("builder").row;
   return (
     <div className={`flex flex-col gap-1 ${inheritedClass(sizeSource(row, size, "contentMax"), size)}`}>
       <div className="flex flex-wrap items-center gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Max content width <span className="font-normal text-muted">(in pixels, {CONTENT_MAX_MIN} to {CONTENT_MAX_MAX})</span>
+          {rw.maxWidth} <span className="font-normal text-muted">({fillWords(rw.pixelsRange, { min: CONTENT_MAX_MIN, max: CONTENT_MAX_MAX })})</span>
         </label>
-        <SizeMark part={row} field="contentMax" label="Max content width" onPatch={back} />
+        <SizeMark part={row} field="contentMax" label={rw.maxWidth} onPatch={back} />
       </div>
       <input
         id={id}
@@ -5271,7 +5192,7 @@ function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether
         min={CONTENT_MAX_MIN}
         max={CONTENT_MAX_MAX}
         disabled={!limited}
-        placeholder="The theme's"
+        placeholder={rw.themes}
         aria-describedby={`${id}-hint`}
         value={draft ?? value ?? ""}
         onChange={(event) => {
@@ -5290,7 +5211,7 @@ function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether
         max={CONTENT_MAX_MAX}
         step={8}
         disabled={!limited}
-        label="Max content width, slider"
+        label={fillWords(rw.slider, { what: rw.maxWidth })}
         onChange={(next) => {
           setDraft(null);
           onChange(setAt(row, size, { contentMax: next }));
@@ -5298,9 +5219,7 @@ function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether
         className="max-w-64"
       />
       <p id={`${id}-hint`} className="text-xs text-muted">
-        {limited
-          ? "Empty keeps to the theme's content width. You can also drag the row's side edges on the page."
-          : "This row spreads over the whole width, so it has no content width. Choose a content width above to set one."}
+        {limited ? rw.maxWidthHint : rw.spreadsHint}
       </p>
     </div>
   );
@@ -5315,34 +5234,35 @@ function RowSizeFields({ row, onChange }: { row: PageRow; onChange: (patch: RowP
   const stacked = stackAt(row, size);
   const reverse = valueAt(row, "reverse", size) === true;
   const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  const rw = useAdminText("builder").row;
   return (
     <div className="flex flex-col gap-4">
       <Choices
-        legend="Columns"
-        mark={<SizeMark part={row} field="stack" label="Columns" onPatch={back} />}
+        legend={rw.columns}
+        mark={<SizeMark part={row} field="stack" label={rw.columns} onPatch={back} />}
         muted={inheritedClass(sizeSource(row, size, "stack"), size)}
         options={[
-          { value: "side", label: "Side by side" },
-          { value: "stack", label: "One under another" },
+          { value: "side", label: rw.side },
+          { value: "stack", label: rw.stack },
         ]}
         value={stacked ? "stack" : "side"}
         onChange={(choice) => onChange(stackPatchAt(row, size, choice === "stack"))}
       />
       <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(row, size, "reverse"), size)}`}>
         <Check
-          label="Reverse column order"
-          hint={stacked ? "The last column comes first, at the top." : "The last column comes first, on the left."}
+          label={rw.reverse}
+          hint={stacked ? rw.reverseStacked : rw.reverseSide}
           checked={reverse}
           onChange={(on) => onChange(setAt(row, size, { reverse: size === "xl" ? on || undefined : on }))}
         />
-        <SizeMark part={row} field="reverse" label="Reverse column order" onPatch={back} />
+        <SizeMark part={row} field="reverse" label={rw.reverse} onPatch={back} />
       </div>
       <NumberField
-        label="Space between columns"
-        hint={`in pixels, up to ${GRID_GAP_MAX}`}
+        label={rw.gap}
+        hint={fillWords(rw.upTo, { max: GRID_GAP_MAX })}
         value={valueAt(row, "gap", size) ?? 32}
         max={GRID_GAP_MAX}
-        mark={<SizeMark part={row} field="gap" label="Space between columns" onPatch={back} />}
+        mark={<SizeMark part={row} field="gap" label={rw.gap} onPatch={back} />}
         muted={inheritedClass(sizeSource(row, size, "gap"), size)}
         onChange={(gap) => onChange(setAt(row, size, { gap }))}
       />
@@ -5356,7 +5276,8 @@ function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: 
   // Its share in its own line's layout (D187): a row of one line has the one.
   const place = locateColumn(row, column.id);
   const layoutWidth: number = place ? (ROW_LAYOUTS[linesOf(row)[place.line].layout].widths[place.index] ?? 1) : 1;
-  const ofWhat = row.moreLines ? "its line" : "the row";
+  const rw = useAdminText("builder").row;
+  const shareOf = row.moreLines ? rw.shareOfLine : rw.shareOfRow;
   const back = (patch: { at: PageColumn["at"] }) => onChange(patch);
   const width = valueAt(column, "width", size);
   const order = valueAt(column, "order", size);
@@ -5368,21 +5289,21 @@ function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: 
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <NumberField
-        label={`Share of ${ofWhat}`}
-        hint={`the layout gives ${layoutWidth}; 0 is as wide as what it holds`}
+        label={shareOf}
+        hint={fillWords(rw.shareHint, { n: layoutWidth })}
         value={width ?? layoutWidth}
         max={COLUMN_SHARE_MAX}
-        mark={<SizeMark part={column} field="width" label={`Share of ${ofWhat}`} onPatch={back} />}
+        mark={<SizeMark part={column} field="width" label={shareOf} onPatch={back} />}
         muted={inheritedClass(sizeSource(column, size, "width"), size)}
         onChange={(share) => onChange(sizedOrDefault("width", share, layoutWidth))}
       />
       <NumberField
-        label="Place"
-        hint="lower comes first, where columns are side by side or one under another (within a line)"
+        label={rw.place}
+        hint={rw.placeHint}
         value={order ?? 0}
         min={-12}
         max={12}
-        mark={<SizeMark part={column} field="order" label="Place" onPatch={back} />}
+        mark={<SizeMark part={column} field="order" label={rw.place} onPatch={back} />}
         muted={inheritedClass(sizeSource(column, size, "order"), size)}
         onChange={(place) => onChange(sizedOrDefault("order", place, 0))}
       />
@@ -5406,13 +5327,9 @@ function BackgroundAtSize({
   onPatch: (patch: Partial<PartBase>) => void;
 }) {
   const own = part.background;
+  const bw = useAdminText("builder").background;
   if (own && own.type !== "color") {
-    return (
-      <p className="text-sm text-muted">
-        A {own.type === "image" ? "picture" : own.type === "video" ? "video" : "gradient"} background is the same at every screen size. Change
-        it at Extra large.
-      </p>
-    );
+    return <p className="text-sm text-muted">{bw.sameEverySize[own.type]}</p>;
   }
   const value = valueAt(part, "background", size) ?? undefined;
   const blur = valueAt(part, "backdropBlur", size) ?? undefined;
@@ -5421,19 +5338,19 @@ function BackgroundAtSize({
   return (
     <div className="flex flex-col gap-4">
       <Choices
-        legend="Background"
-        mark={<SizeMark part={part} field="background" label="Background" onPatch={back} />}
+        legend={bw.legend}
+        mark={<SizeMark part={part} field="background" label={bw.legend} onPatch={back} />}
         muted={inheritedClass(sizeSource(part, size, "background"), size)}
         options={[
-          { value: "none", label: "None" },
-          { value: "color", label: "Colour" },
+          { value: "none", label: bw.kinds.none },
+          { value: "color", label: bw.kinds.color },
         ]}
         value={color ? "color" : "none"}
         onChange={(kind) => onChange({ background: kind === "color" ? { type: "color", color: own?.type === "color" ? own.color : "#ffffff" } : undefined } as Partial<PartBase>)}
       />
       {color && (
         <ColorField
-          label="Background colour"
+          label={bw.colour}
           value={color.color}
           onChange={(next) => onChange({ background: { ...color, color: next } } as Partial<PartBase>)}
           opacity={{
@@ -5448,17 +5365,17 @@ function BackgroundAtSize({
       <div className={`flex flex-col gap-3 ${inheritedClass(sizeSource(part, size, "backdropBlur"), size)}`}>
         <div className="flex flex-wrap items-start gap-1">
           <Check
-            label="Blur what is behind"
-            hint="Frosted glass: whatever lies behind shows through, blurred."
+            label={bw.blurBehind}
+            hint={bw.blurBehindShort}
             checked={Boolean(blur)}
             onChange={(on) => onChange({ backdropBlur: on ? (blur ?? 12) : undefined } as Partial<PartBase>)}
           />
-          <SizeMark part={part} field="backdropBlur" label="Blur what is behind" onPatch={back} />
+          <SizeMark part={part} field="backdropBlur" label={bw.blurBehind} onPatch={back} />
         </div>
         {blur ? (
           <div className="pl-7">
             <RangeField
-              label="Blur"
+              label={bw.blur}
               min={1}
               max={BACKDROP_BLUR_MAX}
               step={1}
@@ -5476,18 +5393,14 @@ function BackgroundAtSize({
 /** Whether the whole column is a link, where to, and its name for screen readers (D48). */
 function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefined; onChange: (link: ColumnLink | undefined) => void }) {
   const id = useId();
+  const lw = useAdminText("builder").link;
   const href = link?.href.trim() ?? "";
-  const problem =
-    link && href === ""
-      ? "Give the link an address, or switch it off."
-      : link && !isLinkAddress(href)
-        ? "Use a web address (https://…), a page on the site (/about), mailto: or tel:."
-        : null;
+  const problem = link && href === "" ? lw.giveAddress : link && !isLinkAddress(href) ? lw.badAddress : null;
   return (
     <div className="flex flex-col gap-3">
       <Check
-        label="Make the whole column a link"
-        hint="Pressing anywhere in the column opens the address. Links in its text still work."
+        label={lw.columnLink}
+        hint={lw.columnLinkHint}
         checked={Boolean(link)}
         onChange={(on) => onChange(on ? { href: "", label: "" } : undefined)}
       />
@@ -5495,14 +5408,14 @@ function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefined; on
         <div className="flex flex-col gap-3 pl-7">
           <div className="flex flex-col gap-1">
             <label htmlFor={`${id}-href`} className="text-sm font-medium">
-              Address
+              {lw.address}
             </label>
             <input
               id={`${id}-href`}
               value={link.href}
               maxLength={2000}
               spellCheck={false}
-              placeholder="https://… or /about"
+              placeholder={lw.placeholder}
               aria-invalid={Boolean(problem)}
               aria-describedby={`${id}-href-hint`}
               onChange={(event) => onChange({ ...link, href: event.target.value })}
@@ -5512,18 +5425,18 @@ function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefined; on
               id={`${id}-href-hint`}
               className={`text-xs font-normal ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}
             >
-              {problem ?? "A page on this site, another site, an email or a phone number."}
+              {problem ?? lw.addressHint}
             </span>
           </div>
           <label htmlFor={`${id}-label`} className="flex flex-col gap-1 text-sm font-medium">
             <span>
-              Description <span className="font-normal text-muted">(optional, for screen readers)</span>
+              {lw.description} <span className="font-normal text-muted">({lw.descriptionHint})</span>
             </span>
             <input
               id={`${id}-label`}
               value={link.label}
               maxLength={200}
-              placeholder="Where the link leads; else the column's text is read"
+              placeholder={lw.descriptionPlaceholder}
               onChange={(event) => onChange({ ...link, label: event.target.value })}
               className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
             />
@@ -5547,15 +5460,16 @@ const SHAPE_PICTURES: Record<ImageShape | "original", string> = {
 
 /** How a picture is cropped (D48). */
 function ShapeChoice({ value, onChange }: { value: ImageShape | undefined; onChange: (shape: ImageShape | undefined) => void }) {
+  const fw = useAdminText("builder").fields;
   const options = (["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
     value: shape,
-    label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
+    label: fw.shapes[shape],
     picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
   }));
   return (
     <Choices
-      legend="Shape"
-      hint="the picture is cropped to it"
+      legend={fw.shape}
+      hint={fw.shapeHint}
       options={options}
       value={value ?? "original"}
       onChange={(shape) => onChange(shape === "original" ? undefined : shape)}
@@ -5575,17 +5489,18 @@ function AdvancedFields({
   onChange: (patch: Partial<PartBase>) => void;
 }) {
   const id = useId();
+  const aw = useAdminText("builder").advanced;
   const htmlId = part.htmlId?.trim() ?? "";
   const idProblem = htmlId
-    ? (htmlIdProblem(htmlId) ?? (taken.has(htmlId) ? "Another part of this page has this id." : null))
+    ? (htmlIdProblem(htmlId) ?? (taken.has(htmlId) ? aw.idTaken : null))
     : null;
   const classProblem = classNameProblem(part.className ?? "");
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">These are used on the site only; the editor leaves them out.</p>
+      <p className="text-sm text-muted">{aw.siteOnly}</p>
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-id`} className="text-sm font-medium">
-          Id
+          {aw.id}
         </label>
         <input
           id={`${id}-id`}
@@ -5600,14 +5515,12 @@ function AdvancedFields({
         />
         <span id={`${id}-id-hint`} className={`text-xs font-normal ${idProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
           {idProblem ??
-            (htmlId
-              ? `A link to #${htmlId} opens the page here.`
-              : "Lets a link lead straight here: with the id prices, a link to #prices opens the page at this part.")}
+            (htmlId ? fillWords(aw.idLink, { id: htmlId }) : aw.idHint)}
         </span>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-classes`} className="text-sm font-medium">
-          Classes
+          {aw.classes}
         </label>
         <input
           id={`${id}-classes`}
@@ -5624,7 +5537,7 @@ function AdvancedFields({
           id={`${id}-classes-hint`}
           className={`text-xs font-normal ${classProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}
         >
-          {classProblem ?? "Separated by spaces. A class changes the look only where the site's styles define it."}
+          {classProblem ?? aw.classesHint}
         </span>
       </div>
     </div>
@@ -5646,6 +5559,7 @@ function SidesFields({
   onChange: (sides: Sides) => void;
 }) {
   const id = useId();
+  const fw = useAdminText("builder").fields;
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">
@@ -5654,7 +5568,7 @@ function SidesFields({
       <div className="grid grid-cols-4 gap-2">
         {SIDES.map((side) => (
           <label key={side} htmlFor={`${id}-${side}`} className="flex flex-col gap-1 text-xs text-muted">
-            {side[0].toUpperCase() + side.slice(1)}
+            {fw.sides[side]}
             <input
               id={`${id}-${side}`}
               type="number"
@@ -5667,7 +5581,7 @@ function SidesFields({
               }
               className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
             />
-            <PixelRange value={value[side]} min={0} max={max} label={`${legend} ${side}, slider`} onChange={(next) => onChange({ ...value, [side]: next })} />
+            <PixelRange value={value[side]} min={0} max={max} label={fillWords(fw.sideSlider, { what: legend, side: fw.sides[side].toLowerCase() })} onChange={(next) => onChange({ ...value, [side]: next })} />
           </label>
         ))}
       </div>
@@ -5696,6 +5610,7 @@ function NumberField({
   muted?: string;
 }) {
   const id = useId();
+  const rw = useAdminText("builder").row;
   return (
     <div className={`flex flex-col gap-1 ${muted}`}>
       <div className="flex flex-wrap items-center gap-1">
@@ -5714,8 +5629,8 @@ function NumberField({
         onChange={(event) => onChange(Math.max(min, Math.min(max, Math.round(Number(event.target.value) || 0))))}
         className="min-h-10 w-28 rounded-md border border-border bg-background px-2 text-sm"
       />
-      {/pixel/i.test(hint) && max > min && (
-        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={`${label}, slider`} onChange={onChange} className="max-w-64" />
+      {/pixel|piksel/i.test(hint) && max > min && (
+        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={fillWords(rw.slider, { what: label })} onChange={onChange} className="max-w-64" />
       )}
     </div>
   );
@@ -5737,6 +5652,7 @@ function FrameFields({
   sized?: { part: PartBase; onPatch: (patch: Partial<PartBase>) => void };
 }) {
   const { size } = useSizeEdit();
+  const fw = useAdminText("builder").frameFields;
   const border = value.border;
   const name = (label: string) => (what ? `${what} ${label.toLowerCase()}` : label);
   const mark = (field: "border" | "radius" | "shadow" | "shadowOpacity", label: string) =>
@@ -5745,11 +5661,11 @@ function FrameFields({
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <Choices
-        {...mark("border", "Border")}
-        legend={name("Border")}
+        {...mark("border", fw.border)}
+        legend={name(fw.border)}
         options={[
-          { value: "none", label: "None" },
-          ...(Object.keys(BORDER_STYLES) as BorderStyle[]).map((style) => ({ value: style, label: BORDER_STYLES[style] })),
+          { value: "none", label: fw.none },
+          ...(Object.keys(BORDER_STYLES) as BorderStyle[]).map((style) => ({ value: style, label: fw.borderStyles[style] })),
         ]}
         value={border?.style ?? "none"}
         onChange={(style) =>
@@ -5764,36 +5680,36 @@ function FrameFields({
       {border && (
         <>
           <SidesFields
-            legend={name("Border width")}
-            hint="in pixels"
+            legend={name(fw.borderWidth)}
+            hint={fw.inPixels}
             value={border.width}
             max={BORDER_MAX}
             onChange={(width) => onChange({ border: { ...border, width } })}
           />
-          <ColorField key={size} label={name("Border colour")} value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
+          <ColorField key={size} label={name(fw.borderColour)} value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
         </>
       )}
       <NumberField
-        {...mark("radius", "Rounded corners")}
-        label={name("Rounded corners")}
-        hint="radius, in pixels"
+        {...mark("radius", fw.radius)}
+        label={name(fw.radius)}
+        hint={fw.radiusHint}
         value={value.radius ?? 0}
         max={RADIUS_MAX}
         // Square at a smaller size, under a rounded larger one, is kept as 0 there.
         onChange={(radius) => onChange({ radius: atSize ? radius : radius || undefined })}
       />
       <Choices
-        {...mark("shadow", "Shadow")}
-        legend={name("Shadow")}
+        {...mark("shadow", fw.shadow)}
+        legend={name(fw.shadow)}
         options={[
-          { value: "none", label: "None" },
-          ...(Object.keys(SHADOWS) as Shadow[]).map((shadow) => ({ value: shadow, label: SHADOWS[shadow].label })),
+          { value: "none", label: fw.none },
+          ...(Object.keys(SHADOWS) as Shadow[]).map((shadow) => ({ value: shadow, label: fw.shadows[shadow] })),
         ]}
         value={value.shadow ?? "none"}
         // A shadow's opacity is of that shadow (D262): another shadow, or none, starts from its own again.
         onChange={(shadow) => onChange({ shadow: shadow === "none" ? undefined : shadow, shadowOpacity: undefined })}
       />
-      {value.shadow && <ShadowOpacityField shadow={value.shadow} value={value.shadowOpacity} label={name("Shadow opacity")} {...mark("shadowOpacity", "Shadow opacity")} onChange={(shadowOpacity) => onChange({ shadowOpacity })} />}
+      {value.shadow && <ShadowOpacityField shadow={value.shadow} value={value.shadowOpacity} label={name(fw.shadowOpacity)} {...mark("shadowOpacity", fw.shadowOpacity)} onChange={(shadowOpacity) => onChange({ shadowOpacity })} />}
     </div>
   );
 }
@@ -5816,6 +5732,7 @@ function ShadowOpacityField({
 }) {
   const own = shadowOpacityOf(shadow);
   const shown = value ?? own;
+  const fw = useAdminText("builder").frameFields;
   return (
     <div className={`flex flex-col gap-1 ${muted}`}>
       <div className="flex flex-wrap items-center gap-1">
@@ -5827,7 +5744,7 @@ function ShadowOpacityField({
       <PixelRange value={shown} min={0} max={100} unit="%" label={label} onChange={onChange} className="max-w-64" />
       {value !== undefined && value !== own && (
         <button type="button" onClick={() => onChange(undefined)} className="self-start text-xs text-muted underline underline-offset-2">
-          Back to the shadow&apos;s own ({own}%)
+          {fillWords(fw.shadowBack, { n: own })}
         </button>
       )}
     </div>
@@ -5849,11 +5766,13 @@ function HeadingFields({
   onChange: (block: HeadingBlock) => void;
 }) {
   const id = useId();
+  const words = useAdminText("builder");
+  const hw = words.heading;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-text`} className="text-sm font-medium">
-          Heading
+          {hw.heading}
         </label>
         <input
           id={`${id}-text`}
@@ -5862,22 +5781,18 @@ function HeadingFields({
           onChange={(event) => onChange({ ...block, text: event.target.value })}
           className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-medium"
         />
-        <p className="text-xs text-muted">{INLINE_HINT}</p>
+        <p className="text-xs text-muted">{words.inlineHint}</p>
       </div>
       <div className="flex flex-col gap-1">
         <Choices
-          legend="Level"
-          hint="for search engines and screen readers; the size is under Style"
+          legend={hw.level}
+          hint={hw.levelHint}
           options={LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
           value={String(block.level)}
           onChange={(level) => onChange({ ...block, level: Number(level) as HeadingLevel })}
         />
         <p className={`text-xs ${block.level === 1 && otherMainHeading ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
-          {block.level === 1
-            ? otherMainHeading
-              ? "Another heading on this page is H1. A page has one main heading: make one of them H2."
-              : "H1 is the page's main heading, used once; the page's title is then no longer read out in its place."
-            : "H1 is the page's main heading; sections below it are H2, and parts of those H3 and so on."}
+          {block.level === 1 ? (otherMainHeading ? hw.twoMain : hw.main) : hw.levels}
         </p>
       </div>
     </div>
@@ -5887,39 +5802,36 @@ function HeadingFields({
 /** A button's text, address and whether it opens a new tab (D49). */
 function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (block: ButtonBlock) => void }) {
   const id = useId();
+  const w = useAdminText("builder");
+  const bw = w.button;
   const href = block.href.trim();
-  const problem =
-    href === ""
-      ? "The button shows on the site once it has an address."
-      : isLinkAddress(href)
-        ? null
-        : "Use a web address (https://…), a page on the site (/about), mailto: or tel:.";
+  const problem = href === "" ? bw.needsAddress : isLinkAddress(href) ? null : w.link.badAddress;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-label`} className="text-sm font-medium">
-          Text
+          {bw.text}
         </label>
         <input
           id={`${id}-label`}
           value={block.label}
           maxLength={BUTTON_LABEL_MAX}
-          placeholder="Start your store"
+          placeholder={bw.placeholder}
           onChange={(event) => onChange({ ...block, label: event.target.value })}
           className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
         />
-        <p className="text-xs text-muted">{INLINE_HINT}</p>
+        <p className="text-xs text-muted">{w.inlineHint}</p>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
-          Address
+          {w.link.address}
         </label>
         <input
           id={`${id}-href`}
           value={block.href}
           maxLength={2000}
           spellCheck={false}
-          placeholder="https://… or /about"
+          placeholder={w.link.placeholder}
           aria-invalid={Boolean(problem && href)}
           aria-describedby={`${id}-href-hint`}
           onChange={(event) => onChange({ ...block, href: event.target.value })}
@@ -5929,12 +5841,12 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
           id={`${id}-href-hint`}
           className={`text-xs ${problem && href ? "text-red-700 dark:text-red-400" : "text-muted"}`}
         >
-          {problem ?? "A page on this site, another site, an email or a phone number."}
+          {problem ?? w.link.addressHint}
         </span>
       </div>
       <Check
-        label="Open in a new tab"
-        hint="Screen readers are told it opens a new tab."
+        label={w.image.newTab}
+        hint={w.image.newTabHint}
         checked={Boolean(block.newTab)}
         onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
       />
@@ -5944,17 +5856,18 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
 
 /** A button's look: kind, size, corners, width, place and colours (D49); its weight and font are its typography (D179). */
 function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: (patch: BlockPatch<ButtonBlock>) => void }) {
+  const w = useAdminText("builder");
   return (
     <div className="flex flex-col gap-4">
       <ButtonLookFields look={block} onChange={onChange} />
       <ButtonHoverField value={block.hover} onChange={(hover) => onChange({ hover })} />
       <Check
-        label="Full width"
-        hint="As wide as its column."
+        label={w.button.fullWidth}
+        hint={w.button.fullWidthHint}
         checked={Boolean(block.fullWidth)}
         onChange={(fullWidth) => onChange({ fullWidth })}
       />
-      <TextAlignFields what="Position" value={block} onChange={onChange} />
+      <TextAlignFields what={w.dialogs.position} value={block} onChange={onChange} />
     </div>
   );
 }
@@ -5984,20 +5897,15 @@ function GridPreview({ block, grid, lang }: { block: ContentGridBlock; grid: Gri
   useEffect(() => load(key), [key]);
   const own = custom ? { key, data: customGridData(block, { base: grid.owner ? "" : null, lang: lang ?? "en", locale: lang ?? "en-GB" }) } : null;
 
+  const gw = useAdminText("builder").grid;
   const note = (text: string) => <p className="rounded-md bg-surface p-3 text-sm text-muted">{text}</p>;
   const shown = own ?? result;
-  if (!shown) return note("Content grid: finding what it shows …");
+  if (!shown) return note(gw.finding);
   const data = shown.data;
-  if ("problem" in data) return note(`Content grid: ${data.problem}`);
+  if ("problem" in data) return note(fillWords(gw.problem, { problem: data.problem }));
   const stale = shown.key !== key;
   if (data.items.length === 0) {
-    return note(
-      custom
-        ? "Content grid: no item has a title, picture or text yet, so the site shows nothing here. Double-click to add items."
-        : block.emptyText
-          ? `Content grid: nothing matches yet, so the site shows “${block.emptyText}”.`
-          : "Content grid: nothing matches yet, so the site shows nothing here. Double-click to change what it shows.",
-    );
+    return note(custom ? gw.noItems : block.emptyText ? fillWords(gw.nothingShows, { text: block.emptyText }) : gw.nothing);
   }
   const m = t(data.lang);
   return (
@@ -6027,6 +5935,7 @@ function TermChecks({
   onChange: (value: { categories: string[]; tags: string[] }) => void;
 }) {
   const tree = categoryTree(terms);
+  const gw = useAdminText("builder").grid;
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
   const toggle = (key: "categories" | "tags", id: string, on: boolean) => {
     const ids = value[key].filter((x) => x !== id);
@@ -6036,14 +5945,14 @@ function TermChecks({
     <div className="grid gap-4 sm:grid-cols-2">
       {(
         [
-          ["categories", "Categories", tree],
-          ["tags", "Tags", tags.map((t) => ({ ...t, depth: 0 }))],
+          ["categories", gw.categories, tree],
+          ["tags", gw.tags, tags.map((t) => ({ ...t, depth: 0 }))],
         ] as const
       ).map(([key, legend, list]) => (
         <fieldset key={key} className="flex flex-col gap-1">
           <legend className="mb-1 text-sm font-medium">{legend}</legend>
           {list.length === 0 ? (
-            <p className="text-sm text-muted">None yet.</p>
+            <p className="text-sm text-muted">{gw.noneYet}</p>
           ) : (
             list.map((term) => (
               <label key={term.id} className="flex min-h-8 items-center gap-2 text-sm" style={{ paddingLeft: `${term.depth * 1.25}rem` }}>
@@ -6079,11 +5988,12 @@ function ColumnsFields<T extends { columns?: number; at?: PageBlock["at"] }>({
 }) {
   const { size } = useSizeEdit();
   const value = valueAt(part, "columns", size) ?? fallback(size);
+  const gw = useAdminText("builder").grid;
   return (
     <Choices
-      legend="Columns"
-      hint="tiles side by side"
-      mark={<SizeMark part={part} field="columns" label="Columns" onPatch={(patch) => onChange(patch as Partial<T>)} />}
+      legend={gw.columns}
+      hint={gw.columnsHint}
+      mark={<SizeMark part={part} field="columns" label={gw.columns} onPatch={(patch) => onChange(patch as Partial<T>)} />}
       muted={inheritedClass(sizeSource(part, size, "columns"), size)}
       options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
       value={String(value)}
@@ -6099,15 +6009,16 @@ function ColumnsFields<T extends { columns?: number; at?: PageBlock["at"] }>({
 function GridDisplayFields({ block, onChange }: { block: ContentGridBlock; onChange: (patch: BlockPatch<ContentGridBlock>) => void }) {
   const { size } = useSizeEdit();
   const carousel = carouselAt(block, size);
+  const gw = useAdminText("builder").grid;
   return (
     <>
       <Choices
-        legend="Show as"
-        mark={<SizeMark part={block} field="display" label="Show as" onPatch={onChange} />}
+        legend={gw.showAs}
+        mark={<SizeMark part={block} field="display" label={gw.showAs} onPatch={onChange} />}
         muted={inheritedClass(sizeSource(block, size, "display"), size)}
         options={[
-          { value: "grid", label: "Grid" },
-          { value: "carousel", label: "Carousel" },
+          { value: "grid", label: gw.grid },
+          { value: "carousel", label: gw.carousel },
         ]}
         value={carousel ? "carousel" : "grid"}
         onChange={(display) => {
@@ -6120,11 +6031,9 @@ function GridDisplayFields({ block, onChange }: { block: ContentGridBlock; onCha
       {carouselAnywhere(block) && (
         <>
           <p className="text-xs text-muted">
-            {carousel
-              ? "The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on."
-              : "A carousel at another screen size; a grid at this one."}
+            {carousel ? gw.carouselHint : gw.carouselElsewhere}
           </p>
-          <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
+          <Check label={gw.peek} checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
           <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
         </>
       )}
@@ -6179,15 +6088,16 @@ function ContentGridFields({
     storeId: s?.id ?? "",
     market: s?.markets[0]?.code ?? "",
   });
+  const gw = useAdminText("builder").grid;
 
   return (
     <div className="flex flex-col gap-5">
       <Choices
-        legend="Show"
+        legend={gw.show}
         // A website's grids (D178 step 5: the online shop off) show pages, articles or the owner's own items; one of products keeps its choice.
         options={(Object.keys(GRID_CONTENT) as GridContent[])
           .filter((type) => type !== "products" || source.type === "products" || partFeatureOn({ type: "contentGrid", source: { type } }, grid.features))
-          .map((type) => ({ value: type, label: GRID_CONTENT[type] }))}
+          .map((type) => ({ value: type, label: gw.content[type] }))}
         value={source.type}
         onChange={(type) => onChange(sourceChoice(block, type, own ? { type: "products" } : productsOf(grid.stores[0])))}
       />
@@ -6209,18 +6119,18 @@ function ContentGridFields({
       )}
       {products && own && (
         <p className="text-sm text-muted">
-          The store&apos;s own products, priced in the market of the shopper viewing the page, in its language.
+          {gw.ownProducts}
         </p>
       )}
       {products &&
         !own &&
         (grid.stores.length === 0 ? (
-          <p className="text-sm text-muted">No store is open yet, so there are no products to show.</p>
+          <p className="text-sm text-muted">{gw.noStore}</p>
         ) : (
           <div className="flex flex-wrap gap-4">
             <div className="flex flex-col gap-1">
               <label htmlFor={`${id}-store`} className="text-sm font-medium">
-                Store
+                {gw.store}
               </label>
               <select
                 id={`${id}-store`}
@@ -6228,7 +6138,7 @@ function ContentGridFields({
                 onChange={(event) => onChange({ source: productsOf(grid.stores.find((s) => s.id === event.target.value)), categories: [], tags: [] })}
                 className={gridField}
               >
-                {!store && <option value="">Choose a store</option>}
+                {!store && <option value="">{gw.chooseStore}</option>}
                 {grid.stores.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -6238,7 +6148,7 @@ function ContentGridFields({
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor={`${id}-market`} className="text-sm font-medium">
-                Market <span className="font-normal text-muted">(prices and language)</span>
+                {gw.market} <span className="font-normal text-muted">({gw.marketHint})</span>
               </label>
               <select
                 id={`${id}-market`}
@@ -6258,7 +6168,7 @@ function ContentGridFields({
       {source.type === "pages" && (
         <div className="flex flex-col gap-1 border-t border-border pt-4">
           <label htmlFor={`${id}-parent`} className="text-sm font-medium">
-            Only pages under
+            {gw.under}
           </label>
           <select
             id={`${id}-parent`}
@@ -6266,8 +6176,8 @@ function ContentGridFields({
             onChange={(event) => onChange({ source: event.target.value ? { type: "pages", parent: event.target.value } : { type: "pages" } })}
             className={gridField}
           >
-            <option value="">Any page</option>
-            <option value="@this">The page this grid is on</option>
+            <option value="">{gw.anyPage}</option>
+            <option value="@this">{gw.thisPage}</option>
             {source.parent && source.parent !== "@this" && !(grid.pageChoices ?? []).some((p) => p.slug === source.parent) && (
               <option value={source.parent}>/{source.parent}</option>
             )}
@@ -6277,19 +6187,13 @@ function ContentGridFields({
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted">
-            Shows the pages nested directly under the one chosen, such as the projects under Projects. Nothing is shown while the grid is
-            not on a page of its own.
-          </p>
+          <p className="text-xs text-muted">{gw.underHint}</p>
         </div>
       )}
       {traits.terms && (
       <div className="flex flex-col gap-2 border-t border-border pt-4">
-        <p className="text-sm font-medium">Only these</p>
-        <p className="text-xs text-muted">
-          None chosen shows all. A category includes its subcategories; with categories and tags, an item needs one of
-          each.
-        </p>
+        <p className="text-sm font-medium">{gw.onlyThese}</p>
+        <p className="text-xs text-muted">{gw.onlyTheseHint}</p>
         <TermChecks terms={terms} value={{ categories: block.categories, tags: block.tags }} onChange={(ids) => onChange(ids)} />
       </div>
       )}
@@ -6298,7 +6202,7 @@ function ContentGridFields({
         {!recommend && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-sort`} className="text-sm font-medium">
-            Order
+            {gw.order}
           </label>
           <select
             id={`${id}-sort`}
@@ -6308,15 +6212,15 @@ function ContentGridFields({
           >
             {sorts.map((sort) => (
               <option key={sort} value={sort}>
-                {GRID_SORTS[sort]}
+                {gw.sorts[sort]}
               </option>
             ))}
           </select>
         </div>
         )}
         <NumberField
-          label="How many"
-          hint={`at most ${GRID_LIMIT_MAX}`}
+          label={gw.howMany}
+          hint={fillWords(gw.atMost, { max: GRID_LIMIT_MAX })}
           value={block.limit}
           max={GRID_LIMIT_MAX}
           onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
@@ -6326,7 +6230,7 @@ function ContentGridFields({
       {products && own && source.type === "products" && (
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <Check
-            label="Recommend products for each shopper"
+            label={gw.recommend}
             checked={Boolean(recommend)}
             onChange={(on) =>
               onChange(
@@ -6336,22 +6240,17 @@ function ContentGridFields({
               )
             }
           />
-          <p className="text-xs text-muted">
-            Picks what suits the shopper from the store&apos;s products, by what the page is about (a product, an article, the
-            archive or any page), what they have looked at, searched for, saved or put in the cart, never what they have already
-            bought. Needs recommendations switched on under Sales, Recommendations; the &ldquo;Only these&rdquo; categories and
-            tags above keep it to those products. The builder shows what everyone is shown.
-          </p>
+          <p className="text-xs text-muted">{gw.recommendHint}</p>
           {recommend && (
             <>
               <fieldset className="flex flex-wrap gap-x-6 gap-y-2">
-                <legend className="mb-1 w-full text-sm font-medium">Mix</legend>
-                <Check label="Upsells (a step up)" checked={recommend.mix.upsell} onChange={(upsell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, upsell } } } })} />
-                <Check label="Cross-sells (related products)" checked={recommend.mix.crossSell} onChange={(crossSell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, crossSell } } } })} />
-                <Check label="Complements (accessories, add-ons)" checked={recommend.mix.complement} onChange={(complement) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, complement } } } })} />
+                <legend className="mb-1 w-full text-sm font-medium">{gw.mix}</legend>
+                <Check label={gw.upsell} checked={recommend.mix.upsell} onChange={(upsell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, upsell } } } })} />
+                <Check label={gw.crossSell} checked={recommend.mix.crossSell} onChange={(crossSell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, crossSell } } } })} />
+                <Check label={gw.complement} checked={recommend.mix.complement} onChange={(complement) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, complement } } } })} />
               </fieldset>
               <Check
-                label="Say why under each product"
+                label={gw.explain}
                 checked={recommend.explain}
                 onChange={(explain) => onChange({ source: { ...source, recommend: { ...recommend, explain } } })}
               />
@@ -6368,11 +6267,8 @@ function ContentGridFields({
             className="mt-0.5 size-4"
           />
           <span>
-            <span className="font-medium">Filter and sort button</span>
-            <span className="block text-xs text-muted">
-              Shoppers narrow the products by kind, category, feature, option, price and stock, and change their order;
-              the grid follows at once. The choices go into the page&apos;s address, so a filtered grid can be shared.
-            </span>
+            <span className="font-medium">{gw.filters}</span>
+            <span className="block text-xs text-muted">{gw.filtersHint}</span>
           </span>
         </label>
       )}
@@ -6380,7 +6276,7 @@ function ContentGridFields({
         <GridDisplayFields block={block} onChange={onChange} />
       </div>
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
-        <legend className="float-left mb-2 w-full text-sm font-medium">In each tile</legend>
+        <legend className="float-left mb-2 w-full text-sm font-medium">{gw.inEachTile}</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {(Object.keys(GRID_ELEMENTS) as GridElement[])
             .filter((element) => element !== "price" || products || custom)
@@ -6392,7 +6288,7 @@ function ContentGridFields({
                   onChange={(event) => onChange({ show: { ...block.show, [element]: event.target.checked } })}
                   className="size-4"
                 />
-                {custom && element === "price" ? "Price text" : GRID_ELEMENTS[element]}
+                {custom && element === "price" ? gw.priceText : gw.elements[element]}
               </label>
             ))}
         </div>
@@ -6407,13 +6303,13 @@ function ContentGridFields({
       {block.show.button && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-button`} className="text-sm font-medium">
-            Button text
+            {gw.buttonText}
           </label>
           <input
             id={`${id}-button`}
             value={block.buttonLabel}
             maxLength={BUTTON_LABEL_MAX}
-            placeholder={products ? "View product (in the market's language)" : "Read more"}
+            placeholder={products ? gw.viewProduct : gw.readMore}
             // Custom items can also have a button text each (D155): this one is for those that do not.
             onChange={(event) => onChange({ buttonLabel: event.target.value })}
             className={gridField}
@@ -6422,13 +6318,13 @@ function ContentGridFields({
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-empty`} className="text-sm font-medium">
-          When nothing matches
+          {gw.whenNothing}
         </label>
         <input
           id={`${id}-empty`}
           value={block.emptyText}
           maxLength={300}
-          placeholder="Show nothing"
+          placeholder={gw.showNothing}
           onChange={(event) => onChange({ emptyText: event.target.value })}
           className={gridField}
         />
@@ -6443,17 +6339,19 @@ const GRID_LEVELS = [2, 3, 4, 5, 6] as const;
 function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChange: (patch: BlockPatch<ContentGridBlock>) => void }) {
   const tile = block.tile;
   const { size } = useSizeEdit();
+  const w = useAdminText("builder");
+  const gw = w.grid;
   return (
     <div className="flex flex-col gap-4">
       <Choices
-        legend="Pictures"
-        hint="cropped alike, so tiles line up"
+        legend={gw.pictures}
+        hint={gw.picturesHint}
         options={[
           // Products can follow the store theme's product cards (D60), their default.
-          ...(sourceTraits(block.source).products ? [{ value: "theme" as const, label: "Theme's product cards" }] : []),
+          ...(sourceTraits(block.source).products ? [{ value: "theme" as const, label: gw.themeCards }] : []),
           ...(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
             value: shape,
-            label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
+            label: w.fields.shapes[shape],
             picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
           })),
         ]}
@@ -6461,63 +6359,63 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
         onChange={(shape) => onChange({ imageShape: shape === gridImageShape({ source: block.source }) ? undefined : shape })}
       />
       <Choices
-        legend="Heading level"
-        hint="under the heading above the grid"
+        legend={gw.headingLevel}
+        hint={gw.headingLevelHint}
         options={GRID_LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
         value={String(block.headingLevel)}
         onChange={(level) => onChange({ headingLevel: Number(level) as ContentGridBlock["headingLevel"] })}
       />
       <NumberField
-        label="Excerpt"
-        hint="lines at most, 1 to 6"
+        label={gw.excerpt}
+        hint={gw.excerptHint}
         value={block.excerptLines}
         max={6}
         onChange={(lines) => onChange({ excerptLines: Math.max(1, lines) })}
       />
       <div className="flex flex-col gap-4 border-t border-border pt-4">
-        <p className="text-sm font-medium">Buttons</p>
+        <p className="text-sm font-medium">{gw.buttons}</p>
         <ButtonLookFields look={block.button ?? {}} onChange={(patch) => onChange({ button: mergeOptional(block.button, patch) })} />
       </div>
       <div className="flex flex-col gap-4 border-t border-border pt-4">
-        <p className="text-sm font-medium">Cards</p>
+        <p className="text-sm font-medium">{gw.cards}</p>
         <NumberField
-          label="Space between cards"
-          hint={`in pixels, up to ${GRID_GAP_MAX}`}
+          label={gw.cardGap}
+          hint={fillWords(w.row.upTo, { max: GRID_GAP_MAX })}
           value={valueAt(block, "gap", size) ?? block.gap}
           max={GRID_GAP_MAX}
-          mark={<SizeMark part={block} field="gap" label="Space between tiles" onPatch={onChange} />}
+          mark={<SizeMark part={block} field="gap" label={gw.tileGap} onPatch={onChange} />}
           muted={inheritedClass(sizeSource(block, size, "gap"), size)}
           onChange={(gap) => onChange(setAt(block, size, { gap }))}
         />
         <OptionalColor
-          label="Card background"
-          hint="Otherwise none."
+          label={gw.cardBackground}
+          hint={gw.cardBackgroundHint}
           value={tile?.background}
           fallback="#f5f5f4"
           onChange={(background) => onChange({ tile: mergeOptional(tile, { background }) })}
         />
         <OptionalColor
-          label="Card text colour"
-          hint="Otherwise the page's."
+          label={gw.cardText}
+          hint={gw.cardTextHint}
           value={tile?.color}
           fallback="#111827"
           onChange={(color) => onChange({ tile: mergeOptional(tile, { color }) })}
         />
         <NumberField
-          label="Space inside each card"
-          hint="padding around the picture and the words, in pixels"
+          label={gw.cardPadding}
+          hint={gw.cardPaddingHint}
           value={tile?.padding ?? 0}
           max={SPACING_MAX}
           onChange={(padding) => onChange({ tile: mergeOptional(tile, { padding: padding || undefined }) })}
         />
         <SidesFields
-          legend="Space around the card's words"
-          hint="padding of the text under the picture, in pixels"
+          legend={gw.wordsPadding}
+          hint={gw.wordsPaddingHint}
           value={contentSides(tile?.contentPadding) ?? { top: 0, right: 0, bottom: 0, left: 0 }}
           max={SPACING_MAX}
           onChange={(sides) => onChange({ tile: mergeOptional(tile, { contentPadding: contentSides(sides) ? sides : undefined }) })}
         />
-        <FrameFields what="Card" value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
+        <FrameFields what={gw.card} value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
       </div>
     </div>
   );
@@ -6526,26 +6424,26 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
 /** A row's layout: one choice for its line, or one for each of its lines of columns (D187). */
 function RowLayoutChoice({ row, onLayout }: { row: PageRow; onLayout: (line: number, layout: RowLayout) => void }) {
   const layouts = rowLayouts(row);
+  const lw = useAdminText("builder").layoutChoice;
   if (layouts.length === 1) return <LayoutChoice value={row.layout} onChange={(layout) => onLayout(0, layout)} />;
   return (
     <div className="flex flex-col gap-4">
       {layouts.map((layout, i) => (
         <div key={i} className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Line {i + 1}</p>
-          <LayoutChoice label={`Layout of line ${i + 1}`} value={layout} onChange={(next) => onLayout(i, next)} />
+          <p className="text-sm font-medium">{fillWords(lw.line, { n: i + 1 })}</p>
+          <LayoutChoice label={fillWords(lw.lineLayout, { n: i + 1 })} value={layout} onChange={(next) => onLayout(i, next)} />
         </div>
       ))}
-      <p className="text-xs text-muted">
-        A line of columns has its own layout. Drag a column onto another line, or into the space between lines, to move it.
-      </p>
+      <p className="text-xs text-muted">{lw.linesHint}</p>
     </div>
   );
 }
 
 /** The nine layouts to choose from, as pictures. */
-function LayoutChoice({ value, onChange, label = "Layout" }: { value: RowLayout; onChange: (layout: RowLayout) => void; label?: string }) {
+function LayoutChoice({ value, onChange, label }: { value: RowLayout; onChange: (layout: RowLayout) => void; label?: string }) {
+  const w = useAdminText("builder");
   return (
-    <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-3">
+    <div role="radiogroup" aria-label={label ?? w.layoutChoice.layout} className="grid grid-cols-3 gap-3">
       {ROW_LAYOUT_KEYS.map((layout) => (
         <button
           key={layout}
@@ -6556,7 +6454,7 @@ function LayoutChoice({ value, onChange, label = "Layout" }: { value: RowLayout;
           className="flex flex-col gap-2 rounded-md border border-transparent p-2 text-left hover:bg-surface aria-checked:border-blue-600 aria-checked:bg-blue-50 dark:aria-checked:bg-blue-950"
         >
           <LayoutPreview layout={layout} />
-          <span className="text-xs">{ROW_LAYOUTS[layout].label}</span>
+          <span className="text-xs">{w.layouts[layout]}</span>
         </button>
       ))}
     </div>
@@ -6582,6 +6480,7 @@ function GlobalControls({
   nameOf: (globalId: string) => string;
 }) {
   const place = usePlace(rows, id);
+  const gw = useAdminText("builder").global;
   if (!place || (!place.global && !place.within)) return null;
   const within = place.within;
   return (
@@ -6590,28 +6489,28 @@ function GlobalControls({
         <>
           <span
             className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-900 dark:bg-violet-950 dark:text-violet-100"
-            title="Changes here change it on every page that uses it, when you save."
+            title={gw.everyPage}
           >
-            Global: {nameOf(place.global)}
+            {fillWords(gw.mark, { name: nameOf(place.global) })}
           </span>
           <button
             type="button"
             onClick={() => onRows((current) => detachUse(current, id))}
-            title="Make this one a copy of this page's own. The global and its other uses stay as they are."
+            title={gw.unlinkHint}
             className="min-h-10 rounded-md border border-border px-3 text-sm"
           >
-            Unlink
+            {gw.unlink}
           </button>
         </>
       )}
       {within && !within.shared && !place.inLocal && (
-        <label className="flex items-center gap-2 text-sm" title={`Not shared with ${nameOf(within.global)}: each page using it has its own.`}>
+        <label className="flex items-center gap-2 text-sm" title={fillWords(gw.notShared, { name: nameOf(within.global) })}>
           <input type="checkbox" checked={place.local} onChange={(event) => onRows((current) => setLocal(current, id, event.target.checked))} />
-          Only on this page
+          {gw.onlyHere}
         </label>
       )}
-      {within && within.shared && !place.global && <span className="text-xs text-muted">Part of {nameOf(within.global)}</span>}
-      {place.inLocal && !place.global && <span className="text-xs text-muted">This page&apos;s own</span>}
+      {within && within.shared && !place.global && <span className="text-xs text-muted">{fillWords(gw.partOf, { name: nameOf(within.global) })}</span>}
+      {place.inLocal && !place.global && <span className="text-xs text-muted">{gw.pagesOwn}</span>}
     </>
   );
 }
@@ -6637,7 +6536,9 @@ function SaveAsDialog({
   const [shared, setShared] = useState<PartSharing>("private");
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
-  const kind = SAVED_KIND_LABELS[part.kind].one.toLowerCase();
+  const w = useAdminText("builder");
+  const sw = w.savedPart;
+  const kind = w.savedKinds[part.kind].one.toLowerCase();
   const submit = () =>
     start(async () => {
       const sharing = canShare ? { sharing: shared } : {};
@@ -6652,11 +6553,11 @@ function SaveAsDialog({
     <Modal
       open
       onClose={onCancel}
-      title={`Save this ${kind}`}
+      title={fillWords(sw.saveThis, { kind })}
       footer={
         <>
           <button type="button" onClick={onCancel} className="min-h-10 rounded-md border border-border px-4 text-sm">
-            Cancel
+            {sw.cancel}
           </button>
           <button
             type="submit"
@@ -6664,7 +6565,7 @@ function SaveAsDialog({
             disabled={busy}
             className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
           >
-            {busy ? "Saving …" : "Save"}
+            {busy ? sw.saving : sw.save}
           </button>
         </>
       }
@@ -6678,7 +6579,7 @@ function SaveAsDialog({
         className="flex flex-col gap-3"
       >
         <label htmlFor={`${id}-name`} className="text-sm font-medium">
-          Name
+          {sw.name}
         </label>
         <input
           id={`${id}-name`}
@@ -6690,23 +6591,18 @@ function SaveAsDialog({
           maxLength={SAVED_NAME_MAX}
           required
           autoFocus
-          placeholder={part.kind === "row" ? "Hero with picture" : part.kind === "column" ? "Contact details" : "Delivery promise"}
+          placeholder={sw.namePlaceholders[part.kind === "row" ? "row" : part.kind === "column" ? "column" : "block"]}
           className={field}
         />
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={global} onChange={(event) => setGlobal(event.target.checked)} className="mt-1" />
           <span>
-            <span className="font-medium">Global</span>
-            <span className="block text-xs text-muted">
-              Every page that uses it shows the same {kind}: change it in one place and it changes everywhere. Inside it,
-              columns and components can still be each page&apos;s own.
-            </span>
+            <span className="font-medium">{w.frame.global}</span>
+            <span className="block text-xs text-muted">{fillWords(sw.globalHint, { kind })}</span>
           </span>
         </label>
         <p className="text-xs text-muted">
-          {global
-            ? `It is added under Saved in the left sidebar, to drag onto any page. This ${kind} becomes its first use.`
-            : `It is added under Saved in the left sidebar, to drag onto any page. This page keeps its ${kind} as it is.`}
+          {fillWords(global ? sw.addedGlobal : sw.added, { kind })}
         </p>
         {canShare && <SharingChoice value={shared} onChange={setShared} />}
         {problems.length > 0 && (
@@ -6779,39 +6675,41 @@ function SavedPartDialog({
       onClose();
     });
   const row = rows[0];
+  const w = useAdminText("builder");
+  const sw = w.savedPart;
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={`Saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}`}
+      title={fillWords(sw.title, { kind: w.savedKinds[part.kind].one.toLowerCase() })}
       wide
       footer={
         confirmDelete ? (
           <>
             <span className="mr-auto self-center text-sm">
-              Delete “{part.name}” from Saved? Pages that use it keep {part.global ? "what they have, as their own" : "their copy"}.
+              {fillWords(part.global ? sw.deleteGlobal : sw.deleteCopy, { name: part.name })}
             </span>
             <button type="button" onClick={() => setConfirmDelete(false)} className="min-h-10 rounded-md border border-border px-4 text-sm">
-              Keep it
+              {w.dialogs.keepIt}
             </button>
             <button type="button" onClick={remove} disabled={busy} className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white">
-              Delete
+              {w.tools.delete}
             </button>
           </>
         ) : (
           <>
             <button type="button" onClick={() => setConfirmDelete(true)} className="mr-auto min-h-10 px-2 text-sm text-red-700 underline dark:text-red-400">
-              Delete
+              {w.tools.delete}
             </button>
             <button
               type="button"
               onClick={onUse}
               disabled={dirty}
-              title={dirty ? "Save your changes first" : undefined}
+              title={dirty ? sw.saveFirst : undefined}
               className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-40"
             >
-              Add to page
+              {sw.addToPage}
             </button>
             <button
               type="button"
@@ -6819,7 +6717,7 @@ function SavedPartDialog({
               disabled={busy || (!dirty && name === part.name && global === part.global)}
               className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
             >
-              {busy ? "Saving …" : "Save changes"}
+              {busy ? sw.saving : sw.saveChanges}
             </button>
           </>
         )
@@ -6828,7 +6726,7 @@ function SavedPartDialog({
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-name`} className="text-sm font-medium">
-            Name
+            {sw.name}
           </label>
           <input
             id={`${id}-name`}
@@ -6841,25 +6739,23 @@ function SavedPartDialog({
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={global} onChange={(event) => setGlobal(event.target.checked)} className="mt-1" />
           <span>
-            <span className="font-medium">Global</span>
+            <span className="font-medium">{w.frame.global}</span>
             <span className="block text-xs text-muted">
               {part.global
-                ? `Used on ${part.uses === 1 ? "1 page" : `${part.uses} pages`}. Saving changes here changes it on every one of them, live pages included.${
-                    global ? "" : " Turned off, each page keeps what it has as its own."
-                  }`
-                : "Every page that uses it from now on shows the same, and follows its changes. Pages that already have a copy keep it."}
+                ? `${countWords(part.uses, sw.usedOn)}${global ? "" : ` ${sw.turnedOff}`}`
+                : sw.fromNowOn}
             </span>
           </span>
         </label>
         {part.kind === "row" && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Layout</p>
+            <p className="text-sm font-medium">{w.layoutChoice.layout}</p>
             <RowLayoutChoice row={row} onLayout={(line, layout) => change((r) => setLineLayout(r, row.id, line, layout, newId))} />
           </div>
         )}
         {row.columns.map((column, index) => (
-          <section key={column.id} className="flex flex-col gap-3" aria-label={part.kind === "row" ? `Column ${index + 1}` : "Content"}>
-            {part.kind === "row" && <h3 className="text-sm font-medium">Column {index + 1}</h3>}
+          <section key={column.id} className="flex flex-col gap-3" aria-label={part.kind === "row" ? fillWords(sw.column, { n: index + 1 }) : w.canvas.content}>
+            {part.kind === "row" && <h3 className="text-sm font-medium">{fillWords(sw.column, { n: index + 1 })}</h3>}
             {column.blocks.map((block, n) => (
               <div key={block.id} className="flex flex-col gap-1">
                 {block.type === "richText" ? (
@@ -6874,7 +6770,7 @@ function SavedPartDialog({
                       onChange={(doc) =>
                         change((r) => updateBlock(r, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
                       }
-                      label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
+                      label={part.kind === "row" ? fillWords(sw.columnText, { column: index + 1, n: n + 1 }) : fillWords(sw.text, { n: n + 1 })}
                     />
                   </div>
                 ) : (
@@ -6891,26 +6787,16 @@ function SavedPartDialog({
                       <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : block.type === "heading" ? (
                       <HeadingFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
-                    ) : block.type === "contentGrid" ? (
-                      <p className="text-sm text-muted">Content grid: change its settings where it is used on a page.</p>
-                    ) : block.type === "product" ? (
-                      <p className="text-sm text-muted">Product component: change its settings where it is used in a layout.</p>
-                    ) : block.type === "site" ? (
-                      <p className="text-sm text-muted">Site component: change its settings where it is used in a header or footer.</p>
-                    ) : block.type === "menu" ? (
-                      <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
-                    ) : block.type === "search" ? (
-                      <p className="text-sm text-muted">Search: change its settings where it is used.</p>
-                    ) : block.type === "plans" ? (
-                      <p className="text-sm text-muted">Plans: change its settings where it is used.</p>
-                    ) : block.type === "themeStore" ? (
-                      <p className="text-sm text-muted">Theme store: change its settings where it is used.</p>
-                    ) : block.type === "customField" ? (
-                      <p className="text-sm text-muted">Custom fields: change its settings where it is used.</p>
-                    ) : block.type === "fieldLoop" ? (
-                      <p className="text-sm text-muted">Field loop: change its settings where it is used.</p>
-                    ) : block.type === "storePart" ? (
-                      <p className="text-sm text-muted">Shop page: change its settings where it is used.</p>
+                    ) : block.type === "contentGrid" || block.type === "product" || block.type === "site" ? (
+                      <p className="text-sm text-muted">{sw.whereUsedIn[block.type]}</p>
+                    ) : block.type === "menu" ||
+                      block.type === "search" ||
+                      block.type === "plans" ||
+                      block.type === "themeStore" ||
+                      block.type === "customField" ||
+                      block.type === "fieldLoop" ||
+                      block.type === "storePart" ? (
+                      <p className="text-sm text-muted">{fillWords(sw.whereUsed, { block: w.blockNames[block.type] })}</p>
                     ) : block.type === "button" ? (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : (
@@ -6924,7 +6810,7 @@ function SavedPartDialog({
                     onClick={() => change((r) => removeBlock(r, block.id))}
                     className="w-fit text-xs text-muted underline hover:text-foreground"
                   >
-                    Remove {blockThis[block.type]}
+                    {fillWords(sw.remove, { what: w.blockThis[block.type] })}
                   </button>
                 )}
               </div>
@@ -6935,7 +6821,7 @@ function SavedPartDialog({
                 onClick={() => change((r) => insertBlock(r, column.id, newBlock("richText", newId), Number.MAX_SAFE_INTEGER))}
                 className="w-fit rounded-md border border-border px-3 py-1.5 text-xs"
               >
-                + Rich text
+                {sw.addText}
               </button>
             )}
           </section>
@@ -7046,22 +6932,20 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
   const id = useId();
   const currencies = planCurrencies(plans);
   const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+  const pw = useAdminText("builder").plans;
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-muted">
-        Draws a card for each of your active plans, with its price, fee per sale and what it includes. The plans, prices and features are edited under
-        Plans: a change there shows on this page at once.
-      </p>
-      {plans.length === 0 && <p className="text-sm">There are no active plans yet, so nothing shows until you set one up under Plans.</p>}
+      <p className="text-sm text-muted">{pw.hint}</p>
+      {plans.length === 0 && <p className="text-sm">{pw.none}</p>}
       <label htmlFor={`${id}-currency`} className="flex flex-col gap-1 text-sm font-medium">
-        Currency
+        {pw.currency}
         <select
           id={`${id}-currency`}
           value={block.currency && currencies.includes(block.currency) ? block.currency : ""}
           onChange={(event) => onChange({ currency: event.target.value || undefined })}
           className={input}
         >
-          <option value="">The one most plans have a price in</option>
+          <option value="">{pw.currencyMost}</option>
           {currencies.map((currency) => (
             <option key={currency} value={currency}>
               {currency}
@@ -7070,27 +6954,27 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         </select>
       </label>
       <label htmlFor={`${id}-interval`} className="flex flex-col gap-1 text-sm font-medium">
-        Prices
+        {pw.prices}
         <select
           id={`${id}-interval`}
           value={block.interval ?? ""}
           onChange={(event) => onChange({ interval: (event.target.value || undefined) as PlansBlock["interval"] })}
           className={input}
         >
-          <option value="">Monthly, with the yearly price under it</option>
-          <option value="month">Monthly only</option>
-          <option value="year">Yearly only</option>
+          <option value="">{pw.monthlyYearly}</option>
+          <option value="month">{pw.monthly}</option>
+          <option value="year">{pw.yearly}</option>
         </select>
       </label>
       <label htmlFor={`${id}-highlight`} className="flex flex-col gap-1 text-sm font-medium">
-        Plan to recommend
+        {pw.recommend}
         <select
           id={`${id}-highlight`}
           value={plans.some((plan) => plan.id === block.highlightId) ? block.highlightId : ""}
           onChange={(event) => onChange({ highlightId: event.target.value || undefined })}
           className={input}
         >
-          <option value="">None</option>
+          <option value="">{pw.noneChoice}</option>
           {plans.map((plan) => (
             <option key={plan.id} value={plan.id}>
               {plan.name}
@@ -7099,24 +6983,24 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         </select>
       </label>
       <Check
-        label="Show the comparison table"
-        hint="Every feature in a row, with a tick for each plan that includes it, under the cards."
+        label={pw.comparison}
+        hint={pw.comparisonHint}
         checked={block.comparison === true}
         onChange={(comparison) => onChange({ comparison: comparison ? true : undefined })}
       />
       <label htmlFor={`${id}-label`} className="flex flex-col gap-1 text-sm font-medium">
-        Button text
+        {pw.buttonText}
         <input
           id={`${id}-label`}
           value={block.buttonLabel}
           maxLength={BUTTON_LABEL_MAX}
-          placeholder="Get started"
+          placeholder={pw.buttonPlaceholder}
           onChange={(event) => onChange({ buttonLabel: event.target.value })}
           className={input}
         />
       </label>
       <label htmlFor={`${id}-href`} className="flex flex-col gap-1 text-sm font-medium">
-        Button address
+        {pw.buttonAddress}
         <input
           id={`${id}-href`}
           value={block.buttonHref}
@@ -7124,7 +7008,7 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
           onChange={(event) => onChange({ buttonHref: event.target.value })}
           className={input}
         />
-        <span className="text-xs font-normal text-muted">Where the buttons lead; empty is the sign-up page.</span>
+        <span className="text-xs font-normal text-muted">{pw.buttonAddressHint}</span>
       </label>
     </div>
   );
@@ -7143,86 +7027,88 @@ function MenuFields({
 }) {
   const id = useId();
   const chosen = menus.find((menu) => menu.id === block.menuId);
+  const w = useAdminText("builder");
+  const mw = w.menu;
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">
-        One of your menus, with its links as they are set under{" "}
+        {mw.hintBefore}{" "}
         <a href={menusHref} target="_blank" rel="noopener" className="underline">
-          Menus
+          {mw.menus}
         </a>
-        : a change there shows wherever the menu is used.
+        {mw.hintAfter}
       </p>
       {menus.length === 0 ? (
         <p className="text-sm">
-          There are no menus yet.{" "}
+          {mw.none}{" "}
           <a href={menusHref} target="_blank" rel="noopener" className="underline">
-            Create one under Menus
+            {mw.create}
           </a>
           .
         </p>
       ) : (
         <label htmlFor={`${id}-menu`} className="flex flex-col gap-1 text-sm font-medium">
-          Menu
+          {w.blockNames.menu}
           <select
             id={`${id}-menu`}
             value={chosen ? chosen.id : ""}
             onChange={(event) => onChange({ menuId: event.target.value || undefined })}
             className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
           >
-            <option value="">Choose a menu</option>
+            <option value="">{mw.choose}</option>
             {menus.map((menu) => (
               <option key={menu.id} value={menu.id}>
-                {menu.name} ({menu.items.length === 1 ? "1 link" : `${menu.items.length} links`})
+                {menu.name} ({countWords(menu.items.length, mw.links)})
               </option>
             ))}
           </select>
         </label>
       )}
-      {block.menuId && !chosen && <p className="text-sm text-red-700">The menu this showed no longer exists. Choose another.</p>}
+      {block.menuId && !chosen && <p className="text-sm text-red-700">{mw.gone}</p>}
       <Choices
-        legend="Links"
+        legend={mw.linksLegend}
         options={[
-          { value: "row" as const, label: "Side by side" },
-          { value: "column" as const, label: "One under another" },
+          { value: "row" as const, label: w.row.side },
+          { value: "column" as const, label: w.row.stack },
         ]}
         value={block.direction ?? "row"}
         onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
       />
-      <p className="text-xs text-muted">
-        To leave it out on phones, where the menu button and the slide-out menu have the main menu, switch off Small under
-        Advanced, Visibility.
-      </p>
+      <p className="text-xs text-muted">{mw.phones}</p>
     </div>
   );
 }
 
 /** Under a stand-in on the canvas: the sizes it is left out at on the site (D179). */
 function HiddenNote({ hideAt }: { hideAt: Size[] | undefined }) {
+  const w = useAdminText("builder");
   if (!hideAt?.length) return null;
-  return <span className="block text-[10px] text-muted">Not at {hideAt.map((size) => SIZE_LABELS[size]).join(", ")}</span>;
+  return <span className="block text-[10px] text-muted">{fillWords(w.standIns.notAt, { sizes: hideAt.map((size) => w.sizes[size]).join(", ") })}</span>;
 }
 
 /** The store's search on the canvas: a box, and where its results go. */
 function SearchStandIn({ block }: { block: SearchBlock }) {
+  const sw = useAdminText("builder").standIns;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
-      <p className="text-xs text-muted">{block.results === false ? "Only the search box." : "The results of what shoppers search for show here."}</p>
+      <p className="text-xs text-muted">{block.results === false ? sw.searchBox : sw.searchResults}</p>
     </div>
   );
 }
 
 /** Kaizen's plans on the canvas (D142): what the component is set to show, as the canvas reads no plans. */
 function PlansStandIn({ block }: { block: PlansBlock }) {
+  const pw = useAdminText("builder").plans;
   const parts = [
-    block.currency ? `prices in ${block.currency}` : "prices in the platform's main currency",
-    block.interval === "month" ? "monthly prices" : block.interval === "year" ? "yearly prices" : "monthly and yearly prices",
-    block.comparison ? "with the comparison table" : "without the comparison table",
+    block.currency ? fillWords(pw.pricesIn, { currency: block.currency }) : pw.mainCurrency,
+    block.interval === "month" ? pw.monthlyPrices : block.interval === "year" ? pw.yearlyPrices : pw.bothPrices,
+    block.comparison ? pw.withComparison : pw.withoutComparison,
   ];
   return (
     <div className="rounded-md border border-dashed border-border bg-surface p-4 text-sm">
-      <p className="font-medium">Kaizena Flow&apos;s plans</p>
-      <p className="text-xs text-muted">A card for each plan, from the plans you have set up: {parts.join(", ")}.</p>
+      <p className="font-medium">{pw.title}</p>
+      <p className="text-xs text-muted">{fillWords(pw.cards, { parts: parts.join(", ") })}</p>
     </div>
   );
 }
@@ -7272,14 +7158,15 @@ function FieldsIcon() {
 /** A part of a store feature that is off (D178), on the canvas: the site draws nothing for it until the feature is switched on again. */
 function SwitchedOffStandIn({ block }: { block: PageBlock }) {
   const feature = partFeature(block);
+  const w = useAdminText("builder");
+  const sw = w.standIns;
   const name =
-    block.type === "storePart" ? shopPartCopy(block.part).name : block.type === "site" ? SITE_PARTS[block.part] : block.type === "product" ? PRODUCT_PARTS[block.part] : "This part";
+    block.type === "storePart" ? shopPartCopy(block.part).name : block.type === "site" ? w.siteParts[block.part] : block.type === "product" ? w.productParts[block.part] : sw.thisPart;
   return (
     <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
-      <p className="text-sm font-medium">{name}: switched off – not shown</p>
+      <p className="text-sm font-medium">{fillWords(sw.switchedOff, { name })}</p>
       <p className="text-xs text-muted">
-        {feature ? `${requirementLabel(feature)} is switched off under Settings, Features, so the site leaves this out.` : "The site leaves this out."} It comes
-        back as it was when the feature is switched on again.
+        {feature ? fillWords(sw.featureOff, { feature: requirementLabel(feature) }) : sw.leftOut} {sw.comesBack}
       </p>
     </div>
   );
@@ -7288,10 +7175,11 @@ function SwitchedOffStandIn({ block }: { block: PageBlock }) {
 /** A working page's component on the canvas (D113): what it is, and that the site draws it with the shopper's own data. */
 function StorePartStandIn({ block }: { block: StorePartBlock }) {
   const copy = shopPartCopy(block.part);
+  const sw = useAdminText("builder").standIns;
   return (
     <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
       <p className="text-sm font-medium">{copy.name}</p>
-      <p className="text-xs text-muted">{copy.hint} It shows on the page chosen for it, with the shopper&apos;s own data.</p>
+      <p className="text-xs text-muted">{copy.hint} {sw.shopPart}</p>
     </div>
   );
 }
@@ -7300,8 +7188,9 @@ function StorePartStandIn({ block }: { block: StorePartBlock }) {
 function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] }) {
   const menu = menus.find((m) => m.id === block.menuId);
   const column = block.direction === "column";
-  if (!menu) return <p className="rounded-md bg-surface p-3 text-sm text-muted">The menu this showed no longer exists. Choose another.</p>;
-  if (menu.items.length === 0) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{menu.name} has no links yet.</p>;
+  const mw = useAdminText("builder").menu;
+  if (!menu) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{mw.gone}</p>;
+  if (menu.items.length === 0) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{fillWords(mw.noLinks, { name: menu.name })}</p>;
   // Side by side, only the top links show on the line; a mark says a link has links under it.
   const shown = column ? menu.items : menu.items.filter((item) => item.depth === 0);
   const hasUnder = (index: number) => menu.items[menu.items.indexOf(shown[index]) + 1]?.depth > shown[index].depth;
@@ -7314,12 +7203,12 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
             // As on the site, so the effect can be tried here; the first link stands for the page shown.
             <a href="#" onClick={(event) => event.preventDefault()} data-active={index === 0 ? "" : undefined} className="flex min-h-9 items-center gap-1 px-2">
               {item.text}
-              {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
+              {!column && hasUnder(index) && <span aria-label={mw.under}>▾</span>}
             </a>
           ) : (
             <>
               {item.text}
-              {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
+              {!column && hasUnder(index) && <span aria-label={mw.under}>▾</span>}
             </>
           )}
         </li>
@@ -7345,22 +7234,6 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
 // Site components (D80)
 // ---------------------------------------------------------------------------
 
-/** What each site part shows, for the owner choosing and setting it. */
-const SITE_HELP: Record<SitePart, string> = {
-  logo: "The site's logo, linking to its front page; its name where there is no logo. The logo is set under Header and footer.",
-  menuButton: "The button that opens the menu on phones. It shows on phones only.",
-  search: "A link to the store's search.",
-  account: "A link to the shopper's account (sign in on Kaizena Flow's site).",
-  wishlist: "A link to the wishlist, with how many products are saved.",
-  cart: "A link to the cart, with how many products are in it.",
-  markets: "The countries the store sells to, to switch between. Shown only with two or more.",
-  buyerSwitch: "For stores selling to both: whether prices are shown for a business or a private buyer.",
-  colorMode: "A button for visitors to switch between light and dark colours. Shown while Let visitors choose light or dark is on under Design.",
-  signUp: "The Start your store button.",
-  business: "Who runs the site: name, organisation number, address and email, required on every page.",
-  cookies: "A link to the cookies page, where visitors change their choice.",
-  withdrawal: "A link to the withdrawal function, where shoppers withdraw from a purchase. The law asks for it on every page, so a store's footer must have it, and it must show on phones.",
-};
 
 function SiteIcon() {
   return (
@@ -7376,13 +7249,15 @@ function SiteIcon() {
 /** A site component's own settings (D80): only those its part has. */
 function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
   const lined = block.part === "markets" && block.display === "list";
+  const w = useAdminText("builder");
+  const sw = w.site;
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-muted">{SITE_HELP[block.part]} A part with nothing to show is left out.</p>
+      <p className="text-sm text-muted">{sw.help[block.part]} {sw.leftOut}</p>
       {block.part === "logo" && (
         <NumberField
-          label="Height"
-          hint={`pixels, ${LOGO_HEIGHT.min} to ${LOGO_HEIGHT.max}; empty: the usual size`}
+          label={w.row.height}
+          hint={fillWords(sw.logoHeight, { min: LOGO_HEIGHT.min, max: LOGO_HEIGHT.max })}
           value={block.height ?? 0}
           max={LOGO_HEIGHT.max}
           onChange={(height) => onChange({ height: height >= LOGO_HEIGHT.min ? height : undefined })}
@@ -7390,10 +7265,10 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
       )}
       {block.part === "markets" && (
         <Choices
-          legend="Shown as"
+          legend={sw.shownAs}
           options={[
-            { value: "dropdown" as const, label: "A list to open" },
-            { value: "list" as const, label: "Links" },
+            { value: "dropdown" as const, label: sw.dropdown },
+            { value: "list" as const, label: w.menu.linksLegend },
           ]}
           value={block.display ?? "dropdown"}
           onChange={(display) => onChange({ display: display === "dropdown" ? undefined : display, direction: undefined })}
@@ -7401,10 +7276,10 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
       )}
       {lined && (
         <Choices
-          legend="Links"
+          legend={w.menu.linksLegend}
           options={[
-            { value: "row" as const, label: "Side by side" },
-            { value: "column" as const, label: "One under another" },
+            { value: "row" as const, label: w.row.side },
+            { value: "column" as const, label: w.row.stack },
           ]}
           value={block.direction ?? "row"}
           onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
@@ -7412,10 +7287,7 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
       )}
       {/* The withdrawal link is for every visitor (D153): it cannot be hidden at any size (Advanced, Visibility). */}
       {block.part !== "menuButton" && block.part !== "withdrawal" && (
-        <p className="text-xs text-muted">
-          To leave it out on phones, where the menu button and the slide-out menu have the menu, account and countries, switch
-          off Small under Advanced, Visibility.
-        </p>
+        <p className="text-xs text-muted">{sw.phones}</p>
       )}
     </div>
   );
@@ -7500,27 +7372,13 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
 const PRODUCT_PART_KEYS = Object.keys(PRODUCT_PARTS) as ProductPart[];
 /** Parts whose text lines up left, centred or right. */
 const ALIGNED_PARTS: readonly ProductPart[] = ["back", "title", "price", "host", "description", "withdrawal", "safety"];
-/** What each part shows, for the owner choosing and setting it. */
-const PART_HELP: Record<ProductPart, string> = {
-  back: "A link back to the store's products.",
-  gallery: "The product's pictures: the main one swipes, with small ones to choose from.",
-  title: "The product's name, the page's main heading, with the heart that saves it to a wishlist.",
-  price: "The product's price, from the cheapest variant, with VAT as the shopper sees prices.",
-  campaigns: "The store's running campaigns that reach this product: 20 % off, 3 for 2, a free product over an amount, and until when. Nothing shows when none does.",
-  rating: "The product's stars, its average and how many reviews it has, linking to the reviews. Nothing shows before a review is published.",
-  reviews: "The product's published reviews: the average, how many gave each number of stars, the newest ten with Show more, and how reviews are checked. Nothing shows before a review is published.",
-  notice: "For products sold only to businesses: tells a private shopper so, and lets them switch.",
-  host: "Who hosts a stay or rental listed for an outside host.",
-  buy: "Buying it: the variants with stock and Add to cart for goods, free times for appointments, dates for stays and rentals.",
-  description: "The product's description.",
-  withdrawal: "The line on the right of withdrawal, where the product has none (bookings, downloads, made to order).",
-  safety: "Product safety: the safety information, manufacturer and responsible person in the EU.",
-  related: "Products sharing the most of this one's categories and tags, as the store's product cards.",
-  fields: "The product's custom fields, a group or all its groups, as a table, list or cards: only those set to show on the site, and only those it has a value for.",
-  field: "One custom field of the product, such as its material or warranty. It draws nothing for a product with no value for it.",
-  loop: "The rows of one of the product's repeater fields (features, ingredients, sizes), each as a card, line or column. It draws nothing for a product with no rows.",
-};
-const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like", reviews: "Reviews" };
+/** The parts with a heading of their own (their usual words are the shopper's language's, `productPart.headings`). */
+const PART_HEADINGS: Partial<Record<ProductPart, true>> = { description: true, safety: true, related: true, reviews: true };
+
+/** A product part's name in the account's language (a stand-in's corner label). */
+function ProductPartName({ part }: { part: ProductPart }) {
+  return useAdminText("builder").productParts[part];
+}
 
 function ProductIcon() {
   return (
@@ -7536,37 +7394,39 @@ function ProductIcon() {
 /** A product component's own settings (D79): only those its part has. */
 function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (patch: BlockPatch<ProductBlock>) => void }) {
   const headed = block.part in PART_HEADINGS;
+  const w = useAdminText("builder");
+  const pw = w.productPart;
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">
-        {PART_HELP[block.part]} It shows the product the layout is used for; a part the product has nothing for is left out.
+        {pw.help[block.part]} {pw.forProduct}
       </p>
       {block.part === "title" && (
         <>
-          <Check label="Wishlist heart" hint="Beside the title, to save the product." checked={block.wishlist !== false} onChange={(on) => onChange({ wishlist: on ? undefined : false })} />
-          <p className="text-xs text-muted">The title&apos;s size, weight and font are under Style, Typography.</p>
+          <Check label={pw.heart} hint={pw.heartHint} checked={block.wishlist !== false} onChange={(on) => onChange({ wishlist: on ? undefined : false })} />
+          <p className="text-xs text-muted">{pw.titleStyle}</p>
         </>
       )}
       {block.part === "price" && (
-        <Check label="Large" hint="The price at the size of a heading." checked={block.large !== false} onChange={(on) => onChange({ large: on ? undefined : false })} />
+        <Check label={pw.large} hint={pw.largeHint} checked={block.large !== false} onChange={(on) => onChange({ large: on ? undefined : false })} />
       )}
       {block.part === "gallery" && (
-        <Check label="Small pictures below" hint="With two or more pictures, to choose one." checked={block.thumbnails !== false} onChange={(on) => onChange({ thumbnails: on ? undefined : false })} />
+        <Check label={pw.thumbnails} hint={pw.thumbnailsHint} checked={block.thumbnails !== false} onChange={(on) => onChange({ thumbnails: on ? undefined : false })} />
       )}
       {headed && (
         <>
-          <Check label="Heading" checked={block.showHeading !== false} onChange={(on) => onChange({ showHeading: on ? undefined : false })} />
+          <Check label={w.heading.heading} checked={block.showHeading !== false} onChange={(on) => onChange({ showHeading: on ? undefined : false })} />
           {block.showHeading !== false && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Heading text
+              {pw.headingText}
               <input
                 value={block.heading ?? ""}
                 maxLength={HEADING_MAX}
                 onChange={(event) => onChange({ heading: event.target.value || undefined })}
-                placeholder={`${PART_HEADINGS[block.part]} (in the shopper's language)`}
+                placeholder={fillWords(pw.headingPlaceholder, { heading: pw.headings[block.part as keyof typeof pw.headings] })}
                 className={field}
               />
-              <span className="font-normal text-xs text-muted">Empty: Kaizena Flow&apos;s own words, in each country&apos;s language.</span>
+              <span className="font-normal text-xs text-muted">{pw.headingEmpty}</span>
             </label>
           )}
         </>
@@ -7584,8 +7444,8 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
       {block.part === "related" && (
         <>
           <NumberField
-            label="How many"
-            hint={`1 to ${RELATED_MAX}`}
+            label={w.grid.howMany}
+            hint={fillWords(pw.relatedHint, { max: RELATED_MAX })}
             value={block.limit ?? 4}
             max={RELATED_MAX}
             onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
@@ -7731,7 +7591,7 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
   return (
     <span className="relative block rounded-md outline-1 outline-offset-4 outline-border outline-dashed">
       <span className="absolute -top-3 right-1 rounded bg-background px-1 text-[10px] font-medium tracking-wide text-muted uppercase">
-        {PRODUCT_PARTS[block.part]}
+        <ProductPartName part={block.part} />
       </span>
       {body}
     </span>
@@ -7792,6 +7652,9 @@ function ThemePanel({
 
   const [scope, setScope] = useState(SITE_SCOPE);
   const [newStyle, setNewStyle] = useState("");
+  const w = useAdminText("builder");
+  const tw = w.theme;
+  const styleName = useStyleName();
   const styles = sectionStyleChoices(value.sections);
   const scoped = scope === SITE_SCOPE ? value.elements : (value.sections?.[scope] ?? {});
   const save = async () => {
@@ -7810,7 +7673,7 @@ function ThemePanel({
       if (failed) setProblems(failed);
       else setDone(true);
     } catch {
-      setProblems(["The theme could not be saved. Changing it needs access to the website settings."]);
+      setProblems([tw.couldNotSave]);
     } finally {
       setBusy(false);
     }
@@ -7822,28 +7685,25 @@ function ThemePanel({
 
   return (
     <div className="flex flex-col gap-4" data-theme-panel="">
-      <p className="text-xs text-muted">
-        The store&apos;s look for every page: what rows, headings, text and buttons are unless a component of a page says otherwise. The
-        page shows it as you change it; Save theme keeps it, and so does saving or publishing the page.
-      </p>
+      <p className="text-xs text-muted">{tw.intro}</p>
       <div className="flex items-center gap-1 text-sm">
-        <SizeSwitch label="Theme" />
-        <span className="text-muted">Edited at {SIZE_LABELS[size]}</span>
+        <SizeSwitch label={w.sidebar.theme} />
+        <span className="text-muted">{fillWords(tw.editedAt, { size: w.sizes[size] })}</span>
       </div>
 
       <fieldset className="flex flex-col gap-4 rounded-md border border-border p-3">
-        <legend className="px-1 text-sm font-medium">Page</legend>
+        <legend className="px-1 text-sm font-medium">{tw.page}</legend>
         <ContentWidthField value={value.maxWidth} presetWidth={preset} onChange={(maxWidth) => change({ ...value, maxWidth })} />
         {showLight && (
           <ColorField
-            label={settings.mode === "light" || !showDark ? "Body background" : "Body background, light"}
+            label={settings.mode === "light" || !showDark ? tw.body : tw.bodyLight}
             value={value.background.light}
             onChange={(light) => change({ ...value, background: { ...value.background, light } })}
           />
         )}
         {showDark && (
           <ColorField
-            label={showLight ? "Body background, dark" : "Body background"}
+            label={showLight ? tw.bodyDark : tw.body}
             value={value.background.dark}
             onChange={(dark) => change({ ...value, background: { ...value.background, dark } })}
           />
@@ -7851,45 +7711,45 @@ function ThemePanel({
       </fieldset>
 
       <fieldset className="flex flex-col gap-4 rounded-md border border-border p-3" data-theme-hover="">
-        <legend className="px-1 text-sm font-medium">Hover</legend>
+        <legend className="px-1 text-sm font-medium">{tw.hover}</legend>
         <HoverTimingFields
           value={value.hover}
-          inherited={`${HOVER_DURATION_DEFAULT} ms with Ease`}
+          inherited={fillWords(tw.hoverInherited, { ms: HOVER_DURATION_DEFAULT })}
           onChange={(timing) => change({ ...value, hover: { ...(value.hover?.button && { button: value.hover.button }), ...timing } })}
         />
         <ButtonHoverField
           value={value.hover?.button}
-          emptyLabel="Fade (as before)"
+          emptyLabel={tw.fade}
           onChange={(button) => change({ ...value, hover: { ...value.hover, button } })}
         />
-        <p className="text-xs text-muted">For every link and button of the site. A row, column or component can have its own in its Advanced tab&apos;s Motion, and a button its own effect.</p>
+        <p className="text-xs text-muted">{tw.hoverHint}</p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3" data-theme-scope="">
-        <legend className="px-1 text-sm font-medium">Elements for</legend>
+        <legend className="px-1 text-sm font-medium">{tw.elementsFor}</legend>
         <select
-          aria-label="Elements for"
+          aria-label={tw.elementsFor}
           value={scope}
           onChange={(event) => setScope(event.target.value)}
           className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
         >
-          <option value={SITE_SCOPE}>The whole site</option>
+          <option value={SITE_SCOPE}>{tw.wholeSite}</option>
           {styles.map((name) => (
             <option key={name} value={name}>
-              Section style: {sectionStyleLabel(name)}
-              {value.sections?.[name] ? " (set)" : ""}
+              {fillWords(tw.sectionStyle, { name: styleName(name) })}
+              {value.sections?.[name] ? ` ${tw.set}` : ""}
             </option>
           ))}
         </select>
         <p className="text-xs text-muted">
           {scope === SITE_SCOPE
-            ? "Every row, heading, text and button of the site, unless a row names a section style."
-            : `${isCoreSectionStyle(scope) ? CORE_SECTION_LABELS[scope].hint : "One of this theme's own styles."} Rows that choose it take these over the whole site's; what is left empty stays the site's. A row naming a style this theme does not have takes Plain.`}
+            ? tw.siteScope
+            : `${isCoreSectionStyle(scope) ? tw.coreHints[scope] : tw.ownStyle} ${tw.styleScope}`}
         </p>
         {scope === SITE_SCOPE && styles.length < SECTION_STYLES_MAX && (
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-xs">
-              A style of the theme&apos;s own
+              {tw.newStyle}
               <input
                 value={newStyle}
                 onChange={(event) => setNewStyle(event.target.value.toLowerCase())}
@@ -7906,7 +7766,7 @@ function ThemePanel({
               }}
               className="min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-50"
             >
-              Add style
+              {tw.addStyle}
             </button>
           </div>
         )}
@@ -7940,7 +7800,7 @@ function ThemePanel({
             aria-busy={busy}
             className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
           >
-            {busy ? "Saving…" : "Save theme"}
+            {busy ? w.savedPart.saving : tw.save}
           </button>
           <button
             type="button"
@@ -7948,10 +7808,10 @@ function ThemePanel({
             disabled={busy || !dirty}
             className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-50"
           >
-            Undo changes
+            {tw.undo}
           </button>
           <span role="status" className="text-sm text-muted">
-            {dirty ? "Not saved yet." : done ? "Saved. Every page of the store uses it." : ""}
+            {dirty ? tw.notSaved : done ? tw.saved : ""}
           </span>
         </div>
       </div>
@@ -7964,10 +7824,11 @@ function ContentWidthField({ value, presetWidth, onChange }: { value: number | n
   const id = useId();
   const [text, setText] = useState(value === null ? "" : String(value));
   const invalid = text !== "" && !(Number(text) >= CONTENT_MAX_MIN && Number(text) <= CONTENT_MAX_MAX);
+  const w = useAdminText("builder");
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
-        Max content width <span className="font-normal text-muted">(in pixels, {CONTENT_MAX_MIN} to {CONTENT_MAX_MAX})</span>
+        {w.row.maxWidth} <span className="font-normal text-muted">({fillWords(w.row.pixelsRange, { min: CONTENT_MAX_MIN, max: CONTENT_MAX_MAX })})</span>
       </label>
       <input
         id={id}
@@ -7993,7 +7854,7 @@ function ContentWidthField({ value, presetWidth, onChange }: { value: number | n
         min={CONTENT_MAX_MIN}
         max={CONTENT_MAX_MAX}
         step={8}
-        label="Max content width, slider"
+        label={fillWords(w.row.slider, { what: w.row.maxWidth })}
         onChange={(next) => {
           setText(String(next));
           onChange(next);
@@ -8001,7 +7862,7 @@ function ContentWidthField({ value, presetWidth, onChange }: { value: number | n
         className="max-w-64"
       />
       <p id={`${id}-hint`} className="text-xs text-muted">
-        Rows, the header and the footer keep to it. Left empty it is the theme&apos;s {presetWidth} pixels. A row can set its own.
+        {fillWords(w.theme.widthHint, { n: presetWidth })}
       </p>
     </div>
   );
@@ -8020,12 +7881,13 @@ function ThemeElementSection({
   install: InstallFont;
 }) {
   const [open, setOpen] = useState(false);
-  const { name, hint } = THEME_ELEMENT_LABELS[elementKey];
+  const w = useAdminText("builder");
+  const { name, hint } = w.elements[elementKey];
   return (
     <details onToggle={(event) => setOpen(event.currentTarget.open)} className="rounded-md border border-border" data-theme-element={elementKey}>
       <summary className="flex min-h-10 cursor-pointer items-center justify-between gap-2 px-3 text-sm font-medium">
         {name}
-        {element && <span className="rounded bg-surface px-1.5 py-0.5 text-xs font-normal text-muted">Set</span>}
+        {element && <span className="rounded bg-surface px-1.5 py-0.5 text-xs font-normal text-muted">{w.theme.setMark}</span>}
       </summary>
       {open && (
         <div className="flex flex-col gap-4 border-t border-border p-3">
@@ -8033,7 +7895,7 @@ function ThemeElementSection({
           <ThemeElementFields elementKey={elementKey} element={element} onChange={onChange} install={install} />
           {element && (
             <button type="button" onClick={() => onChange(undefined)} className="min-h-9 self-start rounded-md border border-border px-3 text-sm">
-              Clear {name}
+              {fillWords(w.theme.clear, { name })}
             </button>
           )}
         </div>
@@ -8065,6 +7927,7 @@ function ThemeElementFields({
   const row = elementKey === "row";
   const heading = elementKey.startsWith("h") && elementKey.length === 2;
   const background = element?.background;
+  const w = useAdminText("builder");
   return (
     <>
       {row && (
@@ -8076,12 +7939,12 @@ function ThemeElementFields({
             onWidth={(next) => patch({ width: next === "full" ? "full" : undefined, ...(next === "content" && { contentWidth: undefined }) } as Partial<PartBase>)}
             onContentWidth={(next) => patch({ contentWidth: next === "full" ? "full" : undefined } as Partial<PartBase>)}
           />
-          <p className="text-xs text-muted">Every row takes these unless it chooses its own width in its settings.</p>
+          <p className="text-xs text-muted">{w.theme.rowWidths}</p>
         </div>
       )}
       <TypographyFields
         part={part}
-        familyDefault={heading ? "The site's heading font" : "The site's body font"}
+        familyDefault={heading ? w.dialogs.fonts.heading : w.dialogs.fonts.body}
         install={install}
         onChange={(changes) => patch(changes as Partial<PartBase>)}
       />
@@ -8100,9 +7963,9 @@ function ThemeElementFields({
         (size === "xl" ? (
           <div className="flex flex-col gap-4 border-t border-border pt-4">
             <ColorField
-              label="Background colour"
+              label={w.background.colour}
               value={background?.color}
-              placeholder="None"
+              placeholder={w.background.kinds.none}
               onChange={(color) => patch({ background: { type: "color", color, ...(background?.opacity !== undefined && { opacity: background.opacity }) } } as Partial<PartBase>)}
               onClear={() => patch({ background: undefined } as Partial<PartBase>)}
               opacity={

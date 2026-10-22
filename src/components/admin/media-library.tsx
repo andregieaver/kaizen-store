@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import type { AltLanguage } from "@/lib/alt-text";
-import { savingWords } from "@/lib/image-quality";
-import { describeType, formatBytes } from "@/lib/image-size";
-import { MEDIA_PAGE, MEDIA_SORTS, mediaAddress, type MediaQuery, type MediaSort } from "@/lib/media-query";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
+import { formatBytes } from "@/lib/image-size";
+import { MEDIA_PAGE, mediaAddress, type MediaQuery, type MediaSort } from "@/lib/media-query";
 import type { AltResult, AltRun } from "@/server/alt-texts";
 import type { MediaItem } from "@/server/media-library";
 import type { CompressOutcome } from "@/server/media-compress";
 
 import { compressPlan } from "@/lib/media-compress";
 
+import { useAdminLang, useAdminText } from "./admin-text";
 import { uploadPicture, type Saving, type Upload } from "./image-upload";
 import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
@@ -46,6 +49,26 @@ const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const button = "min-h-10 rounded-pill border border-edge px-4 text-sm font-medium disabled:opacity-50";
 
 /** Whether a file has an alt text in any language. */
+type Words = WebsiteMessages["media"];
+
+/** A file's type in words: a picture or a video of its format. */
+function describeType(contentType: string, w: Words): string {
+  const [kind, sub = ""] = contentType.split("/");
+  const name = { jpeg: "JPEG", png: "PNG", webp: "WebP", avif: "AVIF", gif: "GIF", "svg+xml": "SVG", mp4: "MP4", webm: "WebM" }[sub] ?? sub.toUpperCase();
+  if (kind === "image") return fillWords(w.picture, { type: name });
+  if (kind === "video") return fillWords(w.video, { type: name });
+  return contentType;
+}
+
+/** What compressing saved, as `savingWords()` says it (`src/lib/image-quality.ts`), in the admin's words. */
+function savingWords(before: number, after: number, w: Words): string | null {
+  if (before <= 0 || after >= before) return null;
+  const saved = before - after;
+  const percent = Math.round((saved / before) * 100);
+  if (percent < 1) return null;
+  return fillWords(w.saved, { bytes: formatBytes(saved), percent });
+}
+
 const hasAlt = (item: MediaItem) => item.alt !== "" || Object.keys(item.altTranslations).length > 0;
 
 const dimensions = (item: Pick<MediaItem, "width" | "height">) => (item.width && item.height ? `${item.width} × ${item.height} px` : null);
@@ -100,6 +123,7 @@ export function MediaLibrary({
   /** How many files wait for Compress. */
   waiting: number;
 }) {
+  const w = useAdminText("website").media;
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = items.find((item) => item.id === openId) ?? null;
@@ -173,25 +197,25 @@ export function MediaLibrary({
         }}
       >
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium">
-          Search the library
+          {w.searchLabel}
           <input
             type="search"
             name="q"
             defaultValue={query.q}
-            placeholder="A name, an alt text, or what is in it"
+            placeholder={w.searchPlaceholder}
             className={`${input} font-normal`}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Type
+          {w.type}
           <select name="kind" defaultValue={query.kind} onChange={(event) => event.currentTarget.form?.requestSubmit()} className={`${input} font-normal`}>
-            <option value="all">Pictures and videos</option>
-            <option value="image">Pictures</option>
-            <option value="video">Videos</option>
+            <option value="all">{w.kinds.all}</option>
+            <option value="image">{w.kinds.image}</option>
+            <option value="video">{w.kinds.video}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Order
+          {w.order}
           <select
             name="sort"
             defaultValue={query.sort}
@@ -199,7 +223,7 @@ export function MediaLibrary({
             onChange={(event) => event.currentTarget.form?.requestSubmit()}
             className={`${input} font-normal`}
           >
-            {Object.entries(MEDIA_SORTS).map(([value, label]) => (
+            {Object.entries(w.sorts).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -207,17 +231,15 @@ export function MediaLibrary({
           </select>
         </label>
         <button type="submit" className={`${button} bg-brand text-brand-ink`}>
-          Search
+          {w.search}
         </button>
         {(query.q || query.kind !== "all") && (
           <Link href={basePath} className="min-h-10 content-center text-sm underline">
-            Show everything
+            {w.showEverything}
           </Link>
         )}
         <p className="basis-full text-xs text-muted">
-          {meaning
-            ? "Searches by the words in a file's name and alt text, and by meaning with your AI: what it shows, and what uses it. Best matches first."
-            : "Searches by the words in a file's name and alt text. Set up an AI with an embedding model to search by meaning too."}
+          {meaning ? w.searchMeaning : w.searchWords}
         </p>
       </form>
 
@@ -225,23 +247,23 @@ export function MediaLibrary({
       <p role="status" className="text-sm text-muted">
         {searched
           ? total === 0
-            ? `Nothing found for “${query.q}”.`
-            : `${total === 1 ? "1 file" : `${total} files`} found for “${query.q}”.`
+            ? fillWords(w.nothingFound, { q: query.q })
+            : countWords(total, w.found, { q: query.q })
           : total === 0
             ? query.kind !== "all"
-              ? `No ${query.kind === "image" ? "pictures" : "videos"} yet.`
-              : "No files yet. Add pictures or videos above; everything you upload anywhere in the admin is kept here too."
-            : total === 1
-              ? "1 file."
-              : `${total} files.`}
+              ? query.kind === "image"
+                ? w.noPictures
+                : w.noVideos
+              : w.noFiles
+            : countWords(total, w.files)}
       </p>
         <div className="flex flex-wrap items-center gap-2">
           {items.length > 0 && (
             <button type="button" onClick={() => (choosing ? stopChoosing() : setChoosing(true))} aria-pressed={choosing} className={`${button} min-h-9`}>
-              {choosing ? "Cancel choosing" : "Choose files"}
+              {choosing ? w.cancelChoosing : w.chooseFiles}
             </button>
           )}
-        <nav aria-label="Show files as" className="flex overflow-hidden rounded-md border border-line text-sm">
+        <nav aria-label={w.showAs} className="flex overflow-hidden rounded-md border border-line text-sm">
           {(["grid", "list"] as const).map((view) => (
             <Link
               key={view}
@@ -250,7 +272,7 @@ export function MediaLibrary({
               aria-current={query.view === view ? "true" : undefined}
               className={`min-h-9 content-center px-3 ${query.view === view ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
             >
-              {view === "grid" ? "Grid" : "List"}
+              {view === "grid" ? w.grid : w.list}
             </Link>
           ))}
         </nav>
@@ -258,21 +280,21 @@ export function MediaLibrary({
       </div>
 
       {choosing && (
-        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-panel bg-sunken p-3 text-sm shadow-sm">
+        <div role="region" aria-label={w.deleteSeveral} className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-panel bg-sunken p-3 text-sm shadow-sm">
           <p role="status" className="mr-auto font-medium">
-            {chosen.size === 0 ? "Choose files to delete together." : `${chosen.size} ${chosen.size === 1 ? "file" : "files"} chosen.`}
+            {chosen.size === 0 ? w.chooseToDelete : countWords(chosen.size, w.chosen)}
           </p>
           <button type="button" onClick={() => choose(items.map((item) => item.id))} className={`${button} min-h-9`}>
-            Choose all shown ({items.length})
+            {fillWords(w.chooseAll, { n: items.length })}
           </button>
           <button type="button" onClick={() => choose(items.filter((item) => item.uses.length === 0).map((item) => item.id))} className={`${button} min-h-9`}>
-            Choose those not in use
+            {w.chooseUnused}
           </button>
           <button type="button" disabled={chosen.size === 0} onClick={() => setChosen(new Set())} className={`${button} min-h-9`}>
-            Clear
+            {w.clear}
           </button>
           <button type="button" disabled={chosen.size === 0} onClick={() => setBulkOpen(true)} className={`${button} min-h-9 border-danger-text bg-danger-soft text-danger-text`}>
-            Delete {chosen.size > 0 ? chosen.size : ""}…
+            {chosen.size > 0 ? fillWords(w.deleteChosen, { n: chosen.size }) : w.deleteNone}
           </button>
         </div>
       )}
@@ -280,7 +302,7 @@ export function MediaLibrary({
       {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} chosen={choosing ? chosen : null} onPick={pick} />}
 
       {items.length > 0 && query.view === "grid" && (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" aria-label="Files">
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" aria-label={w.filesLabel}>
           {items.map((item) => (
             <li key={item.id}>
               <button
@@ -288,7 +310,7 @@ export function MediaLibrary({
                 onClick={() => (choosing ? pick(item.id) : setOpenId(item.id))}
                 aria-pressed={choosing ? chosen.has(item.id) : undefined}
                 className={`relative flex w-full flex-col overflow-hidden rounded-panel border bg-card text-left hover:border-brand/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-brand ring-2 ring-ink" : "border-line"}`}
-                aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}${item.kind === "image" && !hasAlt(item) ? ", no alt text" : ""}`}
+                aria-label={`${fillWords(w.tileLabel, { name: item.fileName, type: describeType(item.contentType, w), size: formatBytes(item.sizeBytes) })}${item.uses.length === 0 ? w.tileUnused : countWords(item.uses.length, w.tileUsed)}${item.kind === "image" && !hasAlt(item) ? w.tileNoAlt : ""}`}
               >
                 <Preview item={item} small />
                 {choosing && (
@@ -299,15 +321,15 @@ export function MediaLibrary({
                 <span className="flex flex-col gap-0.5 p-2 text-xs">
                   <span className="truncate text-sm font-medium">{item.fileName}</span>
                   <span className="text-muted">
-                    {describeType(item.contentType)} · {formatBytes(item.sizeBytes)}
+                    {describeType(item.contentType, w)} · {formatBytes(item.sizeBytes)}
                   </span>
                   <span className="text-muted">{dimensions(item) ?? " "}</span>
                   <span className="mt-1 flex flex-wrap gap-1">
                     <span className={`w-fit rounded-full px-2 py-0.5 ${item.uses.length > 0 ? "bg-brand text-brand-ink" : "bg-sunken text-muted"}`}>
-                      {item.uses.length > 0 ? `In use (${item.uses.length})` : "Not in use"}
+                      {item.uses.length > 0 ? fillWords(w.inUseCount, { n: item.uses.length }) : w.notInUse}
                     </span>
                     {item.kind === "image" && !hasAlt(item) && (
-                      <span className="w-fit rounded-full border border-warning-text px-2 py-0.5 text-warning-text">No alt text</span>
+                      <span className="w-fit rounded-full border border-warning-text px-2 py-0.5 text-warning-text">{w.noAlt}</span>
                     )}
                   </span>
                 </span>
@@ -319,7 +341,7 @@ export function MediaLibrary({
 
       {items.length < total && (
         <Link href={address({ limit: query.limit + MEDIA_PAGE })} scroll={false} className={`${button} w-fit content-center`}>
-          Show more ({total - items.length} more)
+          {fillWords(w.showMore, { n: total - items.length })}
         </Link>
       )}
 
@@ -360,28 +382,30 @@ export function MediaLibrary({
 
 /** The files as a list, a row each with its details, alt text and uses; a row's name opens it. */
 function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
+  const w = useAdminText("website").media;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const cell = "px-3 py-2 align-middle";
   return (
     <div className={`overflow-x-auto ${CARD_CLASS}`}>
       <table className="w-full min-w-[40rem] text-left text-sm">
-        <caption className="sr-only">Files</caption>
+        <caption className="sr-only">{w.filesLabel}</caption>
         <thead className="border-b border-line text-xs text-muted">
           <tr>
             {chosen && (
               <th scope="col" className={`${cell} w-10`}>
-                <span className="sr-only">Choose</span>
+                <span className="sr-only">{w.columns.choose}</span>
               </th>
             )}
             <th scope="col" className={`${cell} w-16`}>
-              <span className="sr-only">Preview</span>
+              <span className="sr-only">{w.columns.preview}</span>
             </th>
-            <th scope="col" className={cell}>Name</th>
-            <th scope="col" className={cell}>Type</th>
-            <th scope="col" className={`${cell} text-right`}>Size</th>
-            <th scope="col" className={`${cell} hidden md:table-cell`}>Width and height</th>
-            <th scope="col" className={`${cell} hidden lg:table-cell`}>Alt text</th>
-            <th scope="col" className={cell}>In use</th>
-            <th scope="col" className={`${cell} hidden md:table-cell`}>Added</th>
+            <th scope="col" className={cell}>{w.columns.name}</th>
+            <th scope="col" className={cell}>{w.columns.type}</th>
+            <th scope="col" className={`${cell} text-right`}>{w.columns.size}</th>
+            <th scope="col" className={`${cell} hidden md:table-cell`}>{w.columns.dimensions}</th>
+            <th scope="col" className={`${cell} hidden lg:table-cell`}>{w.columns.alt}</th>
+            <th scope="col" className={cell}>{w.columns.inUse}</th>
+            <th scope="col" className={`${cell} hidden md:table-cell`}>{w.columns.added}</th>
           </tr>
         </thead>
         <tbody>
@@ -389,7 +413,7 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
             <tr key={item.id} className="border-b border-edge last:border-0 hover:bg-sunken/60">
               {chosen && (
                 <td className={cell}>
-                  <input type="checkbox" checked={chosen.has(item.id)} onChange={() => onPick(item.id)} aria-label={`Choose ${item.fileName}`} className="size-5" />
+                  <input type="checkbox" checked={chosen.has(item.id)} onChange={() => onPick(item.id)} aria-label={fillWords(w.chooseFile, { name: item.fileName })} className="size-5" />
                 </td>
               )}
               <td className={cell}>
@@ -402,7 +426,7 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
                   {item.fileName}
                 </button>
               </th>
-              <td className={`${cell} whitespace-nowrap text-muted`}>{describeType(item.contentType)}</td>
+              <td className={`${cell} whitespace-nowrap text-muted`}>{describeType(item.contentType, w)}</td>
               <td className={`${cell} whitespace-nowrap text-right text-muted`}>{formatBytes(item.sizeBytes)}</td>
               <td className={`${cell} hidden whitespace-nowrap text-muted md:table-cell`}>{dimensions(item) ?? "–"}</td>
               <td className={`${cell} hidden max-w-80 lg:table-cell`}>
@@ -411,12 +435,12 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
                 ) : hasAlt(item) ? (
                   <span className="line-clamp-2 text-muted">{item.alt || Object.values(item.altTranslations)[0]}</span>
                 ) : (
-                  <span className="rounded-full border border-warning-text px-2 py-0.5 text-xs text-warning-text">No alt text</span>
+                  <span className="rounded-full border border-warning-text px-2 py-0.5 text-xs text-warning-text">{w.noAlt}</span>
                 )}
               </td>
-              <td className={`${cell} whitespace-nowrap text-muted`}>{item.uses.length > 0 ? `${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}` : "Not in use"}</td>
+              <td className={`${cell} whitespace-nowrap text-muted`}>{item.uses.length > 0 ? countWords(item.uses.length, w.places) : w.notInUse}</td>
               <td className={`${cell} hidden whitespace-nowrap text-muted md:table-cell`}>
-                {new Date(item.createdAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
+                {new Date(item.createdAt).toLocaleDateString(locale, { dateStyle: "medium" })}
               </td>
             </tr>
           ))}
@@ -472,6 +496,8 @@ function Details({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const w = useAdminText("website").media;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const id = useId();
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -479,11 +505,11 @@ function Details({
   const [copied, setCopied] = useState(false);
 
   const rows: [string, string][] = [
-    ["File name", item.fileName],
-    ["File type", describeType(item.contentType)],
-    ["File size", formatBytes(item.sizeBytes)],
-    ["Width and height", dimensions(item) ?? "Measured when shown"],
-    ["Added", new Date(item.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })],
+    [w.rows.fileName, item.fileName],
+    [w.rows.fileType, describeType(item.contentType, w)],
+    [w.rows.fileSize, formatBytes(item.sizeBytes)],
+    [w.rows.dimensions, dimensions(item) ?? w.measuredWhenShown],
+    [w.rows.added, new Date(item.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })],
   ];
 
   return (
@@ -496,7 +522,7 @@ function Details({
         footer={
           <>
             <button type="button" onClick={() => setConfirming(true)} className={`${button} mr-auto border-danger-text text-danger-text`}>
-              Delete
+              {w.delete}
             </button>
             <button
               type="button"
@@ -505,13 +531,13 @@ function Details({
               }}
               className={button}
             >
-              {copied ? "Address copied" : "Copy address"}
+              {copied ? w.addressCopied : w.copyAddress}
             </button>
             <a href={downloadHref(item)} download={item.fileName} className={`${button} content-center`}>
-              Download
+              {w.download}
             </a>
             <button type="button" onClick={onClose} className={`${button} bg-brand text-brand-ink`}>
-              Done
+              {w.done}
             </button>
           </>
         }
@@ -528,7 +554,7 @@ function Details({
           </dl>
           <section aria-labelledby={`${id}-uses`} className="flex flex-col gap-2">
             <h3 id={`${id}-uses`} className="text-body-strong text-ink">
-              In use
+              {w.inUse}
             </h3>
             <Uses item={item} />
           </section>
@@ -540,11 +566,11 @@ function Details({
       <Modal
         open={confirming}
         onClose={() => setConfirming(false)}
-        title={`Delete ${item.fileName}?`}
+        title={fillWords(w.deleteFile, { name: item.fileName })}
         footer={
           <>
             <button type="button" onClick={() => setConfirming(false)} className={button}>
-              Keep it
+              {w.keepIt}
             </button>
             <button
               type="button"
@@ -560,25 +586,21 @@ function Details({
               }
               className={`${button} border-danger-text bg-danger-soft text-danger-text`}
             >
-              {pending ? "Deleting …" : "Delete for good"}
+              {pending ? w.deleting : w.deleteForGood}
             </button>
           </>
         }
       >
         <div className="flex flex-col gap-3 text-sm">
           {item.uses.length === 0 ? (
-            <p>The file is not used anywhere on the site. It is removed from the library and from storage.</p>
+            <p>{w.unusedRemoved}</p>
           ) : (
             <>
-              <p>
-                The file is used in {item.uses.length === 1 ? "this place" : `these ${item.uses.length} places`}. Deleting it
-                leaves {item.uses.length === 1 ? "it" : "them"} without it: a picture there shows nothing until you choose
-                another.
-              </p>
+              <p>{item.uses.length === 1 ? w.usedOne : fillWords(w.usedMany, { n: item.uses.length })}</p>
               <Uses item={item} />
             </>
           )}
-          <p className="text-muted">Deleting cannot be undone.</p>
+          <p className="text-muted">{w.cannotUndo}</p>
           {problem && (
             <p role="alert" className="text-danger-text">
               {problem}
@@ -591,12 +613,10 @@ function Details({
 }
 
 /** What a Compress run says it did (D213): a saving, and whether the original stayed in storage, or why nothing changed. */
-function outcomeWords(outcome: CompressOutcome): string {
+function outcomeWords(outcome: CompressOutcome, w: Words): string {
   if (!outcome.ok) return outcome.problem;
-  const saved = savingWords(outcome.before, outcome.after) ?? "Compressed";
-  return outcome.keptOriginal
-    ? `${saved}. The site now shows the smaller file; the original stays in storage, as it may be in emails or previews already sent.`
-    : `${saved}. Everywhere it is used now shows the smaller file, and it looks the same.`;
+  const saved = savingWords(outcome.before, outcome.after, w) ?? w.compressed;
+  return fillWords(outcome.keptOriginal ? w.keptOriginal : w.everywhereSmaller, { saved });
 }
 
 /**
@@ -604,30 +624,28 @@ function outcomeWords(outcome: CompressOutcome): string {
  * this browser; anything that keeps it as it is says why.
  */
 function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compress: CompressActions; onCompressed: () => void }) {
+  const w = useAdminText("website").media;
   const id = useId();
   const plan = compressPlan(item);
   const [state, setState] = useState<{ busy: string | null; said: string | null; failed: boolean }>({ busy: null, said: null, failed: false });
   const run = async () => {
-    setState({ busy: "Compressing …", said: null, failed: false });
+    setState({ busy: w.compressing, said: null, failed: false });
     const outcome = await compressLibraryFile(item, compress, (progress) =>
-      setState((now) => ({ ...now, busy: progress < 1 ? `Compressing … ${Math.round(progress * 100)} %` : "Uploading …" })),
+      setState((now) => ({ ...now, busy: progress < 1 ? fillWords(w.compressingPercent, { percent: Math.round(progress * 100) }) : w.uploading })),
     );
-    setState({ busy: null, said: outcomeWords(outcome), failed: !outcome.ok });
+    setState({ busy: null, said: outcomeWords(outcome, w), failed: !outcome.ok });
     if (outcome.ok) onCompressed();
   };
   return (
     <section aria-labelledby={`${id}-size`} className="flex flex-col gap-2">
       <h3 id={`${id}-size`} className="text-body-strong text-ink">
-        Size
+        {w.size}
       </h3>
       {plan.offered ? (
         <>
-          <p className="text-sm text-muted">
-            This file was uploaded before files were compressed. Compress makes it as small as it can be while it still looks the
-            same{item.kind === "video" ? " (at most 1080p)" : ""}, in this browser, and moves every place that uses it to the smaller file.
-          </p>
+          <p className="text-sm text-muted">{item.kind === "video" ? w.compressOneVideo : w.compressOne}</p>
           <button type="button" disabled={state.busy !== null} onClick={() => void run()} className={`${button} w-fit`}>
-            {state.busy ?? "Compress"}
+            {state.busy ?? w.compress}
           </button>
         </>
       ) : (
@@ -647,6 +665,7 @@ function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compre
  * (each takes a few seconds; a video longer), with what was saved so far and a Stop.
  */
 function CompressAll({ waiting, compress, onChanged }: { waiting: number; compress: CompressActions; onChanged: () => void }) {
+  const w = useAdminText("website").media;
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ done: number; of: number; saved: number; kept: number; now: string | null } | null>(null);
   const stop = useRef(false);
@@ -678,29 +697,27 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
 
   if (waiting === 0 && !progress) return null;
   return (
-    <section aria-label="Compress files" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
+    <section aria-label={w.compressFilesLabel} className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
       <p className="text-sm">
-        <span className="font-medium">Compress files.</span>{" "}
-        {waiting === 0
-          ? "Every file is as small as it can be while it looks the same."
-          : `${waiting === 1 ? "1 file was" : `${waiting} files were`} uploaded before files were compressed. Compress makes each as small as it can be while it still looks the same, in this browser, and moves every place that uses it to the smaller file.`}
+        <span className="font-medium">{w.compressFiles}</span>{" "}
+        {waiting === 0 ? w.allSmall : countWords(waiting, w.waiting)}
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={running || waiting === 0} onClick={() => void run()} className={`${button} bg-brand text-brand-ink`}>
-          {running ? "Compressing …" : waiting === 1 ? "Compress 1 file" : `Compress ${waiting} files`}
+          {running ? w.compressing : countWords(waiting, w.compressCount)}
         </button>
         {running && (
           <button type="button" onClick={() => (stop.current = true)} className={button}>
-            Stop
+            {w.stop}
           </button>
         )}
       </div>
       {progress && (
         <p role="status" aria-live="polite" className="text-sm text-muted">
-          {`${progress.done} of ${progress.of} done`}
-          {progress.saved > 0 ? `, ${formatBytes(progress.saved)} saved` : ""}
-          {progress.kept > 0 ? `, ${progress.kept} already as small as they can be` : ""}
-          {progress.now ? `. Now: ${progress.now}` : "."}
+          {fillWords(w.progressDone, { done: progress.done, of: progress.of })}
+          {progress.saved > 0 ? fillWords(w.progressSaved, { bytes: formatBytes(progress.saved) }) : ""}
+          {progress.kept > 0 ? fillWords(w.progressKept, { n: progress.kept }) : ""}
+          {progress.now ? fillWords(w.progressNow, { name: progress.now }) : "."}
         </p>
       )}
     </section>
@@ -712,6 +729,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
  * `BULK_AT_ONCE`, with the progress, and stops at the first request that fails.
  */
 function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: MediaItem[]; chosenCount: number; actions: MediaActions; onClose: () => void; onDone: () => void }) {
+  const w = useAdminText("website").media;
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -727,12 +745,12 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
       try {
         outcome = await actions.removeMany(turn);
       } catch {
-        outcome = { deleted: 0, kept: turn.length, problem: "The files could not be deleted. Try again." };
+        outcome = { deleted: 0, kept: turn.length, problem: w.bulkFailed };
       }
       gone += outcome.deleted;
       setDone(gone);
       if (outcome.kept > 0) {
-        setProblem(`${gone} ${gone === 1 ? "file was" : "files were"} deleted; ${outcome.problem ?? "some could not be."}`);
+        setProblem(countWords(gone, w.bulkPartly, { problem: outcome.problem ?? w.someCouldNot }));
         setRunning(false);
         if (gone > 0) onDone();
         return;
@@ -744,42 +762,42 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
     <Modal
       open
       onClose={running ? () => {} : onClose}
-      title={`Delete ${chosenCount} ${chosenCount === 1 ? "file" : "files"}?`}
+      title={countWords(chosenCount, w.bulkTitle)}
       footer={
         <>
           <button type="button" disabled={running} onClick={onClose} className={button}>
-            Keep them
+            {w.keepThem}
           </button>
           <button type="button" disabled={running} onClick={() => void run()} className={`${button} border-danger-text bg-danger-soft text-danger-text`}>
-            {running ? `Deleting … ${done} of ${files.length}` : "Delete for good"}
+            {running ? fillWords(w.deletingOf, { done, of: files.length }) : w.deleteForGood}
           </button>
         </>
       }
     >
       <div className="flex flex-col gap-3 text-sm">
         <p>
-          {chosenCount} {chosenCount === 1 ? "file" : "files"} ({formatBytes(bytes)}) will be removed from the library and from storage.
-          {chosenCount > files.length && " Only the ones shown on this page are deleted; the library keeps the rest."}
+          {countWords(chosenCount, w.bulkRemoved, { size: formatBytes(bytes) })}
+          {chosenCount > files.length && w.onlyShown}
         </p>
         {used.length > 0 ? (
           <div className="flex flex-col gap-2">
             <p className="font-medium text-danger-text">
-              {used.length} of them {used.length === 1 ? "is" : "are"} used on the site. A picture there shows nothing until you choose another.
+              {countWords(used.length, w.bulkUsed)}
             </p>
             <ul className="max-h-40 list-disc overflow-y-auto pl-5 text-muted">
               {used.slice(0, 12).map((file) => (
                 <li key={file.id}>
                   {file.fileName}: {file.uses[0]?.label}
-                  {file.uses.length > 1 ? ` and ${file.uses.length - 1} more` : ""}
+                  {file.uses.length > 1 ? fillWords(w.andMore, { n: file.uses.length - 1 }) : ""}
                 </li>
               ))}
-              {used.length > 12 && <li>…and {used.length - 12} more</li>}
+              {used.length > 12 && <li>{fillWords(w.andMoreItem, { n: used.length - 12 })}</li>}
             </ul>
           </div>
         ) : (
-          <p>None of them is used anywhere on the site.</p>
+          <p>{w.noneUsed}</p>
         )}
-        <p className="text-muted">Deleting cannot be undone.</p>
+        <p className="text-muted">{w.cannotUndo}</p>
         {problem && (
           <p role="alert" className="text-danger-text">
             {problem}
@@ -792,7 +810,8 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
 
 /** Where a file is used, each with a link to change it there and, while visitors see it, its address on the site (D89). */
 function Uses({ item }: { item: MediaItem }) {
-  if (item.uses.length === 0) return <p className="text-sm text-muted">Not used anywhere on the site.</p>;
+  const w = useAdminText("website").media;
+  if (item.uses.length === 0) return <p className="text-sm text-muted">{w.notUsedAnywhere}</p>;
   return (
     <ul className="flex flex-col gap-2 text-sm">
       {item.uses.map((use, index) => (
@@ -807,7 +826,7 @@ function Uses({ item }: { item: MediaItem }) {
           {use.siteUrl && (
             <a href={use.siteUrl} target="_blank" rel="noreferrer" className="break-all text-xs text-muted underline">
               {use.siteUrl}
-              <span className="sr-only"> (on the site, opens in a new tab)</span>
+              <span className="sr-only">{w.onSite}</span>
             </a>
           )}
         </li>
@@ -833,6 +852,7 @@ function AltTextForm({
   altAi: boolean;
   actions: MediaActions;
 }) {
+  const w = useAdminText("website").media;
   const router = useRouter();
   const id = useId();
   const main = languages[0]?.locale ?? "";
@@ -857,7 +877,7 @@ function AltTextForm({
           // A language the store keeps but does not show now (D178) keeps its text.
           const hidden = Object.fromEntries(Object.entries(item.altTranslations).filter(([locale]) => !languages.some((l) => l.locale === locale)));
           const outcome = await actions.describe(item.id, { alt, translations: { ...hidden, ...translations } });
-          setStatus(outcome.ok ? { text: "Alt text saved." } : { text: "The alt text could not be saved.", problem: true });
+          setStatus(outcome.ok ? { text: w.altSaved } : { text: w.altNotSaved, problem: true });
           if (outcome.ok) {
             setSource(Object.values(texts).some((text) => text.trim()) ? "staff" : null);
             router.refresh();
@@ -867,22 +887,19 @@ function AltTextForm({
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 id={`${id}-heading`} className="text-body-strong text-ink">
-          Alt text
+          {w.altText}
         </h3>
         {source && (
-          <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-muted">{source === "ai" ? "Written by AI" : "Written by staff"}</span>
+          <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-muted">{source === "ai" ? w.byAi : w.byStaff}</span>
         )}
       </div>
-      <p className="text-xs text-muted">
-        What the picture shows, in a sentence, for people who cannot see it and for search engines and AI assistants. The site
-        shows it wherever the picture has no alt text of its own; a language left empty shows the first one.
-      </p>
+      <p className="text-xs text-muted">{w.altHint}</p>
       {languages.map((language, index) => (
         <label key={language.locale} className="flex flex-col gap-1 text-sm">
           <span className="font-medium">
             {language.name}
-            {languages.length > 1 && index === 0 ? " (main language)" : ""}
-            {language.extra ? " (for search and AI assistants)" : ""}
+            {languages.length > 1 && index === 0 ? w.mainLanguage : ""}
+            {language.extra ? w.extraLanguage : ""}
           </span>
           <textarea
             value={texts[language.locale] ?? ""}
@@ -899,7 +916,7 @@ function AltTextForm({
       ))}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || writing || !changed} className={button}>
-          {pending ? "Saving …" : "Save alt text"}
+          {pending ? w.saving : w.saveAlt}
         </button>
         {altAi && (
           <button
@@ -907,7 +924,7 @@ function AltTextForm({
             disabled={pending || writing}
             onClick={() =>
               write(async () => {
-                setStatus({ text: "The AI is looking at the picture …" });
+                setStatus({ text: w.aiLooking });
                 const outcome = await actions.writeAlt(item.id);
                 if (!outcome.ok) {
                   setStatus({ text: outcome.problem, problem: true });
@@ -915,13 +932,13 @@ function AltTextForm({
                 }
                 setTexts(textsOf(outcome.alt, outcome.translations));
                 setSource("ai");
-                setStatus({ text: "The AI wrote and saved the alt text. Check it, change it if need be, and save." });
+                setStatus({ text: w.aiWrote });
                 router.refresh();
               })
             }
             className={button}
           >
-            {writing ? "Writing …" : "Write with AI"}
+            {writing ? w.writing : w.writeWithAi}
           </button>
         )}
         <p role="status" aria-live="polite" className={`text-sm ${status?.problem ? "text-danger-text" : ""}`}>
@@ -948,6 +965,7 @@ function AltTexts({
   writeAlts: MediaActions["writeAlts"];
   onChanged: () => void;
 }) {
+  const w = useAdminText("website").media;
   const [rewrite, setRewrite] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ written: number; failed: number; remaining: number; problem: string | null } | null>(null);
@@ -974,22 +992,17 @@ function AltTexts({
         if (batch.written === 0 && batch.problem) break;
       }
     } catch {
-      setProgress({ written, failed, remaining: 0, problem: "The run stopped. Try again." });
+      setProgress({ written, failed, remaining: 0, problem: w.runStopped });
     }
     setRunning(false);
     onChanged();
   };
 
   return (
-    <section aria-label="Alt texts" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
+    <section aria-label={w.altTextsLabel} className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
       <p className="text-sm">
-        <span className="font-medium">Alt texts.</span>{" "}
-        {missing === 0
-          ? "Every picture has an alt text."
-          : `${missing === 1 ? "1 picture has" : `${missing} pictures have`} no alt text.`}{" "}
-        {ai
-          ? "Your AI can look at each picture and write one in every language of the site; new pictures get theirs within a few minutes of being added."
-          : "Set up an AI with a model that sees pictures under AI settings, and it can write them for you."}
+        <span className="font-medium">{w.altTexts}</span>{" "}
+        {missing === 0 ? w.everyHasAlt : countWords(missing, w.missingAlt)} {ai ? w.aiCan : w.aiCannot}
       </p>
       {ai && (
         <div className="flex flex-wrap items-center gap-3">
@@ -999,16 +1012,16 @@ function AltTexts({
             onClick={() => void run()}
             className={`${button} bg-brand text-brand-ink`}
           >
-            {running ? "Writing alt texts …" : rewrite ? "Write alt texts with AI" : "Write missing alt texts with AI"}
+            {running ? w.writingAlts : rewrite ? w.writeAlts : w.writeMissing}
           </button>
           {running ? (
             <button type="button" onClick={() => (stop.current = true)} className={button}>
-              Stop
+              {w.stop}
             </button>
           ) : (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={rewrite} onChange={(event) => setRewrite(event.target.checked)} />
-              Also write the AI&apos;s earlier ones again (staff&apos;s are kept)
+              {w.rewrite}
             </label>
           )}
         </div>
@@ -1016,8 +1029,8 @@ function AltTexts({
       {progress && (
         <p role="status" aria-live="polite" className="text-sm">
           {running
-            ? `Writing: ${progress.written} done${progress.remaining > 0 ? `, ${progress.remaining} to go` : ""}.`
-            : `${progress.written === 1 ? "1 alt text" : `${progress.written} alt texts`} written${progress.failed > 0 ? `, ${progress.failed} could not be` : ""}.`}
+            ? `${fillWords(w.writingProgress, { n: progress.written })}${progress.remaining > 0 ? fillWords(w.toGo, { n: progress.remaining }) : ""}.`
+            : `${countWords(progress.written, w.written)}${progress.failed > 0 ? fillWords(w.couldNot, { n: progress.failed }) : ""}.`}
           {progress.problem && <span className="block text-danger-text">{progress.problem}</span>}
         </p>
       )}
@@ -1033,12 +1046,13 @@ type Job = { key: string; name: string; state: "waiting" | "uploading" | "done" 
  * what that saved, then uploaded; videos straight to Storage.
  */
 function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; startVideo: StartVideo | null; onDone: () => void }) {
+  const w = useAdminText("website").media;
   const inputId = useId();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [over, setOver] = useState(false);
   const busy = jobs.some((job) => job.state === "waiting" || job.state === "uploading");
 
-  if (!upload) return <p className="rounded-panel border border-line p-4 text-sm text-muted">Uploads are not set up on this server.</p>;
+  if (!upload) return <p className="rounded-panel border border-line p-4 text-sm text-muted">{w.uploadsOff}</p>;
 
   const set = (key: string, patch: Partial<Job>) => setJobs((all) => all.map((job) => (job.key === key ? { ...job, ...patch } : job)));
 
@@ -1052,21 +1066,21 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
         const { file, key } = next;
         set(key, { state: "uploading" });
         let outcome: { ok: true; note?: string } | { ok: false; problem: string };
-        const noted = (saving: Saving) => savingWords(saving.before, saving.after) ?? undefined;
+        const noted = (saving: Saving) => savingWords(saving.before, saving.after, w) ?? undefined;
         if (IMAGE_TYPES.includes(file.type)) {
           try {
             const result = await uploadPicture(upload, file);
             outcome = result.ok ? { ok: true, note: noted(result.saving) } : result;
           } catch {
-            outcome = { ok: false, problem: `${file.name} could not be read as a picture.` };
+            outcome = { ok: false, problem: fillWords(w.notReadable, { name: file.name }) };
           }
         } else if (VIDEO_TYPES.includes(file.type) && startVideo) {
           const result = await uploadVideoFile(startVideo, null, file, {
-            onProgress: (progress) => set(key, { note: progress < 1 ? `Compressing … ${Math.round(progress * 100)} %` : undefined }),
+            onProgress: (progress) => set(key, { note: progress < 1 ? fillWords(w.compressingPercent, { percent: Math.round(progress * 100) }) : undefined }),
           });
           outcome = result.ok ? { ok: true, note: noted(result.saving) } : result;
         } else {
-          outcome = { ok: false, problem: "Use a JPEG, PNG, WebP, AVIF or GIF picture, or an MP4 or WebM video." };
+          outcome = { ok: false, problem: w.wrongType };
         }
         set(key, outcome.ok ? { state: "done", note: outcome.note } : { state: "failed", problem: outcome.problem });
       }
@@ -1078,7 +1092,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
   const done = jobs.filter((job) => job.state === "done").length;
   return (
     <section
-      aria-label="Add files"
+      aria-label={w.addFiles}
       onDragOver={(event) => {
         event.preventDefault();
         setOver(true);
@@ -1091,14 +1105,10 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
       }}
       className={`flex flex-col gap-3 rounded-panel border-2 border-dashed p-6 text-center ${over ? "border-brand bg-sunken" : "border-line bg-card"}`}
     >
-      <p className="font-medium">Drop pictures and videos here</p>
-      <p className="text-sm text-muted">
-        JPEG, PNG, WebP, AVIF or GIF pictures (made at most 1600 pixels wide, with a small copy), and MP4 or WebM videos (made
-        at most 1080p). Each is compressed in your browser until it is as small as it can be while it still looks the same. As many
-        as you like at once.
-      </p>
+      <p className="font-medium">{w.drop}</p>
+      <p className="text-sm text-muted">{w.dropHint}</p>
       <label htmlFor={inputId} className={`${button} mx-auto w-fit cursor-pointer content-center bg-brand text-brand-ink`}>
-        {busy ? "Uploading …" : "Choose files"}
+        {busy ? w.uploading : w.chooseFiles}
       </label>
       <input
         id={inputId}
@@ -1114,7 +1124,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
       {jobs.length > 0 && (
         <div className="flex flex-col gap-1 text-left text-sm">
           <p role="status" aria-live="polite">
-            {busy ? `Uploading: ${done} of ${jobs.length} done.` : `${done === 1 ? "1 file" : `${done} files`} added.`}
+            {busy ? fillWords(w.uploadingDone, { done, of: jobs.length }) : countWords(done, w.added)}
           </p>
           <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
             {jobs.map((job) => (
@@ -1122,11 +1132,11 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
                 <span className="truncate">{job.name}</span>
                 <span className={job.state === "failed" ? "text-danger-text" : "text-muted"}>
                   {job.state === "waiting"
-                    ? "Waiting"
+                    ? w.jobWaiting
                     : job.state === "uploading"
-                      ? (job.note ?? "Compressing and uploading …")
+                      ? (job.note ?? w.jobUploading)
                       : job.state === "done"
-                        ? job.note ? `Added · ${job.note}` : "Added"
+                        ? job.note ? fillWords(w.jobAddedNote, { note: job.note }) : w.jobAdded
                         : job.problem}
                 </span>
               </li>

@@ -4,6 +4,8 @@ import { useActionState } from "react";
 
 import { idle, type FormState } from "./action-form";
 import { Button, ButtonLink } from "./ui";
+import { fillWords } from "@/lib/admin-fill";
+import { useAdminText } from "./admin-text";
 
 export type DemoHomeTake = { id: string; name: string; pageId: string | null; previousTitle: string | null; copyIsFront: boolean };
 
@@ -20,6 +22,7 @@ export function DemoHomeTakeLine({
   editBase: string;
   undo: (state: FormState, data: FormData) => Promise<FormState>;
 }) {
+  const w = useAdminText("website").demoHomes;
   const [state, formAction, pending] = useActionState(undo, idle);
   if (state.status === "ok") {
     return (
@@ -32,18 +35,18 @@ export function DemoHomeTakeLine({
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-panel bg-sunken p-4 text-body">
       <p>
-        {take.copyIsFront ? <>Your store opens with the home page from {take.name}.</> : <>You took the home page from {take.name}.</>}{" "}
-        {take.previousTitle ? <>Before, it opened with {take.previousTitle}.</> : <>Before, it opened with your products.</>}
+        {fillWords(take.copyIsFront ? w.opensWith : w.took, { name: take.name })}{" "}
+        {take.previousTitle ? fillWords(w.before, { title: take.previousTitle }) : w.beforeProducts}
       </p>
       <form action={formAction} aria-busy={pending} className="flex flex-wrap items-center gap-3">
         {take.pageId && (
           <ButtonLink href={`${editBase}/${take.pageId}`} kind="strong">
-            Put in your own words
+            {w.ownWords}
           </ButtonLink>
         )}
         <input type="hidden" name="take" value={take.id} />
         <Button type="submit" disabled={pending}>
-          Put back your front page
+          {w.putBack}
         </Button>
       </form>
       {state.status === "error" && (

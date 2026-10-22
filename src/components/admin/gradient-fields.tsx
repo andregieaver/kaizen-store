@@ -30,6 +30,9 @@ import {
   setGradientStyle,
 } from "@/lib/motion-edit";
 import type { GradientBackground } from "@/lib/page-content";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { Check, ColorField, Choices, smallButton } from "./block-fields";
 import { SavedGradients } from "./colour-library";
 import { EffectPicker, Setting } from "./motion-fields";
@@ -52,6 +55,10 @@ export function GradientFields({
   const angle = value.angle ?? GRADIENT_ANGLE_DEFAULT;
   const styles = Object.keys(GRADIENT_STYLES) as GradientStyle[];
   const opacityId = useId();
+  const all = useAdminText("blocks");
+  const w = all.gradient;
+  const t = all.typo;
+  const term = (english: string) => (all.motion.terms as Record<string, string>)[english] ?? english;
   const opacity = value.opacity ?? 100;
   const setOpacity = (next: number) => {
     const { opacity: _old, ...rest } = value;
@@ -62,7 +69,7 @@ export function GradientFields({
     <div className="flex flex-col gap-4">
       {/* The store's saved gradients (D183): using one copies it in, keeping this one's overlay and opacity. */}
       <SavedGradients
-        label="Gradient"
+        label={w.gradient}
         current={value}
         onPick={(saved) => {
           setRevision((n) => n + 1);
@@ -79,25 +86,23 @@ export function GradientFields({
         }}
       />
       <Choices
-        legend="Style"
-        hint={GRADIENT_STYLES[value.style].hint}
-        options={styles.map((style) => ({ value: style, label: GRADIENT_STYLES[style].label }))}
+        legend={w.style}
+        hint={term(GRADIENT_STYLES[value.style].hint)}
+        options={styles.map((style) => ({ value: style, label: term(GRADIENT_STYLES[style].label) }))}
         value={value.style}
         onChange={(style) => onChange(setGradientStyle(value, style))}
       />
       <fieldset className="flex flex-col gap-2">
         <legend className="float-left mb-2 w-full text-sm font-medium">
-          Colours{" "}
-          <span className="font-normal text-muted">
-            ({GRADIENT_COLORS_MIN} to {GRADIENT_COLORS_MAX})
-          </span>
+          {w.colours}{" "}
+          <span className="font-normal text-muted">{fillWords(w.range, { min: GRADIENT_COLORS_MIN, max: GRADIENT_COLORS_MAX })}</span>
         </legend>
         <ul className="flex flex-wrap items-end gap-4">
           {value.colors.map((color, index) => (
             // The colours have no ids and keep their order, so their place (and the revision) is their key.
             <li key={`${revision}-${index}`} className="flex items-end gap-2">
               <ColorField
-                label={`Colour ${index + 1}`}
+                label={fillWords(t.colourN, { n: index + 1 })}
                 value={color}
                 onChange={(next) => onChange(setGradientColor(value, index, next))}
               />
@@ -108,10 +113,10 @@ export function GradientFields({
                   onChange(removeGradientColor(value, index));
                 }}
                 disabled={value.colors.length <= GRADIENT_COLORS_MIN}
-                aria-label={`Remove colour ${index + 1}`}
+                aria-label={fillWords(t.removeColour, { n: index + 1 })}
                 className={smallButton}
               >
-                Remove
+                {t.remove}
               </button>
             </li>
           ))}
@@ -126,14 +131,14 @@ export function GradientFields({
             disabled={value.colors.length >= GRADIENT_COLORS_MAX}
             className={smallButton}
           >
-            Add a colour
+            {t.addColour}
           </button>
         </div>
       </fieldset>
       {gradientHasAngle(value.style) && (
         <div className="flex flex-col gap-1">
           <label htmlFor={angleId} className="text-sm font-medium">
-            Angle
+            {t.angle}
           </label>
           <div className="flex min-h-10 items-center gap-3">
             <input
@@ -154,21 +159,21 @@ export function GradientFields({
       )}
       {gradientHasFlow(value.style) && (
         <Setting
-          label="How it moves"
+          label={w.flow}
           value={value.flow ?? GRADIENT_FLOW_DEFAULT}
           options={GRADIENT_FLOWS}
           onChange={(flow) => onChange(setGradientFlow(value, flow))}
         />
       )}
       <Check
-        label="Grain"
-        hint="A fine noise over the colours, which softens the bands."
+        label={w.grain}
+        hint={w.grainHint}
         checked={Boolean(value.grain)}
         onChange={(grain) => onChange(setGradientGrain(value, grain))}
       />
       <div className="flex flex-col gap-1">
         <label htmlFor={opacityId} className="text-sm font-medium">
-          Gradient opacity
+          {w.opacity}
         </label>
         <div className="flex min-h-10 items-center gap-3">
           <input
@@ -186,20 +191,20 @@ export function GradientFields({
             {opacity}%
           </output>
         </div>
-        <p className="text-xs text-muted">Less than 100 lets what is behind the gradient (a colour, the page) show through.</p>
+        <p className="text-xs text-muted">{w.opacityHint}</p>
       </div>
       <Check
-        label="Colour over the gradient"
-        hint="A colour laid over it, to calm it or make text on it easier to read."
+        label={w.overlay}
+        hint={w.overlayHint}
         checked={Boolean(value.overlay)}
         onChange={(on) => onChange({ ...value, overlay: on ? { color: "#000000", opacity: 30 } : null })}
       />
       {value.overlay && (
         <div className="flex flex-wrap items-end gap-6 pl-7">
-          <ColorField label="Overlay colour" value={value.overlay.color} onChange={(color) => onChange({ ...value, overlay: { color, opacity: value.overlay?.opacity ?? 30 } })} />
+          <ColorField label={w.overlayColour} value={value.overlay.color} onChange={(color) => onChange({ ...value, overlay: { color, opacity: value.overlay?.opacity ?? 30 } })} />
           <div className="flex flex-col gap-1">
             <label htmlFor={`${opacityId}-overlay`} className="text-sm font-medium">
-              Overlay opacity
+              {w.overlayOpacity}
             </label>
             <div className="flex min-h-10 items-center gap-3">
               <input
@@ -234,11 +239,12 @@ export function BackgroundMotionFields({
   value: BackgroundMotion | undefined;
   onChange: (motion: BackgroundMotion | undefined) => void;
 }) {
+  const w = useAdminText("blocks").gradient;
   return (
     <div className="flex flex-col gap-3 border-t border-line pt-4">
-      <h4 className="text-sm font-medium">Background motion</h4>
+      <h4 className="text-sm font-medium">{w.motion}</h4>
       <EffectPicker
-        legend="Background effect"
+        legend={w.effect}
         kind="background"
         target={target}
         groups={effectsFor(BACKGROUND_EFFECTS, target)}
@@ -247,7 +253,7 @@ export function BackgroundMotionFields({
       />
       {value && (
         <Setting
-          label="Intensity"
+          label={w.intensity}
           value={value.intensity ?? INTENSITY_DEFAULT}
           options={MOTION_INTENSITIES}
           onChange={(intensity) => onChange(setBackgroundIntensity(value, intensity))}

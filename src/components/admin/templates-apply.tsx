@@ -3,9 +3,11 @@
 import { useId, useState } from "react";
 
 import type { PageRow, PageType } from "@/lib/page-content";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { LAYOUT_TYPE_LABELS, layoutBlocks, type PageLayout } from "@/lib/page-layout";
 import { cssNote, isBlankPage, layoutRoomProblem, replaceWarning, type ApplyMode } from "@/lib/page-layout-apply";
 
+import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 
 /** A page layout waiting to be put on the page: from Saved, or a template's copy the server made ready. */
@@ -15,8 +17,6 @@ export type PendingLayout = {
   /** A template from another store: its uses of globals are dropped and its grids show this store's products. */
   foreign: boolean;
 };
-
-const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * What to do with a page layout (D127): replace the page's own layout with it, or add its rows after the ones already
@@ -44,8 +44,9 @@ export function ApplyLayoutDialog({
   onApply: (pending: PendingLayout, mode: ApplyMode) => string | null;
   onClose: () => void;
 }) {
+  const w = useAdminText("builder").templates;
   return (
-    <Modal open={pending !== null} onClose={onClose} title="Use a page layout">
+    <Modal open={pending !== null} onClose={onClose} title={w.applyTitle}>
       {pending && (
         <Choice
           pending={pending}
@@ -79,13 +80,18 @@ function Choice({
   onClose: () => void;
 }) {
   const id = useId();
+  const w = useAdminText("builder").templates;
   const blank = isBlankPage(rows);
   const [mode, setMode] = useState<ApplyMode>(blank ? "replace" : "add");
   const [problem, setProblem] = useState<string | null>(null);
   const { layout } = pending;
   const room = layoutRoomProblem({ rows }, layout, mode);
   const css = cssNote({ css: pageCss }, layout, mode);
+  // The checks' own sentences (`replaceWarning()`) take the English kind; the dialog's words take the admin's.
   const kind = LAYOUT_TYPE_LABELS[pageType].one;
+  const these = w.this[pageType];
+  const here = countWords(rows.length, w.rows);
+  const theirs = countWords(layout.rows.length, w.rows);
   const warning = mode === "replace" ? replaceWarning(rows, pageSaved, kind) : null;
   const replacing = warning !== null;
 
@@ -97,13 +103,13 @@ function Choice({
   const options: { value: ApplyMode; label: string; hint: string }[] = [
     {
       value: "replace",
-      label: pageType === "product_layout" ? `Replace the rows of this ${kind}` : `Replace this ${kind}'s layout`,
-      hint: `The ${count(rows.length, "row")} on this ${kind} are swapped for the layout's ${count(layout.rows.length, "row")}.`,
+      label: fillWords(pageType === "product_layout" ? w.replaceRows : w.replaceLayout, { this: these }),
+      hint: fillWords(w.replaceHint, { rows: here, this: these, layoutRows: theirs }),
     },
     {
       value: "add",
-      label: "Add after the current rows",
-      hint: `The layout's ${count(layout.rows.length, "row")} are put below the ${count(rows.length, "row")} already here.`,
+      label: w.addLabel,
+      hint: fillWords(w.addHint, { layoutRows: theirs, rows: here }),
     },
   ];
 
@@ -116,12 +122,11 @@ function Choice({
       className="flex flex-col gap-4"
     >
       <p className="text-sm">
-        <span className="font-medium">{pending.name}</span> has {count(layout.rows.length, "row")} and{" "}
-        {count(layoutBlocks(layout).length, "block")}. It is copied to this {kind}: what you change here never reaches
-        the layout.
+        <span className="font-medium">{pending.name}</span>{" "}
+        {fillWords(w.applyIntro, { rows: theirs, blocks: countWords(layoutBlocks(layout).length, w.blocks), this: these })}
       </p>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">What should happen?</legend>
+        <legend className="mb-1 text-sm font-medium">{w.what}</legend>
         {options.map((option) => (
           <label
             key={option.value}
@@ -160,14 +165,14 @@ function Choice({
 
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onClose} className="min-h-10 rounded-pill border border-edge px-4 text-sm">
-          Cancel
+          {w.cancel}
         </button>
         <button
           type="submit"
           disabled={room !== null}
           className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
-          {mode === "replace" ? (replacing ? `Replace ${count(rows.length, "row")}` : "Use layout") : "Add rows"}
+          {mode === "replace" ? (replacing ? fillWords(w.replaceCount, { rows: here }) : w.useLayout) : w.addRows}
         </button>
       </div>
     </form>

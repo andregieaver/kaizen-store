@@ -42,6 +42,9 @@ import {
   type MotionPart,
   type StaggerKind,
 } from "@/lib/motion-edit";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { Check, Choices } from "./block-fields";
 import { HoverTimingFields } from "./hover-fields";
 
@@ -71,6 +74,12 @@ export function useReducedMotion(): boolean {
 
 export const REDUCED_NOTE = "Motion is reduced on this device, so effects are not played here.";
 
+/** A library word (an effect's name and hint, a speed, a group) in the admin's language: `motion.terms` by the English. */
+function useTerm(): (english: string) => string {
+  const terms = useAdminText("blocks").motion.terms as Record<string, string>;
+  return (english) => terms[english] ?? english;
+}
+
 // ---------------------------------------------------------------------------
 // The tab
 // ---------------------------------------------------------------------------
@@ -90,17 +99,15 @@ export function MotionFields({
   const trigger = enter?.trigger ?? ENTER_DEFAULTS.trigger;
   const hover = motion?.hover;
   const scroll = motion?.scroll;
+  const w = useAdminText("blocks").motion;
   return (
     <div className="flex flex-col gap-6">
       <MotionPreview part={part} motion={motion} />
-      <p className="text-sm text-muted">
-        Visitors who ask their device for less motion see none of these effects. Keep the first section of a page quiet:
-        it is what people see before anything has moved.
-      </p>
+      <p className="text-sm text-muted">{w.intro}</p>
 
-      <Section title="Entrance" hint="How it arrives, when it comes into view or when the page opens.">
+      <Section title={w.entrance} hint={w.entranceHint}>
         <EffectPicker
-          legend="Entrance effect"
+          legend={w.entranceEffect}
           kind="enter"
           target={drawTarget(part)}
           groups={enterOffered(part)}
@@ -111,17 +118,17 @@ export function MotionFields({
         {enter && (
           <div className="flex flex-col gap-4 rounded-md border border-line p-4">
             <Choices
-              legend="Plays"
+              legend={w.plays}
               options={[
-                { value: "view", label: "When it comes into view" },
-                { value: "load", label: "When the page opens" },
+                { value: "view", label: w.inView },
+                { value: "load", label: w.onLoad },
               ]}
               value={trigger}
               onChange={(next) => onChange(patchEnter(motion, { trigger: next }, part))}
             />
             {trigger === "view" && (
               <Setting
-                label="Starts"
+                label={w.starts}
                 value={enter.start ?? ENTER_DEFAULTS.start}
                 options={MOTION_STARTS}
                 onChange={(start) => onChange(patchEnter(motion, { start }, part))}
@@ -129,40 +136,40 @@ export function MotionFields({
             )}
             <div className="flex flex-wrap gap-4">
               <Setting
-                label="Speed"
+                label={w.speed}
                 value={enter.speed ?? ENTER_DEFAULTS.speed}
                 options={MOTION_SPEEDS}
                 onChange={(speed) => onChange(patchEnter(motion, { speed }, part))}
               />
               <Setting
-                label="Distance"
+                label={w.distance}
                 value={enter.distance ?? ENTER_DEFAULTS.distance}
                 options={MOTION_DISTANCES}
                 onChange={(distance) => onChange(patchEnter(motion, { distance }, part))}
               />
               <Setting
-                label="Easing"
+                label={w.easing}
                 value={enter.ease ?? ENTER_DEFAULTS.ease}
                 options={MOTION_EASES}
                 onChange={(ease) => onChange(patchEnter(motion, { ease }, part))}
               />
             </div>
-            <p className="text-xs text-muted">Its delay and duration, in seconds, are under Advanced, Animation.</p>
+            <p className="text-xs text-muted">{w.underAdvanced}</p>
             {stagger && (
               <MotionRange
-                label={STAGGER_LABELS[stagger]}
+                label={w.stagger[stagger] ?? STAGGER_LABELS[stagger]}
                 max={STAGGER_MAX}
                 value={enter.stagger ?? 0}
                 shown={(ms) =>
-                  ms === 0 ? (stagger === "columns" || stagger === "components" ? "Together" : "Standard") : `${ms} ms`
+                  ms === 0 ? (stagger === "columns" || stagger === "components" ? w.together : w.standard) : fillWords(w.ms, { n: ms })
                 }
                 onChange={(next) => onChange(patchEnter(motion, { stagger: next }, part))}
               />
             )}
             {trigger === "view" && (
               <Check
-                label="Play it again each time it comes into view"
-                hint="Off, it plays the first time only."
+                label={w.again}
+                hint={w.againHint}
                 checked={enter.once === false}
                 onChange={(again) => onChange(patchEnter(motion, { once: again ? false : undefined }, part))}
               />
@@ -171,9 +178,9 @@ export function MotionFields({
         )}
       </Section>
 
-      <Section title="Hover" hint="What happens while the pointer is over it. Touch screens have no hover.">
+      <Section title={w.hover} hint={w.hoverHint}>
         <EffectPicker
-          legend="Hover effect"
+          legend={w.hoverEffect}
           kind="hover"
           target={drawTarget(part)}
           groups={hoverOffered(part)}
@@ -183,7 +190,7 @@ export function MotionFields({
         />
         {hover && (
           <Setting
-            label="Intensity"
+            label={w.intensity}
             value={hover.intensity ?? INTENSITY_DEFAULT}
             options={MOTION_INTENSITIES}
             onChange={(intensity) => onChange(setHoverIntensity(motion, intensity))}
@@ -192,9 +199,9 @@ export function MotionFields({
         <HoverTimingFields value={motion?.hoverTime} onChange={(hoverTime) => onChange(setHoverTime(motion, hoverTime))} />
       </Section>
 
-      <Section title="While scrolling" hint="Moves, fades or changes as the page is scrolled.">
+      <Section title={w.scrolling} hint={w.scrollingHint}>
         <EffectPicker
-          legend="Scroll effect"
+          legend={w.scrollEffect}
           kind="scroll"
           target={drawTarget(part)}
           groups={scrollOffered(part)}
@@ -204,7 +211,7 @@ export function MotionFields({
         />
         {scroll && (
           <Setting
-            label="Intensity"
+            label={w.intensity}
             value={scroll.intensity ?? INTENSITY_DEFAULT}
             options={MOTION_INTENSITIES}
             onChange={(intensity) => onChange(setScrollIntensity(motion, intensity))}
@@ -235,15 +242,16 @@ export function AnimationFields({
 }) {
   const id = useId();
   const enter = motion?.enter;
+  const w = useAdminText("blocks").motion;
   return (
     <fieldset className="flex flex-col gap-3 border-t border-line pt-4" data-animation-fields="">
-      <legend className="float-left mb-1 w-full font-medium">Animation</legend>
+      <legend className="float-left mb-1 w-full font-medium">{w.animation}</legend>
       {enter ? (
         <div className="flex flex-wrap gap-4">
           <SecondsField
             id={`${id}-delay`}
-            label="Delay"
-            hint="0 to 10 seconds"
+            label={w.delay}
+            hint={w.delayHint}
             value={enter.delay ?? 0}
             min={0}
             max={DELAY_MAX}
@@ -252,8 +260,8 @@ export function AnimationFields({
           />
           <SecondsField
             id={`${id}-duration`}
-            label="Duration"
-            hint={`0.1 to 5 seconds; empty is its speed's (${seconds(SPEED_MS[enter.speed ?? ENTER_DEFAULTS.speed])})`}
+            label={w.duration}
+            hint={fillWords(w.durationHint, { s: seconds(SPEED_MS[enter.speed ?? ENTER_DEFAULTS.speed]) })}
             value={enter.duration}
             min={DURATION_MIN}
             max={DURATION_MAX}
@@ -262,7 +270,7 @@ export function AnimationFields({
           />
         </div>
       ) : (
-        <p className="text-sm text-muted">Choose an entrance under Motion to set when it starts and how long it takes.</p>
+        <p className="text-sm text-muted">{w.chooseEntrance}</p>
       )}
     </fieldset>
   );
@@ -287,6 +295,7 @@ function SecondsField({
   empty: string;
   onChange: (ms: number | undefined) => void;
 }) {
+  const secondsUnit = useAdminText("blocks").motion.seconds;
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? (value === undefined ? "" : seconds(value));
   const typed = Number(shown);
@@ -318,7 +327,7 @@ function SecondsField({
           onBlur={() => setDraft(null)}
           className="min-h-10 w-24 rounded-md border border-line bg-card px-3 text-sm aria-invalid:border-danger-text"
         />
-        <span className="text-sm text-muted">s</span>
+        <span className="text-sm text-muted">{secondsUnit}</span>
       </span>
       <span id={`${id}-hint`} className="text-xs text-muted">
         {hint}
@@ -367,6 +376,7 @@ export function Setting<T extends string>({
   onChange: (value: T) => void;
 }) {
   const id = useId();
+  const term = useTerm();
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
@@ -380,7 +390,7 @@ export function Setting<T extends string>({
       >
         {(Object.keys(options) as T[]).map((key) => (
           <option key={key} value={key}>
-            {options[key]}
+            {term(options[key])}
           </option>
         ))}
       </select>
@@ -459,6 +469,8 @@ export function EffectPicker<Id extends string>({
 }) {
   const legendId = useId();
   const reduced = useReducedMotion();
+  const w = useAdminText("blocks").motion;
+  const term = useTerm();
   const present = groups.some((g) => g.effects.some((e) => e.id === value));
   const listRef = useRef<HTMLDivElement>(null);
   const move = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -486,8 +498,8 @@ export function EffectPicker<Id extends string>({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <EffectCard
             id={null}
-            label="None"
-            hint="No effect."
+            label={w.none}
+            hint={w.noEffect}
             group="None"
             kind={kind}
             target={target}
@@ -499,17 +511,17 @@ export function EffectPicker<Id extends string>({
           />
         </div>
         {groups.map((group) => (
-          <div key={group.group} role="group" aria-label={group.group} className="flex flex-col gap-2">
+          <div key={group.group} role="group" aria-label={term(group.group)} className="flex flex-col gap-2">
             <p aria-hidden className="text-eyebrow text-muted uppercase">
-              {group.group}
+              {term(group.group)}
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {group.effects.map((effect) => (
                 <EffectCard
                   key={effect.id}
                   id={effect.id}
-                  label={effect.label}
-                  hint={effect.hint}
+                  label={term(effect.label)}
+                  hint={term(effect.hint)}
                   group={group.group}
                   kind={kind}
                   target={target}
@@ -525,7 +537,7 @@ export function EffectPicker<Id extends string>({
       </div>
       {!fits && value !== null && (
         <p role="status" className="text-xs text-danger-text">
-          The chosen effect is not one this part can have. Choose another, or None.
+          {w.notFit}
         </p>
       )}
     </div>
@@ -694,6 +706,7 @@ export const GLYPH_GROUPS = Object.keys(GLYPHS);
  */
 export function MotionPreview({ part, motion }: { part: MotionPart; motion: PartMotion | undefined }) {
   const reduced = useReducedMotion();
+  const w = useAdminText("blocks").motion;
   const [replay, setReplay] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const target = drawTarget(part);
@@ -724,19 +737,19 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
     // Where there is room it stays in view under the tabs, so a change can be watched while its settings are worked at.
     <div className="z-[5] flex flex-col gap-2 rounded-md border border-line bg-sunken p-3 sm:sticky sm:top-7">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-body-strong text-ink">Preview</h3>
+        <h3 className="text-body-strong text-ink">{w.preview}</h3>
         <button
           type="button"
           onClick={() => setReplay((n) => n + 1)}
           disabled={!motion?.enter || reduced}
           className="min-h-9 rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40"
         >
-          Replay
+          {w.replay}
         </button>
       </div>
       {reduced && (
         <p role="status" className="text-xs text-muted">
-          {REDUCED_NOTE}
+          {w.reduced}
         </p>
       )}
       <div ref={boxRef} className={`grid grid-cols-1 items-start gap-3 ${motion?.scroll ? "sm:grid-cols-2" : ""}`}>
@@ -747,11 +760,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
             </div>
           </div>
           <p className="text-xs text-muted">
-            {nothing
-              ? "Choose an effect below to see it here."
-              : motion?.hover
-                ? "Point at the sample to see the hover effect."
-                : "This is a sample, not your content."}
+            {nothing ? w.chooseBelow : motion?.hover ? w.pointAt : w.sample}
           </p>
         </div>
         {motion?.scroll && (
@@ -759,7 +768,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
             <div
               tabIndex={0}
               role="region"
-              aria-label="Scroll this box to see the scroll effect"
+              aria-label={w.scrollBox}
               className="h-32 overflow-y-auto rounded-md bg-card focus-visible:outline-2"
             >
               <div className="h-32" aria-hidden />
@@ -770,7 +779,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
               </div>
               <div className="h-44" aria-hidden />
             </div>
-            <p className="text-xs text-muted">Scroll inside this box: the sample moves as you do.</p>
+            <p className="text-xs text-muted">{w.scrollInside}</p>
           </div>
         )}
       </div>
@@ -781,6 +790,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
 /** What the preview draws: a stand-in for the kind of part, so a row's columns and a column's components can be seen. */
 function Sample({ part, childFx }: { part: MotionPart; childFx: (index: number) => FxProps | null }) {
   const bar = "h-2 rounded bg-inverse/25";
+  const w = useAdminText("blocks").motion;
   // What a stagger plays in turn carries the attributes the parent's entrance gives its children.
   const child = (index: number) => {
     const fx = childFx(index);
@@ -810,13 +820,13 @@ function Sample({ part, childFx }: { part: MotionPart; childFx: (index: number) 
     );
   }
   if (part.blockType === "heading" || part.blockType === "richText") {
-    return <p className="text-xl font-medium">A short line that draws the eye, and a little more to read</p>;
+    return <p className="text-xl font-medium">{w.sampleLine}</p>;
   }
   if (part.blockType === "image") {
     return <div className="h-24 w-40 rounded bg-accent/25" />;
   }
   if (part.blockType === "button" || part.blockType === "dualButton") {
-    return <div className="inline-block rounded bg-brand px-4 py-2 text-sm text-brand-ink">Button</div>;
+    return <div className="inline-block rounded bg-brand px-4 py-2 text-sm text-brand-ink">{w.button}</div>;
   }
   return (
     <div className="flex max-w-xs flex-col gap-2 rounded bg-accent/15 p-3">

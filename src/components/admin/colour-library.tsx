@@ -17,6 +17,9 @@ import {
 } from "@/lib/colour-library";
 import { HEX6 } from "@/lib/colour";
 import { TEXT_GRADIENT_ANGLE_DEFAULT, TEXT_GRADIENT_COLORS, type TextGradient } from "@/lib/typography";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 /**
  * The store's saved colours and gradients (D183) in the page builder: a provider the editor puts around the builder, and the
@@ -50,6 +53,7 @@ export function ColourLibraryProvider({
 }) {
   const [library, setLibrary] = useState<ColourLibrary>(initial ?? EMPTY_LIBRARY);
   const [problem, setProblem] = useState<string | null>(null);
+  const w = useAdminText("blocks").library;
   const keep = useCallback(
     async (next: ColourLibrary, before: ColourLibrary) => {
       setLibrary(next);
@@ -59,27 +63,27 @@ export function ColourLibraryProvider({
         const failed = await save(next);
         if (failed) {
           setLibrary(before);
-          setProblem(failed[0] ?? "It could not be kept.");
+          setProblem(failed[0] ?? w.notKept);
         }
       } catch {
         setLibrary(before);
-        setProblem("It could not be kept. Changing the saved colours needs access to the page builder.");
+        setProblem(w.noAccess);
       }
     },
-    [save],
+    [save, w],
   );
   if (!save) return <>{children}</>;
   const value: Library = {
     library,
     problem,
     saveColour: (name, color) => {
-      const added = withSavedColour(library, { id: crypto.randomUUID(), name: libraryName(name, `Colour ${library.colours.length + 1}`), color });
-      if (added.full) setProblem("There is room for 40 saved colours; remove one first.");
+      const added = withSavedColour(library, { id: crypto.randomUUID(), name: libraryName(name, fillWords(w.colourN, { n: library.colours.length + 1 })), color });
+      if (added.full) setProblem(w.colourFull);
       else void keep(added.library, library);
     },
     saveGradient: (name, gradient) => {
-      const added = withSavedGradient(library, savedFromBackground(gradient, crypto.randomUUID(), libraryName(name, `Gradient ${library.gradients.length + 1}`)));
-      if (added.full) setProblem("There is room for 20 saved gradients; remove one first.");
+      const added = withSavedGradient(library, savedFromBackground(gradient, crypto.randomUUID(), libraryName(name, fillWords(w.gradientN, { n: library.gradients.length + 1 }))));
+      if (added.full) setProblem(w.gradientFull);
       else void keep(added.library, library);
     },
     remove: (kind, id) => void keep(withoutSaved(library, kind, id), library),
@@ -88,8 +92,9 @@ export function ColourLibraryProvider({
 }
 
 /** A small form that asks for a name and saves: a button until pressed. */
-function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; onSave: (name: string) => void }) {
+function SaveAs({ what, disabled, onSave }: { what: "colour" | "gradient"; disabled?: boolean; onSave: (name: string) => void }) {
   const [open, setOpen] = useState(false);
+  const w = useAdminText("blocks").library;
   const [name, setName] = useState("");
   const id = useId();
   if (!open) {
@@ -100,7 +105,7 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
         onClick={() => setOpen(true)}
         className="min-h-8 rounded-pill border border-edge px-2 text-xs hover:bg-sunken disabled:opacity-50"
       >
-        Save {what}…
+        {what === "colour" ? w.saveColour : w.saveGradient}
       </button>
     );
   }
@@ -112,14 +117,14 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       <label htmlFor={id} className="sr-only">
-        Name of the saved {what}
+        {what === "colour" ? w.nameColour : w.nameGradient}
       </label>
       <input
         id={id}
         autoFocus
         value={name}
         maxLength={LIBRARY_NAME_MAX}
-        placeholder="Name"
+        placeholder={w.name}
         onChange={(event) => setName(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -134,10 +139,10 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
         className="min-h-8 w-32 rounded-md border border-line bg-card px-2 text-xs"
       />
       <button type="button" onClick={done} className="min-h-8 rounded-pill bg-brand px-2 text-xs font-medium text-brand-ink">
-        Save
+        {w.save}
       </button>
       <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-pill border border-line px-2 text-xs">
-        Cancel
+        {w.cancel}
       </button>
     </span>
   );
@@ -146,12 +151,13 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
 /** A colour field's saved colours: press one to use it, × to remove it, and save the colour shown. */
 export function SavedColours({ label, value, onPick }: { label: string; value: string | undefined; onPick: (color: string) => void }) {
   const lib = useColourLibrary();
+  const w = useAdminText("blocks").library;
   if (!lib) return null;
   const { colours } = lib.library;
   return (
     <div className="flex flex-col gap-1 pt-1" data-saved-colours="">
       {colours.length > 0 && (
-        <div role="group" aria-label={`${label}: saved colours`} className="flex flex-wrap items-center gap-1.5">
+        <div role="group" aria-label={fillWords(w.savedColours, { label })} className="flex flex-wrap items-center gap-1.5">
           {colours.map((saved) => (
             <span key={saved.id} className="group relative">
               <button
@@ -166,7 +172,7 @@ export function SavedColours({ label, value, onPick }: { label: string; value: s
               <button
                 type="button"
                 onClick={() => lib.remove("colour", saved.id)}
-                aria-label={`Remove saved colour ${saved.name}`}
+                aria-label={fillWords(w.removeColour, { name: saved.name })}
                 className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-brand text-brand-ink group-focus-within:flex group-hover:flex"
               >
                 <X aria-hidden className="size-3" />
@@ -200,18 +206,19 @@ export function SavedGradients({
   onPick: (saved: SavedGradient) => void;
 }) {
   const lib = useColourLibrary();
+  const w = useAdminText("blocks").library;
   if (!lib) return null;
   const { gradients } = lib.library;
   return (
     <div className="flex flex-col gap-1.5" data-saved-gradients="">
       {gradients.length > 0 && (
-        <div role="group" aria-label={`${label}: saved gradients`} className="flex flex-wrap items-center gap-2">
+        <div role="group" aria-label={fillWords(w.savedGradients, { label })} className="flex flex-wrap items-center gap-2">
           {gradients.map((saved) => (
             <span key={saved.id} className="group relative">
               <button
                 type="button"
                 onClick={() => onPick(saved)}
-                aria-label={`Use the saved gradient ${saved.name}`}
+                aria-label={fillWords(w.useGradient, { name: saved.name })}
                 title={saved.name}
                 className="h-7 w-14 rounded border border-line shadow-sm"
                 style={swatch(saved)}
@@ -219,7 +226,7 @@ export function SavedGradients({
               <button
                 type="button"
                 onClick={() => lib.remove("gradient", saved.id)}
-                aria-label={`Remove saved gradient ${saved.name}`}
+                aria-label={fillWords(w.removeGradient, { name: saved.name })}
                 className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-brand text-brand-ink group-focus-within:flex group-hover:flex"
               >
                 <X aria-hidden className="size-3" />

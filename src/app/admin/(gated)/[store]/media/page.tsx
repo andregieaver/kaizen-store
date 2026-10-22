@@ -9,6 +9,10 @@ import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
@@ -31,18 +35,19 @@ export const metadata: Metadata = { title: "Media library" };
  * here or in any editor, with where each is used.
  */
 export default async function MediaPage({ params, searchParams }: PageProps<"/admin/[store]/media">) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "website").mediaPage;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["website"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Media library"
-        description={<>Every picture and video {store.name} has uploaded, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let your AI write them), and see where each one is used on the site.</>}
-      />
+      <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Library storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>
+    </AdminTextScope>
   );
 }
 

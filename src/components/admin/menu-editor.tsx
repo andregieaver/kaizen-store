@@ -29,6 +29,9 @@ import {
 import { dropDepth, menuMoves, moveItem, subtreeEnd, type MenuMoves } from "@/lib/menu-structure";
 import { LABEL_MAX, MEGA_MAX_COLUMNS, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyLinkKind, type AnyMenuEntry, type AnyMenuLink } from "@/lib/navigation";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import {
   TARGET_NOUNS,
@@ -108,6 +111,7 @@ export function MenuEditor({
   /** Uploads a link's picture (D87); null where uploads are not set up. */
   upload: Upload | null;
 }) {
+  const w = useAdminText("website").menus;
   const router = useRouter();
   const [name, setName] = useState(menu.name);
   const [items, setItems] = useState<Item[]>(() => menu.items.map(keyed));
@@ -138,15 +142,15 @@ export function MenuEditor({
     const own = item.label[main.locale]?.trim();
     if (own) return own;
     const target = targetOf(item.link);
-    if (target) return (targets[target.kind] ?? []).find((t) => t.value === target.value)?.title.trim() ?? `${TARGET_NOUNS[target.kind]} not found`;
-    if (item.link.kind === "url") return item.link.url || "Custom link";
+    if (target) return (targets[target.kind] ?? []).find((t) => t.value === target.value)?.title.trim() ?? fillWords(w.notFound, { noun: w.nouns[target.kind] });
+    if (item.link.kind === "url") return item.link.url || w.customLink;
     return main.defaults[item.link.kind] ?? kinds.find((k) => k.kind === item.link.kind)?.label ?? item.link.kind;
   };
 
   const add = (links: AnyMenuLink[], label: Record<string, string> = {}) => {
     const room = MENU_MAX_ITEMS - items.length;
     change([...items, ...links.slice(0, room).map((link) => keyed({ label, link, depth: 0 }))]);
-    setAnnouncement(links.length === 1 ? "Added 1 link to the menu." : `Added ${Math.min(links.length, room)} links to the menu.`);
+    setAnnouncement(countWords(Math.min(links.length, room), w.added));
   };
 
   const submit = () =>
@@ -174,7 +178,7 @@ export function MenuEditor({
     });
 
   const choose = (id: string) => {
-    if (dirty && !window.confirm("Leave this menu without saving the changes?")) return;
+    if (dirty && !window.confirm(w.leave)) return;
     router.push(id ? `${basePath}?menu=${id}` : `${basePath}?menu=new`);
   };
 
@@ -184,9 +188,9 @@ export function MenuEditor({
         {menus.length > 0 && (
           <>
             <label className="flex flex-wrap items-center gap-2">
-              Select a menu to edit:
+              {w.select}
               <select value={menu.id ?? ""} onChange={(event) => choose(event.target.value)} className={`${input} w-auto min-w-48`}>
-                {!menu.id && <option value="">New menu</option>}
+                {!menu.id && <option value="">{w.newMenu}</option>}
                 {menus.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -194,17 +198,17 @@ export function MenuEditor({
                 ))}
               </select>
             </label>
-            <span>or</span>
+            <span>{w.or}</span>
           </>
         )}
         <Link
           href={`${basePath}?menu=new`}
           onClick={(event) => {
-            if (dirty && !window.confirm("Leave this menu without saving the changes?")) event.preventDefault();
+            if (dirty && !window.confirm(w.leave)) event.preventDefault();
           }}
           className="underline"
         >
-          create a new menu
+          {w.createNew}
         </Link>
         .
       </div>
@@ -215,10 +219,10 @@ export function MenuEditor({
         <section aria-labelledby="menu-structure-heading" className={`flex min-w-0 flex-col ${CARD_CLASS}`}>
           <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
             <h2 id="menu-structure-heading" className="sr-only">
-              Menu structure
+              {w.structure}
             </h2>
             <label className={`${field} min-w-0 flex-1`}>
-              Menu name
+              {w.name}
               <input
                 value={name}
                 maxLength={MENU_NAME_MAX}
@@ -237,15 +241,15 @@ export function MenuEditor({
               disabled={saving}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
-              {saving ? "Saving …" : menu.id ? "Save menu" : "Create menu"}
+              {saving ? w.saving : menu.id ? w.save : w.create}
             </button>
           </div>
 
           <div className="flex flex-col gap-4 p-4">
             <p className="text-sm text-muted">
               {items.length === 0
-                ? "Add links from the column on the left."
-                : "Drag the links into the order you want; drag one to the right to put it under the link above it. Open a link with its arrow to change its text or move it."}
+                ? w.addFromLeft
+                : w.dragHint}
             </p>
             <Structure
               items={items}
@@ -278,15 +282,15 @@ export function MenuEditor({
               disabled={saving}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
-              {saving ? "Saving …" : menu.id ? "Save menu" : "Create menu"}
+              {saving ? w.saving : menu.id ? w.save : w.create}
             </button>
             <p role="status" aria-live="polite" className="text-sm">
-              {result?.ok ? "Saved. The site shows it now." : dirty ? "Unsaved changes." : ""}
+              {result?.ok ? w.saved : dirty ? w.unsaved : ""}
             </p>
             {menu.id &&
               (confirming ? (
                 <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
-                  Delete {menu.name}?{uses.length > 0 && " It is used where listed below; those places will show no menu."}
+                  {fillWords(w.deleteAsk, { name: menu.name })}{uses.length > 0 && w.deleteUsed}
                   <button
                     type="button"
                     onClick={() =>
@@ -300,21 +304,21 @@ export function MenuEditor({
                     }
                     className="min-h-9 rounded-md bg-danger-soft px-3 font-medium text-danger-text"
                   >
-                    Delete menu
+                    {w.deleteMenu}
                   </button>
                   <button type="button" onClick={() => setConfirming(false)} className="min-h-9 px-2 underline">
-                    Keep it
+                    {w.keepIt}
                   </button>
                 </span>
               ) : (
                 <button type="button" onClick={() => setConfirming(true)} className="ml-auto text-sm text-danger-text underline">
-                  Delete menu
+                  {w.deleteMenu}
                 </button>
               ))}
           </div>
           {result && !result.ok && (
             <div role="alert" className="mx-4 mb-4 rounded-lg border border-danger-text p-4 text-sm">
-              <p className="font-medium">Nothing was saved yet. Please fix:</p>
+              <p className="font-medium">{w.fix}</p>
               <ul className="mt-2 list-disc pl-5">
                 {result.problems.map((problem) => (
                   <li key={problem}>{problem}</li>
@@ -324,12 +328,9 @@ export function MenuEditor({
           )}
           {menu.id && (
             <div className="border-t border-line p-4 text-sm">
-              <h3 className="text-body-strong text-ink">Where it shows</h3>
+              <h3 className="text-body-strong text-ink">{w.whereShows}</h3>
               {uses.length === 0 ? (
-                <p className="text-muted">
-                  Nowhere yet. Choose it for the standard header or footer under Header and footer, or place it with a Menu
-                  component in a page, header or footer.
-                </p>
+                <p className="text-muted">{w.nowhere}</p>
               ) : (
                 <ul className="mt-1 flex flex-col gap-1">
                   {uses.map((use) => (
@@ -370,21 +371,22 @@ function AddItems({
   full: boolean;
   onAdd: (links: AnyMenuLink[], label?: Record<string, string>) => void;
 }) {
+  const w = useAdminText("website").menus;
   const targetKinds = kinds.filter((k): k is KindOption & { kind: TargetKind } => k.kind in TARGET_NOUNS);
   const own = kinds.filter((k) => !(k.kind in TARGET_NOUNS) && k.kind !== "url");
   return (
     <aside aria-labelledby="add-items-heading" className={`flex flex-col ${CARD_CLASS}`}>
       <h2 id="add-items-heading" className="border-b border-line p-4 text-title text-ink">
-        Add menu items
+        {w.addItems}
       </h2>
-      {full && <p className="p-4 text-sm text-muted">The menu has as many links as it can take ({MENU_MAX_ITEMS}).</p>}
+      {full && <p className="p-4 text-sm text-muted">{fillWords(w.full, { n: MENU_MAX_ITEMS })}</p>}
       {targetKinds.map((k, index) => (
         <AddSection
           key={k.kind}
-          title={copy.sections[k.kind] ?? k.label}
+          title={copy.sections[k.kind] ?? w.nouns[k.kind]}
           open={index === 0}
           options={(targets[k.kind] ?? []).map((t: Target) => ({ value: t.value, title: t.title, note: t.note }))}
-          empty={`No ${(copy.sections[k.kind] ?? k.label).toLowerCase()} yet.`}
+          empty={fillWords(w.noneYet, { what: (copy.sections[k.kind] ?? w.nouns[k.kind]).toLowerCase() })}
           disabled={full}
           onAdd={(values) => onAdd(values.map((value) => targetLink(k.kind, value, kinds)))}
         />
@@ -417,6 +419,7 @@ function AddSection({
   disabled: boolean;
   onAdd: (values: string[]) => void;
 }) {
+  const w = useAdminText("website").menus;
   const id = useId();
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -443,8 +446,8 @@ function AddSection({
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search"
-                aria-label={`Search ${title.toLowerCase()}`}
+                placeholder={w.search}
+                aria-label={fillWords(w.searchIn, { what: title.toLowerCase() })}
                 className={input}
               />
             )}
@@ -480,7 +483,7 @@ function AddSection({
                   onChange={(event) => setChosen(event.target.checked ? new Set(shown.map((o) => o.value)) : new Set())}
                   aria-describedby={`${id}-all`}
                 />
-                <span id={`${id}-all`}>Select all</span>
+                <span id={`${id}-all`}>{w.selectAll}</span>
               </label>
               <button
                 type="button"
@@ -492,7 +495,7 @@ function AddSection({
                 }}
                 className={small}
               >
-                Add to menu
+                {w.addToMenu}
               </button>
             </div>
           </>
@@ -512,20 +515,21 @@ function CustomLink({
   disabled: boolean;
   onAdd: (url: string, text: string) => void;
 }) {
+  const w = useAdminText("website").menus;
   const id = useId();
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   return (
     <details className="group">
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-medium">
-        Custom link
+        {w.customLink}
         <span aria-hidden className="transition-transform group-open:rotate-180 motion-reduce:transition-none">
           ▾
         </span>
       </summary>
       <div className="flex flex-col gap-3 px-4 pb-4">
         <label className={field}>
-          Web address
+          {w.webAddress}
           <input
             value={url}
             onChange={(event) => setUrl(event.target.value)}
@@ -539,7 +543,7 @@ function CustomLink({
           </span>
         </label>
         <label className={field}>
-          Link text
+          {w.linkText}
           <input value={text} maxLength={LABEL_MAX} onChange={(event) => setText(event.target.value)} className={input} />
         </label>
         <button
@@ -552,7 +556,7 @@ function CustomLink({
           }}
           className={`${small} w-fit self-end`}
         >
-          Add to menu
+          {w.addToMenu}
         </button>
       </div>
     </details>
@@ -590,6 +594,7 @@ function Structure({
   copy: MenuEditorCopy;
   upload: Upload | null;
 }) {
+  const w = useAdminText("website").menus;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -615,7 +620,7 @@ function Structure({
     if (drop && event.over) {
       const next = moveItem(items, from, drop.to, drop.depth);
       onChange(next);
-      onAnnounce(`${nameOf(items[from])} moved to place ${drop.to + 1}${drop.depth > 0 ? `, ${drop.depth === 1 ? "one level" : "two levels"} in` : ""}.`);
+      onAnnounce(drop.depth > 0 ? countWords(drop.depth, w.movedToIn, { name: nameOf(items[from]), place: drop.to + 1 }) : fillWords(w.movedTo, { name: nameOf(items[from]), n: drop.to + 1 }));
     }
     setDrag(null);
   };
@@ -631,7 +636,7 @@ function Structure({
       onDragCancel={() => setDrag(null)}
     >
       <SortableContext items={visible.map((item) => item.key)} strategy={verticalListSortingStrategy}>
-        <ol className="flex flex-col gap-2" aria-label="Menu structure">
+        <ol className="flex flex-col gap-2" aria-label={w.structure}>
           {visible.map((item) => {
             const index = items.indexOf(item);
             const dragged = item.key === drag?.key;
@@ -659,7 +664,7 @@ function Structure({
                 onChange={(next) => onChange(items.map((it) => (it.key === item.key ? next : it)))}
                 onMove={(next, what) => {
                   onChange(next);
-                  onAnnounce(`${nameOf(item)} moved ${what}.`);
+                  onAnnounce(fillWords(w.moved, { name: nameOf(item), what }));
                 }}
                 onRemove={() => {
                   // Its own items move up a level, into its place.
@@ -669,7 +674,7 @@ function Structure({
                     ...items.slice(index + 1, end).map((child) => ({ ...child, depth: child.depth - 1 })),
                     ...items.slice(end),
                   ]);
-                  onAnnounce(`${nameOf(item)} removed.`);
+                  onAnnounce(fillWords(w.removed, { name: nameOf(item) }));
                 }}
                 languages={languages}
                 kinds={kinds}
@@ -692,9 +697,9 @@ function Structure({
 }
 
 /** What a link is, as the list says it: Page, Product, Custom link, … */
-function kindName(link: AnyMenuLink, kinds: KindOption[]): string {
+function kindName(link: AnyMenuLink, kinds: KindOption[], nouns: Record<TargetKind, string>): string {
   const target = targetOf(link);
-  if (target) return TARGET_NOUNS[target.kind];
+  if (target) return nouns[target.kind];
   return kinds.find((k) => k.kind === link.kind)?.label ?? link.kind;
 }
 
@@ -737,6 +742,7 @@ function MenuItemRow({
   upload: Upload | null;
   inMega: boolean;
 }) {
+  const w = useAdminText("website").menus;
   const id = useId();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   const target = targetOf(item.link);
@@ -749,7 +755,7 @@ function MenuItemRow({
       </button>
     );
   const placeholder = (locale: string): string =>
-    original?.title ?? (item.link.kind === "url" ? "Required" : (languages.find((l) => l.locale === locale)?.defaults[item.link.kind as AnyLinkKind] ?? ""));
+    original?.title ?? (item.link.kind === "url" ? w.required : (languages.find((l) => l.locale === locale)?.defaults[item.link.kind as AnyLinkKind] ?? ""));
 
   return (
     <li
@@ -768,8 +774,8 @@ function MenuItemRow({
           type="button"
           {...attributes}
           onKeyDown={listeners?.onKeyDown as KeyboardEventHandler<HTMLButtonElement> | undefined}
-          aria-label={`Move ${name}`}
-          aria-roledescription="sortable link"
+          aria-label={fillWords(w.move, { name })}
+          aria-roledescription={w.sortable}
           className="flex size-9 shrink-0 cursor-grab items-center justify-center rounded text-muted hover:bg-card"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
@@ -782,16 +788,16 @@ function MenuItemRow({
           </svg>
         </button>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
-        {carried > 0 && <span className="text-xs text-muted">+{carried} under it</span>}
-        {depth > 0 && <span className="hidden text-xs text-muted sm:inline">sub item</span>}
-        {item.mega && depth === 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-brand-ink">Mega menu</span>}
-        <span className="shrink-0 text-xs text-muted">{kindName(item.link, kinds)}</span>
+        {carried > 0 && <span className="text-xs text-muted">{fillWords(w.underIt, { n: carried })}</span>}
+        {depth > 0 && <span className="hidden text-xs text-muted sm:inline">{w.subItem}</span>}
+        {item.mega && depth === 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-brand-ink">{w.mega}</span>}
+        <span className="shrink-0 text-xs text-muted">{kindName(item.link, kinds, w.nouns)}</span>
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={`${id}-panel`}
-          aria-label={`Edit ${name}`}
+          aria-label={fillWords(w.edit, { name })}
           className="flex size-9 shrink-0 items-center justify-center rounded hover:bg-card"
         >
           <span aria-hidden className={`transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}>
@@ -803,7 +809,7 @@ function MenuItemRow({
         <div id={`${id}-panel`} className="flex flex-col gap-4 rounded-b-md border border-t-0 border-line bg-card p-4">
           {item.link.kind === "url" && (
             <label className={field}>
-              Web address
+              {w.webAddress}
               <input
                 value={item.link.url}
                 onChange={(event) => onChange({ ...item, link: { kind: "url", url: event.target.value } })}
@@ -816,7 +822,7 @@ function MenuItemRow({
           <div className={`grid gap-3 ${languages.length > 1 ? "sm:grid-cols-2" : ""}`}>
             {languages.map((language) => (
               <label key={language.locale} className={field}>
-                {languages.length > 1 ? `Navigation label in ${language.name}` : "Navigation label"}
+                {languages.length > 1 ? fillWords(w.labelIn, { language: language.name }) : w.label}
                 <input
                   value={item.label[language.locale] ?? ""}
                   maxLength={LABEL_MAX}
@@ -834,7 +840,7 @@ function MenuItemRow({
               checked={Boolean(item.newTab)}
               onChange={(event) => onChange({ ...item, newTab: event.target.checked || undefined })}
             />
-            Open the link in a new tab
+            {w.newTab}
           </label>
           {item.depth === 0 && (
             <div className="flex flex-col gap-3 rounded-md border border-line p-3">
@@ -846,17 +852,14 @@ function MenuItemRow({
                   className="mt-1"
                 />
                 <span>
-                  <span className="font-medium">Mega menu</span>
-                  <span className="block text-xs text-muted">
-                    The links under this one open side by side across the page&apos;s width, in columns, each with its picture
-                    and the links under it. On phones they are listed as usual.
-                  </span>
+                  <span className="font-medium">{w.mega}</span>
+                  <span className="block text-xs text-muted">{w.megaHint}</span>
                 </span>
               </label>
               {mega && (
                 <div className="flex flex-wrap items-end gap-4 pl-6">
                   <label className={field}>
-                    Columns
+                    {w.columns}
                     <select
                       value={mega.columns}
                       onChange={(event) => onChange({ ...item, mega: { ...mega, columns: Number(event.target.value) } })}
@@ -875,7 +878,7 @@ function MenuItemRow({
                       checked={Boolean(mega.center)}
                       onChange={(event) => onChange({ ...item, mega: { columns: mega.columns, ...(event.target.checked && { center: true }) } })}
                     />
-                    Centre the links under it
+                    {w.centre}
                   </label>
                 </div>
               )}
@@ -883,8 +886,8 @@ function MenuItemRow({
           )}
           {inMega && (
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Picture</span>
-              <span className="text-xs text-muted">Shown above the link in its column of the mega menu. A landscape picture (4:3) works best.</span>
+              <span className="text-sm font-medium">{w.picture}</span>
+              <span className="text-xs text-muted">{w.pictureHint}</span>
               <div className="flex flex-wrap items-center gap-3">
                 {item.image && (
                   // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
@@ -892,40 +895,40 @@ function MenuItemRow({
                 )}
                 <ImageUploadButton
                   upload={upload}
-                  label={item.image ? "Replace picture" : "Upload picture"}
+                  label={item.image ? w.replacePicture : w.uploadPicture}
                   onUploaded={(image) => onChange({ ...item, image })}
                 />
                 {item.image && (
                   <button type="button" onClick={() => onChange({ ...item, image: undefined })} className="text-sm underline">
-                    Remove picture
+                    {w.removePicture}
                   </button>
                 )}
               </div>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-medium">Move</span>
-            {move(moves.up, "Up one", "up one")}
-            {move(moves.down, "Down one", "down one")}
-            {previousName && move(moves.under, `Under ${previousName}`, `under ${previousName}`)}
-            {parentName && move(moves.out, `Out from under ${parentName}`, `out from under ${parentName}`)}
-            {move(moves.top, "To the top", "to the top")}
+            <span className="font-medium">{w.moveLabel}</span>
+            {move(moves.up, w.moves.up, w.moves.upWhat)}
+            {move(moves.down, w.moves.down, w.moves.downWhat)}
+            {previousName && move(moves.under, fillWords(w.moves.under, { name: previousName }), fillWords(w.moves.underWhat, { name: previousName }))}
+            {parentName && move(moves.out, fillWords(w.moves.out, { name: parentName }), fillWords(w.moves.outWhat, { name: parentName }))}
+            {move(moves.top, w.moves.top, w.moves.topWhat)}
           </div>
           {target && (
             <p className="text-sm text-muted">
-              Original: {original ? original.title : `${TARGET_NOUNS[target.kind]} not found`}
+              {fillWords(w.original, { title: original ? original.title : fillWords(w.notFound, { noun: w.nouns[target.kind] }) })}
               {original?.note && ` (${original.note})`}
             </p>
           )}
           <div className="flex items-center gap-3 border-t border-line pt-3 text-sm">
             <button type="button" onClick={onRemove} className="text-danger-text underline">
-              Remove
+              {w.remove}
             </button>
             <span aria-hidden className="text-muted">
               |
             </span>
             <button type="button" onClick={onToggle} className="underline">
-              Close
+              {w.close}
             </button>
           </div>
         </div>

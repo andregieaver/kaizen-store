@@ -8,6 +8,11 @@ import { PAGE_TYPES, type PageType } from "@/lib/page-content";
 import { NO_ACCESS, checkPageTypeAccess } from "@/server/permissions";
 import { fieldsTag } from "@/server/custom-fields";
 import { duplicatePage } from "@/server/page-duplicate";
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
+
+/** The pages' refusals and answers in the account's language (D312 A7). */
+const said = async () => adminText(await actionAdminLang(), "website").pageActions;
 
 /**
  * Duplicates one of a store's pages, articles, layouts, headers or footers as a new draft (D126), bound to the store
@@ -22,13 +27,13 @@ export async function duplicateStorePageAction(
 ): Promise<DuplicateResult> {
   const member = await checkPageTypeAccess(storeSlug, type, "write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!PAGE_TYPES.includes(type) || !z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown page."] };
+  if (!PAGE_TYPES.includes(type) || !z.uuid().safeParse(id).success) return { ok: false, problems: [(await said()).unknownPage] };
   let held: unknown;
   if (edited !== undefined) {
     try {
       held = JSON.parse(edited);
     } catch {
-      return { ok: false, problems: ["The page could not be read. Reload and try again."] };
+      return { ok: false, problems: [(await said()).unreadable] };
     }
   }
   const result = await duplicatePage(member.account, member.store.id, id, type, held);

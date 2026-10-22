@@ -3,7 +3,6 @@
 import { X } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
-import { SIZE_LABELS } from "@/lib/breakpoints";
 import {
   FONT_SIZE_UNITS,
   LETTER_SPACING_LIMITS,
@@ -38,6 +37,9 @@ import {
 } from "@/lib/typography";
 import type { SizeOverrides } from "@/lib/page-content";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { ColorField, fieldClass } from "./block-fields";
 import { PixelRange } from "./pixel-range";
 import { SavedGradients, newTextGradient, textGradientOf } from "./colour-library";
@@ -61,7 +63,7 @@ export function TypographyFields({
   onChange,
   install,
   roles = textRoles(part),
-  familyDefault = "Inherited",
+  familyDefault: asked,
 }: {
   part: Part;
   onChange: (patch: Patch) => void;
@@ -70,21 +72,24 @@ export function TypographyFields({
   /** What no family means for the part's own text (the site's heading font, say). */
   familyDefault?: string;
 }) {
+  const w = useAdminText("blocks").typo;
   if (roles.length === 0) return null;
+  const familyDefault = asked ?? w.inherited;
+  const roleLabel = (label: string) => (w.roles as Record<string, string>)[label] ?? label;
   return (
     <fieldset className="flex flex-col gap-3 border-t border-line pt-4" data-typography-panel="">
-      <legend className="float-left mb-1 w-full font-medium">Typography</legend>
+      <legend className="float-left mb-1 w-full font-medium">{w.legend}</legend>
       {roles.length === 1 ? (
         <RoleFields part={part} def={roles[0]} onChange={onChange} install={install} familyDefault={familyDefault} />
       ) : (
         roles.map((def, index) => (
           <details key={def.role} open={index === 0} className="group rounded-md border border-line">
             <summary className="flex min-h-10 cursor-pointer items-center justify-between gap-2 px-3 text-sm font-medium">
-              {def.label}
+              {roleLabel(def.label)}
               <Changed part={part} role={def.role} />
             </summary>
             <div className="border-t border-line p-3">
-              <RoleFields part={part} def={def} onChange={onChange} install={install} familyDefault={def.role === "text" ? familyDefault : "As the component's text"} />
+              <RoleFields part={part} def={def} onChange={onChange} install={install} familyDefault={def.role === "text" ? familyDefault : w.asComponent} />
             </div>
           </details>
         ))
@@ -95,8 +100,9 @@ export function TypographyFields({
 
 /** "Set" beside a kind of text with settings of its own at any size. */
 function Changed({ part, role }: { part: Part; role: TextRole }) {
+  const w = useAdminText("blocks").typo;
   const set = Boolean(part.typography?.[role]) || Object.values(part.at ?? {}).some((own) => Boolean((own as { typography?: TypographyGroups } | undefined)?.typography?.[role]));
-  return set ? <span className="rounded bg-sunken px-1.5 py-0.5 text-xs font-normal text-muted">Set</span> : null;
+  return set ? <span className="rounded bg-sunken px-1.5 py-0.5 text-xs font-normal text-muted">{w.set}</span> : null;
 }
 
 function Section({ title, open = false, children }: { title: string; open?: boolean; children: ReactNode }) {
@@ -111,6 +117,7 @@ function Section({ title, open = false, children }: { title: string; open?: bool
 function RoleFields({ part, def, onChange, install, familyDefault }: { part: Part; def: RoleDef; onChange: (patch: Patch) => void; install: InstallFont; familyDefault: string }) {
   const { size } = useSizeEdit();
   const shown = typographyAt(part, def.role, size);
+  const w = useAdminText("blocks").typo;
   const set = <K extends TypographyKey>(key: K, value: Typography[K] | undefined) => onChange(typographyPatch(part, size, def.role, key, value));
   const field = (key: TypographyKey, label: string) => ({
     mark: <TypoMark part={part} role={def.role} field={key} label={label} onChange={onChange} />,
@@ -118,44 +125,44 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
   });
   return (
     <div className="flex flex-col">
-      <Section title="Font" open>
+      <Section title={w.font} open>
         {/* Colour and how solid it is (D180), at the top as in Beaver's panel; per size like every setting here. */}
         <ColorField
-          label="Colour"
-          {...field("color", "Colour")}
+          label={w.colour}
+          {...field("color", w.colour)}
           value={shown.color}
-          placeholder="Inherited"
+          placeholder={w.inherited}
           onChange={(color) => set("color", color)}
           onClear={() => set("color", undefined)}
-          opacity={{ value: shown.opacity, onChange: (opacity) => set("opacity", opacity), ...field("opacity", "Opacity") }}
+          opacity={{ value: shown.opacity, onChange: (opacity) => set("opacity", opacity), ...field("opacity", w.opacity) }}
         />
         <GradientText
           value={shown.gradient ?? undefined}
           onChange={(gradient) => set("gradient", gradient)}
-          mark={field("gradient", "Gradient text").mark}
-          muted={field("gradient", "Gradient text").muted}
+          mark={field("gradient", w.gradient).mark}
+          muted={field("gradient", w.gradient).muted}
         />
         <FontPicker
-          label="Family"
+          label={w.family}
           value={shown.family}
           defaultLabel={familyDefault}
           install={install}
           onChange={(family) => set("family", family)}
-          mark={field("family", "Family").mark}
+          mark={field("family", w.family).mark}
         />
         <div className="flex flex-wrap gap-4">
           <SelectField
-            label="Weight"
-            {...field("weight", "Weight")}
+            label={w.weight}
+            {...field("weight", w.weight)}
             value={shown.weight === undefined ? "" : String(shown.weight)}
-            options={[{ value: "", label: "Default" }, ...TEXT_WEIGHT_VALUES.map((w) => ({ value: String(w), label: `${w} ${TEXT_WEIGHTS[w]}` }))]}
+            options={[{ value: "", label: w.default }, ...TEXT_WEIGHT_VALUES.map((n) => ({ value: String(n), label: `${n} ${(w.weights as Record<string, string>)[String(n)] ?? TEXT_WEIGHTS[n]}` }))]}
             onChange={(value) => set("weight", value === "" ? undefined : (Number(value) as Typography["weight"]))}
           />
         </div>
         <div className="flex flex-wrap gap-4">
           <MeasureField
-            label="Size"
-            {...field("size", "Size")}
+            label={w.size}
+            {...field("size", w.size)}
             value={shown.size}
             units={FONT_SIZE_UNITS}
             limits={SIZE_LIMITS}
@@ -163,8 +170,8 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
             onChange={(value) => set("size", value)}
           />
           <MeasureField
-            label="Line height"
-            {...field("lineHeight", "Line height")}
+            label={w.lineHeight}
+            {...field("lineHeight", w.lineHeight)}
             value={shown.lineHeight}
             units={LINE_HEIGHT_UNITS}
             limits={LINE_HEIGHT_LIMITS}
@@ -174,18 +181,18 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
         </div>
         {def.align !== false && (
           <ButtonsField
-            label="Align"
-            {...field("align", "Align")}
+            label={w.align}
+            {...field("align", w.align)}
             value={shown.align ?? ""}
-            options={(Object.keys(TEXT_ALIGNS) as (keyof typeof TEXT_ALIGNS)[]).map((value) => ({ value, label: TEXT_ALIGNS[value] }))}
+            options={(Object.keys(TEXT_ALIGNS) as (keyof typeof TEXT_ALIGNS)[]).map((value) => ({ value, label: w.aligns[value] }))}
             onChange={(value) => set("align", value === "" ? undefined : (value as Typography["align"]))}
           />
         )}
       </Section>
-      <Section title="Style & spacing">
+      <Section title={w.styleSpacing}>
         <MeasureField
-          label="Letter spacing"
-          {...field("letterSpacing", "Letter spacing")}
+          label={w.letterSpacing}
+          {...field("letterSpacing", w.letterSpacing)}
           value={shown.letterSpacing}
           units={LETTER_SPACING_UNITS}
           limits={LETTER_SPACING_LIMITS}
@@ -193,44 +200,44 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
           onChange={(value) => set("letterSpacing", value)}
         />
         <ButtonsField
-          label="Transform"
-          {...field("transform", "Transform")}
+          label={w.transform}
+          {...field("transform", w.transform)}
           value={shown.transform ?? ""}
           options={(Object.keys(TEXT_TRANSFORMS) as (keyof typeof TEXT_TRANSFORMS)[]).map((value) => ({
             value,
-            label: TEXT_TRANSFORMS[value],
-            name: TEXT_TRANSFORM_NAMES[value],
+            label: value === "none" ? w.transforms.none : TEXT_TRANSFORMS[value],
+            name: w.transformNames[value] ?? TEXT_TRANSFORM_NAMES[value],
           }))}
           onChange={(value) => set("transform", value === "" ? undefined : (value as Typography["transform"]))}
         />
         <div className="flex flex-wrap gap-4">
           <SelectField
-            label="Decoration"
-            {...field("decoration", "Decoration")}
+            label={w.decoration}
+            {...field("decoration", w.decoration)}
             value={shown.decoration ?? ""}
-            options={[{ value: "", label: "Default" }, ...Object.entries(TEXT_DECORATIONS).map(([value, label]) => ({ value, label }))]}
+            options={[{ value: "", label: w.default }, ...Object.entries(TEXT_DECORATIONS).map(([value, label]) => ({ value, label: (w.decorations as Record<string, string>)[value] ?? label }))]}
             onChange={(value) => set("decoration", value === "" ? undefined : (value as Typography["decoration"]))}
           />
           <SelectField
-            label="Style"
-            {...field("style", "Style")}
+            label={w.style}
+            {...field("style", w.style)}
             value={shown.style ?? ""}
-            options={[{ value: "", label: "Default" }, ...Object.entries(TEXT_STYLES).map(([value, label]) => ({ value, label }))]}
+            options={[{ value: "", label: w.default }, ...Object.entries(TEXT_STYLES).map(([value, label]) => ({ value, label: (w.styles as Record<string, string>)[value] ?? label }))]}
             onChange={(value) => set("style", value === "" ? undefined : (value as Typography["style"]))}
           />
           <SelectField
-            label="Variant"
-            {...field("variant", "Variant")}
+            label={w.variant}
+            {...field("variant", w.variant)}
             value={shown.variant ?? ""}
-            options={[{ value: "", label: "Default" }, ...Object.entries(TEXT_VARIANTS).map(([value, label]) => ({ value, label }))]}
+            options={[{ value: "", label: w.default }, ...Object.entries(TEXT_VARIANTS).map(([value, label]) => ({ value, label: (w.variants as Record<string, string>)[value] ?? label }))]}
             onChange={(value) => set("variant", value === "" ? undefined : (value as Typography["variant"]))}
           />
         </div>
       </Section>
-      <Section title="Text shadow">
+      <Section title={w.textShadow}>
         <ShadowFields
           value={shown.textShadow ?? undefined}
-          {...field("textShadow", "Text shadow")}
+          {...field("textShadow", w.textShadow)}
           onChange={(shadow) => set("textShadow", shadow)}
         />
       </Section>
@@ -257,6 +264,8 @@ export function TypoMark({
 }) {
   const { size } = useSizeEdit();
   const source = typographySource(part, role, field, size);
+  const all = useAdminText("blocks");
+  const builderWords = useAdminText("builder");
   return (
     <span className="ml-1 inline-flex flex-wrap items-center gap-1 align-middle text-xs font-normal">
       <SizeSwitch label={label} />
@@ -264,13 +273,13 @@ export function TypoMark({
         (source.own ? (
           <>
             <span data-size-own="" className="rounded bg-sunken px-1.5 py-0.5 text-ink">
-              {sizeNote(source, size)}
+              {sizeNote(source, size, builderWords)}
             </span>
             <button
               type="button"
               onClick={() => onChange(clearTypographyAt(part, size, role, field))}
-              aria-label={`Clear ${label.toLowerCase()} for ${SIZE_LABELS[size]}, to take it from the larger sizes again`}
-              title="Clear: take it from the larger sizes"
+              aria-label={fillWords(all.typo.clear, { label: label.toLowerCase(), size: all.sizes[size] })}
+              title={all.typo.clearTitle}
               className="flex size-6 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
             >
               <X aria-hidden className="size-3.5" />
@@ -278,7 +287,7 @@ export function TypoMark({
           </>
         ) : (
           <span data-size-from="" className="text-muted">
-            {sizeNote(source, size)}
+            {sizeNote(source, size, builderWords)}
           </span>
         ))}
     </span>
@@ -309,6 +318,7 @@ function MeasureField<U extends string>({
 }) {
   const id = useId();
   const { size } = useSizeEdit();
+  const w = useAdminText("blocks").typo;
   // What is being typed, until it is a value the unit allows (kept apart per size and value shown).
   const [draft, setDraft] = useState<{ key: string; text: string } | null>(null);
   const key = `${size}:${value?.value ?? ""}${value?.unit ?? ""}`;
@@ -334,7 +344,7 @@ function MeasureField<U extends string>({
           min={min}
           max={max}
           value={text}
-          placeholder="Default"
+          placeholder={w.default}
           aria-invalid={invalid}
           aria-describedby={`${id}-range`}
           onChange={(event) => {
@@ -348,7 +358,7 @@ function MeasureField<U extends string>({
           className={`${fieldClass} w-24 aria-invalid:border-danger-text`}
         />
         <select
-          aria-label={`${label}: unit`}
+          aria-label={fillWords(w.unit, { label })}
           value={unit}
           onChange={(event) => {
             const next = event.target.value as U;
@@ -368,7 +378,7 @@ function MeasureField<U extends string>({
         </select>
       </div>
       <span id={`${id}-range`} className="text-xs text-muted">
-        {min} to {max} {unit === "" ? "times the size" : unit}
+        {fillWords(w.range, { min, max, unit: unit === "" ? w.times : unit })}
       </span>
     </div>
   );
@@ -454,8 +464,11 @@ function ButtonsField({
 }
 
 /** Letters filled with a gradient (D183): on or off, two to four colours at an angle, and the store's saved gradients to start from or add to. */
-export function GradientText({ value, onChange, mark, muted, label = "Gradient text", hint = "The letters are filled with these colours, over the text colour." }: { value: TextGradient | undefined; onChange: (gradient: TextGradient | undefined) => void; mark: ReactNode; muted: string; label?: string; hint?: string }) {
+export function GradientText({ value, onChange, mark, muted, label: askedLabel, hint: askedHint }: { value: TextGradient | undefined; onChange: (gradient: TextGradient | undefined) => void; mark: ReactNode; muted: string; label?: string; hint?: string }) {
   const id = useId();
+  const w = useAdminText("blocks").typo;
+  const label = askedLabel ?? w.gradient;
+  const hint = askedHint ?? w.gradientHint;
   // A colour field keeps what is typed in it, so when colours come or go the fields start again.
   const [revision, setRevision] = useState(0);
   const gradient = value ?? newTextGradient();
@@ -485,7 +498,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
             {colours.map((colour, index) => (
               <li key={`${revision}-${index}`} className="flex items-end gap-2">
                 <ColorField
-                  label={`Colour ${index + 1}`}
+                  label={fillWords(w.colourN, { n: index + 1 })}
                   value={colour}
                   noSwatches={false}
                   onChange={(next) => onChange({ ...gradient, colors: colours.map((c, i) => (i === index ? next : c)) })}
@@ -497,10 +510,10 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                     setRevision((n) => n + 1);
                     onChange({ ...gradient, colors: colours.filter((_, i) => i !== index) });
                   }}
-                  aria-label={`Remove colour ${index + 1}`}
+                  aria-label={fillWords(w.removeColour, { n: index + 1 })}
                   className="min-h-10 rounded-pill border border-edge px-2 text-xs hover:bg-sunken disabled:opacity-50"
                 >
-                  Remove
+                  {w.remove}
                 </button>
               </li>
             ))}
@@ -515,11 +528,11 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
               }}
               className="min-h-9 rounded-pill border border-edge px-3 text-xs hover:bg-sunken disabled:opacity-50"
             >
-              Add a colour
+              {w.addColour}
             </button>
           </div>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Angle
+            {w.angle}
             <span className="flex items-center gap-3 font-normal">
               <input
                 type="range"
@@ -527,7 +540,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                 max={360}
                 step={5}
                 value={gradient.angle}
-                aria-valuetext={`${gradient.angle} degrees`}
+                aria-valuetext={fillWords(w.degrees, { n: gradient.angle })}
                 onChange={(event) => onChange({ ...gradient, angle: Number(event.target.value) })}
                 className="w-48 accent-brand"
               />
@@ -546,6 +559,7 @@ const NO_SHADOW: TextShadow = { color: "#000000", x: 1, y: 1, blur: 2 };
 function ShadowFields({ value, onChange, mark, muted }: { value: TextShadow | undefined; onChange: (shadow: TextShadow | undefined) => void; mark: ReactNode; muted: string }) {
   const id = useId();
   const shadow = value ?? NO_SHADOW;
+  const w = useAdminText("blocks").typo;
   const number = (key: "x" | "y" | "blur", label: string, min: number, max: number) => (
     <label className="flex flex-col gap-1 text-sm font-medium">
       {label}
@@ -565,7 +579,7 @@ function ShadowFields({ value, onChange, mark, muted }: { value: TextShadow | un
         />
         <span className="font-normal text-muted">px</span>
       </span>
-      <PixelRange value={shadow[key]} min={min} max={max} disabled={!value} label={`Shadow ${label}, slider`} onChange={(next) => onChange({ ...shadow, [key]: next })} className="w-28" />
+      <PixelRange value={shadow[key]} min={min} max={max} disabled={!value} label={fillWords(w.shadowSlider, { label })} onChange={(next) => onChange({ ...shadow, [key]: next })} className="w-28" />
     </label>
   );
   return (
@@ -573,17 +587,17 @@ function ShadowFields({ value, onChange, mark, muted }: { value: TextShadow | un
       <div className="flex flex-wrap items-center gap-1">
         <label className="flex items-center gap-2 text-sm font-medium" htmlFor={id}>
           <input id={id} type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked ? shadow : undefined)} className="size-4" />
-          Shadow behind the letters
+          {w.shadow}
         </label>
         {mark}
       </div>
       {value && (
         <div className="flex flex-col gap-3 pl-6">
-          <ColorField label="Colour" value={shadow.color} onChange={(color) => onChange({ ...shadow, color })} />
+          <ColorField label={w.colour} value={shadow.color} onChange={(color) => onChange({ ...shadow, color })} />
           <div className="flex flex-wrap gap-4">
             {number("x", "X", -SHADOW_OFFSET_MAX, SHADOW_OFFSET_MAX)}
             {number("y", "Y", -SHADOW_OFFSET_MAX, SHADOW_OFFSET_MAX)}
-            {number("blur", "Blur", 0, SHADOW_BLUR_MAX)}
+            {number("blur", w.blur, 0, SHADOW_BLUR_MAX)}
           </div>
         </div>
       )}

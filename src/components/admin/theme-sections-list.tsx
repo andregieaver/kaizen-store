@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import type { SavedPart } from "@/lib/saved-parts";
 import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
+
+import { useAdminText } from "./admin-text";
 
 /** What the builder is given to offer the live theme's sections (D272). */
 export type ThemeSectionActions = { list: () => Promise<ThemeSectionsOffer>; place: (key: string) => Promise<SectionResult> };
@@ -29,6 +32,7 @@ export function ThemeSectionsList({
   const [offer, setOffer] = useState<ThemeSectionsOffer | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const w = useAdminText("builder").themeSections;
 
   useEffect(() => {
     if (!shown || offer !== undefined) return;
@@ -52,17 +56,17 @@ export function ThemeSectionsList({
       if (result.ok) onPlace(result.part);
       else setProblem(result.problem);
     } catch {
-      setProblem("The section could not be added. Check your connection and try again.");
+      setProblem(w.failed);
     } finally {
       setBusy(null);
     }
   }
 
   return (
-    <section aria-label={`From ${offer.theme}`} className="flex flex-col gap-3">
-      <h3 className="text-eyebrow text-muted uppercase">From {offer.theme}</h3>
+    <section aria-label={fillWords(w.from, { theme: offer.theme })} className="flex flex-col gap-3">
+      <h3 className="text-eyebrow text-muted uppercase">{fillWords(w.from, { theme: offer.theme })}</h3>
       <p className="text-xs text-muted">
-        Sections your theme was designed with. Press one to add it at the end of the page, then write your own words over it.
+        {w.intro}
       </p>
       <div className="grid grid-cols-2 gap-3">
         {offer.sections.map((section) => (
@@ -72,7 +76,7 @@ export function ThemeSectionsList({
             onClick={() => place(section.key)}
             disabled={disabled || busy !== null}
             aria-busy={busy === section.key}
-            aria-label={`Add the section ${section.name}`}
+            aria-label={fillWords(w.add, { name: section.name })}
             title={section.description}
             className="flex flex-col gap-1 rounded-panel p-1 text-left hover:bg-sunken disabled:opacity-40"
           >
@@ -84,7 +88,7 @@ export function ThemeSectionsList({
                 Aa
               </span>
             )}
-            <span className="text-xs">{busy === section.key ? "Adding…" : section.name}</span>
+            <span className="text-xs">{busy === section.key ? w.adding : section.name}</span>
           </button>
         ))}
       </div>

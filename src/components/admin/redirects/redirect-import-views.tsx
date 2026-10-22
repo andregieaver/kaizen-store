@@ -3,58 +3,81 @@ import Link from "next/link";
 import type { FindingItem } from "@/components/admin/data/findings-table";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { SEVERITY_FILTERS, SEVERITY_WORDS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
 import { lineResultWords } from "@/lib/redirect-admin";
+import { redirectFindingText } from "@/lib/redirect-words";
 
 /** The numbers of a dry run: what an import would do (2.2.4 step 3). */
-export function RedirectDryRun({ counts }: { counts: { toCreate: number; toReplace: number; unchanged: number; skipped: number; withErrors: number } }) {
+export function RedirectDryRun({
+  counts,
+  words = redirectsEn,
+  locale = "en-GB",
+}: {
+  counts: { toCreate: number; toReplace: number; unchanged: number; skipped: number; withErrors: number };
+  words?: RedirectsMessages;
+  locale?: string;
+}) {
+  const d = words.import.dry;
   const items: [string, number][] = [
-    ["To create", counts.toCreate],
-    ["To replace", counts.toReplace],
-    ["Unchanged", counts.unchanged],
-    ["Skipped", counts.skipped],
-    ["With errors", counts.withErrors],
+    [d.toCreate, counts.toCreate],
+    [d.toReplace, counts.toReplace],
+    [d.unchanged, counts.unchanged],
+    [d.skipped, counts.skipped],
+    [d.withErrors, counts.withErrors],
   ];
   return (
-    <section aria-label="What the check found" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">What the check found</h2>
+    <section aria-label={d.title} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{d.title}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n, locale)}</dd>
           </div>
         ))}
       </dl>
-      <p className={hint}>
-        Nothing has changed in your store. The whole file is judged as one set against your redirects, in the order of the file; a line with an error is skipped and nothing of it is written. The check is advice: every line is
-        checked again as it is written.
-      </p>
+      <p className={hint}>{d.note}</p>
     </section>
   );
 }
 
+
 /** The outcome of an applied import: the lines by what happened. */
-export function RedirectApplied({ counts, jobId, written }: { counts: { created: number; updated: number; unchanged: number; skipped: number; failed: number }; jobId: string; written: boolean }) {
+export function RedirectApplied({
+  counts,
+  jobId,
+  written,
+  words = redirectsEn,
+  locale = "en-GB",
+}: {
+  counts: { created: number; updated: number; unchanged: number; skipped: number; failed: number };
+  jobId: string;
+  written: boolean;
+  words?: RedirectsMessages;
+  locale?: string;
+}) {
+  const a = words.import.applied;
   const items: [string, number][] = [
-    ["Created", counts.created],
-    ["Replaced", counts.updated],
-    ["Already there", counts.unchanged],
-    ["Skipped", counts.skipped],
-    ["Not imported", counts.failed],
+    [a.created, counts.created],
+    [a.replaced, counts.updated],
+    [a.already, counts.unchanged],
+    [a.skipped, counts.skipped],
+    [a.failed, counts.failed],
   ];
   return (
-    <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">{written ? "What was imported" : "What was imported before it stopped"}</h2>
+    <section aria-label={a.label} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{written ? a.done : a.stopped}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n, locale)}</dd>
           </div>
         ))}
       </dl>
       <p className={hint}>
-        Reference for the activity log: <code>{jobId}</code>. The new redirects work at once.
+        {a.reference} <code>{jobId}</code>. {a.works}
       </p>
     </section>
   );
@@ -75,7 +98,11 @@ export function RedirectFindings({
   pageSize,
   hrefFor,
   problemsHref,
+  words = redirectsEn,
+  locale = "en-GB",
 }: {
+  words?: RedirectsMessages;
+  locale?: string;
   items: FindingItem[];
   total: number;
   severity: SeverityFilter;
@@ -85,46 +112,47 @@ export function RedirectFindings({
   problemsHref: string | null;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const f = words.import.findings;
   return (
     <section aria-labelledby="redirect-findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="redirect-findings-title" className="text-title text-ink">
-          What the file says, line by line
+          {f.title}
         </h2>
         {problemsHref && (
           <form method="post" action={problemsHref}>
             <button type="submit" className="text-sm underline underline-offset-2">
-              Download the problems as CSV
+              {f.download}
             </button>
           </form>
         )}
       </div>
-      <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label={f.filter} className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
           <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
-            {s === "all" ? "All lines" : `${SEVERITY_WORDS[s]}s`}
+            {s === "all" ? f.allLines : `${SEVERITY_WORDS[s]}s`}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No line has a finding of this kind."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? f.nothing : f.noneOfKind}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
-            <caption className="sr-only">Lines of the file with what was found, {wholeNumber(total)} in all</caption>
+            <caption className="sr-only">{fillWords(f.caption, { n: wholeNumber(total, locale) })}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className={th}>
-                  Rows
+                  {f.rows}
                 </th>
                 <th scope="col" className={th}>
-                  Redirect from
+                  {f.from}
                 </th>
                 <th scope="col" className={th}>
-                  Result
+                  {f.result}
                 </th>
                 <th scope="col" className={th}>
-                  Findings
+                  {f.findings}
                 </th>
               </tr>
             </thead>
@@ -132,16 +160,16 @@ export function RedirectFindings({
               {items.map((item) => (
                 <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
-                  <td className={`${td} break-all`}>{item.ref ? <code className="text-xs">{item.ref}</code> : <span className={hint}>The file as a whole</span>}</td>
-                  <td className={td}>{item.ref ? lineResultWords(item.outcome, item.will) : ""}</td>
+                  <td className={`${td} break-all`}>{item.ref ? <code className="text-xs">{item.ref}</code> : <span className={hint}>{f.wholeFile}</span>}</td>
+                  <td className={td}>{item.ref ? lineResultWords(item.outcome, item.will, words) : ""}</td>
                   <td className={td}>
                     {item.messages.length === 0 ? (
-                      <span className={hint}>Nothing to note</span>
+                      <span className={hint}>{f.nothingToNote}</span>
                     ) : (
                       <ul className="flex flex-col gap-1">
                         {item.messages.map((m, i) => (
                           <li key={`${m.code}-${i}`}>
-                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{SEVERITY_WORDS[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {m.text}
+                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{SEVERITY_WORDS[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {redirectFindingText(m, words)}
                           </li>
                         ))}
                       </ul>
@@ -157,17 +185,17 @@ export function RedirectFindings({
         <nav aria-label="Pages" className="flex items-center justify-between text-sm">
           {page > 1 ? (
             <Link href={hrefFor({ severity, page: page - 1 })} className="underline underline-offset-2">
-              Earlier lines
+              {f.earlier}
             </Link>
           ) : (
             <span />
           )}
           <span className={hint}>
-            Page {page} of {pages}
+            {fillWords(words.common.pageOf, { page, pages })}
           </span>
           {page < pages ? (
             <Link href={hrefFor({ severity, page: page + 1 })} className="underline underline-offset-2">
-              Later lines
+              {f.later}
             </Link>
           ) : (
             <span />

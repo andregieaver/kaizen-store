@@ -1,3 +1,4 @@
+import { fillWords } from "./admin-fill";
 import { minorUnitDigits } from "./money";
 
 /**
@@ -75,23 +76,37 @@ export type ThemeCharge =
 
 export type OwnedStatus = "owed" | "due" | "invoiced" | "paid" | "granted";
 
+/** The words `chargeLine()` and `chargeButton()` write, in English unless an admin catalogue's `design.charge` is given (D312 A7). */
+export const CHARGE_WORDS = {
+  owed: "Paid when your store opens.",
+  granted: "Included for your store.",
+  owned: "Your store has this theme.",
+  atOpening: "{price} excl. VAT, once. Nothing to pay now: it is charged when your store opens, if the theme is live then.",
+  now: "{price} excl. VAT, once, charged now to your Kaizena Flow billing: by card if your plan is paid by card, otherwise invoiced, due in 14 days.",
+  pay: "Pay {price} and use it",
+};
+
+export type ChargeWords = { [K in keyof typeof CHARGE_WORDS]: string };
+
+const withPrice = (template: string, price: ThemePrice, locale: string) => fillWords(template, { price: priceText(price, locale) });
+
 /** The words beside a premium theme's button, saying what pressing it costs. Empty for a free theme. */
-export function chargeLine(charge: ThemeCharge): string {
+export function chargeLine(charge: ThemeCharge, w: ChargeWords = CHARGE_WORDS, locale = "en"): string {
   switch (charge.kind) {
     case "free":
       return "";
     case "owned":
-      return charge.status === "owed" ? "Paid when your store opens." : charge.status === "granted" ? "Included for your store." : "Your store has this theme.";
+      return charge.status === "owed" ? w.owed : charge.status === "granted" ? w.granted : w.owned;
     case "at_opening":
-      return `${priceText(charge.price)} excl. VAT, once. Nothing to pay now: it is charged when your store opens, if the theme is live then.`;
+      return withPrice(w.atOpening, charge.price, locale);
     case "now":
-      return `${priceText(charge.price)} excl. VAT, once, charged now to your Kaizena Flow billing: by card if your plan is paid by card, otherwise invoiced, due in 14 days.`;
+      return withPrice(w.now, charge.price, locale);
   }
 }
 
 /** The main button's words for making a theme live, e.g. "Pay NOK 3,490.00 and use it" when it is charged at once. */
-export function chargeButton(charge: ThemeCharge, plain: string): string {
-  return charge.kind === "now" ? `Pay ${priceText(charge.price)} and use it` : plain;
+export function chargeButton(charge: ThemeCharge, plain: string, w: ChargeWords = CHARGE_WORDS, locale = "en"): string {
+  return charge.kind === "now" ? withPrice(w.pay, charge.price, locale) : plain;
 }
 
 /** A purchase as the store's Billing page and the platform's theme page list it. */

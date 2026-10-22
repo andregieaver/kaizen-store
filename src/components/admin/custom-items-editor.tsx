@@ -23,6 +23,10 @@ import {
 } from "@/lib/page-content";
 import type { ItemLinkTargets } from "@/server/link-targets";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
+
+import { useAdminText } from "./admin-text";
 import { ItemsEditor, TextField, fieldClass, smallButton } from "./block-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { targetLink, targetOf, type TargetKind } from "./menu-links";
@@ -44,8 +48,9 @@ export const CUSTOM_ITEMS_LIMITS =
   "Not included: slides laid out freely (a hero slider with text and buttons over a picture), tabs, accordions, vertical or fading sliders, thumbnails, videos, a grid inside a card, live prices or filters. Each item is a picture, words, one link and a few lines.";
 
 /** What an item is called in the list. */
-export const itemName = (item: CustomGridItem, index: number): string =>
-  item.title.trim() || `Item ${index + 1}${item.text.trim() || item.picture ? "" : " (nothing to show yet)"}`;
+export const itemName = (item: CustomGridItem, index: number, w?: BlocksMessages["custom"]): string =>
+  item.title.trim() ||
+  `${w ? fillWords(w.unnamed, { n: index + 1 }) : `Item ${index + 1}`}${item.text.trim() || item.picture ? "" : (w?.empty ?? " (nothing to show yet)")}`;
 
 export function CustomItemsEditor({
   items,
@@ -60,6 +65,7 @@ export function CustomItemsEditor({
   linkTargets: () => Promise<ItemLinkTargets>;
 }) {
   const [targets, setTargets] = useState<ItemLinkTargets | null>(null);
+  const w = useAdminText("blocks").custom;
   useEffect(() => {
     let alive = true;
     void linkTargets().then((found) => {
@@ -73,22 +79,19 @@ export function CustomItemsEditor({
   return (
     <div className="flex flex-col gap-3">
       <ItemsEditor<CustomGridItem>
-        label="Items"
+        label={w.items}
         items={items}
         max={CUSTOM_ITEMS_MAX}
-        addLabel="Add an item"
-        nameOf={itemName}
+        addLabel={w.add}
+        nameOf={(item, index) => itemName(item, index, w)}
         newItem={() => newCustomItem(newId())}
         duplicate={(item) => ({ ...structuredClone(item), id: newId() })}
         onChange={onChange}
       >
         {(item, change) => <ItemFields item={item} change={change} upload={upload} targets={targets} />}
       </ItemsEditor>
-      <p className="text-xs text-muted">
-        Shown in the order written, all of them; drag an item by its handle, or use the arrows. An item with no title, text or
-        picture is left out on the site. Words here are yours: check them as you would any text on your site.
-      </p>
-      <p className="text-xs text-muted">{CUSTOM_ITEMS_LIMITS}</p>
+      <p className="text-xs text-muted">{w.order}</p>
+      <p className="text-xs text-muted">{w.limits}</p>
     </div>
   );
 }
@@ -105,10 +108,11 @@ function ItemFields({
   targets: ItemLinkTargets | null;
 }) {
   const dateId = useId();
+  const w = useAdminText("blocks").custom;
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Picture</p>
+        <p className="text-sm font-medium">{w.picture}</p>
         <div className="flex flex-wrap items-center gap-3">
           {item.picture && (
             // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
@@ -116,40 +120,40 @@ function ItemFields({
           )}
           <ImageUploadButton
             upload={upload}
-            label={item.picture ? "Choose another" : "Choose a picture"}
+            label={item.picture ? w.chooseAnother : w.choose}
             current={item.picture}
             onUploaded={(picture, made) => change({ picture: { ...picture, alt: made?.alt ?? item.picture?.alt ?? "" } })}
           />
           {item.picture && (
             <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
-              Remove
+              {w.remove}
             </button>
           )}
         </div>
         {item.picture && (
           <TextField
-            label="Describe the picture"
+            label={w.describe}
             value={item.picture.alt}
             max={CUSTOM_ALT_MAX}
-            hint="For people who cannot see it. Leave empty if the picture is only decoration (then it is not read out, and an item with no title, heading or button text has no name for its link)."
+            hint={w.describeHint}
             onChange={(alt) => change({ picture: item.picture && { ...item.picture, alt } })}
           />
         )}
       </div>
-      <TextField label="Title" value={item.title} max={CUSTOM_TITLE_MAX} onChange={(title) => change({ title })} />
-      <TextField label="Text" value={item.text} max={CUSTOM_TEXT_MAX} multiline hint="Plain text; the grid decides how many lines show." onChange={(text) => change({ text })} />
+      <TextField label={w.title} value={item.title} max={CUSTOM_TITLE_MAX} onChange={(title) => change({ title })} />
+      <TextField label={w.text} value={item.text} max={CUSTOM_TEXT_MAX} multiline hint={w.textHint} onChange={(text) => change({ text })} />
       <LinkPicker link={item.link} targets={targets} onChange={(link) => change({ link })} />
       <TextField
-        label="Button text"
+        label={w.button}
         value={item.buttonLabel}
         max={CUSTOM_BUTTON_MAX}
-        placeholder="The grid's button text"
-        hint="Empty uses the grid's, then “Read more”. The button shows only when the item has a link. With no title and the button off, the picture itself is the link."
+        placeholder={w.buttonPlaceholder}
+        hint={w.buttonHint}
         onChange={(buttonLabel) => change({ buttonLabel })}
       />
       <div className="flex flex-col gap-1">
         <label htmlFor={dateId} className="text-sm font-medium">
-          Date <span className="font-normal text-muted">(optional)</span>
+          {w.date} <span className="font-normal text-muted">{w.optional}</span>
         </label>
         <div className="flex items-center gap-2">
           <input
@@ -161,18 +165,18 @@ function ItemFields({
           />
           {item.date && (
             <button type="button" onClick={() => change({ date: null })} className={smallButton}>
-              Clear
+              {w.clear}
             </button>
           )}
         </div>
       </div>
-      <TextField label="Badge" value={item.badge} max={CUSTOM_BADGE_MAX} placeholder="New, -20 %" hint="A few words over the picture." onChange={(badge) => change({ badge })} />
+      <TextField label={w.badge} value={item.badge} max={CUSTOM_BADGE_MAX} placeholder={w.badgePlaceholder} hint={w.badgeHint} onChange={(badge) => change({ badge })} />
       <TextField
-        label="Price text"
+        label={w.price}
         value={item.priceText}
         max={CUSTOM_PRICE_TEXT_MAX}
-        placeholder="From 199 kr"
-        hint="Not a live price: shoppers pay what the checkout charges. Shown as plain words, without VAT information or a cart."
+        placeholder={w.pricePlaceholder}
+        hint={w.priceHint}
         onChange={(priceText) => change({ priceText })}
       />
       <DetailLines details={item.details} onChange={(details) => change({ details })} />
@@ -184,19 +188,20 @@ function ItemFields({
 function DetailLines({ details, onChange }: { details: CustomGridItem["details"]; onChange: (details: CustomGridItem["details"]) => void }) {
   const set = (index: number, patch: Partial<CustomGridItem["details"][number]>) =>
     onChange(details.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+  const w = useAdminText("blocks").custom;
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">Detail lines</legend>
+      <legend className="mb-1 text-sm font-medium">{w.details}</legend>
       {details.map((line, index) => (
         <div key={line.id} className="flex flex-wrap items-end gap-2">
           <div className="min-w-32 flex-1">
-            <TextField label={`Label ${index + 1}`} value={line.label} max={CUSTOM_DETAIL_LABEL_MAX} placeholder="Size" onChange={(label) => set(index, { label })} />
+            <TextField label={fillWords(w.label, { n: index + 1 })} value={line.label} max={CUSTOM_DETAIL_LABEL_MAX} placeholder={w.labelPlaceholder} onChange={(label) => set(index, { label })} />
           </div>
           <div className="min-w-40 flex-[2]">
-            <TextField label={`Words ${index + 1}`} value={line.text} max={CUSTOM_DETAIL_TEXT_MAX} placeholder="2 to 4 people" onChange={(text) => set(index, { text })} />
+            <TextField label={fillWords(w.words, { n: index + 1 })} value={line.text} max={CUSTOM_DETAIL_TEXT_MAX} placeholder={w.wordsPlaceholder} onChange={(text) => set(index, { text })} />
           </div>
-          <button type="button" onClick={() => onChange(details.filter((_, i) => i !== index))} aria-label={`Remove detail line ${index + 1}`} className={`${smallButton} text-danger-text `}>
-            Remove
+          <button type="button" onClick={() => onChange(details.filter((_, i) => i !== index))} aria-label={fillWords(w.removeLine, { n: index + 1 })} className={`${smallButton} text-danger-text `}>
+            {w.remove}
           </button>
         </div>
       ))}
@@ -206,7 +211,7 @@ function DetailLines({ details, onChange }: { details: CustomGridItem["details"]
         onClick={() => onChange([...details, newDetailLine(newId())])}
         className={`${smallButton} w-fit`}
       >
-        Add a detail line
+        {w.addLine}
       </button>
     </fieldset>
   );
@@ -220,6 +225,8 @@ const SITE_LINKS: readonly MenuLink["kind"][] = ["home", "products", "blog", "ac
  */
 function LinkPicker({ link, targets, onChange }: { link: MenuLink | null; targets: ItemLinkTargets | null; onChange: (link: MenuLink | null) => void }) {
   const id = useId();
+  const all = useAdminText("blocks");
+  const w = all.custom;
   const withTargets: readonly string[] = ["product", "page", "category", "tag", "article", "blogCategory"];
   // A kind that points at something the owner has none of (no products yet) is not offered.
   const kinds = (targets?.kinds ?? []).filter((kind) => !withTargets.includes(kind.kind) || (targets?.targets[kind.kind as TargetKind]?.length ?? 0) > 0 || kind.kind === link?.kind);
@@ -237,10 +244,10 @@ function LinkPicker({ link, targets, onChange }: { link: MenuLink | null; target
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-kind`} className="text-sm font-medium">
-          Link to
+          {w.linkTo}
         </label>
         <select id={`${id}-kind`} value={link?.kind ?? ""} onChange={(event) => choose(event.target.value)} className={fieldClass} disabled={!targets}>
-          <option value="">No link</option>
+          <option value="">{w.noLink}</option>
           {kinds.map((kind) => (
             <option key={kind.kind} value={kind.kind}>
               {kind.label}
@@ -251,7 +258,7 @@ function LinkPicker({ link, targets, onChange }: { link: MenuLink | null; target
       {link && target && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-target`} className="text-sm font-medium">
-            Which one
+            {w.which}
           </label>
           <select
             id={`${id}-target`}
@@ -259,7 +266,7 @@ function LinkPicker({ link, targets, onChange }: { link: MenuLink | null; target
             onChange={(event) => onChange(targetLink(target.kind, event.target.value, kinds) as MenuLink)}
             className={fieldClass}
           >
-            {!options.some((option) => option.value === target.value) && <option value={target.value}>{target.value} (not found)</option>}
+            {!options.some((option) => option.value === target.value) && <option value={target.value}>{fillWords(w.notFound, { value: target.value })}</option>}
             {options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.title}
@@ -271,11 +278,11 @@ function LinkPicker({ link, targets, onChange }: { link: MenuLink | null; target
       )}
       {link?.kind === "url" && (
         <TextField
-          label="Address"
+          label={w.address}
           value={link.url}
           max={1000}
-          placeholder="https://… or /about"
-          hint={unsafe ? "Use https://…, a path on your site such as /about, or an anchor such as #contact." : "https://… opens that site; one starting with / is a page on yours."}
+          placeholder={all.link.addressPlaceholder}
+          hint={unsafe ? w.unsafe : w.addressHint}
           onChange={(url) => onChange({ kind: "url", url })}
         />
       )}
@@ -321,12 +328,13 @@ export function CopyCurrentItems({
   onCopied: (items: CustomGridItem[]) => void;
 }) {
   const [state, setState] = useState<{ busy: boolean; note: string | null }>({ busy: false, note: null });
+  const w = useAdminText("blocks").custom;
   const copy = async () => {
     setState({ busy: true, note: null });
     try {
       const data = await load();
       if ("problem" in data) return setState({ busy: false, note: data.problem });
-      if (data.items.length === 0) return setState({ busy: false, note: "The grid shows nothing yet, so there is nothing to copy." });
+      if (data.items.length === 0) return setState({ busy: false, note: w.nothingYet });
       const left = copyLeftOut(data.items);
       const sizes = new Map<string, { width: number; height: number } | null>();
       await Promise.all(
@@ -339,27 +347,25 @@ export function CopyCurrentItems({
       );
       const items = itemsFromGrid(block.source.type, data.items, { newId, platform, pictureSize: (url) => sizes.get(url) ?? null });
       const leftOut = [
-        left.restricted > 0 ? `${left.restricted} for one kind of buyer only (a custom item shows to everyone)` : "",
-        left.pictures > 0 ? `${left.pictures} ${left.pictures === 1 ? "picture" : "pictures"} from another site (choose one from your library)` : "",
+        left.restricted > 0 ? fillWords(w.restricted, { n: left.restricted }) : "",
+        left.pictures > 0 ? countWords(left.pictures, w.pictures) : "",
       ].filter(Boolean);
-      const said = leftOut.length > 0 ? ` Left out: ${leftOut.join("; ")}.` : "";
+      const said = leftOut.length > 0 ? fillWords(w.leftOut, { list: leftOut.join("; ") }) : "";
       // Nothing left to keep (every item is for one kind of buyer): the grid stays as it is.
-      if (items.length === 0) return setState({ busy: false, note: `Nothing was copied.${said}` });
+      if (items.length === 0) return setState({ busy: false, note: fillWords(w.nothingCopied, { said }) });
       onCopied(items);
-      setState({ busy: false, note: `Copied ${items.length} ${items.length === 1 ? "item" : "items"}. They no longer follow your ${block.source.type}: change them here.${said}` });
+      const source = (w.sources as Record<string, string>)[block.source.type] ?? block.source.type;
+      setState({ busy: false, note: countWords(items.length, w.copied, { source, said }) });
     } catch {
-      setState({ busy: false, note: "The items could not be copied. Try again." });
+      setState({ busy: false, note: w.failed });
     }
   };
   return (
     <div className="flex flex-col gap-2 border-t border-line pt-4">
-      <p className="text-sm font-medium">Start from what it shows now</p>
-      <p className="text-xs text-muted">
-        Turns the items below into custom items you can edit (a snapshot with titles, texts, pictures and links). Prices are left
-        out: a custom item has plain words in place of a price.
-      </p>
+      <p className="text-sm font-medium">{w.startFrom}</p>
+      <p className="text-xs text-muted">{w.startHint}</p>
       <button type="button" disabled={state.busy} onClick={() => void copy()} className={`${smallButton} w-fit`}>
-        {state.busy ? "Copying …" : "Copy current items"}
+        {state.busy ? w.copying : w.copy}
       </button>
       {state.note && (
         <p role="status" className="text-xs text-muted">

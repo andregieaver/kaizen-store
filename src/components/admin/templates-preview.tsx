@@ -2,7 +2,10 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
-import { KIND_LABELS, type TemplateItem } from "@/lib/templates";
+import { fillWords } from "@/lib/admin-fill";
+import type { TemplateItem } from "@/lib/templates";
+
+import { useAdminText } from "./admin-text";
 
 import { PREVIEW_DEVICES, PREVIEW_TIMEOUT_MS, deviceWidth, type PreviewDevice } from "./templates-helpers";
 import { KaizenBadge, PageTypeBadge, Problems } from "./templates-parts";
@@ -50,6 +53,7 @@ export function TemplatePreviewDialog({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const reasonId = useId();
+  const w = useAdminText("builder").templates;
   const [device, setDevice] = useState<PreviewDevice>("desktop");
   const open = item !== null;
   const opener = useRef(returnFocus);
@@ -87,13 +91,13 @@ export function TemplatePreviewDialog({
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-3">
             <div className="flex min-w-0 flex-col gap-1">
               <h2 id={titleId} className="truncate text-title text-ink">
-                Preview: {item.name}
+                {fillWords(w.previewTitle, { name: item.name })}
               </h2>
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                <span>{KIND_LABELS[item.kind].one}</span>
+                <span>{w.kinds[item.kind].one}</span>
                 <PageTypeBadge item={item} />
                 <span aria-hidden>·</span>
-                <span>By {item.publisher}</span>
+                <span>{fillWords(w.by, { publisher: item.publisher })}</span>
                 {item.fromKaizen && <KaizenBadge />}
               </p>
               {item.summary && <p className="text-xs text-muted">{item.summary}</p>}
@@ -101,7 +105,7 @@ export function TemplatePreviewDialog({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close preview"
+              aria-label={w.closePreview}
               className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-sunken"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -113,7 +117,7 @@ export function TemplatePreviewDialog({
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
             <DeviceSwitch device={device} onDevice={setDevice} />
             {/* A new frame for each template, so it starts loading again. */}
-            {href && <PreviewFrame key={item.id} title={`Preview of ${item.name}`} href={href} device={device} />}
+            {href && <PreviewFrame key={item.id} title={fillWords(w.frameTitle, { name: item.name })} href={href} device={device} />}
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">
@@ -126,7 +130,7 @@ export function TemplatePreviewDialog({
               )}
             </div>
             <button type="button" onClick={onClose} className="min-h-10 rounded-pill border border-edge px-4 text-sm">
-              Close
+              {w.close}
             </button>
             <button
               type="button"
@@ -136,7 +140,7 @@ export function TemplatePreviewDialog({
               aria-pressed={item.active}
               className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
             >
-              {item.active ? "Deactivate for this store" : "Activate for this store"}
+              {item.active ? w.deactivateStore : w.activateStore}
             </button>
             <button
               type="button"
@@ -146,7 +150,7 @@ export function TemplatePreviewDialog({
               title={reason ?? undefined}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
-              {using ? "Adding …" : "Use"}
+              {using ? w.adding : w.use}
             </button>
           </div>
         </div>
@@ -158,6 +162,7 @@ export function TemplatePreviewDialog({
 /** Desktop, tablet or phone: radio-style buttons, one tab stop, the arrow keys move between them. */
 function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (device: PreviewDevice) => void }) {
   const id = useId();
+  const w = useAdminText("builder").templates;
   const select = (index: number) => {
     const next = PREVIEW_DEVICES[(index + PREVIEW_DEVICES.length) % PREVIEW_DEVICES.length];
     onDevice(next.key);
@@ -178,7 +183,7 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
     select(to);
   };
   return (
-    <div role="radiogroup" aria-label="Preview width" className="flex w-fit gap-1 rounded-md bg-sunken p-1">
+    <div role="radiogroup" aria-label={w.width} className="flex w-fit gap-1 rounded-md bg-sunken p-1">
       {PREVIEW_DEVICES.map((each, index) => (
         <button
           key={each.key}
@@ -191,8 +196,8 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
           onKeyDown={(event) => onKeyDown(event, index)}
           className="min-h-9 rounded px-3 text-xs font-medium text-muted aria-checked:bg-card aria-checked:text-ink aria-checked:shadow-sm"
         >
-          {each.label}
-          {each.width && <span className="sr-only">, {each.width} pixels wide</span>}
+          {w.devices[each.key]}
+          {each.width && <span className="sr-only">{fillWords(w.pixelsWide, { n: each.width })}</span>}
         </button>
       ))}
     </div>
@@ -206,6 +211,7 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
 function PreviewFrame({ title, href, device }: { title: string; href: string; device: PreviewDevice }) {
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const w = useAdminText("builder").templates;
   useEffect(() => {
     if (status !== "loading") return;
     const timer = setTimeout(() => setStatus((now) => (now === "loading" ? "failed" : now)), PREVIEW_TIMEOUT_MS);
@@ -228,12 +234,12 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
       )}
       {status === "loading" && (
         <p role="status" className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-          Loading the preview …
+          {w.previewLoading}
         </p>
       )}
       {status === "failed" && (
         <div role="alert" className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm">
-          <p>The preview could not be loaded.</p>
+          <p>{w.previewFailed}</p>
           <button
             type="button"
             onClick={() => {
@@ -242,7 +248,7 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
             }}
             className="min-h-9 rounded-pill border border-line bg-card px-3 text-xs"
           >
-            Try again
+            {w.tryAgain}
           </button>
         </div>
       )}

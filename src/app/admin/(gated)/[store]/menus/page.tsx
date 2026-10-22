@@ -14,6 +14,10 @@ import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 import { uploadImageAction } from "../products/actions";
 import { deleteMenuAction, saveMenuAction } from "./actions";
@@ -27,23 +31,26 @@ export const metadata: Metadata = { title: "Menus" };
  * components in pages, headers and footers.
  */
 export default async function MenusPage({ params, searchParams }: PageProps<"/admin/[store]/menus">) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "website").menusPage;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["website"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Menus"
-        description={<>Lists of links to use around {store.name}: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page, article, category or tag shows once it is published, and follows it to a new address.</>}
-      />
+      <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
       {/* The menu chosen in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Menus storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>
+    </AdminTextScope>
   );
 }
 
 async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/menus">["searchParams"] }) {
-  const { store } = await requirePermission(storeSlug, "website:read");
+  const { store, account } = await requirePermission(storeSlug, "website:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "website").menusPage;
   const { menu: wanted } = await searchParams;
   const [menus, uses, products, terms, pages, articles, blogTerms] = await Promise.all([
     listStoreMenus(store.id),
@@ -57,7 +64,7 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
   const chosen = wanted === "new" ? null : (menus.find((m) => m.id === wanted) ?? menus[0] ?? null);
   const base = `/admin/${store.slug}/menus`;
 
-  const names = new Intl.DisplayNames(["en"], { type: "language" });
+  const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   const languages = [...new Map(store.markets.map((m) => [m.locale, m])).values()].map((market) => {
     const m = t(market.lang);
     return {
@@ -76,11 +83,11 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
   const use = chosen ? uses.get(chosen.id) : undefined;
   const usedIn: MenuUse[] = [
     ...(use?.standard ?? []).map((place) => ({
-      label: place === "header" ? "The standard header and the phone's menu" : "The standard footer",
+      label: place === "header" ? w.header : w.footer,
       href: `/admin/${store.slug}/settings/navigation`,
     })),
     ...(use?.pages ?? []).map((page) => ({
-      label: `${PAGE_TYPE_COPY[page.type as PageType]?.One ?? "Page"}: ${page.title || "Untitled"}`,
+      label: `${w.pageTypes[page.type as PageType] ?? w.pageTypes.page}: ${page.title || w.untitled}`,
       href: `/admin/${store.slug}/${PAGE_TYPE_COPY[page.type as PageType]?.segment ?? "pages"}/${page.id}`,
     })),
   ];
@@ -89,32 +96,25 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
     <MenuEditor
       key={chosen?.id ?? "new"}
       menus={menus.map(({ id, name }) => ({ id, name }))}
-      menu={chosen ?? { id: null, name: menus.length === 0 ? "Main menu" : "", items: [] }}
+      menu={chosen ?? { id: null, name: menus.length === 0 ? w.mainMenu : "", items: [] }}
       uses={usedIn}
       basePath={base}
       languages={languages}
-      kinds={STORE_KINDS}
+      kinds={STORE_KINDS.map((k) => ({ ...k, label: w.kinds[k.kind as keyof typeof w.kinds] ?? k.label }))}
       targets={{
         // A store's pages by address (D54); a page shows in the menu once it is published.
-        page: pages.map((p) => ({ value: p.slug, title: p.title, note: p.published ? undefined : "not published" })),
-        product: products.map((p) => ({ value: p.handle, title: p.title, note: p.status === "draft" ? "draft" : undefined })),
+        page: pages.map((p) => ({ value: p.slug, title: p.title, note: p.published ? undefined : w.notPublished })),
+        product: products.map((p) => ({ value: p.handle, title: p.title, note: p.status === "draft" ? w.draft : undefined })),
         ...termTargets(terms),
         // Articles by address and blog categories (D57).
-        article: articles.map((a) => ({ value: a.slug, title: a.title, note: a.published ? undefined : "not published" })),
+        article: articles.map((a) => ({ value: a.slug, title: a.title, note: a.published ? undefined : w.notPublished })),
         blogCategory: termTargets(blogTerms).category,
       }}
       copy={{
-        siteLinks: "Store links",
-        sections: {
-          page: "Pages",
-          product: "Products",
-          category: "Product categories",
-          tag: "Product tags",
-          article: "Blog articles",
-          blogCategory: "Blog categories",
-        },
-        urlHint: "A full address opens that site; one starting with / is a page in your store; # or #name is an anchor on the page shown (or opens a modal made with #modal-name).",
-        urlPlaceholder: "https://…, /p/product-name or #anchor",
+        siteLinks: w.siteLinks,
+        sections: w.sections,
+        urlHint: w.urlHint,
+        urlPlaceholder: w.urlPlaceholder,
       }}
       save={saveMenuAction.bind(null, store.slug)}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}

@@ -3,24 +3,12 @@
 import { useId, useState, useTransition, type ReactNode } from "react";
 
 import { FontLinks } from "@/components/font-links";
+import { fillWords } from "@/lib/admin-fill";
 import { BREAKPOINT_GAP, BREAKPOINT_MAX, BREAKPOINT_MIN, DEFAULT_BREAKPOINTS, breakpointsOf, breakpointsProblem, type Breakpoints } from "@/lib/breakpoints";
 import { fontClass, siteFontFamilies } from "@/lib/fonts";
 import {
-  BUTTON_CORNERS,
-  BUTTON_STYLES,
-  CARD_ALIGNS,
-  CARD_CORNERS,
-  CARD_IMAGES,
-  CARD_STYLES,
-  COLOR_MODES,
-  CONTENT_WIDTHS,
-  FIELD_CORNERS,
-  HEADER_ALIGNS,
-  HEADER_BACKGROUNDS,
-  HEADING_CASES,
   HEADING_WEIGHTS,
   PALETTE_KEYS,
-  PALETTE_LABELS,
   THEME_TEMPLATES,
   THEME_TEMPLATE_KEYS,
   darkBehindLogo,
@@ -34,6 +22,7 @@ import {
 } from "@/lib/theme";
 import type { SavedTheme } from "@/server/themes";
 
+import { useAdminText } from "./admin-text";
 import { FontPicker, type InstallFont } from "./font-picker";
 
 type Result<T> = { ok: true } & T;
@@ -100,6 +89,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 /** A colour set, each colour with the browser's picker and its hex code. */
 function PaletteFields({ title, value, onChange }: { title: string; value: Palette; onChange: (palette: Palette) => void }) {
+  const w = useAdminText("design").editor;
   const id = useId();
   const [drafts, setDrafts] = useState<Partial<Palette>>({});
   return (
@@ -113,7 +103,7 @@ function PaletteFields({ title, value, onChange }: { title: string; value: Palet
               <input
                 type="color"
                 value={value[key]}
-                aria-label={`${PALETTE_LABELS[key].name}, ${title.toLowerCase()}: pick`}
+                aria-label={fillWords(w.pick, { colour: w.palette[key].name, set: title.toLowerCase() })}
                 onChange={(event) => {
                   setDrafts((d) => ({ ...d, [key]: undefined }));
                   onChange({ ...value, [key]: event.target.value });
@@ -121,7 +111,7 @@ function PaletteFields({ title, value, onChange }: { title: string; value: Palet
                 className="size-10 shrink-0 cursor-pointer rounded-md border border-border bg-background p-0.5"
               />
               <label className="flex min-w-0 flex-1 flex-col text-sm">
-                <span className="font-medium">{PALETTE_LABELS[key].name}</span>
+                <span className="font-medium">{w.palette[key].name}</span>
                 <input
                   id={`${id}-${key}`}
                   value={text}
@@ -137,7 +127,7 @@ function PaletteFields({ title, value, onChange }: { title: string; value: Palet
                   className="min-h-9 w-full rounded-md border border-border bg-background px-2 font-mono text-xs aria-invalid:border-red-700"
                 />
                 <span id={`${id}-${key}-hint`} className="text-xs text-muted">
-                  {PALETTE_LABELS[key].hint}
+                  {w.palette[key].hint}
                 </span>
               </label>
             </div>
@@ -153,6 +143,8 @@ function PaletteFields({ title, value, onChange }: { title: string; value: Palet
  * as the storefront, in light or dark.
  */
 function Preview({ settings, storeName, mode }: { settings: ThemeSettings; storeName: string; mode: "light" | "dark" }) {
+  const w = useAdminText("design").editor;
+  const sample = w.sample;
   const { fonts } = settings;
   const headingFont = fonts.heading ?? fonts.body;
   return (
@@ -161,7 +153,7 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
       // The colours shown, so that everything drawn by light or dark inside follows them (D99).
       data-color-mode={mode}
       data-theme-preview=""
-      aria-label={`Preview in ${mode} colours`}
+      aria-label={fillWords(w.previewIn, { mode: w.previewModes[mode] })}
       role="img"
       className={`overflow-hidden rounded-lg border border-border bg-background text-foreground ${fonts.body ? fontClass(fonts.body) : ""}`}
     >
@@ -179,21 +171,21 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
         } ${settings.layout.headerAlign === "center" ? "justify-center" : ""}`}
       >
         <span className={`text-base font-semibold ${headingFont ? fontClass(headingFont) : ""}`}>{storeName}</span>
-        {settings.layout.headerAlign === "left" && <span className="ml-auto text-xs opacity-80">Shop · About · Blog</span>}
+        {settings.layout.headerAlign === "left" && <span className="ml-auto text-xs opacity-80">{sample.menu}</span>}
       </div>
       <div className="flex flex-col gap-3 p-4">
         <p className={`font-heading text-2xl leading-tight ${headingFont ? fontClass(headingFont) : ""}`} style={settings.headings.case === "upper" ? { textTransform: "uppercase", letterSpacing: "0.06em" } : undefined}>
-          Made slowly, by hand
+          {sample.heading}
         </p>
         <p className="text-sm">
-          Cups and bowls thrown in our workshop. <span className="text-muted">Free delivery over 500 kr.</span>
+          {sample.text} <span className="text-muted">{sample.delivery}</span>
         </p>
         <div className="flex flex-wrap gap-2">
-          <span className="button-primary inline-flex min-h-10 items-center px-4 text-sm font-medium">Add to cart</span>
-          <span className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm">Read more</span>
+          <span className="button-primary inline-flex min-h-10 items-center px-4 text-sm font-medium">{sample.addToCart}</span>
+          <span className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm">{sample.readMore}</span>
         </div>
         <ul className="grid grid-cols-3 gap-3">
-          {["Cup", "Bowl", "Plate"].map((name, i) => (
+          {sample.products.map((name, i) => (
             <li key={name} className="product-card relative flex flex-col gap-2">
               <span className="product-card-image block w-full rounded-lg bg-surface" style={{ opacity: 1 - i * 0.15 }} />
               <span className="text-xs font-medium">{name}</span>
@@ -201,29 +193,26 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
             </li>
           ))}
         </ul>
-        <input readOnly tabIndex={-1} aria-hidden value="Email" className="min-h-9 rounded-md border border-border bg-background px-3 text-xs" />
+        <input readOnly tabIndex={-1} aria-hidden value={sample.email} className="min-h-9 rounded-md border border-border bg-background px-3 text-xs" />
       </div>
       <div className="border-t border-border bg-surface px-4 py-3 text-xs text-muted">© {storeName}</div>
     </div>
   );
 }
 
-const SIZE_STARTS = [
-  { key: "md", label: "Medium from", hint: "Tablets" },
-  { key: "lg", label: "Large from", hint: "Small laptops" },
-  { key: "xl", label: "Extra large from", hint: "Computers" },
-] as const;
+const SIZE_STARTS = ["md", "lg", "xl"] as const;
 
 /**
  * Where the screen sizes start (D179): the widths at which a part's settings for Medium, Large and Extra large take over.
  * Typed widths are kept as typed while they are checked, and the problem is said beside them; Save waits for usable ones.
  */
 export function BreakpointFields({ value, onChange }: { value: Breakpoints; onChange: (value: Breakpoints) => void }) {
+  const { sizes: w, breakpoints } = useAdminText("design");
   const id = useId();
   const [draft, setDraft] = useState<Record<keyof Breakpoints, string> | null>(null);
   const shown = draft ?? { md: String(value.md), lg: String(value.lg), xl: String(value.xl) };
   const typed: Breakpoints = { md: Number(shown.md), lg: Number(shown.lg), xl: Number(shown.xl) };
-  const problem = breakpointsProblem(typed);
+  const problem = breakpointsProblem(typed, breakpoints);
   const change = (key: keyof Breakpoints, text: string) => {
     const next = { ...shown, [key]: text.replace(/[^\d]/g, "") };
     setDraft(next);
@@ -231,14 +220,11 @@ export function BreakpointFields({ value, onChange }: { value: Breakpoints; onCh
   };
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted">
-        Pages are edited at four screen sizes: Small (phones), Medium, Large and Extra large. A setting made for a size holds there
-        and on the smaller sizes until one of them sets its own. These are the widths, in pixels, where each size starts.
-      </p>
+      <p className="text-sm text-muted">{w.intro}</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        {SIZE_STARTS.map(({ key, label, hint }) => (
+        {SIZE_STARTS.map((key) => (
           <label key={key} className="flex flex-col gap-1 text-sm font-medium">
-            {label}
+            {w[key].label}
             <span className="flex items-center gap-2">
               <input
                 inputMode="numeric"
@@ -250,13 +236,12 @@ export function BreakpointFields({ value, onChange }: { value: Breakpoints; onCh
               />
               <span className="font-normal text-muted">px</span>
             </span>
-            <span className="text-xs font-normal text-muted">{hint}</span>
+            <span className="text-xs font-normal text-muted">{w[key].hint}</span>
           </label>
         ))}
       </div>
       <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={`text-xs ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
-        {problem ??
-          `Between ${BREAKPOINT_MIN} and ${BREAKPOINT_MAX} pixels, each at least ${BREAKPOINT_GAP} after the one before. Small is everything under Medium.`}
+        {problem ?? fillWords(w.rule, { min: BREAKPOINT_MIN, max: BREAKPOINT_MAX, gap: BREAKPOINT_GAP })}
       </p>
       <div>
         <button
@@ -268,7 +253,7 @@ export function BreakpointFields({ value, onChange }: { value: Breakpoints; onCh
           }}
           className={`${button} border border-border`}
         >
-          Use the standard sizes ({DEFAULT_BREAKPOINTS.md}, {DEFAULT_BREAKPOINTS.lg} and {DEFAULT_BREAKPOINTS.xl})
+          {fillWords(w.standard, { md: DEFAULT_BREAKPOINTS.md, lg: DEFAULT_BREAKPOINTS.lg, xl: DEFAULT_BREAKPOINTS.xl })}
         </button>
       </div>
     </div>
@@ -298,9 +283,20 @@ export function ThemeEditor({
   /** The name of an installed theme that is not live (D244): Save keeps the settings in it, and visitors see them only once it is switched to. */
   installed?: string;
 }) {
+  const all = useAdminText("design");
+  const { common: c, editor: w } = all;
+  const o = w.options;
+  const [editingBefore, editingAfter = ""] = w.editingName.split("{name}");
   const words = installed
-    ? { saved: `Saved in “${installed}”. Visitors see it once you switch to this theme.`, toSave: `Save to keep it in “${installed}”.`, inUse: "In this theme", unsaved: " · not saved yet", same: " · saved", intro: `Start from a built-in theme or one of your own. Nothing changes until you save, and visitors see “${installed}” only once you switch to it.` }
-    : { saved: "Saved. The store shows this theme now.", toSave: "Save to show it on the store.", inUse: "On the store", unsaved: " · not on the store yet", same: " · on the store", intro: "Start from a built-in theme or one of your own. Edit changes nothing on the store until you save." };
+    ? {
+        saved: fillWords(w.savedInstalled, { name: installed }),
+        toSave: fillWords(w.toSaveInstalled, { name: installed }),
+        inUse: w.inUseInstalled,
+        unsaved: w.unsavedInstalled,
+        same: w.sameInstalled,
+        intro: fillWords(w.introInstalled, { name: installed }),
+      }
+    : { saved: w.saved, toSave: w.toSave, inUse: w.inUse, unsaved: w.unsaved, same: w.same, intro: w.intro };
   const [theme, setTheme] = useState<StoreTheme>(current);
   const [live, setLive] = useState<StoreTheme>(current);
   const [saved, setSaved] = useState(initialSaved);
@@ -315,9 +311,9 @@ export function ThemeEditor({
   const sourceSettings = loaded?.settings ?? templateSettings(theme.base);
   const changedFromSource = !same(settings, sourceSettings);
   const unpublished = !same(theme, live);
-  const warnings = themeWarnings(settings);
+  const warnings = themeWarnings(settings, all.readability);
   // Screen sizes that cannot be used are not saved (D179): the store keeps its own until they can.
-  const widthsProblem = settings.breakpoints ? breakpointsProblem(settings.breakpoints) : null;
+  const widthsProblem = settings.breakpoints ? breakpointsProblem(settings.breakpoints, all.breakpoints) : null;
   // A logo without a light version, on a background the theme makes dark somewhere.
   const behind = [darkBehindLogo(settings, "header"), darkBehindLogo(settings, "page")];
   const logoNeedsDarkVersion = logos.logo && !logos.dark && behind.some((b) => b.light || b.dark);
@@ -329,7 +325,7 @@ export function ThemeEditor({
 
   /** Loads a theme into the editor, its fonts made ready first; nothing changes on the site until Save. */
   const load = (next: StoreTheme) => {
-    if (unpublished && !same(next, theme) && !window.confirm("Replace the changes you have not saved?")) return;
+    if (unpublished && !same(next, theme) && !window.confirm(w.replaceUnsaved)) return;
     startTransition(async () => {
       for (const family of siteFontFamilies(next.settings.fonts)) {
         const ready = await actions.installFont(family);
@@ -367,12 +363,12 @@ export function ThemeEditor({
       setNaming(null);
       setMessage({
         tone: "ok",
-        text: [`Saved as “${result.theme.name}”. ${unpublished || live.savedId !== result.theme.id ? words.toSave : ""}`.trim()],
+        text: [`${fillWords(w.savedAs, { name: result.theme.name })} ${unpublished || live.savedId !== result.theme.id ? words.toSave : ""}`.trim()],
       });
     });
 
   const remove = (entry: SavedTheme) => {
-    if (!window.confirm(`Delete the theme “${entry.name}”? The store keeps its look.`)) return;
+    if (!window.confirm(fillWords(w.deleteConfirm, { name: entry.name }))) return;
     startTransition(async () => {
       if (!actions.removeSaved) return;
       const result = await actions.removeSaved(entry.id);
@@ -380,7 +376,7 @@ export function ThemeEditor({
       setSaved((list) => list.filter((s) => s.id !== entry.id));
       setTheme((t) => (t.savedId === entry.id ? { ...t, savedId: null } : t));
       setLive((t) => (t.savedId === entry.id ? { ...t, savedId: null } : t));
-      setMessage({ tone: "ok", text: [`Deleted “${entry.name}”.`] });
+      setMessage({ tone: "ok", text: [fillWords(w.deleted, { name: entry.name })] });
     });
   };
 
@@ -399,11 +395,13 @@ export function ThemeEditor({
           <h3 className="font-medium">
             {name} {inUse && <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-xs font-normal">{words.inUse}</span>}
           </h3>
-          <p className="text-xs text-muted">{description || [fonts.heading, fonts.body].filter(Boolean).join(" and ") || "System fonts"}</p>
+          <p className="text-xs text-muted">
+            {description || (fonts.heading && fonts.body ? fillWords(w.fontsAnd, { a: fonts.heading, b: fonts.body }) : fonts.heading || fonts.body) || w.systemFonts}
+          </p>
         </div>
         <div className="mt-auto flex flex-wrap gap-2">
           <button type="button" disabled={pending || editing} onClick={() => load(entry)} className={`${button} border border-border`}>
-            {editing ? "Editing" : "Edit"}
+            {editing ? w.editing : c.edit}
           </button>
           {extra}
         </div>
@@ -413,13 +411,13 @@ export function ThemeEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="Themes">
+      <Section title={w.themes}>
         <p className="text-sm text-muted">
           {words.intro}
         </p>
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {THEME_TEMPLATE_KEYS.map((key) =>
-            themeCard(key, THEME_TEMPLATES[key].name, THEME_TEMPLATES[key].description, {
+            themeCard(key, THEME_TEMPLATES[key].name, w.templates[key] ?? THEME_TEMPLATES[key].description, {
               base: key,
               savedId: null,
               settings: templateSettings(key),
@@ -429,10 +427,10 @@ export function ThemeEditor({
             themeCard(
               entry.id,
               entry.name,
-              `Your theme, from ${THEME_TEMPLATES[entry.base].name}.`,
+              fillWords(w.yourTheme, { name: THEME_TEMPLATES[entry.base].name }),
               { base: entry.base, savedId: entry.id, settings: entry.settings },
               <button type="button" disabled={pending} onClick={() => remove(entry)} className={`${button} border border-border text-red-700 dark:text-red-400`}>
-                Delete
+                {c.delete}
               </button>,
             ),
           )}
@@ -443,37 +441,39 @@ export function ThemeEditor({
         <div className="flex flex-col gap-6">
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-sm">
             <p className="mr-auto text-sm" aria-live="polite">
-              Editing <strong>{sourceName}</strong>
-              {changedFromSource ? " · changed" : ""}
+              {editingBefore}
+              <strong>{sourceName}</strong>
+              {editingAfter}
+              {changedFromSource ? w.changed : ""}
               {unpublished ? words.unsaved : words.same}
             </p>
             <button type="button" disabled={pending || !unpublished || widthsProblem !== null} onClick={publish} className={`${button} bg-foreground text-background`}>
-              Save
+              {c.save}
             </button>
             {loaded && changedFromSource && (
               <button type="button" disabled={pending} onClick={() => saveAs(loaded.id, loaded.name)} className={`${button} border border-border`}>
-                Update “{loaded.name}”
+                {fillWords(w.update, { name: loaded.name })}
               </button>
             )}
             {actions.saveSaved && (
-              <button type="button" disabled={pending} onClick={() => setNaming(loaded ? `${loaded.name} 2` : `My ${THEME_TEMPLATES[theme.base].name}`)} className={`${button} border border-border`}>
-                Save as new theme…
+              <button type="button" disabled={pending} onClick={() => setNaming(loaded ? fillWords(w.copyName, { name: loaded.name }) : fillWords(w.newName, { name: THEME_TEMPLATES[theme.base].name }))} className={`${button} border border-border`}>
+                {w.saveAsNew}
               </button>
             )}
             {loaded && changedFromSource && (
               <button type="button" disabled={pending} onClick={() => set(structuredClone(loaded.settings))} className={`${button} border border-border`}>
-                Undo changes
+                {w.undoChanges}
               </button>
             )}
             <button
               type="button"
               disabled={pending || same(settings, templateSettings(theme.base))}
               onClick={() => {
-                if (window.confirm(`Reset every setting to ${THEME_TEMPLATES[theme.base].name}'s defaults?`)) set(templateSettings(theme.base));
+                if (window.confirm(fillWords(w.resetConfirm, { name: THEME_TEMPLATES[theme.base].name }))) set(templateSettings(theme.base));
               }}
               className={`${button} border border-border`}
             >
-              Reset to {THEME_TEMPLATES[theme.base].name}
+              {fillWords(w.resetTo, { name: THEME_TEMPLATES[theme.base].name })}
             </button>
           </div>
 
@@ -486,7 +486,7 @@ export function ThemeEditor({
               }}
             >
               <label className="flex flex-col gap-1 text-sm font-medium">
-                Name of the new theme
+                {w.nameNew}
                 <input
                   value={naming}
                   autoFocus
@@ -497,10 +497,10 @@ export function ThemeEditor({
               </label>
               <div className="flex gap-2">
                 <button type="submit" disabled={pending || !naming.trim()} className={`${button} bg-foreground text-background`}>
-                  Save theme
+                  {w.saveTheme}
                 </button>
                 <button type="button" onClick={() => setNaming(null)} className={`${button} border border-border`}>
-                  Cancel
+                  {c.cancel}
                 </button>
               </div>
             </form>
@@ -514,8 +514,8 @@ export function ThemeEditor({
             </div>
           )}
 
-          <Section title="Colours">
-            <Choice legend="Light and dark" options={COLOR_MODES} value={settings.mode} onChange={(mode) => {
+          <Section title={w.colours}>
+            <Choice legend={w.lightAndDark} options={o.colorModes} value={settings.mode} onChange={(mode) => {
               set({ mode });
               if (mode !== "auto") setPreviewMode(mode);
             }} />
@@ -527,25 +527,22 @@ export function ThemeEditor({
                 className="mt-1"
               />
               <span>
-                <span className="font-medium">Let visitors choose light or dark</span>
-                <span className="block text-xs text-muted">
-                  A button in the header switches to the other colours for that visitor, and their browser remembers it. With a
-                  header of your own, add its Light or dark component.
-                </span>
+                <span className="font-medium">{w.visitorSwitch}</span>
+                <span className="block text-xs text-muted">{w.visitorSwitchHint}</span>
               </span>
             </label>
             <PaletteFields
-              title={settings.mode === "dark" && !settings.visitorSwitch ? "Light colours (not shown)" : "Light colours"}
+              title={settings.mode === "dark" && !settings.visitorSwitch ? w.lightNotShown : w.lightColours}
               value={settings.light}
               onChange={(light) => set({ light })}
             />
             <PaletteFields
-              title={settings.mode === "light" && !settings.visitorSwitch ? "Dark colours (not shown)" : "Dark colours"}
+              title={settings.mode === "light" && !settings.visitorSwitch ? w.darkNotShown : w.darkColours}
               value={settings.dark}
               onChange={(dark) => set({ dark })}
             />
             {warnings.length > 0 && (
-              <ul className="list-disc rounded-md border border-amber-600 p-3 pl-8 text-sm" aria-label="Readability">
+              <ul className="list-disc rounded-md border border-amber-600 p-3 pl-8 text-sm" aria-label={w.readability}>
                 {warnings.map((w) => (
                   <li key={w}>{w}</li>
                 ))}
@@ -553,84 +550,84 @@ export function ThemeEditor({
             )}
           </Section>
 
-          <Section title="Fonts">
-            <p className="text-sm text-muted">Any Google Fonts family, copied to Kaizena Flow and loaded from the store itself.</p>
+          <Section title={w.fonts}>
+            <p className="text-sm text-muted">{w.fontsHint}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <FontPicker
-                label="Headings"
+                label={w.headings}
                 value={settings.fonts.heading}
                 onChange={(heading) => set({ fonts: { ...settings.fonts, heading } })}
                 install={actions.installFont}
-                defaultLabel="The body font"
+                defaultLabel={w.theBodyFont}
               />
               <FontPicker
-                label="Body text"
+                label={w.bodyText}
                 value={settings.fonts.body}
                 onChange={(body) => set({ fonts: { ...settings.fonts, body } })}
                 install={actions.installFont}
-                defaultLabel="The system's font"
+                defaultLabel={w.systemFont}
               />
             </div>
             <Choice
-              legend="Heading weight"
-              options={{ normal: "Normal", medium: "Medium", semibold: "Semibold", bold: "Bold" } satisfies Record<keyof typeof HEADING_WEIGHTS, string>}
+              legend={w.headingWeight}
+              options={o.headingWeights as Record<keyof typeof HEADING_WEIGHTS, string>}
               value={settings.headings.weight}
               onChange={(weight) => set({ headings: { ...settings.headings, weight } })}
             />
-            <Choice legend="Heading letters" options={HEADING_CASES} value={settings.headings.case} onChange={(c) => set({ headings: { ...settings.headings, case: c } })} />
+            <Choice legend={w.headingLetters} options={o.headingCases as Record<ThemeSettings["headings"]["case"], string>} value={settings.headings.case} onChange={(c) => set({ headings: { ...settings.headings, case: c } })} />
           </Section>
 
-          <Section title="Buttons and corners">
-            <Choice legend="Buttons" options={BUTTON_STYLES} value={settings.buttons.style} onChange={(style) => set({ buttons: { ...settings.buttons, style } })} />
-            <Choice legend="Button corners" options={BUTTON_CORNERS} value={settings.buttons.corners} onChange={(corners) => set({ buttons: { ...settings.buttons, corners } })} />
-            <Choice legend="Cards and pictures" options={CARD_CORNERS} value={settings.corners.cards} onChange={(cards) => set({ corners: { ...settings.corners, cards } })} />
-            <Choice legend="Fields and menus" options={FIELD_CORNERS} value={settings.corners.fields} onChange={(fields) => set({ corners: { ...settings.corners, fields } })} />
+          <Section title={w.buttonsAndCorners}>
+            <Choice legend={w.buttons} options={o.buttonStyles as Record<ThemeSettings["buttons"]["style"], string>} value={settings.buttons.style} onChange={(style) => set({ buttons: { ...settings.buttons, style } })} />
+            <Choice legend={w.buttonCorners} options={o.buttonCorners as Record<ThemeSettings["buttons"]["corners"], string>} value={settings.buttons.corners} onChange={(corners) => set({ buttons: { ...settings.buttons, corners } })} />
+            <Choice legend={w.cardsAndPictures} options={o.cardCorners as Record<ThemeSettings["corners"]["cards"], string>} value={settings.corners.cards} onChange={(cards) => set({ corners: { ...settings.corners, cards } })} />
+            <Choice legend={w.fieldsAndMenus} options={o.fieldCorners as Record<ThemeSettings["corners"]["fields"], string>} value={settings.corners.fields} onChange={(fields) => set({ corners: { ...settings.corners, fields } })} />
           </Section>
 
-          <Section title="Layout">
-            <Choice legend="Page width" options={CONTENT_WIDTHS} value={settings.layout.width} onChange={(width) => set({ layout: { ...settings.layout, width } })} />
+          <Section title={w.layout}>
+            <Choice legend={w.pageWidth} options={o.contentWidths as Record<ThemeSettings["layout"]["width"], string>} value={settings.layout.width} onChange={(width) => set({ layout: { ...settings.layout, width } })} />
             {settings.layout.maxWidth !== undefined && (
               <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                The page builder&apos;s Theme tab sets the content width to {settings.layout.maxWidth} pixels, which is used instead of this choice.
+                {fillWords(w.maxWidth, { n: settings.layout.maxWidth })}
                 <button
                   type="button"
                   onClick={() => set({ layout: { ...settings.layout, maxWidth: undefined } })}
                   className="min-h-9 rounded-md border border-border px-3 text-foreground"
                 >
-                  Use this choice
+                  {w.useChoice}
                 </button>
               </p>
             )}
-            <Choice legend="Header" options={HEADER_ALIGNS} value={settings.layout.headerAlign} onChange={(headerAlign) => set({ layout: { ...settings.layout, headerAlign } })} />
+            <Choice legend={w.header} options={o.headerAligns as Record<ThemeSettings["layout"]["headerAlign"], string>} value={settings.layout.headerAlign} onChange={(headerAlign) => set({ layout: { ...settings.layout, headerAlign } })} />
             <Choice
-              legend="Header background"
-              options={HEADER_BACKGROUNDS}
+              legend={w.headerBackground}
+              options={o.headerBackgrounds as Record<ThemeSettings["layout"]["headerBackground"], string>}
               value={settings.layout.headerBackground}
               onChange={(headerBackground) => set({ layout: { ...settings.layout, headerBackground } })}
               hint={
                 logoNeedsDarkVersion
-                  ? "Your logo will sit on a dark background here. If it is dark, add a logo for dark backgrounds under Header and footer."
+                  ? w.darkLogo
                   : undefined
               }
             />
           </Section>
 
-          <Section title="Screen sizes">
+          <Section title={w.screenSizes}>
             <BreakpointFields value={breakpointsOf(settings)} onChange={(breakpoints) => set({ breakpoints })} />
           </Section>
 
-          <Section title="Product cards">
-            <Choice legend="Picture" options={CARD_IMAGES} value={settings.productCards.image} onChange={(image) => set({ productCards: { ...settings.productCards, image } })} />
-            <Choice legend="Card" options={CARD_STYLES} value={settings.productCards.style} onChange={(style) => set({ productCards: { ...settings.productCards, style } })} />
-            <Choice legend="Text" options={CARD_ALIGNS} value={settings.productCards.align} onChange={(align) => set({ productCards: { ...settings.productCards, align } })} />
+          <Section title={w.productCards}>
+            <Choice legend={w.picture} options={o.cardImages as Record<ThemeSettings["productCards"]["image"], string>} value={settings.productCards.image} onChange={(image) => set({ productCards: { ...settings.productCards, image } })} />
+            <Choice legend={w.card} options={o.cardStyles as Record<ThemeSettings["productCards"]["style"], string>} value={settings.productCards.style} onChange={(style) => set({ productCards: { ...settings.productCards, style } })} />
+            <Choice legend={w.text} options={o.cardAligns as Record<ThemeSettings["productCards"]["align"], string>} value={settings.productCards.align} onChange={(align) => set({ productCards: { ...settings.productCards, align } })} />
           </Section>
         </div>
 
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-4" aria-label="Preview">
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-4" aria-label={w.previewHeading}>
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-medium">Preview</h2>
+            <h2 className="font-medium">{w.previewHeading}</h2>
             {(settings.mode === "auto" || settings.visitorSwitch) && (
-              <div className="flex gap-1" role="group" aria-label="Preview colours">
+              <div className="flex gap-1" role="group" aria-label={w.previewColours}>
                 {(["light", "dark"] as const).map((mode) => (
                   <button
                     key={mode}
@@ -639,7 +636,7 @@ export function ThemeEditor({
                     onClick={() => setPreviewMode(mode)}
                     className="min-h-9 rounded-md border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:font-medium"
                   >
-                    {mode === "light" ? "Light" : "Dark"}
+                    {mode === "light" ? w.light : w.dark}
                   </button>
                 ))}
               </div>

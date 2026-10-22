@@ -4,13 +4,17 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { presetChoice } from "@/lib/design-variations";
 import { themeTryPath } from "@/lib/theme-store";
 import { getAccount, listStores } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { storesWithTheme } from "@/server/theme-installs";
 import { themeStorePage } from "@/server/theme-store";
-import { priceLine } from "@/lib/theme-prices";
+import { platformText } from "@/lib/platform-text";
+import { pricesText } from "@/lib/theme-prices";
 
 import { installThemeAction } from "../../../../../[store]/settings/design/actions";
 
@@ -30,9 +34,11 @@ export default async function TryThemePage({ params, searchParams }: PageProps<"
   if (!account) redirect(`/admin/sign-in?next=${encodeURIComponent(themeTryPath(slug, asked))}`);
   const theme = await themeStorePage(slug);
   if (!theme) notFound();
+  const lang = adminLangOf(account.adminLocale);
+  const { common: c, tryTheme: w } = adminText(lang, "design");
   // One of its presets (`docs/theme-showcase-phase-1.md`), chosen on the theme's page or here; one it does not have is its own look.
   const preset = theme.presets.find((p) => p.key === asked) ?? null;
-  const name = preset ? `${theme.title} · ${preset.name}` : theme.title;
+  const name = preset ? fillWords(c.lookName, { theme: theme.title, preset: preset.name }) : theme.title;
 
   const stores = (await Promise.all((await listStores(account)).map(async (store) => ((await checkPermission(store.slug, "website:write")) ? store : null)))).filter(
     (store) => store !== null,
@@ -43,17 +49,17 @@ export default async function TryThemePage({ params, searchParams }: PageProps<"
     <div className="flex max-w-3xl flex-col gap-5">
       <PageHeader
         back={{ href: `/themes/${theme.slug}`, label: theme.title }}
-        title={<>Try {name} in your store</>}
-        description="The theme is added to the store's theme library without going live: you preview it on your own pages, customise it, and switch when you are ready. Visitors see nothing until then, and no page, product, word or picture changes."
+        title={fillWords(w.title, { name })}
+        description={w.description}
       />
       {theme.prices && theme.prices.length > 0 && (
         <p className="rounded-panel border border-line bg-card p-4 text-sm" data-theme-price="">
-          {name} is a premium theme: {priceLine(theme.prices)} Adding it to try costs nothing.
+          {fillWords(w.premium, { name, price: platformText(lang).themeStore.priceLine(pricesText(theme.prices, [], ADMIN_LANG_FACTS[lang].locale)) })}
         </p>
       )}
       {theme.presets.length > 0 && (
-        <Card title="Choose a preset" description="Ready-made designs of the theme, each with its own colours, fonts and buttons.">
-          <nav aria-label="Presets" className="flex flex-wrap gap-2">
+        <Card title={w.choosePreset} description={w.presetsHint}>
+          <nav aria-label={w.presetsLabel} className="flex flex-wrap gap-2">
             {[null, ...theme.presets].map((choice) => (
               <a
                 key={choice?.key ?? ""}
@@ -67,22 +73,20 @@ export default async function TryThemePage({ params, searchParams }: PageProps<"
           </nav>
         </Card>
       )}
-      <Card title="Choose a store">
+      <Card title={w.chooseStore}>
         {stores.length === 0 ? (
-          <p className="text-sm text-muted">
-            None of your stores lets you change its website. Ask the store&apos;s owner for a role that may change the website.
-          </p>
+          <p className="text-sm text-muted">{w.noStore}</p>
         ) : (
           <List>
             {stores.map((store) => (
               <ListRow key={store.slug}>
-                <RowLead title={store.name} sub={installed.has(store.slug) ? <Chip>Already in its themes</Chip> : undefined} />
+                <RowLead title={store.name} sub={installed.has(store.slug) ? <Chip>{w.already}</Chip> : undefined} />
                 <RowActions>
                   <ActionForm action={installThemeAction.bind(null, store.slug)}>
                     <input type="hidden" name="design" value={theme.id} />
                     {preset && <input type="hidden" name="preset" value={preset.key} />}
                     <SubmitButton variant={installed.has(store.slug) ? "secondary" : "primary"}>
-                      {installed.has(store.slug) ? "Add another copy" : "Add to this store"}
+                      {installed.has(store.slug) ? w.addAnother : w.addHere}
                       <span className="sr-only"> ({store.name})</span>
                     </SubmitButton>
                   </ActionForm>

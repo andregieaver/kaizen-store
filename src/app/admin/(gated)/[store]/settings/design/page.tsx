@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
 import { ThemeFollow } from "@/components/admin/theme-follow";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { ThemeLibrary } from "@/components/admin/theme-library";
 import { ThemeEditor } from "@/components/admin/theme-editor";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { designPreviewPath } from "@/lib/design-presets";
 import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -40,10 +43,13 @@ export const metadata: Metadata = { title: "Design" };
 export default async function StoreDesignPage({ params, searchParams }: PageProps<"/admin/[store]/settings/design">) {
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "design");
+  const w = all.page;
   const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
   // What making each theme live costs this store (D286): free, already the store's, or its price, now or when the store opens.
   const [updates, charges] = await Promise.all([
-    themeUpdates(store.id),
+    themeUpdates(store.id, { whatsNew: { ...all.whatsNew }, preset: all.presetLine }),
     themeCharges(store.id, [...designs.map((d) => d.id), ...installs.flatMap((i) => (i.presetId ? [i.presetId] : []))]),
   ]);
   // Design profiles (D176): applied by those who may change the website.
@@ -51,15 +57,12 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
   const designFailed = (await searchParams).design === "failed";
   return (
+    <AdminTextScope texts={adminTexts(lang, ["design"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Design"
-        description={<>How your store looks: the themes installed in it, one of them live, and the live theme&apos;s settings. Pages you build use it too.</>}
-      />
+      <PageHeader title={w.title} description={w.description} />
       {designFailed && (
         <p role="alert" className="max-w-3xl rounded-panel border border-line bg-card p-4 text-sm">
-          The store is made, but the theme you chose could not be applied: it has its demo store&apos;s look. Add the theme below,
-          or choose another.
+          {w.designFailed}
         </p>
       )}
       <ThemeLibrary
@@ -67,6 +70,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         base={`/admin/${store.slug}/settings/design`}
         switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
         remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
+        lang={lang}
       />
       <ThemeUpdates
         available={updates.available}
@@ -76,6 +80,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         update={canChange ? updateThemeAction.bind(null, store.slug) : null}
         undo={canChange ? undoThemeUpdateAction.bind(null, store.slug) : null}
         follow={canChange ? followUpdatesAction.bind(null, store.slug) : null}
+        lang={lang}
       />
       <ThemeFollow
         runs={runs}
@@ -83,6 +88,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         count={canChange ? countThemeFollowAction.bind(null, store.slug) : null}
         run={canChange ? runThemeFollowAction.bind(null, store.slug) : null}
         undo={canChange ? undoThemeFollowAction.bind(null, store.slug) : null}
+        lang={lang}
       />
       <DesignProfilePanel
         designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id), charge: charges.get(d.id) }))}
@@ -91,6 +97,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         install={canChange ? installThemeAction.bind(null, store.slug) : null}
         restore={canChange ? restoreDesignAction.bind(null, store.slug) : null}
         canChange={canChange}
+        lang={lang}
       />
       <ThemeEditor
         // A theme applied, switched to or put back changes the settings under the editor: it starts again from the store's.
@@ -106,24 +113,22 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           installFont: installStoreFontAction.bind(null, store.slug),
         }}
       />
-      <Card title="Cart" className="max-w-3xl" compact>
-        <p className="mb-4 text-sm text-muted">On phones, the cart slides out over the page. Larger screens show it as a page.</p>
+      <Card title={w.cart} className="max-w-3xl" compact>
+        <p className="mb-4 text-sm text-muted">{w.cartHint}</p>
         <ActionForm action={saveCartBehaviourAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="openCartOnAdd" defaultChecked={store.openCartOnAdd} className="mt-0.5 size-4" />
             <span>
-              Open the cart when something is added
-              <span className="block text-muted">
-                On phones, the cart slides out as soon as a shopper adds a product, instead of a short message under the
-                button.
-              </span>
+              {w.openCart}
+              <span className="block text-muted">{w.openCartHint}</span>
             </span>
           </label>
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{all.common.save}</SubmitButton>
           </div>
         </ActionForm>
       </Card>
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,3 +1,5 @@
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { experimentsEn, type ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { compareToOriginal, normalQuantile, type VariantFigures } from "@/lib/experiment-results";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { formatMoney } from "@/lib/money";
@@ -8,13 +10,14 @@ import { CARD_CLASS } from "@/components/admin/ui";
 const SOFT = { few: "border-line", early: "border-line", better: "border-positive-text", worse: "border-danger-text", even: "border-line", broken: "border-danger-text" } as const;
 const COLORS = ["#6b7280", "#2563eb", "#d97706", "#7c3aed"];
 
-const percent = (share: number, digits = 1) => `${(share * 100).toLocaleString("en-GB", { maximumFractionDigits: digits })} %`;
+const percentIn = (locale: string) => (share: number, digits = 1) => `${(share * 100).toLocaleString(locale, { maximumFractionDigits: digits })} %`;
 
 /** One version's name: the original is "Original", the others "Version B". */
 const nameOf = (test: ExperimentInfo, key: string) => test.variants.find((v) => v.key === key)?.name ?? key.toUpperCase();
 
 /** Cumulative conversion rate per version over the days of the test: a line each, drawn as plain SVG. */
-function Trend({ test, results }: { test: ExperimentInfo; results: ExperimentResults }) {
+function Trend({ test, results, words, numberLocale }: { test: ExperimentInfo; results: ExperimentResults; words: ExperimentsMessages; numberLocale: string }) {
+  const percent = percentIn(numberLocale);
   const keys = test.variants.map((v) => v.key);
   const totals = Object.fromEntries(keys.map((k) => [k, { v: 0, c: 0 }]));
   const series = keys.map((k) => ({ key: k, points: [] as number[] }));
@@ -36,7 +39,7 @@ function Trend({ test, results }: { test: ExperimentInfo; results: ExperimentRes
   const y = (p: number) => h - 10 - (p / max) * (h - 20);
   return (
     <figure className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label="How each version's rate developed over the days" className="w-full max-w-2xl rounded-md border border-line bg-card">
+      <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={words.results.trendLabel} className="w-full max-w-2xl rounded-md border border-line bg-card">
         {series.map((s, i) => (
           <polyline key={s.key} fill="none" stroke={COLORS[i % COLORS.length]} strokeWidth="2" points={s.points.map((p, j) => `${x(j)},${y(p)}`).join(" ")} />
         ))}
@@ -48,7 +51,7 @@ function Trend({ test, results }: { test: ExperimentInfo; results: ExperimentRes
             {nameOf(test, s.key)}
           </span>
         ))}
-        <span>Up to {percent(max, 2)} · from {results.daily[0].day} to {results.daily[results.daily.length - 1].day}</span>
+        <span>{fillWords(words.results.trendRange, { max: percent(max, 2), from: results.daily[0].day, to: results.daily[results.daily.length - 1].day })}</span>
       </figcaption>
     </figure>
   );
@@ -58,8 +61,24 @@ function Trend({ test, results }: { test: ExperimentInfo; results: ExperimentRes
  * What an A/B test found (D148), in the order a store owner reads it: the verdict in a sentence, each version against the
  * original, the steps visitors took, and how it developed. The figures are worked out in code (`experimentResults()`).
  */
-export function ExperimentResultsView({ test, results, locale }: { test: ExperimentInfo; results: ExperimentResults; locale: string }) {
-  const goal = GOAL_WORDS[test.goal];
+export function ExperimentResultsView({
+  test,
+  results,
+  locale,
+  words = experimentsEn,
+  numberLocale = "en-GB",
+}: {
+  test: ExperimentInfo;
+  results: ExperimentResults;
+  locale: string;
+  /** The words and how numbers are written, in the account's language (D312 A7). */
+  words?: ExperimentsMessages;
+  numberLocale?: string;
+}) {
+  const r = words.results;
+  const percent = percentIn(numberLocale);
+  const num = (n: number) => n.toLocaleString(numberLocale);
+  const goal = { ...GOAL_WORDS[test.goal], ...words.goals[test.goal] };
   const original = results.figures.find((f) => f.key === "a");
   const others = results.figures.filter((f) => f.key !== "a");
   const z = normalQuantile(1 - 0.025 / Math.max(1, others.length));
@@ -78,28 +97,28 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
         <p className="mt-1 max-w-3xl text-sm">{verdict.detail}</p>
         {results.harmed && (
           <p role="alert" className="mt-3 text-sm font-medium text-danger-text">
-            Version {results.harmed.toUpperCase()} is clearly selling less than the original.
+            {fillWords(r.harmed, { key: results.harmed.toUpperCase() })}
           </p>
         )}
         {results.unconverted > 0 && (
           <p className="mt-3 text-xs text-muted">
-            {results.unconverted} {results.unconverted === 1 ? "order was" : "orders were"} in a currency without a rate, so they count as orders but not in the revenue.
+            {countWords(results.unconverted, r.unconverted)}
           </p>
         )}
       </section>
 
       <section aria-labelledby="ab-versions" className="flex flex-col gap-2">
         <h2 id="ab-versions" className="text-title text-ink">
-          The versions, for: {goal.label.toLowerCase()}
+          {fillWords(r.versionsFor, { goal: goal.label.toLowerCase() })}
         </h2>
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
-                <th scope="col" className="px-4 py-2 font-normal">Version</th>
-                <th scope="col" className="px-4 py-2 font-normal">Visitors</th>
-                <th scope="col" className="px-4 py-2 font-normal">{goal.kind === "rate" ? `Who ${goal.per}` : "Revenue per visitor"}</th>
-                <th scope="col" className="px-4 py-2 font-normal">Against the original</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.version}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.visitors}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{goal.kind === "rate" ? fillWords(r.who, { per: goal.per }) : r.revenuePer}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.against}</th>
               </tr>
             </thead>
             <tbody>
@@ -109,25 +128,23 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
                   <tr key={f.key} className="border-b border-line last:border-0">
                     <th scope="row" className="px-4 py-2 font-medium">
                       {nameOf(test, f.key)}
-                      {test.appliedVariant === f.key && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs text-brand-ink">Winner</span>}
+                      {test.appliedVariant === f.key && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs text-brand-ink">{r.winner}</span>}
                     </th>
-                    <td className="px-4 py-2">{f.visitors.toLocaleString("en-GB")}</td>
+                    <td className="px-4 py-2">{num(f.visitors)}</td>
                     <td className="px-4 py-2">
                       {value(f)}
-                      {goal.kind === "rate" && <span className="block text-xs text-muted">{f.conversions.toLocaleString("en-GB")} of {f.visitors.toLocaleString("en-GB")}</span>}
+                      {goal.kind === "rate" && <span className="block text-xs text-muted">{fillWords(r.ofTotal, { n: num(f.conversions), total: num(f.visitors) })}</span>}
                     </td>
                     <td className="px-4 py-2">
                       {f.key === "a" ? (
                         <span className="text-muted">—</span>
                       ) : c ? (
                         <>
-                          {c.relative === null ? "No change to compare" : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`}
-                          <span className="block text-xs text-muted">
-                            {Math.round(c.chanceBetter * 100)} % chance it is better
-                          </span>
+                          {c.relative === null ? r.noChange : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`}
+                          <span className="block text-xs text-muted">{fillWords(r.chanceBetter, { n: Math.round(c.chanceBetter * 100) })}</span>
                         </>
                       ) : (
-                        <span className="text-muted">Not enough yet</span>
+                        <span className="text-muted">{r.notEnough}</span>
                       )}
                     </td>
                   </tr>
@@ -139,17 +156,17 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-funnel" className="flex flex-col gap-2">
-        <h2 id="ab-funnel" className="text-title text-ink">What visitors did</h2>
+        <h2 id="ab-funnel" className="text-title text-ink">{r.funnel}</h2>
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
-                <th scope="col" className="px-4 py-2 font-normal">Version</th>
-                <th scope="col" className="px-4 py-2 font-normal">Saw it</th>
-                <th scope="col" className="px-4 py-2 font-normal">Added to cart</th>
-                <th scope="col" className="px-4 py-2 font-normal">Started checkout</th>
-                <th scope="col" className="px-4 py-2 font-normal">Ordered</th>
-                <th scope="col" className="px-4 py-2 font-normal">Revenue (no VAT)</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.version}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.saw}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.added}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.checkout}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.ordered}</th>
+                <th scope="col" className="px-4 py-2 font-normal">{r.revenue}</th>
               </tr>
             </thead>
             <tbody>
@@ -159,10 +176,10 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
                 return (
                   <tr key={v.key} className="border-b border-line last:border-0">
                     <th scope="row" className="px-4 py-2 font-medium">{v.name}</th>
-                    <td className="px-4 py-2">{f.visitors.toLocaleString("en-GB")}</td>
-                    <td className="px-4 py-2">{f.carts.toLocaleString("en-GB")}{share(f.carts)}</td>
-                    <td className="px-4 py-2">{f.checkouts.toLocaleString("en-GB")}{share(f.checkouts)}</td>
-                    <td className="px-4 py-2">{f.buyers.toLocaleString("en-GB")}{share(f.buyers)}</td>
+                    <td className="px-4 py-2">{num(f.visitors)}</td>
+                    <td className="px-4 py-2">{num(f.carts)}{share(f.carts)}</td>
+                    <td className="px-4 py-2">{num(f.checkouts)}{share(f.checkouts)}</td>
+                    <td className="px-4 py-2">{num(f.buyers)}{share(f.buyers)}</td>
                     <td className="px-4 py-2">{money(results.revenue[v.key]?.plain ?? 0)}</td>
                   </tr>
                 );
@@ -172,27 +189,27 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
         </div>
         {test.goal === "click" && (
           <p className="text-xs text-muted">
-            Clicks on the button: {test.variants.map((v) => `${v.name} ${(results.funnel[v.key]?.clicks ?? 0).toLocaleString("en-GB")}`).join(", ")}.
+            {fillWords(r.clicks, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.clicks ?? 0)}`).join(", ") })}
           </p>
         )}
         {test.goal === "form" && (
           <p className="text-xs text-muted">
-            Visitors who sent the form (each counted once): {test.variants.map((v) => `${v.name} ${(results.funnel[v.key]?.forms ?? 0).toLocaleString("en-GB")}`).join(", ")}.
+            {fillWords(r.forms, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.forms ?? 0)}`).join(", ") })}
           </p>
         )}
       </section>
 
       <section aria-labelledby="ab-trend" className="flex flex-col gap-2">
-        <h2 id="ab-trend" className="text-title text-ink">How it developed</h2>
-        <Trend test={test} results={results} />
+        <h2 id="ab-trend" className="text-title text-ink">{r.trend}</h2>
+        <Trend test={test} results={results} words={words} numberLocale={numberLocale} />
         {results.weekly.length > 0 && (
           <details className="text-sm">
-            <summary className="cursor-pointer underline">Week by week</summary>
+            <summary className="cursor-pointer underline">{r.weekly}</summary>
             <div className={`mt-2 overflow-x-auto ${CARD_CLASS}`}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-muted">
-                    <th scope="col" className="px-4 py-2 font-normal">Week</th>
+                    <th scope="col" className="px-4 py-2 font-normal">{r.week}</th>
                     {test.variants.map((v) => (
                       <th key={v.key} scope="col" className="px-4 py-2 font-normal">{v.name}</th>
                     ))}
@@ -206,7 +223,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
                         const d = w.variants[v.key];
                         return (
                           <td key={v.key} className="px-4 py-2">
-                            {d ? `${d.conversions} of ${d.visitors}` : "—"}
+                            {d ? fillWords(r.ofTotal, { n: num(d.conversions), total: num(d.visitors) }) : "—"}
                             {d && d.visitors > 0 && <span className="block text-xs text-muted">{percent(d.conversions / d.visitors, 2)}</span>}
                           </td>
                         );
@@ -221,9 +238,8 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <p className="max-w-3xl text-xs text-muted">
-        Only visitors who accepted statistics cookies are counted, and each is counted once, in the version they first saw. An order counts when it is paid, for
-        a basket the visitor started after first seeing the version. Revenue is without VAT, with shipping, in {results.currency}; one very large order is capped
-        so it cannot decide the result alone.{results.splitP < 0.05 ? " The split between versions looks uneven: see the note above." : ""}
+        {fillWords(r.footnote, { currency: results.currency })}
+        {results.splitP < 0.05 ? r.uneven : ""}
       </p>
     </div>
   );

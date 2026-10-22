@@ -13,6 +13,10 @@ import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { RedirectApplied, RedirectDryRun, RedirectFindings } from "@/components/admin/redirects/redirect-import-views";
 import { appliedCountsOfJob, importStage, isWorking, momentText, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { STATUS_WORDS } from "@/lib/data-job";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { pageOf, redirectPaths } from "@/lib/redirect-admin";
 import { parseRedirectOptions } from "@/lib/redirect-plan";
 import { isJobId, listItems } from "@/server/data-job-store";
@@ -34,15 +38,17 @@ const PAGE_SIZE = 50;
  */
 export default async function RedirectImportJobPage({ params, searchParams }: Props) {
   const { store: slug, jobId } = await params;
-  const { store } = await requirePermission(slug, "website:read");
+  const { store, account } = await requirePermission(slug, "website:read");
+  const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead
         slug={store.slug}
         active="import"
-        title="Redirect import"
-        intro="Check the file first. Nothing is changed in your store until you press Import."
-        back={{ href: redirectPaths(store.slug).import, label: "Import redirects" }}
+        title={w.import.jobTitle}
+        intro={w.import.jobIntro}
+        back={{ href: redirectPaths(store.slug).import, label: w.import.title }}
+        words={w}
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} jobId={jobId} searchParams={searchParams} />
@@ -55,6 +61,10 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   const member = await requirePermission(storeSlug, "website:read");
   if (!memberCan(member, "website:write") || !isJobId(jobId)) notFound();
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "redirects");
+  const i = w.import;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const job = await jobFor(member, jobId);
   if (!job || job.kind !== "redirect_import") notFound();
   const query = await searchParams;
@@ -85,46 +95,46 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <>
-      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label="The file">
-        <span className="font-medium break-all">{job.inputName ?? "Redirect file"}</span>
-        {job.rowsTotal !== null && stage !== "uploaded" && <span className="text-muted">{job.rowsTotal.toLocaleString("en-GB")} lines</span>}
-        <span className="text-muted">Uploaded {momentText(job.createdAt, store.timeZone)}</span>
+    <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={i.theFile}>
+        <span className="font-medium break-all">{job.inputName ?? i.redirectFile}</span>
+        {job.rowsTotal !== null && stage !== "uploaded" && <span className="text-muted">{fillWords(i.lines, { n: job.rowsTotal.toLocaleString(locale) })}</span>}
+        <span className="text-muted">{fillWords(i.uploaded, { when: momentText(job.createdAt, store.timeZone, locale) })}</span>
         <span className="text-muted">{STATUS_WORDS[job.status]}</span>
       </section>
 
       {isWorking(job.status) && <JobTracker tickUrl={`${base}/tick`} initial={view} />}
       {isWorking(job.status) && (
         <div>
-          <CancelJobButton cancel={cancelRedirectImportAction.bind(null, store.slug, job.id)} label="Cancel the import" />
+          <CancelJobButton cancel={cancelRedirectImportAction.bind(null, store.slug, job.id)} label={i.cancelImport} />
         </div>
       )}
       {(stage === "failed" || stage === "cancelled" || stage === "expired") && <JobProgressView job={view} />}
-      {stage === "cancelled" && <Notice>The import was cancelled. What was written before it stopped is kept, and nothing is rolled back.</Notice>}
-      {stage === "expired" && <Notice>The file of this import has been removed. Upload it again to import it.</Notice>}
+      {stage === "cancelled" && <Notice>{i.cancelled}</Notice>}
+      {stage === "expired" && <Notice>{i.expired}</Notice>}
 
       {(stage === "uploaded" || stage === "checked") && (
         <RedirectImportOptions initial={options.existing} checked={stage === "checked"} check={checkRedirectImportAction.bind(null, store.slug, job.id)} />
       )}
       {stage === "checked" && (
         <>
-          <RedirectDryRun counts={dry} />
+          <RedirectDryRun counts={dry} words={w} locale={locale} />
           <RedirectImportApply counts={dry} apply={applyRedirectImportAction.bind(null, store.slug, job.id)} cancel={cancelRedirectImportAction.bind(null, store.slug, job.id)} />
-          <p className="text-sm text-muted">Changed the option above? Check the file again before importing: the import uses the option it was last checked with.</p>
+          <p className="text-sm text-muted">{i.changedOption}</p>
         </>
       )}
       {(stage === "applying" || stage === "done" || stage === "failed" || stage === "cancelled") && (stage === "done" || Object.values(applied).some((n) => n > 0)) && (
-        <RedirectApplied counts={applied} jobId={job.id} written={stage === "done"} />
+        <RedirectApplied counts={applied} jobId={job.id} written={stage === "done"} words={w} locale={locale} />
       )}
 
       {showItems && (
-        <RedirectFindings items={items} total={listed.total} severity={severity} page={page} pageSize={PAGE_SIZE} hrefFor={hrefFor} problemsHref={`${base}/problems`} />
+        <RedirectFindings items={items} total={listed.total} severity={severity} page={page} pageSize={PAGE_SIZE} hrefFor={hrefFor} problemsHref={`${base}/problems`} words={w} locale={locale} />
       )}
       <p className="text-sm">
         <Link href={redirectPaths(store.slug).list} className="underline underline-offset-2">
-          Back to the redirects
+          {w.common.backToList}
         </Link>
       </p>
-    </>
+    </AdminTextScope>
   );
 }

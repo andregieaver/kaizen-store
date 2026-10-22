@@ -1,14 +1,15 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 /** A run of the page migration as the card shows it (`DetachRun` in `src/server/theme-detach.ts`). */
 export type FollowRun = { runId: string; at: string; pages: number; followed: number; kept: number; undoneAt: string | null };
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
-const settings = (n: number) => `${n} ${n === 1 ? "setting" : "settings"}`;
-const pages = (n: number) => `${n} ${n === 1 ? "page" : "pages"}`;
 
 /**
  * *Let pages follow the theme* (D243, `docs/theme-phase-2.md` step 2): takes out of the store's pages the style settings that only repeat
@@ -20,58 +21,53 @@ export function ThemeFollow({
   count,
   run,
   undo,
+  lang = "en",
 }: {
   runs: FollowRun[];
+  /** The admin's language (D312 A7); English unless given. */
+  lang?: AdminLang;
   keepDays: number;
   /** Null for someone who may only look. */
   count: Action | null;
   run: Action | null;
   undo: Action | null;
 }) {
+  const { common: c, follow: w } = adminText(lang, "design");
+  const settings = (n: number) => countWords(n, c.settings);
+  const pages = (n: number) => countWords(n, c.pages);
   return (
-    <Card
-      title="Let pages follow the theme"
-      description={
-        <>
-          Pages made before themes could be switched carry style settings of their own that only repeat the theme: a heading&apos;s size, a
-          row&apos;s padding. Taking those out leaves every page looking exactly as it does now, and from then on it follows the theme you
-          switch to. Settings that differ from the theme are yours and stay. Words, pictures, videos and links are never touched. You can undo
-          a run for {keepDays} days, page by page as long as you have not changed the page since.
-        </>
-      }
-      compact
-    >
+    <Card title={w.title} description={fillWords(w.description, { days: keepDays })} compact>
       {(count || run) && (
         <div className="mb-4 flex flex-wrap items-start gap-3">
           {count && (
             <ActionForm action={count}>
-              <SubmitButton variant="secondary">Count the settings</SubmitButton>
+              <SubmitButton variant="secondary">{w.count}</SubmitButton>
             </ActionForm>
           )}
           {run && (
             <ActionForm action={run}>
-              <SubmitButton>Make pages follow the theme</SubmitButton>
+              <SubmitButton>{w.run}</SubmitButton>
             </ActionForm>
           )}
         </div>
       )}
       {runs.length > 0 && (
-        <List label="Latest runs">
+        <List label={w.latest}>
           {runs.map((r) => (
             <ListRow key={r.runId}>
               <RowLead
-                title={`${r.at.slice(0, 10)}: ${settings(r.followed)} on ${pages(r.pages)}`}
-                sub={r.kept > 0 ? `${settings(r.kept)} kept as your own` : "Nothing of your own on them"}
+                title={fillWords(w.runTitle, { date: r.at.slice(0, 10), settings: settings(r.followed), pages: pages(r.pages) })}
+                sub={r.kept > 0 ? fillWords(w.keptOwn, { settings: settings(r.kept) }) : w.nothingOwn}
               />
               {r.undoneAt ? (
-                <Chip signal="neutral">Undone {r.undoneAt.slice(0, 10)}</Chip>
+                <Chip signal="neutral">{fillWords(c.undone, { date: r.undoneAt.slice(0, 10) })}</Chip>
               ) : (
                 undo && (
                   <RowActions>
                     <ActionForm action={undo}>
                       <input type="hidden" name="run" value={r.runId} />
                       <SubmitButton variant="secondary">
-                        Undo<span className="sr-only"> the run of {r.at.slice(0, 10)}</span>
+                        {c.undo}<span className="sr-only"> {fillWords(w.undoName, { date: r.at.slice(0, 10) })}</span>
                       </SubmitButton>
                     </ActionForm>
                   </RowActions>

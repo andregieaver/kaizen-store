@@ -17,6 +17,8 @@ import {
   type StudioResult,
 } from "@/lib/page-ai";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { useAdminText } from "./admin-text";
 
 /** The studio's steps on the server, bound to the owner by the route. */
 export type StudioActions = {
@@ -31,8 +33,6 @@ export type StudioActions = {
 type Phase = "talk" | "planned" | "building" | "built";
 type PictureState = { job: PictureJob; status: "waiting" | "making" | "done" | "failed"; url?: string; problem?: string };
 
-const GREETING =
-  "Hi! Tell me about the page you want: what it is for, who it is for, and anything it must say. You can type or talk, in any language. I will ask a few questions, plan the page with you, then write it, make its pictures and save it as a draft.";
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
 const primary = `${button} bg-brand text-brand-ink`;
@@ -68,6 +68,8 @@ export function PageStudio({
   /** Where the AI is set up. */
   settingsHref: string;
 }) {
+  const w = useAdminText("website").studio;
+  const GREETING = w.greeting;
   const inputId = useId();
   const [messages, setMessages] = useState<StudioMessage[]>([{ role: "assistant", content: GREETING }]);
   const [brief, setBrief] = useState<PageBrief>(EMPTY_BRIEF);
@@ -129,7 +131,7 @@ export function PageStudio({
         if (!changed.ok) return setProblem(changed.problem);
         setPlan(changed.plan);
         setNotes(changed.notes);
-        const reply = `I changed the plan: it now has ${changed.plan.sections.length} sections. Build it when it looks right, or ask for more changes.`;
+        const reply = fillWords(w.changedPlan, { n: changed.plan.sections.length });
         setMessages([...next, { role: "assistant", content: reply }]);
         void say(reply);
         return;
@@ -149,7 +151,7 @@ export function PageStudio({
 
   function makePlan() {
     setProblem(null);
-    setWorking("Planning the page … (up to a minute or two)");
+    setWorking(w.planning);
     void (async () => {
       const result = await actions.plan(history(messages), brief, null);
       setWorking(null);
@@ -157,7 +159,7 @@ export function PageStudio({
       setPlan(result.plan);
       setNotes(result.notes);
       setPhase("planned");
-      const reply = `Here is my plan: ${result.plan.sections.length} sections. Look it over on the right. Ask me for any changes, or build the page.`;
+      const reply = fillWords(w.hereIsPlan, { n: result.plan.sections.length });
       setMessages((list) => [...list, { role: "assistant", content: reply }]);
       void say(reply);
     })();
@@ -167,7 +169,7 @@ export function PageStudio({
     if (!plan) return;
     setProblem(null);
     setPhase("building");
-    setWorking("Writing the page … (about a minute)");
+    setWorking(w.writing);
     void (async () => {
       const built = await actions.build(history(messages), brief, plan);
       if (!built.ok) {
@@ -181,7 +183,7 @@ export function PageStudio({
       setPictures(states);
       // Pictures one at a time: each takes a while, and the draft is already saved.
       for (let index = 0; index < states.length; index++) {
-        setWorking(`Making picture ${index + 1} of ${states.length} …`);
+        setWorking(fillWords(w.makingPicture, { n: index + 1, of: states.length }));
         setPictures((list) => list.map((p, i) => (i === index ? { ...p, status: "making" } : p)));
         const made = await actions.picture(built.pageId, states[index].job);
         setPictures((list) =>
@@ -190,7 +192,7 @@ export function PageStudio({
       }
       setWorking(null);
       setPhase("built");
-      const reply = "The page is ready as a draft. Open it in the page builder to look it over, change anything and publish it.";
+      const reply = w.ready;
       setMessages((list) => [...list, { role: "assistant", content: reply }]);
       void say(reply);
     })();
@@ -209,7 +211,7 @@ export function PageStudio({
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setProblem("The browser did not let the page use the microphone.");
+      setProblem(w.noMicrophone);
       return;
     }
     audioRef.current?.pause();
@@ -230,7 +232,7 @@ export function PageStudio({
       if (audio.size === 0) return;
       const form = new FormData();
       form.set("audio", audio, "message");
-      setWorking("Listening …");
+      setWorking(w.listening);
       void (async () => {
         const heard = await hear(form);
         setWorking(null);
@@ -258,9 +260,9 @@ export function PageStudio({
   if (!abilities.text) {
     return (
       <p className={`${card} text-sm`}>
-        The AI needs a text model to build pages.{" "}
+        {w.needsText}
         <Link href={settingsHref} className="underline">
-          Set one up under AI settings
+          {w.setUp}
         </Link>
         .
       </p>
@@ -275,23 +277,23 @@ export function PageStudio({
       <section aria-labelledby={`${inputId}-talk`} className={`flex min-h-[32rem] flex-col ${CARD_CLASS}`}>
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 id={`${inputId}-talk`} className="text-title text-ink">
-            Talk to the AI
+            {w.talk}
           </h2>
           <div className="flex items-center gap-3 text-sm">
             {abilities.speak && actions.speak && (
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={aloud} onChange={(event) => setAloud(event.target.checked)} className="size-4" />
-                Read replies aloud
+                {w.aloud}
               </label>
             )}
             {messages.length > 1 && (
               <button type="button" onClick={startOver} disabled={busy} className="text-muted underline disabled:opacity-50">
-                Start over
+                {w.startOver}
               </button>
             )}
           </div>
         </header>
-        <ol ref={logRef} aria-live="polite" aria-label="The conversation" className="flex max-h-[60vh] flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <ol ref={logRef} aria-live="polite" aria-label={w.conversation} className="flex max-h-[60vh] flex-1 flex-col gap-3 overflow-y-auto p-4">
           {messages.map((message, index) => (
             <li
               key={index}
@@ -299,11 +301,11 @@ export function PageStudio({
                 message.role === "user" ? "self-end bg-brand text-brand-ink" : "self-start bg-sunken"
               }`}
             >
-              <span className="sr-only">{message.role === "user" ? "You: " : "AI: "}</span>
+              <span className="sr-only">{message.role === "user" ? w.you : w.ai}</span>
               {message.content}
             </li>
           ))}
-          {pending && <li className="self-start rounded-lg bg-sunken px-3 py-2 text-sm text-muted">Thinking …</li>}
+          {pending && <li className="self-start rounded-lg bg-sunken px-3 py-2 text-sm text-muted">{w.thinking}</li>}
         </ol>
         <form
           className="flex flex-col gap-2 border-t border-line p-3"
@@ -313,7 +315,7 @@ export function PageStudio({
           }}
         >
           <label htmlFor={inputId} className="sr-only">
-            {plan && phase === "planned" ? "Ask for a change to the plan" : "Your message"}
+            {plan && phase === "planned" ? w.askChange : w.yourMessage}
           </label>
           <textarea
             id={inputId}
@@ -321,7 +323,7 @@ export function PageStudio({
             maxLength={MESSAGE_MAX}
             rows={3}
             disabled={phase === "building" || phase === "built"}
-            placeholder={plan && phase === "planned" ? "Ask for a change to the plan …" : "Write to the AI …"}
+            placeholder={plan && phase === "planned" ? w.askChangePlaceholder : w.writePlaceholder}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -344,13 +346,13 @@ export function PageStudio({
                   <rect x="9" y="3" width="6" height="11" rx="3" />
                   <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
                 </svg>
-                {recording ? "Stop and send" : "Talk"}
+                {recording ? w.stopSend : w.talkButton}
               </button>
             ) : (
-              <span className="text-xs text-muted">Set up speech to text under AI settings to talk.</span>
+              <span className="text-xs text-muted">{w.noSpeech}</span>
             )}
             <button type="submit" disabled={busy || !draft.trim() || phase === "building" || phase === "built"} className={primary}>
-              Send
+              {w.send}
             </button>
           </div>
         </form>
@@ -358,7 +360,7 @@ export function PageStudio({
 
       <section aria-labelledby={`${inputId}-page`} className="flex flex-col gap-4">
         <h2 id={`${inputId}-page`} className="sr-only">
-          The page
+          {w.thePage}
         </h2>
         {problem && (
           <p role="alert" className="rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-danger-text">
@@ -374,17 +376,16 @@ export function PageStudio({
 
         {!plan && (
           <div className={`${card} flex flex-col gap-3`}>
-            <h3 className="text-body-strong text-ink">What the AI has understood</h3>
-            {briefShown ? <Brief brief={brief} /> : <p className="text-sm text-muted">Nothing yet: tell it about the page.</p>}
+            <h3 className="text-body-strong text-ink">{w.understood}</h3>
+            {briefShown ? <Brief brief={brief} /> : <p className="text-sm text-muted">{w.nothingYet}</p>}
             <p className="text-xs text-muted">
-              The page is written in {language}. {abilities.pictures ? "Its pictures are made by AI." : "No picture model is set up, so the page gets no pictures."} It is saved as a
-              draft, never published.
+              {fillWords(w.writtenIn, { language })} {abilities.pictures ? w.picturesByAi : w.noPictures} {w.draftOnly}
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={makePlan} disabled={!canPlan || busy} className={ready ? primary : secondary}>
-                Plan the page
+                {w.plan}
               </button>
-              {!ready && canPlan && <span className="self-center text-xs text-muted">Or answer a few more questions first.</span>}
+              {!ready && canPlan && <span className="self-center text-xs text-muted">{w.moreQuestions}</span>}
             </div>
           </div>
         )}
@@ -394,7 +395,8 @@ export function PageStudio({
             <div>
               <h3 className="text-body-strong text-ink">{plan.title}</h3>
               <p className="text-sm text-muted">
-                {plan.sections.length} sections{planPictureCount(plan) > 0 ? `, ${planPictureCount(plan)} pictures` : ""}
+                {countWords(plan.sections.length, w.sections)}
+                {planPictureCount(plan) > 0 ? countWords(planPictureCount(plan), w.pictures) : ""}
                 {plan.description ? ` · ${plan.description}` : ""}
               </p>
             </div>
@@ -406,29 +408,29 @@ export function PageStudio({
                     <span className="font-normal text-muted">
                       · {PATTERNS[section.pattern].label}
                       {section.variant ? ` (${section.variant})` : ""}
-                      {section.tinted ? " · tinted" : ""}
+                      {section.tinted ? w.tinted : ""}
                     </span>
                   </p>
                   {section.brief && <p className="mt-1">{section.brief}</p>}
                   {[section.picture, ...(section.pictures ?? [])].filter(Boolean).map((picture, n) => (
                     <details key={n} className="mt-1 text-muted">
-                      <summary className="cursor-pointer">Picture: {picture!.alt}</summary>
+                      <summary className="cursor-pointer">{fillWords(w.picture, { alt: picture!.alt })}</summary>
                       <p className="mt-1 text-xs">{picture!.prompt}</p>
                     </details>
                   ))}
-                  {section.links && section.links.length > 0 && <p className="mt-1 text-xs text-muted">Links to {section.links.join(", ")}</p>}
+                  {section.links && section.links.length > 0 && <p className="mt-1 text-xs text-muted">{fillWords(w.linksTo, { links: section.links.join(", ") })}</p>}
                 </li>
               ))}
             </ol>
             {phase === "planned" && (
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" onClick={build} disabled={busy} className={primary}>
-                  Build the page
+                  {w.build}
                 </button>
                 <button type="button" onClick={makePlan} disabled={busy} className={secondary}>
-                  Plan again
+                  {w.planAgain}
                 </button>
-                <span className="text-xs text-muted">Or ask for changes in the conversation.</span>
+                <span className="text-xs text-muted">{w.orAsk}</span>
               </div>
             )}
           </div>
@@ -436,7 +438,7 @@ export function PageStudio({
 
         {notes.length > 0 && (
           <div className="rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text">
-            <p className="font-medium">Good to know</p>
+            <p className="font-medium">{w.goodToKnow}</p>
             <ul className="mt-1 list-disc pl-5">
               {notes.map((note) => (
                 <li key={note}>{note}</li>
@@ -448,7 +450,7 @@ export function PageStudio({
         {pageId && (
           <div className={`${card} flex flex-col gap-3`}>
             <p className="text-sm">
-              {phase === "built" ? "Done: the page is saved as a draft." : "Saved as a draft; the pictures are being made."}
+              {phase === "built" ? w.done : w.savedMaking}
             </p>
             {pictures.length > 0 && (
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -459,7 +461,7 @@ export function PageStudio({
                         // eslint-disable-next-line @next/next/no-img-element -- the picture just made, from the media library
                         <img src={picture.url} alt={picture.job.alt} className="size-full object-cover" />
                       ) : (
-                        <span className="text-muted">{picture.status === "making" ? "Making …" : picture.status === "failed" ? "Not made" : "Waiting"}</span>
+                        <span className="text-muted">{picture.status === "making" ? w.making : picture.status === "failed" ? w.notMade : w.waiting}</span>
                       )}
                     </div>
                     <span className={picture.status === "failed" ? "text-danger-text" : "text-muted"}>
@@ -471,11 +473,11 @@ export function PageStudio({
             )}
             <div className="flex flex-wrap gap-2">
               <Link href={`${editBase}/${pageId}`} className={phase === "built" ? primary : secondary}>
-                Open in the page builder
+                {w.open}
               </Link>
               {phase === "built" && (
                 <button type="button" onClick={startOver} className={secondary}>
-                  Make another page
+                  {w.another}
                 </button>
               )}
             </div>
@@ -488,16 +490,17 @@ export function PageStudio({
 
 /** The brief as the owner reads it. */
 function Brief({ brief }: { brief: PageBrief }) {
+  const w = useAdminText("website").studio.brief;
   const rows: [string, string | string[]][] = [
-    ["Page", brief.title],
-    ["What it is for", brief.purpose],
-    ["For", brief.audience],
-    ["It must say", brief.keyPoints],
-    ["Facts you gave", brief.facts],
-    ["Sections you want", brief.sections],
-    ["What visitors should do", brief.callToAction],
-    ["Tone", brief.tone],
-    ["Pictures", brief.pictures],
+    [w.title, brief.title],
+    [w.purpose, brief.purpose],
+    [w.audience, brief.audience],
+    [w.keyPoints, brief.keyPoints],
+    [w.facts, brief.facts],
+    [w.sections, brief.sections],
+    [w.callToAction, brief.callToAction],
+    [w.tone, brief.tone],
+    [w.pictures, brief.pictures],
   ];
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">

@@ -5,11 +5,15 @@ import { z } from "zod";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DemoHomePages } from "@/components/admin/demo-home-pages";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
+import { adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
 import { featureOn, requirementMet } from "@/lib/store-features";
@@ -40,6 +44,9 @@ import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
 import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 import { PageDrawing } from "./drawing";
+
+/** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
+const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website"] as const;
 
 /**
  * A store's pages (D53) and blog articles (D57): the same list, editor,
@@ -76,6 +83,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   // Pages that have a place of their own (D112) are not offered for another.
   const roleIds = new Set(Object.values(store.pageRoles));
   return (
+    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
@@ -191,6 +199,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </section>
       )}
     </div>
+    </AdminTextScope>
   );
 }
 
@@ -240,7 +249,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
     bothTerms(store.id),
   ]);
   return (
-    <>
+    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), EDITOR_AREAS)}>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
       <PageEditor
@@ -251,7 +260,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
         fieldRoles={[]}
         context={await storePageContext(store, type, account.name ?? "")}
       />
-    </>
+    </AdminTextScope>
   );
 }
 
@@ -276,8 +285,10 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const context = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null);
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
+  const lang = adminLangOf(account.adminLocale);
+  const ew = adminText(lang, "builder").editor;
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
       {test && (
         <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
@@ -301,11 +312,11 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         page={page}
         notice={
           justSaved === "draft"
-            ? "Draft saved."
+            ? ew.draftSaved
             : justSaved === "published"
               ? LAYOUT_TYPES.includes(type)
-                ? "Published."
-                : `Published at ${context.siteBase}/${page.slug}.`
+                ? ew.publishedShort
+                : fillWords(ew.publishedAt, { address: `${context.siteBase}/${page.slug}` })
               : null
         }
         savedParts={saved}
@@ -315,7 +326,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         fieldRoles={Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role)}
         context={context}
       />
-    </>
+    </AdminTextScope>
   );
 }
 

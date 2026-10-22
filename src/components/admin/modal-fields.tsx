@@ -8,8 +8,6 @@ import {
   MODAL_DAYS_MIN,
   MODAL_FREQUENCIES,
   MODAL_KEY_MAX,
-  MODAL_LEFT_OUT,
-  MODAL_LEFT_OUT_SHORT,
   MODAL_NAME_MAX,
   MODAL_OVERLAYS,
   MODAL_POSITIONS,
@@ -35,7 +33,30 @@ import {
 import { rowShows, type PageRow } from "@/lib/page-content";
 import type { RowPatch } from "@/lib/page-rows";
 
+import { fillWords } from "@/lib/admin-fill";
+import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
+import { blocksEn } from "@/lib/admin-messages/blocks.en";
+
+import { useAdminText } from "./admin-text";
 import { Check, Choices, NumberField, TextField, fieldClass, smallButton } from "./block-fields";
+
+type ModalWords = BlocksMessages["modal"];
+
+/** A modal's refusal from `page-modal.ts` (written in English for the page's check) in the admin's language; one not known stays as written. */
+function problemText(text: string, w: ModalWords): string {
+  const en = blocksEn.modal.problems;
+  const pairs: [string, string][] = [
+    [en.noName, w.problems.noName],
+    [fillWords(en.tooLong, { max: MODAL_KEY_MAX }), fillWords(w.problems.tooLong, { max: MODAL_KEY_MAX })],
+    [en.badKey, w.problems.badKey],
+    [en.spaces, w.problems.spaces],
+    [fillWords(en.badClass, { max: MODAL_CLASS_MAX }), fillWords(w.problems.badClass, { max: MODAL_CLASS_MAX })],
+    [en.noOpen, w.problems.noOpen],
+    [fillWords(en.days, { min: MODAL_DAYS_MIN, max: MODAL_DAYS_MAX }), fillWords(w.problems.days, { min: MODAL_DAYS_MIN, max: MODAL_DAYS_MAX })],
+    [en.noClose, w.problems.noClose],
+  ];
+  return pairs.find(([english]) => english === text)?.[1] ?? text;
+}
 
 /**
  * A row's Modal setting in its dialog (D121): whether the row is drawn in a
@@ -57,6 +78,7 @@ export function ModalFields({
   const modal = row.modal;
   const otherKeys = modalRows(rows).flatMap((other) => (other.id !== row.id && other.modal ? [other.modal.key] : []));
   const set = (patch: Partial<RowModal>) => modal && onChange({ modal: { ...modal, ...patch } });
+  const w = useAdminText("blocks").modal;
 
   return (
     <div className="flex flex-col gap-4 border-t border-line pt-4">
@@ -72,11 +94,8 @@ export function ModalFields({
             className="mt-0.5 size-4 shrink-0"
           />
           <span className="flex flex-col gap-0.5">
-            <span className="font-medium">Show this row in a modal</span>
-            <span className="text-xs text-muted">
-              The row leaves the page and opens in a window over it: a sign-up, an offer, a video, a notice or a contact
-              form. Build it as any row. In a footer or header it is on every page.
-            </span>
+            <span className="font-medium">{w.switch}</span>
+            <span className="text-xs text-muted">{w.switchHint}</span>
           </span>
         </label>
       </div>
@@ -97,14 +116,17 @@ function ModalSettings({
   /** Whether anything in the row shows on the site: else the modal is left out of it. */
   onSite: boolean;
 }) {
-  const problems = modalProblems(modal);
+  const w = useAdminText("blocks").modal;
+  const problems = modalProblems(modal).map((problem) => problemText(problem, w));
   const keyId = useId();
   const classId = useId();
   const triggers = modal.triggers;
   const setTriggers = (patch: Partial<ModalTriggers>) => set({ triggers: { ...triggers, ...patch } });
   const taken = otherKeys.includes(modal.key);
-  const keyIssue = keyProblem(modal.key) ?? (taken ? "Another modal on this page has this address name." : null);
-  const classIssue = triggers.className !== undefined ? classProblem(triggers.className) : null;
+  const ownKeyIssue = keyProblem(modal.key);
+  const keyIssue = ownKeyIssue ? problemText(ownKeyIssue, w) : taken ? w.taken : null;
+  const ownClassIssue = triggers.className !== undefined ? classProblem(triggers.className) : null;
+  const classIssue = ownClassIssue ? problemText(ownClassIssue, w) : null;
   const closable = modal.closeButton !== false;
   const overlayCloses = modal.closeOnOverlay !== false;
 
@@ -125,21 +147,21 @@ function ModalSettings({
           data-modal-left-out
           className="rounded-md border border-danger-text p-3 text-sm text-danger-text"
         >
-          {MODAL_LEFT_OUT}
+          {w.leftOut}
         </p>
       )}
       <TextField
-        label="Name"
+        label={w.name}
         value={modal.name ?? ""}
         max={MODAL_NAME_MAX}
-        placeholder="Newsletter sign-up"
-        hint="Only for you: the builder shows it on the row."
+        placeholder={w.namePlaceholder}
+        hint={w.nameHint}
         onChange={rename}
       />
 
       <div className="flex flex-col gap-1">
         <label htmlFor={keyId} className="text-sm font-medium">
-          Address name
+          {w.address}
         </label>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted">#modal-</span>
@@ -156,29 +178,28 @@ function ModalSettings({
           <CopyLink text={modalHash(modal.key)} disabled={Boolean(keyIssue)} />
         </div>
         <span id={`${keyId}-hint`} className={`text-xs ${keyIssue ? "text-danger-text " : "text-muted"}`}>
-          {keyIssue ??
-            `A link to ${modalHash(modal.key)} opens this modal. Changing the name changes links already made to it.`}
+          {keyIssue ?? fillWords(w.addressHint, { hash: modalHash(modal.key) })}
         </span>
       </div>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Opens when</legend>
+        <legend className="mb-1 text-sm font-medium">{w.opensWhen}</legend>
         <Check
-          label="A button or link is pressed"
-          hint={`Give a button the action Opens a modal, or link any text, menu item or button to ${modalHash(modal.key)}. It opens on the pages that have this modal: one built in a page is on that page only, so build it in the footer or header to open it from every page.`}
+          label={w.button}
+          hint={fillWords(w.buttonHint, { hash: modalHash(modal.key) })}
           checked={Boolean(triggers.button)}
           onChange={(button) => setTriggers({ button: button || undefined })}
         />
         <Check
-          label="An element with a class is pressed"
-          hint="Add the class to any button, image or text with Advanced → CSS classes. Best on a button or a link, which a keyboard can reach."
+          label={w.class}
+          hint={w.classHint}
           checked={triggers.className !== undefined}
           onChange={(on) => setTriggers({ className: on ? "" : undefined })}
         />
         {triggers.className !== undefined && (
           <div className="flex flex-col gap-1 pl-7">
             <label htmlFor={classId} className="text-sm font-medium">
-              Class name
+              {w.className}
             </label>
             <input
               id={classId}
@@ -195,26 +216,26 @@ function ModalSettings({
               id={`${classId}-hint`}
               className={`text-xs ${classIssue ? "text-danger-text " : "text-muted"}`}
             >
-              {classIssue ?? "One class, written without the dot."}
+              {classIssue ?? w.oneClass}
             </span>
           </div>
         )}
         <Check
-          label="The visitor is about to leave (exit intent)"
-          hint="On a computer: when the pointer leaves the top of the window, after about 3 seconds on the page. A touch screen has no pointer to leave with, so there it opens when the visitor scrolls back up quickly after reading down at least 30% of the page."
+          label={w.exit}
+          hint={w.exitHint}
           checked={Boolean(triggers.exitIntent)}
           onChange={(exitIntent) => setTriggers({ exitIntent: exitIntent || undefined })}
         />
         <Check
-          label="A timer runs out"
-          hint="Counted from when the page is shown."
+          label={w.timer}
+          hint={w.timerHint}
           checked={Boolean(triggers.timer)}
           onChange={(on) => setTriggers({ timer: on ? { seconds: 5 } : undefined })}
         />
         {triggers.timer && (
           <div className="pl-7">
             <NumberField
-              label="After"
+              label={w.after}
               unit="seconds"
               min={MODAL_SECONDS_MIN}
               max={MODAL_SECONDS_MAX}
@@ -223,26 +244,23 @@ function ModalSettings({
             />
           </div>
         )}
-        <p className="text-xs text-muted">
-          A timer and exit intent open the modal by themselves: at most once a page view, never on top of another modal,
-          never on the cart, checkout or account pages and never in the builder. A button or a class always opens it.
-        </p>
+        <p className="text-xs text-muted">{w.byItself}</p>
       </fieldset>
 
       <div className="flex flex-col gap-3">
         <Choices
-          legend="How often it opens by itself"
-          hint="timer and exit intent"
+          legend={w.howOften}
+          hint={w.howOftenHint}
           options={(Object.keys(MODAL_FREQUENCIES) as ModalFrequency[]).map((value) => ({
             value,
-            label: MODAL_FREQUENCIES[value],
+            label: w.frequencies[value] ?? MODAL_FREQUENCIES[value],
           }))}
           value={modal.frequency}
           onChange={(frequency) => set({ frequency, days: frequency === "days" ? (modal.days ?? 7) : undefined })}
         />
         {modal.frequency === "days" && (
           <NumberField
-            label="Not again for"
+            label={w.notAgain}
             unit="days"
             min={MODAL_DAYS_MIN}
             max={MODAL_DAYS_MAX}
@@ -251,58 +269,51 @@ function ModalSettings({
           />
         )}
         {modal.frequency !== "always" && (
-          <p className="text-xs text-muted">
-            Once closed, it is remembered in the visitor&apos;s browser, but only if they allow preferences in the
-            cookie choices (it is then listed on the Cookies page); otherwise it stays closed until the page is loaded
-            again.
-          </p>
+          <p className="text-xs text-muted">{w.remembered}</p>
         )}
       </div>
 
       <Choices
-        legend="Size"
-        hint="use a one-column row for a small modal"
-        options={(Object.keys(MODAL_SIZES) as ModalSize[]).map((value) => ({ value, label: MODAL_SIZES[value].label }))}
+        legend={w.size}
+        hint={w.sizeHint}
+        options={(Object.keys(MODAL_SIZES) as ModalSize[]).map((value) => ({ value, label: w.sizes[value] ?? MODAL_SIZES[value].label }))}
         value={modal.size}
         onChange={(size) => set({ size })}
       />
       <Choices
-        legend="Position"
+        legend={w.position}
         options={(Object.keys(MODAL_POSITIONS) as ModalPosition[]).map((value) => ({
           value,
-          label: MODAL_POSITIONS[value],
+          label: w.positions[value] ?? MODAL_POSITIONS[value],
         }))}
         value={modal.position ?? "center"}
         onChange={(position) => set({ position: position === "center" ? undefined : position })}
       />
       <Choices
-        legend="Dimming behind it"
+        legend={w.dimming}
         options={(Object.keys(MODAL_OVERLAYS) as ModalOverlay[]).map((value) => ({
           value,
-          label: MODAL_OVERLAYS[value].label,
+          label: w.overlays[value] ?? MODAL_OVERLAYS[value].label,
         }))}
         value={modal.overlay ?? "medium"}
         onChange={(overlay) => set({ overlay: overlay === "medium" ? undefined : overlay })}
       />
       <div className="flex flex-col gap-3">
         <Check
-          label="Show a close button"
-          hint="Escape closes it either way."
+          label={w.close}
+          hint={w.closeHint}
           checked={closable}
           disabled={closable && !overlayCloses}
           onChange={(on) => set({ closeButton: on ? undefined : false })}
         />
         <Check
-          label="A click outside it closes it"
+          label={w.outside}
           checked={overlayCloses}
           disabled={overlayCloses && !closable}
           onChange={(on) => set({ closeOnOverlay: on ? undefined : false })}
         />
       </div>
-      <p className="text-xs text-muted">
-        The row&apos;s Style tab gives the modal its background, border, rounded corners and shadow. Its spacing is the
-        space inside.
-      </p>
+      <p className="text-xs text-muted">{w.style}</p>
 
       {problems.length > 0 && (
         <ul
@@ -321,6 +332,7 @@ function ModalSettings({
 /** Copies the modal's link, `#modal-key`, to paste where it should open from. */
 function CopyLink({ text, disabled }: { text: string; disabled: boolean }) {
   const [copied, setCopied] = useState(false);
+  const w = useAdminText("blocks").modal;
   return (
     <button
       type="button"
@@ -336,7 +348,7 @@ function CopyLink({ text, disabled }: { text: string; disabled: boolean }) {
       }}
       className={smallButton}
     >
-      {copied ? "Copied" : `Copy link ${text}`}
+      {copied ? w.copied : fillWords(w.copy, { text })}
     </button>
   );
 }
@@ -352,10 +364,11 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
   const chosen = keyFromHash(href.trim());
   const current = modals.find((modal) => modal.key === chosen);
   const leftOut = modalRows(rows).some((row) => row.modal?.key === chosen && !rowShows(row));
+  const w = useAdminText("blocks").modal;
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
-        Opens a modal
+        {w.opens}
       </label>
       <select
         id={id}
@@ -364,7 +377,7 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
         className={fieldClass}
       >
         <option value="">
-          {current || modals.length > 0 ? "None: use the address above" : "This page has no modal yet"}
+          {current || modals.length > 0 ? w.noneUse : w.noModal}
         </option>
         {modals.map((modal) => (
           <option key={modal.key} value={modal.key}>
@@ -376,12 +389,12 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
         className={`text-xs ${(current && !current.triggers.button) || leftOut ? "text-danger-text " : "text-muted"}`}
       >
         {current && !current.triggers.button
-          ? "That modal is not set to open from a button or link: switch that on in its row's settings."
+          ? w.notFromButton
           : leftOut
-            ? MODAL_LEFT_OUT_SHORT
+            ? w.leftOutShort
             : chosen && !current
-              ? `No modal on this page has the address name ${chosen}; a modal in the footer or header may.`
-              : "Sets the address to #modal-… of a modal built as a row on this page. For one in the footer or header, type its address above."}
+              ? fillWords(w.noSuch, { name: chosen })
+              : w.setsAddress}
       </span>
     </div>
   );

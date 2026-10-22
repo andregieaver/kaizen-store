@@ -10,6 +10,9 @@ import { getPageForEdit } from "@/server/pages";
 import { layoutUses } from "@/server/product-layouts";
 import { listTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { assignLayoutAction } from "../../actions";
 
@@ -27,6 +30,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const w = adminText(adminLangOf(gated.account.adminLocale), "website").assignLayout;
   const layout = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, "product_layout") : null;
   if (!layout) notFound();
   const [terms, uses] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), layoutUses(store.id)]);
@@ -42,7 +46,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
       <input type="checkbox" name="term" value={id} defaultChecked={use.categoryIds.includes(id) || use.tagIds.includes(id)} className="size-4" />
       <span>
         {name}
-        {otherFor(id) && <span className="text-muted"> (uses another layout; choosing this one replaces it)</span>}
+        {otherFor(id) && <span className="text-muted">{w.otherLayout}</span>}
       </span>
     </label>
   );
@@ -51,42 +55,42 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <PageHeader
-          back={{ href: base, label: "Product layouts" }}
-          title={<>Where “{layout.draft.title || "Untitled"}” is used</>}
-          description={<>A product&apos;s page uses its own layout if it has one (chosen in the product editor), else its nearest category&apos;s, else one of its tags&apos;, else the store&apos;s standard layout, else Kaizena Flow&apos;s.{use.products > 0 && ` ${use.products === 1 ? "One product has" : `${use.products} products have`} this layout as its own.`}</>}
+          back={{ href: base, label: w.back }}
+          title={fillWords(w.title, { title: layout.draft.title || w.untitled })}
+          description={`${w.description}${use.products > 0 ? countWords(use.products, w.ownProducts) : ""}`}
         />
         {layout.state === "draft" && (
           <p role="note" className="mt-2 rounded-md bg-sunken p-3 text-sm">
-            This layout is not published yet: products start using it once it is.
+            {w.notPublished}
           </p>
         )}
       </div>
       <ActionForm action={assignLayoutAction.bind(null, store.slug, layout.id)} className="flex flex-col gap-6">
         <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
-          <legend className="px-1 font-medium">The whole store</legend>
+          <legend className="px-1 font-medium">{w.wholeStore}</legend>
           <label className="flex items-center gap-3 text-sm">
             <input type="checkbox" name="standard" defaultChecked={use.standard} className="size-4" />
             <span>
-              The store&apos;s standard layout, for products with none of their own or from their categories or tags
-              {otherStandard && <span className="text-muted"> (replaces the one chosen now)</span>}
+              {w.standard}
+              {otherStandard && <span className="text-muted">{w.replaces}</span>}
             </span>
           </label>
         </fieldset>
         <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
-          <legend className="px-1 font-medium">Product categories</legend>
+          <legend className="px-1 font-medium">{w.categories}</legend>
           {categories.length === 0 ? (
-            <p className="text-sm text-muted">The store has no product categories yet.</p>
+            <p className="text-sm text-muted">{w.noCategories}</p>
           ) : (
             categories.map((category) => check(category.id, category.name, category.depth))
           )}
-          <p className="text-xs text-muted">A category&apos;s layout is also used for the categories below it that have none of their own.</p>
+          <p className="text-xs text-muted">{w.categoryHint}</p>
         </fieldset>
         <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
-          <legend className="px-1 font-medium">Product tags</legend>
-          {tags.length === 0 ? <p className="text-sm text-muted">The store has no product tags yet.</p> : tags.map((tag) => check(tag.id, tag.name))}
+          <legend className="px-1 font-medium">{w.tags}</legend>
+          {tags.length === 0 ? <p className="text-sm text-muted">{w.noTags}</p> : tags.map((tag) => check(tag.id, tag.name))}
         </fieldset>
         <div>
-          <SubmitButton>Save</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
     </div>

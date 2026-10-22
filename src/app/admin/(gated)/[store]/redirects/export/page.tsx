@@ -7,6 +7,9 @@ import { ExportSection } from "@/components/admin/data/export-section";
 import { RedirectExportForm } from "@/components/admin/redirects/redirect-export-form";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import { redirectPaths } from "@/lib/redirect-admin";
 import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { requirePermission } from "@/server/permissions";
@@ -23,14 +26,17 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
  * kind, when it was made and how often it was used, and reads back into this store as it is.
  */
 export default async function RedirectExportPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "website:read");
+  const { store, account } = await requirePermission((await params).store, "website:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "redirects");
   return (
     <div className="flex flex-col gap-6">
       <RedirectsHead
         slug={store.slug}
         active="export"
-        title="Export redirects"
-        intro={`One row for each redirect, with the address it goes from and to. A store with more than ${DIRECT_EXPORT_MAX_ROWS.toLocaleString("en-GB")} redirects gets the file as a job.`}
+        title={w.export.title}
+        intro={fillWords(w.export.intro, { n: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        words={w}
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
@@ -41,24 +47,25 @@ export default async function RedirectExportPage({ params, searchParams }: Props
 
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requirePermission(storeSlug, "website:read");
+  const w = adminText(adminLangOf(member.account.adminLocale), "redirects").export;
   const query = await searchParams;
   const code = first(query.problem);
   const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
   return (
     <>
       <ProblemAlert text={problem} />
-      <RedirectExportForm slug={member.store.slug} />
-      <Notice title="About the file">
+      <RedirectExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "redirects")} />
+      <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
-            The first two columns are <strong>Redirect from</strong> and <strong>Redirect to</strong>, as in a Shopify redirect file; <code>type</code>, <code>created</code>, <code>used</code> and <code>last_used</code> follow and are
-            ignored by an import.
+            {w.about1a} <strong>Redirect from</strong> {w.about1b} <strong>Redirect to</strong>
+            {w.about1c} <code>type</code>, <code>created</code>, <code>used</code> {w.about1b} <code>last_used</code> {w.about1d}
           </li>
-          <li>Addresses are paths on the store without a country. A redirect applies in every country and language.</li>
+          <li>{w.about2}</li>
           <li>
-            Edit the file and bring it back with{" "}
+            {w.about3a}{" "}
             <Link className="underline underline-offset-2" href={redirectPaths(member.store.slug).import}>
-              Import redirects
+              {w.importLink}
             </Link>
             .
           </li>

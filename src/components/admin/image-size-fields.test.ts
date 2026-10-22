@@ -30,7 +30,12 @@ vi.mock("react", async (importOriginal) => {
     useId: () => (harness.on ? "t" : actual.useId()),
     // The builder's screen size (D179): the one a test gives, else the context's default (Extra large).
     useContext: (context: { _currentValue: unknown }) =>
-      harness.on ? (harness.sizeEdit ?? context._currentValue) : actual.useContext(context as unknown as Parameters<typeof actual.useContext>[0]),
+      harness.on
+        ? // Only the size-editing context (its default carries a size) is stood in for; any other reads its default.
+          harness.sizeEdit && typeof context._currentValue === "object" && context._currentValue !== null && "size" in context._currentValue
+          ? harness.sizeEdit
+          : context._currentValue
+        : actual.useContext(context as unknown as Parameters<typeof actual.useContext>[0]),
     useState: (initial: unknown) => {
       if (!harness.on) return actual.useState(initial);
       const slot = harness.at++;
