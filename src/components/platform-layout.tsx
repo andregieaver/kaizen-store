@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { t } from "@/lib/i18n";
 import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
-import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
@@ -47,7 +47,7 @@ export function MenuLinks({
   hover,
   lang = "en",
 }: Props & { items: PlatformMenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string; hover?: MenuHover }) {
-  const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, builtIn(lang), chrome.terms, chrome.blog)]));
+  const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, builtIn(lang), chrome.terms, chrome.blog, pageLocaleOf(lang))]));
   const toNode = ({ item, children }: MenuNode<PlatformMenuEntry>, index: number): MenuLinkNode => {
     const link = resolved.get(item)!;
     return {

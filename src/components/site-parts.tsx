@@ -24,7 +24,7 @@ import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
 import { MotionSupport } from "./motion-support";
 import { builtIn, Brand as KaizenBrand } from "./platform-layout";
-import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { HidingHeader } from "./store-chrome";
 import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink, hasViewChoices } from "./store-layout";
@@ -342,7 +342,8 @@ export function KaizenSiteHeader({ chrome, layout, theme, lang = "en" }: { chrom
   return (
     <HidingHeader overlay={overlay && { textColor: overlay.textColor }}>
       <header className="site-header border-b border-border bg-background/95 backdrop-blur">
-        <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "header", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
+        {/* In the language drawn (D312 P4): the texts written for it over the English. */}
+        <SiteRows content={localizePage(layout.content, pageLocaleOf(lang))} ctx={{ kind: "kaizen", chrome, place: "header", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
       </header>
     </HidingHeader>
   );
@@ -352,7 +353,7 @@ export function KaizenSiteHeader({ chrome, layout, theme, lang = "en" }: { chrom
 export function KaizenSiteFooter({ chrome, layout, theme, lang = "en" }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers; lang?: PlatformLang }) {
   return (
     <footer data-reveal={layout.content.footerReveal ? "" : undefined} className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(layout.content)}`}>
-      <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
+      <SiteRows content={localizePage(layout.content, pageLocaleOf(lang))} ctx={{ kind: "kaizen", chrome, place: "footer", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
     </footer>
   );
 }

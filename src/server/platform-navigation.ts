@@ -135,7 +135,10 @@ export async function getPlatformChrome(): Promise<PlatformChrome> {
     listPublishedPages(null, "article"),
     siteTerms(null, "article"),
   ]);
-  const byId = (list: typeof pages) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.content.title }]));
+  // A page's title in each other language it is written in (D312 P4), for menus drawn in that language.
+  const titles = (content: (typeof pages)[number]["content"]) =>
+    Object.fromEntries(Object.entries(content.translations ?? {}).flatMap(([locale, texts]) => (typeof texts.title === "string" && texts.title ? [[locale, texts.title]] : [])));
+  const byId = (list: typeof pages) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.content.title, titles: titles(p.content) }]));
   return {
     ...settings,
     pages: byId(pages),

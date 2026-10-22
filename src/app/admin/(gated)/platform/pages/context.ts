@@ -10,6 +10,7 @@ import type { PageOwnerContext } from "@/components/admin/page-context";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
+import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import { siteUrl } from "@/lib/site";
 import { listGridStores } from "@/server/content-grid";
 import { siteFontStyle } from "@/server/fonts";
@@ -40,6 +41,7 @@ import {
   savePageAction,
   unpublishPageAction,
   updateSavedPartAction,
+  translatePlatformPageAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
 import { platformPageVersionAction, platformPageVersionsAction } from "./version-actions";
@@ -59,7 +61,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     adminBase: `/admin/platform/${copy.segment}`,
     siteBase: copy.sitePrefix,
     origin: siteUrl(),
-    languages: pageLanguages(["en"]),
+    // English and then the site's other languages (D312 P4): the builder's translate mode writes their texts over the page.
+    languages: pageLanguages(PLATFORM_PAGE_LOCALES),
     reserved: reservedPageSlugs(null, type),
     // The pages a new or edited page can be nested under (`/projects/project-a`).
     parents: (await listMenuPages(null, "page")).map(({ slug, title }) => ({ slug, title })),
@@ -119,7 +122,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       saveSiteCss: savePlatformCssAction,
       saveThemeTab: savePlatformThemeTabAction,
       saveLibrary: savePlatformLibraryAction,
-      translate: null,
+      translate: translatePlatformPageAction,
     },
   };
 }

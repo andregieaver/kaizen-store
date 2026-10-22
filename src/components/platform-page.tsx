@@ -6,7 +6,9 @@ import { PageEditLink } from "@/components/page-edit-link";
 import { HeaderOverlayMark } from "@/components/store-chrome";
 import { pageExcerpt } from "@/lib/page-content";
 import { headerOverlays } from "@/lib/site-layout";
-import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import type { PageContent } from "@/lib/page-content";
+import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { localizePage } from "@/lib/page-translation";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
@@ -20,12 +22,17 @@ import { siteLayoutFor } from "@/server/site-layouts";
  * place's address.
  */
 
+/** A page of Kaizena Flow's as it reads in `lang` (D312 P4): its texts in that language where they are written, else the English. */
+export function inPlatformLang(content: PageContent, lang: PlatformLang): PageContent {
+  return localizePage(content, pageLocaleOf(lang));
+}
+
 /**
  * The page's own search and sharing texts, over Kaizen's; `url` is its English address (D312: the address in `lang` is the canonical one,
  * and `languages` its addresses in the site's languages, from `languageMeta()`).
  */
 export function platformPageMetadata(page: PublishedPage, url: string, { lang = "en", languages }: { lang?: PlatformLang; languages?: Record<string, string> } = {}): Metadata {
-  const c = page.content;
+  const c = inPlatformLang(page.content, lang);
   const title = c.seo.title || c.title;
   const description = c.seo.description || pageExcerpt(c) || PLATFORM_DEFAULTS.description;
   const images = c.thumbnail
@@ -66,7 +73,7 @@ export async function PlatformPageView({
   /** The page's own structured data; off where the route writes its own (a theme's page describes the theme). */
   jsonLd?: boolean;
 }) {
-  const c = page.content;
+  const c = inPlatformLang(page.content, lang);
   const origin = siteUrl();
   // Kaizen's header may lie over its pages (D80), over a front page's first row too.
   const header = await siteLayoutFor(null, "header");
@@ -86,8 +93,9 @@ export async function PlatformPageView({
           })}
         />
       )}
-      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }) }} editable />
-      <PageEditLink pageId={page.id} />
+      {/* Words are edited in place only in English, the page as written (D192): another language's are the builder's translate mode's. */}
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }) }} editable={lang === "en"} />
+      <PageEditLink pageId={page.id} textEditable={lang === "en"} />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { testDb } from "./db";
 
 /**
  * Kaizena Flow's own site in more than one language (D312 P1). The Norwegian site exists only while it is offered
@@ -68,4 +69,55 @@ test("the theme store reads in Norwegian under /no/themes (D312 P3)", async ({ p
   await expect(page).toHaveURL(/\/no\/themes\/[a-z0-9-]+\/preview/);
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("navigation", { name: "Side" }).getByRole("link", { name: "Forside" })).toBeVisible();
+});
+
+test("a page of Kaizena Flow's reads in Norwegian under /no where its texts are written (D312 P4)", async ({ page, request }) => {
+  test.skip((await request.get("/no")).status() === 404, "Norwegian is not offered in this build");
+  const slug = `our-story-${Date.now()}`;
+  const content = {
+    title: "Our story",
+    slug,
+    seo: { title: "", description: "" },
+    thumbnail: null,
+    searchEngines: true,
+    aiAssistants: true,
+    categories: [],
+    tags: [],
+    rows: [
+      {
+        id: "r1",
+        type: "row",
+        layout: "1",
+        columns: [
+          {
+            id: "c1",
+            blocks: [
+              { id: "h1", type: "heading", text: "Our story", level: 1 },
+              { id: "h2", type: "heading", text: "Only in English", level: 2 },
+            ],
+          },
+        ],
+      },
+    ],
+    // The builder's translate mode keeps these (D55): only the texts written in Norwegian.
+    translations: { "nb-NO": { title: "Vår historie", "block.h1.text": "Vår historie" } },
+  };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(content)}, ${sql.json(content)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/no/${slug}`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "nb");
+  await expect(page.getByRole("heading", { level: 1, name: "Vår historie" })).toBeVisible();
+  // A text not written in Norwegian is the English one.
+  await expect(page.getByRole("heading", { level: 2, name: "Only in English" })).toBeVisible();
+  await expect(page).toHaveTitle(/Vår historie/);
+  // The English page is as written.
+  await page.goto(`/${slug}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Our story" })).toBeVisible();
 });

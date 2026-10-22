@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, pageLocaleOf } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
@@ -69,7 +71,8 @@ async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platfor
       menu={chosen ?? { id: null, name: menus.length === 0 ? "Main menu" : "", items: [] }}
       uses={usedIn}
       basePath="/admin/platform/menus"
-      languages={[{ locale: "en", name: "English", defaults: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" } }]}
+      // English, then the site's other languages (D312 P4): a link's words in each, its built-in names the site's own.
+      languages={PLATFORM_LANGS.map((lang) => ({ locale: pageLocaleOf(lang) ?? "en", name: PLATFORM_LANG_FACTS[lang].english, defaults: platformText(lang).nav }))}
       kinds={PLATFORM_KINDS}
       targets={{
         page: pages.map((page) => ({ value: page.id, title: page.title, note: page.published ? undefined : "draft" })),

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PageArticle, pageRoomClass } from "@/components/page-article";
+import { inPlatformLang } from "@/components/platform-page";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { platformPageForRole } from "@/server/platform-roles";
@@ -14,7 +15,7 @@ export async function NotFoundRoute({ lang }: { lang: PlatformLang }) {
   if (page) {
     return (
       <main id="main" className={`w-full flex-1 ${pageRoomClass(page.content, "pt-10", "pb-10")}`}>
-        <PageArticle content={page.content} place={{ pageId: page.id, owner: null, lang }} />
+        <PageArticle content={inPlatformLang(page.content, lang)} place={{ pageId: page.id, owner: null, lang }} />
       </main>
     );
   }

@@ -442,7 +442,13 @@ export function menuTree<E extends { depth: number }>(items: E[], keep: (item: E
 }
 
 /** A published page as the menus know it. */
-export type MenuPage = { id: string; slug: string; title: string };
+export type MenuPage = {
+  id: string;
+  slug: string;
+  title: string;
+  /** Kaizena Flow's pages (D312 P4): the title in each other language it is written in, by locale (`nb-NO`). */
+  titles?: Readonly<Record<string, string>>;
+};
 
 /**
  * Where a link in Kaizen's menus goes and what it says, or null for a page
@@ -458,8 +464,11 @@ export function platformMenuLink(
     articles: new Map(),
     categories: new Map(),
   },
+  /** The language the menu is drawn in (D312 P4), by its locale (`nb-NO`); English (null) is the menu as written. */
+  locale: string | null = null,
 ): { href: string; text: string; external: boolean } | null {
-  const own = item.label.en || Object.values(item.label).find(Boolean) || "";
+  const own = (locale ? item.label[locale] : "") || item.label.en || Object.values(item.label).find(Boolean) || "";
+  const titleOf = (page: MenuPage) => (locale ? page.titles?.[locale] : undefined) || page.title;
   switch (item.link.kind) {
     case "home":
       return { href: "/", text: own || builtIn.home, external: false };
@@ -469,7 +478,7 @@ export function platformMenuLink(
       return { href: "/admin", text: own || builtIn.signIn, external: false };
     case "page": {
       const page = pages.get(item.link.pageId);
-      return page ? { href: `/${page.slug}`, text: own || page.title, external: false } : null;
+      return page ? { href: `/${page.slug}`, text: own || titleOf(page), external: false } : null;
     }
     case "category":
     case "tag": {
@@ -481,7 +490,7 @@ export function platformMenuLink(
       return { href: "/blog", text: own || builtIn.blog || "Blog", external: false };
     case "article": {
       const article = blog.articles.get(item.link.pageId);
-      return article ? { href: `/blog/${article.slug}`, text: own || article.title, external: false } : null;
+      return article ? { href: `/blog/${article.slug}`, text: own || titleOf(article), external: false } : null;
     }
     case "blogCategory": {
       const name = blog.categories.get(item.link.slug);

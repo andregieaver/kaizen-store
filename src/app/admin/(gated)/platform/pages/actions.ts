@@ -26,6 +26,9 @@ import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import type { GridData } from "@/lib/content-grid";
 import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
+import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
+import { AiError, aiFor } from "@/server/ai";
+import { translatePageTexts } from "@/server/page-translate";
 
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
@@ -291,4 +294,22 @@ export async function createPlatformRolePageAction(role: string): Promise<FormSt
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
   redirect(`/admin/platform/pages/${result.id}`);
+}
+
+/**
+ * Translates a Kaizena Flow page's texts with Kaizena Flow's own AI (D312 P4), as a store's builder does (D109): it only suggests, into the
+ * editor, and nothing is saved until the page is.
+ */
+export async function translatePlatformPageAction(request: unknown): Promise<TranslateResult> {
+  const admin = await requirePlatformAdmin();
+  const parsed = translateRequest.safeParse(request);
+  if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
+  const connection = await aiFor(null, { feature: "page_translation", accountId: admin.id });
+  if (!connection?.textModel) return { ok: false, problem: "Kaizena Flow has no AI text model. Choose one under AI." };
+  try {
+    const { done, skipped } = await translatePageTexts(connection, { accountId: admin.id, storeId: null }, parsed.data);
+    return { ok: true, done, skipped };
+  } catch (error) {
+    return { ok: false, problem: error instanceof AiError ? `The AI could not translate: ${error.message}` : "The AI could not translate. Try again." };
+  }
 }

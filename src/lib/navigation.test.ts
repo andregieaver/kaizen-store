@@ -146,6 +146,19 @@ describe("category and tag links (D50)", () => {
     expect(platformMenuLink({ label: { en: "Old" }, link: { kind: "category", slug: "gone" } }, new Map(), platform, names)).toBeNull();
   });
 
+  it("name Kaizena Flow's links in the language drawn, where written, else in English (D312 P4)", () => {
+    const platform = { home: "Hjem", signUp: "Start", signIn: "Logg inn" };
+    const pages = new Map([["p1", { id: "p1", slug: "about", title: "About us", titles: { "nb-NO": "Om oss" } }]]);
+    const page = { label: {}, link: { kind: "page" as const, pageId: "p1" } };
+    expect(platformMenuLink(page, pages, platform, names, undefined, "nb-NO")?.text).toBe("Om oss");
+    expect(platformMenuLink(page, pages, platform, names)?.text).toBe("About us");
+    const own = { label: { en: "Our story", "nb-NO": "Vår historie" }, link: { kind: "page" as const, pageId: "p1" } };
+    expect(platformMenuLink(own, pages, platform, names, undefined, "nb-NO")?.text).toBe("Vår historie");
+    expect(platformMenuLink(own, pages, platform, names)?.text).toBe("Our story");
+    // Not written in Norwegian: the English words.
+    expect(platformMenuLink({ label: { en: "Guide" }, link: { kind: "url", url: "/guide" } }, pages, platform, names, undefined, "nb-NO")?.text).toBe("Guide");
+  });
+
   it("need an address", () => {
     const menu = (link: unknown) => ({ name: "Menu", items: [{ label: {}, link: link, depth: 0 }] });
     expect(menuInput.safeParse(menu({ kind: "category", slug: "kopper" })).success).toBe(true);

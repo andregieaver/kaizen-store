@@ -36,6 +36,18 @@ export const PLATFORM_LANG_FACTS: Record<PlatformLang, LangFacts> = {
   nb: { tag: "nb", prefix: "no", locale: "nb-NO", ogLocale: "nb_NO", name: "Norsk", english: "Norwegian", messages: "nb" },
 };
 
+/**
+ * The languages Kaizena Flow's own pages and menus are written in (D312 P4), as the page builder keys them: English (`en`, the page as it
+ * is written) first, then every other language by its locale (`nb-NO`), whose texts are laid over the English (D55). Every language the
+ * site has, offered or not, so its words can be written before it is turned on.
+ */
+export const PLATFORM_PAGE_LOCALES: readonly string[] = PLATFORM_LANGS.map((lang) => (lang === "en" ? "en" : PLATFORM_LANG_FACTS[lang].locale));
+
+/** The locale a page's texts in `lang` are kept under (`nb-NO`), or null for English, which is the page as written. */
+export function pageLocaleOf(lang: PlatformLang): string | null {
+  return lang === "en" ? null : PLATFORM_LANG_FACTS[lang].locale;
+}
+
 export function isPlatformLang(value: unknown): value is PlatformLang {
   return typeof value === "string" && (PLATFORM_LANGS as readonly string[]).includes(value);
 }

@@ -19,6 +19,7 @@ import {
 
 import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind } from "@/lib/global-parts";
 import { mergeLocales } from "@/lib/localization";
+import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
@@ -504,10 +505,11 @@ export async function deletePage(account: Account, owner: PageOwner, id: string,
 
 /**
  * The languages an owner's pages are written in (D55, D109): a store's own
- * choice, main first, else its markets' languages; Kaizen's, English.
+ * choice, main first, else its markets' languages; Kaizena Flow's, English and then its other languages (D312 P4).
  */
 export async function ownerLanguages(owner: PageOwner): Promise<PageLanguage[]> {
-  if (owner === null) return pageLanguages(["en"]);
+  // Kaizena Flow's own (D312 P4): English, then the site's other languages, whose texts lie over it.
+  if (owner === null) return pageLanguages(PLATFORM_PAGE_LOCALES);
   const [rows, [chosen]] = await Promise.all([
     db().execute<Row>(sql`
       select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id

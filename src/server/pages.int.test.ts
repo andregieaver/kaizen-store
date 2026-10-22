@@ -83,6 +83,22 @@ describe("fonts per component (D59)", () => {
 });
 
 describe("saving and publishing", () => {
+  it("keeps a Kaizena Flow page's texts in the site's other languages, and only those (D312 P4)", async () => {
+    const slug = `norsk-${run}`;
+    const id = await saved(
+      await pages.savePage(
+        admin,
+        null,
+        null,
+        content(slug, { translations: { "nb-NO": { title: "Norsk side" }, "sv-SE": { title: "Svensk sida" } } }),
+        { publish: true },
+      ),
+    );
+    const found = await pages.findPublishedPage(null, slug);
+    expect(found && "page" in found && found.page.content.translations).toEqual({ "nb-NO": { title: "Norsk side" } });
+    expect((await pages.getPageForEdit(null, id))?.draft.translations).toEqual({ "nb-NO": { title: "Norsk side" } });
+  });
+
   it("keeps a new draft off the site until it is published", async () => {
     const slug = `draft-${run}`;
     const id = await saved(await pages.savePage(admin, null, null, content(slug), { publish: false }));
@@ -417,7 +433,7 @@ describe("a store's page in its languages (D55)", () => {
 
   it("keeps texts in the store's other languages only, its own country's being the main one", async () => {
     expect((await pages.ownerLanguages(storeId)).map((l) => l.locale)).toEqual(["sv-SE", "nb-NO"]);
-    expect((await pages.ownerLanguages(null)).map((l) => l.locale)).toEqual(["en"]);
+    expect((await pages.ownerLanguages(null)).map((l) => l.locale)).toEqual(["en", "nb-NO"]); // Kaizena Flow's: English, then its other languages (D312 P4).
     const input = content(`lang-${run}`, {
       title: "Om oss",
       translations: {
@@ -440,9 +456,9 @@ describe("a store's page in its languages (D55)", () => {
     expect((await gridData(block, { pageId: null, owner: storeId, market: "NO" })).items.map((i) => i.title)).toEqual(["Hvem vi er"]);
     expect((await gridData(block, { pageId: null, owner: storeId, market: "SE" })).items.map((i) => i.title)).toEqual(["Om oss"]);
 
-    // Kaizen's pages are in English only.
+    // Kaizena Flow's pages keep their texts in its own languages (Norwegian, D312 P4), never a store's others (Swedish).
     const kaizen = await saved(await pages.savePage(admin, null, null, { ...input, slug: `lang-kaizen-${run}` }, { publish: false }));
-    expect((await pages.getPageForEdit(null, kaizen))?.draft.translations).toBeUndefined();
+    expect(Object.keys((await pages.getPageForEdit(null, kaizen))?.draft.translations ?? {})).toEqual(["nb-NO"]);
   });
 });
 

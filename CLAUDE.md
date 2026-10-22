@@ -1082,6 +1082,12 @@ stand-in is the only fake, and only it is told it is one.
   `platformText(lang).themeStore` (a client part's as plain texts with `{name}`), and a theme's own summary, description and highlights in
   a language are `listing.words` (`readListingWords()`, the listing form's *In Norwegian*, launch themes' `LAUNCH_WORDS_NB`), laid over the
   English by `inLanguage()`, which names what stays English (`english`) for `lang="en"`; a language's prefix is never a theme's address.
+  Kaizena Flow's pages (P4): written in English with the site's other languages' texts over them (D55; `ownerLanguages(null)` is
+  `PLATFORM_PAGE_LOCALES`, `en` then `nb-NO`, so the builder's translate mode and `translatePlatformPageAction` serve them), drawn in a
+  language only through `inPlatformLang()`/`pageLocaleOf()` (pages, articles, metadata, the 404 page, Kaizena Flow's built header and
+  footer, page grids by `place.lang`); words are edited on the site in English only (`editable`, `textEditable`), and menu links have a
+  label per language (`platformMenuLink(…, locale)`, page titles from `MenuPage.titles`). A new place that draws a Kaizena Flow page in a
+  language goes through `inPlatformLang()`.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

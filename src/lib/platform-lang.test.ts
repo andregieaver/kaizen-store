@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { RESERVED_PAGE_SLUGS } from "./page-content";
-import { englishPath, LANGUAGE_PREFIXES, langOfLocale, langOfPath, languageAlternates, platformPath, suggestedLang } from "./platform-lang";
+import { englishPath, LANGUAGE_PREFIXES, langOfLocale, langOfPath, languageAlternates, pageLocaleOf, PLATFORM_PAGE_LOCALES, platformPath, suggestedLang } from "./platform-lang";
 
 describe("the site's languages (D312 P1)", () => {
   it("puts a language's prefix before the site's own addresses and leaves English as it is", () => {
@@ -62,5 +62,13 @@ describe("offering the site in a language (D312)", () => {
     const { localesFor } = await import("./platform-lang");
     expect(localesFor([])).toEqual(["en-GB"]);
     expect(localesFor(["nb", "en"])).toEqual(["en-GB", "nb-NO"]);
+  });
+});
+
+describe("the languages Kaizena Flow's pages are written in (D312 P4)", () => {
+  it("are English as written, then every other language by its locale", () => {
+    expect(PLATFORM_PAGE_LOCALES).toEqual(["en", "nb-NO"]);
+    expect(pageLocaleOf("en")).toBeNull();
+    expect(pageLocaleOf("nb")).toBe("nb-NO");
   });
 });

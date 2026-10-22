@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, pageLocaleOf, type PlatformLang } from "@/lib/platform-lang";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -92,10 +92,10 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
   // Every source is answered here, so a new one is a compile error until it is.
   switch (source.type) {
     case "pages":
-      return gridPages(place.owner, place.market ?? null, { ...filter, ...(source.parent && { parent: source.parent }) }, place.pageId);
+      return gridPages(place.owner, place.market ?? null, { ...filter, ...(source.parent && { parent: source.parent }) }, place.pageId, "page", place.owner ? "en" : (place.lang ?? "en"));
     case "articles":
       // The owner's blog articles (D57), newest first unless chosen.
-      return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
+      return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article", place.owner ? "en" : (place.lang ?? "en"));
     case "products": {
       // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
       const storeId = place.owner ?? source.storeId;
@@ -189,6 +189,8 @@ async function gridPages(
   filter: Filter,
   exclude: string | null,
   type: PageType = "page",
+  /** Kaizena Flow's own pages (D312 P4): the language the grid is drawn in, whose texts lie over the English. */
+  lang: PlatformLang = "en",
 ): Promise<GridData> {
   "use cache";
   cacheLife("hours");
@@ -201,7 +203,7 @@ async function gridPages(
   const prefix = type === "article" ? "/blog" : "";
   const href = (slug: string) =>
     shop ? marketPath(shop.store.slug, shop.market.slug, `${prefix}/${slug}`) : `${prefix}/${slug}`;
-  const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: "en", locale: "en-GB" };
+  const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: PLATFORM_LANG_FACTS[lang].messages, locale: PLATFORM_LANG_FACTS[lang].locale };
   const terms = await currentTerms(owner, termContentOf(type));
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);
@@ -250,8 +252,8 @@ async function gridPages(
   const items = rows.flatMap((row): GridItem[] => {
     const stored = parsePageContent(row.published);
     if (!stored) return [];
-    // A store's page in the market's language where it is translated (D55).
-    const content = localizePage(stored, shop?.market.locale);
+    // A store's page in the market's language where it is translated (D55); Kaizena Flow's in the language drawn (D312 P4).
+    const content = localizePage(stored, shop ? shop.market.locale : pageLocaleOf(lang));
     return [
       {
         id: String(row.id),

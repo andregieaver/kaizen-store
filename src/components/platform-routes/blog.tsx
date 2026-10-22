@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { ArticleView } from "@/components/article-view";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
-import { PlatformPageView, platformPageMetadata } from "@/components/platform-page";
+import { inPlatformLang, PlatformPageView, platformPageMetadata } from "@/components/platform-page";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
@@ -55,7 +55,7 @@ export async function articleMetadata(lang: PlatformLang, slug: string): Promise
   const found = await loadArticle(slug);
   if (!found || "redirect" in found) return {};
   const { page } = found;
-  const c = page.content;
+  const c = inPlatformLang(page.content, lang);
   const title = c.seo.title || c.title;
   const description = c.seo.description || pageExcerpt(c) || PLATFORM_DEFAULTS.description;
   const meta = await languageMeta(lang, `/blog/${page.slug}`);
@@ -89,7 +89,7 @@ export async function ArticleRoute({ lang, slug }: { lang: PlatformLang; slug: s
   // An article that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(platformPath(lang, `/blog/${found.redirect}`));
   const { page } = found;
-  const c = page.content;
+  const c = inPlatformLang(page.content, lang);
   const origin = siteUrl();
   const facts = PLATFORM_LANG_FACTS[lang];
 
@@ -115,9 +115,9 @@ export async function ArticleRoute({ lang, slug }: { lang: PlatformLang; slug: s
         lang={facts.messages}
         locale={facts.locale}
         place={{ pageId: page.id, owner: null, lang }}
-        editable
+        editable={lang === "en"}
       />
-      <PageEditLink pageId={page.id} article />
+      <PageEditLink pageId={page.id} article textEditable={lang === "en"} />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { cacheLife } from "next/cache";
 
 import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
+import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import {
   cleanLabels,
   menuInput,
@@ -175,7 +176,8 @@ export async function savePlatformMenu(account: Account, id: string | null, inpu
 
   const problems: string[] = [];
   const clean = (item: PlatformMenuEntry): PlatformMenuEntry => {
-    const label = cleanLabels(item.label, ["en"]);
+    // English and the site's other languages (D312 P4); a custom link needs its English words.
+    const label = cleanLabels(item.label, [...PLATFORM_PAGE_LOCALES]);
     if (item.link.kind === "page" && !existing.has(`page:${item.link.pageId}`)) {
       problems.push("A link goes to a page that no longer exists. Choose another.");
     }
