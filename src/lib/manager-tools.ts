@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { tool, type OwnerTool } from "./owner-tools";
+import { SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
+import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
@@ -78,6 +79,25 @@ const slug = z
   .regex(/^[a-z0-9-]+$/, "An address is lower-case letters, digits and dashes.");
 
 export const PLATFORM_TOOLS = [
+  // Kaizena Flow's own site (D308 A2c): the store's website tools, on its own pages, menus, header and footer.
+  tool(
+    "list_pages",
+    "Kaizena Flow's own pages or blog articles: id, title, address and whether they are published.",
+    z.object({ type: z.enum(["page", "article"]).default("page") }),
+  ),
+  ...SITE_TOOLS,
+  tool(
+    "set_page_place",
+    "Shows one of Kaizena Flow's own PUBLISHED pages as its front page, its blog or its 404 page, or the standard one again with page null (the theme store's pages are chosen from Themes). A page is in one place at a time. Needs the admin's approval.",
+    setPlatformPlaceInput,
+    "public",
+  ),
+  tool(
+    "save_menu",
+    "Makes one of Kaizena Flow's own menus or replaces its links, saved as the menu editor saves it: its pages and articles by id (list_pages), its front page, blog, sign-up and sign-in, categories and tags by slug, and web addresses. A menu shown on the site needs the admin's approval; a new one, or one shown nowhere, is saved at once. Read get_menus first.",
+    savePlatformMenuInput,
+    "public",
+  ),
   tool(
     "support_overview",
     "Kaizena Flow's own support desk in figures (waiting now, with the AI or a person, tone alerts, today, and the last 30 days: the AI alone, hand-overs, first answer, missed, ratings, topics), and the stores' support in totals over the last 30 days: how many stores have it, conversations, how many wait now and the busiest stores, counts and rates only. A store's conversations are its own: never ask for or describe one. Rates and medians need 10 conversations; repeat what is missing when it says so.",

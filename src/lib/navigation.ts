@@ -347,7 +347,8 @@ export type AnyMenuLink = MenuLink | PlatformMenuLink;
 export type AnyLinkKind = AnyMenuLink["kind"];
 export type AnyMenuItem = { label: Record<string, string>; link: AnyMenuLink };
 
-const platformLink = z.discriminatedUnion("kind", [
+/** A link in one of Kaizena Flow's own menus as the editor saves it: its pages and articles by id. */
+export const platformMenuLinkSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("home") }),
   z.object({ kind: z.literal("signUp") }),
   z.object({ kind: z.literal("signIn") }),
@@ -363,7 +364,7 @@ const platformLink = z.discriminatedUnion("kind", [
   }),
 ]);
 
-const platformItem = z.object({ label, link: platformLink });
+const platformItem = z.object({ label, link: platformMenuLinkSchema });
 
 /** Kaizen's menu as the editor saves it. */
 export const platformMenuInput = z.object({ name: menuName, items: itemsSchema(platformItem.extend(placing)) });

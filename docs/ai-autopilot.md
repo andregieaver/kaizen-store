@@ -139,6 +139,50 @@ On Kaizena Flow's own site the same tools work with the platform principal (Kaiz
 "build a landing page for photographers" in the platform's manager. Tests: a page built from a brief is a valid draft with the brief's facts and
 no claims; an edit keeps the rest of the page; publishing with a blocking issue is refused; a menu link to another store is refused.
 
+### 4.1 As built (2026-10-22)
+
+- **Where.** Arguments and the pure parts are `src/lib/site-tools.ts` (`getPageInput`, `buildPageInput`, `editPageInput`, `publishPageInput`,
+  `setPagePlaceInput`, `saveMenuInput`, `setHeaderFooterInput`, Kaizena Flow's `setPlatformPlaceInput` and `savePlatformMenuInput`;
+  `pageOutline()`, `applyPageEdits()`, `dryRunEdits()`, `sharedTextKeys()`, `briefOf()`, `toMenuEntries()`, `otherStoreAddress()` and the
+  approval words), the handlers `src/server/site-tools.ts`. The page tools are `SITE_TOOLS` in `src/lib/owner-tools.ts`, served to a store
+  (`OWNER_TOOLS`, so the store's MCP server too) and to Kaizena Flow's own site (`PLATFORM_TOOLS`, with the platform's `list_pages`,
+  `set_page_place` and `save_menu`, whose links are its own). Permissions: `website:read` to read, `website:write` to change; a legal page's
+  place is the owner's. Besides the spec's six tools there are three reads: `get_page`, `list_page_builds` and `get_menus`.
+- **Building after the answer.** Planning a page and writing its sections can take longer than one turn may (300 s), so `build_page` only
+  checks (a text model, no claim in the brief, at most three builds waiting) and keeps a job in `commerce.page_ai_jobs` (kind `build`);
+  `runPageJobs()` runs it after the answer (`after()`) and from the every-minute job (`/api/cron/page-jobs`, scheduled by the migration), in
+  the name of who asked, who must still be able to change the site (`passMembership()` and `website:write`, or a platform admin). The build
+  is the page studio's own (`planPage()` then `buildDraft()`), saved as a new draft by `savePage()`; each picture is a job of its own
+  (kind `picture`), placed by the studio's `fillPicture()`, which now says when trying again would not help (`gone`, `final`). Three tries,
+  then `failed` with the reason; a store's jobs wait while it is not open (`commerce.store_is_active()`), and a demo store's pages are built
+  from Pages, Create with AI. Done jobs go after 30 days (`prunePageJobs()`, the daily job). `list_page_builds` says how far each is.
+- **Changing a page.** `edit_page` makes its changes in order on the page's draft (`set_text` by `mapTexts()`'s key, a rich text from
+  paragraphs and lists, links only to the site's own addresses; `replace`; `add_section` in one of the studio's designs; `remove_row`;
+  `move_row`) and saves them together with `savePage()`, so `pageInput` checks them and a version is kept (D305). Everything is tried on the
+  page first (`dryRunEdits()`) so a key that is not there or a claim refuses the call before the model writes a section. A section is
+  written by the studio's writer (`sectionForPage()`) in a plan of the page's rows around it, named by their headings; an opening goes only
+  first; at most three sections a call. Texts in a part shared with other pages (a global part) are left to the builder (`sharedTextKeys()`),
+  since a page's save puts a global's words back. A live page is unchanged until it is published.
+- **Publishing.** `publish_page` (gated `public`, checked first) is refused while the page has a blocking accessibility issue (until unit B
+  the AI manager never acknowledges one: the owner can publish past it in the builder) or is in a running A/B test.
+- **Places, menus, the header and footer.** `set_page_place` goes through `setFrontPage()`, `setProductsPage()` and `setPageRole()` (Kaizena
+  Flow's front page, blog and 404 page through `setPlatformPageRole()`); `save_menu` through `saveStoreMenu()` or `savePlatformMenu()`, the
+  menu replaced whole, an item's mega menu and picture kept where its link stays; `set_header_footer` through `saveNavigation()` or
+  `savePlatformNavigation()` (its business details passed back as they are), anything left out kept, a logo only from the site's own media
+  library. A store's menu link into another store (its `/s/` address, its host on the store domain, or a domain of its own) is refused.
+  `save_menu` waits for a yes only while the menu is shown (the standard header or footer, or a published page; `menuGateNeeded()`), so a
+  new menu is made at once.
+- **Gates on the platform.** The platform's AI manager used to keep every gated call for a yes; now `platformGateNeeded()` and
+  `preflightPlatformTool()` (`src/server/manager-tools.ts`) do for Kaizena Flow's site what `gateNeeded()` and `preflightOwnerTool()` do for
+  a store.
+- **Audit.** `store.assistant.{tool}` and `platform.assistant.{tool}`, area `website`, besides the savers' own entries (`page_ai_built`,
+  `page_saved`, `menu_updated`, `navigation_updated`, …).
+- **Tests.** `src/lib/site-tools.test.ts` (outline, edits, shared texts, menus, other stores, words) and `src/server/site-tools.int.test.ts`
+  (a page built from a brief by the real studio with the model played by code: a valid draft with the brief's facts and no claims, its
+  picture placed after; an edit keeps the rest of the page and keeps a version; a section added between rows; publishing with a blocking
+  issue refused, then allowed once fixed; another store's page never found; a menu link into another store refused; a new menu at once and
+  a shown one waiting; places; a legal page the owner's; the same on Kaizena Flow's own site, for an admin only).
+
 ## 5. Unit A3 (D308): setup tools
 
 `set_store_details` (`saveStoreDetails()`), `set_countries` (`setMarkets()`), `set_languages` and `set_currencies` (D109's savers),

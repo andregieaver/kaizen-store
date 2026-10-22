@@ -70,6 +70,7 @@ vi.mock("./ai-pictures", async (importOriginal) => ({
 
 const ownerTools = await import("./owner-tools");
 const siteTools = await import("./site-tools");
+const managerTools = await import("./manager-tools");
 const { getPageForEdit, savePage } = await import("./pages");
 const { newStore } = await import("./inventory-test-support");
 const { findClaims } = await import("@/lib/claims");
@@ -336,5 +337,78 @@ describe("set_page_place, save_menu and set_header_footer", () => {
   it("leaves a legal page to the owner", async () => {
     const staff = { ...ctxOf(store), holder: { role: "admin" as const, permissions: ["website:read", "website:write"] } };
     expect(await refusal(ownerTools.preflightOwnerTool(staff, "set_page_place", { place: "terms", page: "our-kitchen" }))).toContain("Only the store's owner");
+  });
+});
+
+describe("Kaizena Flow's own site", () => {
+  let admin: { id: string; email: string; name: string | null; platformAdmin: boolean };
+  let before: Row;
+  const platform = (account = admin) => ({ account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate: (tag: string) => void tags.push(tag) }) as never;
+  const runPlatform = (name: string, input: unknown, account = admin) => managerTools.runPlatformTool(platform(account), name, input) as Promise<Answer>;
+
+  beforeAll(async () => {
+    const email = `site-admin-${Date.now().toString(36)}@example.com`;
+    const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${email}, 'Admin', true) returning id`);
+    admin = { id: String(row.id), email, name: "Admin", platformAdmin: true };
+    [before] = await db().execute<Row>(sql`select navigation, header_menu_id, footer_menu_id from commerce.platform_settings`);
+  });
+
+  afterAll(async () => {
+    // Kaizena Flow's header and footer are the whole test database's: they are put back as they were.
+    await db().execute(sql`
+      update commerce.platform_settings set navigation = ${JSON.stringify(before.navigation ?? null)}::jsonb,
+        header_menu_id = ${before.header_menu_id ? String(before.header_menu_id) : null}::uuid, footer_menu_id = ${before.footer_menu_id ? String(before.footer_menu_id) : null}::uuid
+    `);
+  });
+
+  it("builds, changes and publishes one of Kaizena Flow's own pages, in the admin's name and only for an admin", async () => {
+    expect(await refusal(runPlatform("build_page", { title: "x", purpose: "x" }, { ...admin, platformAdmin: false }))).toBe("Only platform admins can do this.");
+    const started = await runPlatform("build_page", { title: "Catering", purpose: "Tell stores we cater their launch", facts: [fake.FACT], pictures: false });
+    for (let round = 0; round < 5; round++) {
+      const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.page_ai_jobs where store_id is null and status = 'waiting'`);
+      if (Number(left.n) === 0) break;
+      await siteTools.runPageJobs(Date.now() + 20_000);
+      await db().execute(sql`update commerce.page_ai_jobs set claimed_until = null where store_id is null and status = 'waiting'`);
+    }
+    const builds = await runPlatform("list_page_builds", {});
+    const build = builds.builds.find((b: Answer) => b.build === started.building);
+    expect(build).toMatchObject({ state: "built as a draft" });
+    expect(build.editor).toBe(`/admin/platform/pages/${build.page}`);
+    const [page] = await db().execute<Row>(sql`select store_id, published_at from commerce.pages where id = ${build.page}::uuid`);
+    expect(page).toMatchObject({ store_id: null, published_at: null });
+
+    const read = await runPlatform("get_page", { page: build.page });
+    const opening = read.rows[0].texts.find((t: Answer) => t.text === "Lunch for your team");
+    await runPlatform("edit_page", { page: build.page, changes: [{ do: "set_text", key: opening.key, text: "Lunch for your launch" }] });
+    expect(await managerTools.platformGateNeeded("publish_page", { page: build.page })).toBe(true);
+    await managerTools.preflightPlatformTool(platform(), "publish_page", { page: build.page });
+    expect((await runPlatform("publish_page", { page: build.page })).done).toBe('"Catering" is published.');
+    expect(tags).toContain("platform-pages");
+    const [entry] = await db().execute<Row>(sql`
+      select area from commerce.audit_log where store_id is null and action = 'platform.assistant.publish_page' and account_id = ${admin.id}::uuid
+    `);
+    expect(entry?.area).toBe("website");
+  }, 60_000);
+
+  it("makes one of its menus at once, puts it in the standard header on a yes, and then a change waits", async () => {
+    const pages = await runPlatform("list_pages", {});
+    const catering = pages.pages.find((p: Answer) => p.title === "Catering" && p.state === "published");
+    const name = `AI menu ${Date.now().toString(36)}`;
+    expect(await managerTools.platformGateNeeded("save_menu", { name, items: [] })).toBe(false);
+    const made = await runPlatform("save_menu", { name, items: [{ text: "Start", link: { kind: "signUp" } }, { text: "Catering", link: { kind: "page", pageId: catering.id } }] });
+    expect(made.done).toContain(`Made the menu "${name}" with 2 links.`);
+    // A link into a store is a store's own business: Kaizena Flow's menus may show stores.
+    await runPlatform("save_menu", { menu: name, items: [{ text: "A store", link: { kind: "url", url: `/s/${store.slug}` } }] });
+
+    expect(await managerTools.platformGateNeeded("set_header_footer", { header_menu: name })).toBe(true);
+    await runPlatform("set_header_footer", { header_menu: name });
+    const [row] = await db().execute<Row>(sql`select header_menu_id from commerce.platform_settings`);
+    expect(String(row.header_menu_id)).toBe(made.menu);
+    expect(await managerTools.platformGateNeeded("save_menu", { menu: name, items: [] })).toBe(true);
+  });
+
+  it("chooses its front page, blog or 404 page only, from published pages", async () => {
+    expect(await refusal(managerTools.preflightPlatformTool(platform(), "set_page_place", { place: "front", page: "nowhere" }))).toContain("No page");
+    expect(await refusal(runPlatform("set_page_place", { place: "themes", page: null }))).toContain("could not be read");
   });
 });

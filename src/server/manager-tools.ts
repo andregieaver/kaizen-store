@@ -36,6 +36,20 @@ import { getReferralSettings, listReferrers, referralTotals, referrerOverview, R
 import { approveAccessRequest, declineAccessRequest, listAccessRequests } from "./platform";
 import { getPlatformCustomer, listPlatformCustomers } from "./platform-customers";
 import { explainAbTest, listAbTests } from "./platform-experiment-tools";
+import { listPages } from "./pages";
+import {
+  buildPageTool,
+  editPageTool,
+  getMenusTool,
+  getPageTool,
+  listPageBuildsTool,
+  platformSiteGateNeeded,
+  preflightPlatformSiteTool,
+  publishPageTool,
+  saveMenuTool,
+  setHeaderFooterTool,
+  setPagePlaceTool,
+} from "./site-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
 
@@ -446,7 +460,22 @@ async function setReferralProgram(ctx: ManagerContext, input: PlatformToolInput<
   return { done: `The referral program is ${after.enabled ? "on" : "off"}: ${percent(after.commissionBps)} for ${after.months} months, credit usable after ${after.pendingDays} days.` };
 }
 
+/** Kaizena Flow's own site for the website tools (D308 A2c): its pages, menus, header and footer, with no store. */
+const ownSite = (ctx: ManagerContext) => ({ account: ctx.account, store: null, invalidate: ctx.invalidate });
+
 const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
+  list_pages: async (_ctx: ManagerContext, { type }: PlatformToolInput<"list_pages">) => ({
+    pages: (await listPages(null, type)).map((p) => ({ id: p.id, title: p.title, address: p.slug, state: p.state, published: p.publishedAt })),
+  }),
+  get_page: (ctx: ManagerContext, input: PlatformToolInput<"get_page">) => getPageTool(ownSite(ctx), input),
+  list_page_builds: (ctx: ManagerContext, input: PlatformToolInput<"list_page_builds">) => listPageBuildsTool(ownSite(ctx), input),
+  build_page: (ctx: ManagerContext, input: PlatformToolInput<"build_page">) => buildPageTool(ownSite(ctx), input),
+  edit_page: (ctx: ManagerContext, input: PlatformToolInput<"edit_page">) => editPageTool(ownSite(ctx), input),
+  publish_page: (ctx: ManagerContext, input: PlatformToolInput<"publish_page">) => publishPageTool(ownSite(ctx), input),
+  get_menus: (ctx: ManagerContext) => getMenusTool(ownSite(ctx)),
+  set_header_footer: (ctx: ManagerContext, input: PlatformToolInput<"set_header_footer">) => setHeaderFooterTool(ownSite(ctx), input),
+  set_page_place: (ctx: ManagerContext, input: PlatformToolInput<"set_page_place">) => setPagePlaceTool(ownSite(ctx), input),
+  save_menu: (ctx: ManagerContext, input: PlatformToolInput<"save_menu">) => saveMenuTool(ownSite(ctx), input),
   list_ab_tests: (_ctx: ManagerContext, input: PlatformToolInput<"list_ab_tests">) => listAbTests(input),
   explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,
@@ -473,5 +502,25 @@ export async function runPlatformTool(ctx: ManagerContext, name: string, raw: un
   if (!tool) return fail(`There is no tool called ${name}.`);
   const input = readToolInput(tool, raw);
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
-  return PLATFORM_HANDLERS[name as PlatformToolName](ctx, input.input as never);
+  const result = await PLATFORM_HANDLERS[name as PlatformToolName](ctx, input.input as never);
+  // Kaizena Flow's own site changed by the AI manager (D308): written down as a store's are, in the Website area.
+  if (SITE_CHANGES.has(name)) await audit(ctx.account.id, null, `platform.assistant.${name}`, { args: input.input as Record<string, unknown> }, { area: "website" });
+  return result;
+}
+
+const SITE_CHANGES = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer"]);
+
+/** Whether a platform tool's call needs the admin's yes: a site tool asks its own rule (a menu only while shown), the rest always. */
+export async function platformGateNeeded(name: string, raw: unknown): Promise<boolean> {
+  return SITE_CHANGES.has(name) ? platformSiteGateNeeded(name, raw) : true;
+}
+
+/** Checks a gated platform call before it is kept for a yes, so the admin is never asked to approve what could not be done. */
+export async function preflightPlatformTool(ctx: ManagerContext, name: string, raw: unknown): Promise<void> {
+  if (!ctx.account.platformAdmin) return fail("Only platform admins can do this.");
+  if (!SITE_CHANGES.has(name)) return;
+  const tool = PLATFORM_TOOLS_BY_NAME[name];
+  const input = tool ? readToolInput(tool, raw) : null;
+  if (!input?.ok) return fail(`The arguments could not be read: ${input?.problem ?? "unknown tool"}`);
+  await preflightPlatformSiteTool(ownSite(ctx), name, input.input);
 }

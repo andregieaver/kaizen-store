@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { findClaims } from "./claims";
 import { LEGAL_ROLES, LEGAL_ROLE_COPY, isLegalRole } from "./legal-roles";
-import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, menuLinkSchema, type MenuEntry } from "./navigation";
+import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, menuLinkSchema, platformMenuLinkSchema, type AnyMenuLink, type MegaMenu, type MenuPicture } from "./navigation";
+import { PLATFORM_ROLE_COPY, SPECIAL_ROLES, type SpecialRole } from "./platform-roles";
 import { PAGE_JOB_STATUSES } from "./page-jobs";
 import { PATTERNS, pageBrief, type PageBrief, type PatternKey } from "./page-ai";
 import { ROWS_MAX, pageBlocks, richTextPlain, type PageContent, type PageRow, type PageText } from "./page-content";
@@ -353,22 +354,51 @@ export const setPagePlaceInput = z.object({
 
 export const getMenusInput = z.object({});
 
-/** A menu link as the menu editor saves it (`menuLinkSchema`): the site's own pages, products, categories, tags and links, or a web address. */
-const menuItemInput = z.object({
-  text: z.string().trim().max(LABEL_MAX).default("").describe("Its words in the site's main language (a product link may leave it empty for the product's title)."),
-  texts: z.record(z.string(), z.string().trim().max(LABEL_MAX)).default({}).describe("Its words in the site's other languages, by language code."),
-  link: menuLinkSchema.describe("Where it goes: home, products (All products), account, cart, blog, a page or article by its address (slug), a product by its handle, a category or tag by its slug, or a web address (url)."),
-  depth: z.number().int().min(0).max(MENU_MAX_DEPTH).default(0).describe(`How deep under the link before it (0 at the top, at most ${MENU_MAX_DEPTH}).`),
-  new_tab: z.boolean().default(false),
-});
-export type MenuItemArgs = z.output<typeof menuItemInput>;
+/** A menu item: its words and where it goes, as the menu editor saves the link (`menuLinkSchema`, or Kaizena Flow's `platformMenuLinkSchema`). */
+const menuItemInput = <L extends z.ZodType<AnyMenuLink>>(link: L, where: string) =>
+  z.object({
+    text: z.string().trim().max(LABEL_MAX).default("").describe("Its words in the site's main language (a product link may leave it empty for the product's title)."),
+    texts: z.record(z.string(), z.string().trim().max(LABEL_MAX)).default({}).describe("Its words in the site's other languages, by language code."),
+    link: link.describe(where),
+    depth: z.number().int().min(0).max(MENU_MAX_DEPTH).default(0).describe(`How deep under the link before it (0 at the top, at most ${MENU_MAX_DEPTH}).`),
+    new_tab: z.boolean().default(false),
+  });
 
-export const saveMenuInput = z.object({
-  menu: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("The menu to change, by its id or name (get_menus); leave it out to make a new one."),
-  name: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("A new menu's name, or a new name for the menu."),
-  items: z.array(menuItemInput).max(MENU_MAX_ITEMS).describe("Every link of the menu in order, replacing the ones there."),
-});
+const menuArgs = <I extends z.ZodType>(item: I) =>
+  z.object({
+    menu: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("The menu to change, by its id or name (get_menus); leave it out to make a new one."),
+    name: z.string().trim().min(1).max(MENU_NAME_MAX).optional().describe("A new menu's name, or a new name for the menu."),
+    items: z.array(item).max(MENU_MAX_ITEMS).describe("Every link of the menu in order, replacing the ones there."),
+  });
+
+export const saveMenuInput = menuArgs(
+  menuItemInput(
+    menuLinkSchema,
+    "Where it goes: home, products (All products), account, cart, blog, a page or article by its address (slug), a product by its handle, a category or tag by its slug, or a web address (url).",
+  ),
+);
 export type SaveMenuArgs = z.output<typeof saveMenuInput>;
+
+/** Kaizena Flow's own menus (D85): its pages and articles by id (list_pages), its sign-up and sign-in. */
+export const savePlatformMenuInput = menuArgs(
+  menuItemInput(
+    platformMenuLinkSchema,
+    "Where it goes: home, signUp, signIn, blog, a page or article by its id (pageId, from list_pages), a category or tag by its slug, or a web address (url).",
+  ),
+);
+export type SavePlatformMenuArgs = z.output<typeof savePlatformMenuInput>;
+
+/** A menu item as the tools take it, for a store or Kaizena Flow. */
+export type MenuItemArgs<L extends AnyMenuLink = AnyMenuLink> = { text: string; texts: Record<string, string>; link: L; depth: number; new_tab: boolean };
+
+/** The places on Kaizena Flow's own site (D143): its front page, blog and 404 page (the theme store's are chosen from Themes, D285). */
+export const PLATFORM_PLACES = SPECIAL_ROLES;
+export const platformPlaceName = (place: SpecialRole) => PLATFORM_ROLE_COPY[place].name.toLowerCase();
+
+export const setPlatformPlaceInput = z.object({
+  place: z.enum(SPECIAL_ROLES).describe(`The place: ${SPECIAL_ROLES.map((place) => `${place} (${platformPlaceName(place)})`).join(", ")}.`),
+  page: z.string().trim().min(1).max(200).nullable().describe("A published page's id or address, or null for the standard one."),
+});
 
 export const setHeaderFooterInput = z.object({
   header_menu: z.string().trim().min(1).max(MENU_NAME_MAX).nullable().optional().describe("The menu the standard header shows, by id or name; null for none; left out to keep it."),
@@ -412,7 +442,11 @@ export function otherStoreAddress(url: string, own: string, storeDomain: string 
  * A menu's items as the menu editor saves them, from the tool's: the words in the main language and the others, and each existing item's
  * mega menu and picture kept where the same link is still there (the tool does not set them).
  */
-export function toMenuEntries(items: readonly MenuItemArgs[], mainLocale: string, before: readonly MenuEntry[]): MenuEntry[] {
+export function toMenuEntries<L extends AnyMenuLink>(
+  items: readonly MenuItemArgs<L>[],
+  mainLocale: string,
+  before: readonly { link: L; mega?: MegaMenu; image?: MenuPicture }[],
+): { label: Record<string, string>; link: L; depth: number; newTab?: true; mega?: MegaMenu; image?: MenuPicture }[] {
   const kept = new Map(before.map((entry) => [JSON.stringify(entry.link), entry]));
   return items.map((item) => {
     const previous = kept.get(JSON.stringify(item.link));
@@ -443,8 +477,13 @@ export function menuSummary(name: string, items: readonly MenuItemArgs[], isNew:
 }
 
 /** A link in a few words, where an item has none of its own. */
-function linkWords(link: MenuItemArgs["link"]): string {
+function linkWords(link: AnyMenuLink): string {
+  if ("pageId" in link) return `the ${link.kind} ${link.pageId}`;
   switch (link.kind) {
+    case "signUp":
+      return "Start a store";
+    case "signIn":
+      return "Sign in";
     case "home":
       return "the front page";
     case "products":
@@ -470,8 +509,8 @@ function linkWords(link: MenuItemArgs["link"]): string {
 }
 
 /** A place change in words, for the owner's approval. */
-export function placeSummary(place: StorePlace, title: string | null): string {
-  return title ? `Show the page "${title}" as the ${placeName(place)}.` : `Show the standard ${placeName(place)} again.`;
+export function placeSummary(place: StorePlace, title: string | null, name: string = placeName(place)): string {
+  return title ? `Show the page "${title}" as the ${name}.` : `Show the standard ${name} again.`;
 }
 
 /** A header and footer change in words, for the owner's approval, from the names the server found. */

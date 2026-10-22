@@ -12,7 +12,7 @@ import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type Tool
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
-import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
+import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
@@ -543,14 +543,15 @@ async function callTool(
   const manager = MANAGER_TOOLS_BY_NAME[name];
   const tool = (ctx.store ? OWNER_TOOLS_BY_NAME[name] : PLATFORM_TOOLS_BY_NAME[name]) ?? manager;
   if (!tool) return { error: `There is no tool called ${name}.` };
-  // A catalogue tool changes a draft at once and waits for a yes only while its product is on the site (D308, `gateNeeded()`).
-  if (tool.gate && (!ctx.store || manager || (await gateNeeded(ctx.store, name, args)))) {
+  // A catalogue tool changes a draft at once and waits for a yes only while its product is on the site, a menu only while it is shown (D308, `gateNeeded()`).
+  if (tool.gate && (manager || (ctx.store ? await gateNeeded(ctx.store, name, args) : await platformGateNeeded(name, args)))) {
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
-    if (ctx.store && !manager) {
+    if (!manager) {
       try {
-        await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
+        if (ctx.store) await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
+        else await preflightPlatformTool(ctx, name, args);
       } catch (error) {
         if (error instanceof OwnerToolError) return { error: error.message };
         console.error(`[ai-manager] ${name}`, error);
@@ -607,11 +608,12 @@ export async function keepForApproval(
     summary = (await productApprovalWords(store, tool, args)) ?? summary;
   }
   // A page's publish is described with the page's own title (D308).
+  // A site tool's call is described with the site's own pages, menus and logos (D308), a store's or Kaizena Flow's.
   const site = { account: ctx.account, store, invalidate: ctx.invalidate };
   if (tool === "publish_page") summary = await publishApprovalWords(site, args);
-  if (store && tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
-  if (store && tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
-  if (store && tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
+  if (tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
+  if (tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
+  if (tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
   if (store && tool === "unpublish_page") {
     const [page] = await db().execute<Row>(sql`
       select published ->> 'title' as title from commerce.pages where store_id = ${store.id}::uuid and id = ${String(args.page)}::uuid
