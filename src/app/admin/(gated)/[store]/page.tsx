@@ -103,7 +103,7 @@ export default async function AdminOverview({ params }: Props) {
       {/* Staff alerts that gave up after their tries (D238): the owner's to look at, read after the page is shown. */}
       {store.setupCompletedAt && selling && memberCan(current, "owner") && (
         <Suspense fallback={null}>
-          <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} />
+          <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} words={adminText(lang, "notifications")} />
         </Suspense>
       )}
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}

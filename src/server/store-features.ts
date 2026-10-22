@@ -6,17 +6,21 @@ import { db } from "@/db/client";
 import { homeMarket } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { planFeatureChanges, targetProblems } from "@/lib/onboarding";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import {
+  FEATURE_WORDS_EN,
   FEATURES_BY_ID,
   dependentsOf,
   featureBlockers,
   featureOn,
   featureWarnings,
   missingNeeds,
+  needWords,
   normaliseFeatures,
   type FeatureBlocker,
   type FeatureFacts,
   type FeatureId,
+  type FeatureWords,
 } from "@/lib/store-features";
 
 import { forgetStoreFacts } from "./redirect-resolve";
@@ -177,6 +181,11 @@ export type SetFeatureResult =
 export type SetFeatureOptions = {
   /** The owner has seen the warnings and confirmed: needed to switch off a feature with warnings. */
   confirmed?: boolean;
+  /**
+   * The words of the answer, in the account's language (D312 A8), and the locale its amounts are written in; English and the store's main
+   * language unless given, as the AI manager reads it.
+   */
+  words?: { features: FeatureWords; locale: string };
 };
 
 /**
@@ -185,11 +194,13 @@ export type SetFeatureOptions = {
  * facts are counted and the change is written, so a subscription started a second ago cannot slip past. Audited as `store.feature`.
  */
 export async function setFeature(member: Membership, id: FeatureId, on: boolean, options: SetFeatureOptions = {}): Promise<SetFeatureResult> {
-  if (!memberCan(member, "owner")) return { ok: false, problems: ["Only an owner can switch features on or off."] };
+  const w = options.words?.features ?? FEATURE_WORDS_EN;
+  if (!memberCan(member, "owner")) return { ok: false, problems: [w.s.actions.onlyOwners] };
   const feature = FEATURES_BY_ID[id];
-  if (!feature) return { ok: false, problems: ["There is no such feature."] };
+  if (!feature) return { ok: false, problems: [w.s.actions.noFeature] };
   const { store } = member;
-  const locale = homeMarket(store)?.locale ?? "en";
+  const locale = options.words?.locale ?? homeMarket(store)?.locale ?? "en";
+  const label = w.c.labels[id];
 
   const outcome = await db().transaction(async (tx): Promise<SetFeatureResult & { before?: FeatureId[] }> => {
     const [row] = await tx.execute<Row>(sql`select features from commerce.stores where id = ${store.id}::uuid for update`);
@@ -201,20 +212,20 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
     if (on) {
       const missing = missingNeeds(before, id);
       if (missing.length > 0) {
-        const labels = missing.map((need) => (need === "shop" ? "the online shop" : `the ${FEATURES_BY_ID[need].label.toLowerCase()}`));
-        return { ok: false, problems: [`${feature.label} needs ${labels.join(" and ")}. Switch ${missing.length === 1 ? "it" : "them"} on first.`] };
+        const labels = missing.map((need) => needWords(need, w.c));
+        return { ok: false, problems: [countWords(missing.length, w.s.actions.needs, { label, needs: labels.join(w.s.and) })] };
       }
     } else {
       const facts = await featureFacts(store.id, tx);
       // A feature that is kept on but asleep (its needs are off) touches no customer: nothing blocks putting its switch down.
       const live = featureOn(before, id);
-      const blockers = live ? featureBlockers(id, facts) : [];
-      const warnings = live ? featureWarnings(id, facts, before, moneyIn(locale)) : [];
+      const blockers = live ? featureBlockers(id, facts, w) : [];
+      const warnings = live ? featureWarnings(id, facts, before, moneyIn(locale), w) : [];
       if (blockers.length > 0) {
-        return { ok: false, problems: [`${feature.label} can't be switched off yet.`, ...blockers.map((b) => b.text)], blockers, warnings };
+        return { ok: false, problems: [fillWords(w.s.actions.cantYet, { label }), ...blockers.map((b) => b.text)], blockers, warnings };
       }
       if (warnings.length > 0 && !options.confirmed) {
-        return { ok: false, problems: ["Confirm to switch it off."], warnings, needsConfirmation: true };
+        return { ok: false, problems: [w.s.actions.confirm], warnings, needsConfirmation: true };
       }
     }
 

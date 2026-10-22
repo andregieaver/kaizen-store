@@ -7,6 +7,10 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { MethodEditor } from "@/components/admin/shipping/method-editor";
 import { chosenMarket } from "@/components/admin/shipping/shipping-parts";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { METHODS_MAX } from "@/lib/shipping-limits";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
@@ -22,6 +26,8 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const all = adminText(lang, "shipping");
   const isNew = methodId === "new";
   if (!isNew && !z.uuid().safeParse(methodId).success) notFound();
   const setup = await getShippingSetup(store.id);
@@ -34,14 +40,15 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
   const canWrite = memberCan(gated, "settings:write");
   const full = isNew && setup.methods.filter((m) => m.marketCode === market.code).length >= METHODS_MAX;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `${base}/methods?market=${market.code}`, label: `Methods in ${market.name}` }}
-        title={method ? method.name : "New shipping method"}
+        back={{ href: `${base}/methods?market=${market.code}`, label: fillWords(all.pages.methodsIn, { market: market.name }) }}
+        title={method ? method.name : all.pages.newMethod}
         meta={[market.name, method?.currency ?? market.nativeCurrency]}
       />
       {full ? (
-        <p className="text-sm text-muted">{market.name} has {METHODS_MAX} methods, the most a country can have. Delete one to add another.</p>
+        <p className="text-sm text-muted">{fillWords(all.pages.methodsFull, { market: market.name, max: METHODS_MAX })}</p>
       ) : (
         <MethodEditor
           base={base}
@@ -57,10 +64,11 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
         <DeleteDiscountButton
           action={deleteMethodAction.bind(null, store.slug, method.id, market.code)}
           code={method.name}
-          question={`Delete ${method.name}? Carts that chose it fall back to the cheapest other delivery.`}
-          label="Delete this method"
+          question={fillWords(all.pages.deleteMethodQuestion, { name: method.name })}
+          label={all.pages.deleteMethod}
         />
       )}
     </div>
+    </AdminTextScope>
   );
 }

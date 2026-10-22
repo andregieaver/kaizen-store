@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDeadline } from "@/lib/store-closure";
 import { signedInRecently } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
@@ -13,11 +16,15 @@ import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./action
 export const metadata: Metadata = { title: "Close store" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
-const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const day = (date: Date, locale: string) => date.toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** Closing the store, or what a store that is closed or suspended can still do (D171). Owners only. */
 export default async function CloseStorePage({ params }: PageProps<"/admin/[store]/settings/close">) {
-  const { store } = await requireOwnerRole((await params).store);
+  const member = await requireOwnerRole((await params).store);
+  const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const w = adminText(lang, "settings").close;
   const state = await storeState(store.id);
   if (!state) return null;
 
@@ -27,39 +34,35 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       <div className="flex max-w-2xl flex-col gap-6">
         <div>
           <PageHeader
-            title={<>{state.status === "closed" ? "This store is closed" : "This store is suspended"}</>}
-            description={<>{state.status === "closed" ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.` : "Kaizena Flow has paused it. It takes no orders and cannot be changed until Kaizena Flow reopens it."}</>}
+            title={<>{state.status === "closed" ? w.closedTitle : w.suspendedTitle}</>}
+            description={<>{state.status === "closed" ? w.closedText : w.suspendedText}</>}
           />
-          {state.reason && <p className="mt-2 text-sm">Reason given: {state.reason}</p>}
+          {state.reason && <p className="mt-2 text-sm">{fillWords(w.reason, { reason: state.reason })}</p>}
         </div>
         {state.status === "closed" && state.closedAt && (
           <p className="text-sm">
-            {mayReopen
-              ? `You can reopen the store until ${day(reopenDeadline(state.closedAt))}. After that, ask Kaizena Flow.`
-              : `The thirty days for reopening ended ${day(reopenDeadline(state.closedAt))}. Ask Kaizena Flow to reopen the store.`}
+            {fillWords(mayReopen ? w.mayReopen : w.reopenEnded, { date: day(reopenDeadline(state.closedAt), locale) })}
           </p>
         )}
         {mayReopen && (
-          <ActionForm action={reopenStoreAction.bind(null, store.slug)} className="flex flex-col gap-3" successMessage="The store is open again.">
-            <p className="text-sm text-muted">
-              Reopening starts sales again. Its own domains were released when it closed: add them again under Domains. If its Kaizena Flow plan has ended, choose a plan under Billing.
-            </p>
+          <ActionForm action={reopenStoreAction.bind(null, store.slug)} className="flex flex-col gap-3" successMessage={w.reopened}>
+            <p className="text-sm text-muted">{w.reopenText}</p>
             <div>
-              <SubmitButton>Reopen the store</SubmitButton>
+              <SubmitButton>{w.reopen}</SubmitButton>
             </div>
           </ActionForm>
         )}
         <p className="text-sm">
           <Link href={`/admin/${store.slug}/orders`} className="underline underline-offset-2">
-            Orders
+            {w.orders}
           </Link>{" "}
           ·{" "}
           <Link href={`/admin/${store.slug}/invoices`} className="underline underline-offset-2">
-            Invoices
+            {w.invoices}
           </Link>{" "}
           ·{" "}
           <Link href={`/admin/${store.slug}/customers`} className="underline underline-offset-2">
-            Customers
+            {w.customers}
           </Link>
         </p>
       </div>
@@ -67,20 +70,17 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   }
 
   const obligations = await storeObligations(store.id);
-  const blockers = closureBlockers(obligations);
-  const warnings = closureWarnings(obligations);
+  const blockers = closureBlockers(obligations, w);
+  const warnings = closureWarnings(obligations, w);
   const fresh = await signedInRecently();
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <PageHeader
-        title="Close store"
-        description={<>Closing stops sales and takes the shop off the web. Nothing is deleted: orders, invoices and customer data stay here for you to read and download, kept for the bookkeeping period of the seller&apos;s country and then made anonymous. You can reopen the store yourself for {REOPEN_DAYS} days.</>}
-      />
+      <PageHeader title={w.title} description={<>{fillWords(w.description, { days: REOPEN_DAYS })}</>} />
 
       {blockers.length > 0 && (
         <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
           <h2 id="blockers" className="text-title text-ink">
-            Before you can close it
+            {w.before}
           </h2>
           <ul className="list-disc pl-5 text-sm">
             {blockers.map((b) => (
@@ -92,7 +92,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
 
       <section aria-labelledby="warnings" className="flex flex-col gap-2">
         <h2 id="warnings" className="text-title text-ink">
-          What closing does
+          {w.what}
         </h2>
         <ul className="list-disc pl-5 text-sm text-muted">
           {warnings.map((w) => (
@@ -104,26 +104,38 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       {blockers.length === 0 && !fresh && (
         <section aria-labelledby="signin" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
           <h2 id="signin" className="text-title text-ink">
-            Sign in again first
+            {w.signInTitle}
           </h2>
-          <p className="text-sm text-muted">Closing a store needs a sign-in from the last ten minutes. You come back to this page afterwards.</p>
+          <p className="text-sm text-muted">{w.signInText}</p>
           <form action={signInAgainAction.bind(null, store.slug)}>
-            <SubmitButton>Sign in again</SubmitButton>
+            <SubmitButton>{w.signIn}</SubmitButton>
           </form>
         </section>
       )}
 
       {blockers.length === 0 && fresh && (
-        <ActionForm action={closeStoreAction.bind(null, store.slug)} className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`} successMessage="The store is closed.">
+        <ActionForm action={closeStoreAction.bind(null, store.slug)} className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`} successMessage={w.closed}>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Type the store&apos;s address, <span className="font-mono">{store.slug}</span>, to confirm
+            <Confirm text={w.confirm} slug={store.slug} />
             <input name="address" required autoComplete="off" spellCheck={false} className={control} />
           </label>
           <div>
-            <SubmitButton>Close {store.name}</SubmitButton>
+            <SubmitButton>{fillWords(w.closeNamed, { name: store.name })}</SubmitButton>
           </div>
         </ActionForm>
       )}
     </div>
+  );
+}
+
+/** "Type the store's address, {address}, to confirm", with the address in code type. */
+function Confirm({ text, slug }: { text: string; slug: string }) {
+  const [before, after = ""] = text.split("{address}");
+  return (
+    <span>
+      {before}
+      <span className="font-mono">{slug}</span>
+      {after}
+    </span>
   );
 }

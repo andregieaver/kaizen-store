@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
-import { KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
@@ -17,44 +19,45 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 
 /** A new store or pickup point (D40). */
 export default async function NewPlacePage({ params, searchParams }: PageProps<"/admin/[store]/settings/company/places/new">) {
-  const { store } = await requirePermission((await params).store, "settings:read");
+  const member = await requirePermission((await params).store, "settings:read");
+  const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "settings");
+  const w = all.company;
   const kind = (await searchParams).kind === "pickup" ? "pickup" : "shop";
   const countries = await listCountries();
-  const what = kind === "shop" ? "store" : "pickup point";
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: `/admin/${store.slug}/settings/company`, label: "Company" }}
-        title={<>Add a {what}</>}
-        description={<>{kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}</>}
-      />
+      <PageHeader back={{ href: `/admin/${store.slug}/settings/company`, label: w.title }} title={<>{w.addTitle[kind]}</>} description={<>{w.addText[kind]}</>} />
       <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
         <input type="hidden" name="kind" value={kind} />
         <div className={field}>
-          <label htmlFor="place-name">Name</label>
+          <label htmlFor="place-name">{w.name}</label>
           <input
             id="place-name"
             name="name"
             required
             maxLength={80}
             aria-describedby="place-name-hint"
-            placeholder={kind === "shop" ? "The shop on Grünerløkka" : "Post i Butikk, Rema 1000 Torshov"}
+            placeholder={w.namePlaceholder[kind]}
             className={control}
           />
           <p id="place-name-hint" className="font-normal text-muted">
-            What shoppers see, such as the street or the shop it is in.
+            {w.nameHint}
           </p>
         </div>
-        <PlaceFields place={null} countries={countries} defaultCountry={store.details.country ?? "NO"} what={`the ${what}`} />
+        <PlaceFields place={null} countries={countries} defaultCountry={store.details.country ?? "NO"} what={w.the[kind]} w={all} />
         <div className="border-t border-line pt-4">
-          <h2 className="mb-3 text-title text-ink">Opening hours</h2>
+          <h2 className="mb-3 text-title text-ink">{w.openingHours}</h2>
           <HoursEditor name="hours" initial={null} optional />
         </div>
         <div>
-          <SubmitButton>Add {KIND_LABELS[kind].toLowerCase()}</SubmitButton>
+          <SubmitButton>{w.addKind[kind]}</SubmitButton>
         </div>
       </ActionForm>
     </div>
+    </AdminTextScope>
   );
 }

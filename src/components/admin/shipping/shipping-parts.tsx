@@ -5,10 +5,21 @@ import Link from "next/link";
  * marked. Presentational.
  */
 
-export function MarketTabs({ href, markets, current }: { href: (code: string) => string; markets: readonly { code: string; name: string }[]; current: string }) {
+export function MarketTabs({
+  href,
+  markets,
+  current,
+  label = "Countries",
+}: {
+  href: (code: string) => string;
+  markets: readonly { code: string; name: string }[];
+  current: string;
+  /** The row's name in the admin's language (D312 A8). */
+  label?: string;
+}) {
   if (markets.length < 2) return null;
   return (
-    <nav aria-label="Countries" className="flex flex-wrap gap-2">
+    <nav aria-label={label} className="flex flex-wrap gap-2">
       {markets.map((m) => (
         <Link
           key={m.code}

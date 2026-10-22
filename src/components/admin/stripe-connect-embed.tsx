@@ -13,6 +13,8 @@ import { useState, useTransition } from "react";
 import type { AccountStage } from "@/lib/stripe-account";
 import { showsDark } from "@/lib/color-mode";
 
+import { useAdminText } from "./admin-text";
+
 /**
  * Server actions already bound to the account: a store's (the owner's) or a
  * host's own (D71).
@@ -36,6 +38,7 @@ export default function StripeConnectEmbed({
   publishableKey: string;
   stage: AccountStage;
 }) {
+  const w = useAdminText("payments").stripe;
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [managing, setManaging] = useState(false);
@@ -89,7 +92,7 @@ export default function StripeConnectEmbed({
                 aria-expanded={managing}
                 className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm"
               >
-                {managing ? "Hide account details" : "Business and bank details"}
+                {managing ? w.hideDetails : w.details}
               </button>
             </div>
             {managing && <ConnectAccountManagement />}
@@ -98,9 +101,7 @@ export default function StripeConnectEmbed({
           <>
             <ConnectAccountOnboarding onExit={refresh} />
             <p className="text-sm text-muted" aria-live="polite">
-              {refreshing
-                ? "Checking your account with Stripe …"
-                : "Stripe saves your answers as you go, so you can finish later."}
+              {refreshing ? w.checking : w.saves}
             </p>
           </>
         )}

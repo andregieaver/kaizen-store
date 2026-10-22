@@ -7,6 +7,7 @@
  * Nothing here is legal or tax advice; the admin's English warnings (`TAX_WARNINGS`) are written for an accountant's
  * eyes and *need review*.
  */
+import { taxEn, type TaxMessages } from "./admin-messages/tax.en";
 import { organisationNumber } from "./b2b";
 import { IOSS_NUMBER, normaliseIossNumber, normaliseOssNumber } from "./ioss";
 import type { VatTreatmentInput } from "./vat-treatment";
@@ -15,17 +16,7 @@ import { isEuMemberCountry, normaliseVatNumber, vatPrefixOf } from "./vat-number
 export const OSS_SCHEMES = ["none", "union", "non_union"] as const;
 export type OssScheme = (typeof OSS_SCHEMES)[number];
 
-export const OSS_SCHEME_LABELS: Record<OssScheme, { label: string; hint: string }> = {
-  none: { label: "Not registered for OSS", hint: "The store is not in the One Stop Shop." },
-  union: {
-    label: "Union scheme",
-    hint: "An EU store registered in one member state, declaring VAT for distance sales to the other member states there.",
-  },
-  non_union: {
-    label: "Non-Union scheme",
-    hint: "A store outside the EU registered in a member state for services to private buyers in the EU (an EU number).",
-  },
-};
+export const OSS_SCHEME_LABELS: Record<OssScheme, { label: string; hint: string }> = taxEn.schemes;
 
 /** What the table holds, as the server reads it (dates as `yyyy-mm-dd`, times as ISO strings). */
 export type TaxProfile = {
@@ -293,63 +284,53 @@ export type ReadinessLine = {
   text: string;
 };
 
-const line = (key: ReadinessKey, name: string, onText: string, needs: string[]): ReadinessLine => ({
+const line = (w: TaxMessages["readiness"], key: ReadinessKey, needs: string[]): ReadinessLine => ({
   key,
   on: needs.length === 0,
   needs,
-  text: needs.length === 0 ? `${name}: on. ${onText}` : `${name}: off. Needs ${needs.join(", ")}.`,
+  text:
+    needs.length === 0
+      ? w.lineOn.replace("{name}", w.names[key]).replace("{text}", w.onText[key])
+      : w.lineOff.replace("{name}", w.names[key]).replace("{needs}", needs.join(w.joiner)),
 });
 
-/** One line per thing the tax screen says is on or off, under the form. */
-export function readiness(profile: TaxProfile, storeCountry: string | null): ReadinessLine[] {
+/** One line per thing the tax screen says is on or off, under the form, in `words` (English, as the AI manager reads it, unless given). */
+export function readiness(profile: TaxProfile, storeCountry: string | null, words: TaxMessages["readiness"] = taxEn.readiness): ReadinessLine[] {
   const lines: ReadinessLine[] = [];
+  const n = words.needs;
 
   const vatNeeds: string[] = [];
-  if (!profile.vatRegistered) vatNeeds.push("registration for VAT to be switched on");
-  else if (!profile.vatNumber) vatNeeds.push("a VAT number");
-  lines.push(line("vat", "VAT registration", "The store's VAT number is shown on its documents.", vatNeeds));
+  if (!profile.vatRegistered) vatNeeds.push(n.vatSwitch);
+  else if (!profile.vatNumber) vatNeeds.push(n.vatNumber);
+  lines.push(line(words, "vat", vatNeeds));
 
   const reverseNeeds: string[] = [];
   if (!isEuMemberCountry(storeCountry)) {
-    reverseNeeds.push("a store established in an EU member state (a store outside the EU never uses reverse charge)");
+    reverseNeeds.push(n.euStore);
   } else {
-    if (!profile.vatRegistered) reverseNeeds.push("registration for VAT");
-    if (!profile.vatNumber) reverseNeeds.push("a VAT number");
-    else if (profile.vatNumberValid !== true) reverseNeeds.push("a VAT number that has been checked valid");
+    if (!profile.vatRegistered) reverseNeeds.push(n.registration);
+    if (!profile.vatNumber) reverseNeeds.push(n.vatNumber);
+    else if (profile.vatNumberValid !== true) reverseNeeds.push(n.checkedNumber);
     // Goods sent from outside the EU are an import, not a supply to another member state (Directive 2006/112/EC Art. 138).
     if (!isEuMemberCountry(effectiveDispatch(profile, storeCountry))) {
-      reverseNeeds.push("goods sent from an EU country (goods sent from outside the EU are an import, so reverse charge is then used for downloads only)");
+      reverseNeeds.push(n.euDispatch);
     }
   }
-  lines.push(
-    line(
-      "reverse_charge",
-      "Reverse charge",
-      "A business in another EU country that gives a valid VAT number is not charged VAT on goods and downloads. Goods sent from the buyer's own country are charged VAT.",
-      reverseNeeds,
-    ),
-  );
+  lines.push(line(words, "reverse_charge", reverseNeeds));
 
   const ossNeeds: string[] = [];
-  if (profile.ossScheme === "none") ossNeeds.push("a scheme chosen, if the store is registered for OSS");
-  else if (profile.ossScheme === "union" && !profile.ossMemberState) ossNeeds.push("the member state of registration");
-  else if (profile.ossScheme === "non_union" && !profile.ossNumber) ossNeeds.push("the non-Union OSS number");
-  lines.push(line("oss", "OSS", "The registration is recorded. Destination VAT is charged as before; the returns are not made here.", ossNeeds));
+  if (profile.ossScheme === "none") ossNeeds.push(n.scheme);
+  else if (profile.ossScheme === "union" && !profile.ossMemberState) ossNeeds.push(n.memberState);
+  else if (profile.ossScheme === "non_union" && !profile.ossNumber) ossNeeds.push(n.ossNumber);
+  lines.push(line(words, "oss", ossNeeds));
 
   const iossNeeds: string[] = [];
-  if (!profile.iossNumber) iossNeeds.push("an IOSS number");
-  if (profile.iossMarkets.length === 0) iossNeeds.push("the markets it applies to");
+  if (!profile.iossNumber) iossNeeds.push(n.iossNumber);
+  if (profile.iossMarkets.length === 0) iossNeeds.push(n.iossMarkets);
   if (isEuMemberCountry(effectiveDispatch(profile, storeCountry)) && profile.iossNumber) {
-    iossNeeds.push("goods sent from outside the EU (IOSS is not used for goods sent from inside the EU)");
+    iossNeeds.push(n.outsideEu);
   }
-  lines.push(
-    line(
-      "ioss",
-      "IOSS",
-      "Orders of at most 150 EUR from outside the EU to those markets are marked with the IOSS number. Above 150 EUR they are not handled.",
-      iossNeeds,
-    ),
-  );
+  lines.push(line(words, "ioss", iossNeeds));
   return lines;
 }
 
@@ -377,10 +358,4 @@ export function checkupFindings(profile: TaxProfile): CheckupFinding[] {
 }
 
 /** The warnings the tax screen shows, in plain English for an accountant's eyes. Needs review. */
-export const TAX_WARNINGS: readonly string[] = [
-  "Destination VAT is charged on every consumer sale: the VAT of the buyer's country. The 10,000 EUR threshold and the origin-country rule are not applied. If the store is not registered for OSS or in that country, ask your accountant.",
-  "Reverse charge is off until the store's own VAT number has been checked valid. It is used only for goods and downloads sold to a business in another EU member state that gives a valid VAT number for the country the goods go to. Goods must be sent from an EU country other than the buyer's: goods sent from outside the EU, or from the buyer's own country, are charged VAT (downloads are not sent, so they do not depend on it). A store outside the EU never uses it.",
-  "A valid answer from VIES says that a number is registered. It does not say that the sale is exempt. You remain responsible.",
-  "IOSS marks orders of at most 150 EUR (goods that are shipped, without VAT and without shipping, in euro at the store's rate; downloads are not part of it) sent from outside the EU to a private buyer in a market listed here. Above 150 EUR the order is not an IOSS sale and the buyer may pay import VAT at the border. That case is not handled here.",
-  "Shipping is charged at the destination country's standard VAT rate unless the platform has verified another rule for the country.",
-];
+export const TAX_WARNINGS: readonly string[] = taxEn.warnings.items;

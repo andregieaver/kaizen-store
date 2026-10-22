@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { CARD_CLASS } from "@/components/admin/ui";
-import { ALERT_AREA_WORDS, ALERT_LABELS, STAFF_ALERT_EVENTS, WEEKDAYS, type StaffAlertEvent, type SummaryKind } from "@/lib/staff-alerts";
+import { fillWords } from "@/lib/admin-fill";
+import { STAFF_ALERT_EVENTS, type StaffAlertEvent, type SummaryKind } from "@/lib/staff-alerts";
 import type { StaffAlertsView } from "@/server/staff-alerts";
 
 export type StaffAlertsInput = {
@@ -32,6 +34,8 @@ const toggle = (list: StaffAlertEvent[], event: StaffAlertEvent, on: boolean) =>
 export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; save: (input: StaffAlertsInput) => Promise<Said>; test: (event: StaffAlertEvent) => Promise<Said> }) {
   const router = useRouter();
   const uid = useId();
+  const all = useAdminText("notifications");
+  const w = all.staff;
   const [members, setMembers] = useState(() => Object.fromEntries(view.members.map((m) => [m.accountId, m.events])) as Record<string, StaffAlertEvent[]>);
   const [contact, setContact] = useState<StaffAlertEvent[]>(view.contact?.events ?? []);
   const [summary, setSummary] = useState<SummaryKind>(view.summary);
@@ -62,30 +66,26 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
     <div className="flex flex-col gap-6">
       {!view.configured && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          These are the defaults, as nobody has saved this page yet: owners get new orders, return requests and low stock; overdue refunds go to the store&apos;s
-          contact address (to the owners when there is none); nobody gets the summary or the automation emails. Saving makes your choice the store&apos;s.
+          {w.defaults}
         </p>
       )}
 
       <section aria-labelledby={`${uid}-who`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-who`} className="text-title text-ink">
-          Who is emailed
+          {w.who}
         </h2>
-        <p className="text-sm text-muted">
-          Staff emails name the order or return, what was bought and a link to it. They never carry the customer&apos;s name, email address, phone number or
-          address. A box is offered only where the person&apos;s role may read what the email shows; a change to someone&apos;s role takes effect at once.
-        </p>
+        <p className="text-sm text-muted">{w.whoHint}</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem] text-left text-sm">
-            <caption className="sr-only">Recipients of each staff alert</caption>
+            <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className="py-2 pr-3 font-medium">
-                  Recipient
+                  {w.recipient}
                 </th>
                 {STAFF_ALERT_EVENTS.map((e) => (
                   <th key={e} scope="col" className="px-2 py-2 font-medium">
-                    {ALERT_LABELS[e]}
+                    {w.alerts[e]}
                   </th>
                 ))}
               </tr>
@@ -97,7 +97,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
                     <span className="block">{m.name ?? m.email}</span>
                     <span className="block text-xs text-muted">
                       {m.name ? `${m.email} · ` : ""}
-                      {m.owner ? "Owner" : "Staff"}
+                      {m.owner ? w.owner : w.member}
                     </span>
                   </th>
                   {STAFF_ALERT_EVENTS.map((e) => (
@@ -106,12 +106,12 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
                         <input
                           type="checkbox"
                           className="size-4"
-                          aria-label={`${ALERT_LABELS[e]} emails to ${m.name ?? m.email}`}
+                          aria-label={fillWords(w.checkbox, { alert: w.alerts[e], who: m.name ?? m.email })}
                           checked={(members[m.accountId] ?? []).includes(e)}
                           onChange={(ev) => setMembers((all) => ({ ...all, [m.accountId]: toggle(all[m.accountId] ?? [], e, ev.target.checked) }))}
                         />
                       ) : (
-                        <span className="text-xs text-muted">Needs {ALERT_AREA_WORDS[e]} access</span>
+                        <span className="text-xs text-muted">{fillWords(w.needs, { area: w.areas[e] })}</span>
                       )}
                     </td>
                   ))}
@@ -119,8 +119,8 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
               ))}
               <tr>
                 <th scope="row" className="py-2 pr-3 font-normal">
-                  <span className="block">The store&apos;s contact address</span>
-                  <span className="block text-xs text-muted">{view.contact ? view.contact.email : "None set: add one under Company"}</span>
+                  <span className="block">{w.contact}</span>
+                  <span className="block text-xs text-muted">{view.contact ? view.contact.email : w.contactNone}</span>
                 </th>
                 {STAFF_ALERT_EVENTS.map((e) => (
                   <td key={e} className="px-2 py-2">
@@ -128,7 +128,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
                       type="checkbox"
                       className="size-4"
                       disabled={!view.contact}
-                      aria-label={`${ALERT_LABELS[e]} emails to the store's contact address`}
+                      aria-label={fillWords(w.contactCheckbox, { alert: w.alerts[e] })}
                       checked={contact.includes(e)}
                       onChange={(ev) => setContact((list) => toggle(list, e, ev.target.checked))}
                     />
@@ -142,26 +142,23 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
 
       <section aria-labelledby={`${uid}-summary`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-summary`} className="text-title text-ink">
-          Summary
+          {w.summary}
         </h2>
-        <p className="text-sm text-muted">
-          Paid orders, net sales without VAT, refunds, returns, orders to send, low stock and support conversations waiting, sent to the people ticked under
-          Summary. The hour is the store&apos;s own time.
-        </p>
+        <p className="text-sm text-muted">{w.summaryHint}</p>
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            How often
+            {w.howOften}
             <select value={summary} onChange={(e) => setSummary(e.target.value as SummaryKind)} className={select}>
-              <option value="off">Off</option>
-              <option value="daily">Daily (yesterday)</option>
-              <option value="weekly">Weekly (the last seven days)</option>
+              <option value="off">{w.offChoice}</option>
+              <option value="daily">{w.daily}</option>
+              <option value="weekly">{w.weekly}</option>
             </select>
           </label>
           {summary === "weekly" && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Day
+              {w.day}
               <select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))} className={select}>
-                {WEEKDAYS.map((day, i) => (
+                {w.weekdays.map((day, i) => (
                   <option key={day} value={i + 1}>
                     {day}
                   </option>
@@ -171,7 +168,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
           )}
           {summary !== "off" && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Hour
+              {w.hour}
               <select value={hour} onChange={(e) => setHour(Number(e.target.value))} className={select}>
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={h}>
@@ -186,19 +183,19 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={submit} disabled={busy} className={mainPill}>
-          {busy ? "Working …" : "Save"}
+          {busy ? all.common.working : all.common.save}
         </button>
       </div>
 
       <section aria-labelledby={`${uid}-test`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-test`} className="text-title text-ink">
-          Send a test
+          {w.test}
         </h2>
-        <p className="text-sm text-muted">Each test goes to your own address with made-up figures, at most ten an hour.</p>
+        <p className="text-sm text-muted">{w.testHint}</p>
         <div className="flex flex-wrap gap-2">
           {(["new_order", "return_requested", "summary"] as const).map((e) => (
             <button key={e} type="button" onClick={() => sendTest(e)} disabled={busy} className={pill}>
-              Test: {ALERT_LABELS[e]}
+              {fillWords(w.testOne, { alert: w.alerts[e] })}
             </button>
           ))}
         </div>

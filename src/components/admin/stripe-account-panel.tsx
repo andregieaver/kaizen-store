@@ -1,18 +1,12 @@
 import { accountSessionAction, createStripeAccountAction, refreshStripeAccountAction } from "@/app/admin/(gated)/actions";
-import { accountStage, type AccountStage, type PaymentModeName } from "@/lib/stripe-account";
+import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
+import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 import type { StripeAccount } from "@/server/connect";
 import { platformPublishableKey } from "@/server/stripe";
 
 import { ActionForm, SubmitButton } from "./action-form";
 import { StripeConnect } from "./stripe-connect";
 import { CARD_CLASS } from "@/components/admin/ui";
-
-const STAGE_TEXT: Record<AccountStage, string> = {
-  not_started: "Not set up yet.",
-  needs_info: "Stripe needs a few more details before your store can take payments.",
-  in_review: "Stripe is checking your details. This usually takes minutes, sometimes a day or two.",
-  ready: "Ready: your store can take payments.",
-};
 
 /**
  * The store's own Stripe account for one mode: set it up, finish Stripe's
@@ -24,13 +18,17 @@ export function StripeAccountPanel({
   account,
   isOwner,
   title,
+  words = paymentsEn.stripe,
 }: {
   storeSlug: string;
   mode: PaymentModeName;
   account: StripeAccount | undefined;
   isOwner: boolean;
   title?: string;
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: PaymentsMessages["stripe"];
 }) {
+  const w = words;
   const stage = accountStage(account ?? null);
   const publishableKey = platformPublishableKey(mode);
   return (
@@ -40,34 +38,30 @@ export function StripeAccountPanel({
     >
       <div>
         <h2 id={`stripe-${mode}-heading`} className="text-title text-ink">
-          {title ?? (mode === "live" ? "Stripe account" : "Stripe test account")}
+          {title ?? (mode === "live" ? w.account : w.testAccount)}
         </h2>
         <p className="text-sm">
-          <span className="sr-only">Status: </span>
-          {STAGE_TEXT[stage]}
+          <span className="sr-only">{w.status}</span>
+          {w.stages[stage]}
         </p>
         {mode === "test" && (
           <p className="text-sm text-muted">
-            Test mode takes no real money. Stripe accepts{" "}
+            {w.testNote}{" "}
             <a href="https://docs.stripe.com/connect/testing" className="underline" target="_blank" rel="noreferrer">
-              test details
+              {w.testDetails}
             </a>{" "}
-            here, such as the verification code 000000.
+            {w.testNoteEnd}
           </p>
         )}
       </div>
 
       {!isOwner ? (
-        stage !== "ready" && <p className="text-sm text-muted">An owner of the store sets this up.</p>
+        stage !== "ready" && <p className="text-sm text-muted">{w.ownerSetsUp}</p>
       ) : stage === "not_started" ? (
-        <ActionForm action={createStripeAccountAction.bind(null, storeSlug)} successMessage="Account created.">
+        <ActionForm action={createStripeAccountAction.bind(null, storeSlug)} successMessage={w.created}>
           <input type="hidden" name="mode" value={mode} />
-          <p className="mb-3 text-sm text-muted">
-            Your store gets its own Stripe account: shoppers pay your business directly, and Stripe
-            pays out to your bank. Stripe asks who runs the business and where to send payouts; it
-            takes about ten minutes. Have your organisation number and bank account ready.
-          </p>
-          <SubmitButton>Set up Stripe</SubmitButton>
+          <p className="mb-3 text-sm text-muted">{w.setUpIntro}</p>
+          <SubmitButton>{w.setUp}</SubmitButton>
         </ActionForm>
       ) : publishableKey ? (
         <StripeConnect
@@ -79,7 +73,7 @@ export function StripeAccountPanel({
           stage={stage}
         />
       ) : (
-        <p className="text-sm text-muted">Stripe cannot be shown right now. Try again later.</p>
+        <p className="text-sm text-muted">{w.cannotShow}</p>
       )}
 
       {account && (
@@ -90,9 +84,9 @@ export function StripeAccountPanel({
             target="_blank"
             rel="noreferrer"
           >
-            Open your Stripe Dashboard
+            {w.dashboard}
           </a>{" "}
-          <span className="text-muted">for payouts, refunds, receipts and payment methods.</span>
+          <span className="text-muted">{w.dashboardFor}</span>
         </p>
       )}
     </section>

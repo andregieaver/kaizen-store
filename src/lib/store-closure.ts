@@ -3,6 +3,8 @@
  * what a typed confirmation must say, and what a member may still do in a store that is not open. The database holds the steps a status may take
  * (`commerce.stores_status_rules()`) and refuses new orders (`orders_store_open()`); the service is `src/server/store-closure.ts`.
  */
+import { countWords } from "./admin-fill";
+import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
 import type { PermissionKey } from "./permission-keys";
 
 /** How long the owner may reopen a store they closed. After that only the platform can. */
@@ -41,26 +43,28 @@ export const NO_OBLIGATIONS: Obligations = {
   domains: 0,
 };
 
-const many = (count: number, one: string, other: string) => `${count} ${count === 1 ? one : other}`;
+/** The words of the closing page's sentences (D312 A8, `settings.close`); English, as the AI manager and the platform read them, unless given. */
+export type ClosureWords = Pick<SettingsMessages["close"], "blockers" | "warnings">;
 
 /** What blocks an owner from closing the store, as plain sentences: goods paid for and not sent, and customers who expect deliveries. Empty: nothing stands in the way. */
-export function closureBlockers(o: Obligations): string[] {
+export function closureBlockers(o: Obligations, w: ClosureWords = settingsEn.close): string[] {
   const out: string[] = [];
-  if (o.paidUnshipped > 0) out.push(`${many(o.paidUnshipped, "paid order has", "paid orders have")} goods still to send. Send ${o.paidUnshipped === 1 ? "it" : "them"} or cancel and refund ${o.paidUnshipped === 1 ? "it" : "them"}.`);
-  if (o.runningSubscriptions > 0) out.push(`${many(o.runningSubscriptions, "subscription is", "subscriptions are")} still running. Cancel ${o.runningSubscriptions === 1 ? "it" : "them"} first.`);
-  if (o.runningDeliveries > 0) out.push(`${many(o.runningDeliveries, "weekly delivery list is", "weekly delivery lists are")} still running. Cancel ${o.runningDeliveries === 1 ? "it" : "them"} first.`);
+  if (o.paidUnshipped > 0) out.push(countWords(o.paidUnshipped, w.blockers.paidUnshipped));
+  if (o.runningSubscriptions > 0) out.push(countWords(o.runningSubscriptions, w.blockers.subscriptions));
+  if (o.runningDeliveries > 0) out.push(countWords(o.runningDeliveries, w.blockers.deliveries));
   return out;
 }
 
 /** What is worth knowing before closing, but does not stop it. */
-export function closureWarnings(o: Obligations): string[] {
+export function closureWarnings(o: Obligations, w: ClosureWords = settingsEn.close): string[] {
+  const t = w.warnings;
   const out: string[] = [];
-  if (o.openCheckouts > 0) out.push(`${many(o.openCheckouts, "order is", "orders are")} waiting for payment. Closing cancels ${o.openCheckouts === 1 ? "it" : "them"}.`);
-  if (o.futureBookings > 0) out.push(`${many(o.futureBookings, "booking is", "bookings are")} still to come. Closing does not cancel ${o.futureBookings === 1 ? "it" : "them"}: contact the customers.`);
-  if (o.openReturns > 0) out.push(`${many(o.openReturns, "return is", "returns are")} still open. You can keep handling ${o.openReturns === 1 ? "it" : "them"} while the store is closed.`);
-  if (o.livePlan) out.push("The Kaizena Flow plan ends when the period you have paid for is over. Nothing is refunded.");
-  if (o.domains > 0) out.push(`${many(o.domains, "domain of the store's own is", "domains of the store's own are")} released. You add ${o.domains === 1 ? "it" : "them"} again if you reopen.`);
-  out.push("Money Stripe holds for you is paid out as usual: check your Stripe dashboard for the balance.");
+  if (o.openCheckouts > 0) out.push(countWords(o.openCheckouts, t.openCheckouts));
+  if (o.futureBookings > 0) out.push(countWords(o.futureBookings, t.futureBookings));
+  if (o.openReturns > 0) out.push(countWords(o.openReturns, t.openReturns));
+  if (o.livePlan) out.push(t.livePlan);
+  if (o.domains > 0) out.push(countWords(o.domains, t.domains));
+  out.push(t.stripe);
   return out;
 }
 

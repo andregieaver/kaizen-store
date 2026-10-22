@@ -8,6 +8,8 @@ import { activityActions, activityPeople, listActivity, readableAreas } from "@/
 import { holderOf } from "@/server/auth";
 import { requireMemberAny } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Activity log" };
 
@@ -22,6 +24,9 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   const before = typeof query.before === "string" && /^\d{1,15}$/.test(query.before) ? Number(query.before) : null;
   const problem = typeof query.problem === "string" ? query.problem.slice(0, 300) : "";
   const zone = member.store.timeZone || "Europe/Oslo";
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "staff");
+  const w = words.activity;
   const filters = {
     accountId: values.person || null,
     area: isAuditArea(values.area) ? values.area : null,
@@ -38,8 +43,8 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Activity log"
-        description={<>What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.{" "}{owner ? "You see every entry." : "You see your own entries and those of the parts of the admin you can open."} Entries are kept for 24 months and cannot be changed.</>}
+        title={w.title}
+        description={<>{w.description} {owner ? w.ownerSees : w.othersSee} {w.kept}</>}
       />
       {problem && (
         <p role="alert" className="rounded-panel border border-line bg-card p-3 text-sm">
@@ -54,10 +59,13 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
         actions={actions}
         exportAction={owner ? `${base}/export` : undefined}
         zoneName={zone}
+        words={words}
       />
       <ActivityList
         entries={page.entries}
         zone={zone}
+        words={words}
+        locale={ADMIN_LANG_FACTS[lang].locale}
         older={page.next === null ? null : `${base}${activityQuery({ person: values.person, area: values.area, action: values.action, from: values.from, to: values.to, before: page.next })}`}
       />
     </div>

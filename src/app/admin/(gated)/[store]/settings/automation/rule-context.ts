@@ -1,18 +1,23 @@
 import "server-only";
 
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import type { DescribeContext } from "@/lib/order-rules";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 import { listProductChoices } from "@/server/discounts";
 
-/** What the automation pages need to write a rule's sentence and fill its editor: the main currency, the store's countries and products (wave 3, D238). */
-export async function ruleContext(store: Store): Promise<{ currency: string; countries: { code: string; name: string }[]; products: { id: string; title: string }[]; describe: DescribeContext }> {
+/**
+ * What the automation pages need to write a rule's sentence and fill its editor: the main currency, the store's countries and products (wave 3, D238);
+ * countries are named and amounts written in the admin's language (D312 A8), English unless given.
+ */
+export async function ruleContext(store: Store, lang: AdminLang = "en"): Promise<{ currency: string; countries: { code: string; name: string }[]; products: { id: string; title: string }[]; describe: DescribeContext }> {
   const currency = mainCurrency(store);
   const products = await listProductChoices(store.id, store.markets[0]?.ownLocale ?? "en-GB");
   const countryName = (code: string) => {
     try {
-      return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+      return new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].tag], { type: "region" }).of(code) ?? code;
     } catch {
       return code;
     }
@@ -24,9 +29,9 @@ export async function ruleContext(store: Store): Promise<{ currency: string; cou
     countries,
     products,
     describe: {
-      money: (minor) => formatMoney(minor, currency, "en-GB"),
+      money: (minor) => formatMoney(minor, currency, ADMIN_LANG_FACTS[lang].locale),
       countryName,
-      productName: (id) => productNames.get(id) ?? "a product no longer sold",
+      productName: (id) => productNames.get(id) ?? adminText(lang, "notifications").rules.noLongerSold,
     },
   };
 }

@@ -52,9 +52,22 @@ export function suggestedVision(models: { model: string; note: string }[], model
 }
 
 /** One line for the settings pages: which model looks at pictures, or that none does and what that costs. `whose` is "Kaizen's AI" or "Your AI". */
-export function pictureLine(settings: { enabled: boolean; visionModel: string | null; textModel: string | null } | null, whose: string, choose = "Choose a model that sees pictures below."): string {
+export function pictureLine(
+  settings: { enabled: boolean; visionModel: string | null; textModel: string | null } | null,
+  whose: string,
+  choose?: string,
+  /** The words in the account's language (D312 A8, `settings.ai.pictures`); English unless given. */
+  w: { sees: string; textNote: string; none: string; choose: string } = PICTURE_LINE_EN,
+): string {
   const model = settings?.enabled ? visionModelOf(settings) : null;
   return model
-    ? `${whose} looks at pictures with ${model}${settings?.visionModel ? "" : " (the text model: check below that it sees pictures)"}.`
-    : `${whose} has no model that looks at pictures: copying a page is corrected by measuring alone and alt texts are not written. ${choose}`;
+    ? w.sees.replace("{whose}", whose).replace("{model}", model).replace("{note}", settings?.visionModel ? "" : w.textNote)
+    : w.none.replace("{whose}", whose).replace("{choose}", choose ?? w.choose);
 }
+
+const PICTURE_LINE_EN = {
+  sees: "{whose} looks at pictures with {model}{note}.",
+  textNote: " (the text model: check below that it sees pictures)",
+  none: "{whose} has no model that looks at pictures: copying a page is corrected by measuring alone and alt texts are not written. {choose}",
+  choose: "Choose a model that sees pictures below.",
+};

@@ -3,10 +3,15 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
+import { adminText } from "@/lib/admin-text";
 import { parseRate, stepMinor } from "@/lib/currency";
 import { isOfferable, languageOptions, oneLanguageChoice } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { featureOffText, featureOn } from "@/lib/store-features";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -21,8 +26,11 @@ import { storeTag } from "@/server/stores";
 // change clears the store's and its catalogue's caches.
 
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: ["Only an owner can change this."] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [adminText(await actionAdminLang(), "settings").localization.actions.onlyOwner] };
 }
+
+/** The page's words in the member's language (D312 A8). */
+const wordsOf = (member: Membership): SettingsMessages["localization"] => adminText(adminLangOf(member.account.adminLocale), "settings").localization;
 
 function done(member: Membership, result: SaveResult, success: string): FormState {
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -40,7 +48,7 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   // The languages are hidden while Several languages is off (D178): a stale page changes nothing.
-  if (!featureOn(owner.store, "languages")) return { status: "error", messages: [featureOffText("languages")] };
+  if (!featureOn(owner.store, "languages")) return { status: "error", messages: [featureOffText("languages", adminText(adminLangOf(owner.account.adminLocale), "common").features)] };
   const locales: string[] = [];
   const offered = await enabledLanguages();
   for (const { lang, locales: variants } of languageOptions(offered)) {
@@ -58,7 +66,7 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
     const locale = ordered.find((l) => l.split("-")[0] === chosen);
     if (locale && isOfferable(offered, locale)) marketLocales[market.code] = locale;
   }
-  return done(owner, await saveLanguages(owner, ordered, marketLocales), "Languages saved.");
+  return done(owner, await saveLanguages(owner, ordered, marketLocales), wordsOf(owner).actions.languagesSaved);
 }
 
 /**
@@ -70,14 +78,14 @@ export async function saveStoreLanguageAction(storeSlug: string, _state: FormSta
   if (!("store" in owner)) return owner;
   const offered = await enabledLanguages();
   const main = String(formData.get("main") ?? "");
-  if (!isOfferable(offered, main)) return { status: "error", messages: ["Choose the store's main language."] };
+  if (!isOfferable(offered, main)) return { status: "error", messages: [wordsOf(owner).actions.chooseMain] };
   const marketLocales: Record<string, string> = {};
   for (const market of owner.store.markets) {
     const chosen = String(formData.get(`market:${market.code}`) ?? "");
     if (isOfferable(offered, chosen)) marketLocales[market.code] = chosen;
   }
   const [locales, byMarket] = oneLanguageChoice(owner.store.localization.keptLocales, main, marketLocales);
-  return done(owner, await saveLanguages(owner, locales, byMarket), "Language saved.");
+  return done(owner, await saveLanguages(owner, locales, byMarket), wordsOf(owner).actions.languageSaved);
 }
 
 /** The currencies offered, their rates and rounding, and whether the rates follow the ECB's. */
@@ -85,7 +93,7 @@ export async function saveCurrenciesAction(storeSlug: string, _state: FormState,
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   // The currencies are hidden while Several currencies is off (D178): a stale page changes nothing, and the rates are kept as they are.
-  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies")] };
+  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies", adminText(adminLangOf(owner.account.adminLocale), "common").features)] };
   const natives = new Set(owner.store.keptMarkets.map((market) => market.nativeCurrency));
   const rows: CurrencyInput[] = [];
   const problems: string[] = [];
@@ -93,18 +101,18 @@ export async function saveCurrenciesAction(storeSlug: string, _state: FormState,
     if (!natives.has(currency) && formData.get(`offer:${currency}`) !== "on") continue;
     const rateText = String(formData.get(`rate:${currency}`) ?? "").trim();
     const rate = currency === "EUR" ? 1 : rateText ? parseRate(rateText) : null;
-    if (rateText && rate === null) problems.push(`"${rateText}" is not a rate for ${currency}.`);
+    if (rateText && rate === null) problems.push(fillWords(wordsOf(owner).actions.notRate, { text: rateText, currency }));
     const step = Number(String(formData.get(`round:${currency}`) ?? "0").replace(",", "."));
     rows.push({ currency, rate, roundTo: Number.isFinite(step) && step > 0 ? stepMinor(currency, step) : 1 });
   }
   if (problems.length > 0) return { status: "error", messages: problems };
-  return done(owner, await saveCurrencies(owner, rows, formData.get("ratesAuto") === "on"), "Currencies saved.");
+  return done(owner, await saveCurrencies(owner, rows, formData.get("ratesAuto") === "on"), wordsOf(owner).actions.currenciesSaved);
 }
 
 /** Sets the rates to the ECB's latest now. */
 export async function fetchRatesAction(storeSlug: string): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
-  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies")] };
-  return done(owner, await fetchRatesNow(owner), "Rates updated.");
+  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies", adminText(adminLangOf(owner.account.adminLocale), "common").features)] };
+  return done(owner, await fetchRatesNow(owner), wordsOf(owner).actions.ratesUpdated);
 }

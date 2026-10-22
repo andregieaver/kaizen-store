@@ -106,11 +106,13 @@ export function SearchTextFields({
   initial,
   fallback,
   url,
+  words,
 }: {
   locale: string;
   initial: Texts;
   fallback: Texts;
   url: string;
+  words?: SnippetWords;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -119,6 +121,7 @@ export function SearchTextFields({
       onChange={setValue}
       fallback={fallback}
       url={url}
+      words={words}
       lang={locale}
       names={{ title: `title:${locale}`, description: `description:${locale}` }}
     />
@@ -131,12 +134,29 @@ type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: fals
  * The picture shown when a page is shared (1200 × 630 is best), with its
  * description per language. Posts as `imageUrl` and `imageAlt:{locale}`.
  */
+/** The share picture field's words (D312 A8): English unless a page hands in the admin's catalogue (`settings.seo.shareField`). */
+const SHARE_EN = {
+  yours: "Your picture.",
+  none: "No picture chosen: Kaizena Flow draws one with the name, as shown.",
+  best: "Best at 1200 × 630 pixels.",
+  uploading: "Uploading …",
+  another: "Choose another picture",
+  choose: "Choose a picture",
+  address: "Picture address",
+  use: "Use",
+  remove: "Remove picture",
+  describe: "Describe the picture (for people who cannot see it)",
+};
+
+export type ShareWords = typeof SHARE_EN;
+
 export function ShareImageField({
   upload,
   initial,
   locales,
   languageNames,
   generated,
+  words = SHARE_EN,
 }: {
   upload: Upload | null;
   initial: { url: string; alt: Record<string, string> } | null;
@@ -144,6 +164,7 @@ export function ShareImageField({
   languageNames: Record<string, string>;
   /** The picture Kaizen draws when none is chosen. */
   generated: string;
+  words?: ShareWords;
 }) {
   const [url, setUrl] = useState(initial?.url ?? "");
   const [busy, setBusy] = useState(false);
@@ -186,12 +207,11 @@ export function ShareImageField({
         />
         <div className="flex flex-col gap-2 text-sm">
           <p className="text-muted">
-            {url ? "Your picture." : "No picture chosen: Kaizena Flow draws one with the name, as shown."} Best at
-            1200 × 630 pixels.
+            {url ? words.yours : words.none} {words.best}
           </p>
           {upload ? (
             <label className="w-fit cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
-              {busy ? "Uploading …" : url ? "Choose another picture" : "Choose a picture"}
+              {busy ? words.uploading : url ? words.another : words.choose}
               <input
                 type="file"
                 accept="image/*"
@@ -203,7 +223,7 @@ export function ShareImageField({
           ) : (
             <div className="flex gap-2">
               <label className="sr-only" htmlFor="share-image-link">
-                Picture address
+                {words.address}
               </label>
               <input
                 id="share-image-link"
@@ -213,13 +233,13 @@ export function ShareImageField({
                 className={`${input} w-full max-w-64`}
               />
               <button type="button" onClick={() => setUrl(link.trim())} className="rounded-pill border border-border px-3">
-                Use
+                {words.use}
               </button>
             </div>
           )}
           {url && (
             <button type="button" onClick={() => setUrl("")} className="w-fit underline">
-              Remove picture
+              {words.remove}
             </button>
           )}
           {problem && (
@@ -231,7 +251,7 @@ export function ShareImageField({
       </div>
       {url && (
         <fieldset className="flex min-w-0 flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">Describe the picture (for people who cannot see it)</legend>
+          <legend className="mb-1 text-sm font-medium">{words.describe}</legend>
           {locales.map((locale) => (
             <label key={locale} className="flex flex-col gap-1 text-sm">
               {languageNames[locale] ?? locale}

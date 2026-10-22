@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { StaffAlertsForm } from "@/components/admin/notifications/staff-alerts-form";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { staffAlertsView } from "@/server/staff-alerts";
 
@@ -19,15 +22,15 @@ export default async function StaffAlertsPage({ params }: PageProps<"/admin/[sto
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "notifications").staff;
   const view = await staffAlertsView(store.id);
   return (
+    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: `/admin/${store.slug}/settings/notifications`, label: "Notifications" }}
-        title="Staff alerts"
-        description={<>Choose who on the team is emailed when an order is paid, a customer asks to return something, a refund is overdue or stock runs low, and who gets a daily or weekly summary. Staff emails are in English.</>}
-      />
+      <PageHeader back={{ href: `/admin/${store.slug}/settings/notifications`, label: w.back }} title={w.title} description={<>{w.description}</>} />
       <StaffAlertsForm view={view} save={saveStaffAlertsAction.bind(null, store.slug)} test={sendStaffTestAction.bind(null, store.slug)} />
     </div>
+    </AdminTextScope>
   );
 }

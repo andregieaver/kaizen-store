@@ -4,6 +4,20 @@ import { activityQuery } from "@/lib/activity-text";
 import { isAuditArea } from "@/lib/audit";
 import { exportActivity } from "@/server/activity";
 import { checkOwnerRole } from "@/server/permissions";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import type { StaffMessages } from "@/lib/admin-messages/staff.en";
+
+/** The server's English refusal in the owner's words (D312 A8), as written when it is none of the known ones. */
+function problemIn(problem: string, w: StaffMessages["activity"]["problems"], locale: string): string {
+  if (problem === "Only an owner can download the activity log.") return w.owner;
+  if (problem === "Choose the first and last day to download.") return w.days;
+  if (problem === "The first day must not be after the last day.") return w.order;
+  const many = /^That period has ([\d,]+) entries and a download holds at most ([\d,]+)\. Choose a shorter period\.$/.exec(problem);
+  const number = (text: string) => Number(text.replace(/,/g, "")).toLocaleString(locale);
+  return many ? fillWords(w.tooMany, { total: number(many[1]), max: number(many[2]) }) : problem;
+}
 
 /**
  * The activity log as a CSV (wave 1, 1f, docs/wave-1-trust.md 2.9): owners only, the period required, at most 50,000 entries. A refusal goes
@@ -27,7 +41,8 @@ export async function GET(request: NextRequest, { params }: RouteContext<"/admin
   });
   if (!result.ok) {
     const back = new URL(`/admin/${slug}/activity${activityQuery({ person: text("person"), area, action: text("action"), from: text("from"), to: text("to") })}`, request.url);
-    back.searchParams.set("problem", result.problem);
+    const lang = adminLangOf(member.account.adminLocale);
+    back.searchParams.set("problem", problemIn(result.problem, adminText(lang, "staff").activity.problems, ADMIN_LANG_FACTS[lang].locale));
     return NextResponse.redirect(back, 303);
   }
   const name = `activity-${slug}-${text("from")}-${text("to")}.csv`.replace(/[^A-Za-z0-9._-]/g, "_");

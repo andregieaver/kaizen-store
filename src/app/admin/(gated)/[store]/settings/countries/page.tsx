@@ -3,6 +3,9 @@ import Link from "next/link";
 
 import { CountriesForm } from "@/components/admin/countries-form";
 import { FeatureOffNote } from "@/components/admin/feature-off";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
@@ -26,50 +29,46 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
   const countries = await listCountries();
   const nameOf = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
   const [home, ...others] = store.keptMarkets;
+  const lang = adminLangOf(current.account.adminLocale);
+  const all = adminText(lang, "settings");
+  const w = all.countries;
+  // "{country}, in {currency}. … under {company} …": the parts around the two filled in by elements.
+  const [beforeCompany, afterCompany = ""] = w.ownText.split("{company}");
+  const [beforeCountry, afterCountry = ""] = beforeCompany.split("{country}");
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Countries"
-        description={<>Each country gets its own storefront address, in its own language and currency, with its own prices and shipping. A product shows in a country once it has a price there.</>}
-      />
+      <PageHeader title={w.title} description={<>{w.description}</>} />
 
       <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
-        <h2 id="home-heading" className="text-title text-ink">Your own country</h2>
+        <h2 id="home-heading" className="text-title text-ink">{w.own}</h2>
         {home ? (
           <p className="text-sm">
-            <strong>{nameOf(home.code)}</strong>, in {home.nativeCurrency}. It is your business&apos;s country under{" "}
-            <Link href={`/admin/${store.slug}/settings/company`} className="underline">Company</Link> when you sell there, else the first
-            country on your list. Amounts in reports are in its currency.
+            {beforeCountry}
+            <strong>{nameOf(home.code)}</strong>
+            {fillWords(afterCountry, { currency: home.nativeCurrency })}
+            <Link href={`/admin/${store.slug}/settings/company`} className="underline">{all.company.title}</Link>
+            {afterCompany}
           </p>
         ) : (
-          <p className="text-sm">The store sells to no country yet.</p>
+          <p className="text-sm">{w.none}</p>
         )}
-        {!several && others.length > 0 && (
-          <p className="text-sm text-muted">
-            Kept for when Several countries is on again, with their prices and settings: {others.map((m) => nameOf(m.code)).join(", ")}.
-          </p>
-        )}
+        {!several && others.length > 0 && <p className="text-sm text-muted">{fillWords(w.kept, { list: others.map((m) => nameOf(m.code)).join(", ") })}</p>}
       </section>
 
-      {!several && <FeatureOffNote storeSlug={store.slug} feature="countries" owner={owner} what="Selling in more than one country" />}
+      {!several && <FeatureOffNote storeSlug={store.slug} feature="countries" owner={owner} what={w.sellingAbroad} />}
 
       <CountriesForm
         action={saveCountriesSettingsAction.bind(null, store.slug)}
         countries={countries}
         chosen={store.keptMarkets.map((m) => m.code)}
         several={several}
-        submitLabel="Save countries"
+        submitLabel={w.save}
         disabled={!editor}
-        note={
-          several ? (
-            <p className="text-sm text-muted">A country taken off the list keeps its prices and settings, and comes back as it was when you add it again.</p>
-          ) : (
-            <p className="text-sm text-muted">Choosing another country makes it the only one on your list. The others keep their prices and settings, and come back as they were when you add them again.</p>
-          )
-        }
+        w={adminText(lang, "setup").countriesForm}
+        note={<p className="text-sm text-muted">{several ? w.noteSeveral : w.noteOne}</p>}
       />
-      {!editor && <p className="text-sm">Your role may read the store&apos;s settings but not change them.</p>}
+      {!editor && <p className="text-sm">{all.common.readOnly}</p>}
     </div>
   );
 }

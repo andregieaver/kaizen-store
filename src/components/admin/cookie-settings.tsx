@@ -2,14 +2,18 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { toolCategories, type TrackingSettings } from "@/lib/cookie-consent";
-import { CODE_MAX_LENGTH, CODE_PLACE_LABELS, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
+import { CODE_MAX_LENGTH, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
+import { fillWords } from "@/lib/admin-fill";
+import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 font-mono text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
-const CATEGORY_NAMES = { preferences: "preferences", statistics: "statistics", marketing: "marketing" } as const;
+/** Categories as they read inside a sentence, joined with the language's "and". */
+const categoryList = (categories: readonly ("preferences" | "statistics" | "marketing")[], words: LegalMessages) =>
+  categories.map((c) => words.cookies.categoriesLower[c]).join(words.cookies.and);
 
 /**
  * A site's analytics and marketing tools (D58), Kaizen's or a store's: each
@@ -20,64 +24,57 @@ export function TrackingForm({
   tracking,
   action,
   cookiePage,
+  words = legalEn,
 }: {
   tracking: TrackingSettings;
   action: (state: FormState, form: FormData) => Promise<FormState>;
   cookiePage: string;
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: LegalMessages;
 }) {
+  const w = words.cookies.tools;
   const asked = toolCategories(tracking);
   return (
     <section aria-labelledby="tools-heading" className={card}>
       <div>
         <h2 id="tools-heading" className="text-title text-ink">
-          Analytics and marketing tools
+          {w.title}
         </h2>
-        <p className="text-sm text-muted">
-          Each tool loads only after a visitor allows it in the cookie banner, which appears by itself when a tool is on.
-          Leave a field empty to switch the tool off.
-        </p>
+        <p className="text-sm text-muted">{w.text}</p>
       </div>
-      <ActionForm action={action} className="flex flex-col gap-4" successMessage="Saved. The site asks and loads accordingly now.">
+      <ActionForm action={action} className="flex flex-col gap-4" successMessage={w.saved}>
         <label className={label}>
           Google Analytics 4
           <input name="ga4" defaultValue={tracking.ga4 ?? ""} placeholder="G-XXXXXXXXXX" className={input} />
-          <span className={hint}>Statistics. The measurement id, under Admin → Data streams in Google Analytics.</span>
+          <span className={hint}>{w.ga4Hint}</span>
         </label>
         <label className={label}>
           Google Tag Manager
           <input name="gtm" defaultValue={tracking.gtm ?? ""} placeholder="GTM-XXXXXXX" className={input} />
-          <span className={hint}>
-            Statistics and marketing: loads once a visitor allows either, and passes their choices on as Google Consent Mode
-            signals for the container&apos;s tags.
-          </span>
+          <span className={hint}>{w.gtmHint}</span>
         </label>
         <label className={label}>
           Meta Pixel
           <input name="metaPixel" defaultValue={tracking.metaPixel ?? ""} placeholder="1234567890" inputMode="numeric" className={input} />
-          <span className={hint}>Marketing. The pixel id, in Meta Events Manager.</span>
+          <span className={hint}>{w.metaHint}</span>
         </label>
         <div>
-          <SubmitButton>Save tools</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
       <p className="text-sm">
         {asked.length === 0
-          ? "No optional tools are on, so visitors see no cookie banner: the site uses only necessary cookies."
-          : `Visitors are asked about ${asked.map((c) => CATEGORY_NAMES[c]).join(" and ")} on their first visit.`}{" "}
+          ? w.noneAsked
+          : fillWords(w.asked, { categories: categoryList(asked, words) })}{" "}
         <Link href={cookiePage} className="underline" target="_blank" rel="noopener">
-          See the cookie page
+          {w.seePage}
         </Link>
       </p>
     </section>
   );
 }
 
-const CODE_CATEGORY_CHOICES = [
-  ["necessary", "Necessary: added for everyone, no consent needed"],
-  ["preferences", "Preferences: added once a visitor allows preferences"],
-  ["statistics", "Statistics: added once a visitor allows statistics"],
-  ["marketing", "Marketing: added once a visitor allows marketing"],
-] as const;
+const CODE_CATEGORIES = ["necessary", "preferences", "statistics", "marketing"] as const;
 
 /**
  * A store's own code (D61) for its pages' head and the start and end of
@@ -88,38 +85,36 @@ export function CustomCodeForm({
   code,
   live,
   action,
+  words = legalEn,
 }: {
   code: CustomCode;
   /** Whether the store is on its own address, where the code is added (P7). */
   live: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: LegalMessages;
 }) {
+  const w = words.cookies.code;
   const asked = codeCategories(code);
   return (
     <section aria-labelledby="code-heading" className={card}>
       <div>
         <h2 id="code-heading" className="text-title text-ink">
-          Custom code
+          {w.title}
         </h2>
-        <p className="text-sm text-muted">
-          Code from other services, such as a tag manager, a chat widget or a verification tag, added to every page of your
-          store. Choose what the code does, so it waits for the visitor&apos;s consent where it needs it: code that is not
-          necessary for the store to work is only added once a visitor allows its kind of cookies. Only paste code from
-          services you trust, as it runs on your store&apos;s pages with full access to them.
-        </p>
+        <p className="text-sm text-muted">{w.text}</p>
       </div>
       {!live && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          Your store is still at Kaizena Flow&apos;s own address. The code is saved now and added once stores move to addresses
-          of their own.
+          {w.notLive}
         </p>
       )}
-      <ActionForm action={action} className="flex flex-col gap-5" successMessage="Saved. Your store adds the code accordingly now.">
+      <ActionForm action={action} className="flex flex-col gap-5" successMessage={w.saved}>
         {CODE_PLACES.map((place) => (
           <fieldset key={place} className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">{CODE_PLACE_LABELS[place].title}</legend>
+            <legend className="text-sm font-medium">{w.places[place].title}</legend>
             <label className={label}>
-              <span className="sr-only">Code {CODE_PLACE_LABELS[place].title.toLowerCase()}</span>
+              <span className="sr-only">{fillWords(w.codeFor, { place: w.places[place].title.toLowerCase() })}</span>
               <textarea
                 name={`${place}.code`}
                 defaultValue={code[place]?.code ?? ""}
@@ -130,14 +125,14 @@ export function CustomCodeForm({
                 autoCorrect="off"
                 className={`${input} py-2`}
               />
-              <span className={hint}>{CODE_PLACE_LABELS[place].hint} Leave it empty for none.</span>
+              <span className={hint}>{w.places[place].hint}{w.emptyNone}</span>
             </label>
             <label className={label}>
-              What it does
+              {w.what}
               <select name={`${place}.category`} defaultValue={code[place]?.category ?? "marketing"} className={input.replace("font-mono ", "")}>
-                {CODE_CATEGORY_CHOICES.map(([value, text]) => (
+                {CODE_CATEGORIES.map((value) => (
                   <option key={value} value={value}>
-                    {text}
+                    {w.choices[value]}
                   </option>
                 ))}
               </select>
@@ -145,13 +140,12 @@ export function CustomCodeForm({
           </fieldset>
         ))}
         <div>
-          <SubmitButton>Save custom code</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
       {asked.length > 0 && (
         <p className="text-sm">
-          Because of this code, visitors are asked about {asked.map((c) => CATEGORY_NAMES[c]).join(" and ")}. Run a cookie
-          scan after saving, and describe what it finds, so your cookie page lists what the code sets.
+          {fillWords(w.asked, { categories: categoryList(asked, words) })}
         </p>
       )}
     </section>
@@ -161,32 +155,39 @@ export function CustomCodeForm({
 /** The latest proofs of consent (D58): when, what was asked and what was allowed. */
 export function ConsentLog({
   consents,
+  words = legalEn,
+  locale = "en-GB",
 }: {
   consents: { id: string; visitor: string; choices: Record<string, boolean>; version: string; createdAt: string }[];
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: LegalMessages;
+  /** How dates are written; en-GB unless given. */
+  locale?: string;
 }) {
-  const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const w = words.cookies.consents;
+  const lower: Record<string, string> = words.cookies.categoriesLower;
+  /** A category id as it reads in the list; one not known (an older version's) as written. */
+  const categoryWord = (id: string) => lower[id] ?? id;
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   return (
     <section aria-labelledby="consents-heading" className={card}>
       <div>
         <h2 id="consents-heading" className="text-title text-ink">
-          Consents
+          {w.title}
         </h2>
-        <p className="text-sm text-muted">
-          Each choice a visitor makes is kept for 12 months as proof, under the random id in their consent cookie. Nothing
-          else about them is stored.
-        </p>
+        <p className="text-sm text-muted">{w.text}</p>
       </div>
       {consents.length === 0 ? (
-        <p className="text-sm text-muted">No choices recorded yet.</p>
+        <p className="text-sm text-muted">{w.none}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
-                <th scope="col" className="py-2 pr-4 font-normal">When</th>
-                <th scope="col" className="py-2 pr-4 font-normal">Visitor</th>
-                <th scope="col" className="py-2 pr-4 font-normal">Asked about</th>
-                <th scope="col" className="py-2 font-normal">Allowed</th>
+                <th scope="col" className="py-2 pr-4 font-normal">{w.when}</th>
+                <th scope="col" className="py-2 pr-4 font-normal">{w.visitor}</th>
+                <th scope="col" className="py-2 pr-4 font-normal">{w.askedAbout}</th>
+                <th scope="col" className="py-2 font-normal">{w.allowed}</th>
               </tr>
             </thead>
             <tbody>
@@ -196,8 +197,8 @@ export function ConsentLog({
                   <tr key={consent.id} className="border-b border-line last:border-0">
                     <td className="py-2 pr-4 whitespace-nowrap">{date.format(new Date(consent.createdAt))}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{consent.visitor.slice(0, 8)}</td>
-                    <td className="py-2 pr-4">{consent.version.replaceAll("+", ", ") || "nothing"}</td>
-                    <td className="py-2">{allowed.length > 0 ? allowed.join(", ") : "only necessary"}</td>
+                    <td className="py-2 pr-4">{consent.version.split("+").filter(Boolean).map(categoryWord).join(", ") || w.nothing}</td>
+                    <td className="py-2">{allowed.length > 0 ? allowed.map(categoryWord).join(", ") : w.onlyNecessary}</td>
                   </tr>
                 );
               })}

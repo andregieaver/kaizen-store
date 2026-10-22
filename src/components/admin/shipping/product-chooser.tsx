@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "../admin-text";
+
 /**
  * The products of a shipping profile, chosen by search (D237 2.1): a filter over the store's products and a box per product, sent as `product`
  * fields with the form. A product in another profile says so; ticking it here moves it on save. Shows how many are ticked.
@@ -20,6 +24,7 @@ export function ProductChooser({
   self: string | null;
   disabled?: boolean;
 }) {
+  const w = useAdminText("shipping").profiles.chooser;
   const [ticked, setTicked] = useState(() => new Set(chosen));
   const [query, setQuery] = useState("");
   const shown = useMemo(() => {
@@ -38,7 +43,8 @@ export function ProductChooser({
   return (
     <fieldset className="flex flex-col gap-2 text-sm" disabled={disabled}>
       <legend className="mb-1">
-        Products in this profile: <span className="tabular-nums">{ticked.size}</span>
+        {w.legend}
+        <span className="tabular-nums">{ticked.size}</span>
       </legend>
       {[...ticked].map((id) => (
         <input key={id} type="hidden" name="product" value={id} />
@@ -47,8 +53,8 @@ export function ProductChooser({
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search products"
-        aria-label="Search products"
+        placeholder={w.search}
+        aria-label={w.search}
         className="min-h-10 w-full max-w-md rounded-md border border-line bg-card px-3"
       />
       <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-panel bg-sunken p-3">
@@ -57,13 +63,13 @@ export function ProductChooser({
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={ticked.has(p.id)} onChange={() => toggle(p.id)} />
               <span>{p.title}</span>
-              {!p.shipped && <span className="text-muted">(not shipped)</span>}
-              {p.profileId && p.profileId !== self && !ticked.has(p.id) && <span className="text-muted">· in {profileNames[p.profileId] ?? "another profile"}</span>}
+              {!p.shipped && <span className="text-muted">{w.notShipped}</span>}
+              {p.profileId && p.profileId !== self && !ticked.has(p.id) && <span className="text-muted">{fillWords(w.inOther, { name: profileNames[p.profileId] ?? w.anotherProfile })}</span>}
             </label>
           </li>
         ))}
-        {shown.length > 200 && <li className="text-muted">{shown.length - 200} more: search to narrow the list.</li>}
-        {shown.length === 0 && <li className="text-muted">No product matches.</li>}
+        {shown.length > 200 && <li className="text-muted">{fillWords(w.more, { n: shown.length - 200 })}</li>}
+        {shown.length === 0 && <li className="text-muted">{w.none}</li>}
       </ul>
     </fieldset>
   );

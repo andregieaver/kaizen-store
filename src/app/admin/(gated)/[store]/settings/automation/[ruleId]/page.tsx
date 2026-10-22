@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { RuleEditor } from "@/components/admin/automation/rule-editor";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { Chip, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { getRule } from "@/server/order-rules";
 import { tagSuggestions } from "@/server/order-tags";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -21,21 +25,25 @@ export default async function RulePage({ params }: PageProps<"/admin/[store]/set
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "notifications");
+  const w = words.rules;
   const rule = await getRule(store.id, ruleId);
   if (!rule) notFound();
   const canWrite = memberCan(member, "settings:write");
-  const [context, tags] = await Promise.all([ruleContext(store), tagSuggestions(store.id)]);
+  const [context, tags] = await Promise.all([ruleContext(store, lang), tagSuggestions(store.id)]);
   const back = `/admin/${store.slug}/settings/automation`;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: back, label: "Automation" }}
+        back={{ href: back, label: w.title }}
         title={rule.name}
-        status={<Chip signal={rule.enabled ? "positive" : "neutral"} dot>{rule.enabled ? "On" : "Off"}</Chip>}
-        meta={[`Version ${rule.version}`]}
+        status={<Chip signal={rule.enabled ? "positive" : "neutral"} dot>{rule.enabled ? words.common.on : words.common.off}</Chip>}
+        meta={[fillWords(w.version, { n: rule.version })]}
         actions={
           <Link href={`${back}/log?rule=${rule.id}`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
-            This rule&apos;s runs
+            {w.thisRulesRuns}
           </Link>
         }
       />
@@ -49,7 +57,8 @@ export default async function RulePage({ params }: PageProps<"/admin/[store]/set
         back={back}
         canWrite={canWrite}
       />
-      {!canWrite && <p className="text-sm text-muted">You can see this rule but not change it.</p>}
+      {!canWrite && <p className="text-sm text-muted">{w.ruleReadOnly}</p>}
     </div>
+    </AdminTextScope>
   );
 }

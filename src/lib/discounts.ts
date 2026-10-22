@@ -493,7 +493,25 @@ export const platformDiscountInput = z
 export function platformDiscountSummary(
   discount: Pick<PlatformDiscount, "kind" | "percent" | "amounts" | "duration" | "durationMonths">,
   money: (minor: number, currency: string) => string,
+  /** The account's words (D312 A8, the billing catalogue's `discount`); the same English as ever without them. */
+  words?: {
+    percentOff: string;
+    amountOff: string;
+    givesOnce: string;
+    givesForever: string;
+    givesMonths: { one: string; many: string };
+  },
 ): string {
+  if (words) {
+    const amounts = Object.entries(discount.amounts)
+      .map(([currency, minor]) => money(minor, currency.toUpperCase()))
+      .join(" / ");
+    const off = discount.kind === "percent" ? fillWords(words.percentOff, { percent: discount.percent }) : fillWords(words.amountOff, { amounts });
+    if (discount.duration === "once") return fillWords(words.givesOnce, { off });
+    if (discount.duration === "forever") return fillWords(words.givesForever, { off });
+    const n = discount.durationMonths ?? 0;
+    return fillWords(n === 1 ? words.givesMonths.one : words.givesMonths.many, { off, n });
+  }
   const off =
     discount.kind === "percent"
       ? `${discount.percent} % off`

@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { LocalView } from "@/components/admin/shipping/local-view";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { getCompany } from "@/server/company";
 import { codesInRadius, hasPostalPoints, listLocalAreas } from "@/server/local-delivery";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -17,6 +20,9 @@ export default async function ShippingLocalPage({ params }: PageProps<"/admin/[s
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const all = adminText(lang, "shipping");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${store.slug}/settings/shipping`;
   const [areas, company, withPoints] = await Promise.all([
     listLocalAreas(store.id),
@@ -27,22 +33,26 @@ export default async function ShippingLocalPage({ params }: PageProps<"/admin/[s
   // How many of the country's postal codes each circle includes (the page says it, since centres are coarse).
   const included = await Promise.all(areas.map((a) => (a.kind === "radius" && a.origin && a.radiusKm ? codesInRadius(a.marketCode, a.origin, a.radiusKm) : Promise.resolve(null))));
   return (
+    <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Shipping" }}
-        title="Local delivery"
-        description="Deliver orders yourself to customers nearby. Customers give their postal code at checkout and are offered the cheapest area that covers it, with a note for the driver. Mark an order Out for delivery to email them, and Delivered when it is there."
+        back={{ href: base, label: all.pages.back }}
+        title={all.pages.localTitle}
+        description={all.pages.localDescription}
       />
       <LocalView
         markets={store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.nativeCurrency }))}
         areas={areas.map((a, i) => ({ ...a, included: included[i] }))}
-        places={places.map((p) => ({ id: p.id, name: p.kind === "office" ? p.name || "Office" : p.name, country: p.country, hasPosition: p.latitude !== null }))}
+        places={places.map((p) => ({ id: p.id, name: p.kind === "office" ? p.name || all.pages.office : p.name, country: p.country, hasPosition: p.latitude !== null }))}
         radiusCountries={withPoints.filter((c): c is string => c !== null)}
         canWrite={memberCan(gated, "settings:write")}
+        words={all.local}
+        locale={locale}
         save={(areaId) => saveAreaAction.bind(null, store.slug, areaId)}
         remove={(areaId) => deleteAreaAction.bind(null, store.slug, areaId)}
         check={memberCan(gated, "settings:write") ? checkLocalCodeAction.bind(null, store.slug) : null}
       />
     </div>
+    </AdminTextScope>
   );
 }

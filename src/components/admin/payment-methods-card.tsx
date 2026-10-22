@@ -1,7 +1,8 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { Card, Chip } from "@/components/admin/ui";
 import {
-  METHOD_STATE_WORDS,
   methodOn,
   methodStateOf,
   PAYMENT_METHODS,
@@ -19,10 +20,10 @@ const STATE_SIGNAL: Record<MethodStateWord, "positive" | "warning" | "neutral" |
   not_read: "neutral",
 };
 
-/** A country's name for the owner (the admin is English). */
-function countryName(code: string): string {
+/** A country's name for the owner, in the admin's language. */
+function countryName(code: string, locale: string): string {
   try {
-    return new Intl.DisplayNames("en", { type: "region" }).of(code) ?? code;
+    return new Intl.DisplayNames(locale, { type: "region" }).of(code) ?? code;
   } catch {
     return code;
   }
@@ -39,32 +40,35 @@ export function PaymentMethodsCard({
   markets,
   isOwner,
   action,
+  words = paymentsEn.methods,
+  locale = "en",
 }: {
   states: Record<string, CapabilityState> | null;
   choices: readonly MethodChoice[];
   markets: readonly string[];
   isOwner: boolean;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
+  /** The words, in the account's language (D312 A8), and its locale for country names; English unless given. */
+  words?: PaymentsMessages["methods"];
+  locale?: string;
 }) {
+  const w = words;
   return (
-    <Card
-      title="Payment methods"
-      description="Stripe shows each shopper the methods that suit their country and currency. Untick a method to leave it out of a country's checkout."
-    >
+    <Card title={w.title} description={w.description}>
       <ActionForm action={action} className="flex flex-col gap-4">
         {markets.map((m) => (
           <input key={m} type="hidden" name="market" value={m} />
         ))}
         <fieldset disabled={!isOwner} className="overflow-x-auto">
           <table className="w-full min-w-[32rem] border-collapse text-sm">
-            <caption className="sr-only">Payment methods, what Stripe says of each, and the countries that offer them</caption>
+            <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr className="border-b border-line text-left text-muted">
-                <th scope="col" className="py-2 pr-3 font-normal">Method</th>
-                <th scope="col" className="py-2 pr-3 font-normal">At Stripe</th>
+                <th scope="col" className="py-2 pr-3 font-normal">{w.method}</th>
+                <th scope="col" className="py-2 pr-3 font-normal">{w.atStripe}</th>
                 {markets.map((m) => (
                   <th key={m} scope="col" className="px-2 py-2 text-center font-normal">
-                    {countryName(m)}
+                    {countryName(m, locale)}
                   </th>
                 ))}
               </tr>
@@ -72,33 +76,34 @@ export function PaymentMethodsCard({
             <tbody className="divide-y divide-line">
               {PAYMENT_METHODS.map((method) => {
                 const state = methodStateOf(states, method);
-                const reason = state === "unavailable" ? stateReason(states?.[method.capability]?.reason) : null;
+                const reason = state === "unavailable" ? stateReason(states?.[method.capability]?.reason, w.reasons) : null;
+                const kind = w.kinds[method.type] ?? { label: method.label, where: method.where };
                 return (
                   <tr key={method.type}>
                     <th scope="row" className="py-2 pr-3 text-left font-normal">
-                      <span className="block text-ink">{method.label}</span>
+                      <span className="block text-ink">{kind.label}</span>
                       <span className="block text-caption text-muted">
-                        {method.where}
-                        {method.delayed && ". The money arrives in a few days; the order waits with its stock held."}
+                        {kind.where}
+                        {method.delayed && w.delayed}
                       </span>
                     </th>
                     <td className="py-2 pr-3">
                       <Chip signal={STATE_SIGNAL[state]} dot>
-                        {METHOD_STATE_WORDS[state]}
+                        {w.states[state]}
                       </Chip>
                       {reason && <span className="mt-1 block text-caption text-muted">{reason}</span>}
                     </td>
                     {markets.map((m) => (
                       <td key={m} className="px-2 py-2 text-center">
                         {method.always ? (
-                          <span className="text-caption text-muted">Always</span>
+                          <span className="text-caption text-muted">{w.always}</span>
                         ) : (
                           <input
                             type="checkbox"
                             name="on"
                             value={`${m}:${method.type}`}
                             defaultChecked={methodOn(choices, m, method.type)}
-                            aria-label={`${method.label} in ${countryName(m)}`}
+                            aria-label={fillWords(w.inCountry, { method: kind.label, country: countryName(m, locale) })}
                             className="size-4"
                           />
                         )}
@@ -112,16 +117,14 @@ export function PaymentMethodsCard({
         </fieldset>
         {isOwner && (
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{w.save}</SubmitButton>
           </div>
         )}
+        <p className="text-caption text-muted">{w.repeat}</p>
         <p className="text-caption text-muted">
-          Subscriptions take only the methods Stripe allows for repeat payments, such as cards and SEPA Direct Debit; subscription boxes take cards.
-        </p>
-        <p className="text-caption text-muted">
-          A method Stripe has not made active is not shown to shoppers, whatever is ticked. Wallets, Swish and the rest of Stripe&apos;s methods are in your{" "}
+          {w.notActive}{" "}
           <a href="https://dashboard.stripe.com/settings/payment_methods" className="underline" target="_blank" rel="noreferrer">
-            Stripe Dashboard
+            {w.dashboard}
           </a>
           .
         </p>

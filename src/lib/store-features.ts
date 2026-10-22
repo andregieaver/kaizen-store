@@ -10,6 +10,10 @@
  * `FeatureFacts`, and `feature` tags on its navigation items and `ADMIN_PAGES` entries (and `TOOL_FEATURES` for its AI manager tools).
  */
 
+import { countWords } from "./admin-fill";
+import { commonEn, type CommonMessages } from "./admin-messages/common.en";
+import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
+
 export const FEATURE_IDS = [
   "shop",
   "subscriptions",
@@ -224,15 +228,15 @@ export function requirementMet(source: FeatureSource, requirement: FeatureRequir
 }
 
 /** The words for a requirement: "Appointments or Stays and rentals". */
-export function requirementLabel(requirement: FeatureRequirement): string {
+export function requirementLabel(requirement: FeatureRequirement, c: CommonMessages["features"] = commonEn.features): string {
   const ids: readonly FeatureId[] = typeof requirement === "string" ? [requirement] : requirement;
-  return ids.map((id) => FEATURES_BY_ID[id].label).join(" or ");
+  return ids.map((id) => c.labels[id]).join(c.or);
 }
 
 /** What a server action says when a stale page asks for something of a feature that is off: "Appointments is switched off under …". */
-export function featureOffText(requirement: FeatureRequirement): string {
+export function featureOffText(requirement: FeatureRequirement, c: CommonMessages["features"] = commonEn.features): string {
   const ids: readonly FeatureId[] = typeof requirement === "string" ? [requirement] : requirement;
-  return `${requirementLabel(requirement)} ${ids.length > 1 ? "are" : "is"} switched off under Settings, Features.`;
+  return countWords(ids.length, c.offUnder, { label: requirementLabel(requirement, c) });
 }
 
 /**
@@ -405,32 +409,33 @@ export const NO_FACTS: FeatureFacts = {
 /** A reason a feature cannot be switched off, with the admin page (after the store's address) where it is dealt with. */
 export type FeatureBlocker = { text: string; path: string };
 
-const many = (count: number, one: string, other: string) => `${count} ${count === 1 ? one : other}`;
-const them = (count: number) => (count === 1 ? "it" : "them");
+/**
+ * The words the Features page's sentences are written in (D312 A8): `settings.features` and `common.features` in the account's language.
+ * English, as the AI manager and the setup tools read them, unless given.
+ */
+export type FeatureWords = { s: SettingsMessages["features"]; c: CommonMessages["features"] };
 
-function subscriptionBlockers(f: FeatureFacts): FeatureBlocker[] {
-  return f.runningSubscriptions > 0
-    ? [{ text: `${many(f.runningSubscriptions, "subscription is", "subscriptions are")} still running. Cancel ${them(f.runningSubscriptions)} first.`, path: "/subscriptions" }]
-    : [];
+export const FEATURE_WORDS_EN: FeatureWords = { s: settingsEn.features, c: commonEn.features };
+
+function subscriptionBlockers(f: FeatureFacts, w: FeatureWords): FeatureBlocker[] {
+  return f.runningSubscriptions > 0 ? [{ text: countWords(f.runningSubscriptions, w.s.blockers.subscriptions), path: "/subscriptions" }] : [];
 }
 
-function boxBlockers(f: FeatureFacts): FeatureBlocker[] {
+function boxBlockers(f: FeatureFacts, w: FeatureWords): FeatureBlocker[] {
   const out: FeatureBlocker[] = [];
-  if (f.runningBoxes > 0) out.push({ text: `${many(f.runningBoxes, "subscription box list is", "subscription box lists are")} still active or paused. Cancel ${them(f.runningBoxes)} first.`, path: "/deliveries" });
-  if (f.boxOrdersUnpaid > 0) out.push({ text: `${many(f.boxOrdersUnpaid, "subscription box order is", "subscription box orders are")} waiting to be sent and paid. Send or cancel ${them(f.boxOrdersUnpaid)} first.`, path: "/orders" });
+  if (f.runningBoxes > 0) out.push({ text: countWords(f.runningBoxes, w.s.blockers.boxLists), path: "/deliveries" });
+  if (f.boxOrdersUnpaid > 0) out.push({ text: countWords(f.boxOrdersUnpaid, w.s.blockers.boxOrders), path: "/orders" });
   return out;
 }
 
-function appointmentBlockers(f: FeatureFacts): FeatureBlocker[] {
-  return f.futureAppointments > 0
-    ? [{ text: `${many(f.futureAppointments, "appointment is", "appointments are")} still to come. Cancel ${them(f.futureAppointments)} first, or wait until they have taken place.`, path: "/bookings" }]
-    : [];
+function appointmentBlockers(f: FeatureFacts, w: FeatureWords): FeatureBlocker[] {
+  return f.futureAppointments > 0 ? [{ text: countWords(f.futureAppointments, w.s.blockers.appointments), path: "/bookings" }] : [];
 }
 
-function stayBlockers(f: FeatureFacts): FeatureBlocker[] {
+function stayBlockers(f: FeatureFacts, w: FeatureWords): FeatureBlocker[] {
   const out: FeatureBlocker[] = [];
-  if (f.futureStays > 0) out.push({ text: `${many(f.futureStays, "stay or rental is", "stays and rentals are")} still to come. Cancel ${them(f.futureStays)} first, or wait until they are over.`, path: "/bookings/stays" });
-  if (f.unpaidHostCommissions > 0) out.push({ text: `${many(f.unpaidHostCommissions, "host's commission is", "hosts' commissions are")} not paid out yet. Wait until ${f.unpaidHostCommissions === 1 ? "it is" : "they are"} settled.`, path: "/hosts" });
+  if (f.futureStays > 0) out.push({ text: countWords(f.futureStays, w.s.blockers.stays), path: "/bookings/stays" });
+  if (f.unpaidHostCommissions > 0) out.push({ text: countWords(f.unpaidHostCommissions, w.s.blockers.hostCommissions), path: "/hosts" });
   return out;
 }
 
@@ -439,26 +444,27 @@ function stayBlockers(f: FeatureFacts): FeatureBlocker[] {
  * for and not sent, in another country for Several countries). Empty: nothing stands in the way. Bonus, referrals, business, currencies and
  * languages are never blocked, only warned of.
  */
-export function featureBlockers(id: FeatureId, f: FeatureFacts): FeatureBlocker[] {
+export function featureBlockers(id: FeatureId, f: FeatureFacts, w: FeatureWords = FEATURE_WORDS_EN): FeatureBlocker[] {
+  const b = w.s.blockers;
   switch (id) {
     case "shop": {
       const out: FeatureBlocker[] = [];
-      if (f.paidUnshipped > 0) out.push({ text: `${many(f.paidUnshipped, "paid order has", "paid orders have")} goods still to send. Send or refund ${them(f.paidUnshipped)} first.`, path: "/orders" });
-      return [...out, ...subscriptionBlockers(f), ...boxBlockers(f), ...appointmentBlockers(f), ...stayBlockers(f)];
+      if (f.paidUnshipped > 0) out.push({ text: countWords(f.paidUnshipped, b.paidUnshipped), path: "/orders" });
+      return [...out, ...subscriptionBlockers(f, w), ...boxBlockers(f, w), ...appointmentBlockers(f, w), ...stayBlockers(f, w)];
     }
     case "subscriptions":
-      return subscriptionBlockers(f);
+      return subscriptionBlockers(f, w);
     case "boxes":
-      return boxBlockers(f);
+      return boxBlockers(f, w);
     case "appointments":
-      return appointmentBlockers(f);
+      return appointmentBlockers(f, w);
     case "bookings":
-      return stayBlockers(f);
+      return stayBlockers(f, w);
     case "countries": {
       const out: FeatureBlocker[] = [];
-      if (f.foreignSubscriptions > 0) out.push({ text: `${many(f.foreignSubscriptions, "subscription runs", "subscriptions run")} in another country. Cancel ${them(f.foreignSubscriptions)} first.`, path: "/subscriptions" });
-      if (f.foreignBoxes > 0) out.push({ text: `${many(f.foreignBoxes, "subscription box list is", "subscription box lists are")} for another country. Cancel ${them(f.foreignBoxes)} first.`, path: "/deliveries" });
-      if (f.foreignUnsent > 0) out.push({ text: `${many(f.foreignUnsent, "paid order has", "paid orders have")} goods still to send to another country. Send or refund ${them(f.foreignUnsent)} first.`, path: "/orders" });
+      if (f.foreignSubscriptions > 0) out.push({ text: countWords(f.foreignSubscriptions, b.foreignSubscriptions), path: "/subscriptions" });
+      if (f.foreignBoxes > 0) out.push({ text: countWords(f.foreignBoxes, b.foreignBoxes), path: "/deliveries" });
+      if (f.foreignUnsent > 0) out.push({ text: countWords(f.foreignUnsent, b.foreignUnsent), path: "/orders" });
       return out;
     }
     default:
@@ -467,62 +473,70 @@ export function featureBlockers(id: FeatureId, f: FeatureFacts): FeatureBlocker[
 }
 
 /** What is worth knowing before switching a feature off, which the owner confirms; empty: nothing more than the feature's own words. */
-export function featureWarnings(id: FeatureId, f: FeatureFacts, features: FeatureSource, formatMoney: (minor: number, currency: string) => string): string[] {
+export function featureWarnings(
+  id: FeatureId,
+  f: FeatureFacts,
+  features: FeatureSource,
+  formatMoney: (minor: number, currency: string) => string,
+  w: FeatureWords = FEATURE_WORDS_EN,
+): string[] {
   const out: string[] = [];
+  const t = w.s.warnings;
+  const add = (count: number, words: { one: string; many: string }, values: Record<string, string | number> = {}) => {
+    if (count > 0) out.push(countWords(count, words, values));
+  };
   // What needs it and is on now goes to sleep with it; its own switch is kept.
   const asleep = dependentsOf(id).filter((dep) => featureOn(features, dep));
   switch (id) {
     case "shop":
-      if (f.openCheckouts > 0) out.push(`${many(f.openCheckouts, "order is", "orders are")} waiting for payment. Customers can still pay ${them(f.openCheckouts)}.`);
+      add(f.openCheckouts, t.openCheckouts);
       break;
     case "subscriptions":
-      if (f.subscriptionProducts > 0) out.push(`${many(f.subscriptionProducts, "product has", "products have")} purchase options. They are kept, but not offered.`);
+      add(f.subscriptionProducts, t.subscriptionProducts);
       break;
     case "boxes":
-      if (f.deliverySchedules > 0) out.push(`${many(f.deliverySchedules, "delivery day is", "delivery days are")} kept, but not offered.`);
+      add(f.deliverySchedules, t.deliverySchedules);
       break;
     case "appointments":
-      if (f.appointmentProducts > 0) out.push(`${many(f.appointmentProducts, "appointment product", "appointment products")} can no longer be booked.`);
+      add(f.appointmentProducts, t.appointmentProducts);
       break;
     case "bookings":
-      if (f.stayProducts > 0) out.push(`${many(f.stayProducts, "stay or rental product", "stay and rental products")} can no longer be booked.`);
-      if (f.hosts > 0) out.push(`${many(f.hosts, "host", "hosts")} can no longer list stays and rentals in the store.`);
+      add(f.stayProducts, t.stayProducts);
+      add(f.hosts, t.hosts);
       break;
     case "countries":
-      if (f.otherCountries > 0) out.push(`${many(f.otherCountries, "country besides your own is", "countries besides your own are")} no longer offered to shoppers. ${f.otherCountries === 1 ? "Its" : "Their"} addresses lead to your own country, and orders already placed there keep their pages and links.`);
-      if (f.foreignCarts > 0) out.push(`${many(f.foreignCarts, "open cart is", "open carts are")} in another country. ${f.foreignCarts === 1 ? "It" : "They"} can no longer be ordered.`);
+      add(f.otherCountries, t.otherCountries);
+      add(f.foreignCarts, t.foreignCarts);
       break;
     case "languages":
-      if (f.otherLanguages > 0) out.push(`${many(f.otherLanguages, "language besides your countries' own is", "languages besides your countries' own are")} no longer shown to shoppers. Translations are kept.`);
+      add(f.otherLanguages, t.otherLanguages);
       break;
     case "currencies":
-      if (f.extraCurrencies > 0) out.push(`${many(f.extraCurrencies, "extra currency is", "extra currencies are")} no longer offered. Open carts are shown in their country's own currency.`);
+      add(f.extraCurrencies, t.extraCurrencies);
       break;
     case "business":
-      if (f.businessCarts > 0) out.push(`${many(f.businessCarts, "open cart holds", "open carts hold")} a VAT number that will no longer be used.`);
-      if (f.businessProducts > 0) out.push(`${many(f.businessProducts, "product is", "products are")} for businesses only.`);
-      if (f.companies > 0) out.push(`${many(f.companies, "company account", "company accounts")} no longer ${f.companies === 1 ? "gets" : "get"} a discount.`);
+      add(f.businessCarts, t.businessCarts);
+      add(f.businessProducts, t.businessProducts);
+      add(f.companies, t.companies);
       break;
     case "bonus":
-      if (f.creditHolders > 0 && f.creditsCurrency) {
-        out.push(`${many(f.creditHolders, "customer holds", "customers hold")} ${formatMoney(f.creditsMinor, f.creditsCurrency)} in credits. They can't use them while the program is off; nothing is taken away, and expiry dates that pass meanwhile are moved on by as long as it was off.`);
-      }
+      if (f.creditHolders > 0 && f.creditsCurrency) add(f.creditHolders, t.credits, { amount: formatMoney(f.creditsMinor, f.creditsCurrency) });
       break;
     case "referrals":
-      if (f.referrers > 0) out.push(`${many(f.referrers, "customer has", "customers have")} a referral link that stops giving discounts.`);
-      if (f.pendingReferrals > 0) out.push(`${many(f.pendingReferrals, "reward is", "rewards are")} still pending: ${f.pendingReferrals === 1 ? "it was" : "they were"} earned while the program was on, so ${f.pendingReferrals === 1 ? "it is" : "they are"} decided as usual.`);
+      add(f.referrers, t.referrers);
+      add(f.pendingReferrals, t.pendingReferrals);
       break;
     case "gift_cards":
-      if (f.giftCardProducts > 0) out.push(`${many(f.giftCardProducts, "gift card product", "gift card products")} can no longer be bought.`);
-      if (f.giftCardsHeld > 0) out.push(`${many(f.giftCardsHeld, "gift card still holds", "gift cards still hold")} money. ${f.giftCardsHeld === 1 ? "It" : "They"} can still be used and refunded.`);
+      add(f.giftCardProducts, t.giftCardProducts);
+      add(f.giftCardsHeld, t.giftCardsHeld);
       break;
     case "reviews":
-      if (f.publishedReviews > 0) out.push(`${many(f.publishedReviews, "published review stops", "published reviews stop")} showing on your product pages. Nothing is deleted.`);
+      add(f.publishedReviews, t.publishedReviews);
       break;
   }
   if (asleep.length > 0) {
-    const labels = asleep.map((dep) => FEATURES_BY_ID[dep].label);
-    out.push(`${labels.join(", ")} ${asleep.length === 1 ? "needs" : "need"} it, so ${asleep.length === 1 ? "it stops" : "they stop"} too. ${asleep.length === 1 ? "Its" : "Their"} own switch is kept for when you switch it on again.`);
+    const labels = asleep.map((dep) => w.c.labels[dep]);
+    out.push(countWords(asleep.length, t.asleep, { labels: labels.join(t.listSeparator) }));
   }
   return out;
 }
@@ -584,25 +598,31 @@ export type FeatureRow = {
   warnings: string[];
 };
 
-const needWords = (id: FeatureId) => (id === "shop" ? "the online shop" : `the ${FEATURES_BY_ID[id].label.toLowerCase()}`);
+/** A feature that another needs, in a sentence: "the online shop", "the bonus program". */
+export const needWords = (id: FeatureId, c: CommonMessages["features"] = commonEn.features): string => c.need[id];
 
-/** Every feature's row, from the store's kept features and the facts counted now. */
-export function featureRows(features: FeatureSource, facts: FeatureFacts, formatMoney: (minor: number, currency: string) => string): Record<FeatureId, FeatureRow> {
+/** Every feature's row, from the store's kept features and the facts counted now, in the account's words (English unless given). */
+export function featureRows(
+  features: FeatureSource,
+  facts: FeatureFacts,
+  formatMoney: (minor: number, currency: string) => string,
+  w: FeatureWords = FEATURE_WORDS_EN,
+): Record<FeatureId, FeatureRow> {
   const rows = FEATURE_IDS.map((id): FeatureRow => {
     const f = FEATURES_BY_ID[id];
     const on = featureOn(features, id);
     return {
       id,
-      label: f.label,
-      words: f.words,
-      offWords: f.offWords,
+      label: w.c.labels[id],
+      words: w.s.items[id].words,
+      offWords: w.s.items[id].offWords,
       kept: featureKept(features, id),
       on,
       inUse: featureInUse(id, facts),
-      missing: missingNeeds(features, id).map(needWords),
+      missing: missingNeeds(features, id).map((need) => needWords(need, w.c)),
       setupPath: f.setupPath,
-      blockers: on ? featureBlockers(id, facts) : [],
-      warnings: on ? featureWarnings(id, facts, features, formatMoney) : [],
+      blockers: on ? featureBlockers(id, facts, w) : [],
+      warnings: on ? featureWarnings(id, facts, features, formatMoney, w) : [],
     };
   });
   return Object.fromEntries(rows.map((r) => [r.id, r])) as Record<FeatureId, FeatureRow>;

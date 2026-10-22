@@ -6,6 +6,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS, INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -18,48 +22,47 @@ import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sen
 export const metadata: Metadata = { title: "Integration" };
 
 const card = "rounded-lg border border-line bg-card p-5";
-const STATUS: Record<DeliveryRow["status"], { text: string; signal: "positive" | "warning" | "danger" }> = {
-  delivered: { text: "Delivered", signal: "positive" },
-  pending: { text: "Trying again", signal: "warning" },
-  failed: { text: "Failed", signal: "danger" },
-};
+const SIGNAL: Record<DeliveryRow["status"], "positive" | "warning" | "danger"> = { delivered: "positive", pending: "warning", failed: "danger" };
 
-/** What came back from "Add to Slack" (D101). */
-const SLACK_RETURN: Record<string, { ok: boolean; text: string }> = {
-  connected: { ok: true, text: "Slack is connected. Send a test to see a message arrive." },
-  cancelled: { ok: false, text: "Slack was not connected: it was cancelled in Slack." },
-  failed: { ok: false, text: "Slack could not be connected. Try again, or paste a webhook address below." },
-};
+/** What came back from "Add to Slack" (D101): whether it went well, by the address's answer. */
+const SLACK_RETURN: Record<string, boolean> = { connected: true, cancelled: false, failed: false };
 
 /** One integration (D41, Slack D101): how to connect it, what it gets, a test, and what was sent lately. */
 export default async function IntegrationPage({ params, searchParams }: PageProps<"/admin/[store]/integrations/[provider]">) {
   const { store: slug, provider } = await params;
-  const returned = provider === "slack" ? SLACK_RETURN[String((await searchParams).slack ?? "")] : undefined;
+  const answer = provider === "slack" ? String((await searchParams).slack ?? "") : "";
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
+  const all = adminText(lang, "notifications");
+  const w = all.integrations.provider;
+  const returned = answer in SLACK_RETURN ? { ok: SLACK_RETURN[answer], text: w.slackReturn[answer as keyof typeof w.slackReturn] } : undefined;
   const subscriptionsOn = featureOn(store, "subscriptions");
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const [integration, deliveries] = await Promise.all([getIntegration(store.id, provider), listDeliveries(store.id, provider)]);
-  const locale = store.markets[0]?.locale ?? "nb-NO";
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const owner = memberCan(current, "owner");
   const chosen = new Set(integration?.events ?? DEFAULT_EVENTS);
   const slack = provider === "slack";
   const addToSlack = slack && owner && slackAppOn();
-  const eventLabel = (id: string) => (id === "test" ? "Test" : id === "assistant.message" ? "Message from the AI manager" : (EVENTS.find((e) => e.id === id)?.label ?? id));
+  const eventLabel = (id: string) =>
+    id === "test" ? w.testEvent : id === "assistant.message" ? w.assistantEvent : (all.integrations.events[id]?.label ?? EVENTS.find((e) => e.id === id)?.label ?? id);
+  const steps = all.integrations.infos[info.id]?.steps ?? info.steps ?? [];
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
     <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
-          Integrations
+          {w.back}
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
           <PageHeader
             title={<>{info.name}</>}
-            description={<>{integration ? (integration.enabled ? `On · sending to ${integration.hint}` : `Off · address ${integration.hint}`) : "Not set up"}</>}
+            description={<>{integration ? fillWords(integration.enabled ? w.sendingTo : w.offAddress, { hint: integration.hint }) : w.notSetUp}</>}
           />
         </div>
       </div>
@@ -76,44 +79,40 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
       {addToSlack && (
         <section aria-labelledby="add-to-slack" className={card}>
           <h2 id="add-to-slack" className="mb-1 text-title text-ink">
-            {integration ? "Change the channel" : "Add to Slack"}
+            {integration ? w.changeChannel : w.addToSlack}
           </h2>
-          <p className="mb-3 text-sm text-muted">
-            Slack asks which channel Kaizena Flow may post to. Kaizena Flow can post there and nothing else: it cannot read your messages.
-          </p>
+          <p className="mb-3 text-sm text-muted">{w.slackAsks}</p>
           <form action={connectSlackAction.bind(null, store.slug)}>
             <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-              {integration ? "Choose another channel in Slack" : "Add to Slack"}
+              {integration ? w.otherChannel : w.addToSlack}
             </button>
           </form>
         </section>
       )}
 
       <section aria-labelledby="how" className={card}>
-        <h2 id="how" className="mb-2 text-title text-ink">{addToSlack ? "Or make a webhook yourself" : "How to connect"}</h2>
+        <h2 id="how" className="mb-2 text-title text-ink">{addToSlack ? w.orYourself : w.how}</h2>
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
-          {info.steps?.map((step) => <li key={step}>{step}</li>)}
+          {steps.map((step) => <li key={step}>{step}</li>)}
         </ol>
         {info.docs && (
           <p className="mt-3 text-sm">
             <a href={info.docs} target="_blank" rel="noreferrer" className="underline">
-              {info.name}&apos;s guide to {slack ? "incoming webhooks" : "webhooks"}
+              {fillWords(slack ? w.guideHooks : w.guide, { name: info.name })}
             </a>
           </p>
         )}
       </section>
 
       <section aria-labelledby="settings" className={card}>
-        <h2 id="settings" className="mb-1 text-title text-ink">Settings</h2>
+        <h2 id="settings" className="mb-1 text-title text-ink">{w.settings}</h2>
         <p className="mb-4 text-sm text-muted">
-          {slack
-            ? "Messages name the shopper and what they bought, never their email or address: open the order in Kaizena Flow for those. Everyone in the channel sees them, so choose one for the people who handle orders, and make sure your agreement with Slack covers personal data (a data processing agreement)."
-            : `Kaizena Flow sends shoppers’ names, emails and addresses to ${info.name}. Make sure your agreement with ${info.name} covers personal data (a data processing agreement).`}
+          {slack ? w.slackPrivacy : fillWords(w.privacy, { name: info.name })}
         </p>
         {owner ? (
           <ActionForm action={saveIntegrationAction.bind(null, store.slug, provider)} className="flex flex-col gap-5">
             <div className="flex flex-col gap-1 text-sm font-medium">
-              <label htmlFor="webhook-url">{integration ? "New webhook address" : "Webhook address"}</label>
+              <label htmlFor="webhook-url">{integration ? w.newAddress : w.address}</label>
               <input
                 id="webhook-url"
                 name="url"
@@ -127,20 +126,18 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                 className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-sm font-normal"
               />
               <p id="webhook-url-hint" className="font-normal text-muted">
-                {integration
-                  ? `Leave empty to keep sending to ${integration.hint}. The address is kept encrypted.`
-                  : "The address is kept encrypted, and only ever sent to."}
+                {integration ? fillWords(w.keepHint, { hint: integration.hint }) : w.newHint}
               </p>
             </div>
             <fieldset className="flex flex-col gap-2">
-              <legend className="mb-1 text-sm font-medium">Events to send</legend>
+              <legend className="mb-1 text-sm font-medium">{w.events}</legend>
               {/* Subscriptions' events are offered while that feature is on (D178); one already chosen is kept as it is while it is off. */}
               {EVENTS.filter((event) => !event.id.startsWith("subscription.") || subscriptionsOn).map((event) => (
                 <label key={event.id} className="flex items-start gap-2 text-sm">
                   <input type="checkbox" name="events" value={event.id} defaultChecked={chosen.has(event.id)} className="mt-0.5 size-4" />
                   <span>
-                    {event.label}
-                    <span className="block text-xs text-muted">{event.hint}</span>
+                    {all.integrations.events[event.id]?.label ?? event.label}
+                    <span className="block text-xs text-muted">{all.integrations.events[event.id]?.hint ?? event.hint}</span>
                   </span>
                 </label>
               ))}
@@ -151,24 +148,22 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             </fieldset>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" name="enabled" defaultChecked={integration ? integration.enabled : true} className="size-4" />
-              On: send these events as they happen
+              {w.enabled}
             </label>
             <div>
-              <SubmitButton>{integration ? "Save" : `Connect ${info.name}`}</SubmitButton>
+              <SubmitButton>{integration ? all.common.save : fillWords(w.connect, { name: info.name })}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
-          <p className="text-sm">Only an owner can connect or change {info.name}.</p>
+          <p className="text-sm">{fillWords(w.ownerOnly, { name: info.name })}</p>
         )}
       </section>
 
       {integration && owner && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
+          <h2 id="test" className="mb-1 text-title text-ink">{w.test}</h2>
           <p className="mb-3 text-sm text-muted">
-            {slack
-              ? "Posts your latest order (or a sample one) to the channel now, marked as a test. It is sent even while Slack is off here."
-              : `Sends your latest order (or a sample one) now, marked as a test, so ${info.name} can learn the fields. It is sent even while the integration is off.`}
+            {slack ? w.slackTest : fillWords(w.testHint, { name: info.name })}
           </p>
           <TestSendButton action={sendTestAction.bind(null, store.slug, provider)} />
         </section>
@@ -176,12 +171,12 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
 
       {integration && (
         <section aria-labelledby="log" className={card}>
-          <h2 id="log" className="mb-1 text-title text-ink">Recently sent</h2>
-          <p className="mb-3 text-sm text-muted">Events that did not get through are tried again for about eight hours.</p>
+          <h2 id="log" className="mb-1 text-title text-ink">{w.recent}</h2>
+          <p className="mb-3 text-sm text-muted">{w.recentHint}</p>
           {deliveries.length === 0 ? (
-            <p className="text-sm text-muted">Nothing sent yet.</p>
+            <p className="text-sm text-muted">{w.nothing}</p>
           ) : (
-            <List label="Events sent">
+            <List label={w.eventsSent}>
               {deliveries.map((d) => (
                 <ListRow key={d.id}>
                   <RowLead
@@ -191,14 +186,14 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                         <>
                           {d.lastStatus ? `${d.lastStatus}: ` : ""}
                           {d.lastError}
-                          {d.status === "pending" && d.attempts > 0 && ` · next try ${when(d.nextAttemptAt)}`}
+                          {d.status === "pending" && d.attempts > 0 && fillWords(w.nextTry, { when: when(d.nextAttemptAt) })}
                         </>
                       ) : undefined
                     }
                   />
                   <RowDate>{when(d.createdAt)}</RowDate>
-                  <Chip signal={STATUS[d.status].signal} dot>
-                    {STATUS[d.status].text}
+                  <Chip signal={SIGNAL[d.status]} dot>
+                    {w.statuses[d.status]}
                   </Chip>
                 </ListRow>
               ))}
@@ -211,14 +206,11 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
         <DeleteDiscountButton
           action={removeIntegrationAction.bind(null, store.slug, provider)}
           code={info.name}
-          question={
-            slack
-              ? "Disconnect Slack? Kaizena Flow stops posting and forgets the webhook. You can remove the app from your workspace in Slack too."
-              : `Disconnect ${info.name}? Kaizena Flow stops sending to it and forgets the address.`
-          }
-          label={`Disconnect ${info.name}`}
+          question={slack ? w.disconnectSlack : fillWords(w.disconnectQuestion, { name: info.name })}
+          label={fillWords(w.disconnect, { name: info.name })}
         />
       )}
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,16 +1,8 @@
 import Link from "next/link";
 
+import { fillWords } from "@/lib/admin-fill";
+import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import type { EmailLogRow } from "@/server/email";
-
-const STATUS: Record<EmailLogRow["status"], string> = {
-  queued: "Sending",
-  sent: "Sent",
-  delivered: "Delivered",
-  failed: "Failed",
-  bounced: "Bounced (address does not take email)",
-  complained: "Marked as spam by the recipient",
-  logged: "Not sent (email not set up)",
-};
 
 /** A list of emails as sent, newest first, each opening to what it said. */
 export function EmailLog({
@@ -18,13 +10,17 @@ export function EmailLog({
   base,
   showStore = false,
   locale = "nb-NO",
+  words = notificationsEn,
 }: {
   emails: EmailLogRow[];
   base: string;
   showStore?: boolean;
   locale?: string;
+  /** The admin's words in the account's language; English unless given. */
+  words?: NotificationsMessages;
 }) {
-  if (emails.length === 0) return <p className="text-sm text-muted">No emails yet.</p>;
+  const w = words.log;
+  if (emails.length === 0) return <p className="text-sm text-muted">{w.none}</p>;
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   return (
@@ -36,14 +32,14 @@ export function EmailLog({
               {email.subject}
             </Link>
             <span className="block text-xs text-muted">
-              to {email.to}
+              {fillWords(w.to, { to: email.to })}
               {showStore && email.storeName && ` · ${email.storeName}`}
             </span>
           </span>
           <span className="text-xs text-muted">
             <time dateTime={email.createdAt}>{when(email.createdAt)}</time> ·{" "}
             <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-danger-text" : undefined}>
-              {STATUS[email.status]}
+              {w.statuses[email.status]}
             </span>
           </span>
         </li>
@@ -53,22 +49,23 @@ export function EmailLog({
 }
 
 /** One email as the shopper saw it, in a sandboxed frame (no scripts, no forms). */
-export function EmailView({ email }: { email: EmailLogRow & { html: string } }) {
+export function EmailView({ email, words = notificationsEn }: { email: EmailLogRow & { html: string }; words?: NotificationsMessages }) {
+  const w = words.log;
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-muted">To</dt>
+        <dt className="text-muted">{w.toLabel}</dt>
         <dd>{email.to}</dd>
-        <dt className="text-muted">Subject</dt>
+        <dt className="text-muted">{w.subject}</dt>
         <dd>{email.subject}</dd>
-        <dt className="text-muted">Status</dt>
+        <dt className="text-muted">{w.status}</dt>
         <dd>
-          {STATUS[email.status]}
+          {w.statuses[email.status]}
           {email.error && <span className="block text-danger-text">{email.error}</span>}
         </dd>
       </dl>
       <iframe
-        title={`Email: ${email.subject}`}
+        title={fillWords(w.frame, { subject: email.subject })}
         srcDoc={email.html}
         sandbox=""
         className="h-[70vh] w-full rounded-panel border border-line bg-white"

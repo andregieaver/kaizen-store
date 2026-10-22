@@ -13,6 +13,13 @@ import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Pla
 import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { PURCHASE_STATUS_WORDS, priceText } from "@/lib/theme-prices";
 import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import type { BillingMessages } from "@/lib/admin-messages/billing.en";
+
+/** A share of a sale in the admin's language: `formatBps()`'s English, or the number written the language's way ("2,5 %"). */
+const feeText = (bps: number, locale: string) => (locale.startsWith("en") ? formatBps(bps) : `${(bps / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`);
 
 import {
   applyPlanDiscountAction,
@@ -40,6 +47,11 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const onPlan = isOnPlan(billing?.status) && billing?.mode === mode;
   const current = plans.find((plan) => plan.id === billing?.planId);
   const inNorway = (store.details.country ?? "NO") === "NO";
+  const lang = adminLangOf(account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const words = adminText(lang, "billing");
+  const w = words.page;
+  const moneyLocale = lang === "en" ? "nb-NO" : locale;
 
   // Prices in the store's own currency, else in the first one the plans have.
   const storeCurrency = mainCurrency(store);
@@ -56,35 +68,42 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       apply={applyPlanDiscountAction.bind(null, store.slug)}
       remove={removePlanDiscountAction.bind(null, store.slug)}
       canEdit={isOwner}
+      words={words}
+      locale={moneyLocale}
     />
   );
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Billing" description={<>What {store.name} pays Kaizena Flow. Each store has its own plan.</>} />
+      <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
 
-      <Card title={<>{onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}</>} className="text-sm" compact>
+      <Card title={<>{onPlan && billing?.planName ? fillWords(w.yourPlan, { name: billing.planName }) : w.noPlan}</>} className="text-sm" compact>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
           {onPlan && billing?.price && (
             <>
-              <dt className="text-muted">Price</dt>
+              <dt className="text-muted">{w.price}</dt>
               <dd>
-                {priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval)}, excluding VAT
+                {fillWords(w.priceLine, {
+                  price:
+                    lang === "en"
+                      ? priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval)
+                      : `${formatMoney(billing.price.amountMinor, billing.price.currency, moneyLocale)} / ${words.intervals[billing.price.interval]}`,
+                })}
               </dd>
-              <dt className="text-muted">Status</dt>
-              <dd>{SUBSCRIPTION_LABELS[billing.status ?? ""] ?? billing.status}</dd>
+              <dt className="text-muted">{w.status}</dt>
+              <dd>{(lang === "en" ? SUBSCRIPTION_LABELS : words.statuses)[billing.status ?? ""] ?? billing.status}</dd>
               {billing.currentPeriodEnd && (
                 <>
-                  <dt className="text-muted">{billing.cancelAtPeriodEnd ? "Ends" : "Renews"}</dt>
+                  <dt className="text-muted">{billing.cancelAtPeriodEnd ? w.ends : w.renews}</dt>
                   <dd>{billing.currentPeriodEnd.slice(0, 10)}</dd>
                 </>
               )}
             </>
           )}
-          <dt className="text-muted">Kaizena Flow&apos;s fee</dt>
-          <dd>{formatBps(billing?.feeBps ?? 0)} of each sale, taken when the shopper pays</dd>
+          <dt className="text-muted">{w.fee}</dt>
+          <dd>{fillWords(w.feeLine, { fee: feeText(billing?.feeBps ?? 0, locale) })}</dd>
         </dl>
-        {mode === "test" && <p className="mt-3 text-muted">Kaizena Flow is in test mode: no real money is charged.</p>}
+        {mode === "test" && <p className="mt-3 text-muted">{w.testMode}</p>}
       </Card>
 
       {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}
@@ -94,24 +113,21 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         <section aria-labelledby="plans-heading" className="flex flex-col gap-4">
           <div>
             <h2 id="plans-heading" className="text-title text-ink">
-              {onPlan ? "Change plan" : "Choose a plan"}
+              {onPlan ? w.changePlan : w.choosePlan}
             </h2>
             <p className="text-sm text-muted">
-              Prices exclude VAT{inNorway ? "; 25 % MVA is added" : ""}. Paying yearly costs less.{" "}
-              {onPlan
-                ? "A change applies at once: the difference is credited or charged on your next invoice."
-                : "You pay by card on Stripe's secure page, and can change or cancel at any time."}
+              {w.pricesExclude}
+              {inNorway ? w.norwayVat : ""}
+              {lang === "en" ? "." : ""} {w.yearlyCheaper} {onPlan ? w.changeApplies : w.payByCard}
             </p>
-            {!isOwner && <p className="text-sm text-muted">Only an owner of the store can change its plan.</p>}
+            {!isOwner && <p className="text-sm text-muted">{w.ownerOnly}</p>}
           </div>
           {!onPlan && (isOwner || billing?.discount) && codeField}
           {!onPlan && isOwner && reminders && (
             <form action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
-              {optedOut
-                ? "Kaizena Flow sends you no reminders about plans you start paying for. "
-                : "If you go to pay and do not finish, Kaizena Flow may email you a reminder. "}
+              {optedOut ? w.noReminders : w.mayRemind}
               <button type="submit" className="underline hover:text-ink">
-                {optedOut ? "Send me reminders" : "Do not send me reminders"}
+                {optedOut ? w.sendReminders : w.stopReminders}
               </button>
             </form>
           )}
@@ -126,6 +142,9 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
                   storeSlug={store.slug}
                   disabled={!isOwner}
                   discount={onPlan ? null : waiting}
+                  words={words}
+                  locale={locale}
+                  moneyLocale={moneyLocale}
                 />
               </li>
             ))}
@@ -136,31 +155,29 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       {offered.length > 0 && matrix.features.some((feature) => feature.planIds.length > 0) && (
         <section aria-labelledby="compare-heading" className="flex flex-col gap-3">
           <h2 id="compare-heading" className="text-title text-ink">
-            Compare plans
+            {w.compare}
           </h2>
           <PlanFeatureTable matrix={matrix} planIds={offered.map((plan) => plan.id)} current={onPlan ? billing?.planId : null} />
         </section>
       )}
 
-      {themes.length > 0 && <ThemePurchases purchases={themes} />}
+      {themes.length > 0 && <ThemePurchases purchases={themes} words={words} lang={lang} />}
 
       {onPlan && isOwner && (
-        <Card title="Invoices and payment" compact>
-          <p className="mb-4 text-sm text-muted">
-            See all of Kaizena Flow&apos;s invoices, pay an open one, or change the card you pay with.
-          </p>
+        <Card title={w.invoicesTitle} compact>
+          <p className="mb-4 text-sm text-muted">{w.invoicesNote}</p>
           <div className="flex flex-wrap gap-3">
             <ActionForm action={openBillingPortalAction.bind(null, store.slug)}>
-              <SubmitButton>Invoices and payment details</SubmitButton>
+              <SubmitButton>{w.invoicesButton}</SubmitButton>
             </ActionForm>
             <ActionForm action={ownerCancelPlanAction.bind(null, store.slug)}>
               {billing?.cancelAtPeriodEnd ? (
                 <SubmitButton name="when" value="undo" variant="secondary">
-                  Keep my plan
+                  {w.keepPlan}
                 </SubmitButton>
               ) : (
                 <SubmitButton name="when" value="period_end" variant="secondary">
-                  Cancel at the end of the period
+                  {w.cancelEnd}
                 </SubmitButton>
               )}
             </ActionForm>
@@ -179,6 +196,9 @@ function PlanCard({
   storeSlug,
   disabled,
   discount,
+  words,
+  locale,
+  moneyLocale,
 }: {
   plan: Plan;
   currency: string;
@@ -188,25 +208,33 @@ function PlanCard({
   disabled: boolean;
   /** A code waiting for the plan to be chosen (D38). */
   discount: NonNullable<StoreBilling["discount"]> | null;
+  words: BillingMessages;
+  locale: string;
+  moneyLocale: string;
 }) {
+  const w = words.card;
   const monthly = plan.prices.find((p) => p.active && p.currency === currency && p.interval === "month");
   const yearly = plan.prices.find((p) => p.active && p.currency === currency && p.interval === "year");
   const isCurrent = plan.prices.some((p) => p.id === currentPriceId);
   const saving = monthly && yearly ? Math.round((1 - yearly.amountMinor / (monthly.amountMinor * 12)) * 100) : 0;
   const verb =
-    currentPosition === null ? "Choose" : plan.position > currentPosition ? "Upgrade" : plan.position < currentPosition ? "Downgrade" : "Switch";
+    currentPosition === null ? w.verbs.choose : plan.position > currentPosition ? w.verbs.upgrade : plan.position < currentPosition ? w.verbs.downgrade : w.verbs.switch;
 
-  const button = (price: typeof monthly, label: string) =>
+  const button = (price: typeof monthly, interval: "yearly" | "monthly") => {
+    const label = w[interval];
+    return (
     price &&
     (price.id === currentPriceId ? (
       <p className="flex min-h-10 items-center justify-center rounded-md border border-brand px-4 text-sm font-medium">
-        Current plan · {label}
+        {fillWords(w.current, { label })}
       </p>
     ) : (
-      <SubmitButton name="priceId" value={price.id} disabled={disabled} variant={label === "yearly" ? "primary" : "secondary"}>
+      <SubmitButton name="priceId" value={price.id} disabled={disabled} variant={interval === "yearly" ? "primary" : "secondary"}>
         {verb} · {label}
       </SubmitButton>
-    ));
+    ))
+    );
+  };
 
   return (
     <article
@@ -222,18 +250,20 @@ function PlanCard({
       <div className="text-sm">
         {monthly && (
           <p>
-            <span className="text-xl font-medium">{formatMoney(monthly.amountMinor, currency, "nb-NO")}</span> / month
+            <span className="text-xl font-medium">{formatMoney(monthly.amountMinor, currency, moneyLocale)}</span>
+            {w.perMonth}
           </p>
         )}
         {yearly && (
           <p className="text-muted">
-            or {formatMoney(yearly.amountMinor, currency, "nb-NO")} / year{saving > 0 ? ` (save ${saving} %)` : ""}
+            {fillWords(w.orYear, { price: formatMoney(yearly.amountMinor, currency, moneyLocale) })}
+            {saving > 0 ? fillWords(w.save, { n: saving }) : ""}
           </p>
         )}
         {discount && (monthly || yearly) && (
-          <WithCode discount={discount} currency={currency} monthly={monthly?.amountMinor} yearly={yearly?.amountMinor} />
+          <WithCode discount={discount} currency={currency} monthly={monthly?.amountMinor} yearly={yearly?.amountMinor} words={words} moneyLocale={moneyLocale} />
         )}
-        <p className="mt-2">{formatBps(plan.saleFeeBps)} Kaizena Flow fee per sale</p>
+        <p className="mt-2">{fillWords(w.feePerSale, { fee: feeText(plan.saleFeeBps, locale) })}</p>
       </div>
       <ActionForm action={choosePlanAction.bind(null, storeSlug)} className="mt-auto flex flex-col gap-2">
         {button(yearly, "yearly")}
@@ -249,12 +279,17 @@ function WithCode({
   currency,
   monthly,
   yearly,
+  words,
+  moneyLocale,
 }: {
   discount: NonNullable<StoreBilling["discount"]>;
   currency: string;
   monthly: number | undefined;
   yearly: number | undefined;
+  words: BillingMessages;
+  moneyLocale: string;
 }) {
+  const w = words.card;
   const off = (minor: number) =>
     discount.kind === "percent"
       ? Math.round((minor * (100 - discount.percent)) / 100)
@@ -262,18 +297,17 @@ function WithCode({
   // A fixed amount in another currency does not apply to this price.
   if (discount.kind === "fixed" && discount.amounts[currency.toLowerCase()] === undefined) return null;
   const how =
-    discount.duration === "once"
-      ? "on the first payment"
-      : discount.duration === "repeating"
-        ? `for ${discount.durationMonths} ${discount.durationMonths === 1 ? "month" : "months"}`
-        : "for as long as the plan runs";
-  const price = (minor: number) => formatMoney(off(minor), currency, "nb-NO");
+    discount.duration === "once" ? w.once : discount.duration === "repeating" ? countWords(discount.durationMonths ?? 0, w.months) : w.forever;
+  const price = (minor: number) => formatMoney(off(minor), currency, moneyLocale);
+  const [before, after] = w.withCode.split("{code}");
   return (
     <p className="mt-2 rounded-md bg-sunken px-2 py-1">
-      With <span className="font-mono font-medium">{discount.code}</span>:{" "}
-      {[monthly !== undefined && `${price(monthly)} / month`, yearly !== undefined && `${price(yearly)} / year`]
+      {before}
+      <span className="font-mono font-medium">{discount.code}</span>
+      {after}{" "}
+      {[monthly !== undefined && fillWords(w.perMonthShort, { price: price(monthly) }), yearly !== undefined && fillWords(w.perYearShort, { price: price(yearly) })]
         .filter(Boolean)
-        .join(" or ")}
+        .join(w.or)}
       , {how}
     </p>
   );
@@ -283,23 +317,20 @@ function WithCode({
  * The premium themes the store has or owes (D286): each paid once, without VAT, when it went live on the open store (one chosen before the
  * store opened is paid when it opens), invoiced by Kaizena Flow like the plan.
  */
-function ThemePurchases({ purchases }: { purchases: ThemePurchase[] }) {
+function ThemePurchases({ purchases, words, lang }: { purchases: ThemePurchase[]; words: BillingMessages; lang: "en" | "nb" }) {
+  const w = words.themes;
   return (
-    <Card
-      title="Themes"
-      description="Premium themes are paid once, when the theme goes live on your open store, and are yours after that with every preset and update."
-      compact
-    >
-      <List label="Premium themes">
+    <Card title={w.title} description={w.description} compact>
+      <List label={w.list}>
         {purchases.map((purchase) => {
-          const status = PURCHASE_STATUS_WORDS[purchase.status];
+          const status = { ...PURCHASE_STATUS_WORDS[purchase.status], ...(lang === "en" ? {} : { words: w.statuses[purchase.status] }) };
           return (
             <ListRow key={purchase.id}>
               <RowLead
                 title={purchase.title}
-                sub={purchase.paidAt ? `Paid ${purchase.paidAt.slice(0, 10)}` : `Chosen ${purchase.createdAt.slice(0, 10)}`}
+                sub={purchase.paidAt ? fillWords(w.paid, { date: purchase.paidAt.slice(0, 10) }) : fillWords(w.chosen, { date: purchase.createdAt.slice(0, 10) })}
               />
-              <RowFact sub="excl. VAT">{purchase.status === "granted" ? "Included" : priceText(purchase.price)}</RowFact>
+              <RowFact sub={w.exclVat}>{purchase.status === "granted" ? w.included : priceText(purchase.price, lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale)}</RowFact>
               <Chip signal={status.signal} dot>
                 {status.words}
               </Chip>
@@ -311,8 +342,9 @@ function ThemePurchases({ purchases }: { purchases: ThemePurchase[] }) {
                     rel="noopener"
                     className="inline-flex min-h-10 items-center rounded-pill px-3 text-sm underline underline-offset-2"
                   >
-                    Invoice{purchase.invoiceNumber && ` ${purchase.invoiceNumber}`}
-                    <span className="sr-only"> for {purchase.title} (opens in a new window)</span>
+                    {w.invoice}
+                    {purchase.invoiceNumber && ` ${purchase.invoiceNumber}`}
+                    <span className="sr-only">{fillWords(w.newWindow, { title: purchase.title })}</span>
                   </a>
                 </RowActions>
               )}

@@ -174,63 +174,95 @@ export type DescribeContext = {
   productName: (id: string) => string;
 };
 
-const DELIVERY_WORDS: Record<RuleDelivery, string> = { shipping: "shipped", pickup: "collected", local: "delivered by the store", none: "not delivered" };
-const SOURCE_WORDS: Record<RuleSource, string> = { checkout: "the checkout", draft: "a draft order", subscription: "a subscription renewal", delivery: "a subscription box delivery" };
+/** The words the rule's sentence is written in (D312 A8): English here, as the AI manager reads it; the admin passes its own language's. */
+export const RULE_SENTENCE_EN = {
+  deliveries: { shipping: "shipped", pickup: "collected", local: "delivered by the store", none: "not delivered" } as Record<RuleDelivery, string>,
+  sources: { checkout: "the checkout", draft: "a draft order", subscription: "a subscription renewal", delivery: "a subscription box delivery" } as Record<RuleSource, string>,
+  or: "or",
+  and: "and",
+  totalAtLeast: "the total is at least {amount}",
+  totalBelow: "the total is below {amount}",
+  countryIs: "the country is {countries}",
+  buyerBusiness: "the buyer is a business",
+  buyerConsumer: "the buyer is a consumer",
+  firstOrder: "it is the customer's first order",
+  orderedBefore: "the customer has ordered before",
+  hasProduct: "it has {products}",
+  deliveryIs: "it is {deliveries}",
+  backorder: "some of it is backordered",
+  gift: "it is a gift",
+  sourceIs: "it comes from {sources}",
+  tagged: 'it is tagged "{tag}"',
+  hostListing: "it is a host's listing",
+  ownSale: "it is the store's own sale",
+  riskHighest: "Stripe judged its payment highest risk",
+  riskElevated: "Stripe judged its payment elevated or highest risk",
+  actionTag: 'tag "{tag}"',
+  actionNotify: "notify staff",
+  actionHold: "hold it",
+  whenPaid: "When an order is paid{when}, {actions}.",
+  whenAnd: " and {conditions}",
+  joinAll: " and ",
+  joinAny: " or ",
+};
+export type RuleSentenceWords = typeof RULE_SENTENCE_EN;
 
-/** "a, b or c" (or "and"). */
-export function listWords(words: readonly string[], last: "or" | "and"): string {
+const put = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all);
+
+/** "a, b or c" (or "and"), the last word given in the sentence's language. */
+export function listWords(words: readonly string[], last: "or" | "and", w: Pick<RuleSentenceWords, "or" | "and"> = RULE_SENTENCE_EN): string {
   if (words.length <= 1) return words[0] ?? "";
-  return `${words.slice(0, -1).join(", ")} ${last} ${words[words.length - 1]}`;
+  return `${words.slice(0, -1).join(", ")} ${w[last]} ${words[words.length - 1]}`;
 }
 
-export function describeCondition(c: RuleCondition, ctx: DescribeContext): string {
+export function describeCondition(c: RuleCondition, ctx: DescribeContext, w: RuleSentenceWords = RULE_SENTENCE_EN): string {
   switch (c.kind) {
     case "total_at_least":
-      return `the total is at least ${ctx.money(c.amountMinor)}`;
+      return put(w.totalAtLeast, { amount: ctx.money(c.amountMinor) });
     case "total_below":
-      return `the total is below ${ctx.money(c.amountMinor)}`;
+      return put(w.totalBelow, { amount: ctx.money(c.amountMinor) });
     case "country_in":
-      return `the country is ${listWords(c.countries.map(ctx.countryName), "or")}`;
+      return put(w.countryIs, { countries: listWords(c.countries.map(ctx.countryName), "or", w) });
     case "buyer_is":
-      return c.buyer === "business" ? "the buyer is a business" : "the buyer is a consumer";
+      return c.buyer === "business" ? w.buyerBusiness : w.buyerConsumer;
     case "first_order":
-      return c.value ? "it is the customer's first order" : "the customer has ordered before";
+      return c.value ? w.firstOrder : w.orderedBefore;
     case "has_product":
-      return `it has ${listWords(c.productIds.map(ctx.productName), "or")}`;
+      return put(w.hasProduct, { products: listWords(c.productIds.map(ctx.productName), "or", w) });
     case "delivery_is":
-      return `it is ${listWords(c.deliveries.map((d) => DELIVERY_WORDS[d]), "or")}`;
+      return put(w.deliveryIs, { deliveries: listWords(c.deliveries.map((d) => w.deliveries[d]), "or", w) });
     case "has_backorder":
-      return "some of it is backordered";
+      return w.backorder;
     case "is_gift":
-      return "it is a gift";
+      return w.gift;
     case "source_is":
-      return `it comes from ${listWords(c.sources.map((s) => SOURCE_WORDS[s]), "or")}`;
+      return put(w.sourceIs, { sources: listWords(c.sources.map((s) => w.sources[s]), "or", w) });
     case "has_tag":
-      return `it is tagged "${c.label}"`;
+      return put(w.tagged, { tag: c.label });
     case "seller_is":
-      return c.seller === "host" ? "it is a host's listing" : "it is the store's own sale";
+      return c.seller === "host" ? w.hostListing : w.ownSale;
     case "risk":
-      return c.level === "highest" ? "Stripe judged its payment highest risk" : "Stripe judged its payment elevated or highest risk";
+      return c.level === "highest" ? w.riskHighest : w.riskElevated;
   }
 }
 
-export function describeAction(a: RuleAction): string {
+export function describeAction(a: RuleAction, w: RuleSentenceWords = RULE_SENTENCE_EN): string {
   switch (a.kind) {
     case "tag":
-      return `tag "${a.label}"`;
+      return put(w.actionTag, { tag: a.label });
     case "notify":
-      return "notify staff";
+      return w.actionNotify;
     case "hold":
-      return "hold it";
+      return w.actionHold;
   }
 }
 
 /** *When an order is paid and the total is at least 2 000 kr and the country is Sweden, tag "Big order" and hold it.* */
-export function describeRule(rule: Pick<OrderRule, "match" | "conditions" | "actions">, ctx: DescribeContext): string {
+export function describeRule(rule: Pick<OrderRule, "match" | "conditions" | "actions">, ctx: DescribeContext, w: RuleSentenceWords = RULE_SENTENCE_EN): string {
   const when = rule.conditions.length
-    ? ` and ${rule.conditions.map((c) => describeCondition(c, ctx)).join(rule.match === "all" ? " and " : " or ")}`
+    ? put(w.whenAnd, { conditions: rule.conditions.map((c) => describeCondition(c, ctx, w)).join(rule.match === "all" ? w.joinAll : w.joinAny) })
     : "";
-  return `When an order is paid${when}, ${listWords(rule.actions.map(describeAction), "and")}.`;
+  return put(w.whenPaid, { when, actions: listWords(rule.actions.map((a) => describeAction(a, w)), "and", w) });
 }
 
 /** The words of a condition's or an action's outcome in the log. */

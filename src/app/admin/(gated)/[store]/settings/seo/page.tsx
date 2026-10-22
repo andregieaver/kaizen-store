@@ -3,6 +3,9 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { t } from "@/lib/i18n";
 import { marketUrl, storeBase, storeSiteUrl } from "@/lib/paths";
 import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/seo";
@@ -23,10 +26,13 @@ const hint = "text-sm font-normal text-muted";
 
 /** How the store shows up in search engines, when shared, and to AI assistants (D21). */
 export default async function SeoPage({ params }: PageProps<"/admin/[store]/settings/seo">) {
-  const { store } = await requirePermission((await params).store, "settings:read");
+  const member = await requirePermission((await params).store, "settings:read");
+  const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "settings").seo;
   const seo = store.seo;
   const gaps = await altTextGaps(store.id);
-  const names = new Intl.DisplayNames(["en"], { type: "language" });
+  const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
   const locales = store.localization.locales;
   const languageNames = Object.fromEntries(locales.map((l) => [l, names.of(l) ?? l]));
   // The store's full address: its own host once it has one (P7).
@@ -38,50 +44,41 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={<>SEO &amp; Reach</>}
-        description={<>How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such as ChatGPT and Claude. Kaizena Flow fills in what it can from your products and business details; everything here is optional.</>}
-      />
+      <PageHeader title={<>{w.title}</>} description={<>{fillWords(w.description, { store: store.name })}</>} />
 
       <section aria-labelledby="status-heading" className={card}>
         <h2 id="status-heading" className="text-title text-ink">
-          {findable ? "Search engines can find your store" : "Search engines are asked to leave your store out"}
+          {findable ? w.findable : w.hidden}
         </h2>
         <p className="text-sm">
-          {store.starter
-            ? "This is a demo store: a preview for new stores to start from, never shown to search engines."
-            : !open
-            ? "Your store is not opened yet. Once you finish the setup, search engines are welcome."
-            : seo.hidden
-              ? "You have hidden the store below. Shoppers with the link can still buy."
-              : "Kaizena Flow tells search engines about every product, in every country you sell to, with prices, stock, shipping and your return policy."}
+          {store.starter ? w.starter : !open ? w.notOpen : seo.hidden ? w.hiddenText : w.open}
         </p>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <li>
             <a href={storeSitemapPath(store.slug)} className="underline">
-              Sitemap
+              {w.sitemap}
             </a>
           </li>
           <li>
             <a href={`${base}/robots.txt`} className="underline">
-              Crawler rules (robots.txt)
+              {w.robots}
             </a>
           </li>
           <li>
             <a href={`${base}/llms.txt`} className="underline">
-              Summary for AI assistants (llms.txt)
+              {w.llms}
             </a>
           </li>
         </ul>
         <p className="text-sm text-muted">
           {gaps.pictures === 0
-            ? "No product pictures yet."
+            ? w.noPictures
             : gaps.titleOnly === 0
-              ? `All ${gaps.pictures} product pictures have their own description.`
-              : `${gaps.titleOnly} of ${gaps.pictures} product pictures are described only by the product's title in some language. A few words on what each picture shows helps people using screen readers and image search.`}{" "}
+              ? fillWords(w.allDescribed, { n: gaps.pictures })
+              : fillWords(w.titleOnly, { n: gaps.titleOnly, total: gaps.pictures })}{" "}
           {gaps.titleOnly > 0 && (
             <Link href={`/admin/${store.slug}/products`} className="underline">
-              Go to products
+              {w.goToProducts}
             </Link>
           )}
         </p>
@@ -89,15 +86,15 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
       <ActionForm
         action={saveStoreSeoAction.bind(null, store.slug)}
-        successMessage="SEO & Reach saved."
+        successMessage={w.savedMessage}
         className="flex flex-col gap-6"
       >
         <section aria-labelledby="home-heading" className={card}>
           <div>
             <h2 id="home-heading" className="text-title text-ink">
-              Your front page in search results
+              {w.home}
             </h2>
-            <p className={hint}>Empty fields use the store&apos;s name and a line Kaizena Flow writes.</p>
+            <p className={hint}>{w.homeHint}</p>
           </div>
           {store.markets.map((market) => (
             <fieldset key={market.code} className="flex min-w-0 flex-col gap-2 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0">
@@ -109,6 +106,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
                 initial={{ title: seo.title[market.locale] ?? "", description: seo.description[market.locale] ?? "" }}
                 fallback={{ title: store.name, description: t(market.lang).storeSummary(store.name, market.name) }}
                 url={marketUrl(store.slug, market.slug)}
+                words={adminText(lang, "product").seo}
               />
             </fieldset>
           ))}
@@ -117,12 +115,9 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         <section aria-labelledby="share-heading" className={card}>
           <div>
             <h2 id="share-heading" className="text-title text-ink">
-              Share picture
+              {w.share}
             </h2>
-            <p className={hint}>
-              Shown when someone shares your store on Facebook, LinkedIn, Messenger, Slack and the like.
-              Product pages use the product&apos;s own first picture.
-            </p>
+            <p className={hint}>{w.shareHint}</p>
           </div>
           <ShareImageField
             upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
@@ -130,16 +125,17 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             locales={locales}
             languageNames={languageNames}
             generated={`${base}/og.png`}
+            words={w.shareField}
           />
         </section>
 
         <section aria-labelledby="profiles-heading" className={card}>
           <h2 id="profiles-heading" className="text-title text-ink">
-            Your business elsewhere
+            {w.elsewhere}
           </h2>
           <label className={label}>
             <span>
-              Social profiles and listings <span className={hint}>(one address per line)</span>
+              {w.profiles} <span className={hint}>{w.perLine}</span>
             </span>
             <textarea
               name="sameAs"
@@ -149,74 +145,68 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               spellCheck={false}
               className={`${input} py-2 font-mono`}
             />
-            <span className={hint}>Helps search engines connect your store to your business.</span>
+            <span className={hint}>{w.profilesHint}</span>
           </label>
         </section>
 
         <section aria-labelledby="ai-heading" className={card}>
           <div>
             <h2 id="ai-heading" className="text-title text-ink">
-              AI assistants
+              {w.ai}
             </h2>
-            <p className={hint}>
-              Kaizena Flow gives AI assistants a summary of your store, terms and products with prices
-              (llms.txt), so they can answer shoppers and link to you.
-            </p>
+            <p className={hint}>{w.aiHint}</p>
           </div>
           <input type="hidden" name="aiChoices" value="1" />
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="aiAssistants" defaultChecked={seo.aiAssistants} className="mt-0.5 size-4" />
             <span>
-              Let AI search and assistants read the store to answer people&apos;s questions
+              {w.aiAssistants}
               <span className="block text-muted">{AI_ASSISTANT_BOTS.join(", ")}</span>
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="aiTraining" defaultChecked={seo.aiTraining} className="mt-0.5 size-4" />
             <span>
-              Let AI companies use the store&apos;s texts and pictures to train their models
+              {w.aiTraining}
               <span className="block text-muted">{AI_TRAINING_BOTS.join(", ")}</span>
             </span>
           </label>
           <label className={label}>
             <span>
-              Your own words for AI assistants <span className={hint}>(Markdown, optional)</span>
+              {w.ownWords} <span className={hint}>{w.markdown}</span>
             </span>
             <textarea
               name="llms"
               rows={5}
               maxLength={LLMS_MAX}
               defaultValue={seo.llms}
-              placeholder="What makes the store special, who it is for, how you help customers choose …"
+              placeholder={w.ownWordsPlaceholder}
               className={`${input} py-2`}
             />
             <span className={hint}>
-              Added under the summary in{" "}
+              {w.addedUnder}{" "}
               <a href={`${base}/llms.txt`} className="underline">
                 llms.txt
               </a>
-              , above the list of products Kaizena Flow keeps up to date.
+              {w.addedUnderEnd}
             </span>
           </label>
         </section>
 
         <section aria-labelledby="advanced-heading" className={card}>
           <h2 id="advanced-heading" className="text-title text-ink">
-            Advanced
+            {w.advanced}
           </h2>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="hidden" defaultChecked={seo.hidden} className="mt-0.5 size-4" />
             <span>
-              Ask search engines to leave the store out
-              <span className="block text-muted">
-                For a store that should be reached only by its link. Takes effect as search engines
-                visit again.
-              </span>
+              {w.hide}
+              <span className="block text-muted">{w.hideHint}</span>
             </span>
           </label>
           <label className={label}>
             <span>
-              Extra crawler rules <span className={hint}>(robots.txt)</span>
+              {w.rules} <span className={hint}>(robots.txt)</span>
             </span>
             <textarea
               name="robots"
@@ -228,10 +218,9 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               className={`${input} py-2 font-mono`}
             />
             <span className={hint}>
-              Write paths from the store&apos;s front door (such as /no/p/product); Kaizena Flow adds the
-              store&apos;s address. Carts and order pages are always left out.{" "}
+              {w.rulesHint}{" "}
               <a href={`${base}/robots.txt`} className="underline">
-                See the result
+                {w.seeResult}
               </a>
               .
             </span>
@@ -239,26 +228,22 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
               <span>
-                Google Search Console code <span className={hint}>(HTML tag method)</span>
+                {w.google} <span className={hint}>{w.googleHint}</span>
               </span>
               <input name="google" defaultValue={seo.verification.google} spellCheck={false} className={`${input} font-mono`} />
             </label>
             <label className={label}>
               <span>
-                Bing Webmaster Tools code <span className={hint}>(meta tag method)</span>
+                {w.bing} <span className={hint}>{w.bingHint}</span>
               </span>
               <input name="bing" defaultValue={seo.verification.bing} spellCheck={false} className={`${input} font-mono`} />
             </label>
           </div>
-          <p className={hint}>
-            In Search Console, add the address {base}/ as a URL-prefix property and paste the code or the whole tag here. Then submit the
-            sitemap: {origin}
-            {storeSitemapPath(store.slug)}.
-          </p>
+          <p className={hint}>{fillWords(w.consoleHint, { base, sitemap: `${origin}${storeSitemapPath(store.slug)}` })}</p>
         </section>
 
         <div>
-          <SubmitButton>Save search and sharing</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
     </div>

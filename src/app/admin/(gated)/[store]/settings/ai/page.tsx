@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { providerInfo } from "@/lib/ai-provider";
 import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
@@ -16,8 +21,11 @@ export const metadata: Metadata = { title: "AI" };
 
 const card = "rounded-lg border border-line bg-card p-5";
 
-function describe(settings: AiSettings): string {
-  const models = [settings.embeddingModel && `search by meaning with ${settings.embeddingModel}`, settings.textModel && `text with ${settings.textModel}`]
+function describe(settings: AiSettings, w: SettingsMessages["ai"]): string {
+  const models = [
+    settings.embeddingModel && fillWords(w.describe.meaning, { model: settings.embeddingModel }),
+    settings.textModel && fillWords(w.describe.text, { model: settings.textModel }),
+  ]
     .filter(Boolean)
     .join(", ");
   return `${providerInfo(settings.provider).name}${models ? `: ${models}` : ""}`;
@@ -33,83 +41,77 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   const { store } = staffer;
   const [own, kaizen] = await Promise.all([getAiSettings(store.id), getAiSettings(null)]);
   const owner = memberCan(staffer, "owner");
+  const lang = adminLangOf(staffer.account.adminLocale);
+  const w = adminText(lang, "settings").ai;
   const usingOwn = own?.enabled === true;
   const current = usingOwn
-    ? `Your own AI · ${describe(own)}`
+    ? fillWords(w.yourOwn, { what: describe(own, w) })
     : kaizen?.enabled
-      ? `Kaizena Flow's AI · ${describe(kaizen)}`
-      : "No AI: search finds products by their words only.";
+      ? fillWords(w.kaizenas, { what: describe(kaizen, w) })
+      : w.none;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["settings"])}>
     <div className="flex flex-col gap-6">
       <div>
-        <PageHeader title="AI" description={<>{current}</>} />
-        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizena Flow's AI", "Use your own AI below to choose one.")}</p>
+        <PageHeader title={w.title} description={<>{current}</>} />
+        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, w.yourAi, undefined, w.pictures) : pictureLine(kaizen, w.kaizenaAi, w.chooseOwn, w.pictures)}</p>
         {owner && (
           <p className="mt-1 text-sm">
             <Link href={`/admin/account/usage?store=${store.slug}`} className="underline">
-              See the AI usage
-            </Link>{" "}
-            of this store, per provider and model.
+              {w.usage}
+            </Link>
+            {w.usageEnd}
           </p>
         )}
       </div>
 
       <section aria-labelledby="about" className={card}>
-        <h2 id="about" className="mb-1 text-title text-ink">What the store uses AI for</h2>
-        <p className="text-sm">
-          Search by meaning, so shoppers find products described in other words than theirs. Search still works by the words
-          alone whenever the AI does not answer. Kaizena Flow&apos;s AI is included in your plan; you can use your own provider instead,
-          paid on your own account with them.
-        </p>
+        <h2 id="about" className="mb-1 text-title text-ink">{w.about}</h2>
+        <p className="text-sm">{w.aboutText}</p>
       </section>
 
       <section aria-labelledby="own" className={card}>
-        <h2 id="own" className="mb-1 text-title text-ink">Your own AI provider</h2>
+        <h2 id="own" className="mb-1 text-title text-ink">{w.own}</h2>
         {owner ? (
           <>
-            <p className="mb-4 text-sm text-muted">
-              Your products and shoppers&apos; searches are then sent to the provider you choose, so make sure your agreement with
-              them covers personal data (a data processing agreement), and prefer one that keeps data in the EU.
-            </p>
+            <p className="mb-4 text-sm text-muted">{w.ownText}</p>
             <AiProviderForm
               action={saveStoreAiAction.bind(null, store.slug)}
               settings={own}
-              submitLabel={own ? "Save" : "Use my own AI"}
+              submitLabel={own ? adminText(lang, "settings").common.save : w.useOwn}
               checkVision={checkStoreVisionAction.bind(null, store.slug)}
             />
           </>
         ) : (
-          <p className="text-sm">Only an owner can choose the store&apos;s AI.</p>
+          <p className="text-sm">{w.onlyOwner}</p>
         )}
       </section>
 
       {own && owner && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
-          <p className="mb-3 text-sm text-muted">Tries your saved models now, even while off.</p>
+          <h2 id="test" className="mb-1 text-title text-ink">{w.test}</h2>
+          <p className="mb-3 text-sm text-muted">{w.testText}</p>
           <AiTestButton action={testStoreAiAction.bind(null, store.slug)} />
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-2 text-sm text-muted">
-              Searches such as &ldquo;lampe under 500 kr&rdquo; are read by the text model as filters. This runs the eval: {EVAL_CASES.length} searches in
-              Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {Math.round(PASS_RATE * 100)} %.
-            </p>
+            <p className="mb-2 text-sm text-muted">{fillWords(w.evalText, { n: EVAL_CASES.length, rate: Math.round(PASS_RATE * 100) })}</p>
             <AiEvalButton action={evalStoreAiAction.bind(null, store.slug)} />
           </div>
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-2 text-sm text-muted">Makes one small picture with the saved picture model, to see it works and how it looks. It costs one picture.</p>
+            <p className="mb-2 text-sm text-muted">{w.imageText}</p>
             <AiImageTestButton action={testStoreImageAction.bind(null, store.slug)} />
           </div>
           <div className="mt-4">
             <DeleteDiscountButton
               action={removeStoreAiAction.bind(null, store.slug)}
-              code="your AI provider"
-              label="Go back to Kaizena Flow's AI"
-              question="Forget your own AI provider and its key, and use Kaizena Flow's again?"
+              code={w.goBackCode}
+              label={w.goBack}
+              question={w.goBackQuestion}
             />
           </div>
         </section>
       )}
     </div>
+    </AdminTextScope>
   );
 }

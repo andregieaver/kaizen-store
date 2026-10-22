@@ -5,6 +5,9 @@ import { useId, useState, useTransition } from "react";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, IMAGE_QUALITIES, providerInfo, type AiProviderId, type ImageQuality } from "@/lib/ai-provider";
 import type { VisionCheck } from "@/lib/ai-vision";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 
 /** A provider's saved settings as the form shows them: never the key. */
 export type AiFormSettings = {
@@ -44,7 +47,7 @@ const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 export function AiProviderForm({
   action,
   settings,
-  submitLabel = "Save",
+  submitLabel,
   checkVision,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
@@ -54,6 +57,8 @@ export function AiProviderForm({
   checkVision?: (model: string) => Promise<AiVisionCheckResult>;
 }) {
   const id = useId();
+  const w = useAdminText("settings").ai.form;
+  const save = useAdminText("settings").common.save;
   const [provider, setProvider] = useState<AiProviderId>(settings?.provider ?? "gateway");
   const info = providerInfo(provider);
   const saved = settings && settings.provider === provider ? settings : null;
@@ -71,7 +76,7 @@ export function AiProviderForm({
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-sm font-medium">
-        <label htmlFor={`${id}-provider`}>Provider</label>
+        <label htmlFor={`${id}-provider`}>{w.provider}</label>
         <select
           id={`${id}-provider`}
           name="provider"
@@ -89,7 +94,7 @@ export function AiProviderForm({
 
       {provider === "custom" && (
         <div className="flex flex-col gap-1 text-sm font-medium">
-          <label htmlFor={`${id}-base`}>API address</label>
+          <label htmlFor={`${id}-base`}>{w.address}</label>
           <input
             id={`${id}-base`}
             name="baseUrl"
@@ -103,13 +108,13 @@ export function AiProviderForm({
             className={`${field} font-mono text-sm`}
           />
           <p id={`${id}-base-hint`} className="font-normal text-muted">
-            An OpenAI-compatible API: Kaizena Flow adds /embeddings and /chat/completions to this address.
+            {w.addressHint}
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-1 text-sm font-medium">
-        <label htmlFor={`${id}-key`}>{keptKey ? "New API key" : "API key"}</label>
+        <label htmlFor={`${id}-key`}>{keptKey ? w.newKey : w.key}</label>
         <input
           id={`${id}-key`}
           name="apiKey"
@@ -121,11 +126,11 @@ export function AiProviderForm({
           className={`${field} font-mono text-sm`}
         />
         <p id={`${id}-key-hint`} className="font-normal text-muted">
-          {keptKey ? `Leave empty to keep the saved key (${keptKey}). ` : ""}
-          The key is kept encrypted and only ever sent to {info.name}.{" "}
+          {keptKey ? fillWords(w.keepKey, { hint: keptKey }) : ""}
+          {fillWords(w.keyKept, { provider: info.name })}{" "}
           {info.keysUrl && (
             <a href={info.keysUrl} target="_blank" rel="noreferrer" className="underline">
-              Where to get a key
+              {w.whereKey}
             </a>
           )}
         </p>
@@ -136,8 +141,8 @@ export function AiProviderForm({
           key={`embedding-${provider}`}
           id={`${id}-embedding`}
           name="embeddingModel"
-          label="Model for search by meaning"
-          hint="Turns products and searches into vectors. Choose one or type any model the provider offers. Empty: keyword search only."
+          label={w.embedding}
+          hint={w.embeddingHint}
           suggestions={info.embeddingModels}
           defaultValue={saved ? (saved.embeddingModel ?? "") : (info.embeddingModels[0] ?? "")}
         />
@@ -145,8 +150,8 @@ export function AiProviderForm({
           key={`text-${provider}`}
           id={`${id}-text`}
           name="textModel"
-          label="Model for text"
-          hint="Understands searches and writes product texts for staff to approve. Choose one or type any model the provider offers; a quick one keeps searches fast. Empty: off."
+          label={w.text}
+          hint={w.textHint}
           suggestions={info.textModels}
           defaultValue={saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")}
         />
@@ -162,18 +167,15 @@ export function AiProviderForm({
       />
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Voice for the chat agent</legend>
-        <p className="text-sm text-muted">
-          Lets visitors talk to the chat agent: what they say is written down by one model, and its answers read out by
-          another. Leave any empty to keep the chat to text.
-        </p>
+        <legend className="mb-1 text-sm font-medium">{w.voice}</legend>
+        <p className="text-sm text-muted">{w.voiceText}</p>
         <div className="grid gap-5 sm:grid-cols-3">
           <ModelField
             key={`transcription-${provider}`}
             id={`${id}-transcription`}
             name="transcriptionModel"
-            label="Speech to text"
-            hint="Writes down what visitors say."
+            label={w.transcription}
+            hint={w.transcriptionHint}
             suggestions={info.transcriptionModels}
             defaultValue={saved ? (saved.transcriptionModel ?? "") : ""}
           />
@@ -181,8 +183,8 @@ export function AiProviderForm({
             key={`speech-${provider}`}
             id={`${id}-speech`}
             name="speechModel"
-            label="Text to speech"
-            hint="Reads the agent's answers out."
+            label={w.speech}
+            hint={w.speechHint}
             suggestions={info.speechModels}
             defaultValue={saved ? (saved.speechModel ?? "") : ""}
           />
@@ -190,8 +192,8 @@ export function AiProviderForm({
             key={`voice-${provider}`}
             id={`${id}-voice`}
             name="speechVoice"
-            label="Voice"
-            hint="Which of the model's voices."
+            label={w.speechVoice}
+            hint={w.speechVoiceHint}
             suggestions={info.voices}
             defaultValue={saved ? (saved.speechVoice ?? "") : ""}
           />
@@ -199,15 +201,11 @@ export function AiProviderForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Pictures</legend>
-        <p className="text-sm text-muted">
-          Makes pictures for pages the AI builds. Any picture model the provider offers through its images API can be named:
-          when a better one comes along, type its name here. It can come from another provider than the rest, with its own key.
-          Empty: no pictures.
-        </p>
+        <legend className="mb-1 text-sm font-medium">{w.pictures}</legend>
+        <p className="text-sm text-muted">{w.picturesText}</p>
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-image-provider`}>Pictures from</label>
+            <label htmlFor={`${id}-image-provider`}>{w.picturesFrom}</label>
             <select
               id={`${id}-image-provider`}
               name="imageProvider"
@@ -215,10 +213,10 @@ export function AiProviderForm({
               onChange={(e) => setImageProvider(e.target.value as AiProviderId | "")}
               className={field}
             >
-              <option value="">The provider above ({info.name})</option>
+              <option value="">{fillWords(w.providerAbove, { provider: info.name })}</option>
               {AI_PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}, with its own key
+                  {fillWords(w.ownKey, { provider: p.name })}
                 </option>
               ))}
             </select>
@@ -227,15 +225,15 @@ export function AiProviderForm({
             key={`image-${imageProvider || provider}`}
             id={`${id}-image`}
             name="imageModel"
-            label="Picture model"
-            hint="Newest first where Kaizena Flow knows them; type any other."
+            label={w.pictureModel}
+            hint={w.newestFirst}
             suggestions={imageInfo.imageModels}
             defaultValue={settings && (settings.imageProvider ?? "") === imageProvider ? (settings.imageModel ?? "") : ""}
           />
         </div>
         {imageProvider === "custom" && (
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-image-base`}>Pictures API address</label>
+            <label htmlFor={`${id}-image-base`}>{w.picturesAddress}</label>
             <input
               id={`${id}-image-base`}
               name="imageBaseUrl"
@@ -247,12 +245,12 @@ export function AiProviderForm({
               placeholder="https://api.example.com/v1"
               className={`${field} font-mono text-sm`}
             />
-            <p className="font-normal text-muted">An OpenAI-compatible API: Kaizena Flow adds /images/generations to this address.</p>
+            <p className="font-normal text-muted">{w.picturesAddressHint}</p>
           </div>
         )}
         {imageProvider && (
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-image-key`}>{keptImageKey ? `New API key for ${imageInfo.name}` : `API key for ${imageInfo.name}`}</label>
+            <label htmlFor={`${id}-image-key`}>{fillWords(keptImageKey ? w.newKeyFor : w.keyFor, { provider: imageInfo.name })}</label>
             <input
               id={`${id}-image-key`}
               name="imageApiKey"
@@ -263,35 +261,31 @@ export function AiProviderForm({
               className={`${field} font-mono text-sm`}
             />
             <p className="font-normal text-muted">
-              {keptImageKey ? `Leave empty to keep the saved key (${keptImageKey}). ` : ""}Kept encrypted and only ever sent to {imageInfo.name}.
+              {keptImageKey ? fillWords(w.keepKey, { hint: keptImageKey }) : ""}
+              {fillWords(w.keptFor, { provider: imageInfo.name })}
             </p>
           </div>
         )}
         <div className="flex flex-col gap-1 text-sm font-medium">
-          <label htmlFor={`${id}-image-quality`}>Quality</label>
+          <label htmlFor={`${id}-image-quality`}>{w.quality}</label>
           <select id={`${id}-image-quality`} name="imageQuality" defaultValue={settings?.imageQuality ?? ""} className={`${field} w-fit`}>
-            <option value="">Not sent (the model&apos;s own)</option>
+            <option value="">{w.qualityNone}</option>
             {(Object.keys(IMAGE_QUALITIES) as ImageQuality[]).map((quality) => (
               <option key={quality} value={quality}>
-                {IMAGE_QUALITIES[quality]}
+                {w.qualities[quality]}
               </option>
             ))}
           </select>
-          <p className="font-normal text-muted">Sent only where the model takes it; a model that does not is asked without it.</p>
+          <p className="font-normal text-muted">{w.qualityHint}</p>
         </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Live voice</legend>
-        <p className="text-sm text-muted">
-          A full-duplex voice model for the AI manager&apos;s voice mode: it hears while it speaks, so people talk with it as on a
-          phone call, and it hands anything that needs the store&apos;s data or a change to the AI manager. Any live model the provider
-          offers can be named. Empty: voice mode listens and answers with the models above instead. The call&apos;s audio goes to
-          this provider, so choose one whose data processing suits you.
-        </p>
+        <legend className="mb-1 text-sm font-medium">{w.live}</legend>
+        <p className="text-sm text-muted">{w.liveText}</p>
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-live-provider`}>Live voice from</label>
+            <label htmlFor={`${id}-live-provider`}>{w.liveFrom}</label>
             <select
               id={`${id}-live-provider`}
               name="liveProvider"
@@ -299,10 +293,10 @@ export function AiProviderForm({
               onChange={(e) => setLiveProvider(e.target.value as AiProviderId | "")}
               className={field}
             >
-              <option value="">The provider above ({info.name})</option>
+              <option value="">{fillWords(w.providerAbove, { provider: info.name })}</option>
               {AI_PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}, with its own key
+                  {fillWords(w.ownKey, { provider: p.name })}
                 </option>
               ))}
             </select>
@@ -311,8 +305,8 @@ export function AiProviderForm({
             key={`live-${liveProvider || provider}`}
             id={`${id}-live`}
             name="liveModel"
-            label="Live voice model"
-            hint="Newest first where Kaizena Flow knows them; type any other."
+            label={w.liveModel}
+            hint={w.newestFirst}
             suggestions={liveInfo.liveModels}
             defaultValue={liveSaved ? (settings.liveModel ?? "") : ""}
           />
@@ -320,15 +314,15 @@ export function AiProviderForm({
             key={`live-voice-${liveProvider || provider}`}
             id={`${id}-live-voice`}
             name="liveVoice"
-            label="Its voice"
-            hint="Empty: the model's own."
+            label={w.liveVoice}
+            hint={w.liveVoiceHint}
             suggestions={liveInfo.liveVoices}
             defaultValue={liveSaved ? (settings.liveVoice ?? "") : ""}
           />
         </div>
         {liveProvider === "custom" && (
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-live-base`}>Live voice API address</label>
+            <label htmlFor={`${id}-live-base`}>{w.liveAddress}</label>
             <input
               id={`${id}-live-base`}
               name="liveBaseUrl"
@@ -340,12 +334,12 @@ export function AiProviderForm({
               placeholder="https://api.example.com/v1"
               className={`${field} font-mono text-sm`}
             />
-            <p className="font-normal text-muted">Kaizena Flow adds /live/sessions to this address.</p>
+            <p className="font-normal text-muted">{w.liveAddressHint}</p>
           </div>
         )}
         {liveProvider && (
           <div className="flex flex-col gap-1 text-sm font-medium">
-            <label htmlFor={`${id}-live-key`}>{keptLiveKey ? `New API key for ${liveInfo.name}` : `API key for ${liveInfo.name}`}</label>
+            <label htmlFor={`${id}-live-key`}>{fillWords(keptLiveKey ? w.newKeyFor : w.keyFor, { provider: liveInfo.name })}</label>
             <input
               id={`${id}-live-key`}
               name="liveApiKey"
@@ -356,7 +350,8 @@ export function AiProviderForm({
               className={`${field} font-mono text-sm`}
             />
             <p className="font-normal text-muted">
-              {keptLiveKey ? `Leave empty to keep the saved key (${keptLiveKey}). ` : ""}Kept encrypted and only ever sent to {liveInfo.name}.
+              {keptLiveKey ? fillWords(w.keepKey, { hint: keptLiveKey }) : ""}
+              {fillWords(w.keptFor, { provider: liveInfo.name })}
             </p>
           </div>
         )}
@@ -364,32 +359,32 @@ export function AiProviderForm({
 
       {/* Hidden rather than left out for other providers, so switching back keeps them. */}
       <fieldset hidden={!info.gateway} className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Where requests run</legend>
+        <legend className="mb-1 text-sm font-medium">{w.where}</legend>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="embeddingEuOnly" defaultChecked={settings?.embeddingEuOnly ?? false} className="mt-0.5 size-4" />
           <span>
-            Search model only in EU data centres
-            <span className="block text-xs text-muted">No embedding model can be pinned to the EU yet: requests would fail.</span>
+            {w.embeddingEu}
+            <span className="block text-xs text-muted">{w.embeddingEuHint}</span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="textEuOnly" defaultChecked={settings?.textEuOnly ?? true} className="mt-0.5 size-4" />
           <span>
-            Text model only in EU data centres
-            <span className="block text-xs text-muted">A request fails rather than run elsewhere, and search carries on without it.</span>
+            {w.textEu}
+            <span className="block text-xs text-muted">{w.textEuHint}</span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="zeroDataRetention" defaultChecked={settings?.zeroDataRetention ?? true} className="mt-0.5 size-4" />
           <span>
-            Only providers that keep nothing
-            <span className="block text-xs text-muted">Zero data retention: prompts and answers are deleted after each request.</span>
+            {w.zdr}
+            <span className="block text-xs text-muted">{w.zdrHint}</span>
           </span>
         </label>
       </fieldset>
 
       <div className="flex flex-col gap-1 text-sm font-medium">
-        <label htmlFor={`${id}-similarity`}>Similarity needed for search by meaning</label>
+        <label htmlFor={`${id}-similarity`}>{w.similarity}</label>
         <input
           id={`${id}-similarity`}
           name="minSimilarity"
@@ -404,18 +399,17 @@ export function AiProviderForm({
           className={`${field} w-32`}
         />
         <p id={`${id}-similarity-hint`} className="font-normal text-muted">
-          From 0 to 1. Products less like the search than this are not found by meaning. Each model scores differently: Test
-          shows a matching and an unrelated product&apos;s scores, and the limit belongs between them.
+          {w.similarityHint}
         </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? true} className="size-4" />
-        On
+        {w.on}
       </label>
 
       <div>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton>{submitLabel ?? save}</SubmitButton>
       </div>
     </ActionForm>
   );
@@ -483,6 +477,7 @@ function VisionField({
   defaultValue: string;
   check: ((model: string) => Promise<AiVisionCheckResult>) | null;
 }) {
+  const w = useAdminText("settings").ai.form;
   const [value, setValue] = useState(defaultValue);
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiVisionCheckResult | null>(null);
@@ -495,12 +490,9 @@ function VisionField({
   return (
     <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-panel border border-line p-4 text-sm">
       <label htmlFor={id} className="font-medium">
-        Model that sees pictures
+        {w.vision}
       </label>
-      <p className="text-muted">
-        Used wherever the AI looks at a picture: copying another site&apos;s page, and writing alt texts for the media library. Not every text model can
-        see, and a quick one that cannot is fine for searches. Empty: the text model is used, so it must see pictures.
-      </p>
+      <p className="text-muted">{w.visionText}</p>
       <input
         id={id}
         name="visionModel"
@@ -508,11 +500,11 @@ function VisionField({
         onChange={(e) => change(e.target.value)}
         autoComplete="off"
         spellCheck={false}
-        placeholder="Empty: the text model"
+        placeholder={w.visionPlaceholder}
         className={`${field} font-mono text-sm`}
       />
       {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Models that usually see pictures">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={w.visionSuggestions}>
           {suggestions.map((s) => (
             <button
               key={s.model}
@@ -535,11 +527,11 @@ function VisionField({
             onClick={() => start(async () => setResult(await check(checked())))}
             className="min-h-10 w-fit rounded-pill border border-edge px-4 font-medium hover:bg-sunken disabled:opacity-50"
           >
-            {pending ? "Looking …" : "Check that it sees pictures"}
+            {pending ? w.looking : w.checkVision}
           </button>
-          <p className="text-muted">Sends one small picture to the model with the provider and key saved below, and asks what colours are in it. It costs almost nothing.</p>
+          <p className="text-muted">{w.checkVisionHint}</p>
           <p role="status" className={result && !result.ok ? "text-danger-text" : ""}>
-            {result?.ok && `✓ ${result.model} sees pictures (answered in ${(result.ms / 1000).toFixed(1)} s).`}
+            {result?.ok && fillWords(w.sees, { model: result.model, s: (result.ms / 1000).toFixed(1) })}
             {result && !result.ok && `✗ ${result.message}`}
           </p>
         </div>
@@ -552,6 +544,7 @@ export type AiTestResult = { embedding: { ok: boolean; message: string } | null;
 
 /** Tries the saved models now and says how each went. */
 export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }) {
+  const w = useAdminText("settings").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiTestResult | null>(null);
   const lines =
@@ -568,7 +561,7 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
         onClick={() => start(async () => setResult(await action()))}
         className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
-        {pending ? "Testing …" : "Test"}
+        {pending ? w.testing : w.test}
       </button>
       <ul role="status" className="flex flex-col gap-1 text-sm">
         {lines.map((line) => (
@@ -588,6 +581,7 @@ export type AiEvalResult =
 
 /** Runs the query-understanding eval against the saved text model and shows how it did (D75). */
 export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }) {
+  const w = useAdminText("settings").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiEvalResult | null>(null);
   return (
@@ -598,15 +592,21 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
         onClick={() => start(async () => setResult(await action()))}
         className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
-        {pending ? "Checking … (up to a minute)" : "Check query understanding"}
+        {pending ? w.checking : w.checkUnderstanding}
       </button>
       <div role="status" className="text-sm">
         {result && "error" in result && <p className="text-danger-text">✗ {result.error}</p>}
         {result && !("error" in result) && (
           <>
             <p className={result.ok ? "" : "text-danger-text"}>
-              {result.ok ? "✓ Passes" : "✗ Does not pass"}: {result.model} understood {result.passed} of {result.total} searches (
-              {Math.round((result.passed / result.total) * 100)} %) in {(result.ms / 1000).toFixed(1)} s.
+              {result.ok ? w.passes : w.fails}
+              {fillWords(w.understood, {
+                model: result.model,
+                passed: result.passed,
+                total: result.total,
+                share: Math.round((result.passed / result.total) * 100),
+                s: (result.ms / 1000).toFixed(1),
+              })}
             </p>
             {result.failures.length > 0 && (
               <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
@@ -614,7 +614,7 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
                   <li key={failure.query}>
                     <span className="font-medium">“{failure.query}”</span>: {failure.problems.join("; ")}
                     {failure.answer && (
-                      <code className="mt-0.5 block break-all text-xs text-muted">The model answered: {failure.answer}</code>
+                      <code className="mt-0.5 block break-all text-xs text-muted">{fillWords(w.answered, { answer: failure.answer })}</code>
                     )}
                   </li>
                 ))}
@@ -631,6 +631,7 @@ export type AiImageTestResult = { ok: true; dataUrl: string; ms: number } | { ok
 
 /** Makes one small test picture with the saved picture model and shows it (not kept). */
 export function AiImageTestButton({ action }: { action: () => Promise<AiImageTestResult> }) {
+  const w = useAdminText("settings").ai.form;
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiImageTestResult | null>(null);
   return (
@@ -641,15 +642,15 @@ export function AiImageTestButton({ action }: { action: () => Promise<AiImageTes
         onClick={() => start(async () => setResult(await action()))}
         className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
-        {pending ? "Making a picture … (up to a minute)" : "Test the picture model"}
+        {pending ? w.making : w.testPicture}
       </button>
       <div role="status" className="text-sm">
         {result && !result.ok && <p className="text-danger-text">✗ {result.message}</p>}
         {result?.ok && (
           <div className="flex flex-col gap-2">
-            <p>✓ Made in {(result.ms / 1000).toFixed(1)} s. Not kept.</p>
+            <p>{fillWords(w.made, { s: (result.ms / 1000).toFixed(1) })}</p>
             {/* eslint-disable-next-line @next/next/no-img-element -- a small test picture, never kept */}
-            <img src={result.dataUrl} alt="A test picture: a coffee cup on a table" width={256} height={256} className="rounded-md border border-line" />
+            <img src={result.dataUrl} alt={w.testAlt} width={256} height={256} className="rounded-md border border-line" />
           </div>
         )}
       </div>

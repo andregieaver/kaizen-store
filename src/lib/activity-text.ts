@@ -40,19 +40,23 @@ export function fieldLabel(key: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** The words a value is shown in; English unless the account's are given (D312 A8). */
+export type ValueWords = { none: string; yes: string; no: string };
+const ENGLISH_VALUES: ValueWords = { none: "(none)", yes: "yes", no: "no" };
+
 /** A value as the log shows it: nothing as "(none)", a list as words, a yes or no, and anything else as written. */
-export function valueText(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "(none)";
-  if (typeof value === "boolean") return value ? "yes" : "no";
-  if (Array.isArray(value)) return value.length === 0 ? "(none)" : value.map(valueText).join(", ");
+export function valueText(value: unknown, words: ValueWords = ENGLISH_VALUES): string {
+  if (value === null || value === undefined || value === "") return words.none;
+  if (typeof value === "boolean") return value ? words.yes : words.no;
+  if (Array.isArray(value)) return value.length === 0 ? words.none : value.map((v) => valueText(v, words)).join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
 /** One changed field as a line: `{ from, to }` as "Title: Lamp → Lamp 2", and a field whose value is never recorded as "changed". */
-export function changeLine(key: string, change: FieldChange): { label: string; from: string | null; to: string | null } {
+export function changeLine(key: string, change: FieldChange, words?: ValueWords): { label: string; from: string | null; to: string | null } {
   if ("changed" in change) return { label: fieldLabel(key), from: null, to: null };
-  return { label: fieldLabel(key), from: valueText(change.from), to: valueText(change.to) };
+  return { label: fieldLabel(key), from: valueText(change.from, words), to: valueText(change.to, words) };
 }
 
 /** The address of the log with these filters, for the next page, the filters' own form and the CSV: only what is set is written. */

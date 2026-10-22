@@ -12,6 +12,14 @@ import { privacyEn } from "@/lib/admin-messages/privacy.en";
 import { marketingEn } from "@/lib/admin-messages/marketing.en";
 import { discountsEn } from "@/lib/admin-messages/discounts.en";
 import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
+import { settingsEn } from "@/lib/admin-messages/settings.en";
+import { taxEn } from "@/lib/admin-messages/tax.en";
+import { paymentsEn } from "@/lib/admin-messages/payments.en";
+import { shippingEn } from "@/lib/admin-messages/shipping.en";
+import { notificationsEn } from "@/lib/admin-messages/notifications.en";
+import { legalEn } from "@/lib/admin-messages/legal.en";
+import { staffEn } from "@/lib/admin-messages/staff.en";
+import { billingEn } from "@/lib/admin-messages/billing.en";
 import { builderEn } from "@/lib/admin-messages/builder.en";
 import { blocksEn } from "@/lib/admin-messages/blocks.en";
 import { websiteEn } from "@/lib/admin-messages/website.en";
@@ -46,7 +54,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

@@ -3,11 +3,22 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { taxEn, type TaxMessages } from "@/lib/admin-messages/tax.en";
+import { adminText } from "@/lib/admin-text";
+import { knownText } from "@/lib/known-words";
 import { OSS_SCHEMES, type OssScheme, type TaxProfileForm } from "@/lib/tax-profile";
-import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { checkPermission } from "@/server/permissions";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnVatNumber, saveTaxProfile } from "@/server/tax-profile";
 
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
+
+/** The server's English refusals in the account's words (D312 A8). */
+const said = (messages: string[], w: TaxMessages) => messages.map((m) => knownText(m, taxEn.problems, w.problems));
+
+/** A refusal before a member is known, in the request's language. */
+const noAccess = async (): Promise<FormState> => ({ status: "error", messages: [adminText(await actionAdminLang(), "tax").problems.noAccess] });
 
 /** The profile as the tax screen's fields give it (D157): the same names `parseTaxProfile()` reads, nothing else. */
 function profileOf(form: FormData): TaxProfileForm {
@@ -33,11 +44,12 @@ function profileOf(form: FormData): TaxProfileForm {
  */
 export async function saveTaxProfileAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "owner");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return noAccess();
+  const w = adminText(adminLangOf(member.account.adminLocale), "tax");
   const saved = await saveTaxProfile(member, profileOf(form));
-  if (!saved.ok) return { status: "error", messages: saved.problems };
+  if (!saved.ok) return { status: "error", messages: said(saved.problems, w) };
   refresh();
-  return { status: "ok", messages: ["Saved."] };
+  return { status: "ok", messages: [w.actions.saved] };
 }
 
 /**
@@ -46,12 +58,13 @@ export async function saveTaxProfileAction(storeSlug: string, _previous: FormSta
  */
 export async function checkVatNumberAction(storeSlug: string): Promise<FormState> {
   const member = await checkPermission(storeSlug, "owner");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return noAccess();
+  const w = adminText(adminLangOf(member.account.adminLocale), "tax");
   const checked = await checkOwnVatNumber(member);
-  if (!checked.ok) return { status: "error", messages: checked.problems };
+  if (!checked.ok) return { status: "error", messages: said(checked.problems, w) };
   refresh();
   const { check } = checked;
-  if (check.status === "valid") return { status: "ok", messages: ["The VAT number is registered."] };
-  if (check.status === "invalid") return { status: "error", messages: ["The register does not know this VAT number as valid. Check the number."] };
-  return { status: "error", messages: ["The register could not be reached just now. The number has not been checked: try again in a moment."] };
+  if (check.status === "valid") return { status: "ok", messages: [w.actions.valid] };
+  if (check.status === "invalid") return { status: "error", messages: [w.actions.invalid] };
+  return { status: "error", messages: [w.actions.unreachable] };
 }

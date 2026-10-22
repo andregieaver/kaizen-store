@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { OrderSettingsForm } from "@/components/admin/orders/settings-form";
 import { getOrderSettings } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -19,13 +22,13 @@ export default async function OrderSettingsPage({ params }: PageProps<"/admin/[s
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "payments").orders;
   const settings = await getOrderSettings(member.store.id);
   return (
+    <AdminTextScope texts={adminTexts(lang, ["payments"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Orders"
-        description={<>How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.</>}
-      />
+      <PageHeader title={w.title} description={w.intro} />
       <OrderSettingsForm
         settings={settings}
         canEdit={memberCan(member, "settings:write")}
@@ -33,5 +36,6 @@ export default async function OrderSettingsPage({ params }: PageProps<"/admin/[s
         action={saveOrderSettingsAction.bind(null, member.store.slug)}
       />
     </div>
+    </AdminTextScope>
   );
 }

@@ -3,6 +3,9 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { pagesTag } from "@/server/pages";
@@ -17,13 +20,15 @@ import { storeTag } from "@/server/stores";
  */
 export async function saveCountriesSettingsAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await checkPermission(storeSlug, "settings:write");
-  if (!owner) return { status: "error", messages: ["You may not change the store's settings."] };
+  if (!owner) return { status: "error", messages: [adminText(await actionAdminLang(), "settings").common.noChange] };
   const codes = formData
     .getAll("country")
     .map(String)
     .filter((code) => /^[A-Z]{2}$/.test(code));
   const result = await setMarkets(owner, codes);
-  if (!result.ok) return { status: "error", messages: result.problems };
+  const w = adminText(adminLangOf(owner.account.adminLocale), "settings").countries;
+  const said = (text: string) => w.problems[text] ?? text;
+  if (!result.ok) return { status: "error", messages: result.problems.map(said) };
   updateTag(storeTag(owner.store.slug));
   // The shape of its addresses (D181), as the proxy reads it.
   forgetStoreFacts(owner.store.slug);
@@ -31,5 +36,5 @@ export async function saveCountriesSettingsAction(storeSlug: string, _state: For
   updateTag(pagesTag(owner.store.id));
   updateTag(STORES_TAG);
   refresh();
-  return { status: "ok", messages: [result.note ?? "Countries saved."] };
+  return { status: "ok", messages: [result.note ? said(result.note) : w.saved] };
 }

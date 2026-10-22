@@ -7,6 +7,8 @@ import { listStaff } from "@/server/settings";
 import { ensureStoreRoles, listStoreRoles } from "@/server/store-roles";
 import { twoStepRequired } from "@/server/team";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import {
   assignRoleAction,
@@ -30,27 +32,30 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
   const [members, roles, required] = await Promise.all([listStaff(store.id), listStoreRoles(store.id), twoStepRequired(store.id)]);
   const active = members.filter((m) => !m.disabled);
   const slug = store.slug;
+  const lang = adminLangOf(account.adminLocale);
+  const words = adminText(lang, "staff");
+  const w = words.team;
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
-          title="Team"
-          description={<>People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else works in the parts of the admin their role gives them.</>}
+          title={w.title}
+          description={w.description}
         />
         <div className="flex gap-2">
           <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
-            Roles
+            {w.roles}
           </Link>
           <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
-            Activity log
+            {w.activity}
           </Link>
         </div>
       </div>
 
       <section aria-labelledby="members-heading" className={`p-5 ${CARD_CLASS}`}>
         <h2 id="members-heading" className="sr-only">
-          Members
+          {w.members}
         </h2>
         <TeamList
           members={members}
@@ -58,6 +63,8 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
           viewerId={account.id}
           now={new Date()}
           zone={store.timeZone || "Europe/Oslo"}
+          words={words}
+          locale={ADMIN_LANG_FACTS[lang].locale}
           actions={{
             assign: assignRoleAction.bind(null, slug),
             extend: extendCollaboratorAction.bind(null, slug),
@@ -71,9 +78,10 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
         withIt={active.filter((m) => m.hasTwoStep).length}
         total={active.length}
         action={setTwoStepRequirementAction.bind(null, slug)}
+        words={words}
       />
 
-      <InviteForms roles={roles} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
+      <InviteForms roles={roles} words={words} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
     </div>
   );
 }

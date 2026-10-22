@@ -7,6 +7,7 @@ import { BusinessDetailsFields } from "@/components/admin/business-details-field
 import { CountriesForm } from "@/components/admin/countries-form";
 import { FeatureQuestion, type QuestionWarning } from "@/components/admin/feature-question";
 import { SetupFrame } from "@/components/admin/setup-frame";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase, storeHref } from "@/lib/paths";
 import { type Membership } from "@/server/auth";
@@ -30,7 +31,7 @@ import { FEATURES_BY_ID, featureOn, featureWarnings, kindFeature, kindOffered } 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { priceText } from "@/lib/theme-prices";
 import {
@@ -216,13 +217,16 @@ async function PaymentsStep({ member, w }: { member: Membership; w: SetupMessage
         </p>
       )}
       {settings.modes.includes("live") && (
-        <StripeAccountPanel
-          storeSlug={store.slug}
-          mode="live"
-          account={settings.accounts.live}
-          isOwner={memberCan(member, "owner")}
-          title={w.payments.realTitle}
-        />
+        <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["payments"])}>
+          <StripeAccountPanel
+            storeSlug={store.slug}
+            mode="live"
+            account={settings.accounts.live}
+            isOwner={memberCan(member, "owner")}
+            title={w.payments.realTitle}
+            words={adminText(adminLangOf(member.account.adminLocale), "payments").stripe}
+          />
+        </AdminTextScope>
       )}
       <p className="text-sm text-muted">
         {w.payments.settingsBefore}{" "}

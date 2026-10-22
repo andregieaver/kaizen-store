@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ShippingHubView } from "@/components/admin/shipping/shipping-hub";
+import { fillWords } from "@/lib/admin-fill";
 import { formatPriceInput } from "@/lib/product-input";
 import { WEIGHT_GRAMS_MAX } from "@/lib/shipping-limits";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -11,6 +12,8 @@ import { listPickupPlaces } from "@/server/pickup";
 import { getShippingSettings } from "@/server/settings";
 import { getShippingSetup, shippingWarningsFor } from "@/server/shipping-methods";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { saveShippingAction } from "../../../actions";
 import { saveDefaultWeightAction } from "./actions";
@@ -29,6 +32,8 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const all = adminText(lang, "shipping");
   const canWrite = memberCan(gated, "settings:write");
   const [settings, setup, warnings, places, areas] = await Promise.all([
     getShippingSettings(store),
@@ -44,9 +49,9 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
       <table className="w-full max-w-2xl text-left text-sm">
         <thead>
           <tr className="border-b border-line">
-            <th scope="col" className="py-2 pr-4 font-medium">Country</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Shipping price</th>
-            <th scope="col" className="py-2 font-medium">Free from basket value</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{all.hub.country}</th>
+            <th scope="col" className="py-2 pr-4 font-medium">{all.hub.price}</th>
+            <th scope="col" className="py-2 font-medium">{all.hub.freeFrom}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,8 +67,8 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
                     name={`amount:${rate.marketCode}`}
                     inputMode="decimal"
                     defaultValue={rate.amountMinor === null ? "" : formatPriceInput(rate.amountMinor, rate.currency)}
-                    placeholder="Not set"
-                    aria-label={`Shipping price to ${market.name}, ${rate.currency}`}
+                    placeholder={all.hub.notSet}
+                    aria-label={fillWords(all.hub.priceTo, { market: market.name, currency: rate.currency })}
                     className={input}
                     disabled={!canWrite}
                   />
@@ -73,8 +78,8 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
                     name={`free:${rate.marketCode}`}
                     inputMode="decimal"
                     defaultValue={rate.freeOverMinor === null ? "" : formatPriceInput(rate.freeOverMinor, rate.currency)}
-                    placeholder="Never free"
-                    aria-label={`Free shipping to ${market.name} from, ${rate.currency}`}
+                    placeholder={all.hub.neverFree}
+                    aria-label={fillWords(all.hub.freeTo, { market: market.name, currency: rate.currency })}
                     className={input}
                     disabled={!canWrite}
                   />
@@ -86,7 +91,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
       </table>
       {canWrite && (
         <div>
-          <SubmitButton>Save flat rates</SubmitButton>
+          <SubmitButton>{all.hub.saveFlat}</SubmitButton>
         </div>
       )}
     </ActionForm>
@@ -95,18 +100,18 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
   const defaultWeightForm = (
     <ActionForm action={saveDefaultWeightAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1 text-sm">
-        Grams per unit
+        {all.hub.grams}
         <input name="grams" inputMode="numeric" required defaultValue={setup.defaultWeightGrams} min={1} max={WEIGHT_GRAMS_MAX} type="number" className={`${input} max-w-40`} disabled={!canWrite} />
       </label>
-      {canWrite && <SubmitButton variant="secondary">Save weight</SubmitButton>}
+      {canWrite && <SubmitButton variant="secondary">{all.hub.saveWeight}</SubmitButton>}
     </ActionForm>
   );
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Shipping"
-        description="What delivery costs, country by country: a flat rate, your own methods with zones and profiles, pickup at your places and local delivery by your own drivers. Every price includes VAT."
+        title={all.hub.title}
+        description={all.hub.description}
       />
       <ShippingHubView
         base={base}
@@ -130,6 +135,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
         warnings={warnings}
         flatRateForm={flatRateForm}
         defaultWeightForm={defaultWeightForm}
+        words={all.hub}
       />
     </div>
   );

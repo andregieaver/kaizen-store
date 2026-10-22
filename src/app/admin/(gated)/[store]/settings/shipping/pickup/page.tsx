@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PickupView } from "@/components/admin/shipping/pickup-view";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listPickupPlaces } from "@/server/pickup";
 
@@ -16,19 +18,22 @@ export default async function ShippingPickupPage({ params }: PageProps<"/admin/[
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const all = adminText(lang, "shipping");
   const base = `/admin/${store.slug}/settings/shipping`;
   const places = await listPickupPlaces(store.id);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Shipping" }}
-        title="Pickup"
-        description="Customers choose Collect at checkout and come to your store or pickup point. Mark the order Ready for pickup to email them, and Collected when they have it: that day starts the 14 days to withdraw."
+        back={{ href: base, label: all.pages.back }}
+        title={all.pages.pickupTitle}
+        description={all.pages.pickupDescription}
       />
       <PickupView
         places={places}
         companyHref={`/admin/${store.slug}/settings/company`}
         canWrite={memberCan(gated, "settings:write")}
+        words={all.pickup}
         save={(place) => savePickupAction.bind(null, store.slug, place.locationId, place.currency ?? "")}
       />
     </div>

@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { MethodsListView } from "@/components/admin/shipping/methods-list";
 import { chosenMarket, MarketTabs } from "@/components/admin/shipping/shipping-parts";
 import { PageHeader } from "@/components/admin/ui";
+import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
 
@@ -17,6 +19,9 @@ export default async function ShippingMethodsPage({ params, searchParams }: Page
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const all = adminText(lang, "shipping");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const market = chosenMarket(store.markets, (await searchParams).market);
   const base = `/admin/${store.slug}/settings/shipping`;
   const setup = await getShippingSetup(store.id);
@@ -24,18 +29,20 @@ export default async function ShippingMethodsPage({ params, searchParams }: Page
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Shipping" }}
-        title="Shipping methods"
-        description="Each country's own ways of shipping, priced per zone and profile. When two methods cost the same, the one higher here is shown first."
+        back={{ href: base, label: all.pages.back }}
+        title={all.pages.methodsTitle}
+        description={all.pages.methodsDescription}
       />
       {market && (
         <>
-          <MarketTabs href={(code) => `${base}/methods?market=${code}`} markets={store.markets} current={market.code} />
+          <MarketTabs href={(code) => `${base}/methods?market=${code}`} markets={store.markets} current={market.code} label={all.countries} />
           <MethodsListView
             base={base}
             market={{ code: market.code, name: market.name, currency: market.nativeCurrency }}
             methods={methods}
             canWrite={memberCan(gated, "settings:write")}
+            words={all.methods}
+            locale={locale}
             move={(id, direction) => moveShippingAction.bind(null, store.slug, "methods", market.code, id, direction)}
           />
         </>

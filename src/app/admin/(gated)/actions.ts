@@ -12,6 +12,7 @@ import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import type { Membership } from "@/server/auth";
+import { adminLangOf } from "@/lib/admin-lang";
 import { applyPlanDiscount, cancelPlan, choosePlan, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { setPlanRemindersOptOut } from "@/server/plan-reminders";
@@ -24,6 +25,10 @@ import { saveMethodChoices } from "@/server/payment-methods";
 import { MOLLIE_COOKIE, MOLLIE_COOKIE_PATH } from "@/lib/mollie";
 import { activateMollieMethod, chooseCheckoutProvider, disconnectMollie, mollieStart } from "@/server/mollie";
 import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
+import { paymentsEn } from "@/lib/admin-messages/payments.en";
+import { adminText } from "@/lib/admin-text";
+import { knownText } from "@/lib/known-words";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 // Every action takes the store's slug as its first (bound) argument and
 // re-checks the signed-in account's access to that store.
@@ -47,6 +52,19 @@ async function origin(): Promise<string> {
   return header ? new URL(header).origin : siteUrl();
 }
 
+/**
+ * A payments action's answer in the account's language (D312 A8): the words given by key, and the server's English refusals said through
+ * the catalogue (`knownText()`); anything it does not know stays as written.
+ */
+async function inPayments(state: FormState): Promise<FormState> {
+  const w = adminText(await actionAdminLang(), "payments");
+  return { ...state, messages: state.messages?.map((m) => knownText(m, paymentsEn.problems, w.problems)) };
+}
+
+async function paymentsWord(pick: (w: typeof paymentsEn.actions) => string): Promise<string> {
+  return pick(adminText(await actionAdminLang(), "payments").actions);
+}
+
 /** Creates the store's own Stripe account for a mode; onboarding then opens on the page. */
 export async function createStripeAccountAction(
   storeSlug: string,
@@ -54,11 +72,11 @@ export async function createStripeAccountAction(
   formData: FormData,
 ): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   const parsedMode = mode.safeParse(formData.get("mode"));
-  if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
+  if (!parsedMode.success) return inPayments({ status: "error", messages: ["Unknown mode."] });
   const storeUrl = storeOrigin(owner.store.slug) ?? `${await origin()}${storeBase(owner.store.slug)}`;
-  return toState(await createStripeAccount(owner, parsedMode.data, storeUrl));
+  return inPayments(toState(await createStripeAccount(owner, parsedMode.data, storeUrl)));
 }
 
 /** A client secret for Stripe's embedded components (onboarding, account details). */
@@ -67,10 +85,12 @@ export async function accountSessionAction(
   modeName: PaymentModeName,
 ): Promise<{ ok: true; clientSecret: string } | { ok: false; problem: string }> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return { ok: false, problem: owner.messages[0] ?? "Not allowed." };
+  const said = async (problem: string) => ({ ok: false as const, problem: (await inPayments({ status: "error", messages: [problem] })).messages?.[0] ?? problem });
+  if (!("store" in owner)) return said(owner.messages?.[0] ?? "Not allowed.");
   const parsedMode = mode.safeParse(modeName);
-  if (!parsedMode.success) return { ok: false, problem: "Unknown mode." };
-  return createAccountSession(owner.store.id, parsedMode.data);
+  if (!parsedMode.success) return said("Unknown mode.");
+  const session = await createAccountSession(owner.store.id, parsedMode.data);
+  return session.ok ? session : said(session.problem);
 }
 
 /** After onboarding: reads the account's state from Stripe and shows it. */
@@ -91,9 +111,9 @@ export async function setStripeProviderAction(
   formData: FormData,
 ): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   const parsedMode = mode.safeParse(formData.get("activeMode"));
-  if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
+  if (!parsedMode.success) return inPayments({ status: "error", messages: ["Unknown mode."] });
   const result = await setStripeProvider(
     owner,
     formData.get("enabled") === "on",
@@ -102,7 +122,7 @@ export async function setStripeProviderAction(
   );
   // The storefront's "cannot buy yet" notice depends on this switch.
   if (result.ok) updateTag(storeTag(owner.store.slug));
-  return toState(result);
+  return inPayments(toState(result));
 }
 
 /**
@@ -115,11 +135,11 @@ export async function savePaymentMethodsAction(
   formData: FormData,
 ): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   const markets = formData.getAll("market").map(String);
   const on = new Set(formData.getAll("on").map(String));
   const { changed } = await saveMethodChoices(owner.store.id, owner.account.id, { markets, on });
-  return toState({ ok: true }, changed === 0 ? "Nothing changed." : "Saved. New checkouts offer these methods.");
+  return toState({ ok: true }, await paymentsWord((w) => (changed === 0 ? w.nothingChanged : w.methodsSaved)));
 }
 
 /** "Connect Mollie" (D292): off to Mollie to approve Kaizena Flow, back to `/api/integrations/mollie/callback`. Owners only. */
@@ -140,30 +160,30 @@ export async function connectMollieAction(storeSlug: string): Promise<void> {
 /** Which provider each mode's checkout uses (D292): Stripe, or Mollie once it is connected. Owners only. */
 export async function saveCheckoutProviderAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   for (const mode of ["test", "live"] as const) {
     const chosen = formData.get(`provider:${mode}`);
     if (chosen !== "stripe" && chosen !== "mollie") continue;
     const saved = await chooseCheckoutProvider(owner.store.id, owner.account.id, mode, chosen);
-    if (!saved.ok) return { status: "error", messages: [saved.problem] };
+    if (!saved.ok) return inPayments({ status: "error", messages: [saved.problem] });
   }
-  return toState({ ok: true }, "Saved. New checkouts use it.");
+  return toState({ ok: true }, await paymentsWord((w) => w.providerSaved));
 }
 
 /** Ends the Mollie connection; checkouts go back to Stripe (D292). Owners only. */
 export async function disconnectMollieAction(storeSlug: string): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   await disconnectMollie(owner.store.id, owner.account.id);
-  return toState({ ok: true }, "Mollie is disconnected. Checkouts use Stripe.");
+  return toState({ ok: true }, await paymentsWord((w) => w.disconnected));
 }
 
 /** Asks Mollie to switch a method on for the store's profile (D292). Owners only. */
 export async function activateMollieMethodAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
+  if (!("store" in owner)) return inPayments(owner);
   const done = await activateMollieMethod(owner.store.id, owner.account.id, String(formData.get("method") ?? ""));
-  return done.ok ? toState({ ok: true }, "Asked Mollie. It shows as active once Mollie has switched it on.") : { status: "error", messages: [done.problem] };
+  return done.ok ? toState({ ok: true }, await paymentsWord((w) => w.asked)) : inPayments({ status: "error", messages: [done.problem] });
 }
 
 export async function saveShippingAction(
@@ -225,6 +245,9 @@ export async function signOut(): Promise<void> {
   }
 }
 
+/** The billing page's answers in the owner's words (D312 A8). */
+const billingWords = (owner: Membership) => adminText(adminLangOf(owner.account.adminLocale), "billing").actions;
+
 /** Sends an owner to Stripe's billing page for Kaizen's invoices to their store. */
 export async function openBillingPortalAction(storeSlug: string): Promise<FormState> {
   const owner = await asOwner(storeSlug);
@@ -239,12 +262,12 @@ export async function choosePlanAction(storeSlug: string, _state: FormState, for
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const priceId = z.uuid().safeParse(formData.get("priceId"));
-  if (!priceId.success) return { status: "error", messages: ["Choose a plan."] };
+  if (!priceId.success) return { status: "error", messages: [billingWords(owner).choosePlan] };
   const result = await choosePlan(owner.account, owner.store.slug, priceId.data, await origin());
   if (!result.ok) return { status: "error", messages: result.problems };
   if (result.checkoutUrl) redirect(result.checkoutUrl);
   refresh();
-  return { status: "ok", messages: ["Plan changed. The difference is settled on your next invoice."] };
+  return { status: "ok", messages: [billingWords(owner).changed] };
 }
 
 /** An owner cancels their plan at the end of the period, or keeps it after all. */
@@ -252,13 +275,13 @@ export async function ownerCancelPlanAction(storeSlug: string, _state: FormState
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const when = z.enum(["period_end", "undo"]).safeParse(formData.get("when"));
-  if (!when.success) return { status: "error", messages: ["Unknown request."] };
+  if (!when.success) return { status: "error", messages: [billingWords(owner).unknown] };
   const result = await cancelPlan(owner.account, owner.store.id, when.data);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return {
     status: "ok",
-    messages: [when.data === "undo" ? "Your plan continues." : "Your plan ends when the current period does."],
+    messages: [when.data === "undo" ? billingWords(owner).continues : billingWords(owner).ends],
   };
 }
 
@@ -267,7 +290,7 @@ export async function applyPlanDiscountAction(storeSlug: string, _state: FormSta
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const code = String(formData.get("code") ?? "").slice(0, 60);
-  if (!code.trim()) return { status: "error", messages: ["Type the discount code."] };
+  if (!code.trim()) return { status: "error", messages: [billingWords(owner).typeCode] };
   return toState(await applyPlanDiscount(owner.account, owner.store.id, code));
 }
 
@@ -275,7 +298,7 @@ export async function applyPlanDiscountAction(storeSlug: string, _state: FormSta
 export async function removePlanDiscountAction(storeSlug: string): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
-  return toState(await removeWaitingDiscount(owner.account, owner.store.id), "Code removed.");
+  return toState(await removeWaitingDiscount(owner.account, owner.store.id), billingWords(owner).removed);
 }
 
 /** The Plan page's link: no reminders from Kaizen about plans left unpaid, or reminders after all (D33). */

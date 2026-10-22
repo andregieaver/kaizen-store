@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 
 import type { GooglePlace } from "@/lib/google-reviews";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { DeleteDiscountButton } from "./delete-discount-button";
 
 type Result = { ok: true } | { ok: false; problems: string[] };
@@ -33,6 +36,7 @@ export function GoogleReviewsSettings({
   place: GooglePlace | null;
   actions: GoogleReviewsActions;
 }) {
+  const w = useAdminText("notifications").google;
   const [pending, start] = useTransition();
   const [key, setKey] = useState("");
   const [query, setQuery] = useState("");
@@ -45,7 +49,7 @@ export function GoogleReviewsSettings({
       setProblems([]);
       setSaved(null);
       const result = await work();
-      if (!result.ok) setProblems(result.problems);
+      if (!result.ok) setProblems(result.problems.map((p) => w.problems[p] ?? p));
       else {
         setSaved(done);
         after?.(result);
@@ -69,42 +73,43 @@ export function GoogleReviewsSettings({
 
       <section aria-labelledby="google-key" className={card}>
         <h2 id="google-key" className="mb-1 text-title text-ink">
-          1. Google API key
+          {w.keyTitle}
         </h2>
         <p className="mb-4 text-sm text-muted">
-          In Google Cloud, turn on the Places API (New) and create an API key restricted to it. Each page view showing your reviews is one
-          request, billed on your Google account after Google&apos;s free monthly amount.
-          {hint && <> Saved key: {hint}.</>}
+          {w.keyHint}
+          {hint && fillWords(w.savedKey, { hint })}
         </p>
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(event) => {
             event.preventDefault();
-            run(() => actions.saveKey(key), "Key saved.", () => setKey(""));
+            run(() => actions.saveKey(key), w.keySaved, () => setKey(""));
           }}
         >
           <label className="flex min-w-64 flex-1 flex-col gap-1 text-sm font-medium">
-            {hint ? "New API key" : "API key"}
+            {hint ? w.newKey : w.key}
             <input type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} className={input} />
           </label>
           <button type="submit" disabled={pending || !key.trim()} className={button}>
-            Save key
+            {w.saveKey}
           </button>
         </form>
       </section>
 
       <section aria-labelledby="google-place" className={card}>
         <h2 id="google-place" className="mb-1 text-title text-ink">
-          2. Your business on Google
+          {w.placeTitle}
         </h2>
         <p className="mb-4 text-sm text-muted">
           {place ? (
             <>
-              Showing reviews of <strong className="text-ink">{place.name}</strong>
+              {w.showingOf.split("{name}")[0]}
+              <strong className="text-ink">{place.name}</strong>
+              {w.showingOf.split("{name}")[1] ?? ""}
               {place.address && <>, {place.address}</>}.
             </>
           ) : (
-            "Find your business as it is on Google Maps, and choose it."
+            w.find
           )}
         </p>
         <form
@@ -115,16 +120,16 @@ export function GoogleReviewsSettings({
           }}
         >
           <label className="flex min-w-64 flex-1 flex-col gap-1 text-sm font-medium">
-            Business name and town
+            {w.nameAndTown}
             <input value={query} disabled={!hint} onChange={(event) => setQuery(event.target.value)} className={input} />
           </label>
           <button type="submit" disabled={pending || !hint || !query.trim()} className={button}>
-            Find
+            {w.findButton}
           </button>
         </form>
         {found && (
           <ul className="mt-4 flex flex-col gap-2">
-            {found.length === 0 && <li className="text-sm text-muted">Google found nothing by that name.</li>}
+            {found.length === 0 && <li className="text-sm text-muted">{w.nothing}</li>}
             {found.map((option) => (
               <li key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line p-3">
                 <span className="text-sm">
@@ -134,10 +139,10 @@ export function GoogleReviewsSettings({
                 <button
                   type="button"
                   disabled={pending || option.id === place?.id}
-                  onClick={() => run(() => actions.choose(option.id), `Showing reviews of ${option.name}.`, () => setFound(null))}
+                  onClick={() => run(() => actions.choose(option.id), fillWords(w.showing, { name: option.name }), () => setFound(null))}
                   className="inline-flex min-h-9 items-center rounded-pill border border-edge px-3 text-sm font-medium hover:bg-sunken disabled:opacity-50"
                 >
-                  {option.id === place?.id ? "Chosen" : "Choose"}
+                  {option.id === place?.id ? w.chosen : w.choose}
                 </button>
               </li>
             ))}
@@ -149,8 +154,8 @@ export function GoogleReviewsSettings({
         <DeleteDiscountButton
           action={actions.remove}
           code="Google"
-          question="Forget the Google key and business? Testimonials showing Google reviews show nothing until they are set up again."
-          label="Remove Google reviews"
+          question={w.removeQuestion}
+          label={w.remove}
         />
       )}
     </div>

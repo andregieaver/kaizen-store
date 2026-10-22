@@ -4,6 +4,11 @@ import { notFound } from "next/navigation";
 import { requireFeature } from "@/components/admin/feature-off";
 import { languageLabel } from "@/components/admin/notifications/language-label";
 import { NotificationEditor, type EditorLanguage } from "@/components/admin/notifications/notification-editor";
+import { notificationWords } from "@/components/admin/notifications/notification-list";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { notificationFromPath, notificationOf } from "@/lib/notifications";
 import { getTemplate, listNotifications, previewNotification } from "@/server/notifications";
@@ -27,6 +32,10 @@ export default async function NotificationEditorPage({ params, searchParams }: P
   const def = id ? notificationOf(id) : null;
   if (!id || !def) notFound();
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "notifications");
+  const shown = notificationWords(def, words);
+  const display = ADMIN_LANG_FACTS[lang].tag;
   const item = (await listNotifications(store.id)).find((n) => n.def.id === id);
   const langs = (item?.languages ?? []).filter((l) => l.offered || l.own);
   const languages: EditorLanguage[] = (
@@ -34,7 +43,7 @@ export default async function NotificationEditorPage({ params, searchParams }: P
       langs.map(async (l) => {
         const [saved, preview] = await Promise.all([def.editable ? getTemplate(store.id, id, l.lang) : null, previewNotification(store.id, id, l.lang)]);
         if (!preview) return null;
-        return { language: { lang: l.lang, label: languageLabel(l.lang), offered: l.offered, saved, standard: preview.standard }, preview };
+        return { language: { lang: l.lang, label: languageLabel(l.lang, display), offered: l.offered, saved, standard: preview.standard }, preview };
       }),
     )
   )
@@ -46,15 +55,16 @@ export default async function NotificationEditorPage({ params, searchParams }: P
   const canWrite = memberCan(member, "settings:write");
   const status = item?.status ?? "on";
   return (
+    <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/settings/notifications`, label: "Notifications" }}
-        title={def.label}
-        status={<Chip signal={status === "off" ? "neutral" : status === "on" ? "positive" : "insight"} dot>{status === "on" ? "On" : status === "off" ? "Off" : status === "always" ? "Always on" : "Fixed"}</Chip>}
+        back={{ href: `/admin/${store.slug}/settings/notifications`, label: words.emails.title }}
+        title={shown.label}
+        status={<Chip signal={status === "off" ? "neutral" : status === "on" ? "positive" : "insight"} dot>{words.emails.status[status]}</Chip>}
         description={
           <>
-            {def.when}
-            {def.required && def.why ? ` Always sent: ${def.why}` : ""}
+            {shown.when}
+            {def.required && shown.why ? ` ${fillWords(words.emails.alwaysSent, { why: shown.why })}` : ""}
           </>
         }
       />
@@ -71,5 +81,6 @@ export default async function NotificationEditorPage({ params, searchParams }: P
         }}
       />
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,5 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { describeRule, type DescribeContext, type OrderRule } from "@/lib/order-rules";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
@@ -17,17 +19,34 @@ export type RuleListActions = {
  * sentence code writes from it and its last run; *Move up*, *Move down*, the switch and *Delete* for those who may change settings (every action asks
  * again). Works without a script: each button is a form.
  */
-export function RuleList({ rules, base, describe, when, actions }: { rules: RuleRow[]; base: string; describe: DescribeContext; when: (iso: string) => string; actions: RuleListActions | null }) {
+export function RuleList({
+  rules,
+  base,
+  describe,
+  when,
+  actions,
+  words = notificationsEn,
+}: {
+  rules: RuleRow[];
+  base: string;
+  describe: DescribeContext;
+  when: (iso: string) => string;
+  actions: RuleListActions | null;
+  /** The admin's words in the account's language; English unless given. */
+  words?: NotificationsMessages;
+}) {
+  const w = words.rules;
+  const c = words.common;
   if (rules.length === 0) {
     return (
-      <Card title="Rules">
-        <p className="text-body text-muted">No rules yet. A rule runs once when an order is paid: for example, tag every order over an amount, or hold orders to a country until someone has looked at them.</p>
+      <Card title={w.list}>
+        <p className="text-body text-muted">{w.empty}</p>
       </Card>
     );
   }
   return (
-    <Card title="Rules" count={rules.length}>
-      <List label="Rules">
+    <Card title={w.list} count={rules.length}>
+      <List label={w.list}>
         {rules.map((rule, i) => (
           <ListRow key={rule.id}>
             <RowLead
@@ -35,42 +54,42 @@ export function RuleList({ rules, base, describe, when, actions }: { rules: Rule
               href={`${base}/${rule.id}`}
               sub={
                 <>
-                  {describeRule(rule, describe)}
-                  <span className="block">{rule.lastRun ? `Last ran ${when(rule.lastRun.at)}: ${rule.lastRun.matched ? "matched" : "did not match"}.` : "Has not run yet."}</span>
+                  {describeRule(rule, describe, w.sentence)}
+                  <span className="block">{rule.lastRun ? fillWords(w.lastRan, { when: when(rule.lastRun.at), result: rule.lastRun.matched ? w.matched : w.notMatched }) : w.notRun}</span>
                 </>
               }
             />
             <RowActions>
               <Chip signal={rule.enabled ? "positive" : "neutral"} dot>
-                {rule.enabled ? "On" : "Off"}
+                {rule.enabled ? c.on : c.off}
               </Chip>
               {actions && (
                 <>
-                  <ActionForm action={actions.switchRule(rule.id)} successMessage={rule.enabled ? "Switched off." : "Switched on."} className="flex items-center">
+                  <ActionForm action={actions.switchRule(rule.id)} successMessage={rule.enabled ? c.switchedOff : c.switchedOn} className="flex items-center">
                     <input type="hidden" name="enabled" value={rule.enabled ? "off" : "on"} />
                     <SubmitButton variant="secondary">
-                      {rule.enabled ? "Switch off" : "Switch on"}
+                      {rule.enabled ? c.switchOff : c.switchOn}
                       <span className="sr-only"> {rule.name}</span>
                     </SubmitButton>
                   </ActionForm>
                   {i > 0 && (
-                    <ActionForm action={actions.move(rule.id, "up")} successMessage="Moved." className="flex items-center">
+                    <ActionForm action={actions.move(rule.id, "up")} successMessage={w.moved} className="flex items-center">
                       <SubmitButton variant="secondary">
-                        Move up<span className="sr-only"> {rule.name}</span>
+                        {w.moveUp}<span className="sr-only"> {rule.name}</span>
                       </SubmitButton>
                     </ActionForm>
                   )}
                   {i < rules.length - 1 && (
-                    <ActionForm action={actions.move(rule.id, "down")} successMessage="Moved." className="flex items-center">
+                    <ActionForm action={actions.move(rule.id, "down")} successMessage={w.moved} className="flex items-center">
                       <SubmitButton variant="secondary">
-                        Move down<span className="sr-only"> {rule.name}</span>
+                        {w.moveDown}<span className="sr-only"> {rule.name}</span>
                       </SubmitButton>
                     </ActionForm>
                   )}
-                  <ActionForm action={actions.remove(rule.id)} successMessage="Deleted." className="flex items-center">
+                  <ActionForm action={actions.remove(rule.id)} successMessage={w.deleted} className="flex items-center">
                     <input type="hidden" name="confirm" value="1" />
                     <SubmitButton variant="secondary">
-                      Delete<span className="sr-only"> {rule.name}</span>
+                      {w.delete}<span className="sr-only"> {rule.name}</span>
                     </SubmitButton>
                   </ActionForm>
                 </>

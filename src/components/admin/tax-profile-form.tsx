@@ -4,8 +4,12 @@ import { useState } from "react";
 
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { OSS_SCHEME_LABELS, OSS_SCHEMES, formOf, type OssScheme, type ReadinessLine, type TaxProfile } from "@/lib/tax-profile";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { OSS_SCHEMES, formOf, type OssScheme, type ReadinessLine, type TaxProfile } from "@/lib/tax-profile";
 import { EU_COUNTRIES } from "@/lib/vat-number";
+
+import { useAdminLang, useAdminText } from "./admin-text";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -25,18 +29,22 @@ export type OwnNumberCheck = {
   address: string | null;
 };
 
-const regionName = (code: string): string => {
+const regionName = (code: string, locale: string): string => {
   try {
-    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
   }
 };
 
-/** EU countries by their English name. */
-const EU_BY_NAME = [...EU_COUNTRIES].map((code) => ({ code, name: regionName(code) })).sort((a, b) => a.name.localeCompare(b.name));
+/** EU countries by their name in the admin's language. */
+const euByName = (locale: string) =>
+  [...EU_COUNTRIES].map((code) => ({ code, name: regionName(code, locale) })).sort((a, b) => a.name.localeCompare(b.name, locale));
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+const when = (iso: string, locale: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+
+/** The admin's locale, for names, dates and numbers in the browser. */
+const useLocale = () => ADMIN_LANG_FACTS[useAdminLang()].locale;
 
 /**
  * The store's tax profile (D157, `docs/wave-1a-tax.md` 2.2): VAT registration and number, where goods are sent from, the OSS
@@ -58,36 +66,37 @@ export function TaxProfileForm({
   canEdit: boolean;
   saveAction: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
+  const all = useAdminText("tax");
+  const w = all.form;
+  const locale = useLocale();
+  const EU_BY_NAME = euByName(locale);
   const start = formOf(profile);
   const [scheme, setScheme] = useState<OssScheme>(start.ossScheme);
   const markets = new Set(start.iossMarkets);
   return (
-    <ActionForm action={saveAction} successMessage="Saved." className="flex flex-col gap-6">
+    <ActionForm action={saveAction} successMessage={w.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="vat" className={card}>
           <h2 id="vat" className="text-title text-ink">
-            VAT registration
+            {w.vatTitle}
           </h2>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="vatRegistered" defaultChecked={start.vatRegistered} className="mt-0.5 size-4" />
             <span>
-              The store is registered for VAT
-              <span className={`block ${hint}`}>Switch this on when the business has a VAT number. It is shown on the store&apos;s documents.</span>
+              {w.registered}
+              <span className={`block ${hint}`}>{w.registeredHint}</span>
             </span>
           </label>
           <label className={label}>
-            VAT number{" "}
+            {w.vatNumber}{" "}
             <span className={hint}>
-              {country === "NO" ? "(nine digits and MVA)" : country ? `(starts with ${country === "GR" ? "EL" : country})` : "(with the country code)"}
+              {country === "NO" ? w.vatNumberNo : country ? fillWords(w.vatNumberStarts, { prefix: country === "GR" ? "EL" : country }) : w.vatNumberAny}
             </span>
             <input name="vatNumber" defaultValue={start.vatNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase sm:max-w-sm`} />
-            <span className={hint}>
-              Must be a number of {countryName ?? "the store's own country"}. Saving a different number clears its check: use Check now below to check it
-              again. Reverse charge stays off until the number has been checked valid.
-            </span>
+            <span className={hint}>{fillWords(w.vatNumberHint, { country: countryName ?? w.ownCountry })}</span>
           </label>
           <label className={label}>
-            Goods are sent from <span className={hint}>(two letters, such as NO or CN)</span>
+            {w.dispatch} <span className={hint}>{w.dispatchShape}</span>
             <input
               name="dispatchCountry"
               defaultValue={start.dispatchCountry}
@@ -96,21 +105,17 @@ export function TaxProfileForm({
               autoComplete="off"
               className={`${input} uppercase sm:w-24`}
             />
-            <span className={hint}>
-              Leave empty to use {countryName ?? "the store's country"}. IOSS applies only to goods sent from outside the EU.
-            </span>
+            <span className={hint}>{fillWords(w.dispatchHint, { country: countryName ?? w.storeCountry })}</span>
           </label>
         </section>
 
         <section aria-labelledby="oss" className={card}>
           <h2 id="oss" className="text-title text-ink">
-            One Stop Shop (OSS)
+            {w.ossTitle}
           </h2>
-          <p className="text-sm text-muted">
-            Record the registration here. Kaizena Flow charges the VAT of the buyer&apos;s country on every consumer sale, as OSS requires. The returns are not made here.
-          </p>
+          <p className="text-sm text-muted">{w.ossIntro}</p>
           <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">Scheme</legend>
+            <legend className="mb-1 font-medium">{w.scheme}</legend>
             {OSS_SCHEMES.map((option) => (
               <label key={option} className="flex items-start gap-2">
                 <input
@@ -122,8 +127,8 @@ export function TaxProfileForm({
                   className="mt-0.5 size-4"
                 />
                 <span>
-                  {OSS_SCHEME_LABELS[option].label}
-                  <span className={`block ${hint}`}>{OSS_SCHEME_LABELS[option].hint}</span>
+                  {all.schemes[option].label}
+                  <span className={`block ${hint}`}>{all.schemes[option].hint}</span>
                 </span>
               </label>
             ))}
@@ -131,9 +136,9 @@ export function TaxProfileForm({
           {scheme !== "none" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={label}>
-                Member state of registration
+                {w.memberState}
                 <select name="ossMemberState" defaultValue={start.ossMemberState} className={input}>
-                  <option value="">Choose …</option>
+                  <option value="">{w.choose}</option>
                   {EU_BY_NAME.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
@@ -143,12 +148,12 @@ export function TaxProfileForm({
               </label>
               {scheme === "non_union" && (
                 <label className={label}>
-                  Non-Union OSS number <span className={hint}>(EU and nine digits)</span>
+                  {w.ossNumber} <span className={hint}>{w.ossNumberShape}</span>
                   <input name="ossNumber" defaultValue={start.ossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
                 </label>
               )}
               <label className={label}>
-                Registered on <span className={hint}>(year-month-day)</span>
+                {w.registeredOn} <span className={hint}>{w.dateShape}</span>
                 <input name="ossRegisteredOn" type="date" defaultValue={start.ossRegisteredOn} className={input} />
               </label>
             </div>
@@ -157,29 +162,26 @@ export function TaxProfileForm({
 
         <section aria-labelledby="ioss" className={card}>
           <h2 id="ioss" className="text-title text-ink">
-            Import One Stop Shop (IOSS)
+            {w.iossTitle}
           </h2>
-          <p className="text-sm text-muted">
-            For stores sending goods from outside the EU to private buyers in the EU. A consignment of at most 150 EUR is charged destination VAT at checkout and
-            marked with the IOSS number on the order. Most stores outside the EU must register through an EU intermediary. Stores established in Norway can register directly.
-          </p>
+          <p className="text-sm text-muted">{w.iossIntro}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
-              IOSS number <span className={hint}>(IM and ten digits)</span>
+              {w.iossNumber} <span className={hint}>{w.iossNumberShape}</span>
               <input name="iossNumber" defaultValue={start.iossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
             </label>
             <label className={label}>
-              Intermediary
+              {w.intermediary}
               <input name="iossIntermediary" defaultValue={start.iossIntermediary} maxLength={120} autoComplete="off" className={input} />
             </label>
             <label className={label}>
-              Registered on <span className={hint}>(year-month-day)</span>
+              {w.registeredOn} <span className={hint}>{w.dateShape}</span>
               <input name="iossRegisteredOn" type="date" defaultValue={start.iossRegisteredOn} className={input} />
             </label>
           </div>
           <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">Markets IOSS applies to</legend>
-            <p className={hint}>EU countries only. Orders to other markets are not marked.</p>
+            <legend className="mb-1 font-medium">{w.iossMarkets}</legend>
+            <p className={hint}>{w.iossMarketsHint}</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
               {EU_BY_NAME.map((c) => (
                 <label key={c.code} className="flex items-center gap-2">
@@ -194,11 +196,11 @@ export function TaxProfileForm({
 
       {canEdit ? (
         <div>
-          <SubmitButton>Save the tax settings</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       ) : (
         <p role="note" className="text-sm text-muted">
-          Only an owner can change the tax settings.
+          {w.ownerOnly}
         </p>
       )}
     </ActionForm>
@@ -222,32 +224,34 @@ export function OwnNumberCheckCard({
   canEdit: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
-  const source = check?.source === "brreg" ? "the register of business enterprises (Brønnøysundregistrene)" : "VIES";
+  const w = useAdminText("tax").check;
+  const locale = useLocale();
+  const source = check?.source === "brreg" ? w.brreg : w.vies;
+  const at = check ? when(check.checkedAt, locale) : "";
   return (
     <section aria-labelledby="check" className={card}>
       <h2 id="check" className="text-title text-ink">
-        Check the VAT number
+        {w.title}
       </h2>
       {number === null ? (
-        <p className="text-sm text-muted">Save a VAT number above first. Then it can be checked.</p>
+        <p className="text-sm text-muted">{w.saveFirst}</p>
       ) : (
         <>
           <p className="text-sm">
             <span className="font-mono">{number}</span>{" "}
             {check === null ? (
-              <span className="text-muted">has not been checked.</span>
+              <span className="text-muted">{w.notChecked}</span>
             ) : check.status === "valid" ? (
               <span>
-                <strong>is registered</strong> <span className="text-muted">(checked in {source} on {when(check.checkedAt)}).</span>
+                <strong>{w.valid}</strong> <span className="text-muted">{fillWords(w.validWhen, { source, when: at })}</span>
               </span>
             ) : check.status === "invalid" ? (
               <span>
-                <strong>was not accepted</strong> <span className="text-muted">by {source} on {when(check.checkedAt)}. Check the number.</span>
+                <strong>{w.invalid}</strong> <span className="text-muted">{fillWords(w.invalidWhen, { source, when: at })}</span>
               </span>
             ) : (
               <span>
-                <strong>could not be checked</strong>{" "}
-                <span className="text-muted">on {when(check.checkedAt)}: {source} did not answer. The number is not taken as valid. Try again in a moment.</span>
+                <strong>{w.unavailable}</strong> <span className="text-muted">{fillWords(w.unavailableWhen, { source, when: at })}</span>
               </span>
             )}
           </p>
@@ -255,19 +259,19 @@ export function OwnNumberCheckCard({
             <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
               {check.name && (
                 <>
-                  <dt className="text-muted">Registered name</dt>
+                  <dt className="text-muted">{w.name}</dt>
                   <dd>{check.name}</dd>
                 </>
               )}
               {check.address && (
                 <>
-                  <dt className="text-muted">Registered address</dt>
+                  <dt className="text-muted">{w.address}</dt>
                   <dd className="whitespace-pre-line">{check.address}</dd>
                 </>
               )}
               {check.requestIdentifier && (
                 <>
-                  <dt className="text-muted">Consultation number</dt>
+                  <dt className="text-muted">{w.consultation}</dt>
                   <dd className="font-mono">{check.requestIdentifier}</dd>
                 </>
               )}
@@ -276,9 +280,9 @@ export function OwnNumberCheckCard({
         </>
       )}
       {canEdit && number !== null && (
-        <ActionForm action={action} successMessage="Checked." className="flex flex-col gap-3">
+        <ActionForm action={action} successMessage={w.checked} className="flex flex-col gap-3">
           <div>
-            <SubmitButton variant="secondary">Check now</SubmitButton>
+            <SubmitButton variant="secondary">{w.checkNow}</SubmitButton>
           </div>
         </ActionForm>
       )}
@@ -288,15 +292,16 @@ export function OwnNumberCheckCard({
 
 /** What is on and what is missing, one line each (`readiness()`), with the word On or Off so colour is never the only signal. */
 export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
+  const w = useAdminText("tax").readiness;
   return (
     <section aria-labelledby="readiness" className={card}>
       <h2 id="readiness" className="text-title text-ink">
-        What is on
+        {w.title}
       </h2>
       <ul className="flex flex-col divide-y divide-line text-sm">
         {lines.map((line) => (
           <li key={line.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 first:pt-0 last:pb-0">
-            <span className={`rounded-full border border-line px-2 py-0.5 text-xs font-medium ${line.on ? "bg-sunken" : "text-muted"}`}>{line.on ? "On" : "Off"}</span>
+            <span className={`rounded-full border border-line px-2 py-0.5 text-xs font-medium ${line.on ? "bg-sunken" : "text-muted"}`}>{line.on ? w.on : w.off}</span>
             <span className="min-w-0 flex-1">{line.text}</span>
           </li>
         ))}
@@ -306,15 +311,16 @@ export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
 }
 
 /** The warnings for an accountant's eyes. Needs review: legal-adjacent. */
-export function TaxWarnings({ warnings }: { warnings: readonly string[] }) {
+export function TaxWarnings({ warnings }: { warnings?: readonly string[] }) {
+  const w = useAdminText("tax").warnings;
   return (
     <section aria-labelledby="warnings" className={card}>
       <h2 id="warnings" className="text-title text-ink">
-        Read this with your accountant
+        {w.title}
       </h2>
-      <p className="text-sm text-muted">This is how Kaizena Flow handles VAT, and where it stops. It is not tax advice.</p>
+      <p className="text-sm text-muted">{w.intro}</p>
       <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
-        {warnings.map((warning) => (
+        {(warnings ?? w.items).map((warning) => (
           <li key={warning}>{warning}</li>
         ))}
       </ul>

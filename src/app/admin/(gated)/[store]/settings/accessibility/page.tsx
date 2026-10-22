@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { AccessibilityForm } from "@/components/admin/a11y-statement-form";
 import { enforcementBodyOf } from "@/lib/a11y-statement";
 import { a11yFacts, getA11ySettings } from "@/server/accessibility";
@@ -15,14 +17,15 @@ export const metadata: Metadata = { title: "Accessibility" };
  * claim about the business, so only an owner makes it.
  */
 export default async function AccessibilityPage({ params }: PageProps<"/admin/[store]/settings/accessibility">) {
-  const { store } = await requireOwnerRole((await params).store);
+  const { store, account } = await requireOwnerRole((await params).store);
+  const words = adminText(adminLangOf(account.adminLocale), "legal");
   const [settings, facts] = await Promise.all([getA11ySettings(store.id), a11yFacts(store)]);
   const slug = store.slug;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Accessibility"
-        description={<>Shops sold to consumers in the EU have to be usable by disabled people, and to say how they meet the requirements. Record what has been assessed, and make a draft accessibility statement.</>}
+        title={words.a11y.title}
+        description={words.a11y.description}
       />
       <AccessibilityForm
         settings={settings}
@@ -31,6 +34,7 @@ export default async function AccessibilityPage({ params }: PageProps<"/admin/[s
         contactDefault={store.details.contactEmail ?? null}
         actions={{ save: saveAccessibilityAction.bind(null, slug), createStatement: createStatementAction.bind(null, slug) }}
         legalHref={`/admin/${slug}/settings/legal`}
+        words={words}
       />
     </div>
   );

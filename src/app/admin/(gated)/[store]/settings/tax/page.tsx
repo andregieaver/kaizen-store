@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { OwnNumberCheckCard, ReadinessList, TaxProfileForm, TaxWarnings, type OwnNumberCheck } from "@/components/admin/tax-profile-form";
+import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
-import { TAX_WARNINGS } from "@/lib/tax-profile";
+import { readiness } from "@/lib/tax-profile";
 import { requirePermission } from "@/server/permissions";
 import { taxProfileView } from "@/server/tax-profile";
 import { PageHeader } from "@/components/admin/ui";
@@ -12,10 +15,10 @@ import { checkVatNumberAction, saveTaxProfileAction } from "./actions";
 
 export const metadata: Metadata = { title: "Tax settings" };
 
-const regionName = (code: string | null): string | null => {
+const regionName = (code: string | null, locale: string): string | null => {
   if (!code) return null;
   try {
-    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
   }
@@ -31,7 +34,10 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "tax");
   const view = await taxProfileView(store.id);
+  const lines = readiness(view.profile, view.country, w.readiness);
   const canEdit = true;
   // Reverse charge is for selling to businesses (D178): its readiness and words are hidden while that is switched off.
   const business = featureOn(store, "business");
@@ -46,21 +52,23 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
       }
     : null;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["tax"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Tax"
-        description={<>Prices in the store include VAT, and each sale is charged the VAT of the country it goes to. Here the store records its VAT registration and, where it has them, its OSS and IOSS registrations.{" "}{business && "A business in another EU country that gives a valid VAT number can buy goods without VAT (reverse charge) once the store's own number has been checked. "}This is not tax advice.</>}
+        title={w.page.title}
+        description={<>{w.page.intro}{" "}{business && w.page.reverseCharge}{w.page.notAdvice}</>}
       />
-      <ReadinessList lines={business ? view.readiness : view.readiness.filter((line) => line.key !== "reverse_charge")} />
+      <ReadinessList lines={business ? lines : lines.filter((line) => line.key !== "reverse_charge")} />
       <TaxProfileForm
         profile={view.profile}
         country={view.country}
-        countryName={regionName(view.country)}
+        countryName={regionName(view.country, ADMIN_LANG_FACTS[lang].locale)}
         canEdit={canEdit}
         saveAction={saveTaxProfileAction.bind(null, store.slug)}
       />
       <OwnNumberCheckCard number={view.profile.vatNumber} check={check} canEdit={canEdit} action={checkVatNumberAction.bind(null, store.slug)} />
-      <TaxWarnings warnings={TAX_WARNINGS} />
+      <TaxWarnings warnings={w.warnings.items} />
     </div>
+    </AdminTextScope>
   );
 }

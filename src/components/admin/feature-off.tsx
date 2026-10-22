@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { can, type PermissionHolder } from "@/lib/permissions";
@@ -6,12 +5,13 @@ import {
   FEATURES_BY_ID,
   featureKept,
   featureOn,
-  requirementLabel,
   requirementMet,
   type FeatureId,
   type FeatureRequirement,
   type FeatureSource,
 } from "@/lib/store-features";
+
+import { FeatureOffLine, FeatureOffPanel } from "./feature-off-text";
 
 type Props = {
   storeSlug: string;
@@ -29,32 +29,10 @@ type Props = {
  */
 export function FeatureOff({ storeSlug, feature, features, owner }: Props) {
   const ids: readonly FeatureId[] = typeof feature === "string" ? [feature] : feature;
-  const label = requirementLabel(feature);
   // Kept on, but asleep: what it needs is off (the shop, or the bonus program for referrals).
   const asleep = ids.find((id) => featureKept(features, id) && !featureOn(features, id));
   const need = asleep ? FEATURES_BY_ID[asleep].needs.find((n) => !featureOn(features, n)) : undefined;
-  const href = `/admin/${storeSlug}/settings/features`;
-  return (
-    <section aria-labelledby="feature-off-heading" className="flex flex-col gap-3 rounded-panel bg-sunken p-5">
-      <h1 id="feature-off-heading" className="text-xl font-medium">
-        {label} {ids.length > 1 ? "are" : "is"} switched off
-      </h1>
-      <p className="text-sm text-muted">
-        {need
-          ? `${FEATURES_BY_ID[asleep!].label} needs ${need === "shop" ? "the online shop" : `the ${FEATURES_BY_ID[need].label.toLowerCase()}`}, which is switched off.`
-          : "This page is hidden while the feature is off. Nothing has been deleted: switch it on and everything is as it was."}
-      </p>
-      {owner ? (
-        <p>
-          <Link href={href} className="inline-flex min-h-11 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-            Go to Features
-          </Link>
-        </p>
-      ) : (
-        <p className="text-sm">Only an owner can switch features on or off, under Settings → Features.</p>
-      )}
-    </section>
-  );
+  return <FeatureOffPanel storeSlug={storeSlug} feature={feature} asleep={asleep} need={need} owner={owner} />;
 }
 
 /**
@@ -72,19 +50,5 @@ export function requireFeature(member: { store: { slug: string; features: readon
  * owner, linking to Features. Nothing is deleted: switching it on brings the part back as it was.
  */
 export function FeatureOffNote({ storeSlug, feature, owner, what }: { storeSlug: string; feature: FeatureRequirement; owner: boolean; what?: string }) {
-  const label = requirementLabel(feature);
-  return (
-    <p className="text-sm text-muted">
-      {what ? `${what}: ` : ""}
-      {label} is switched off, so this is hidden.{" "}
-      {owner ? (
-        <Link href={`/admin/${storeSlug}/settings/features`} className="underline">
-          Switch it on under Features
-        </Link>
-      ) : (
-        "An owner can switch it on under Settings, Features"
-      )}
-      .
-    </p>
-  );
+  return <FeatureOffLine storeSlug={storeSlug} feature={feature} owner={owner} what={what} />;
 }

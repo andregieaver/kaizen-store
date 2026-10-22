@@ -1,3 +1,5 @@
+import { fillWords } from "./admin-fill";
+import { shippingEn, type ShippingMessages } from "./admin-messages/shipping.en";
 import { minorUnitDigits } from "./money";
 import { TIERS_MAX } from "./shipping-limits";
 import { tierProblems, type MethodRate, type RateBasis, type TierProblem, type TierRow } from "./shipping-methods";
@@ -98,34 +100,28 @@ export function tierStarts(block: Pick<BlockDraft, "tiers" | "basis">): string[]
 
 export type BlockProblem = { block: number; message: string };
 
-const TIER_WORDS: Record<TierProblem, string> = {
-  too_many: `At most ${TIERS_MAX} tiers.`,
-  mixed_basis: "Every tier by the same measure.",
-  two_flat: "One flat price.",
-  flat_range: "A flat price has no from or up to.",
-  negative: "No amount below zero.",
-  empty_range: "Each tier's up to must be above its from.",
-  gap: "No gap between tiers.",
-  overlap: "Only the last tier may be left without an up to.",
-};
+/** The words of a block's problems and of a block not offered (D312 A8): the admin's `shipping` catalogue's, English unless given. */
+export type MethodFormWords = Pick<ShippingMessages["method"], "problems" | "notOffered">;
 
 /**
  * What the grid saves: one group per block that is offered (a block *Not offered* sends no rows, and the save replaces every group of the method),
  * with what is wrong with each block in words. Nothing is saved while any block has a problem.
  */
-export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string): { groups: GroupOut[]; problems: BlockProblem[] } {
+export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string, words: MethodFormWords = shippingEn.method): { groups: GroupOut[]; problems: BlockProblem[] } {
+  const w = words.problems;
+  const tierWords = (problem: TierProblem) => (problem === "too_many" ? fillWords(w.too_many, { max: TIERS_MAX }) : w[problem]);
   const groups: GroupOut[] = [];
   const problems: BlockProblem[] = [];
   blocks.forEach((block, index) => {
     if (block.basis === "none") return;
     if (block.basis === "flat") {
       const amount = minorOf(block.flat, currency);
-      if (amount === null) problems.push({ block: index, message: `Enter the price in ${currency}.` });
+      if (amount === null) problems.push({ block: index, message: fillWords(w.enterPrice, { currency }) });
       else groups.push({ zoneId: block.zoneId, profileId: block.profileId, tiers: [{ basis: "flat", minValue: 0, maxValue: null, amountMinor: amount }] });
       return;
     }
     if (block.tiers.length === 0) {
-      problems.push({ block: index, message: "Add a tier, or choose Not offered." });
+      problems.push({ block: index, message: w.addTier });
       return;
     }
     const tiers: TierRow[] = [];
@@ -136,15 +132,15 @@ export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string
       const upTo = tier.upTo.trim() === "" ? null : block.basis === "weight" ? gramsOf(tier.upTo) : minorOf(tier.upTo, currency);
       const price = minorOf(tier.price, currency);
       if (tier.upTo.trim() !== "" && upTo === null) {
-        problems.push({ block: index, message: block.basis === "weight" ? `Tier ${i + 1}: up to in kilograms, like 2 or 0,5.` : `Tier ${i + 1}: up to in ${currency}.` });
+        problems.push({ block: index, message: block.basis === "weight" ? fillWords(w.upToKg, { n: i + 1 }) : fillWords(w.upToMoney, { n: i + 1, currency }) });
         broken = true;
       }
       if (price === null) {
-        problems.push({ block: index, message: `Tier ${i + 1}: enter the price in ${currency}.` });
+        problems.push({ block: index, message: fillWords(w.tierPrice, { n: i + 1, currency }) });
         broken = true;
       }
       if (upTo === null && !last && tier.upTo.trim() === "") {
-        problems.push({ block: index, message: TIER_WORDS.overlap });
+        problems.push({ block: index, message: w.overlap });
         broken = true;
       }
       tiers.push({ basis: block.basis as RateBasis, minValue: from, maxValue: upTo, amountMinor: price ?? 0 });
@@ -153,7 +149,7 @@ export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string
     if (broken) return;
     const found = tierProblems(tiers);
     if (found.length > 0) {
-      for (const problem of found) problems.push({ block: index, message: TIER_WORDS[problem] });
+      for (const problem of found) problems.push({ block: index, message: tierWords(problem) });
       return;
     }
     groups.push({ zoneId: block.zoneId, profileId: block.profileId, tiers });
@@ -162,6 +158,6 @@ export function groupsFromBlocks(blocks: readonly BlockDraft[], currency: string
 }
 
 /** The sentence beside a block left *Not offered*: what the shopper's basket meets. */
-export function notOfferedWords(zoneName: string, profileName: string): string {
-  return `This method is not offered to a basket with ${profileName} products sent to ${zoneName}.`;
+export function notOfferedWords(zoneName: string, profileName: string, words: MethodFormWords = shippingEn.method): string {
+  return fillWords(words.notOffered, { profile: profileName, zone: zoneName });
 }

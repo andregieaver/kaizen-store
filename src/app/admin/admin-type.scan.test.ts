@@ -103,7 +103,7 @@ describe("the admin's type and shapes", () => {
 
   it("titles every signed-in page with PageHeader, not an h1 of its own", () => {
     // The tools and notices that draw a compact title of their own on purpose, and pages titled for screen readers only.
-    const COMPACT = ["ui/focus-frame.tsx", "setup-frame.tsx", "support/inbox.tsx", "product-editor.tsx", "feature-off.tsx", "work/report-print.tsx", "(gated)/error.tsx"];
+    const COMPACT = ["ui/focus-frame.tsx", "setup-frame.tsx", "support/inbox.tsx", "product-editor.tsx", "feature-off.tsx", "feature-off-text.tsx", "work/report-print.tsx", "(gated)/error.tsx"];
     const own = admin
       .filter((path) => (path.startsWith("src/app/admin/(gated)") || path.startsWith("src/components/admin")) && !COMPACT.some((part) => path.includes(part)))
       .filter((path) => /<h1(?![^>]*className="sr-only")[\s>]/.test(readFileSync(join(ROOT, path), "utf8")));

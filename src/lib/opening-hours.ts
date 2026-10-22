@@ -41,22 +41,26 @@ export function defaultHours(): OpeningHours {
 }
 
 const short = (d: Day) => DAY_NAMES[d].slice(0, 3);
+
+/** The words a week is summed up in (D312 A8, `settings.hours`): short day names and "Closed"; English unless given. */
+export type WeekWords = { short: Record<Day, string>; closed: string };
 const same = (a: DayHours, b: DayHours) => (a === null ? b === null : b !== null && a.open === b.open && a.close === b.close);
 
 /** "Mon–Fri 09:00–17:00, Sat 10:00–14:00": days with the same hours run together; closed days are left out. */
-export function weekSummary(week: WeekHours): string {
+export function weekSummary(week: WeekHours, w?: WeekWords): string {
+  const name = (d: Day) => (w ? w.short[d] : short(d));
   const parts: string[] = [];
   for (let i = 0; i < DAYS.length; ) {
     let j = i;
     while (j + 1 < DAYS.length && same(week[DAYS[j + 1]], week[DAYS[i]])) j++;
     const hours = week[DAYS[i]];
     if (hours) {
-      const days = i === j ? short(DAYS[i]) : `${short(DAYS[i])}–${short(DAYS[j])}`;
+      const days = i === j ? name(DAYS[i]) : `${name(DAYS[i])}–${name(DAYS[j])}`;
       parts.push(`${days} ${hours.open}–${hours.close}`);
     }
     i = j + 1;
   }
-  return parts.length > 0 ? parts.join(", ") : "Closed";
+  return parts.length > 0 ? parts.join(", ") : (w?.closed ?? "Closed");
 }
 
 /** The hours in force on a date (YYYY-MM-DD): a single date first, then a season, then the usual week. */

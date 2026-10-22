@@ -4,6 +4,8 @@
  * The server still checks every key against what a custom role may hold (`roleProblems()`): nothing here is trusted.
  */
 import { AREAS, WORKING_AREAS, permissionsFromLevels, type Area, type AreaLevel, type AreaPermission } from "./permissions";
+import type { StaffMessages } from "./admin-messages/staff.en";
+import { fillWords } from "./admin-fill";
 
 /** The form field of an area's level in the role editor. */
 export const levelField = (area: Area): string => `level:${area}`;
@@ -50,15 +52,27 @@ export function parseRoleChoice(value: unknown): RoleChoiceValue | null {
   return null;
 }
 
-/** A sentence on what a role holds, for the roles list: "Can change orders; can view customers and products." */
-export function roleSummary(permissions: readonly string[]): string {
+/**
+ * A sentence on what a role holds, for the roles list: "Can change orders; can view customers and products." In the account's words when
+ * given (D312 A8), with the areas named as the role editor names them; the same English as ever without.
+ */
+export function roleSummary(permissions: readonly string[], words?: Pick<StaffMessages, "summary" | "areas">): string {
   const change: string[] = [];
   const view: string[] = [];
+  const name = (area: Area) => (words ? words.areas[area].toLowerCase() : area);
   for (const area of AREAS) {
-    if (permissions.includes(`${area}:write`)) change.push(area);
-    else if (permissions.includes(`${area}:read`)) view.push(area);
+    if (permissions.includes(`${area}:write`)) change.push(name(area));
+    else if (permissions.includes(`${area}:read`)) view.push(name(area));
   }
-  const join = (list: string[]) => (list.length <= 1 ? list.join("") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`);
+  const and = words?.summary.and ?? "and";
+  const join = (list: string[]) => (list.length <= 1 ? list.join("") : `${list.slice(0, -1).join(", ")} ${and} ${list[list.length - 1]}`);
+  if (words) {
+    const w = words.summary;
+    const parts: string[] = [];
+    if (change.length > 0) parts.push(fillWords(w.change, { areas: join(change) }));
+    if (view.length > 0) parts.push(fillWords(parts.length > 0 ? w.viewAfter : w.view, { areas: join(view) }));
+    return parts.length > 0 ? `${parts.join("; ")}.` : w.none;
+  }
   const parts: string[] = [];
   if (change.length > 0) parts.push(`Can change ${join(change)}`);
   if (view.length > 0) parts.push(`${parts.length > 0 ? "can" : "Can"} view ${join(view)}`);

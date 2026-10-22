@@ -1,3 +1,5 @@
+import { paymentsEn } from "./admin-messages/payments.en";
+
 /**
  * Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6). Kaizena Flow asks Stripe for each method's capability on every
  * store's account; Stripe decides whether a method is active and shows it to a shopper only where it suits their country and currency. On top of
@@ -99,25 +101,11 @@ export function methodStateOf(states: Record<string, CapabilityState> | null, me
   return "unavailable";
 }
 
-export const METHOD_STATE_WORDS: Record<MethodStateWord, string> = {
-  active: "Active",
-  pending: "Stripe is checking",
-  requested: "Requested",
-  unavailable: "Not available",
-  not_read: "Not read yet",
-};
+export const METHOD_STATE_WORDS: Record<MethodStateWord, string> = paymentsEn.methods.states;
 
-/** Stripe's reason a capability is not on, in words; an unknown code is shown as Stripe gave it. */
-export function stateReason(code: string | null | undefined): string | null {
+/** Stripe's reason a capability is not on, in words (English unless `words` are given); an unknown code is shown as Stripe gave it. */
+export function stateReason(code: string | null | undefined, words: Record<string, string> = paymentsEn.methods.reasons): string | null {
   if (!code) return null;
-  const words: Record<string, string> = {
-    requirements_past_due: "Stripe needs more details from you",
-    requirements_pending_verification: "Stripe is checking your details",
-    restricted_other: "Stripe has paused it; see your Stripe Dashboard",
-    unsupported_business: "Stripe does not offer it to your kind of business",
-    unsupported_country: "Stripe does not offer it in your country",
-    unsupported_entity_type: "Stripe does not offer it to your kind of company",
-  };
   return words[code] ?? code;
 }
 

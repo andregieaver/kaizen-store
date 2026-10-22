@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { NotificationList } from "@/components/admin/notifications/notification-list";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { listLocalAreas } from "@/server/local-delivery";
 import { listNotifications } from "@/server/notifications";
@@ -22,6 +24,9 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "notifications");
+  const w = words.emails;
   const [items, places, areas] = await Promise.all([listNotifications(store.id), listPickupPlaces(store.id), listLocalAreas(store.id)]);
   const handovers = places.some((p) => p.option?.active) || areas.some((a) => a.active);
   const canWrite = memberCan(member, "settings:write");
@@ -29,30 +34,29 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Notifications"
-        description={
-          <>
-            The emails your customers get about their orders and returns. The order confirmation and the acknowledgement of a withdrawal are required by law,
-            and the other emails marked <em>Always on</em> carry what customers need: they cannot be switched off. Switching an email off also unticks{" "}
-            <em>Notify the customer</em> where staff send, refund or cancel an order. Text you write yourself is your responsibility.
-          </>
-        }
+        title={w.title}
+        description={<>{withItalics(w.description, { alwaysOn: w.alwaysOnWord, notify: w.notifyWord })}</>}
         actions={
           memberCan(member, "owner") ? (
             <Link href={`${base}/staff`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
-              Staff alerts
+              {w.staffAlerts}
             </Link>
           ) : undefined
         }
       />
-      <NotificationList items={items} base={base} handovers={handovers} switchAction={canWrite ? (id) => switchNotificationAction.bind(null, store.slug, id) : null} />
-      {!canWrite && <p className="text-sm text-muted">You can see the store&apos;s emails but not change them.</p>}
-      <Card title="What Kaizena Flow always adds" description="Your words replace the subject, the heading and the first text of an email. The rest stays Kaizena Flow's, so nothing the law or the money needs can be removed.">
-        <p className="text-body text-ink-2">
-          The order lines, totals, VAT statement, invoice link, tracking, pickup details and the right of withdrawal are always added by Kaizena Flow, in the
-          order&apos;s own language and currency.
-        </p>
+      <NotificationList items={items} base={base} handovers={handovers} words={words} display={ADMIN_LANG_FACTS[lang].tag} switchAction={canWrite ? (id) => switchNotificationAction.bind(null, store.slug, id) : null} />
+      {!canWrite && <p className="text-sm text-muted">{w.readOnly}</p>}
+      <Card title={w.addsTitle} description={w.addsDescription}>
+        <p className="text-body text-ink-2">{w.addsText}</p>
       </Card>
     </div>
   );
+}
+
+/** A sentence with `{name}` slots drawn as italic words (the names of a state and a box the page refers to). */
+function withItalics(text: string, values: Record<string, string>) {
+  return text.split(/(\{\w+\})/).map((part, i) => {
+    const key = /^\{(\w+)\}$/.exec(part)?.[1];
+    return key && key in values ? <em key={i}>{values[key]}</em> : part;
+  });
 }

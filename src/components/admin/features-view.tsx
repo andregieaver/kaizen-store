@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import type { FeatureBlocker, FeatureGroupId, FeatureId, FeatureRow } from "@/lib/store-features";
+import { useAdminText } from "@/components/admin/admin-text";
 import { PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import type { FeatureBlocker, FeatureGroupId, FeatureId, FeatureRow } from "@/lib/store-features";
 
 /** What a switch's server action answers (`switchFeatureAction`). */
 export type SwitchResult = { ok: true } | { ok: false; problems: string[]; blockers?: FeatureBlocker[]; warnings?: string[]; needsConfirmation?: boolean };
@@ -26,22 +28,20 @@ export type FeaturesViewProps = {
  * only. Drawn in the admin's semantic tokens (D149), full width, with large targets for a phone.
  */
 export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: FeaturesViewProps) {
+  const w = useAdminText("settings").features;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <PageHeader
-          title="Features"
-          description={<>Switch on what your store uses; the rest stays out of your way. Nothing is deleted when you switch something off.</>}
-        />
+        <PageHeader title={w.title} description={<>{w.description}</>} />
         <p className="text-sm font-medium" data-testid="feature-count">
-          {count.on} of {count.total} on
+          {fillWords(w.count, { on: count.on, total: count.total })}
         </p>
-        {!owner && <p className="text-sm">Only an owner can switch features on or off.</p>}
+        {!owner && <p className="text-sm">{w.onlyOwner}</p>}
       </div>
 
       <section aria-labelledby="feature-group-shop" className="rounded-panel bg-sunken">
         <h2 id="feature-group-shop" className="sr-only">
-          Online shop
+          {shop.label}
         </h2>
         <ul>
           <FeatureItem row={shop} base={base} owner={owner} onSwitch={onSwitch} master />
@@ -73,6 +73,7 @@ type ItemProps = {
 };
 
 function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) {
+  const w = useAdminText("settings").features;
   const [confirming, setConfirming] = useState(false);
   const [answer, setAnswer] = useState<SwitchResult | null>(null);
   const [pending, start] = useTransition();
@@ -106,18 +107,18 @@ function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) 
             <span id={`feature-${row.id}-label`} className={master ? "text-lg font-medium" : "font-medium"}>
               {row.label}
             </span>
-            {row.inUse && !master && <span className="rounded border border-line px-1.5 py-0.5 text-xs text-muted">In use</span>}
+            {row.inUse && !master && <span className="rounded border border-line px-1.5 py-0.5 text-xs text-muted">{w.inUse}</span>}
           </div>
           <p className="text-sm text-muted">{row.words}</p>
           {row.missing.length > 0 && (
             <p className="text-sm">
-              Needs {row.missing.join(" and ")}
-              {asleep ? ". Its switch is kept for when that is on." : "."}
+              {fillWords(w.needs, { list: row.missing.join(w.and) })}
+              {asleep ? w.needsAsleep : "."}
             </p>
           )}
           {row.on && !master && (
             <Link href={`${base}${row.setupPath}`} className="inline-flex min-h-11 w-fit items-center text-sm font-medium underline underline-offset-2">
-              Set up <span className="sr-only">{row.label.toLowerCase()}</span>
+              {w.setUp} <span className="sr-only">{row.label.toLowerCase()}</span>
             </Link>
           )}
         </div>
@@ -185,20 +186,21 @@ type PanelProps = {
 
 /** The confirmation under a feature being switched off: what disappears, then what blocks it (with links, and no way on) or what to confirm. */
 export function OffPanel({ id, row, base, blockers, warnings, pending, problems, onConfirm, onCancel }: PanelProps) {
+  const w = useAdminText("settings").features;
   const blocked = blockers.length > 0;
   return (
-    <div id={id} role="region" aria-label={`Switch off ${row.label}`} className="flex flex-col gap-3 rounded-md border border-line bg-card p-4 text-sm">
-      <p className="font-medium">Switch off {row.label.toLowerCase()}?</p>
+    <div id={id} role="region" aria-label={fillWords(w.switchOffRegion, { label: row.label })} className="flex flex-col gap-3 rounded-md border border-line bg-card p-4 text-sm">
+      <p className="font-medium">{fillWords(w.switchOffQuestion, { label: row.label.toLowerCase() })}</p>
       <p>{row.offWords}</p>
       {blocked ? (
         <>
-          <p className="font-medium">It can&apos;t be switched off yet:</p>
+          <p className="font-medium">{w.cantYet}</p>
           <ul className="flex flex-col gap-2">
             {blockers.map((b) => (
               <li key={b.text}>
                 {b.text}{" "}
                 <Link href={`${base}${b.path}`} className="inline-flex min-h-11 items-center font-medium underline underline-offset-2">
-                  Open
+                  {w.open}
                 </Link>
               </li>
             ))}
@@ -229,11 +231,11 @@ export function OffPanel({ id, row, base, blockers, warnings, pending, problems,
             onClick={onConfirm}
             className="min-h-11 rounded-pill bg-brand px-4 font-medium text-brand-ink disabled:opacity-60"
           >
-            Switch off
+            {w.switchOff}
           </button>
         )}
         <button type="button" onClick={onCancel} className="min-h-11 rounded-pill border border-edge px-4 font-medium">
-          {blocked ? "Close" : "Keep it on"}
+          {blocked ? w.close : w.keepOn}
         </button>
       </div>
     </div>

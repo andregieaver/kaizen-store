@@ -45,6 +45,22 @@ import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.
 import { redirectsNb } from "./admin-messages/redirects.nb";
 import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
 import { experimentsNb } from "./admin-messages/experiments.nb";
+import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
+import { settingsNb } from "./admin-messages/settings.nb";
+import { taxEn, type TaxMessages } from "./admin-messages/tax.en";
+import { taxNb } from "./admin-messages/tax.nb";
+import { paymentsEn, type PaymentsMessages } from "./admin-messages/payments.en";
+import { paymentsNb } from "./admin-messages/payments.nb";
+import { shippingEn, type ShippingMessages } from "./admin-messages/shipping.en";
+import { shippingNb } from "./admin-messages/shipping.nb";
+import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
+import { notificationsNb } from "./admin-messages/notifications.nb";
+import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
+import { legalNb } from "./admin-messages/legal.nb";
+import { staffEn, type StaffMessages } from "./admin-messages/staff.en";
+import { staffNb } from "./admin-messages/staff.nb";
+import { billingEn, type BillingMessages } from "./admin-messages/billing.en";
+import { billingNb } from "./admin-messages/billing.nb";
 import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
@@ -72,6 +88,14 @@ export type AdminAreaMessages = {
   marketing: MarketingMessages;
   discounts: DiscountsMessages;
   loyalty: LoyaltyMessages;
+  settings: SettingsMessages;
+  tax: TaxMessages;
+  payments: PaymentsMessages;
+  shipping: ShippingMessages;
+  notifications: NotificationsMessages;
+  legal: LegalMessages;
+  staff: StaffMessages;
+  billing: BillingMessages;
   builder: BuilderMessages;
   blocks: BlocksMessages;
   website: WebsiteMessages;
@@ -106,6 +130,14 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   marketing: { en: marketingEn, nb: marketingNb },
   discounts: { en: discountsEn, nb: discountsNb },
   loyalty: { en: loyaltyEn, nb: loyaltyNb },
+  settings: { en: settingsEn, nb: settingsNb },
+  tax: { en: taxEn, nb: taxNb },
+  payments: { en: paymentsEn, nb: paymentsNb },
+  shipping: { en: shippingEn, nb: shippingNb },
+  notifications: { en: notificationsEn, nb: notificationsNb },
+  legal: { en: legalEn, nb: legalNb },
+  staff: { en: staffEn, nb: staffNb },
+  billing: { en: billingEn, nb: billingNb },
   builder: { en: builderEn, nb: builderNb },
   blocks: { en: blocksEn, nb: blocksNb },
   website: { en: websiteEn, nb: websiteNb },

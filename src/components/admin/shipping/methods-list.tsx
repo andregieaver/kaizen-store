@@ -1,3 +1,5 @@
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { formatMoney } from "@/lib/money";
 import type { MethodRate } from "@/lib/shipping-methods";
 import { Button, ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
@@ -17,13 +19,13 @@ export type MethodListItem = {
 };
 
 /** What a method's rates come to, in a few words: one flat price, or how many blocks and by what. */
-export function ratesSummary(rates: readonly MethodRate[], currency: string, locale = "en-GB"): string {
-  if (rates.length === 0) return "No rates yet: not offered";
+export function ratesSummary(rates: readonly MethodRate[], currency: string, locale = "en-GB", words: ShippingMessages["methods"] = shippingEn.methods): string {
+  if (rates.length === 0) return words.noRates;
   const groups = new Set(rates.map((r) => `${r.zoneId}|${r.profileId}`));
-  if (groups.size === 1 && rates.length === 1 && rates[0].basis === "flat") return `${formatMoney(rates[0].amountMinor, currency, locale)} flat`;
+  if (groups.size === 1 && rates.length === 1 && rates[0].basis === "flat") return fillWords(words.flat, { amount: formatMoney(rates[0].amountMinor, currency, locale) });
   const bases = new Set(rates.map((r) => r.basis));
-  const how = [bases.has("flat") ? "flat" : null, bases.has("weight") ? "by weight" : null, bases.has("value") ? "by basket value" : null].filter(Boolean).join(", ");
-  return `${groups.size} ${groups.size === 1 ? "rate block" : "rate blocks"}, ${how}`;
+  const how = [bases.has("flat") ? words.byFlat : null, bases.has("weight") ? words.byWeight : null, bases.has("value") ? words.byValue : null].filter(Boolean).join(", ");
+  return countWords(groups.size, words.blocks, { how });
 }
 
 export function MethodsListView({
@@ -32,49 +34,55 @@ export function MethodsListView({
   methods,
   canWrite,
   move,
+  words: w = shippingEn.methods,
+  locale = "en-GB",
 }: {
   base: string;
   market: { code: string; name: string; currency: string };
   methods: MethodListItem[];
   canWrite: boolean;
   move: (id: string, direction: "up" | "down") => (form: FormData) => Promise<void>;
+  /** The list's words and how amounts are written, in the admin's language (D312 A8); English unless given. */
+  words?: ShippingMessages["methods"];
+  locale?: string;
 }) {
+  const title = fillWords(w.title, { market: market.name });
   return (
     <Card
-      title={`Methods in ${market.name}`}
+      title={title}
       count={methods.length}
-      aside={canWrite ? <ButtonLink kind="main" href={`${base}/methods/new?market=${market.code}`}>Add a method</ButtonLink> : null}
-      description={`Amounts in ${market.currency}, including VAT. With no method offered, ${market.name} is charged the flat rate.`}
+      aside={canWrite ? <ButtonLink kind="main" href={`${base}/methods/new?market=${market.code}`}>{w.add}</ButtonLink> : null}
+      description={fillWords(w.description, { currency: market.currency, market: market.name })}
     >
       {methods.length === 0 ? (
-        <p className="text-sm text-muted">No methods in {market.name} yet: baskets there pay the flat rate.</p>
+        <p className="text-sm text-muted">{fillWords(w.empty, { market: market.name })}</p>
       ) : (
-        <List label={`Methods in ${market.name}`}>
+        <List label={title}>
           {methods.map((m, i) => (
             <ListRow key={m.id}>
               <RowLead
                 title={m.name}
                 href={`${base}/methods/${m.id}`}
                 sub={[
-                  ratesSummary(m.rates, market.currency),
-                  m.estimate ? `${m.estimate.min === m.estimate.max ? m.estimate.min : `${m.estimate.min}–${m.estimate.max}`} days` : null,
-                  m.freeOverMinor ? `free from ${formatMoney(m.freeOverMinor, market.currency, "en-GB")}` : null,
+                  ratesSummary(m.rates, market.currency, locale, w),
+                  m.estimate ? fillWords(w.days, { days: m.estimate.min === m.estimate.max ? m.estimate.min : `${m.estimate.min}–${m.estimate.max}` }) : null,
+                  m.freeOverMinor ? fillWords(w.freeFrom, { amount: formatMoney(m.freeOverMinor, market.currency, locale) }) : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               />
-              {m.active ? <Chip signal="positive">Offered</Chip> : <Chip>Off</Chip>}
-              <RowFact>Position {i + 1}</RowFact>
+              {m.active ? <Chip signal="positive">{w.offered}</Chip> : <Chip>{w.off}</Chip>}
+              <RowFact>{fillWords(w.position, { n: i + 1 })}</RowFact>
               {canWrite && methods.length > 1 && (
                 <RowActions>
                   <form action={move(m.id, "up")}>
-                    <Button type="submit" kind="quiet" size="dense" disabled={i === 0} aria-label={`Move ${m.name} up`}>
-                      Up
+                    <Button type="submit" kind="quiet" size="dense" disabled={i === 0} aria-label={fillWords(w.moveUp, { name: m.name })}>
+                      {w.up}
                     </Button>
                   </form>
                   <form action={move(m.id, "down")}>
-                    <Button type="submit" kind="quiet" size="dense" disabled={i === methods.length - 1} aria-label={`Move ${m.name} down`}>
-                      Down
+                    <Button type="submit" kind="quiet" size="dense" disabled={i === methods.length - 1} aria-label={fillWords(w.moveDown, { name: m.name })}>
+                      {w.down}
                     </Button>
                   </form>
                 </RowActions>

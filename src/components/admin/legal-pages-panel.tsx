@@ -3,8 +3,10 @@ import Link from "next/link";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FeatureOffNote } from "@/components/admin/feature-off";
 import { Card, CARD_CLASS } from "@/components/admin/ui";
-import { TERMS_MODES, TERMS_MODE_WORDS, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
-import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
+import { fillWords } from "@/lib/admin-fill";
+import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
+import { TERMS_MODES, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
+import { isLegalRole } from "@/lib/legal-roles";
 import type { LegalOverview } from "@/server/legal-starters";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
@@ -12,8 +14,21 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
 /** The notice every starter carries, in the owner's words: written by hand, not checked by a lawyer, never advice. */
-export const LEGAL_STARTER_NOTICE =
-  "The starters are drafts written by hand from your store's details, in Norwegian, Swedish, Danish and English. They are a starting point, not legal advice, and no lawyer has checked them. Read every sentence, fill in the [[bracketed]] parts, and have the texts reviewed before you rely on them.";
+export const LEGAL_STARTER_NOTICE = legalEn.pages.notice;
+
+/** A detail `missingFacts()` names, in the admin's words: its English is matched to the catalogue's key, and one not known is shown as written. */
+function missingWord(text: string, words: LegalMessages): string {
+  const key = (Object.keys(legalEn.pages.missing) as (keyof LegalMessages["pages"]["missing"])[]).find((k) => legalEn.pages.missing[k] === text);
+  return key ? words.pages.missing[key] : text;
+}
+
+/** What `termsSettingNotice()` says, in the admin's words. */
+function noticeWord(text: string | null, words: LegalMessages): string | null {
+  if (text === null) return null;
+  if (text === legalEn.terms.noTerms) return words.terms.noTerms;
+  if (text === legalEn.terms.noTickTerms) return words.terms.noTickTerms;
+  return text;
+}
 
 /**
  * The legal pages (wave 1, 1e, docs/wave-1-trust.md 2.1, 2.4): for each kind, the published page chosen for it and a starter draft to begin from;
@@ -24,39 +39,45 @@ export function LegalPagesPanel({
   overview,
   storeSlug,
   actions,
+  words = legalEn,
 }: {
   overview: LegalOverview;
   storeSlug: string;
   actions: { createStarter: (kind: string, state: FormState, formData: FormData) => Promise<FormState>; setRole: (role: string, state: FormState, formData: FormData) => Promise<FormState>; setTerms: Action };
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: LegalMessages;
 }) {
+  const w = words.pages;
+  const t = words.terms;
+  const roleName = (role: string, fallback: string) => (isLegalRole(role) ? w.roles[role].name : fallback);
   const base = `/admin/${storeSlug}`;
   const termsPage = overview.roles.find((r) => r.role === "terms")?.page;
   const privacyPage = overview.roles.find((r) => r.role === "privacy")?.page;
   const shown = [termsPage && { role: "terms" as const, title: termsPage.title, href: "#" }, privacyPage && { role: "privacy" as const, title: privacyPage.title, href: "#" }].filter(
     (p): p is { role: "terms" | "privacy"; title: string; href: string } => Boolean(p),
   );
-  const notice = termsSettingNotice(overview.termsAtCheckout as TermsMode, shown);
+  const notice = noticeWord(termsSettingNotice(overview.termsAtCheckout as TermsMode, shown), words);
 
   return (
     <div className="flex flex-col gap-8">
       <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
-        <strong className="font-medium">Draft texts need a person&apos;s review.</strong> {LEGAL_STARTER_NOTICE}
+        <strong className="font-medium">{w.reviewLead}</strong> {w.notice}
       </p>
 
       {overview.missing.length > 0 && (
         <section aria-labelledby="missing-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
           <h2 id="missing-heading" className="mb-1 text-title text-ink">
-            Details the starters need and the store has not given
+            {w.missingTitle}
           </h2>
-          <p className="mb-2 text-muted">A starter shows a visible [[Add: …]] where a detail is missing. Fill these in first and the starters will carry them.</p>
+          <p className="mb-2 text-muted">{w.missingText}</p>
           <ul className="list-disc pl-5">
             {overview.missing.map((m) => (
-              <li key={m}>{m}</li>
+              <li key={m}>{missingWord(m, words)}</li>
             ))}
           </ul>
           <p className="mt-2">
             <Link href={`${base}/settings/company`} className="underline">
-              Company details
+              {w.companyLink}
             </Link>
           </p>
         </section>
@@ -66,59 +87,58 @@ export function LegalPagesPanel({
         {overview.roles.map((entry) => (
           <li key={entry.role} className={`p-5 ${CARD_CLASS}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-title text-ink">{entry.name}</h2>
-              <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
+              <h2 className="text-title text-ink">{roleName(entry.role, entry.name)}</h2>
+              <span className="text-sm text-muted">{entry.page ? fillWords(w.chosen, { title: entry.page.title }) : w.noneChosen}</span>
             </div>
-            <p className="mb-4 text-sm text-muted">{entry.hint}</p>
+            <p className="mb-4 text-sm text-muted">{isLegalRole(entry.role) ? w.roles[entry.role].hint : entry.hint}</p>
             {!entry.needed && (
               <p role="note" className="mb-4 text-sm">
-                Not needed while the online shop is off: the store sells nothing, so the footer does not link it. What is chosen is kept for when
-                the shop is on again.
+                {w.notNeeded}
               </p>
             )}
             <div className="flex flex-wrap items-start gap-6">
               <ActionForm action={actions.setRole.bind(null, entry.role)} className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2 text-sm">
-                  <span className="sr-only">Page for {entry.name}</span>
+                  <span className="sr-only">{fillWords(w.pageFor, { name: roleName(entry.role, entry.name) })}</span>
                   <select name="page" defaultValue={entry.page?.id ?? ""} className={`${field} max-w-xs`}>
-                    <option value="">None: nothing chosen</option>
+                    <option value="">{w.none}</option>
                     {overview.choosable.map((page) => {
                       const other = page.role && page.role !== entry.role;
-                      const name = page.role && isLegalRole(page.role) ? LEGAL_ROLE_COPY[page.role].name : page.role;
+                      const name = page.role && isLegalRole(page.role) ? w.roles[page.role].name : page.role;
                       return (
                         <option key={page.id} value={page.id} disabled={Boolean(other)}>
                           {page.title}
-                          {other ? ` (already the ${name?.toLowerCase()})` : ""}
+                          {other ? fillWords(w.alreadyThe, { name: name?.toLowerCase() ?? "" }) : ""}
                         </option>
                       );
                     })}
                   </select>
                 </label>
                 <SubmitButton variant="secondary">
-                  Choose<span className="sr-only"> page for {entry.name}</span>
+                  {w.choose}<span className="sr-only">{fillWords(w.choosePageFor, { name: roleName(entry.role, entry.name) })}</span>
                 </SubmitButton>
               </ActionForm>
               {entry.starter ? (
                 <ActionForm action={actions.createStarter.bind(null, entry.role)} className="flex flex-col gap-1">
                   <div>
                     <SubmitButton variant="secondary">
-                      {entry.draft ? "Create a new draft" : "Create a starter draft"}
-                      <span className="sr-only"> of {entry.name}</span>
+                      {entry.draft ? w.newDraft : w.starterDraft}
+                      <span className="sr-only">{fillWords(w.draftOf, { name: roleName(entry.role, entry.name) })}</span>
                     </SubmitButton>
                   </div>
                 </ActionForm>
               ) : (
                 <p className="text-sm">
                   <Link href={`${base}/settings/accessibility`} className="underline">
-                    Made on the Accessibility page
+                    {w.onAccessibility}
                   </Link>
                 </p>
               )}
             </div>
             {entry.draft && (
               <p className="mt-3 text-sm text-muted">
-                Latest starter: <Link href={`${base}/pages/${entry.draft.id}`} className="underline">{entry.draft.title}</Link>{" "}
-                {entry.draft.published ? "(published, not the one chosen above)" : "(a draft, not published)"}.
+                {w.latest}<Link href={`${base}/pages/${entry.draft.id}`} className="underline">{entry.draft.title}</Link>{" "}
+                {entry.draft.published ? w.latestPublished : w.latestDraft}.
               </p>
             )}
           </li>
@@ -126,24 +146,24 @@ export function LegalPagesPanel({
       </ul>
 
       {!overview.shopOn ? (
-        <Card title="At checkout" compact>
-          <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what="What checkout says about the terms" />
+        <Card title={t.title} compact>
+          <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what={t.offWhat} />
         </Card>
       ) : (
       <Card
-        title="At checkout"
-        description="What shoppers are shown next to the pay button, using the pages chosen above for the terms and the privacy statement. Whatever is shown is kept with the order: the pages as they were when the shopper pressed pay. A tick box guards and records; it cannot stop a shopper who bypasses the page."
+        title={t.title}
+        description={t.description}
         compact
       >
         <ActionForm action={actions.setTerms} className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-3">
-            <legend className="sr-only">What checkout shows about the terms</legend>
+            <legend className="sr-only">{t.legend}</legend>
             {TERMS_MODES.map((mode) => (
               <label key={mode} className="flex items-start gap-2 text-sm">
                 <input type="radio" name="mode" value={mode} defaultChecked={overview.termsAtCheckout === mode} className="mt-1 size-4" />
                 <span>
-                  <span className="font-medium">{TERMS_MODE_WORDS[mode].name}</span>
-                  <span className="block text-muted">{TERMS_MODE_WORDS[mode].hint}</span>
+                  <span className="font-medium">{t.modes[mode].name}</span>
+                  <span className="block text-muted">{t.modes[mode].hint}</span>
                 </span>
               </label>
             ))}
@@ -154,7 +174,7 @@ export function LegalPagesPanel({
             </p>
           )}
           <div>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{t.save}</SubmitButton>
           </div>
         </ActionForm>
       </Card>

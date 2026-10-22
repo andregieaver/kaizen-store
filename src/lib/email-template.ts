@@ -64,7 +64,25 @@ export type TemplateProblem = {
   message: string;
 };
 
-const SLOT_WORDS: Record<TemplateSlot, string> = { subject: "The subject", heading: "The heading", body: "The text" };
+/** The words of `templateProblems()` (D312 A8): English here, as the server and the AI read them; the admin passes its own language's. */
+export const TEMPLATE_PROBLEM_EN = {
+  slots: { subject: "The subject", heading: "The heading", body: "The text" } as Record<TemplateSlot, string>,
+  locked: "This email cannot be changed.",
+  tooLong: "{slot} is {length} characters long; at most {max}.",
+  oneLine: "{slot} must be one line.",
+  bodyLines: "The text has {lines} lines; at most {max}.",
+  control: "{slot} holds a character that cannot be shown. Type it again.",
+  unknownPlaceholder: "{name} is not a placeholder of this email.",
+  strayBrace: "{slot} has a { or } that is not part of a placeholder. Placeholders are written {name}.",
+  address: "{slot} holds a web address ({address}). Links are added by Kaizena Flow as buttons; leave addresses out.",
+  emptyAfterFill: "{slot} would be empty when its placeholders have no value. Add some words.",
+  claim: '{slot} says "{phrase}": {kind}. Order emails state facts; offers and claims are marketing.',
+  claimKinds: { ...CLAIM_LABELS } as Record<ClaimKind, string>,
+};
+export type TemplateProblemWords = typeof TEMPLATE_PROBLEM_EN;
+
+/** A problem's words with its values put in, in one pass (a value is never read again as a placeholder). */
+const say = (text: string, values: Record<string, string | number>) => text.replace(/\{(slot|length|max|lines|name|address|phrase|kind)\}/g, (all, key: string) => (key in values ? String(values[key]) : all));
 
 /** Line breaks as `\n`, and no space at the ends; a slot that is only space is empty. */
 export function cleanSlot(value: string | null | undefined): string | null {
@@ -97,7 +115,7 @@ const withoutPlaceholders = (text: string) => text.replace(PLACEHOLDER, " ");
  * What is wrong with a template for a notification, slot by slot (4.2). Each problem refuses the save; an empty slot is no problem (it is the standard
  * text). A notification that cannot be edited (the withdrawal acknowledgement) refuses every slot.
  */
-export function templateProblems(template: EmailTemplate, notificationId: string): TemplateProblem[] {
+export function templateProblems(template: EmailTemplate, notificationId: string, w: TemplateProblemWords = TEMPLATE_PROBLEM_EN): TemplateProblem[] {
   const notification = notificationOf(notificationId);
   const allowed = new Set<string>(notification?.placeholders ?? []);
   const problems: TemplateProblem[] = [];
@@ -106,30 +124,31 @@ export function templateProblems(template: EmailTemplate, notificationId: string
     if (text === null) continue;
     const add = (code: TemplateProblemCode, message: string, more: Partial<TemplateProblem> = {}) => problems.push({ slot, code, message, ...more });
     if (!notification || !notification.editable) {
-      add("unknown_placeholder", "This email cannot be changed.");
+      add("unknown_placeholder", w.locked);
       continue;
     }
+    const where = w.slots[slot];
     const length = [...text].length;
-    if (length > SLOT_LIMITS[slot]) add("too_long", `${SLOT_WORDS[slot]} is ${length} characters long; at most ${SLOT_LIMITS[slot]}.`);
+    if (length > SLOT_LIMITS[slot]) add("too_long", say(w.tooLong, { slot: where, length, max: SLOT_LIMITS[slot] }));
     const lines = text.split("\n");
-    if (slot !== "body" && lines.length > 1) add("too_many_lines", `${SLOT_WORDS[slot]} must be one line.`);
-    if (slot === "body" && lines.length > BODY_LINES_MAX) add("too_many_lines", `The text has ${lines.length} lines; at most ${BODY_LINES_MAX}.`);
-    if (CONTROL.test(text)) add("control", `${SLOT_WORDS[slot]} holds a character that cannot be shown. Type it again.`);
+    if (slot !== "body" && lines.length > 1) add("too_many_lines", say(w.oneLine, { slot: where }));
+    if (slot === "body" && lines.length > BODY_LINES_MAX) add("too_many_lines", say(w.bodyLines, { lines: lines.length, max: BODY_LINES_MAX }));
+    if (CONTROL.test(text)) add("control", say(w.control, { slot: where }));
     const unknown = new Set<string>();
     for (const match of text.matchAll(PLACEHOLDER)) if (!allowed.has(match[1])) unknown.add(match[1]);
-    for (const name of unknown) add("unknown_placeholder", `{${name}} is not a placeholder of this email.`, { detail: `{${name}}` });
+    for (const name of unknown) add("unknown_placeholder", say(w.unknownPlaceholder, { name: `{${name}}` }), { detail: `{${name}}` });
     const rest = text.replace(PLACEHOLDER, "");
-    if (/[{}]/.test(rest)) add("stray_brace", `${SLOT_WORDS[slot]} has a { or } that is not part of a placeholder. Placeholders are written {name}.`);
+    if (/[{}]/.test(rest)) add("stray_brace", say(w.strayBrace, { slot: where, name: "{name}" }));
     const bare = withoutPlaceholders(text);
     for (const match of bare.matchAll(ADDRESS)) {
       if (isAbbreviation(match[0])) continue;
-      add("address", `${SLOT_WORDS[slot]} holds a web address (${match[0]}). Links are added by Kaizena Flow as buttons; leave addresses out.`, { detail: match[0] });
+      add("address", say(w.address, { slot: where, address: match[0] }), { detail: match[0] });
     }
     if (slot !== "body" && fillNamed(text, Object.fromEntries([...allowed].map((n) => [n, null])), { dropBareLines: true }).replace(/[\s\p{P}]/gu, "") === "") {
-      add("empty_after_fill", `${SLOT_WORDS[slot]} would be empty when its placeholders have no value. Add some words.`);
+      add("empty_after_fill", say(w.emptyAfterFill, { slot: where }));
     }
     for (const claim of findClaims(bare)) {
-      add("claim", `${SLOT_WORDS[slot]} says "${claim.phrase}": ${CLAIM_LABELS[claim.kind].toLowerCase()}. Order emails state facts; offers and claims are marketing.`, {
+      add("claim", say(w.claim, { slot: where, phrase: claim.phrase, kind: w.claimKinds[claim.kind].toLowerCase() }), {
         detail: claim.phrase,
         claim: claim.kind,
       });

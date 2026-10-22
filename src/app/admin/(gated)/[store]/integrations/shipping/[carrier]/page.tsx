@@ -6,13 +6,16 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
-import { CARRIER_FEATURE_LABELS, carrierInfo } from "@/lib/shipping-carriers";
+import { carrierInfo } from "@/lib/shipping-carriers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-options";
 import { getShippingSettings } from "@/server/settings";
 import { db } from "@/db/client";
 import { getCarrier } from "@/server/shipping-carriers";
 import { PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 import { checkCarrierAction, removeCarrierAction, saveCarrierAction, saveCheckoutSettingsAction } from "../actions";
 
@@ -51,111 +54,123 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const currencyFor = (code: string) => store.markets.find((m) => m.code.toUpperCase() === code)?.nativeCurrency ?? "NOK";
   const currencyOf = currencyFor("NO");
   const majorUnits = (minor: number | null) => (minor === null ? "" : (minor / 100).toFixed(2).replace(/\.00$/, "").replace(".", ","));
-  const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const lang = adminLangOf(current.account.adminLocale);
+  const w = adminText(lang, "shipping").carrier;
+  // The carrier's own words in the admin's language (its summary, steps and fields), else as `CARRIERS` writes them.
+  const own = w.carriers[info.id];
+  const ownFields: Record<string, { label: string; help: string; placeholder: string }> = own.fields;
+  const feature = (f: keyof typeof w.features) => w.features[f];
+  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
-          Integrations
+          {w.integrations}
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
           <PageHeader
             title={<>{info.name}</>}
-            description={<>{saved ? saved.complete ? `Details saved ${when(saved.updatedAt)} · ${saved.environment === "live" ? "live" : "test"}${ live ? (saved.check?.ok ? " · connected" : saved.check ? " · not accepted by the carrier" : " · not checked yet") : " · waiting for the connection" }` : "Some details are still missing" : "Not set up"}</>}
+            description={
+              <>
+                {saved
+                  ? saved.complete
+                    ? `${fillWords(w.savedLine, { when: when(saved.updatedAt), environment: saved.environment === "live" ? w.live : w.test })}${live ? (saved.check?.ok ? w.connected : saved.check ? w.notAccepted : w.notChecked) : w.waiting}`
+                    : w.missing
+                  : w.notSetUp}
+              </>
+            }
           />
         </div>
       </div>
 
       {live ? (
         <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
-          The connection to {info.name} is ready. It can: {info.available.map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.
+          {fillWords(w.ready, { name: info.name, features: info.available.map((f) => feature(f).toLowerCase()).join("; ") })}
           {info.features.some((f) => !info.available.includes(f)) &&
-            ` Still to come: ${info.features.filter((f) => !info.available.includes(f)).map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.`}
-          {info.available.includes("labels") &&
-            ` In the test environment ${info.name} books test shipments: nothing is shipped and orders are not marked as sent.`}
+            fillWords(w.toCome, { features: info.features.filter((f) => !info.available.includes(f)).map((f) => feature(f).toLowerCase()).join("; ") })}
+          {info.available.includes("labels") && fillWords(w.testShipments, { name: info.name })}
         </p>
       ) : (
         <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
-          The connection to {info.name} is being built. You can save your agreement details now, so it switches on for your
-          store the day it arrives. Until then nothing is sent to {info.name} and your checkout and orders work as before.
+          {fillWords(w.building, { name: info.name })}
         </p>
       )}
 
       <section aria-labelledby="will-do" className={card}>
         <h2 id="will-do" className="mb-2 text-title text-ink">
-          What it will do
+          {w.willDo}
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-          {info.features.map((feature) => (
-            <li key={feature}>
-              {CARRIER_FEATURE_LABELS[feature]}
-              {live && <span className="text-muted"> · {info.available.includes(feature) ? "works now" : "coming next"}</span>}
+          {info.features.map((f) => (
+            <li key={f}>
+              {feature(f)}
+              {live && <span className="text-muted"> · {info.available.includes(f) ? w.worksNow : w.comingNext}</span>}
             </li>
           ))}
         </ul>
         <p className="mt-3 text-sm text-muted">
-          {info.summary} Delivers in {info.countries.join(", ")}.
+          {own.summary} {fillWords(w.deliversIn, { countries: info.countries.join(", ") })}
         </p>
       </section>
 
       <section aria-labelledby="get-ready" className={card}>
         <h2 id="get-ready" className="mb-2 text-title text-ink">
-          Get ready
+          {w.getReady}
         </h2>
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
-          {info.steps.map((step) => (
+          {own.steps.map((step) => (
             <li key={step}>{step}</li>
           ))}
         </ol>
         <p className="mt-3 text-sm">
           <a href={info.docs} target="_blank" rel="noopener noreferrer" className="underline">
-            {info.name}&apos;s developer pages
+            {fillWords(w.developerPages, { name: info.name })}
           </a>
         </p>
       </section>
 
       <section aria-labelledby="details" className={card}>
         <h2 id="details" className="mb-1 text-title text-ink">
-          Your details
+          {w.details}
         </h2>
-        {!owner && <p className="mb-3 text-sm text-muted">Only an owner of the store can change these.</p>}
+        {!owner && <p className="mb-3 text-sm text-muted">{w.ownerOnly}</p>}
         <p className="mb-4 text-sm text-muted">
-          Kept encrypted on Kaizena Flow&apos;s servers in Europe. Keys are never shown again after saving, only their last
-          characters; leave a key empty to keep the one saved.
+          {w.kept}
         </p>
         <ActionForm action={saveCarrierAction.bind(null, store.slug, info.id)} className="flex flex-col gap-4">
           <fieldset disabled={!owner} className="flex flex-col gap-4">
             <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
-              Environment
+              {w.environment}
               <select name="environment" defaultValue={saved?.environment ?? "test"} className={control}>
-                <option value="test">Test</option>
-                <option value="live">Live</option>
+                <option value="test">{w.envTest}</option>
+                <option value="live">{w.envLive}</option>
               </select>
             </label>
             {info.fields.map((field) => {
               const hint = field.secret ? saved?.secrets[field.key] : undefined;
+              const words = ownFields[field.key];
               return (
                 <label key={field.key} className="flex max-w-md flex-col gap-1 text-sm font-medium">
-                  {field.label}
-                  {!field.required && <span className="font-normal text-muted">Optional</span>}
+                  {words?.label || field.label}
+                  {!field.required && <span className="font-normal text-muted">{w.optional}</span>}
                   <input
                     name={`field:${field.key}`}
                     type={field.secret ? "password" : "text"}
                     autoComplete="off"
                     defaultValue={field.secret ? "" : (saved?.details[field.key] ?? "")}
-                    placeholder={hint ? `Saved ${hint}` : field.placeholder}
+                    placeholder={hint ? fillWords(w.savedHint, { hint }) : words?.placeholder || field.placeholder}
                     maxLength={200}
                     className={control}
                   />
-                  {field.help && <span className="font-normal text-muted">{field.help}</span>}
+                  {field.help && <span className="font-normal text-muted">{words?.help || field.help}</span>}
                 </label>
               );
             })}
             {marketCountries.length > 0 && (
               <fieldset className="flex flex-col gap-1">
-                <legend className="mb-1 text-sm font-medium">Ship with {info.name} to</legend>
+                <legend className="mb-1 text-sm font-medium">{fillWords(w.shipTo, { name: info.name })}</legend>
                 {marketCountries.map((code) => {
                   const market = store.markets.find((m) => m.code.toUpperCase() === code);
                   const covered = info.countries.includes(code);
@@ -163,7 +178,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                     <label key={code} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" name="countries" value={code} defaultChecked={chosen.has(code)} className="size-4" />
                       {market?.name ?? code}
-                      {!covered && <span className="text-muted">({info.name} does not deliver here as far as we know)</span>}
+                      {!covered && <span className="text-muted">{fillWords(w.notCovered, { name: info.name })}</span>}
                     </label>
                   );
                 })}
@@ -171,7 +186,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             )}
             {owner && (
               <div>
-                <SubmitButton>{saved ? "Save details" : "Save my details"}</SubmitButton>
+                <SubmitButton>{saved ? w.saveDetails : w.saveMyDetails}</SubmitButton>
               </div>
             )}
           </fieldset>
@@ -181,45 +196,44 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       {checkout && services && (
         <section aria-labelledby="checkout" className={card}>
           <h2 id="checkout" className="mb-1 text-title text-ink">
-            Delivery options at checkout
+            {w.checkoutTitle}
           </h2>
           <p className="mb-4 text-sm text-muted">
-            Shoppers give their postal code at checkout and choose between your standard shipping and the services you switch on here,
+            {w.checkoutStart}
             {storePriced
-              ? ` at the prices you enter below (with VAT, as the shopper pays; ${info.name} has no price service, so use the prices in your agreement).`
-              : ` with the price ${info.name} gives you plus VAT and what you add${info.id === "porterbuddy" ? ". Porterbuddy's windows are listed by date and time, each with its own price, for deliveries in Norway; a price Porterbuddy has made for shoppers to see already has VAT, so only your markup is added" : ". Posten / Bring's services are for parcels to Norway"}.`}{" "}
-            If{" "}
-            {info.name} does not answer, your standard shipping is used, so keep it set up under{" "}
+              ? fillWords(w.storePriced, { name: info.name })
+              : fillWords(w.carrierPriced, { name: info.name, extra: info.id === "porterbuddy" ? w.porterbuddyExtra : w.bringExtra })}
+            {fillWords(w.fallbackBefore, { name: info.name })}
             <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
-              Shipping
+              {w.shippingLink}
             </Link>
-            .
+            {w.fallbackAfter}
           </p>
           {missingFlat.length > 0 && (
             <p role="status" className="mb-4 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-              No standard shipping price is set for {missingFlat.join(", ")}. Set one under Shipping: it is what the order starts with until the shopper chooses.
+              {fillWords(w.missingFlat, { countries: missingFlat.join(", ") })}
             </p>
           )}
           <ActionForm action={saveCheckoutSettingsAction.bind(null, store.slug, info.id)} className="flex flex-col gap-4">
             <fieldset disabled={!owner} className="flex flex-col gap-4">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" name="enabled" defaultChecked={checkout.enabled} className="size-4" />
-                Offer {info.name} at checkout in the countries chosen above
+                {fillWords(w.offerAt, { name: info.name })}
               </label>
               <fieldset className="flex flex-col gap-1">
-                <legend className="mb-1 text-sm font-medium">Services to offer</legend>
+                <legend className="mb-1 text-sm font-medium">{w.services}</legend>
                 {services.map((service) => (
                   <label key={service.id} className="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="service" value={service.id} defaultChecked={checkout.services.includes(service.id)} className="size-4" />
                     {service.name}
-                    {service.needsPickupPoint && <span className="text-muted">(the shopper chooses a pickup point)</span>}
-                    {service.maxWeightGrams && <span className="text-muted">(parcels up to {service.maxWeightGrams / 1000} kg)</span>}
+                    {service.needsPickupPoint && <span className="text-muted">{w.pickupPoint}</span>}
+                    {service.maxWeightGrams && <span className="text-muted">{fillWords(w.upToKg, { kg: (service.maxWeightGrams / 1000).toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>}
                   </label>
                 ))}
-                <p className="text-sm text-muted">A service is shown only when {info.name} offers it for the parcel and the postal code.</p>
+                <p className="text-sm text-muted">{fillWords(w.shownWhen, { name: info.name })}</p>
               </fieldset>
               {storePriced && pricedCountries.length === 0 && (
-                <p className="text-sm text-muted">Tick a country above and save the details first: prices are entered per country.</p>
+                <p className="text-sm text-muted">{w.tickFirst}</p>
               )}
               {storePriced &&
                 pricedCountries.map((code) => (
@@ -234,15 +248,15 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                           name={`price:${code}:${service.id}`}
                           inputMode="decimal"
                           defaultValue={majorUnits(checkout.prices[code]?.services[service.id] ?? null)}
-                          placeholder="Not offered"
-                          aria-label={`${service.name} price in ${code}`}
+                          placeholder={w.notOffered}
+                          aria-label={fillWords(w.servicePrice, { service: service.name, country: code })}
                           className={`${control} w-36`}
                         />
                       </label>
                     ))}
                     <label className="flex items-center justify-between gap-3 text-sm">
-                      <span>Free when the basket is worth at least</span>
-                      <input name={`freeOver:${code}`} inputMode="decimal" defaultValue={majorUnits(checkout.prices[code]?.freeOverMinor ?? null)} placeholder="Never free" className={`${control} w-36`} />
+                      <span>{w.freeWhen}</span>
+                      <input name={`freeOver:${code}`} inputMode="decimal" defaultValue={majorUnits(checkout.prices[code]?.freeOverMinor ?? null)} placeholder={w.neverFree} className={`${control} w-36`} />
                     </label>
                   </fieldset>
                 ))}
@@ -250,27 +264,27 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                 {!storePriced && (
                   <>
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Percentage added to the price with VAT
+                  {w.percent}
                   <input name="markupPercent" inputMode="numeric" defaultValue={String(checkout.markup.percent)} className={control} />
                 </label>
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Amount added ({currencyOf})
+                  {fillWords(w.amount, { currency: currencyOf })}
                   <input name="markupAmount" inputMode="decimal" defaultValue={majorUnits(checkout.markup.minor || null)} placeholder="0" className={control} />
                 </label>
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Free when the basket is worth at least ({currencyOf})
-                  <input name="freeOver" inputMode="decimal" defaultValue={majorUnits(checkout.freeOverMinor)} placeholder="Never free" className={control} />
+                  {fillWords(w.freeWhenIn, { currency: currencyOf })}
+                  <input name="freeOver" inputMode="decimal" defaultValue={majorUnits(checkout.freeOverMinor)} placeholder={w.neverFree} className={control} />
                 </label>
                   </>
                 )}
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Parcel weight when the goods have none (grams)
+                  {w.defaultWeight}
                   <input name="defaultWeight" inputMode="numeric" defaultValue={String(checkout.defaultWeightGrams)} className={control} />
                 </label>
               </div>
               {owner && (
                 <div>
-                  <SubmitButton>Save checkout options</SubmitButton>
+                  <SubmitButton>{w.saveCheckout}</SubmitButton>
                 </div>
               )}
             </fieldset>
@@ -281,19 +295,15 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       {live && owner && saved?.complete && (
         <section aria-labelledby="check" className={card}>
           <h2 id="check" className="mb-1 text-title text-ink">
-            Check connection
+            {w.checkTitle}
           </h2>
           <p className="mb-3 text-sm text-muted">
-            Asks {info.name} whether it accepts your details. Nothing is booked.
-            {saved.check && (
-              <>
-                {" "}
-                Last checked {when(saved.check.at)}: {saved.check.ok ? "accepted." : (saved.check.message ?? "not accepted.")}
-              </>
-            )}
+            {fillWords(w.checkText, { name: info.name })}
+            {saved.check &&
+              fillWords(w.lastChecked, { when: when(saved.check.at), result: saved.check.ok ? w.accepted : (saved.check.message ?? w.notAcceptedResult) })}
           </p>
           <ActionForm action={checkCarrierAction.bind(null, store.slug, info.id)}>
-            <SubmitButton variant="secondary">Check connection</SubmitButton>
+            <SubmitButton variant="secondary">{w.check}</SubmitButton>
           </ActionForm>
         </section>
       )}
@@ -301,7 +311,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       {owner && saved && (
         <form action={removeCarrierAction.bind(null, store.slug, info.id)}>
           <button type="submit" className="text-sm underline">
-            Forget my {info.name} details
+            {fillWords(w.forget, { name: info.name })}
           </button>
         </form>
       )}

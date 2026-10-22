@@ -1,5 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { paymentsEn, type PaymentsMessages } from "@/lib/admin-messages/payments.en";
 import { MOLLIE_DASHBOARD, MOLLIE_LEFT_OUT } from "@/lib/mollie";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import type { MollieConnection } from "@/server/mollie";
@@ -22,6 +24,7 @@ export function MollieCard({
   providerAction,
   disconnectAction,
   activateAction,
+  words = paymentsEn.mollie,
 }: {
   connection: MollieConnection | null;
   appOn: boolean;
@@ -33,26 +36,29 @@ export function MollieCard({
   providerAction: Action;
   disconnectAction: () => Promise<FormState>;
   activateAction: Action;
+  /** The words, in the account's language (D312 A8); English unless given. */
+  words?: PaymentsMessages["mollie"];
 }) {
   if (!appOn) return null;
+  const w = words;
   const terms = (
     <ul className="list-disc pl-5 text-caption text-muted">
-      <li>Shoppers pay on Mollie&apos;s own page. Kaizena Flow asks for their name, email and delivery address first.</li>
-      <li>Kaizena Flow&apos;s fee is taken on each Mollie payment and is not given back when you refund one.</li>
-      <li>Subscriptions, deposits and hosts&apos; listings are still paid through Stripe.</li>
+      <li>{w.payPage}</li>
+      <li>{w.fee}</li>
+      <li>{w.stripeStays}</li>
     </ul>
   );
   if (!connection) {
     return (
-      <Card title="Mollie" description="Take payments through your own Mollie account instead: PayPal, Vipps, Swish, MobilePay, iDEAL, Bancontact and more." compact>
+      <Card title="Mollie" description={w.connectIntro} compact>
         <div className="flex flex-col gap-3 text-sm">
           {terms}
           {isOwner ? (
             <form action={connectAction}>
-              <SubmitButton>Connect Mollie</SubmitButton>
+              <SubmitButton>{w.connect}</SubmitButton>
             </form>
           ) : (
-            <p className="text-muted">Only an owner can connect Mollie.</p>
+            <p className="text-muted">{w.ownerOnly}</p>
           )}
         </div>
       </Card>
@@ -61,16 +67,19 @@ export function MollieCard({
   return (
     <Card
       title="Mollie"
-      description={`Connected to ${connection.organizationName ?? connection.organizationId}${connection.profileName ? `, website ${connection.profileName}` : ""}.`}
+      description={fillWords(connection.profileName ? w.connectedSite : w.connected, {
+        organisation: connection.organizationName ?? connection.organizationId,
+        site: connection.profileName ?? "",
+      })}
       compact
     >
       <div className="flex flex-col gap-4 text-sm">
         <ActionForm action={providerAction} className="flex flex-col gap-3">
           <fieldset disabled={!isOwner} className="flex flex-col gap-2">
-            <legend className="mb-1 text-body-strong text-ink">Shoppers pay with</legend>
+            <legend className="mb-1 text-body-strong text-ink">{w.payWith}</legend>
             {modes.map((mode) => (
               <div key={mode} className="flex flex-wrap items-center gap-4">
-                <span className="w-28 text-muted">{mode === "test" ? "Test payments" : "Real payments"}</span>
+                <span className="w-28 text-muted">{mode === "test" ? w.test : w.live}</span>
                 {(["stripe", "mollie"] as const).map((provider) => (
                   <label key={provider} className="flex items-center gap-2">
                     <input type="radio" name={`provider:${mode}`} value={provider} defaultChecked={(chosen[mode] ?? "stripe") === provider} />
@@ -82,45 +91,45 @@ export function MollieCard({
           </fieldset>
           {isOwner && (
             <div>
-              <SubmitButton>Save</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           )}
         </ActionForm>
         {terms}
         {methods && (
           <div className="flex flex-col gap-2">
-            <p className="text-body-strong text-ink">Methods at Mollie</p>
+            <p className="text-body-strong text-ink">{w.methods}</p>
             <ul className="divide-y divide-line">
               {methods.map((method) => (
                 <li key={method.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                   <span className="text-ink">{method.description}</span>
                   <span className="flex items-center gap-2">
                     {MOLLIE_LEFT_OUT.has(method.id) ? (
-                      <Chip signal="neutral">Not offered yet</Chip>
+                      <Chip signal="neutral">{w.notOffered}</Chip>
                     ) : method.status === "activated" ? (
                       <Chip signal="positive" dot>
-                        Active
+                        {w.active}
                       </Chip>
                     ) : method.status === "pending-review" ? (
                       <Chip signal="warning" dot>
-                        Mollie is checking
+                        {w.checking}
                       </Chip>
                     ) : isOwner ? (
                       <ActionForm action={activateAction}>
                         <input type="hidden" name="method" value={method.id} />
-                        <SubmitButton variant="secondary">Activate</SubmitButton>
+                        <SubmitButton variant="secondary">{w.activate}</SubmitButton>
                       </ActionForm>
                     ) : (
-                      <Chip signal="neutral">Off</Chip>
+                      <Chip signal="neutral">{w.off}</Chip>
                     )}
                   </span>
                 </li>
               ))}
             </ul>
             <p className="text-caption text-muted">
-              Vipps and MobilePay need your own agreement with them, Swish a business in the EEA. Switch those on in your{" "}
+              {w.agreements}{" "}
               <a href={MOLLIE_DASHBOARD} className="underline" target="_blank" rel="noreferrer">
-                Mollie Dashboard
+                {w.dashboard}
               </a>
               .
             </p>
@@ -128,7 +137,7 @@ export function MollieCard({
         )}
         {isOwner && (
           <ActionForm action={disconnectAction}>
-            <SubmitButton variant="secondary">Disconnect Mollie</SubmitButton>
+            <SubmitButton variant="secondary">{w.disconnect}</SubmitButton>
           </ActionForm>
         )}
       </div>

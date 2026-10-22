@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { RuleLog } from "@/components/admin/automation/rule-log";
 import { PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { listRules, ruleLog } from "@/server/order-rules";
 import { requirePermission } from "@/server/permissions";
 
@@ -20,6 +22,9 @@ export default async function AutomationLogPage({ params, searchParams }: PagePr
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "notifications");
+  const w = words.rules.logPage;
   const query = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
   const ruleId = one(query.rule) && UUID.test(one(query.rule)!) ? one(query.rule)! : null;
@@ -37,15 +42,15 @@ export default async function AutomationLogPage({ params, searchParams }: PagePr
     return `${base}/log${text ? `?${text}` : ""}`;
   };
   const more = runs.length > PAGE ? params2({ before: shown[shown.length - 1].at }) : null;
-  const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: base, label: "Automation" }} title="Automation log" description={<>Every time a rule ran for a paid order in the last twelve months, newest first. A rule runs once for each order; runs are never repeated.</>} />
+      <PageHeader back={{ href: base, label: words.rules.title }} title={w.title} description={<>{w.description}</>} />
       <form method="get" className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Rule
+          {w.rule}
           <select name="rule" defaultValue={ruleId ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm">
-            <option value="">All rules</option>
+            <option value="">{w.allRules}</option>
             {rules.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -54,18 +59,18 @@ export default async function AutomationLogPage({ params, searchParams }: PagePr
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Matched
+          {w.matchedFilter}
           <select name="matched" defaultValue={matched === null ? "" : matched ? "yes" : "no"} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm">
-            <option value="">Both</option>
-            <option value="yes">Matched</option>
-            <option value="no">Did not match</option>
+            <option value="">{w.both}</option>
+            <option value="yes">{w.matchedChoice}</option>
+            <option value="no">{w.notMatchedChoice}</option>
           </select>
         </label>
         <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
-          Show
+          {w.show}
         </button>
       </form>
-      <RuleLog runs={shown} base={`/admin/${store.slug}`} when={when} more={more} />
+      <RuleLog runs={shown} base={`/admin/${store.slug}`} when={when} more={more} words={words} />
     </div>
   );
 }

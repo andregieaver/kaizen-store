@@ -1,6 +1,10 @@
+"use client";
+
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
-import { CAPTURE_SETTING_WORDS, CAPTURE_SETTINGS, DEFAULT_HOLD_DAYS } from "@/lib/capture";
+import { CAPTURE_SETTINGS, DEFAULT_HOLD_DAYS } from "@/lib/capture";
 import type { OrderSettings } from "@/server/order-settings";
 
 const input = "min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
@@ -22,37 +26,32 @@ export function OrderSettingsForm({
   isOwner: boolean;
   action: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
+  const w = useAdminText("payments").orders;
   return (
-    <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-6">
+    <ActionForm action={action} successMessage={w.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="gift" className={card}>
           <h2 id="gift" className="text-title text-ink">
-            Gift messages
+            {w.giftTitle}
           </h2>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="giftMessages" defaultChecked={settings.giftMessages} className="mt-0.5 size-4" />
-            <span>Let shoppers mark an order as a gift and write a message.</span>
+            <span>{w.gift}</span>
           </label>
-          <p className={hint}>
-            The cart then shows a tick box with three fields: To (up to {GIFT_NAME_MAX} characters), From (up to {GIFT_NAME_MAX}) and a message (up to {GIFT_MESSAGE_MAX} characters). The message is printed on the
-            order&apos;s packing slip, which has no prices, so the parcel can carry it. Kaizena Flow does not send the message to anyone: it is kept with the order, shown to you and to the buyer, and erased with the order&apos;s personal data. It
-            is never in the shipping notice.
-          </p>
+          <p className={hint}>{fillWords(w.giftHint, { name: GIFT_NAME_MAX, message: GIFT_MESSAGE_MAX })}</p>
         </section>
 
         <section aria-labelledby="archive" className={card}>
           <h2 id="archive" className="text-title text-ink">
-            Automatic archiving
+            {w.archiveTitle}
           </h2>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="autoArchive" defaultChecked={settings.autoArchiveDays !== null} className="mt-0.5 size-4" />
-            <span>Archive orders that need no more work.</span>
+            <span>{w.archive}</span>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            After this many days without news{" "}
-            <span className="font-normal text-muted">
-              {AUTO_ARCHIVE_MIN_DAYS} to {AUTO_ARCHIVE_MAX_DAYS}
-            </span>
+            {w.archiveDays}{" "}
+            <span className="font-normal text-muted">{fillWords(w.range, { min: AUTO_ARCHIVE_MIN_DAYS, max: AUTO_ARCHIVE_MAX_DAYS })}</span>
             <input
               name="autoArchiveDays"
               type="number"
@@ -63,84 +62,68 @@ export function OrderSettingsForm({
               className={input}
             />
           </label>
-          <p className={hint}>
-            Off by default. An order is archived when it has been sent (or has nothing to send), has no return open and has had no event for that many days. Archiving only moves an order out of the default list: it changes no
-            amount, number, invoice or figure, and you can unarchive it. A return or a withdrawal on an archived order brings it back. Waiting for the 14-day right of withdrawal is why the shortest is {AUTO_ARCHIVE_MIN_DAYS} days.
-          </p>
+          <p className={hint}>{fillWords(w.archiveHint, { min: AUTO_ARCHIVE_MIN_DAYS })}</p>
         </section>
 
         <section aria-labelledby="links" className={card}>
           <h2 id="links" className="text-title text-ink">
-            Draft orders
+            {w.draftsTitle}
           </h2>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            A draft order&apos;s pay link is valid for (days){" "}
-            <span className="font-normal text-muted">
-              {DRAFT_VALID_DAYS_MIN} to {DRAFT_VALID_DAYS_MAX}
-            </span>
+            {w.draftDays}{" "}
+            <span className="font-normal text-muted">{fillWords(w.range, { min: DRAFT_VALID_DAYS_MIN, max: DRAFT_VALID_DAYS_MAX })}</span>
             <input name="draftValidDays" type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} defaultValue={settings.draftValidDays} required className={input} />
           </label>
-          <p className={hint}>
-            This is the default when you send a draft; you can change it for one draft in the send dialog. The stock on a draft is held from the moment it is sent until the link expires. The price on the link does not change when the
-            catalogue prices change.
-          </p>
+          <p className={hint}>{w.draftHint}</p>
         </section>
 
         <section aria-labelledby="outside" className={card}>
           <h2 id="outside" className="text-title text-ink">
-            Money taken outside Kaizena Flow
+            {w.outsideTitle}
           </h2>
           {isOwner ? (
             <>
               <input type="hidden" name="staffMarkPaidShown" value="1" />
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="staffMarkPaid" defaultChecked={settings.staffMarkPaid} className="mt-0.5 size-4" />
-                <span>Staff may record a payment taken outside Kaizena Flow, and record a refund of one.</span>
+                <span>{w.outside}</span>
               </label>
             </>
           ) : (
-            <p className="text-sm">{settings.staffMarkPaid ? "Staff may record a payment taken outside Kaizena Flow." : "Only the owner can record a payment taken outside Kaizena Flow."}</p>
+            <p className="text-sm">{settings.staffMarkPaid ? w.outsideOn : w.outsideOff}</p>
           )}
-          <p className={hint}>
-            On a draft order you can record that the customer paid by bank transfer, in cash or another way. Kaizena Flow then treats the order as paid, issues the invoice (which says it was paid outside the online checkout) and sends the
-            confirmation, but it did not touch the money and takes no sale fee on it. A refund of such an order is only recorded here: you pay the customer back yourself. Cash taken when goods are handed over is a cash sale under
-            the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register.
-          </p>
-          {isOwner ? null : <p className={hint}>Only the owner can change this choice.</p>}
+          <p className={hint}>{w.outsideHint}</p>
+          {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
         </section>
 
         <section aria-labelledby="capture" className={card}>
           <h2 id="capture" className="text-title text-ink">
-            Take payment
+            {w.captureTitle}
           </h2>
           {isOwner ? (
             <fieldset className="flex flex-col gap-2">
-              <legend className="sr-only">When the customer&apos;s card is charged</legend>
+              <legend className="sr-only">{w.captureLegend}</legend>
               <input type="hidden" name="captureShown" value="1" />
               {CAPTURE_SETTINGS.map((value) => (
                 <label key={value} className="flex items-start gap-2 text-sm">
                   <input type="radio" name="capture" value={value} defaultChecked={settings.capture === value} className="mt-0.5 size-4" />
                   <span>
-                    <span className="text-body-strong">{CAPTURE_SETTING_WORDS[value].label}</span>
-                    <span className="block text-muted">{CAPTURE_SETTING_WORDS[value].hint}</span>
+                    <span className="text-body-strong">{w.capture[value].label}</span>
+                    <span className="block text-muted">{w.capture[value].hint}</span>
                   </span>
                 </label>
               ))}
             </fieldset>
           ) : (
-            <p className="text-sm">The card is charged {CAPTURE_SETTING_WORDS[settings.capture].label.toLowerCase()}.</p>
+            <p className="text-sm">{fillWords(w.charged, { when: w.capture[settings.capture].label.toLowerCase() })}</p>
           )}
-          <p className={hint}>
-            A held card is not charged yet: the order shows &ldquo;Card held, to capture&rdquo;, it is not a sale in your figures and no invoice is issued until you capture. A card is held for up to {DEFAULT_HOLD_DAYS} days; you are emailed a day before
-            the hold ends, and an order not captured by then is cancelled and its stock released. You can capture less than was held (the rest is released and credited) or cancel the hold. Subscriptions, bookings, deposits, hosts&apos;
-            listings and downloads are always charged at checkout, as are draft orders, order changes, exchanges and subscription boxes. Changing this applies to orders placed from now on.
-          </p>
-          {isOwner ? null : <p className={hint}>Only the owner can change this choice.</p>}
+          <p className={hint}>{fillWords(w.captureHint, { days: DEFAULT_HOLD_DAYS })}</p>
+          {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
         </section>
 
         <div>
-          <SubmitButton disabled={!canEdit}>Save</SubmitButton>
-          {!canEdit && <p className={`${hint} mt-2`}>You can read these settings but not change them.</p>}
+          <SubmitButton disabled={!canEdit}>{w.save}</SubmitButton>
+          {!canEdit && <p className={`${hint} mt-2`}>{w.readOnly}</p>}
         </div>
       </fieldset>
     </ActionForm>
