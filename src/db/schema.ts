@@ -482,9 +482,12 @@ export const accessRequests = commerce.table(
      * published version has it; applied with the profile. Null: the profile's own look.
      */
     designVariation: text("design_variation"),
+    /** The language the request was made in (D312 P6), its locale (`en`, `nb-NO`): its emails are written in it, and the account's admin starts in it. Null: English. */
+    locale: text("locale"),
     createdAt: createdAt(),
   },
   (t) => [
+    check("access_requests_locale", sql`${t.locale} is null or ${t.locale} in ('en', 'nb-NO')`),
     check(
       "access_requests_design_variation",
       sql`${t.designVariation} is null or (${t.designPresetId} is not null and ${t.designVariation} ~ '^[a-z0-9][a-z0-9-]{0,39}$')`,

@@ -185,6 +185,28 @@ export const platformEn = {
     description: "The cookies Kaizena Flow's site uses, who sets them, why and for how long.",
   },
   notFound: { title: "This page does not exist.", home: "Kaizena Flow's front page" },
+  accessEmails: {
+    received: {
+      subject: "We got your request for {store}",
+      preview: "We will write to you again when your store is ready.",
+      heading: "Thank you, {name}",
+      body: "We got your request to open {store} on Kaizena Flow. We read every request, and we write to you again when your store is ready.",
+      nothing: "You do not need to do anything now.",
+    },
+    approved: {
+      subject: "{store} is ready on Kaizena Flow",
+      preview: "Sign in with this email address to start.",
+      heading: "Your store is ready",
+      body: "{store} is set up. Sign in with this email address to start. We have also sent you a sign-in link in an email of its own.",
+      button: "Sign in",
+    },
+    declined: {
+      subject: "Your request for {store}",
+      preview: "About your request to open a store on Kaizena Flow.",
+      heading: "About your request",
+      body: "Thank you for your interest in Kaizena Flow. We cannot open {store} for you now. You are welcome to ask again later.",
+    },
+  },
   unsubscribe: {
     title: "Plan reminders",
     done: "You are unsubscribed. Kaizena Flow will send you no more reminders about plans.",

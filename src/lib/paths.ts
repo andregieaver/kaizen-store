@@ -130,6 +130,15 @@ export function marketUrl(storeSlug: string, marketSlug: string, path = "", addr
 }
 
 /**
+ * A market's address in a page's metadata (canonical, `hreflang`, share tags): a path under the page's `metadataBase`, as ever, or the full
+ * address once the store has a language on a domain of its own (D313), where another language is on another origin.
+ */
+export function marketMetaPath(storeSlug: string, marketSlug: string, path = "", address: StoreAddress | null | undefined = storeAddress(storeSlug)): string {
+  if (Object.keys(languageHosts(storeSlug)).length === 0) return marketPath(storeSlug, marketSlug, path, address) || "/";
+  return marketUrl(storeSlug, marketSlug, path, address);
+}
+
+/**
  * A link from a page of one market to another's (a language or currency choice, the country chooser): a path where both are on one origin,
  * the full address where the other's language has a domain of its own (D313) or the page is on one.
  */

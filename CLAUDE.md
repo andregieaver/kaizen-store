@@ -94,8 +94,8 @@ stand-in is the only fake, and only it is told it is one.
   own, as an option (D313, `docs/language-domains.md`: `store_domains.language`,
   `setDomainLanguage()`), where its addresses leave the language out and the
   proxy reads it from the host (`languageHostDecision()`); so a full address is
-  always `marketUrl()` (`marketOrigin()`), a link to another market
-  `marketLink()`, never `storeSiteUrl() + marketPath()`. A store that sells in one country
+  always `marketUrl()` (`marketOrigin()`), a page's metadata address
+  `marketMetaPath()`, a link to another market `marketLink()`, never `storeSiteUrl() + marketPath()`. A store that sells in one country
   has no country in its addresses (D181, `docs/marketless-addresses.md`,
   `src/lib/store-address.ts`): `/s/{store}/home`, `/en/home`; the proxy
   rewrites them to the unchanged `[market]` routes and moves the long ones
@@ -1099,6 +1099,10 @@ stand-in is the only fake, and only it is told it is one.
   server and `useAdminText(area)` under the signed-in layout's `AdminTextProvider`; `admin-strings.scan.test.ts` counts English written
   into admin files against `admin-strings.baseline.json`, which only shrinks (rewrite it with `UPDATE_ADMIN_STRINGS=1` after a
   conversion), so a new admin word goes in a catalogue.
+  A request to open a store keeps its language (P6, `access_requests.locale`): its emails are `accessEmail()` (`src/lib/access-emails.ts`,
+  `platformText(lang).accessEmails`, kinds `platform.access_*`), sent once each by `sendAccessEmail()` in `src/server/platform.ts`, and
+  the new owner's admin starts in it. The stores' Norwegian legal starters state every right from `LEGAL_WORDING_NB` and cite its section
+  (P5, `RIGHT_STATEMENTS` in `legal-wording-nb.test.ts`): a new statement of a right goes there with its passages.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

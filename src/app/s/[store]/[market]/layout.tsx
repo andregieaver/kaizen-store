@@ -20,7 +20,7 @@ import { t } from "@/lib/i18n";
 import { languageChoices } from "@/lib/localization";
 import { inView } from "@/lib/markets";
 import { looksLikeMarket } from "@/lib/redirect-path";
-import { adminOrigin, marketHome, marketOrigin, marketUrl, storeHome } from "@/lib/paths";
+import { adminOrigin, marketHome, marketMetaPath, marketOrigin, storeHome } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
 import { featureOn, showsWithdrawalLink } from "@/lib/store-features";
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const home = marketHome(store.slug, market.slug);
   // The same page in another currency is the same page: its address is the one in the country's own (D109).
-  const canonical = marketUrl(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
+  const canonical = marketMetaPath(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
   return {
     // A language with a domain of its own (D313) is on its own origin.
     metadataBase: new URL(marketOrigin(store.slug, market.slug)),
@@ -75,7 +75,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           store.markets.flatMap((m) =>
             languageChoices(store.localization, m).map((locale) => [
               `${locale.split("-")[0]}-${m.code}`,
-              marketUrl(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
+              marketMetaPath(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
             ]),
           ),
         ),

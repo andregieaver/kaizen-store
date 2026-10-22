@@ -35,7 +35,7 @@ store's address to its domain, another language or the store's main one on a lan
   `addressDecision()` as before. A country's own language comes from `StoreAddress.owns`.
 - **Links.** `marketPath()` writes a market on its language's domain without the language; `marketOrigin()` is the
   market's origin and `marketUrl()` a full address on it. **Never build a full address as `storeSiteUrl() + marketPath()`**:
-  emails, Stripe's return addresses, the sitemap, structured data, canonical and `hreflang` all use `marketUrl()`. A link
+  emails, Stripe's return addresses, the sitemap and structured data use `marketUrl()`; canonical, `hreflang` and share tags use `marketMetaPath()`, a path under the page's `metadataBase` as before for a store without language domains and the full address for one with them. A link
   from one market to another (the language and currency choice) is `marketLink()`: a path on the same origin, a full
   address across, which the menu opens as a full page load. The market layout's `metadataBase` is the market's origin.
 - **Moves made by the routes** (`marketMoved()`, manual redirects through `locationIn()`) are full addresses when the store

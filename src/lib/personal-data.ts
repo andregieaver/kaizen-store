@@ -410,6 +410,10 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "experiment.guardrail": "staff",
   "store.status": "staff",
   "referral.store_opened": "staff",
+  // To someone who asked to open a store (D312 P6)
+  "platform.access_received": "staff",
+  "platform.access_approved": "staff",
+  "platform.access_declined": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

@@ -31,7 +31,8 @@ function langOfForm(formData: FormData): PlatformLang {
  * this email has asked before, so the form reveals nothing about who has.
  */
 export async function requestAccess(_state: FormState, formData: FormData): Promise<FormState> {
-  const w = platformText(langOfForm(formData)).signUp;
+  const lang = langOfForm(formData);
+  const w = platformText(lang).signUp;
   // A field people never see; bots fill it in.
   if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [w.received] };
 
@@ -57,6 +58,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       starterId: await contentForLook(look),
       designPresetId: look?.id ?? null,
       designVariation: look?.variation ?? null,
+      lang,
     });
   } catch {
     return { status: "error", messages: [w.failed] };

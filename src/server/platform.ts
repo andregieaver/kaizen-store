@@ -3,12 +3,16 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { ACCESS_EMAIL_KINDS, accessEmail, requestLang, requestLocale, type AccessEmailKind } from "@/lib/access-emails";
+import { renderEmail } from "@/lib/email-layout";
+import type { PlatformLang } from "@/lib/platform-lang";
 import { slugProblem } from "@/lib/slug";
 import { emailSignInLink } from "@/lib/supabase/mailer";
 
 import { starterRefusal } from "@/lib/store-starters";
 
 import { audit, type Account } from "./auth";
+import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
@@ -28,6 +32,8 @@ export type AccessRequestInput = {
   designPresetId?: string | null;
   /** One of its presets (`docs/theme-showcase-phase-1.md` step 4), by key; kept only when its published version has it. */
   designVariation?: string | null;
+  /** The language the form was sent in (D312 P6): its emails are written in it. English when left out. */
+  lang?: PlatformLang;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -48,14 +54,39 @@ const publishedVariation = (presetId: unknown, key: string | null | undefined) =
  */
 export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
-  await db().execute(sql`
-    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation)
+  const [made] = await db().execute<Row>(sql`
+    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
-      ${publishedVariation(input.designPresetId, input.designVariation)})
+      ${publishedVariation(input.designPresetId, input.designVariation)}, ${requestLocale(input.lang ?? "en")})
     on conflict ((lower(email))) where status = 'pending' do nothing
+    returning id
   `);
+  // A merged second request sends nothing again; the form says the same either way.
+  if (made) await sendAccessEmail("received", String(made.id));
+}
+
+/**
+ * One of a request's emails (D312 P6), in the language it was made in, once per request and kind. Best effort: the request, the approval
+ * or the refusal stands whatever the email does.
+ */
+async function sendAccessEmail(kind: AccessEmailKind, requestId: string, signInUrl?: string): Promise<void> {
+  try {
+    const [row] = await db().execute<Row>(sql`select email, name, store_name, locale from commerce.access_requests where id = ${requestId}::uuid`);
+    if (!row) return;
+    const email = renderEmail(accessEmail(kind, requestLang(row.locale as string | null), { name: String(row.name), storeName: String(row.store_name), signInUrl }));
+    await sendEmail({
+      storeId: null,
+      kind: ACCESS_EMAIL_KINDS[kind],
+      to: String(row.email),
+      email,
+      fromName: "Kaizena Flow",
+      idempotencyKey: `access-${kind}:${requestId}`,
+    });
+  } catch (error) {
+    console.error("[platform] a request's email could not be sent", error);
+  }
 }
 
 export type AccessRequest = {
@@ -186,7 +217,7 @@ export async function approveAccessRequest(
   }
   // What the requester chose (D175, D176), to say what gave way when it is no longer offered (D177).
   const [asked] = await db().execute<Row>(sql`
-    select r.starter_id, st.title as starter_title, commerce.starter_offered_source(r.starter_id) is not null as starter_offered,
+    select r.locale, r.starter_id, st.title as starter_title, commerce.starter_offered_source(r.starter_id) is not null as starter_offered,
            r.design_preset_id, d.title as design_title
     from commerce.access_requests r
     left join commerce.store_starters st on st.id = r.starter_id
@@ -248,12 +279,21 @@ export async function approveAccessRequest(
   await markNewStore(storeId);
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
   await notifyReferralOpened(storeId).catch(() => null);
+  // The new owner's admin starts in the request's language, unless they have chosen one already (D312 P6, A0).
+  await db()
+    .execute(sql`
+      update commerce.accounts a set admin_locale = r.locale
+      from commerce.access_requests r
+      where r.id = ${requestId}::uuid and r.locale is not null and lower(a.email) = lower(r.email) and a.admin_locale is null
+    `)
+    .catch(() => null);
+  await sendAccessEmail("approved", requestId, `${origin}/admin/sign-in`);
 
   return {
     ok: true,
     slug,
     email,
-    invited: await emailSignInLink(email, origin),
+    invited: await emailSignInLink(email, origin, asked?.locale ? String(asked.locale) : null),
     design,
     storeId,
     fellBack: { starter: starterFellBack, design: designFellBack },
@@ -323,7 +363,9 @@ export async function declineAccessRequest(admin: Account, requestId: string): P
      where id = ${requestId}::uuid and status = 'pending'
     returning email
   `);
-  if (row) await audit(admin.id, null, "platform.access_declined", { email: String(row.email) });
+  if (!row) return;
+  await audit(admin.id, null, "platform.access_declined", { email: String(row.email) });
+  await sendAccessEmail("declined", requestId);
 }
 
 /** How many stores one person may own; platform admins have no limit. */

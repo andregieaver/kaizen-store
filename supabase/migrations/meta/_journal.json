@@ -2913,6 +2913,13 @@
       "when": 1792678531218,
       "tag": "20261022141531_store_domain_language",
       "breakpoints": true
+    },
+    {
+      "idx": 416,
+      "version": "7",
+      "when": 1792681368353,
+      "tag": "20261022150248_access_request_locale",
+      "breakpoints": true
     }
   ]
 }

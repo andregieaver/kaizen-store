@@ -185,6 +185,28 @@ export const platformNb: PlatformMessages = {
     description: "Informasjonskapslene Kaizena Flows nettsted bruker, hvem som setter dem, hvorfor og hvor lenge.",
   },
   notFound: { title: "Denne siden finnes ikke.", home: "Forsiden til Kaizena Flow" },
+  accessEmails: {
+    received: {
+      subject: "Vi har fått forespørselen din om {store}",
+      preview: "Vi skriver til deg igjen når butikken er klar.",
+      heading: "Takk, {name}",
+      body: "Vi har fått forespørselen din om å åpne {store} i Kaizena Flow. Vi leser hver forespørsel, og vi skriver til deg igjen når butikken er klar.",
+      nothing: "Du trenger ikke gjøre noe nå.",
+    },
+    approved: {
+      subject: "{store} er klar i Kaizena Flow",
+      preview: "Logg inn med denne e-postadressen for å komme i gang.",
+      heading: "Butikken din er klar",
+      body: "{store} er satt opp. Logg inn med denne e-postadressen for å komme i gang. Vi har også sendt deg en innloggingslenke i en egen e-post.",
+      button: "Logg inn",
+    },
+    declined: {
+      subject: "Forespørselen din om {store}",
+      preview: "Om forespørselen din om å åpne en butikk i Kaizena Flow.",
+      heading: "Om forespørselen din",
+      body: "Takk for at du er interessert i Kaizena Flow. Vi kan ikke åpne {store} for deg nå. Du er velkommen til å spørre igjen senere.",
+    },
+  },
   unsubscribe: {
     title: "Påminnelser om abonnement",
     done: "Du er meldt av. Kaizena Flow sender deg ikke flere påminnelser om abonnementer.",

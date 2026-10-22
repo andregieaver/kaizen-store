@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "locale" text;--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_locale" CHECK ("commerce"."access_requests"."locale" is null or "commerce"."access_requests"."locale" in ('en', 'nb-NO'));
