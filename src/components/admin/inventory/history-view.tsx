@@ -1,15 +1,19 @@
 import Link from "next/link";
 
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
-import { momentText } from "@/lib/data-admin";
-import { INVENTORY_RETENTION_MONTHS, MOVEMENT_REASONS, reasonWord } from "@/lib/inventory";
-import { deltaText, figureText, historyHref, type HistoryQuery } from "@/lib/inventory-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { INVENTORY_RETENTION_MONTHS, MOVEMENT_REASONS } from "@/lib/inventory";
+import { historyHref, type HistoryQuery } from "@/lib/inventory-admin";
+import { byIn, deltaIn, figureIn, momentIn, reasonIn } from "@/lib/inventory-words";
 import type { HistoryRow } from "@/server/inventory";
 
 /**
  * The stock history (wave 3, D172, `docs/wave-3-inventory.md` 2.2): every change of a level, newest first, with the location, the change and the new
  * figure, the reason and who or what made it (a staff member, an order or return, a file, the AI manager, the system). The filter is a plain GET form;
- * the next page is a link with the id to start after. A movement holds no personal data: the staff member's name is read for display only. Presentational.
+ * the next page is a link with the id to start after. A movement holds no personal data: the staff member's name is read for display only. Presentational,
+ * in the admin's language (`lang`, D312 A5).
  */
 export function HistoryView({
   slug,
@@ -18,6 +22,7 @@ export function HistoryView({
   query,
   locations,
   timeZone,
+  lang = "en",
 }: {
   slug: string;
   rows: HistoryRow[];
@@ -25,108 +30,114 @@ export function HistoryView({
   query: HistoryQuery;
   locations: { id: string; name: string; active: boolean }[];
   timeZone: string;
+  lang?: AdminLang;
 }) {
+  const t = adminText(lang, "inventory");
+  const w = t.history;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${slug}/inventory/history`;
   const filtered = Boolean(query.sku || query.variant || query.location || query.reason || query.from || query.to);
   const keep = { sku: query.sku, variant: query.variant, location: query.location, reason: query.reason, from: query.from, to: query.to };
   return (
     <div className="flex flex-col gap-4">
-      <form method="get" action={base} className={`${card} flex flex-wrap items-end gap-3`} role="search" aria-label="Filter the history">
+      <form method="get" action={base} className={`${card} flex flex-wrap items-end gap-3`} role="search" aria-label={w.filter}>
         {query.variant && <input type="hidden" name="variant" value={query.variant} />}
         <div className="flex flex-col gap-1">
           <label htmlFor="history-sku" className="text-sm font-medium">
-            SKU
+            {w.sku}
           </label>
           <input id="history-sku" name="sku" defaultValue={query.sku} className={`${field} w-48 font-mono`} />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="history-location" className="text-sm font-medium">
-            Location
+            {w.location}
           </label>
           <select id="history-location" name="location" defaultValue={query.location ?? ""} className={field}>
-            <option value="">All locations</option>
+            <option value="">{w.allLocations}</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
-                {l.active ? "" : " (inactive)"}
+                {l.active ? "" : w.inactive}
               </option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="history-reason" className="text-sm font-medium">
-            Reason
+            {w.reason}
           </label>
           <select id="history-reason" name="reason" defaultValue={query.reason ?? ""} className={field}>
-            <option value="">Any reason</option>
+            <option value="">{w.anyReason}</option>
             {MOVEMENT_REASONS.map((r) => (
               <option key={r} value={r}>
-                {reasonWord(r)}
+                {reasonIn(r, t)}
               </option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="history-from" className="text-sm font-medium">
-            From
+            {w.from}
           </label>
           <input id="history-from" type="date" name="from" defaultValue={query.from ?? ""} className={field} />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="history-to" className="text-sm font-medium">
-            To
+            {w.to}
           </label>
           <input id="history-to" type="date" name="to" defaultValue={query.to ?? ""} className={field} />
         </div>
         <button type="submit" className={primary}>
-          Filter
+          {w.filterButton}
         </button>
         {filtered && (
           <Link href={base} className={secondary}>
-            Clear the filter
+            {w.clear}
           </Link>
         )}
       </form>
-      {query.variant && <p className={hint}>Showing the changes of one variant.</p>}
+      {query.variant && <p className={hint}>{w.oneVariant}</p>}
 
       {rows.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{filtered ? "No change matches this filter." : "No change of stock has been recorded yet."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{filtered ? w.noMatch : w.nothingYet}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
-            <caption className="sr-only">Changes of stock levels, newest first</caption>
+            <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className={th}>
-                  When
+                  {w.when}
                 </th>
                 <th scope="col" className={th}>
-                  Variant
+                  {w.variant}
                 </th>
                 <th scope="col" className={th}>
-                  Location
+                  {w.location}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Change
+                  {w.change}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  New on hand
+                  {w.newOnHand}
                 </th>
                 <th scope="col" className={th}>
-                  Reason
+                  {w.reason}
                 </th>
                 <th scope="col" className={th}>
-                  By
+                  {w.by}
                 </th>
                 <th scope="col" className={th}>
-                  Note
+                  {w.note}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.map((r) => {
+                const by = r.byFacts ? byIn(r.byFacts, t) : r.by;
+                return (
                 <tr key={r.id} className="border-b border-line last:border-0">
-                  <td className={`${td} whitespace-nowrap`}>{momentText(r.createdAt, timeZone)}</td>
+                  <td className={`${td} whitespace-nowrap`}>{momentIn(r.createdAt, timeZone, locale)}</td>
                   <td className={td}>
                     {r.productId ? (
                       <Link href={`/admin/${slug}/products/${r.productId}`} className="font-medium underline-offset-2 hover:underline">
@@ -141,44 +152,45 @@ export function HistoryView({
                     </Link>
                   </td>
                   <td className={td}>{r.location}</td>
-                  <td className={`${td} text-right tabular-nums`}>{deltaText(r.delta)}</td>
-                  <td className={`${td} text-right tabular-nums`}>{figureText(r.onHandAfter)}</td>
-                  <td className={td}>{reasonWord(r.reason)}</td>
+                  <td className={`${td} text-right tabular-nums`}>{deltaIn(r.delta, locale)}</td>
+                  <td className={`${td} text-right tabular-nums`}>{figureIn(r.onHandAfter, locale)}</td>
+                  <td className={td}>{reasonIn(r.reason, t)}</td>
                   <td className={td}>
                     {r.orderId ? (
                       <Link href={`/admin/${slug}/orders/${r.orderId}`} className="underline underline-offset-2">
-                        {r.by}
+                        {by}
                       </Link>
                     ) : r.returnId ? (
                       <Link href={`/admin/${slug}/returns/${r.returnId}`} className="underline underline-offset-2">
-                        {r.by}
+                        {by}
                       </Link>
                     ) : (
-                      r.by
+                      by
                     )}
                   </td>
                   <td className={`${td} break-words`}>{r.note ?? <span className={hint}>-</span>}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      <nav aria-label="Pages" className="flex flex-wrap items-center gap-3 text-sm">
+      <nav aria-label={w.pages} className="flex flex-wrap items-center gap-3 text-sm">
         {query.after && (
           <Link href={historyHref(base, keep)} className="underline underline-offset-2">
-            Back to the newest
+            {w.newest}
           </Link>
         )}
         {nextCursor && (
           <Link href={historyHref(base, { ...keep, after: nextCursor })} className="underline underline-offset-2">
-            Older changes
+            {w.older}
           </Link>
         )}
       </nav>
       <p className={hint}>
-        The history is kept for {INVENTORY_RETENTION_MONTHS} months and cannot be edited: a wrong change is corrected by a new one. Times are in the store&apos;s time zone.
+        {fillWords(w.kept, { months: INVENTORY_RETENTION_MONTHS })}
       </p>
     </div>
   );

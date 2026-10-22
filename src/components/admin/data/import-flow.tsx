@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
-import { IMPORT_CONFIRMATION, formatBytes, wholeNumber } from "@/lib/data-admin";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { formatBytes, wholeNumber } from "@/lib/data-admin";
 import { createClient } from "@/lib/supabase/client";
 import type { ImportOptions } from "@/lib/product-import";
 
@@ -30,6 +33,7 @@ export function ImportUpload({
   start: (fileName: string) => Promise<Upload>;
   register: (input: { path: string; name: string }) => Promise<Registered>;
 }) {
+  const w = useAdminText("products").upload;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -38,15 +42,15 @@ export function ImportUpload({
   const send = async () => {
     const file = input.current?.files?.[0];
     if (!file) {
-      setProblems(["Choose a CSV file first."]);
+      setProblems([w.chooseFile]);
       return;
     }
     if (!/\.csv$/i.test(file.name)) {
-      setProblems(["The file must be a .csv file. In Excel, use Save as and choose CSV."]);
+      setProblems([w.notCsv]);
       return;
     }
     if (file.size > IMPORT_MAX_BYTES) {
-      setProblems([`The file is ${formatBytes(file.size)} and an import takes at most ${formatBytes(IMPORT_MAX_BYTES)}. Split it into smaller files.`]);
+      setProblems([fillWords(w.tooLarge, { size: formatBytes(file.size), max: formatBytes(IMPORT_MAX_BYTES) })]);
       return;
     }
     setProblems([]);
@@ -61,7 +65,7 @@ export function ImportUpload({
         .storage.from(started.bucket)
         .uploadToSignedUrl(started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
       if (stored.error) {
-        setProblems(["The file did not arrive. Try again."]);
+        setProblems([w.didNotArrive]);
         return;
       }
       const registered = await register({ path: started.path, name: file.name });
@@ -71,7 +75,7 @@ export function ImportUpload({
       }
       router.push(`/admin/${slug}/products/import/${registered.jobId}`);
     } catch {
-      setProblems(["The file could not be sent. Try again."]);
+      setProblems([w.couldNotSend]);
     } finally {
       setWorking(false);
     }
@@ -81,14 +85,14 @@ export function ImportUpload({
     <div className={`${card} flex flex-col gap-3`} aria-busy={working}>
       <div className="flex flex-col gap-1">
         <label htmlFor="import-file" className={label}>
-          A CSV file of products
+          {w.label}
         </label>
         <input id="import-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>Up to {formatBytes(IMPORT_MAX_BYTES)}. Kaizena Flow&apos;s own file (the one a product export makes) and a Shopify product file are read. Nothing is changed until you have seen the check and pressed Import.</p>
+        <p className={hint}>{fillWords(w.hint, { max: formatBytes(IMPORT_MAX_BYTES) })}</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={send} disabled={working} className={primary}>
-          {working ? "Sending the file …" : "Upload and read the file"}
+          {working ? w.sending : w.upload}
         </button>
       </div>
       <div role="status" aria-live="polite">
@@ -118,6 +122,7 @@ export type OptionChoices = {
  * a wrong guess changes every price. Changing an option of a checked file and pressing the button checks it again.
  */
 export function ImportOptionsForm({ choices, check, checked }: { choices: OptionChoices; check: (options: ImportOptions) => Promise<Step>; checked: boolean }) {
+  const w = useAdminText("products").options;
   const router = useRouter();
   const [options, setOptions] = useState<ImportOptions>(choices.initial);
   const [problem, setProblem] = useState<string | null>(null);
@@ -143,88 +148,88 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
         run();
       }}
     >
-      <h2 className="text-title text-ink">What should the import do</h2>
+      <h2 className="text-title text-ink">{w.heading}</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="opt-mode" className={label}>
-            What to do
+            {w.mode}
           </label>
           <select id="opt-mode" value={options.mode} onChange={(e) => set("mode", e.target.value as ImportOptions["mode"])} className={field}>
-            <option value="upsert">Create new products and update existing ones</option>
-            <option value="create">Only create new products</option>
-            <option value="update">Only update existing products</option>
+            <option value="upsert">{w.upsert}</option>
+            <option value="create">{w.create}</option>
+            <option value="update">{w.update}</option>
           </select>
-          <p className={hint}>A product is found by its handle. Nothing is ever deleted, and a handle is never changed.</p>
+          <p className={hint}>{w.modeHint}</p>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="opt-unpublishable" className={label}>
-            A product that cannot be published
+            {w.unpublishable}
           </label>
           <select id="opt-unpublishable" value={options.unpublishable} onChange={(e) => set("unpublishable", e.target.value as ImportOptions["unpublishable"])} className={field}>
-            <option value="draft">Save it as a draft and list why</option>
-            <option value="skip">Skip it</option>
+            <option value="draft">{w.asDraft}</option>
+            <option value="skip">{w.skip}</option>
           </select>
-          <p className={hint}>A product needs a picture, a price and, for physical goods, a manufacturer before it can be published.</p>
+          <p className={hint}>{w.unpublishableHint}</p>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="opt-manufacturer" className={label}>
-            Manufacturer for new physical products with none in the file
+            {w.manufacturer}
           </label>
           <select id="opt-manufacturer" value={options.manufacturerId ?? ""} onChange={(e) => set("manufacturerId", e.target.value === "" ? null : e.target.value)} className={field}>
-            <option value="">None</option>
+            <option value="">{w.none}</option>
             {choices.operators.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
               </option>
             ))}
           </select>
-          <p className={hint}>A Vendor in a Shopify file is never used as the manufacturer: that is a legal designation you make on purpose, under product safety.</p>
+          <p className={hint}>{w.manufacturerHint}</p>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="opt-missing" className={label}>
-            Variants of an existing product that are not in the file
+            {w.missing}
           </label>
           <select id="opt-missing" value={options.missingVariants} onChange={(e) => set("missingVariants", e.target.value as ImportOptions["missingVariants"])} className={field}>
-            <option value="keep">Keep them as they are</option>
-            <option value="switch_off">Switch them off (never deleted)</option>
+            <option value="keep">{w.keep}</option>
+            <option value="switch_off">{w.switchOff}</option>
           </select>
         </div>
       </div>
       {shopify && (
         <fieldset className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
-          <legend className={`${label} px-1`}>This is a Shopify file</legend>
+          <legend className={`${label} px-1`}>{w.shopify}</legend>
           <div className="flex flex-col gap-1">
-            <span className={label}>Do the prices in the file include VAT?</span>
+            <span className={label}>{w.vatQuestion}</span>
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" name="basis" checked={options.pricesIncludeVat === true} onChange={() => set("pricesIncludeVat", true)} /> Yes, the prices include VAT
+              <input type="radio" name="basis" checked={options.pricesIncludeVat === true} onChange={() => set("pricesIncludeVat", true)} /> {w.vatYes}
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" name="basis" checked={options.pricesIncludeVat === false} onChange={() => set("pricesIncludeVat", false)} /> No, the prices are without VAT
+              <input type="radio" name="basis" checked={options.pricesIncludeVat === false} onChange={() => set("pricesIncludeVat", false)} /> {w.vatNo}
             </label>
-            <p className={hint}>There is no default: a wrong answer would change every price. Kaizena Flow prices are kept with VAT for each country.</p>
+            <p className={hint}>{w.vatHint}</p>
           </div>
           {choices.markets.length > 1 && (
             <div className="flex flex-col gap-1">
               <label htmlFor="opt-market" className={label}>
-                The market of the Price column
+                {w.market}
               </label>
               <select id="opt-market" value={options.priceMarket ?? choices.markets[0].code} onChange={(e) => set("priceMarket", e.target.value)} className={field}>
                 {choices.markets.map((m) => (
                   <option key={m.code} value={m.code}>
-                    {m.name} ({m.currency})
+                    {fillWords(w.marketLine, { name: m.name, currency: m.currency })}
                   </option>
                 ))}
               </select>
-              <p className={hint}>Prices are read in the country&apos;s own currency and never converted.</p>
+              <p className={hint}>{w.marketHint}</p>
             </div>
           )}
         </fieldset>
       )}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || needsBasis} className={primary}>
-          {pending ? "Starting the check …" : checked ? "Check the file again" : "Check the file"}
+          {pending ? w.starting : checked ? w.checkAgain : w.check}
         </button>
-        {needsBasis && <span className={hint}>Say whether the prices include VAT first.</span>}
+        {needsBasis && <span className={hint}>{w.needsBasis}</span>}
       </div>
       <div role="status" aria-live="polite">
         {problem && <p className="text-sm text-danger-text">{problem}</p>}
@@ -243,6 +248,10 @@ export function ImportApply({
   apply: () => Promise<Step>;
   cancel: () => Promise<Step>;
 }) {
+  const all = useAdminText("products");
+  const w = all.apply;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const n = (value: number) => wholeNumber(value, locale);
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -257,37 +266,41 @@ export function ImportApply({
     });
 
   return (
-    <section aria-label="Import" className={`${card} flex flex-col gap-3`} aria-busy={pending}>
-      <h2 className="text-title text-ink">Ready to import</h2>
+    <section aria-label={w.label} className={`${card} flex flex-col gap-3`} aria-busy={pending}>
+      <h2 className="text-title text-ink">{w.ready}</h2>
       <p className="text-sm">
-        {wholeNumber(counts.toCreate)} to create, {wholeNumber(counts.toUpdate)} to update, {wholeNumber(counts.unchanged)} unchanged
-        {counts.withProblems > 0 ? `, ${wholeNumber(counts.withProblems)} with problems` : ""}.
+        {fillWords(w.counts, {
+          create: n(counts.toCreate),
+          update: n(counts.toUpdate),
+          unchanged: n(counts.unchanged),
+          problems: counts.withProblems > 0 ? fillWords(w.withProblems, { n: n(counts.withProblems) }) : "",
+        })}
       </p>
       {confirming ? (
-        <div className="flex flex-col gap-3 rounded-md border border-line bg-card p-3" role="group" aria-label="Confirm the import">
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-card p-3" role="group" aria-label={w.confirmLabel}>
           <p className="text-sm">
-            This will create {wholeNumber(counts.toCreate)} and update {wholeNumber(counts.toUpdate)} products. {IMPORT_CONFIRMATION}
+            {fillWords(w.confirm, { create: n(counts.toCreate), update: n(counts.toUpdate) })} {all.importNotes.confirmation}
           </p>
           <div className="flex flex-wrap gap-2">
             <button type="button" disabled={pending} onClick={() => go(apply)} className={primary}>
-              {pending ? "Starting …" : "Yes, import"}
+              {pending ? w.starting : w.yes}
             </button>
             <button type="button" disabled={pending} onClick={() => setConfirming(false)} className={secondary}>
-              Not yet
+              {w.notYet}
             </button>
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={writes + counts.unchanged === 0} onClick={() => setConfirming(true)} className={primary}>
-            Import …
+            {w.importButton}
           </button>
           <button type="button" disabled={pending} onClick={() => go(cancel)} className={secondary}>
-            Cancel this import
+            {w.cancel}
           </button>
         </div>
       )}
-      {writes === 0 && counts.unchanged === 0 && <p className={hint}>No product in this file can be imported. Fix the problems below, or change the options and check again.</p>}
+      {writes === 0 && counts.unchanged === 0 && <p className={hint}>{w.nothing}</p>}
       <div role="status" aria-live="polite">
         {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
@@ -296,7 +309,7 @@ export function ImportApply({
 }
 
 /** Cancels a job that is being checked or applied; it stops after the current product and says how many were written. */
-export function CancelJobButton({ cancel, label: text = "Cancel" }: { cancel: () => Promise<Step>; label?: string }) {
+export function CancelJobButton({ cancel, label: text = "Cancel", stopping = "Stopping …" }: { cancel: () => Promise<Step>; label?: string; stopping?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
@@ -314,7 +327,7 @@ export function CancelJobButton({ cancel, label: text = "Cancel" }: { cancel: ()
           })
         }
       >
-        {pending ? "Stopping …" : text}
+        {pending ? stopping : text}
       </button>
       {problem && <p role="alert" className="text-sm text-danger-text">{problem}</p>}
     </div>

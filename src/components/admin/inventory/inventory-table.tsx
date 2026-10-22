@@ -4,29 +4,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useState, useTransition } from "react";
 
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
-import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, BACKORDER_LONG_HINT, THRESHOLD_MAX, type AdjustReason } from "@/lib/inventory";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, BACKORDER_LONG_HINT, STOCK_MAX, THRESHOLD_MAX, type AdjustReason } from "@/lib/inventory";
 import {
   EMPTY_CELL,
-  FIGURE_HINT,
-  NOTE_HINT,
-  OUTCOME_WORDS,
   REASON_CHOICES,
-  STATE_HELP,
-  STATE_WORDS,
   adjustPayload,
-  deltaText,
-  figureText,
   parseTyped,
-  policyCell,
   reasonChoice,
   reviewRows,
   rowStates,
-  savedWords,
   sendable,
   type CellRef,
   type CellTyped,
 } from "@/lib/inventory-admin";
+import { adjustProblemsIn, deltaIn, figureIn, policyIn, savedIn } from "@/lib/inventory-words";
 import type { AdjustResult, InventoryRow, PolicyResult } from "@/server/inventory";
 
 export type InventoryTools = {
@@ -48,6 +43,7 @@ const cellInput = "min-h-9 w-24 rounded-md border border-line bg-card px-2 text-
  *
  * A store with one active location (or a list filtered to one location) edits right in the row. With several, a row's *Locations* opens each location's
  * own figures and boxes: a figure is always one location's. Selected rows can be set to keep selling at zero stock, to stop, or given a low-stock level.
+ * In the admin's language (`useAdminText("inventory")`, D312 A5); what the server answers (a refusal, a row's problem) keeps the server's words.
  */
 export function InventoryTable({
   rows,
@@ -68,6 +64,11 @@ export function InventoryTable({
   productBase: string;
 }) {
   const router = useRouter();
+  const t = useAdminText("inventory");
+  const w = t.table;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const figureText = (n: number) => figureIn(n, locale);
+  const deltaText = (n: number) => deltaIn(n, locale);
   const [typed, setTyped] = useState<Record<string, CellTyped>>({});
   const [reason, setReason] = useState<AdjustReason>("correction");
   const [note, setNote] = useState("");
@@ -98,12 +99,13 @@ export function InventoryTable({
         for (const l of row.locations) places.set(l.locationId, l.onHand);
         if (mainLocation && !places.has(mainLocation)) places.set(mainLocation, 0);
       }
-      for (const [locationId, onHand] of places) out.push({ ...base, key: keyOf(row.variantId, locationId), locationId, was: onHand, location: locationName.get(locationId) ?? "Location" });
+      for (const [locationId, onHand] of places) out.push({ ...base, key: keyOf(row.variantId, locationId), locationId, was: onHand, location: locationName.get(locationId) ?? w.location });
     }
     return out;
-  }, [rows, chosenLocationId, mainLocation, locationName]);
+  }, [rows, chosenLocationId, mainLocation, locationName, w.location]);
 
-  const review = useMemo(() => reviewRows(cells, typed), [cells, typed]);
+  const problemWords = useMemo(() => adjustProblemsIn(t, locale), [t, locale]);
+  const review = useMemo(() => reviewRows(cells, typed, problemWords), [cells, typed, problemWords]);
   const sendableRows = sendable(review);
   const problems = review.filter((r) => r.problem !== null);
 
@@ -142,8 +144,8 @@ export function InventoryTable({
       setPolicyNote(null);
       const result = await tools.setPolicy({ variantIds: [...selected], change });
       if (!result.ok) return setPolicyNote(result.problems.join(" "));
-      const bits = [`${result.changed.toLocaleString("en-GB")} changed`];
-      if (result.unchanged > 0) bits.push(`${result.unchanged.toLocaleString("en-GB")} already like that`);
+      const bits = [fillWords(w.policyChanged, { n: result.changed.toLocaleString(locale) })];
+      if (result.unchanged > 0) bits.push(fillWords(w.policyUnchanged, { n: result.unchanged.toLocaleString(locale) }));
       setPolicyNote(`${bits.join(", ")}.${result.problems.length > 0 ? ` ${result.problems.join(" ")}` : ""}`);
       setSelected(new Set());
       router.refresh();
@@ -168,39 +170,39 @@ export function InventoryTable({
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
       {canWrite && selected.size > 0 && (
-        <section aria-label="Change the chosen variants" className={`${card} flex flex-col gap-3`}>
+        <section aria-label={w.chosenHeading} className={`${card} flex flex-col gap-3`}>
           <h2 className="text-title text-ink">
-            {selected.size.toLocaleString("en-GB")} {selected.size === 1 ? "variant" : "variants"} chosen
+            {countWords(selected.size, w.chosen, { n: selected.size.toLocaleString(locale) })}
           </h2>
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="bulk-days" className="text-xs font-medium">
-                Expected to ship within (days)
+                {w.shipWithin}
               </label>
               <input id="bulk-days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} className={`${field} w-24`} />
             </div>
             <button type="button" disabled={pending || !daysOk} onClick={() => applyPolicy({ kind: "continue", backorderDays: daysNumber })} className={secondary}>
-              Keep selling when sold out
+              {w.keepSelling}
             </button>
             <button type="button" disabled={pending} onClick={() => applyPolicy({ kind: "deny" })} className={secondary}>
-              Stop selling when sold out
+              {w.stopSelling}
             </button>
             <div className="flex flex-col gap-1">
               <label htmlFor="bulk-level" className="text-xs font-medium">
-                Warn me at or below
+                {w.warnAt}
               </label>
-              <input id="bulk-level" inputMode="numeric" value={level} placeholder="No warning" onChange={(e) => setLevel(e.target.value)} className={`${field} w-28`} />
+              <input id="bulk-level" inputMode="numeric" value={level} placeholder={w.noWarning} onChange={(e) => setLevel(e.target.value)} className={`${field} w-28`} />
             </div>
             <button type="button" disabled={pending || !levelOk} onClick={() => applyPolicy({ kind: "threshold", lowStockThreshold: levelNumber })} className={secondary}>
-              Set low-stock level
+              {w.setLevel}
             </button>
             <button type="button" disabled={pending} onClick={() => setSelected(new Set())} className="min-h-10 text-sm underline underline-offset-2">
-              Clear the choice
+              {w.clearChoice}
             </button>
           </div>
           {typeof daysNumber === "number" && backorderMayPassAgreed(daysNumber) && <p className={hint}>{BACKORDER_LONG_HINT}</p>}
           <p className={hint}>
-            A variant that keeps selling says on its page, in the cart and in the order how many days it is expected to ship within. Days are required ({BACKORDER_DAYS_MIN} to {BACKORDER_DAYS_MAX}). Only goods that are shipped can keep selling.
+            {fillWords(w.keepHint, { min: BACKORDER_DAYS_MIN, max: BACKORDER_DAYS_MAX })}
           </p>
         </section>
       )}
@@ -212,53 +214,53 @@ export function InventoryTable({
 
       <div className={tableShell}>
         <table className="w-full text-sm">
-          <caption className="sr-only">One row for each variant: on hand, held by checkouts in progress, available and owed, with its policy at zero stock and its low-stock level.</caption>
+          <caption className="sr-only">{w.caption}</caption>
           <thead>
             <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={th}>
-                  <span className="sr-only">Choose</span>
+                  <span className="sr-only">{w.choose}</span>
                 </th>
               )}
               <th scope="col" className={th}>
-                Variant
+                {w.variant}
               </th>
               <th scope="col" className={th}>
-                SKU
+                {w.sku}
               </th>
               <th scope="col" className={`${th} text-right`}>
-                On hand
+                {w.onHand}
               </th>
               {editable && (
                 <>
                   <th scope="col" className={th}>
-                    Set to
+                    {w.setTo}
                   </th>
                   <th scope="col" className={th}>
-                    Adjust by
+                    {w.adjustBy}
                   </th>
                 </>
               )}
               <th scope="col" className={`${th} text-right`}>
-                Committed
+                {w.committed}
               </th>
               <th scope="col" className={`${th} text-right`}>
-                Available
+                {w.available}
               </th>
               <th scope="col" className={`${th} text-right`}>
-                Owed
+                {w.owed}
               </th>
               <th scope="col" className={th}>
-                At zero stock
+                {w.atZero}
               </th>
               <th scope="col" className={th}>
-                Low-stock level
+                {w.lowLevel}
               </th>
               <th scope="col" className={th}>
-                State
+                {w.state}
               </th>
               <th scope="col" className={th}>
-                <span className="sr-only">More</span>
+                <span className="sr-only">{w.more}</span>
               </th>
             </tr>
           </thead>
@@ -274,7 +276,7 @@ export function InventoryTable({
                   <tr className="border-b border-line last:border-0">
                     {canWrite && (
                       <td className={td}>
-                        <input type="checkbox" checked={selected.has(row.variantId)} onChange={() => toggle(row.variantId)} aria-label={`Choose ${name}`} className="size-4" />
+                        <input type="checkbox" checked={selected.has(row.variantId)} onChange={() => toggle(row.variantId)} aria-label={fillWords(w.chooseRow, { name })} className="size-4" />
                       </td>
                     )}
                     <td className={td}>
@@ -282,7 +284,7 @@ export function InventoryTable({
                         {row.title}
                       </Link>
                       {optionsText(row.options) && <span className={`${hint} block`}>{optionsText(row.options)}</span>}
-                      {row.productStatus === "draft" && <span className={`${hint} block`}>Draft</span>}
+                      {row.productStatus === "draft" && <span className={`${hint} block`}>{w.draft}</span>}
                     </td>
                     <td className={`${td} font-mono text-xs`}>{row.sku}</td>
                     <td className={`${td} text-right tabular-nums`}>{figureText(row.onHand)}</td>
@@ -294,12 +296,12 @@ export function InventoryTable({
                               inputMode="numeric"
                               value={typedHere.set}
                               onChange={(e) => type(own, { set: e.target.value })}
-                              aria-label={`Set on hand to, ${name}`}
+                              aria-label={fillWords(w.setLabel, { name })}
                               placeholder={String(row.onHand)}
                               className={`${cellInput} ${changed && typedHere.set !== "" ? "border-brand" : ""}`}
                             />
                           ) : (
-                            <span className={hint}>See locations</span>
+                            <span className={hint}>{w.seeLocations}</span>
                           )}
                         </td>
                         <td className={td}>
@@ -308,8 +310,8 @@ export function InventoryTable({
                               inputMode="numeric"
                               value={typedHere.by}
                               onChange={(e) => type(own, { by: e.target.value })}
-                              aria-label={`Adjust on hand by, ${name}`}
-                              placeholder="+5 or -2"
+                              aria-label={fillWords(w.adjustLabel, { name })}
+                              placeholder={w.adjustPlaceholder}
                               className={`${cellInput} ${changed && typedHere.by !== "" ? "border-brand" : ""}`}
                             />
                           ) : (
@@ -321,16 +323,16 @@ export function InventoryTable({
                     <td className={`${td} text-right tabular-nums`}>{figureText(row.committed)}</td>
                     <td className={`${td} text-right tabular-nums`}>{figureText(row.available)}</td>
                     <td className={`${td} text-right tabular-nums`}>{row.owed > 0 ? figureText(row.owed) : <span className={hint}>0</span>}</td>
-                    <td className={td}>{policyCell(row.stockPolicy, row.backorderDays)}</td>
-                    <td className={td}>{row.lowStockThreshold === null ? <span className={hint}>None</span> : figureText(row.lowStockThreshold)}</td>
+                    <td className={td}>{policyIn(row.stockPolicy, row.backorderDays, t)}</td>
+                    <td className={td}>{row.lowStockThreshold === null ? <span className={hint}>{w.none}</span> : figureText(row.lowStockThreshold)}</td>
                     <td className={td}>
                       <span className="flex flex-wrap gap-1">
                         {states.length === 0 ? (
                           <span className={hint}>-</span>
                         ) : (
                           states.map((s) => (
-                            <span key={s} title={STATE_HELP[s]} className={`rounded-full border border-line px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-medium" : ""}`}>
-                              {STATE_WORDS[s]}
+                            <span key={s} title={t.stateHelp[s]} className={`rounded-full border border-line px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-medium" : ""}`}>
+                              {t.states[s]}
                             </span>
                           ))
                         )}
@@ -338,7 +340,7 @@ export function InventoryTable({
                     </td>
                     <td className={`${td} whitespace-nowrap text-right`}>
                       <Link href={`${historyBase}?variant=${row.variantId}`} className="text-xs underline underline-offset-2">
-                        History
+                        {w.history}
                       </Link>
                     </td>
                   </tr>
@@ -347,32 +349,32 @@ export function InventoryTable({
                       <td colSpan={columns} className="px-3 pb-3 pt-0">
                         <details>
                           <summary className="cursor-pointer text-xs text-muted">
-                            Locations of {name} ({row.locations.length})
+                            {fillWords(w.locationsOf, { name, n: row.locations.length })}
                           </summary>
                           <div className="mt-2 overflow-x-auto">
                             <table className="w-full text-xs">
-                              <caption className="sr-only">Figures of {name} at each stock location</caption>
+                              <caption className="sr-only">{fillWords(w.locationsCaption, { name })}</caption>
                               <thead>
                                 <tr className="border-b border-line">
                                   <th scope="col" className="py-1 pr-3 text-left font-medium">
-                                    Location
+                                    {w.location}
                                   </th>
                                   <th scope="col" className="py-1 pr-3 text-right font-medium">
-                                    On hand
+                                    {w.onHand}
                                   </th>
                                   <th scope="col" className="py-1 pr-3 text-right font-medium">
-                                    Committed
+                                    {w.committed}
                                   </th>
                                   <th scope="col" className="py-1 pr-3 text-right font-medium">
-                                    Available
+                                    {w.available}
                                   </th>
                                   {canWrite && (
                                     <>
                                       <th scope="col" className="py-1 pr-3 text-left font-medium">
-                                        Set to
+                                        {w.setTo}
                                       </th>
                                       <th scope="col" className="py-1 text-left font-medium">
-                                        Adjust by
+                                        {w.adjustBy}
                                       </th>
                                     </>
                                   )}
@@ -386,7 +388,7 @@ export function InventoryTable({
                                     <tr key={l.locationId} className="border-b border-line last:border-0">
                                       <th scope="row" className="py-1 pr-3 text-left font-normal">
                                         {l.name}
-                                        {!l.active && <span className="text-muted"> (inactive)</span>}
+                                        {!l.active && <span className="text-muted">{w.inactive}</span>}
                                       </th>
                                       <td className="py-1 pr-3 text-right tabular-nums">{figureText(l.onHand)}</td>
                                       <td className="py-1 pr-3 text-right tabular-nums">{figureText(l.committed)}</td>
@@ -394,10 +396,10 @@ export function InventoryTable({
                                       {canWrite && (
                                         <>
                                           <td className="py-1 pr-3">
-                                            <input inputMode="numeric" value={t.set} onChange={(e) => type(key, { set: e.target.value })} aria-label={`Set on hand to at ${l.name}, ${name}`} placeholder={String(l.onHand)} className={cellInput} />
+                                            <input inputMode="numeric" value={t.set} onChange={(e) => type(key, { set: e.target.value })} aria-label={fillWords(w.setAtLabel, { location: l.name, name })} placeholder={String(l.onHand)} className={cellInput} />
                                           </td>
                                           <td className="py-1">
-                                            <input inputMode="numeric" value={t.by} onChange={(e) => type(key, { by: e.target.value })} aria-label={`Adjust on hand by at ${l.name}, ${name}`} placeholder="+5 or -2" className={cellInput} />
+                                            <input inputMode="numeric" value={t.by} onChange={(e) => type(key, { by: e.target.value })} aria-label={fillWords(w.adjustAtLabel, { location: l.name, name })} placeholder={w.adjustPlaceholder} className={cellInput} />
                                           </td>
                                         </>
                                       )}
@@ -421,15 +423,16 @@ export function InventoryTable({
       {canWrite && (
         <>
           <p className={hint}>
-            {FIGURE_HINT} Committed is what checkouts in progress hold; a paid order has already left on hand. Available is on hand less committed, and owed is what was sold on backorder and is not sent yet.
+            {fillWords(t.figureHint, { max: STOCK_MAX.toLocaleString(locale) })} {w.figuresHint}
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" disabled={pending || review.length === 0} onClick={() => setReviewing(true)} className={primary}>
-              Review changes{review.length > 0 ? ` (${review.length})` : ""}
+              {w.review}
+              {review.length > 0 ? ` (${review.length})` : ""}
             </button>
             {review.length > 0 && (
               <button type="button" disabled={pending} onClick={discard} className={secondary}>
-                Discard changes
+                {w.discard}
               </button>
             )}
           </div>
@@ -437,28 +440,28 @@ export function InventoryTable({
       )}
 
       {reviewing && review.length > 0 && (
-        <section aria-label="Review the changes" className={`${card} flex flex-col gap-3`}>
-          <h2 className="text-title text-ink">Review the changes</h2>
-          <p className={hint}>Nothing is saved yet. Each row is saved on its own: a row whose stock changed since this page was opened is left alone and listed.</p>
+        <section aria-label={w.reviewHeading} className={`${card} flex flex-col gap-3`}>
+          <h2 className="text-title text-ink">{w.reviewHeading}</h2>
+          <p className={hint}>{w.reviewHint}</p>
           <div className={tableShell}>
             <table className="w-full text-sm">
-              <caption className="sr-only">Changes that would be saved, before and after</caption>
+              <caption className="sr-only">{w.reviewCaption}</caption>
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className={th}>
-                    Variant
+                    {w.variant}
                   </th>
                   <th scope="col" className={th}>
-                    Location
+                    {w.location}
                   </th>
                   <th scope="col" className={`${th} text-right`}>
-                    Before
+                    {w.before}
                   </th>
                   <th scope="col" className={`${th} text-right`}>
-                    After
+                    {w.after}
                   </th>
                   <th scope="col" className={`${th} text-right`}>
-                    Change
+                    {w.change}
                   </th>
                 </tr>
               </thead>
@@ -481,35 +484,35 @@ export function InventoryTable({
               </tbody>
             </table>
           </div>
-          {problems.length > 0 && <p className="text-sm text-danger-text">{problems.length === 1 ? "One row cannot be saved and is left out." : `${problems.length} rows cannot be saved and are left out.`}</p>}
+          {problems.length > 0 && <p className="text-sm text-danger-text">{countWords(problems.length, w.leftOut)}</p>}
           <div className="grid gap-3 sm:grid-cols-[14rem_1fr]">
             <div className="flex flex-col gap-1">
               <label htmlFor="adjust-reason" className="text-sm font-medium">
-                Reason
+                {w.reason}
               </label>
               <select id="adjust-reason" value={reason} onChange={(e) => setReason(reasonChoice(e.target.value))} className={field}>
                 {REASON_CHOICES.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.label}
+                    {t.reasonChoices[r.id].label}
                   </option>
                 ))}
               </select>
-              <p className={hint}>{REASON_CHOICES.find((r) => r.id === reason)?.help}</p>
+              <p className={hint}>{t.reasonChoices[reason]?.help}</p>
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="adjust-note" className="text-sm font-medium">
-                Note <span className="font-normal text-muted">(optional)</span>
+                {w.note} <span className="font-normal text-muted">{w.optional}</span>
               </label>
               <input id="adjust-note" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} className={field} />
-              <p className={hint}>{NOTE_HINT}</p>
+              <p className={hint}>{t.noteHint}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" disabled={pending || sendableRows.length === 0} onClick={save} className={primary}>
-              {pending ? "Saving …" : `Save changes (${sendableRows.length})`}
+              {pending ? w.saving : fillWords(w.save, { n: sendableRows.length })}
             </button>
             <button type="button" disabled={pending} onClick={() => setReviewing(false)} className={secondary}>
-              Back to editing
+              {w.backToEditing}
             </button>
           </div>
         </section>
@@ -520,8 +523,8 @@ export function InventoryTable({
       </div>
 
       {saved && (
-        <section aria-label="Result" className={`${card} flex flex-col gap-2`}>
-          <h2 className="text-title text-ink">{savedWords(saved)}</h2>
+        <section aria-label={w.result} className={`${card} flex flex-col gap-2`}>
+          <h2 className="text-title text-ink">{savedIn(saved, t, locale)}</h2>
           {saved.rows.filter((r) => r.outcome !== "written" && r.outcome !== "unchanged").length > 0 && (
             <ul className="flex flex-col gap-1 text-sm">
               {saved.rows
@@ -530,14 +533,14 @@ export function InventoryTable({
                   const cell = cells.find((c) => c.key === keyOf(r.variantId, r.locationId));
                   return (
                     <li key={keyOf(r.variantId, r.locationId)} className="rounded-md border border-line bg-card px-3 py-2">
-                      <span className="font-medium">{cell ? `${cell.title}${cell.options ? `, ${cell.options}` : ""}` : "A variant"}</span>
-                      {cell ? <span className="text-muted">, {cell.location}</span> : null}: {OUTCOME_WORDS[r.outcome].toLowerCase()}. {r.problem}
+                      <span className="font-medium">{cell ? `${cell.title}${cell.options ? `, ${cell.options}` : ""}` : w.aVariant}</span>
+                      {cell ? <span className="text-muted">, {cell.location}</span> : null}: {t.outcomes[r.outcome].toLowerCase()}. {r.problem}
                     </li>
                   );
                 })}
             </ul>
           )}
-          <p className={hint}>The history shows each saved change with its reason.</p>
+          <p className={hint}>{w.historyShows}</p>
         </section>
       )}
     </div>

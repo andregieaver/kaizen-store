@@ -7,13 +7,26 @@ import { RecentBatches } from "./bulk-result";
  * The store's recent bulk changes with their results and, inside the seven days, an Undo (D165, 2.6). Read for the store the page is for, newest first;
  * `batchSummary()` counts a batch from its items, so the figures are what was recorded.
  */
-export async function BulkRecent({ storeId, timeZone, undo }: { storeId: string; timeZone: string; undo: (batchId: string) => Promise<UndoResult> }) {
+export async function BulkRecent({
+  storeId,
+  timeZone,
+  undo,
+  heading = "Recent bulk changes",
+  locale,
+}: {
+  storeId: string;
+  timeZone: string;
+  undo: (batchId: string) => Promise<UndoResult>;
+  /** In the admin's language (D312 A5), English unless given. */
+  heading?: string;
+  locale?: string;
+}) {
   const batches = await listBatches(storeId, 10);
-  const summaries = (await Promise.all(batches.map((b) => batchSummary(storeId, b.id)))).flatMap((s, i) => (s ? [{ summary: s, when: momentText(batches[i].createdAt, timeZone) }] : []));
+  const summaries = (await Promise.all(batches.map((b) => batchSummary(storeId, b.id)))).flatMap((s, i) => (s ? [{ summary: s, when: momentText(batches[i].createdAt, timeZone, locale) }] : []));
   return (
     <section aria-labelledby="recent-bulk" className="flex flex-col gap-2">
       <h2 id="recent-bulk" className="text-title text-ink">
-        Recent bulk changes
+        {heading}
       </h2>
       <RecentBatches batches={summaries} undo={undo} />
     </section>

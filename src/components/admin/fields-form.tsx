@@ -2,8 +2,11 @@
 
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import type { FieldsMessages } from "@/lib/admin-messages/fields.en";
+
 import {
-  FIELD_POSITIONS,
   fieldShows,
   isEmptyValue,
   localized,
@@ -54,6 +57,8 @@ export async function shrinkAndUpload(
     image: File,
     thumbnail: File,
   ) => Promise<{ ok: true; url: string; thumbnailUrl: string | null } | { ok: false; problem: string }>,
+  /** The admin's words (D312), `{name}` the file's; English when left out. */
+  notPicture = "{name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
 ): Promise<{ url: string; thumbnailUrl: string | null } | { problem: string }> {
   try {
     const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
@@ -64,7 +69,7 @@ export async function shrinkAndUpload(
     );
     return outcome.ok ? { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { problem: outcome.problem };
   } catch {
-    return { problem: `${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.` };
+    return { problem: fillWords(notPicture, { name: file.name }) };
   }
 }
 
@@ -77,6 +82,8 @@ type Ctx = {
   upload: PictureUpload | null;
   fileUpload: FieldFileUploader | null;
   lookups: FieldLookups;
+  /** The admin's words for the form (D312). */
+  w: FieldsMessages["form"];
 };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -128,6 +135,7 @@ export function FieldsForm({
   /** A language's name, for the hint on a text left empty. */
   languageName?: (locale: string) => string;
 }) {
+  const w = useAdminText("fields").form;
   if (groups.length === 0) return null;
   const ctx: Ctx = {
     locale,
@@ -136,6 +144,7 @@ export function FieldsForm({
     upload,
     fileUpload,
     lookups,
+    w,
   };
   return (
     <div className="flex flex-col gap-6">
@@ -179,7 +188,7 @@ function GroupForm({
     <fieldset className="flex flex-col gap-3 rounded-md border border-line p-4">
       <legend className="px-1 text-sm font-medium">{group.name}</legend>
       {shown.length === 0 ? (
-        <p className="text-sm text-muted">This group has no fields yet.</p>
+        <p className="text-sm text-muted">{ctx.w.noFields}</p>
       ) : (
         <div className="flex flex-wrap gap-x-4 gap-y-4">
           {shown.map((def) => (
@@ -196,7 +205,7 @@ function GroupForm({
         </div>
       )}
       {group.position === "side" && (
-        <p className="text-xs text-muted">Shown in the {FIELD_POSITIONS.side.toLowerCase()} on the edit page.</p>
+        <p className="text-xs text-muted">{ctx.w.shownInSide}</p>
       )}
     </fieldset>
   );
@@ -226,18 +235,16 @@ function FieldInput({
   row?: number;
 }) {
   const id = useId();
-  const { locale, upload, fileUpload, lookups } = ctx;
+  const { locale, upload, fileUpload, lookups, w } = ctx;
   const inheritedFrom = ctx.from;
   const compact = row !== undefined;
   const label = compact ? (
-    <span className="sr-only">
-      {def.label}, row {row}
-    </span>
+    <span className="sr-only">{fillWords(w.rowOf, { label: def.label, n: row })}</span>
   ) : (
     <>
       {def.label}
       {def.required && <span aria-hidden="true"> *</span>}
-      {sub || def.access === "public" ? null : <span className={`${hint} ml-1 text-xs`}>(only staff)</span>}
+      {sub || def.access === "public" ? null : <span className={`${hint} ml-1 text-xs`}>{w.onlyStaff}</span>}
     </>
   );
   const help = def.instructions && !compact ? <span className={`${hint} text-xs`}>{def.instructions}</span> : null;
@@ -326,7 +333,7 @@ function FieldInput({
             onChange={(number) => onChange(typeof number === "number" ? { value: number, unit } : undefined)}
           />
           <select
-            aria-label={`${def.label}: unit`}
+            aria-label={fillWords(w.unit, { label: def.label })}
             value={unit}
             onChange={(event) => measured && onChange({ value: measured.value, unit: event.target.value })}
             className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
@@ -359,7 +366,7 @@ function FieldInput({
           onChange={(event) => onChange(event.target.value || undefined)}
           className={input}
         >
-          <option value="">Choose …</option>
+          <option value="">{w.choose}</option>
           {(def.choices ?? []).map((choice) => (
             <option key={choice.key} value={choice.key}>
               {localized(choice.label, choice.labels, locale)}
@@ -378,7 +385,7 @@ function FieldInput({
           ))}
           {!def.required && value !== undefined && (
             <button type="button" onClick={() => onChange(undefined)} className="w-fit text-xs underline">
-              Clear
+              {w.clear}
             </button>
           )}
         </div>,
@@ -439,7 +446,7 @@ function FieldInput({
           <span className="font-medium">{label}</span>
           {help}
           {inheritedFrom && inherited !== undefined && value === undefined && (
-            <span className={`${hint} text-xs`}>Empty: shoppers see the {inheritedFrom} text.</span>
+            <span className={`${hint} text-xs`}>{fillWords(w.emptyText, { language: inheritedFrom })}</span>
           )}
           <RichTextEditor
             key={`${def.id}:${locale}`}
@@ -467,7 +474,7 @@ function FieldInput({
       return wrap(
         <div className="flex flex-wrap gap-2">
           <select
-            aria-label={`${def.label}: service`}
+            aria-label={fillWords(w.service, { label: def.label })}
             value={video?.source ?? "youtube"}
             onChange={(event) =>
               onChange({ source: event.target.value as "youtube" | "vimeo", link: video?.link ?? "" })
@@ -481,7 +488,7 @@ function FieldInput({
             id={id}
             type="url"
             value={video?.link ?? ""}
-            placeholder="Paste the video's address"
+            placeholder={w.videoAddress}
             onChange={(event) =>
               onChange(
                 event.target.value ? { source: video?.source ?? "youtube", link: event.target.value } : undefined,
@@ -532,10 +539,10 @@ function FieldInput({
             onChange={(event) => onChange(event.target.value)}
             className="h-10 w-14 rounded-md border border-line bg-card p-1"
           />
-          <span className="text-muted">{typeof value === "string" ? value : "Not chosen"}</span>
+          <span className="text-muted">{typeof value === "string" ? value : w.notChosen}</span>
           {typeof value === "string" && (
             <button type="button" onClick={() => onChange(undefined)} className="text-xs underline">
-              Clear
+              {w.clear}
             </button>
           )}
         </div>,
@@ -663,9 +670,7 @@ function GroupField({
       {help}
       {ctx.from && (
         <p className={`${hint} text-xs`}>
-          {subs.length === 0
-            ? `Nothing in it is translated. Change it in ${ctx.from}.`
-            : `Only its texts are written per language. The rest is changed in ${ctx.from}.`}
+          {fillWords(subs.length === 0 ? ctx.w.groupNothing : ctx.w.groupTexts, { language: ctx.from })}
         </p>
       )}
       {subs.length > 0 && (
@@ -691,11 +696,12 @@ function RowButtons({
   onMove: (to: number) => void;
   onRemove: () => void;
 }) {
+  const w = useAdminText("fields").form;
   return (
     <div className="flex items-center gap-1">
       <button
         type="button"
-        aria-label={`Move ${name} up`}
+        aria-label={fillWords(w.moveUp, { name })}
         disabled={index === 0}
         onClick={() => onMove(index - 1)}
         className={small}
@@ -704,7 +710,7 @@ function RowButtons({
       </button>
       <button
         type="button"
-        aria-label={`Move ${name} down`}
+        aria-label={fillWords(w.moveDown, { name })}
         disabled={index === count - 1}
         onClick={() => onMove(index + 1)}
         className={small}
@@ -713,12 +719,12 @@ function RowButtons({
       </button>
       <button
         type="button"
-        aria-label={`Remove ${name}`}
+        aria-label={fillWords(w.removeName, { name })}
         disabled={!canRemove}
         onClick={onRemove}
         className={`${small} px-3 text-xs`}
       >
-        Remove
+        {w.remove}
       </button>
     </div>
   );
@@ -750,7 +756,7 @@ function RepeaterField({
   const structure = ctx.from === undefined;
   const subs = editableSubs(subFieldsOf(def), ctx.locale, ctx.main);
   const { canAdd, canRemove } = rowLimits(def, rows.length);
-  const needed = rowsNeeded(def, rows.length);
+  const needed = rowsNeeded(def, rows.length, ctx.w.rowsNeeded);
   const mainRows = new Map(inheritedRows.map((row) => [String(row.id), row]));
   const table = def.rowLayout === "table";
   const most = Math.min(def.maxRows ?? 100, 100);
@@ -760,15 +766,15 @@ function RepeaterField({
     onChange(rows.map((row) => (rowId(row) === id ? { ...cells, id } : row)));
   const add = () => {
     onChange([...rows, { id: newRowId() }]);
-    setStatus(`Row ${rows.length + 1} added.`);
+    setStatus(fillWords(ctx.w.rowAdded, { n: rows.length + 1 }));
   };
   const remove = (index: number) => {
     onChange(rows.filter((_, i) => i !== index));
-    setStatus(`Row ${index + 1} removed.`);
+    setStatus(fillWords(ctx.w.rowRemoved, { n: index + 1 }));
   };
   const move = (from: number, to: number) => {
     onChange(moveItem(rows, from, to));
-    setStatus(`Row ${from + 1} moved to place ${to + 1} of ${rows.length}.`);
+    setStatus(fillWords(ctx.w.rowMoved, { from: from + 1, to: to + 1, total: rows.length }));
   };
   const cellsOf = (row: Values) => {
     const inherited = mainRows.get(rowId(row));
@@ -781,19 +787,17 @@ function RepeaterField({
       {help}
       {!structure && (
         <p className={`${hint} text-xs`}>
-          {subs.length === 0
-            ? `Nothing in its rows is translated. Change them in ${ctx.from}.`
-            : `Rows are added, removed and moved in ${ctx.from}. Here you write the texts in them.`}
+          {fillWords(subs.length === 0 ? ctx.w.rowsNothing : ctx.w.rowsTexts, { language: ctx.from ?? "" })}
         </p>
       )}
       {rows.length === 0 ? (
-        <p className={`${hint} text-xs`}>{structure ? "No rows yet." : `No rows yet. Add them in ${ctx.from}.`}</p>
+        <p className={`${hint} text-xs`}>{structure ? ctx.w.noRows : fillWords(ctx.w.noRowsIn, { language: ctx.from ?? "" })}</p>
       ) : subs.length === 0 ? null : table ? (
         <table className="block w-full border-collapse md:table">
           <thead className="hidden md:table-header-group">
             <tr>
               <th scope="col" className="w-8 p-1 text-left text-xs font-medium text-muted">
-                <span className="sr-only">Row</span>
+                <span className="sr-only">{ctx.w.row}</span>
               </th>
               {subs.map((sub) => (
                 <th key={sub.id} scope="col" className="p-1 text-left text-xs font-medium">
@@ -803,7 +807,7 @@ function RepeaterField({
               ))}
               {structure && (
                 <th scope="col" className="p-1 text-left text-xs font-medium">
-                  <span className="sr-only">Row actions</span>
+                  <span className="sr-only">{ctx.w.rowActions}</span>
                 </th>
               )}
             </tr>
@@ -817,7 +821,7 @@ function RepeaterField({
                   className="mb-3 block rounded-md border border-line p-2 md:mb-0 md:table-row md:rounded-none md:border-0 md:p-0"
                 >
                   <td className="block p-1 text-xs text-muted md:table-cell md:align-top md:pt-3">
-                    <span className="md:hidden">Row </span>
+                    <span className="md:hidden">{ctx.w.row} </span>
                     {index + 1}
                   </td>
                   {subs.map((sub) => {
@@ -854,7 +858,7 @@ function RepeaterField({
                   {structure && (
                     <td className="block p-1 md:table-cell md:align-top">
                       <RowButtons
-                        name={`row ${index + 1} of ${def.label}`}
+                        name={fillWords(ctx.w.rowName, { n: index + 1, label: def.label })}
                         index={index}
                         count={rows.length}
                         canRemove={canRemove}
@@ -875,10 +879,10 @@ function RepeaterField({
             return (
               <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted">Row {index + 1}</span>
+                  <span className="text-xs font-medium text-muted">{fillWords(ctx.w.rowN, { n: index + 1 })}</span>
                   {structure && (
                     <RowButtons
-                      name={`row ${index + 1} of ${def.label}`}
+                      name={fillWords(ctx.w.rowName, { n: index + 1, label: def.label })}
                       index={index}
                       count={rows.length}
                       canRemove={canRemove}
@@ -903,12 +907,10 @@ function RepeaterField({
       {structure && (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={add} disabled={!canAdd} className={button}>
-            {def.buttonLabel || "Add row"}
+            {def.buttonLabel || ctx.w.addRow}
           </button>
           {!canAdd && (
-            <span className={`${hint} text-xs`}>
-              The most is {most} {most === 1 ? "row" : "rows"}.
-            </span>
+            <span className={`${hint} text-xs`}>{countWords(most, ctx.w.mostRows)}</span>
           )}
         </div>
       )}
@@ -948,7 +950,7 @@ function FlexibleField({
   const structure = ctx.from === undefined;
   const layouts = def.layouts ?? [];
   const { canAdd, canRemove } = rowLimits(def, rows.length);
-  const needed = rowsNeeded(def, rows.length);
+  const needed = rowsNeeded(def, rows.length, ctx.w.rowsNeeded);
   const mainRows = new Map(inheritedRows.map((row) => [String(row.id), row]));
   const most = Math.min(def.maxRows ?? 100, 100);
   const layoutName = (layout: FieldLayout) => localized(layout.label, layout.labels, ctx.locale);
@@ -959,15 +961,15 @@ function FlexibleField({
   const add = (layout: FieldLayout) => {
     onChange([...rows, { id: newRowId(), layout: layout.key }]);
     setChoosing(false);
-    setStatus(`Row ${rows.length + 1} added, ${layoutName(layout)}.`);
+    setStatus(fillWords(ctx.w.rowAddedLayout, { n: rows.length + 1, layout: layoutName(layout) }));
   };
   const remove = (index: number) => {
     onChange(rows.filter((_, i) => i !== index));
-    setStatus(`Row ${index + 1} removed.`);
+    setStatus(fillWords(ctx.w.rowRemoved, { n: index + 1 }));
   };
   const move = (from: number, to: number) => {
     onChange(moveItem(rows, from, to));
-    setStatus(`Row ${from + 1} moved to place ${to + 1} of ${rows.length}.`);
+    setStatus(fillWords(ctx.w.rowMoved, { from: from + 1, to: to + 1, total: rows.length }));
   };
 
   return (
@@ -976,11 +978,11 @@ function FlexibleField({
       {help}
       {!structure && (
         <p className={`${hint} text-xs`}>
-          {`Rows are added, removed and moved in ${ctx.from}. Here you write the texts in them.`}
+          {fillWords(ctx.w.rowsTexts, { language: ctx.from ?? "" })}
         </p>
       )}
       {rows.length === 0 ? (
-        <p className={`${hint} text-xs`}>{structure ? "No rows yet." : `No rows yet. Add them in ${ctx.from}.`}</p>
+        <p className={`${hint} text-xs`}>{structure ? ctx.w.noRows : fillWords(ctx.w.noRowsIn, { language: ctx.from ?? "" })}</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {rows.map((row, index) => {
@@ -994,11 +996,11 @@ function FlexibleField({
               <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-medium text-muted">
-                    Row {index + 1}: {layoutName(layout)}
+                    {fillWords(ctx.w.rowLayout, { n: index + 1, layout: layoutName(layout) })}
                   </span>
                   {structure && (
                     <RowButtons
-                      name={`row ${index + 1} (${layoutName(layout)}) of ${def.label}`}
+                      name={fillWords(ctx.w.rowLayoutName, { n: index + 1, layout: layoutName(layout), label: def.label })}
                       index={index}
                       count={rows.length}
                       canRemove={canRemove}
@@ -1008,7 +1010,7 @@ function FlexibleField({
                   )}
                 </div>
                 {subs.length === 0 ? (
-                  <p className={`${hint} text-xs`}>Nothing in this layout is translated. Change it in {ctx.from}.</p>
+                  <p className={`${hint} text-xs`}>{fillWords(ctx.w.layoutNothing, { language: ctx.from ?? "" })}</p>
                 ) : (
                   <CellFields
                     subs={subs}
@@ -1034,23 +1036,21 @@ function FlexibleField({
               aria-expanded={layouts.length > 1 ? choosing : undefined}
               className={button}
             >
-              {def.buttonLabel || "Add row"}
+              {def.buttonLabel || ctx.w.addRow}
             </button>
             {!canAdd && (
-              <span className={`${hint} text-xs`}>
-                The most is {most} {most === 1 ? "row" : "rows"}.
-              </span>
+              <span className={`${hint} text-xs`}>{countWords(most, ctx.w.mostRows)}</span>
             )}
           </div>
           {choosing && canAdd && (
-            <div role="group" aria-label={`Choose a layout for the new row of ${def.label}`} className="flex flex-wrap gap-2">
+            <div role="group" aria-label={fillWords(ctx.w.chooseLayout, { label: def.label })} className="flex flex-wrap gap-2">
               {layouts.map((layout) => (
                 <button key={layout.key} type="button" onClick={() => add(layout)} className={button}>
                   {layoutName(layout)}
                 </button>
               ))}
               <button type="button" onClick={() => setChoosing(false)} className={`${button} text-muted`}>
-                Cancel
+                {ctx.w.cancel}
               </button>
             </div>
           )}
@@ -1084,6 +1084,7 @@ function MoneyInput({
   placeholder?: string;
   onChange: (value: FieldMoney | undefined) => void;
 }) {
+  const w = useAdminText("fields").form;
   const key = value ? `${value.amountMinor}|${value.currency}` : "";
   const [text, setText] = useState(value ? amountText(value.amountMinor, value.currency) : "");
   const [currency, setCurrency] = useState(value?.currency ?? currencies[0] ?? "");
@@ -1126,7 +1127,7 @@ function MoneyInput({
           className={input}
         />
         <select
-          aria-label={`${label}: currency`}
+          aria-label={fillWords(w.currency, { label })}
           value={currency}
           disabled={options.length === 0}
           onChange={(event) => {
@@ -1137,7 +1138,7 @@ function MoneyInput({
           }}
           className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
         >
-          {options.length === 0 && <option value="">No currency</option>}
+          {options.length === 0 && <option value="">{w.noCurrency}</option>}
           {options.map((code) => (
             <option key={code} value={code}>
               {code}
@@ -1147,7 +1148,7 @@ function MoneyInput({
       </div>
       {invalid && (
         <p id={problemId} role="alert" className="text-xs text-danger-text">
-          Write an amount of zero or more with at most as many decimals as {currency || "the currency"} has.
+          {fillWords(w.amountProblem, { currency: currency || w.theCurrency })}
         </p>
       )}
     </div>
@@ -1208,6 +1209,7 @@ function PictureField({
   onChange: (value: FieldImage | undefined) => void;
   upload: PictureUpload | null;
 }) {
+  const w = useAdminText("fields").form;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const alt = useId();
@@ -1233,7 +1235,7 @@ function PictureField({
           />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor={alt} className="text-xs font-medium">
-              Description for people who cannot see it
+              {w.altText}
             </label>
             <input
               id={alt}
@@ -1243,7 +1245,7 @@ function PictureField({
               maxLength={300}
             />
             <button type="button" onClick={() => onChange(undefined)} className="w-fit text-xs underline">
-              Remove
+              {w.remove}
             </button>
           </div>
         </div>
@@ -1251,11 +1253,11 @@ function PictureField({
       <PictureButton
         busy={busy}
         disabled={!upload}
-        label={value ? "Change picture" : "Choose picture"}
+        label={value ? w.changePicture : w.choosePicture}
         onFile={choose}
       />
       <LibraryButton onPicked={(picture) => onChange({ url: picture.url, thumbnailUrl: picture.thumbnailUrl, alt: value?.alt || picture.alt })} />
-      {!upload && <p className="text-xs text-muted">Uploads are not set up on this server.</p>}
+      {!upload && <p className="text-xs text-muted">{w.noUploads}</p>}
       {problem && (
         <p role="alert" className="text-sm text-danger-text">
           {problem}
@@ -1276,6 +1278,7 @@ function GalleryField({
   onChange: (value: FieldImage[] | undefined) => void;
   upload: PictureUpload | null;
 }) {
+  const w = useAdminText("fields").form;
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const most = def.maxItems ?? 20;
@@ -1315,10 +1318,10 @@ function GalleryField({
                 className="size-14 rounded-md border border-line object-cover"
               />
               <input
-                aria-label={`Description of picture ${index + 1}`}
+                aria-label={fillWords(w.pictureAlt, { n: index + 1 })}
                 value={image.alt}
                 maxLength={300}
-                placeholder="Description"
+                placeholder={w.description}
                 onChange={(event) =>
                   onChange(value.map((v, i) => (i === index ? { ...v, alt: event.target.value } : v)))
                 }
@@ -1326,7 +1329,7 @@ function GalleryField({
               />
               <button
                 type="button"
-                aria-label={`Move picture ${index + 1} up`}
+                aria-label={fillWords(w.pictureUp, { n: index + 1 })}
                 disabled={index === 0}
                 onClick={() => move(index, index - 1)}
                 className="min-h-9 min-w-9 rounded border border-line text-sm disabled:opacity-40"
@@ -1335,7 +1338,7 @@ function GalleryField({
               </button>
               <button
                 type="button"
-                aria-label={`Move picture ${index + 1} down`}
+                aria-label={fillWords(w.pictureDown, { n: index + 1 })}
                 disabled={index === value.length - 1}
                 onClick={() => move(index, index + 1)}
                 className="min-h-9 min-w-9 rounded border border-line text-sm disabled:opacity-40"
@@ -1347,7 +1350,7 @@ function GalleryField({
                 onClick={() => onChange(value.filter((_, i) => i !== index))}
                 className="text-xs underline"
               >
-                Remove
+                {w.remove}
               </button>
             </li>
           ))}
@@ -1355,14 +1358,14 @@ function GalleryField({
       )}
       {value.length < most && (
         <div className="flex flex-wrap items-center gap-2">
-          <PictureButton busy={busy > 0} disabled={!upload} label="Add pictures" multiple onFiles={add} />
+          <PictureButton busy={busy > 0} disabled={!upload} label={w.addPictures} multiple onFiles={add} />
           <LibraryButton
-            label="Add from the library"
+            label={w.fromLibrary}
             onPicked={(picture) => onChange([...value, { url: picture.url, thumbnailUrl: picture.thumbnailUrl, alt: picture.alt }])}
           />
         </div>
       )}
-      {value.length >= most && <p className="text-xs text-muted">The gallery is full ({most} pictures).</p>}
+      {value.length >= most && <p className="text-xs text-muted">{fillWords(w.galleryFull, { n: most })}</p>}
       {problem && (
         <p role="alert" className="text-sm text-danger-text">
           {problem}
@@ -1387,11 +1390,12 @@ function PictureButton({
   onFile?: (file: File | undefined) => void;
   onFiles?: (files: FileList | null) => void;
 }) {
+  const w = useAdminText("fields").form;
   return (
     <label
       className={`w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2 ${disabled ? "opacity-50" : ""}`}
     >
-      {busy ? "Uploading …" : label}
+      {busy ? w.uploading : label}
       <input
         type="file"
         accept="image/png,image/jpeg,image/webp,image/avif"

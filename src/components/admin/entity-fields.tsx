@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { FieldsForm, type FieldFileUploader, type PictureUpload } from "@/components/admin/fields-form";
 import {
   groupApplies,
@@ -37,8 +38,8 @@ export function EntityFields({
   lookups,
   side,
   locale: chosen,
-  title = "Custom fields",
-  intro = "Extra information about it, from the field groups you made under Custom fields.",
+  title,
+  intro,
   idPrefix = "fields-heading",
 }: {
   /** The groups that apply (see `applicableGroups`). */
@@ -63,6 +64,7 @@ export function EntityFields({
   intro?: string;
   idPrefix?: string;
 }) {
+  const w = useAdminText("fields").form;
   const [own, setLocale] = useState(main);
   const locale = chosen ?? own;
   const shown = side === undefined ? groups : groups.filter((group) => (group.position === "side") === side);
@@ -73,11 +75,11 @@ export function EntityFields({
   return (
     <section aria-labelledby={`${idPrefix}-${side ? "side" : "main"}`} className={card}>
       <h2 id={`${idPrefix}-${side ? "side" : "main"}`} className="mb-1 text-title text-ink">
-        {title}
+        {title ?? w.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">{intro}</p>
+      <p className="mb-4 text-sm text-muted">{intro ?? w.intro}</p>
       {texts && locales.length > 1 && chosen === undefined && (
-        <div role="tablist" aria-label="Language of the texts" className="mb-4 flex flex-wrap gap-2">
+        <div role="tablist" aria-label={w.languages} className="mb-4 flex flex-wrap gap-2">
           {locales.map((l) => (
             <button
               key={l}

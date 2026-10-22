@@ -12,6 +12,7 @@ import {
   resultOf,
   type AdjustMode,
   type AdjustOutcome,
+  type AdjustProblem,
   type AdjustReason,
   type StockPolicy,
 } from "./inventory";
@@ -203,9 +204,13 @@ export type ReviewRow = CellRef & {
 /**
  * The rows a save would send, from what was typed in each cell: a row is a change only if something was typed and it is not the figure the cell was
  * loaded with. `Adjust by` wins when both are typed. A cell whose result would be refused is still listed, with its sentence, so a person sees it
- * before Save; the rows to send are `sendable()`.
+ * before Save; the rows to send are `sendable()`. `problemWords` are the sentences in the admin's language (`adjustProblemsIn()`), English unless given.
  */
-export function reviewRows(cells: readonly CellRef[], typed: Readonly<Record<string, CellTyped>>): ReviewRow[] {
+export function reviewRows(
+  cells: readonly CellRef[],
+  typed: Readonly<Record<string, CellTyped>>,
+  problemWords: Readonly<Record<AdjustProblem, string>> = ADJUST_PROBLEM_WORDS,
+): ReviewRow[] {
   const rows: ReviewRow[] = [];
   for (const cell of cells) {
     const t = typed[cell.key];
@@ -213,19 +218,19 @@ export function reviewRows(cells: readonly CellRef[], typed: Readonly<Record<str
     const by = parseTyped(t.by);
     const set = parseTyped(t.set);
     if (by === "invalid" || set === "invalid") {
-      rows.push({ ...cell, mode: by === "invalid" ? "adjust" : "set", value: 0, next: null, delta: null, problem: ADJUST_PROBLEM_WORDS.not_whole });
+      rows.push({ ...cell, mode: by === "invalid" ? "adjust" : "set", value: 0, next: null, delta: null, problem: problemWords.not_whole });
       continue;
     }
     if (by !== null) {
       if (by === 0) continue;
       const worked = resultOf("adjust", by, cell.was);
-      rows.push(worked.ok ? { ...cell, mode: "adjust", value: by, next: worked.next, delta: worked.delta, problem: null } : { ...cell, mode: "adjust", value: by, next: null, delta: null, problem: ADJUST_PROBLEM_WORDS[worked.problem] });
+      rows.push(worked.ok ? { ...cell, mode: "adjust", value: by, next: worked.next, delta: worked.delta, problem: null } : { ...cell, mode: "adjust", value: by, next: null, delta: null, problem: problemWords[worked.problem] });
       continue;
     }
     if (set !== null) {
       if (set === cell.was) continue;
       const worked = resultOf("set", set, cell.was);
-      rows.push(worked.ok ? { ...cell, mode: "set", value: set, next: worked.next, delta: worked.delta, problem: null } : { ...cell, mode: "set", value: set, next: null, delta: null, problem: ADJUST_PROBLEM_WORDS[worked.problem] });
+      rows.push(worked.ok ? { ...cell, mode: "set", value: set, next: worked.next, delta: worked.delta, problem: null } : { ...cell, mode: "set", value: set, next: null, delta: null, problem: problemWords[worked.problem] });
     }
   }
   return rows;

@@ -8,11 +8,23 @@ import { DESCRIPTION_ADVICE, DESCRIPTION_MAX, TITLE_ADVICE, TITLE_MAX, summarize
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
+/** The snippet fields' words (D312 A5): English unless a page hands in the admin's catalogue (the product editor's `product.seo`). */
+const SNIPPET_EN = {
+  count: "{length} of about {advice} characters",
+  cut: ": search engines may cut the end",
+  title: "Title in search results",
+  description: "Description in search results",
+  preview: "Preview in search results",
+};
+
+export type SnippetWords = typeof SNIPPET_EN;
+
 /** "42 of 60 characters", and a word when search engines are likely to cut the text. */
-function Count({ id, length, advice }: { id: string; length: number; advice: number }) {
+function Count({ id, length, advice, words }: { id: string; length: number; advice: number; words: SnippetWords }) {
   return (
     <span id={id} className={`text-xs font-normal ${length > advice ? "text-amber-700 dark:text-amber-400" : "text-muted"}`}>
-      {length} of about {advice} characters{length > advice ? ": search engines may cut the end" : ""}
+      {words.count.replace("{length}", String(length)).replace("{advice}", String(advice))}
+      {length > advice ? words.cut : ""}
     </span>
   );
 }
@@ -30,6 +42,7 @@ export function SearchSnippetFields({
   url,
   lang,
   names,
+  words = SNIPPET_EN,
 }: {
   value: Texts;
   onChange: (value: Texts) => void;
@@ -39,6 +52,7 @@ export function SearchSnippetFields({
   lang: string;
   /** Form field names, when the fields post with a form. */
   names?: { title: string; description: string };
+  words?: SnippetWords;
 }) {
   const id = useId();
   const title = value.title || fallback.title;
@@ -46,7 +60,7 @@ export function SearchSnippetFields({
   return (
     <div className="flex flex-col gap-4">
       <label className={label}>
-        Title in search results
+        {words.title}
         <input
           name={names?.title}
           value={value.title}
@@ -57,10 +71,10 @@ export function SearchSnippetFields({
           aria-describedby={`${id}-title`}
           className={input}
         />
-        <Count id={`${id}-title`} length={title.length} advice={TITLE_ADVICE} />
+        <Count id={`${id}-title`} length={title.length} advice={TITLE_ADVICE} words={words} />
       </label>
       <label className={label}>
-        Description in search results
+        {words.description}
         <textarea
           name={names?.description}
           value={value.description}
@@ -72,10 +86,10 @@ export function SearchSnippetFields({
           aria-describedby={`${id}-description`}
           className={`${input} py-2`}
         />
-        <Count id={`${id}-description`} length={description.length} advice={DESCRIPTION_ADVICE} />
+        <Count id={`${id}-description`} length={description.length} advice={DESCRIPTION_ADVICE} words={words} />
       </label>
       <figure className="min-w-0 rounded-md border border-border p-3">
-        <figcaption className="mb-2 text-xs text-muted">Preview in search results</figcaption>
+        <figcaption className="mb-2 text-xs text-muted">{words.preview}</figcaption>
         <div lang={lang}>
           <p className="truncate text-xs text-muted">{url.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</p>
           <p className="truncate text-lg text-blue-800 dark:text-blue-300">{summarize(title, TITLE_ADVICE)}</p>

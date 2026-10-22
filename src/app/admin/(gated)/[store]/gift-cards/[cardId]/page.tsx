@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
-import { ENTRY_WORDS, GIFT_CARD_NOTE_MAX, STATE_SIGNAL, STATE_WORDS } from "@/lib/gift-card-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { GIFT_CARD_NOTE_MAX, STATE_SIGNAL } from "@/lib/gift-card-admin";
 import { formatMoney } from "@/lib/money";
 import { giftCardDetail } from "@/server/gift-cards-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -24,83 +27,87 @@ export default async function GiftCardPage({ params }: PageProps<"/admin/[store]
   const card = await giftCardDetail(store.id, cardId, { people: memberCan(member, "customers:read") });
   if (!card) notFound();
   const base = `/admin/${store.slug}/gift-cards`;
-  const locale = store.markets[0]?.locale ?? "en";
+  const lang = adminLangOf(member.account.adminLocale);
+  const g = adminText(lang, "giftCards");
+  const w = g.card;
+  // English keeps the store's own number format and en-GB dates, as before; another language its own.
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;
+  const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const money = (minor: number) => formatMoney(minor, card.currency, locale);
-  const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
-  const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: store.timeZone });
+  const when = (iso: string) => new Date(iso).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const day = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: store.timeZone });
   const canChange = memberCan(member, "products:write") && card.state !== "deactivated";
   const orderLink = (id: string) => `/admin/${store.slug}/orders/${id}`;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Gift cards" }}
-        title={card.last4 ? `Gift card •••• ${card.last4}` : "Gift card, no code yet"}
+        back={{ href: base, label: w.back }}
+        title={card.last4 ? fillWords(w.titleWithCode, { last4: card.last4 }) : w.titleNoCode}
         status={
           <Chip signal={STATE_SIGNAL[card.state]} dot>
-            {STATE_WORDS[card.state]}
+            {g.states[card.state]}
           </Chip>
         }
-        meta={[`${money(card.balanceMinor)} left of ${money(card.initialMinor)}`, card.expiresAt ? `Lasts until ${day(card.expiresAt)}` : "Never expires", card.testMode ? "Test card" : null]}
+        meta={[fillWords(w.left, { left: money(card.balanceMinor), initial: money(card.initialMinor) }), card.expiresAt ? fillWords(w.lastsUntil, { date: day(card.expiresAt) }) : w.neverExpires, card.testMode ? w.testCard : null]}
       />
 
-      <Card title="About this card" compact>
+      <Card title={w.about} compact>
         <dl className="grid grid-cols-1 gap-3 text-body sm:grid-cols-2">
           <div>
-            <dt className="text-caption text-muted">How it came to be</dt>
+            <dt className="text-caption text-muted">{w.howItCame}</dt>
             <dd className="text-ink">
               {card.source === "order" && card.orderId ? (
                 <>
-                  Bought with order{" "}
+                  {w.boughtWith}{" "}
                   <Link href={orderLink(card.orderId)} className="underline underline-offset-2">
                     {card.orderNumber}
                   </Link>
                 </>
               ) : (
-                `Issued by ${card.issuedBy ?? "staff"}${card.note ? `: ${card.note}` : ""}`
+                `${fillWords(w.issuedBy, { name: card.issuedBy ?? w.staff })}${card.note ? `: ${card.note}` : ""}`
               )}
             </dd>
           </div>
           <div>
-            <dt className="text-caption text-muted">Issued</dt>
+            <dt className="text-caption text-muted">{w.issued}</dt>
             <dd className="text-ink">{when(card.issuedAt)}</dd>
           </div>
           <div>
-            <dt className="text-caption text-muted">Its code reached someone</dt>
+            <dt className="text-caption text-muted">{w.reached}</dt>
             <dd className="text-ink">
-              {card.sentAt ? when(card.sentAt) : card.sendAt && new Date(card.sendAt) > new Date() ? `Not yet: it goes on ${day(card.sendAt)}` : "Not yet"}
+              {card.sentAt ? when(card.sentAt) : card.sendAt && new Date(card.sendAt) > new Date() ? fillWords(w.goesOn, { date: day(card.sendAt) }) : w.notYet}
             </dd>
           </div>
           {(card.recipientName || card.recipientEmail) && (
             <div>
-              <dt className="text-caption text-muted">For</dt>
+              <dt className="text-caption text-muted">{w.forWhom}</dt>
               <dd className="text-ink">{[card.recipientName, card.recipientEmail].filter(Boolean).join(", ")}</dd>
             </div>
           )}
           {card.message && (
             <div className="sm:col-span-2">
-              <dt className="text-caption text-muted">Their message</dt>
+              <dt className="text-caption text-muted">{w.message}</dt>
               <dd className="whitespace-pre-line text-ink">{card.message}</dd>
             </div>
           )}
         </dl>
         <p className="mt-4 text-caption text-muted">
-          The code is not shown here: Kaizena Flow keeps only a fingerprint of it, so nobody can read it back. A lost code cannot be sent again: deactivate the
-          card and issue a new one for what was left.
+          {w.codeNote}
         </p>
         {card.state === "waiting" && card.source === "order" && memberCan(member, "products:write") && (!card.sendAt || new Date(card.sendAt) <= new Date()) && (
           <ActionForm action={sendGiftCardAgainAction.bind(null, store.slug, card.id)} className="mt-4 flex items-center gap-3">
-            <SubmitButton>Try sending it again</SubmitButton>
+            <SubmitButton>{w.sendAgain}</SubmitButton>
           </ActionForm>
         )}
       </Card>
 
       {card.orders.length > 0 && (
-        <Card title="Orders it paid for" compact>
-          <List label="Orders it paid for">
+        <Card title={w.ordersPaid} compact>
+          <List label={w.ordersPaid}>
             {card.orders.map((o) => (
               <ListRow key={o.id}>
-                <RowLead title={`Order ${o.number}`} href={orderLink(o.id)} sub={o.refundedMinor > 0 ? `${money(o.refundedMinor)} refunded back to the card` : undefined} />
+                <RowLead title={fillWords(w.order, { number: o.number })} href={orderLink(o.id)} sub={o.refundedMinor > 0 ? fillWords(w.refundedBack, { amount: money(o.refundedMinor) }) : undefined} />
                 <RowAmount>{money(o.spentMinor)}</RowAmount>
               </ListRow>
             ))}
@@ -108,13 +115,13 @@ export default async function GiftCardPage({ params }: PageProps<"/admin/[store]
         </Card>
       )}
 
-      <Card title="History" compact>
-        <List label="History">
+      <Card title={w.history} compact>
+        <List label={w.history}>
           {card.entries.map((e, index) => (
             <ListRow key={index}>
               <RowLead
-                title={ENTRY_WORDS[e.kind] ?? e.kind}
-                sub={[e.orderNumber ? `Order ${e.orderNumber}` : null, e.by, e.note || null].filter(Boolean).join(" · ") || undefined}
+                title={(g.entries as Record<string, string>)[e.kind] ?? e.kind}
+                sub={[e.orderNumber ? fillWords(w.order, { number: e.orderNumber }) : null, e.by, e.note || null].filter(Boolean).join(" · ") || undefined}
               />
               <RowFact className="hidden sm:block">{when(e.at)}</RowFact>
               <RowAmount>{e.kind === "spend" ? "" : `${e.amountMinor > 0 ? "+" : "−"}${money(Math.abs(e.amountMinor))}`}</RowAmount>
@@ -125,42 +132,42 @@ export default async function GiftCardPage({ params }: PageProps<"/admin/[store]
 
       {canChange && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card title="Change the balance" description="Add to the card or take off it, with a reason that is kept with the change." compact>
+          <Card title={w.changeTitle} description={w.changeDescription} compact>
             <ActionForm action={adjustGiftCardAction.bind(null, store.slug, card.id, card.currency)} className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-3">
                 <label className="flex flex-col gap-1 text-body">
-                  <span className="text-caption text-muted">Change</span>
+                  <span className="text-caption text-muted">{w.change}</span>
                   <select name="direction" defaultValue="up" className="min-h-10 rounded-md border border-line px-3">
-                    <option value="up">Add</option>
-                    <option value="down">Take off</option>
+                    <option value="up">{w.add}</option>
+                    <option value="down">{w.takeOff}</option>
                   </select>
                 </label>
                 <label className="flex flex-1 flex-col gap-1 text-body">
-                  <span className="text-caption text-muted">Amount, {card.currency}</span>
+                  <span className="text-caption text-muted">{fillWords(w.amountIn, { currency: card.currency })}</span>
                   <input name="amount" inputMode="decimal" required autoComplete="off" className="min-h-10 rounded-md border border-line px-3" />
                 </label>
               </div>
               <label className="flex flex-col gap-1 text-body">
-                <span className="text-caption text-muted">Why</span>
+                <span className="text-caption text-muted">{w.why}</span>
                 <input name="reason" required maxLength={GIFT_CARD_NOTE_MAX} autoComplete="off" className="min-h-10 rounded-md border border-line px-3" />
               </label>
               <div>
-                <SubmitButton>Change</SubmitButton>
+                <SubmitButton>{w.changeButton}</SubmitButton>
               </div>
             </ActionForm>
           </Card>
-          <Card title="Deactivate" description="The card can never be spent again, and what is left on it goes. Orders it already paid for keep their money." compact>
+          <Card title={w.deactivateTitle} description={w.deactivateDescription} compact>
             <ActionForm action={deactivateGiftCardAction.bind(null, store.slug, card.id)} className="flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-body">
-                <span className="text-caption text-muted">Why (optional)</span>
+                <span className="text-caption text-muted">{w.whyOptional}</span>
                 <input name="reason" maxLength={GIFT_CARD_NOTE_MAX} autoComplete="off" className="min-h-10 rounded-md border border-line px-3" />
               </label>
               <label className="flex items-center gap-2 text-body">
                 <input type="checkbox" name="sure" required />
-                <span>Deactivate this card for good</span>
+                <span>{w.forGood}</span>
               </label>
               <div>
-                <SubmitButton variant="secondary">Deactivate</SubmitButton>
+                <SubmitButton variant="secondary">{w.deactivate}</SubmitButton>
               </div>
             </ActionForm>
           </Card>

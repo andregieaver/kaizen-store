@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { CancelJobButton } from "@/components/admin/data/import-flow";
 import { JobTracker } from "@/components/admin/data/job-tracker";
@@ -11,9 +12,12 @@ import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StockCheck, StockImportApply } from "@/components/admin/inventory/stock-import-flow";
 import { StockApplied, StockDryRun, StockFindings, type StockItem } from "@/components/admin/inventory/stock-import-views";
-import { appliedCountsOfJob, importStage, isWorking, momentText, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
-import { STATUS_WORDS } from "@/lib/data-job";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { appliedCountsOfJob, importStage, isWorking, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { momentIn } from "@/lib/inventory-words";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { inventoryDryCountsOf, jobFor } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -40,15 +44,11 @@ export default async function StockImportJobPage({ params, searchParams }: Props
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.job;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead
-        slug={store.slug}
-        active="import"
-        title="Stock import"
-        intro="Check the file first. Nothing is changed in your stock until you press Import."
-        back={{ href: inventoryPaths(store.slug).import, label: "Import stock" }}
-      />
+      <InventoryHead slug={store.slug} active="import" title={w.title} intro={w.intro} back={{ href: inventoryPaths(store.slug).import, label: w.back }} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} jobId={jobId} searchParams={searchParams} />
       </Suspense>
@@ -60,6 +60,9 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   const member = await requirePermission(storeSlug, "products:read");
   if (!memberCan(member, "products:write") || !isJobId(jobId)) notFound();
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const t = adminText(lang, "inventory").import;
+  const w = t.job;
   const job = await jobFor(member, jobId);
   if (!job || job.kind !== "inventory_import") notFound();
   const query = await searchParams;
@@ -93,40 +96,40 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <>
-      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label="The file">
-        <span className="font-medium break-all">{job.inputName ?? "Stock file"}</span>
-        <span className="text-muted">Uploaded {momentText(job.createdAt, store.timeZone)}</span>
-        <span className="text-muted">{STATUS_WORDS[job.status]}</span>
+    <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={w.file}>
+        <span className="font-medium break-all">{job.inputName ?? w.stockFile}</span>
+        <span className="text-muted">{fillWords(w.uploaded, { when: momentIn(job.createdAt, store.timeZone, ADMIN_LANG_FACTS[lang].locale) })}</span>
+        <span className="text-muted">{t.jobStatus[job.status]}</span>
       </section>
 
       {isWorking(job.status) && <JobTracker tickUrl={`${base}/tick`} initial={view} />}
       {isWorking(job.status) && (
         <div>
-          <CancelJobButton cancel={cancelStockImportAction.bind(null, store.slug, job.id)} label="Cancel the import" />
+          <CancelJobButton cancel={cancelStockImportAction.bind(null, store.slug, job.id)} label={w.cancelImport} />
         </div>
       )}
       {(stage === "failed" || stage === "cancelled" || stage === "expired") && <JobProgressView job={view} />}
-      {stage === "cancelled" && <Notice>The import was cancelled. What was written before it stopped is kept, and nothing is rolled back.</Notice>}
-      {stage === "expired" && <Notice>The file of this import has been removed. Upload it again to import it.</Notice>}
+      {stage === "cancelled" && <Notice>{w.cancelled}</Notice>}
+      {stage === "expired" && <Notice>{w.expired}</Notice>}
 
       {(stage === "uploaded" || stage === "checked") && <StockCheck checked={stage === "checked"} check={checkStockImportAction.bind(null, store.slug, job.id)} />}
       {stage === "checked" && (
         <>
-          <StockDryRun counts={dry} />
+          <StockDryRun counts={dry} lang={lang} />
           <StockImportApply counts={dry} apply={applyStockImportAction.bind(null, store.slug, job.id)} cancel={cancelStockImportAction.bind(null, store.slug, job.id)} />
         </>
       )}
       {(stage === "applying" || stage === "done" || stage === "failed" || stage === "cancelled") && (stage === "done" || applied.updated + applied.unchanged + applied.skipped + applied.failed > 0) && (
-        <StockApplied counts={applied} jobId={job.id} written={stage === "done"} />
+        <StockApplied counts={applied} jobId={job.id} written={stage === "done"} lang={lang} />
       )}
 
-      {showItems && <StockFindings items={items} total={listed.total} severity={severity} page={page} pageSize={PAGE_SIZE} hrefFor={hrefFor} problemsHref={`${base}/problems`} />}
+      {showItems && <StockFindings items={items} total={listed.total} severity={severity} page={page} pageSize={PAGE_SIZE} hrefFor={hrefFor} problemsHref={`${base}/problems`} lang={lang} />}
       <p className="text-sm">
         <Link href={inventoryPaths(store.slug).list} className="underline underline-offset-2">
-          Back to the inventory
+          {w.back}
         </Link>
       </p>
-    </>
+    </AdminTextScope>
   );
 }

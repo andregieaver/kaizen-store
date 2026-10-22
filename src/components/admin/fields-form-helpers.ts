@@ -22,9 +22,13 @@ export type FieldFileUploader = (file: File) => Promise<FieldFile | { problem: s
 export const FIELD_FILE_ACCEPT_TYPES = ".pdf,.zip,.txt,.csv,.doc,.xls,.ppt,.docx,.xlsx,.pptx";
 
 /** A file's size checked before it is sent: the bucket refuses more, but a person is told sooner. */
-export function fileProblem(file: { name: string; size: number }): string | null {
-  if (file.size <= 0) return `${file.name} is empty.`;
-  if (file.size > MAX_FILE_BYTES) return `${file.name} is too large. Use one under 50 MB.`;
+export function fileProblem(
+  file: { name: string; size: number },
+  /** The admin's words (D312), `{name}` the file's; English when left out. */
+  words: { empty: string; tooLarge: string } = { empty: "{name} is empty.", tooLarge: "{name} is too large. Use one under 50 MB." },
+): string | null {
+  if (file.size <= 0) return words.empty.replace("{name}", () => file.name);
+  if (file.size > MAX_FILE_BYTES) return words.tooLarge.replace("{name}", () => file.name);
   return null;
 }
 
@@ -115,9 +119,14 @@ export function rowLimits(
 }
 
 /** "Add at least 2 rows." for a repeater short of its fewest, else null. */
-export function rowsNeeded(def: Pick<FieldDef, "minRows" | "maxRows">, count: number): string | null {
+export function rowsNeeded(
+  def: Pick<FieldDef, "minRows" | "maxRows">,
+  count: number,
+  /** The admin's words (D312), `{n}` the fewest; English when left out. */
+  words: { one: string; many: string } = { one: "At least {n} row is needed.", many: "At least {n} rows are needed." },
+): string | null {
   const { missing } = rowLimits(def, count);
   if (missing === 0) return null;
   const least = def.minRows ?? 0;
-  return `At least ${least} ${least === 1 ? "row is" : "rows are"} needed.`;
+  return (least === 1 ? words.one : words.many).replace("{n}", String(least));
 }

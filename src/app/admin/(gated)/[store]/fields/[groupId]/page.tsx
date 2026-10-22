@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { countWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { groupToInput } from "@/lib/custom-fields";
 import { moneyCurrencies } from "@/lib/field-money";
@@ -18,23 +22,26 @@ export const metadata: Metadata = { title: "Group of custom fields" };
 
 export default async function FieldGroupPage({ params }: PageProps<"/admin/[store]/fields/[groupId]">) {
   const { store: slug, groupId } = await params;
-  const { store } = await requirePermission(slug, "products:read");
+  const { store, account } = await requirePermission(slug, "products:read");
+  const lang = adminLangOf(account.adminLocale);
+  const t = adminText(lang, "fields").list;
   if (!z.uuid().safeParse(groupId).success) notFound();
   const [group, terms] = await Promise.all([getFieldGroup(store.id, groupId), editorTerms(store.id)]);
   if (!group) notFound();
   const base = `/admin/${store.slug}/fields`;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: base, label: "Custom fields" }}
+        back={{ href: base, label: t.title }}
         title={<>{group.name}</>}
-        description={<>{group.active ? "Switched on." : "Switched off."}</>}
+        description={<>{group.active ? t.switchedOn : t.switchedOff}</>}
       />
       <FieldGroupEditor
         initial={groupToInput(group)}
         terms={terms}
         roles={roleOptions()}
-        languages={storeLanguages(store)}
+        languages={storeLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
         currencies={moneyCurrencies(store)}
         sellsToBusinesses={featureOn(store, "business")}
         save={saveFieldGroupAction.bind(null, store.slug)}
@@ -43,11 +50,12 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
           <DeleteDiscountButton
             action={deleteFieldGroupAction.bind(null, store.slug, group.id)}
             code={group.name}
-            label="Delete this group"
-            question={`Delete the group ${group.name}? What was entered in its ${group.fields.length === 1 ? "field" : "fields"} is deleted too, for every product, page and article. This cannot be undone.`}
+            label={t.deleteGroup}
+            question={countWords(group.fields.length, t.deleteQuestion, { name: group.name })}
           />
         }
       />
     </div>
+    </AdminTextScope>
   );
 }

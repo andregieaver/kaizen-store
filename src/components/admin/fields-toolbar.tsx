@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
-import { FIELD_ENTITIES, FIELD_PRESETS } from "@/lib/custom-fields";
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { FIELD_PRESETS } from "@/lib/custom-fields";
 
 import { Modal } from "./modal";
 
@@ -31,6 +33,8 @@ export function FieldsToolbar({
   importGroups: (raw: unknown) => Promise<Result>;
   hasGroups: boolean;
 }) {
+  const w = useAdminText("fields");
+  const t = w.toolbar;
   const router = useRouter();
   const [presets, setPresets] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
@@ -51,7 +55,7 @@ export function FieldsToolbar({
     setProblems([]);
     setNotice("");
     if (chosen.size > IMPORT_MAX_BYTES) {
-      setProblems(["That file is too big to be a set of field groups."]);
+      setProblems([t.tooBig]);
       return;
     }
     start(async () => {
@@ -59,14 +63,12 @@ export function FieldsToolbar({
       try {
         raw = JSON.parse(await chosen.text());
       } catch {
-        setProblems(["That file is not readable. Choose a file exported from Custom fields."]);
+        setProblems([t.unreadable]);
         return;
       }
       const result = await importGroups(raw);
       if (result.ok) {
-        setNotice(
-          `Imported ${result.ids?.length ?? 0} ${result.ids?.length === 1 ? "group" : "groups"}. Rules about categories and tags are left out: they are the other store's own. Add them again where they apply.`,
-        );
+        setNotice(countWords(result.ids?.length ?? 0, t.imported));
         router.refresh();
       } else setProblems(result.problems);
       if (file.current) file.current.value = "";
@@ -80,13 +82,13 @@ export function FieldsToolbar({
           href={`${base}/new`}
           className="flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
-          New group
+          {t.newGroup}
         </Link>
         <button type="button" onClick={() => setPresets(true)} className={button}>
-          Start from a preset
+          {t.fromPreset}
         </button>
         <label className={`${button} cursor-pointer has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2`}>
-          {pending ? "Working …" : "Import"}
+          {pending ? t.working : t.import}
           <input
             ref={file}
             type="file"
@@ -98,7 +100,7 @@ export function FieldsToolbar({
         </label>
         {hasGroups && (
           <a href={`${base}/export`} download className={button}>
-            Export all
+            {t.exportAll}
           </a>
         )}
       </div>
@@ -116,26 +118,28 @@ export function FieldsToolbar({
           {notice}
         </p>
       )}
-      <Modal open={presets} onClose={() => setPresets(false)} title="Start from a preset" wide>
+      <Modal open={presets} onClose={() => setPresets(false)} title={t.fromPreset} wide>
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted">
-            A preset makes a group with fields to change as you like. It is saved at once (private, like every new
-            field) and opened for you. Legal texts such as the safety information, the right of withdrawal and the terms
-            have their own places: do not keep them in custom fields.
-          </p>
+          <p className="text-sm text-muted">{t.presetsIntro}</p>
           {problems.length > 0 && (
             <p role="alert" className="text-sm text-danger-text">
               {problems.join(" ")}
             </p>
           )}
           <ul className="grid gap-2 sm:grid-cols-2">
-            {FIELD_PRESETS.map((preset) => (
+            {FIELD_PRESETS.map((preset) => {
+              const words = (w.presets as Record<string, { name: string; description: string } | undefined>)[preset.key];
+              const name = words?.name ?? preset.name;
+              return (
               <li key={preset.key} className="flex flex-col gap-2 rounded-md border border-line p-3">
                 <div>
-                  <p className="text-sm font-medium">{preset.name}</p>
-                  <p className="text-xs text-muted">{preset.description}</p>
+                  <p className="text-sm font-medium">{name}</p>
+                  <p className="text-xs text-muted">{words?.description ?? preset.description}</p>
                   <p className="mt-1 text-xs text-muted">
-                    For {FIELD_ENTITIES[preset.entity].toLowerCase()}: {preset.fields.map((f) => f.label).join(", ")}
+                    {fillWords(t.presetFor, {
+                      things: w.entities[preset.entity].toLowerCase(),
+                      fields: preset.fields.map((f) => f.label).join(", "),
+                    })}
                   </p>
                 </div>
                 <button
@@ -144,10 +148,11 @@ export function FieldsToolbar({
                   onClick={() => startFromPreset(preset.key)}
                   className="min-h-10 self-start rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50"
                 >
-                  Use {preset.name}
+                  {fillWords(t.use, { name })}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       </Modal>

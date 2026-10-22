@@ -6,6 +6,11 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import type { BatchSummary } from "@/server/bulk-edit";
+import { adminTexts } from "@/lib/admin-text";
+import { buildBulkRequest, emptyPanel, fieldWords } from "@/lib/bulk-admin";
+import { productsNb } from "@/lib/admin-messages/products.nb";
+
+import { AdminTextScope } from "./admin-text";
 
 import { BulkFailures, BulkResult, RecentBatches } from "./bulk-result";
 import { ProductsGrid, type GridRowView } from "./products-grid";
@@ -157,5 +162,28 @@ describe("the grid", () => {
     expect(out).toMatch(/<button type="button" disabled=""[^>]*>Review changes<\/button>/);
     expect(out).not.toContain("Apply");
     expect(out).toContain("a price changes only through the price history");
+  });
+});
+
+describe("in Norwegian (D312 A5)", () => {
+  it("draws the list and a bulk result in the catalogue's words", () => {
+    const nb = (child: ReturnType<typeof createElement>) => html(createElement(AdminTextScope, { texts: adminTexts("nb", ["products"]) } as Parameters<typeof AdminTextScope>[0], child));
+    const list = nb(createElement(ProductsTable, { slug: "shop", rows, archived: false, priceHeader: "Pris (Norge)", locale: "nb-NO", bulk: tools }));
+    expect(list).toContain("Publisert");
+    expect(list).toContain("Utkast");
+    expect(list).toContain("3 varianter");
+    expect(list).not.toContain("Published");
+    const result = nb(createElement(BulkResult, { summary: summary(), undo: tools.undo }));
+    expect(result).toContain("Endre pris: ferdig");
+    expect(result).toContain("4 produkter: 2 endret, 1 latt være, 1 mislyktes.");
+    expect(result).toContain("Old hat");
+    expect(result).toContain("pris (no)");
+  });
+
+  it("gives the lib's problems in the words it is handed, English by default", () => {
+    const form = { ...emptyPanel("NO"), mode: "amount" as const, markets: ["NO", "SE"] };
+    expect(buildBulkRequest("price", form, ["p1"], [])).toEqual({ ok: false, problem: "Write an amount for NO, SE: an amount is never applied across currencies." });
+    expect(buildBulkRequest("price", form, ["p1"], [], productsNb.bulkLib)).toEqual({ ok: false, problem: "Skriv et beløp for NO, SE: et beløp brukes aldri på tvers av valutaer." });
+    expect(fieldWords("sku", productsNb.bulkLib)).toBe("Varenummer");
   });
 });

@@ -52,7 +52,7 @@ import {
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
-import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, BACKORDER_LONG_HINT, THRESHOLD_MAX } from "@/lib/inventory";
+import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, THRESHOLD_MAX } from "@/lib/inventory";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { EXCERPT_FIELD_MAX, summarize } from "@/lib/seo";
 import {
@@ -68,6 +68,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
 import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
@@ -127,6 +130,7 @@ const variantKey = (variant: { id: string | null; options: Record<string, string
  */
 export function ProductEditor(props: Props) {
   const { storeSlug, languageNames, uploads, productId } = props;
+  const w = useAdminText("product");
   const router = useRouter();
   const [product, setProduct] = useState(props.initial);
   const [context, setContext] = useState(props.context);
@@ -237,20 +241,20 @@ export function ProductEditor(props: Props) {
       <div className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-sunken/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-3">
           <Link href={`/admin/${storeSlug}/products`} className="text-sm underline">
-            Products
+            {w.top.products}
           </Link>
-          <h1 className="text-xl font-medium">{title || (productId ? "Untitled product" : "New product")}</h1>
+          <h1 className="text-xl font-medium">{title || (productId ? w.top.untitled : w.top.newProduct)}</h1>
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
-            <span className="sr-only">Status</span>
+            <span className="sr-only">{w.top.status}</span>
             <select
               value={product.status}
               onChange={(e) => update((p) => ({ ...p, status: e.target.value as ProductInput["status"] }))}
               className={`${input} w-auto`}
             >
-              <option value="draft">Draft (hidden)</option>
-              <option value="active">Published</option>
+              <option value="draft">{w.top.draft}</option>
+              <option value="active">{w.top.published}</option>
             </select>
           </label>
           <button
@@ -258,7 +262,7 @@ export function ProductEditor(props: Props) {
             disabled={saving}
             className="min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50"
           >
-            {saving ? "Saving …" : "Save"}
+            {saving ? w.top.saving : w.top.save}
           </button>
         </div>
       </div>
@@ -266,19 +270,19 @@ export function ProductEditor(props: Props) {
       <div role="status" aria-live="polite">
         {(result.status === "saved" || justCreated) && !dirty && (
           <p className="rounded-md border border-line bg-card p-3 text-sm">
-            Saved.{" "}
+            {w.top.saved}{" "}
             {product.status === "active" && props.storefrontPath ? (
               <Link href={`${props.storefrontPath}/p/${product.handle}`} className="underline" target="_blank">
-                See it in your store
+                {w.top.seeInStore}
               </Link>
             ) : (
-              "Drafts are hidden from shoppers."
+              w.top.draftsHidden
             )}
             {result.status === "saved" && result.handleChanged && (
               <span className="mt-1 block">
                 {addressChangeWords(result.handleChanged)}{" "}
                 <Link href={`/admin/${storeSlug}/redirects`} className="underline">
-                  See the redirects
+                  {w.top.seeRedirects}
                 </Link>
               </span>
             )}
@@ -292,7 +296,7 @@ export function ProductEditor(props: Props) {
           role="alert"
           className="rounded-md border border-danger-text bg-card p-4 text-sm"
         >
-          <p className="mb-2 font-medium">Nothing was saved yet. Please fix:</p>
+          <p className="mb-2 font-medium">{w.top.pleaseFix}</p>
           <ul className="list-disc pl-5">
             {result.problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -314,11 +318,9 @@ export function ProductEditor(props: Props) {
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       <section aria-labelledby="terms-heading" className={card}>
         <h2 id="terms-heading" className="mb-1 text-title text-ink">
-          Categories and tags
+          {w.terms.title}
         </h2>
-        <p className="mb-4 text-sm text-muted">
-          Shoppers find the product through its categories and tags, in menus and in content grids.
-        </p>
+        <p className="mb-4 text-sm text-muted">{w.terms.intro}</p>
         <TermPicker
           terms={context.terms}
           value={{ categories: product.categories, tags: product.tags }}
@@ -329,24 +331,21 @@ export function ProductEditor(props: Props) {
         />
         {context.layouts.length > 0 && (
           <label className={`${label} mt-4 max-w-sm`}>
-            Page layout
+            {w.terms.layout}
             <select
               value={product.layoutId ?? ""}
               onChange={(e) => update((p) => ({ ...p, layoutId: e.target.value || null }))}
               className={input}
             >
-              <option value="">From its categories, tags or the store</option>
+              <option value="">{w.terms.layoutInherit}</option>
               {context.layouts.map((layout) => (
                 <option key={layout.id} value={layout.id}>
                   {layout.title}
-                  {layout.published ? "" : " (not published)"}
+                  {layout.published ? "" : w.terms.notPublished}
                 </option>
               ))}
             </select>
-            <span className={hint}>
-              How its page is laid out (Product layouts). Its own layout goes before its categories&apos;, tags&apos; and the
-              store&apos;s; one not yet published is not used.
-            </span>
+            <span className={hint}>{w.terms.layoutHint}</span>
           </label>
         )}
       </section>
@@ -369,14 +368,16 @@ export function ProductEditor(props: Props) {
       {variantGroups.length > 0 && product.variants.length > 0 && (
         <section aria-labelledby="variant-fields-heading" className="flex flex-col gap-3">
           <h2 id="variant-fields-heading" className="text-title text-ink">
-            Custom fields for each variant
+            {w.variantFields.title}
           </h2>
           {product.variants.map((variant) => {
             const key = variantKey(variant);
             return (
               <details key={key} className="rounded-panel border border-line bg-card" open={product.variants.length === 1}>
                 <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
-                  {variant.sku} <span className="font-normal text-muted">{variantLabel(variant.options)}</span>
+                  {variant.sku} <span className="font-normal text-muted">
+                    {Object.keys(variant.options).length > 0 ? variantLabel(variant.options) : w.variants.defaultName}
+                  </span>
                 </summary>
                 <div className="px-3 pb-3">
                   <EntityFields
@@ -394,8 +395,8 @@ export function ProductEditor(props: Props) {
                     upload={pictureUpload}
                     fileUpload={fileUpload}
                     lookups={props.fields.lookups}
-                    title={`Fields of ${variant.sku}`}
-                    intro="Only for this variant, shown when a shopper chooses it."
+                    title={fillWords(w.variantFields.fieldsOf, { sku: variant.sku })}
+                    intro={w.variantFields.intro}
                     idPrefix={`variant-fields-${key}`}
                   />
                 </div>
@@ -431,7 +432,7 @@ export function ProductEditor(props: Props) {
         update={update}
         context={context}
         countries={props.countries}
-        upload={uploads ? (file) => uploadPicture(storeSlug, file) : null}
+        upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
       />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
@@ -443,9 +444,7 @@ export function ProductEditor(props: Props) {
             <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
           ) : (
             product.plans.length > 0 && (
-              <p className="text-sm text-muted">
-                Purchase options: Subscriptions is switched off under Settings, Features, so this product&apos;s {product.plans.length === 1 ? "option is" : `${product.plans.length} options are`} kept but not offered.
-              </p>
+              <p className="text-sm text-muted">{countWords(product.plans.length, w.subscriptionsOff)}</p>
             )
           )}
           <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
@@ -466,7 +465,7 @@ export function ProductEditor(props: Props) {
           disabled={saving}
           className="min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
-          {saving ? "Saving …" : "Save"}
+          {saving ? w.top.saving : w.top.save}
         </button>
       </div>
     </form>
@@ -495,6 +494,7 @@ function TextSection({
   productUrl: string;
   suggest: (request: WriteRequest) => Promise<Awaited<ReturnType<typeof suggestTextAction>>>;
 }) {
+  const w = useAdminText("product");
   const [locale, setLocale] = useState(context.primaryLocale);
   const tabsId = useId();
   const current = product.translations.find((t) => t.locale === locale) ?? {
@@ -539,10 +539,10 @@ function TextSection({
   return (
     <section aria-labelledby="text-heading" className={card}>
       <h2 id="text-heading" className="mb-4 text-title text-ink">
-        Title and description
+        {w.text.title}
       </h2>
       {context.locales.length > 1 && (
-        <div role="tablist" aria-label="Language" className="mb-4 flex flex-wrap gap-1">
+        <div role="tablist" aria-label={w.text.language} className="mb-4 flex flex-wrap gap-1">
           {context.locales.map((l) => {
             const filled = Boolean(product.translations.find((t) => t.locale === l)?.title);
             return (
@@ -557,7 +557,7 @@ function TextSection({
                 className="min-h-9 rounded-pill border border-edge px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
               >
                 {languageNames[l] ?? l}
-                {!filled && <span className="text-muted"> (empty)</span>}
+                {!filled && <span className="text-muted">{w.text.empty}</span>}
               </button>
             );
           })}
@@ -571,7 +571,7 @@ function TextSection({
       >
         {!isPrimary && (
           <p className="text-sm text-muted">
-            Leave empty to show shoppers the {languageNames[context.primaryLocale] ?? context.primaryLocale} text.
+            {fillWords(w.text.leaveEmpty, { language: languageNames[context.primaryLocale] ?? context.primaryLocale })}
           </p>
         )}
         {context.aiWriting && (
@@ -589,7 +589,7 @@ function TextSection({
           />
         )}
         <label className={label}>
-          Title
+          {w.text.fieldTitle}
           <input
             value={current.title}
             onChange={(e) => setField("title", e.target.value)}
@@ -600,7 +600,7 @@ function TextSection({
           />
         </label>
         <label className={label}>
-          Description
+          {w.text.description}
           <textarea
             value={current.description}
             onChange={(e) => setField("description", e.target.value)}
@@ -611,7 +611,7 @@ function TextSection({
         </label>
         <label className={label}>
           <span>
-            Warnings and safety information <span className={hint}>(shown on the product page)</span>
+            {w.text.safety} <span className={hint}>{w.text.safetyHint}</span>
           </span>
           <textarea
             value={current.safetyInformation}
@@ -624,7 +624,7 @@ function TextSection({
         {isPrimary && (
           <label className={label}>
             <span>
-              Web address <span className={hint}>(the end of the product&apos;s link)</span>
+              {w.text.address} <span className={hint}>{w.text.addressHint}</span>
             </span>
             <input
               value={product.handle}
@@ -632,17 +632,17 @@ function TextSection({
                 onHandleTouched();
                 update((p) => ({ ...p, handle: e.target.value.toLowerCase() }));
               }}
-              placeholder={slugify(current.title) || "product-name"}
+              placeholder={slugify(current.title) || w.text.addressPlaceholder}
               pattern="[a-z0-9]+(-[a-z0-9]+)*"
               spellCheck={false}
               autoCapitalize="none"
               className={`${input} font-mono`}
             />
-            <span className={hint}>If you change the address of a product that has been published, the old address redirects to the new one.</span>
+            <span className={hint}>{w.text.addressRedirect}</span>
           </label>
         )}
         <label className={label}>
-          Excerpt
+          {w.text.excerpt}
           <textarea
             value={current.excerpt}
             maxLength={EXCERPT_FIELD_MAX}
@@ -651,15 +651,14 @@ function TextSection({
             className={`${input} py-2`}
           />
           <span className={hint}>
-            A short text for lists. Shown on a content grid&apos;s tiles when <em>Excerpt</em> is ticked there; empty uses the start of the
-            description.
+            {w.text.excerptHintBefore}
+            <em>{w.text.excerptTick}</em>
+            {w.text.excerptHintAfter}
           </span>
         </label>
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="text-body-strong text-ink">In search results and shares</h3>
-          <p className="text-sm text-muted">
-            Optional. Empty fields use the title and the start of the description.
-          </p>
+          <h3 className="text-body-strong text-ink">{w.text.search}</h3>
+          <p className="text-sm text-muted">{w.text.searchIntro}</p>
           <SearchSnippetFields
             value={{ title: current.seoTitle, description: current.seoDescription }}
             onChange={(next) => {
@@ -667,11 +666,12 @@ function TextSection({
               if (next.description !== current.seoDescription) setField("seoDescription", next.description);
             }}
             fallback={{
-              title: current.title || primaryText?.title || "Product title",
+              title: current.title || primaryText?.title || w.text.productTitle,
               description: summarize(current.description || primaryText?.description || ""),
             }}
             url={productUrl}
             lang={locale}
+            words={w.seo}
           />
         </div>
       </div>
@@ -680,7 +680,11 @@ function TextSection({
 }
 
 /** A picture from the owner's computer, shrunk in the browser (1600 px and a 480 px copy) and uploaded to the store. */
-async function uploadPicture(storeSlug: string, file: File): Promise<{ url: string; thumbnailUrl: string } | { problem: string }> {
+async function uploadPicture(
+  storeSlug: string,
+  file: File,
+  unreadable: string,
+): Promise<{ url: string; thumbnailUrl: string } | { problem: string }> {
   try {
     const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
     const data = new FormData();
@@ -694,11 +698,12 @@ async function uploadPicture(storeSlug: string, file: File): Promise<{ url: stri
     const outcome = await uploadImageAction(storeSlug, data);
     return outcome.ok ? { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { problem: outcome.problem };
   } catch {
-    return { problem: `${file.name} could not be read as a picture.` };
+    return { problem: fillWords(unreadable, { name: file.name }) };
   }
 }
 
 function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {
+  const w = useAdminText("product");
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState("");
@@ -709,7 +714,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
     const room = MAX_MEDIA - product.media.length;
     for (const file of Array.from(files).slice(0, room)) {
       setBusy((n) => n + 1);
-      const outcome = await uploadPicture(storeSlug, file);
+      const outcome = await uploadPicture(storeSlug, file, w.media.unreadable);
       if ("url" in outcome) {
         update((p) => ({ ...p, media: [...p.media, { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl, alt: "" }] }));
       } else {
@@ -730,12 +735,9 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
   return (
     <section aria-labelledby="media-heading" className={card}>
       <h2 id="media-heading" className="mb-1 text-title text-ink">
-        Pictures
+        {w.media.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">
-        The first picture is the one shoppers see in lists. Pictures are made smaller before upload,
-        so large photos are fine.
-      </p>
+      <p className="mb-4 text-sm text-muted">{w.media.intro}</p>
       {product.media.length > 0 && (
         <ol className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {product.media.map((media, index) => (
@@ -747,7 +749,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
                 className="aspect-square w-full rounded-md border border-line bg-sunken object-cover"
               />
               <label className="flex flex-col gap-1 text-xs font-medium">
-                Describe the picture
+                {w.media.describe}
                 <input
                   value={media.alt}
                   onChange={(e) =>
@@ -756,7 +758,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
                       media: p.media.map((m, i) => (i === index ? { ...m, alt: e.target.value } : m)),
                     }))
                   }
-                  placeholder="Defaults to the title"
+                  placeholder={w.media.altPlaceholder}
                   className={`${input} min-h-9 text-xs`}
                 />
               </label>
@@ -766,26 +768,26 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
                   disabled={index === 0}
                   onClick={() => move(index, index - 1)}
                   className="underline disabled:opacity-30"
-                  aria-label={`Move picture ${index + 1} earlier`}
+                  aria-label={fillWords(w.media.moveEarlier, { n: index + 1 })}
                 >
-                  ← Earlier
+                  {w.media.earlier}
                 </button>
                 <button
                   type="button"
                   disabled={index === product.media.length - 1}
                   onClick={() => move(index, index + 1)}
                   className="underline disabled:opacity-30"
-                  aria-label={`Move picture ${index + 1} later`}
+                  aria-label={fillWords(w.media.moveLater, { n: index + 1 })}
                 >
-                  Later →
+                  {w.media.later}
                 </button>
                 <button
                   type="button"
                   onClick={() => update((p) => ({ ...p, media: p.media.filter((_, i) => i !== index) }))}
                   className="ml-auto underline"
-                  aria-label={`Remove picture ${index + 1}`}
+                  aria-label={fillWords(w.media.removeNth, { n: index + 1 })}
                 >
-                  Remove
+                  {w.media.remove}
                 </button>
               </div>
             </li>
@@ -795,7 +797,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
       {product.media.length < MAX_MEDIA &&
         (uploads ? (
           <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-brand px-4 text-sm font-medium focus-within:outline-2">
-            {busy > 0 ? `Uploading ${busy} …` : "Add pictures"}
+            {busy > 0 ? fillWords(w.media.uploading, { n: busy }) : w.media.add}
             <input
               type="file"
               accept="image/*"
@@ -812,7 +814,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
           <div className="flex flex-wrap items-end gap-2">
             <label className={`${label} flex-1`}>
               <span>
-                Picture address <span className={hint}>(uploads are not set up on this server)</span>
+                {w.media.address} <span className={hint}>{w.media.noUploads}</span>
               </span>
               <input
                 type="url"
@@ -825,14 +827,14 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
             <button
               type="button"
               onClick={() => {
-                if (!/^https?:\/\/\S+$/.test(link)) return setProblem("Enter a full picture address, starting with https://.");
+                if (!/^https?:\/\/\S+$/.test(link)) return setProblem(w.media.fullAddress);
                 setProblem(null);
                 update((p) => ({ ...p, media: [...p.media, { url: link, thumbnailUrl: null, alt: "" }] }));
                 setLink("");
               }}
               className="min-h-10 rounded-md border border-line px-4 text-sm"
             >
-              Add picture
+              {w.media.addOne}
             </button>
           </div>
         ))}
@@ -899,6 +901,7 @@ function VariantsSection({
   countries,
   upload,
 }: SectionProps & { storeSlug: string; context: EditorContext; countries: CountryOption[]; upload: PictureUpload | null }) {
+  const w = useAdminText("product");
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
@@ -950,16 +953,16 @@ function VariantsSection({
   return (
     <section aria-labelledby="variants-heading" className={card}>
       <h2 id="variants-heading" className="mb-4 text-title text-ink">
-        {allDigital ? "Price" : "Price and stock"}
+        {allDigital ? w.variants.price : w.variants.priceAndStock}
       </h2>
 
       <fieldset className="mb-4 flex flex-col gap-2 text-sm" hidden={service}>
-        <legend className="mb-1 font-medium">How is it delivered?</legend>
+        <legend className="mb-1 font-medium">{w.variants.delivered}</legend>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["physical", "Physical", "Shipped to the customer"],
-              ["digital", "Digital", "Downloaded after payment"],
+              ["physical", w.variants.physical, w.variants.physicalNote],
+              ["digital", w.variants.digital, w.variants.digitalNote],
             ] as const
           ).map(([value, name, note]) => (
             <label
@@ -994,7 +997,7 @@ function VariantsSection({
               }}
               className="size-4"
             />
-            Variants are delivered differently (for example a hardcover and an e-book)
+            {w.variants.mixed}
           </label>
         )}
       </fieldset>
@@ -1014,21 +1017,21 @@ function VariantsSection({
           }}
           className="size-4"
         />
-        This product comes in options, such as sizes or colours
+        {w.variants.hasOptions}
       </label>
 
       {optionsOn && (
         <fieldset className="mb-5 flex flex-col gap-3 rounded-md border border-line p-4">
-          <legend className="px-1 text-sm font-medium">Options</legend>
+          <legend className="px-1 text-sm font-medium">{w.variants.options}</legend>
           {drafts.map((draft, index) => {
             const option = product.options[index] ?? { name: "", values: [] };
             return (
               <div key={index} className="grid gap-2 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
                 <label className={label}>
-                  Option name
+                  {w.variants.optionName}
                   <input
                     value={option.name}
-                    placeholder={index === 0 ? "Colour" : "Size"}
+                    placeholder={index === 0 ? w.variants.optionColour : w.variants.optionSize}
                     onChange={(e) => {
                       const options = [...product.options];
                       options[index] = { name: e.target.value, values: parseValues(draft) };
@@ -1039,11 +1042,11 @@ function VariantsSection({
                 </label>
                 <label className={label}>
                   <span>
-                    Values <span className={hint}>(separated by commas)</span>
+                    {w.variants.values} <span className={hint}>{w.variants.valuesHint}</span>
                   </span>
                   <input
                     value={draft}
-                    placeholder={index === 0 ? "White, Black" : "S, M, L"}
+                    placeholder={index === 0 ? w.variants.valuesColour : w.variants.valuesSize}
                     onChange={(e) => {
                       const next = [...drafts];
                       next[index] = e.target.value;
@@ -1063,7 +1066,7 @@ function VariantsSection({
                   }}
                   className="min-h-10 text-sm underline"
                 >
-                  Remove<span className="sr-only"> option {option.name}</span>
+                  {w.variants.remove}<span className="sr-only">{fillWords(w.variants.removeOption, { name: option.name })}</span>
                 </button>
               </div>
             );
@@ -1074,7 +1077,7 @@ function VariantsSection({
               onClick={() => setDrafts([...drafts, ""])}
               className="self-start text-sm underline"
             >
-              Add another option
+              {w.variants.addOption}
             </button>
           )}
         </fieldset>
@@ -1083,29 +1086,29 @@ function VariantsSection({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-left text-sm">
           <caption className="sr-only">
-            Variants with SKU, {allDigital ? "" : "stock and "}price per country
+            {allDigital ? w.variants.captionDigital : w.variants.caption}
           </caption>
           <thead>
             <tr className="border-b border-line">
               <th scope="col" className="py-2 pr-3 font-medium">
-                Variant
+                {w.variants.variant}
               </th>
               <th scope="col" className="py-2 pr-3 font-medium">
-                SKU
+                {w.variants.sku}
               </th>
               {mixed && (
                 <th scope="col" className="py-2 pr-3 font-medium">
-                  Delivery
+                  {w.variants.delivery}
                 </th>
               )}
               {product.kind === "rental" && (
                 <th scope="col" className="py-2 pr-3 font-medium">
-                  Rented by
+                  {w.variants.rentedBy}
                 </th>
               )}
               {!allDigital && (
                 <th scope="col" className="py-2 pr-3 font-medium">
-                  Stock
+                  {w.variants.stock}
                   {context.locationName && (
                     <span className="block font-normal text-muted">{context.locationName}</span>
                   )}
@@ -1115,18 +1118,18 @@ function VariantsSection({
                 <th key={market.code} scope="col" className="py-2 pr-3 font-medium">
                   {market.name}
                   <span className="block font-normal text-muted">
-                    {market.currency}, {context.audience === "businesses" ? "excl." : "incl."} VAT
+                    {fillWords(context.audience === "businesses" ? w.variants.exclVat : w.variants.inclVat, { currency: market.currency })}
                   </span>
                 </th>
               ))}
               <th scope="col" className="py-2 font-medium">
-                For sale
+                {w.variants.forSale}
               </th>
             </tr>
           </thead>
           <tbody>
             {product.variants.map((variant, index) => {
-              const name = variantLabel(variant.options);
+              const name = Object.keys(variant.options).length > 0 ? variantLabel(variant.options) : w.variants.defaultName;
               return (
                 <VariantRow
                   key={variant.id ?? `new-${JSON.stringify(variant.options)}`}
@@ -1160,21 +1163,20 @@ function VariantsSection({
       )}
       {context.activeLocations > 1 && !allDigital && (
         <p className="mt-3 text-sm text-muted">
-          This store has several stock locations, so the stock here is the total over the active ones. Change it on the{" "}
+          {w.variants.locationsBefore}{" "}
           <Link href={`/admin/${storeSlug}/inventory`} className="underline">
-            Inventory page
+            {w.variants.inventoryPage}
           </Link>
-          , location by location.
+          {w.variants.locationsAfter}
         </p>
       )}
       <p className="mt-3 text-sm text-muted">
         {allDigital
-          ? "Digital products have no stock: they never sell out. "
+          ? w.variants.digitalNoStock
           : product.variants.some((v) => v.delivery === "digital")
-            ? "Digital variants have no stock. "
+            ? w.variants.someDigitalNoStock
             : ""}
-        Prices include VAT. Leave a country empty to not sell the product there. Changing a price
-        keeps its history, so reductions are always shown against the lowest price of the last 30 days.
+        {w.variants.pricesNote}
       </p>
     </section>
   );
@@ -1214,6 +1216,8 @@ function VariantRow({
   stockHref: string | null;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
+  const w = useAdminText("product");
+  const r = w.row;
   const cell = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm";
   // Nothing to weigh or send through customs for a download or an appointment.
   const digital = variant.delivery !== "physical";
@@ -1237,7 +1241,7 @@ function VariantRow({
           <input
             value={variant.sku}
             onChange={(e) => onChange({ sku: e.target.value })}
-            aria-label={`SKU for ${name}`}
+            aria-label={fillWords(r.skuFor, { name })}
             required
             className={`${cell} font-mono`}
           />
@@ -1247,11 +1251,11 @@ function VariantRow({
             <select
               value={variant.delivery}
               onChange={(e) => onChange({ delivery: e.target.value as Delivery })}
-              aria-label={`Delivery for ${name}`}
+              aria-label={fillWords(r.deliveryFor, { name })}
               className={`${cell} w-32`}
             >
-              <option value="physical">Physical</option>
-              <option value="digital">Digital</option>
+              <option value="physical">{w.variants.physical}</option>
+              <option value="digital">{w.variants.digital}</option>
             </select>
           </td>
         )}
@@ -1260,26 +1264,26 @@ function VariantRow({
             <select
               value={variant.rentalPeriod}
               onChange={(e) => onChange({ rentalPeriod: e.target.value as VariantInput["rentalPeriod"] })}
-              aria-label={`How ${name} is rented`}
+              aria-label={fillWords(r.rentedHow, { name })}
               className={`${cell} w-32`}
             >
-              <option value="day">Whole days</option>
-              <option value="half_day">Half day</option>
-              <option value="hour">By the hour</option>
+              <option value="day">{r.wholeDays}</option>
+              <option value="half_day">{r.halfDay}</option>
+              <option value="hour">{r.byHour}</option>
             </select>
           </td>
         )}
         {showStock && (
           <td className="py-2 pr-3">
             {digital ? (
-              <span className="inline-flex min-h-9 items-center text-muted">Not needed</span>
+              <span className="inline-flex min-h-9 items-center text-muted">{r.notNeeded}</span>
             ) : stockHref ? (
               <span className="flex flex-col">
-                <span className="inline-flex min-h-9 items-center tabular-nums" aria-label={`Stock for ${name}, the total over the active locations`}>
+                <span className="inline-flex min-h-9 items-center tabular-nums" aria-label={fillWords(r.stockTotalFor, { name })}>
                   {variant.stock}
                 </span>
                 <Link href={stockHref} className="text-xs underline underline-offset-2">
-                  By location
+                  {r.byLocation}
                 </Link>
               </span>
             ) : (
@@ -1289,7 +1293,7 @@ function VariantRow({
                 inputMode="numeric"
                 value={variant.stock}
                 onChange={(e) => onChange({ stock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                aria-label={`Stock for ${name}`}
+                aria-label={fillWords(r.stockFor, { name })}
                 className={`${cell} w-24`}
               />
             )}
@@ -1301,7 +1305,7 @@ function VariantRow({
               inputMode="decimal"
               value={variant.prices[market.code] ?? ""}
               onChange={(e) => onChange({ prices: { ...variant.prices, [market.code]: e.target.value } })}
-              aria-label={`Price in ${market.name} for ${name}, ${market.currency}`}
+              aria-label={fillWords(r.priceFor, { market: market.name, name, currency: market.currency })}
               placeholder="0,00"
               className={`${cell} w-28`}
             />
@@ -1312,7 +1316,7 @@ function VariantRow({
             type="checkbox"
             checked={variant.active}
             onChange={(e) => onChange({ active: e.target.checked })}
-            aria-label={`${name} is for sale`}
+            aria-label={fillWords(r.forSale, { name })}
             className="size-4"
           />
         </td>
@@ -1322,9 +1326,11 @@ function VariantRow({
           {!digital && (
             <details className="mb-2">
               <summary className="cursor-pointer text-xs text-muted">
-                Stock rules for {name}
-                {variant.stockPolicy === "continue" && variant.backorderDays ? `: keeps selling, ships within ${variant.backorderDays} ${variant.backorderDays === 1 ? "day" : "days"}` : ""}
-                {variant.lowStockThreshold !== null ? `${variant.stockPolicy === "continue" ? ", " : ": "}warns at ${variant.lowStockThreshold} or below` : ""}
+                {fillWords(r.stockRulesFor, { name })}
+                {variant.stockPolicy === "continue" && variant.backorderDays ? countWords(variant.backorderDays, r.keepsSelling) : ""}
+                {variant.lowStockThreshold !== null
+                  ? fillWords(variant.stockPolicy === "continue" ? r.warnsAfter : r.warnsFirst, { n: variant.lowStockThreshold })
+                  : ""}
               </summary>
               <div className="mt-2">
                 <StockRules name={name} variant={variant} cell={cell} onChange={onChange} />
@@ -1333,11 +1339,11 @@ function VariantRow({
           )}
           <details>
             <summary className="cursor-pointer text-xs text-muted">
-              {digital ? `Barcode and cost for ${name}` : `Barcode, cost, weight, content and customs for ${name}`}
+              {fillWords(digital ? r.detailsDigital : r.details, { name })}
             </summary>
             <div className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <label className="flex flex-col gap-1 text-xs font-medium">
-                Barcode (GTIN/EAN)
+                {r.barcode}
                 <input
                   inputMode="numeric"
                   value={variant.gtin ?? ""}
@@ -1346,19 +1352,19 @@ function VariantRow({
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium">
-                Cost per unit ({mainCurrency}, without VAT)
+                {fillWords(r.cost, { currency: mainCurrency })}
                 <input
                   inputMode="decimal"
                   value={variant.cost}
                   onChange={(e) => onChange({ cost: e.target.value })}
-                  placeholder="Not known"
+                  placeholder={r.notKnown}
                   className={cell}
                 />
               </label>
               {!digital && (
                 <>
                   <label className="flex flex-col gap-1 text-xs font-medium">
-                    Weight in grams
+                    {r.weight}
                     <input
                       type="number"
                       min={1}
@@ -1368,7 +1374,7 @@ function VariantRow({
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs font-medium">
-                    Customs tariff (HS) code
+                    {r.hsCode}
                     <input
                       inputMode="numeric"
                       value={variant.hsCode ?? ""}
@@ -1377,13 +1383,13 @@ function VariantRow({
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs font-medium">
-                    Country of origin
+                    {r.origin}
                     <select
                       value={variant.originCountry ?? ""}
                       onChange={(e) => onChange({ originCountry: e.target.value || null })}
                       className={cell}
                     >
-                      <option value="">Not set</option>
+                      <option value="">{r.notSet}</option>
                       {countries.map((c) => (
                         <option key={c.code} value={c.code}>
                           {c.name}
@@ -1415,10 +1421,11 @@ function VariantRow({
  * product page, in the cart and in the order; `policyProblem()` holds the same rules on the server and in the database.
  */
 function StockRules({ name, variant, cell, onChange }: { name: string; variant: VariantInput; cell: string; onChange: (change: Partial<VariantInput>) => void }) {
+  const w = useAdminText("product").stockRules;
   const keeps = variant.stockPolicy === "continue";
   return (
     <fieldset className="flex flex-col gap-2 text-xs">
-      <legend className="font-medium">Stock rules for {name}</legend>
+      <legend className="font-medium">{fillWords(w.title, { name })}</legend>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex items-start gap-2 font-medium">
           <input
@@ -1428,13 +1435,13 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
             className="mt-0.5 size-4"
           />
           <span>
-            Keep selling when sold out
-            <span className="block font-normal text-muted">Shoppers can still buy it. The page says it is on backorder and when it is expected to ship.</span>
+            {w.keepSelling}
+            <span className="block font-normal text-muted">{w.keepSellingHint}</span>
           </span>
         </label>
         {keeps && (
           <label className="flex flex-col gap-1 font-medium">
-            Expected to ship within (days)
+            {w.shipWithin}
             <input
               type="number"
               min={BACKORDER_DAYS_MIN}
@@ -1446,12 +1453,13 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
               className={cell}
             />
             <span className="font-normal text-muted">
-              {BACKORDER_DAYS_MIN} to {BACKORDER_DAYS_MAX} days, always stated.{backorderMayPassAgreed(variant.backorderDays) ? ` ${BACKORDER_LONG_HINT}` : ""}
+              {fillWords(w.daysRange, { min: BACKORDER_DAYS_MIN, max: BACKORDER_DAYS_MAX })}
+              {backorderMayPassAgreed(variant.backorderDays) ? ` ${w.longHint}` : ""}
             </span>
           </label>
         )}
         <label className="flex flex-col gap-1 font-medium">
-          Warn me when stock is at or below
+          {w.warnAt}
           <input
             type="number"
             min={0}
@@ -1459,10 +1467,10 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
             inputMode="numeric"
             value={variant.lowStockThreshold ?? ""}
             onChange={(e) => onChange({ lowStockThreshold: e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value))) })}
-            placeholder="No warning"
+            placeholder={w.noWarning}
             className={cell}
           />
-          <span className="font-normal text-muted">The owners get one email when the stock goes down to this level, not one for every sale.</span>
+          <span className="font-normal text-muted">{w.warnHint}</span>
         </label>
       </div>
     </fieldset>
@@ -1474,6 +1482,7 @@ function StockRules({ name, variant, cell, onChange }: { name: string; variant: 
  * (keeping a variant's own days when it has them), off stops selling at zero for all of them. The data is per variant; this only sets them together.
  */
 function BackorderAll({ product, update }: SectionProps) {
+  const w = useAdminText("product").backorderAll;
   const shipped = product.variants.filter((v) => v.delivery === "physical");
   const [days, setDays] = useState(() => String(shipped.find((v) => v.backorderDays)?.backorderDays ?? 7));
   if (shipped.length < 2) return null;
@@ -1489,10 +1498,10 @@ function BackorderAll({ product, update }: SectionProps) {
     <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={all} onChange={(e) => set(e.target.checked, Number(days) >= BACKORDER_DAYS_MIN ? Math.floor(Number(days)) : null)} className="size-4" />
-        Keep selling every variant when sold out
+        {w.keepSelling}
       </label>
       <label className="flex items-center gap-2">
-        Expected to ship within
+        {w.shipWithin}
         <input
           type="number"
           min={BACKORDER_DAYS_MIN}
@@ -1503,10 +1512,10 @@ function BackorderAll({ product, update }: SectionProps) {
             const n = Math.floor(Number(e.target.value));
             if (all && n >= BACKORDER_DAYS_MIN && n <= BACKORDER_DAYS_MAX) set(true, n);
           }}
-          aria-label="Days until a backordered variant is expected to ship"
+          aria-label={w.daysLabel}
           className="min-h-9 w-20 rounded-md border border-line bg-card px-2 text-sm"
         />
-        days
+        {w.days}
       </label>
     </div>
   );
@@ -1529,6 +1538,7 @@ function VariantPicture({
   upload: PictureUpload | null;
   onChange: (image: VariantInput["image"]) => void;
 }) {
+  const w = useAdminText("product").picture;
   // Where the chooser opens: fixed beside its button, as the variants' table scrolls and would cut it off.
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
   const open = at !== null;
@@ -1572,7 +1582,7 @@ function VariantPicture({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-label={image ? `Change the picture for ${name}` : `Choose a picture for ${name}`}
+        aria-label={fillWords(image ? w.change : w.choose, { name })}
         className="block rounded-pill"
       >
         {image ? (
@@ -1589,7 +1599,7 @@ function VariantPicture({
           style={{ top: at.top, left: at.left }}
           className="fixed z-50 flex w-64 flex-col gap-2 rounded-panel border border-line bg-card p-3 shadow-lg"
         >
-          <p className="text-xs font-medium">Picture for {name}</p>
+          <p className="text-xs font-medium">{fillWords(w.title, { name })}</p>
           {pictures.length > 0 ? (
             <ul className="grid grid-cols-4 gap-2">
               {pictures.map((picture, index) => (
@@ -1597,7 +1607,7 @@ function VariantPicture({
                   <button
                     type="button"
                     onClick={() => choose({ url: picture.url, thumbnailUrl: picture.thumbnailUrl })}
-                    aria-label={`Picture ${index + 1}`}
+                    aria-label={fillWords(w.nth, { n: index + 1 })}
                     aria-pressed={image?.url === picture.url}
                     className="block rounded-pill aria-pressed:ring-2 aria-pressed:ring-ink"
                   >
@@ -1608,11 +1618,11 @@ function VariantPicture({
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted">The product has no pictures yet.</p>
+            <p className="text-xs text-muted">{w.none}</p>
           )}
           {upload && (
             <label className="w-fit cursor-pointer text-sm underline focus-within:outline-2">
-              {busy ? "Uploading …" : "Upload a picture"}
+              {busy ? w.uploading : w.upload}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/avif"
@@ -1634,7 +1644,7 @@ function VariantPicture({
           )}
           {image && (
             <button type="button" onClick={() => choose(null)} className="w-fit text-sm text-muted underline">
-              No picture
+              {w.noPicture}
             </button>
           )}
           {problem && (
@@ -1649,6 +1659,9 @@ function VariantPicture({
 }
 
 function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {
+  const all = useAdminText("product");
+  const w = all.digital;
+  const defaultName = all.variants.defaultName;
   const [busy, setBusy] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const digital = product.variants.filter((v) => v.delivery === "digital");
@@ -1659,7 +1672,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
     setProblem(null);
     const room = MAX_FILES - product.files.length;
     const chosen = Array.from(files);
-    if (chosen.length > room) setProblem(`A product can have at most ${MAX_FILES} files.`);
+    if (chosen.length > room) setProblem(fillWords(w.atMost, { max: MAX_FILES }));
     await Promise.all(
       chosen.slice(0, room).map(async (file) => {
         setBusy((b) => [...b, file.name]);
@@ -1670,7 +1683,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
           const { error } = await createClient()
             .storage.from(started.bucket)
             .uploadToSignedUrl(started.path, started.token, file, { contentType });
-          if (error) return setProblem(`${file.name} could not be uploaded. It may be too large.`);
+          if (error) return setProblem(fillWords(w.tooLarge, { name: file.name }));
           update((p) => ({
             ...p,
             files: [
@@ -1679,7 +1692,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
             ],
           }));
         } catch {
-          setProblem(`${file.name} could not be uploaded. Try again.`);
+          setProblem(fillWords(w.failed, { name: file.name }));
         } finally {
           setBusy((b) => {
             const i = b.indexOf(file.name);
@@ -1699,11 +1712,9 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
   return (
     <section aria-labelledby="digital-heading" className={card}>
       <h2 id="digital-heading" className="mb-1 text-title text-ink">
-        Files to download
+        {w.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">
-        Shoppers get download links on their order page as soon as they have paid. The files stay private: links are personal and work only within the limits below.
-      </p>
+      <p className="mb-4 text-sm text-muted">{w.intro}</p>
 
       {product.files.length > 0 && (
         <ul className="mb-4 flex flex-col divide-y divide-line rounded-md border border-line">
@@ -1712,7 +1723,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 text-xs font-medium">
                   <span>
-                    Name shoppers see <span className={hint}>({fileSize(file.sizeBytes)})</span>
+                    {w.name} <span className={hint}>({fileSize(file.sizeBytes)})</span>
                   </span>
                   <input
                     value={file.name}
@@ -1724,17 +1735,17 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
                 </label>
                 {several && (
                   <label className="flex flex-col gap-1 text-xs font-medium">
-                    Delivered with
+                    {w.deliveredWith}
                     <select
                       value={file.variantSku ?? ""}
                       onChange={(e) => setFile(index, { variantSku: e.target.value || null })}
                       className={`${input} min-h-9`}
                     >
-                      <option value="">Every digital variant</option>
+                      <option value="">{w.everyVariant}</option>
                       {digital.map((v) => (
                         <option key={v.sku || variantLabel(v.options)} value={v.sku} disabled={!v.sku}>
-                          {variantLabel(v.options)}
-                          {v.sku ? "" : " (add a SKU first)"}
+                          {Object.keys(v.options).length > 0 ? variantLabel(v.options) : defaultName}
+                          {v.sku ? "" : w.addSkuFirst}
                         </option>
                       ))}
                     </select>
@@ -1746,7 +1757,8 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
                 onClick={() => update((p) => ({ ...p, files: p.files.filter((_, i) => i !== index) }))}
                 className="min-h-9 justify-self-start text-sm underline"
               >
-                Remove<span className="sr-only"> {file.name}</span>
+                {w.remove}
+                <span className="sr-only"> {file.name}</span>
               </button>
             </li>
           ))}
@@ -1756,7 +1768,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
       {uploads ? (
         product.files.length < MAX_FILES && (
           <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-brand px-4 text-sm font-medium focus-within:outline-2">
-            {busy.length > 0 ? `Uploading ${busy.length} …` : "Add files"}
+            {busy.length > 0 ? fillWords(w.uploading, { n: busy.length }) : w.add}
             <input
               type="file"
               multiple
@@ -1770,7 +1782,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
           </label>
         )
       ) : (
-        <p className="text-sm text-muted">File uploads are not set up on this server, so files cannot be added.</p>
+        <p className="text-sm text-muted">{w.noUploads}</p>
       )}
       {problem && (
         <p role="alert" className="mt-2 text-sm text-danger-text">
@@ -1778,15 +1790,13 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
         </p>
       )}
       {product.files.length > 0 && (
-        <p className="mt-2 text-xs text-muted">
-          Removing a file stops new downloads of it; customers who already bought it keep their links.
-        </p>
+        <p className="mt-2 text-xs text-muted">{w.removeNote}</p>
       )}
 
       <div className="mt-5 grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
         <label className={label}>
           <span>
-            Downloads per file <span className={hint}>(empty for no limit)</span>
+            {w.perFile} <span className={hint}>{w.perFileHint}</span>
           </span>
           <input
             type="number"
@@ -1800,7 +1810,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
         </label>
         <label className={label}>
           <span>
-            Links work for this many days <span className={hint}>(empty for always)</span>
+            {w.days} <span className={hint}>{w.daysHint}</span>
           </span>
           <input
             type="number"
@@ -1817,11 +1827,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
   );
 }
 
-const INTERVAL_NAMES: Record<PlanInterval, [string, string]> = {
-  week: ["week", "weeks"],
-  month: ["month", "months"],
-  year: ["year", "years"],
-};
+const INTERVALS: PlanInterval[] = ["week", "month", "year"];
 
 /** Purchase options for subscribing (D25), like Shopify's selling plans. */
 function SubscriptionSection({
@@ -1830,6 +1836,7 @@ function SubscriptionSection({
   markets,
   netPrices,
 }: SectionProps & { markets: EditorContext["markets"]; netPrices: boolean }) {
+  const w = useAdminText("product").subscriptions;
   const setPlan = (index: number, change: Partial<ProductInput["plans"][number]>) =>
     update((p) => ({ ...p, plans: p.plans.map((plan, i) => (i === index ? { ...plan, ...change } : plan)) }));
   const count = (text: string, interval: PlanInterval) =>
@@ -1860,21 +1867,17 @@ function SubscriptionSection({
   return (
     <section aria-labelledby="subscription-heading" className={card}>
       <h2 id="subscription-heading" className="mb-1 text-title text-ink">
-        Subscriptions
+        {w.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">
-        Let shoppers subscribe and get the product regularly. Stripe charges each renewal
-        automatically, and shoppers can cancel any time from their order page.
-      </p>
+      <p className="mb-4 text-sm text-muted">{w.intro}</p>
 
       {product.plans.length > 0 && (
         <ul className="mb-4 flex flex-col divide-y divide-line rounded-md border border-line">
           {product.plans.map((plan, index) => {
-            const [one, many] = INTERVAL_NAMES[plan.interval];
             return (
               <li key={plan.id ?? `new-${index}`} className="flex flex-wrap items-end gap-3 p-3">
                 <fieldset>
-                  <legend className="mb-1 text-xs font-medium">Renews every</legend>
+                  <legend className="mb-1 text-xs font-medium">{w.renewsEvery}</legend>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -1883,7 +1886,7 @@ function SubscriptionSection({
                       inputMode="numeric"
                       value={plan.intervalCount}
                       onChange={(e) => setPlan(index, { intervalCount: count(e.target.value, plan.interval) })}
-                      aria-label={`Purchase option ${index + 1}: how many`}
+                      aria-label={fillWords(w.howMany, { n: index + 1 })}
                       className={`${input} min-h-9 w-20`}
                     />
                     <select
@@ -1892,19 +1895,19 @@ function SubscriptionSection({
                         const interval = e.target.value as PlanInterval;
                         setPlan(index, { interval, intervalCount: Math.min(plan.intervalCount, MAX_INTERVAL_COUNT[interval]) });
                       }}
-                      aria-label={`Purchase option ${index + 1}: weeks, months or years`}
+                      aria-label={fillWords(w.whichInterval, { n: index + 1 })}
                       className={`${input} min-h-9 w-36`}
                     >
-                      {(Object.keys(INTERVAL_NAMES) as PlanInterval[]).map((interval) => (
+                      {INTERVALS.map((interval) => (
                         <option key={interval} value={interval}>
-                          {plan.intervalCount === 1 ? INTERVAL_NAMES[interval][0] : INTERVAL_NAMES[interval][1]}
+                          {plan.intervalCount === 1 ? w.intervals[interval].one : w.intervals[interval].many}
                         </option>
                       ))}
                     </select>
                   </div>
                 </fieldset>
                 <label className="flex flex-col gap-1 text-xs font-medium">
-                  Subscriber discount
+                  {w.discount}
                   <span className="flex items-center gap-1">
                     <input
                       type="number"
@@ -1923,10 +1926,10 @@ function SubscriptionSection({
                   </span>
                 </label>
                 <p className="min-h-9 flex-1 self-center text-sm text-muted">
-                  Every {plan.intervalCount === 1 ? one : `${plan.intervalCount} ${many}`}
-                  {plan.discountPercent > 0 ? `, ${plan.discountPercent}% off each time` : ", full price"}
-                  {plan.trialDays > 0 && `, ${plan.trialDays} days free`}
-                  {plan.minCycles > 0 && `, at least ${plan.minCycles} payments`}
+                  {countWords(plan.intervalCount, w.every[plan.interval])}
+                  {plan.discountPercent > 0 ? fillWords(w.percentOff, { n: plan.discountPercent }) : w.fullPrice}
+                  {plan.trialDays > 0 && fillWords(w.daysFree, { n: plan.trialDays })}
+                  {plan.minCycles > 0 && fillWords(w.atLeast, { n: plan.minCycles })}
                 </p>
                 <button
                   type="button"
@@ -1938,14 +1941,15 @@ function SubscriptionSection({
                   }
                   className="min-h-9 text-sm underline"
                 >
-                  Remove<span className="sr-only"> purchase option {index + 1}</span>
+                  {w.remove}
+                  <span className="sr-only">{fillWords(w.removeNth, { n: index + 1 })}</span>
                 </button>
                 <details className="w-full" open={plan.trialDays > 0 || plan.minCycles > 0 || Object.values(plan.signupFee).some(Boolean)}>
-                  <summary className="cursor-pointer text-xs text-muted">Free trial, sign-up fee and commitment</summary>
+                  <summary className="cursor-pointer text-xs text-muted">{w.more}</summary>
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     <label className="flex flex-col gap-1 text-xs font-medium">
                       <span>
-                        Free trial <span className="font-normal text-muted">(days, 0 for none)</span>
+                        {w.trial} <span className="font-normal text-muted">{w.trialHint}</span>
                       </span>
                       <input
                         type="number"
@@ -1961,7 +1965,7 @@ function SubscriptionSection({
                     </label>
                     <label className="flex flex-col gap-1 text-xs font-medium">
                       <span>
-                        Minimum payments <span className="font-normal text-muted">(the first included, 0 for none)</span>
+                        {w.minimum} <span className="font-normal text-muted">{w.minimumHint}</span>
                       </span>
                       <input
                         type="number"
@@ -1977,8 +1981,8 @@ function SubscriptionSection({
                     </label>
                     <fieldset className="flex flex-col gap-1 text-xs">
                       <legend className="mb-1 font-medium">
-                        Sign-up fee{" "}
-                        <span className="font-normal text-muted">({netPrices ? "excl. VAT, " : ""}once, empty for none)</span>
+                        {w.fee}{" "}
+                        <span className="font-normal text-muted">{netPrices ? w.feeHintNet : w.feeHint}</span>
                       </legend>
                       {markets.map((market) => (
                         <label key={market.code} className="flex items-center gap-2">
@@ -1987,7 +1991,7 @@ function SubscriptionSection({
                             inputMode="decimal"
                             value={plan.signupFee[market.code] ?? ""}
                             onChange={(e) => setPlan(index, { signupFee: { ...plan.signupFee, [market.code]: e.target.value } })}
-                            aria-label={`Sign-up fee in ${market.name}, ${market.currency}`}
+                            aria-label={fillWords(w.feeIn, { market: market.name, currency: market.currency })}
                             placeholder="0,00"
                             className={`${input} min-h-9 w-28`}
                           />
@@ -1996,10 +2000,7 @@ function SubscriptionSection({
                     </fieldset>
                   </div>
                   {plan.minCycles > 0 && (
-                    <p className="mt-2 text-xs text-muted">
-                      Shoppers are told before they subscribe. A cancellation before the commitment is met takes effect
-                      when it is.
-                    </p>
+                    <p className="mt-2 text-xs text-muted">{w.commitmentNote}</p>
                   )}
                 </details>
               </li>
@@ -2015,7 +2016,7 @@ function SubscriptionSection({
             onClick={addPlan}
             className="min-h-10 rounded-pill border border-dashed border-brand px-4 text-sm font-medium"
           >
-            {product.plans.length === 0 ? "Offer a subscription" : "Add another purchase option"}
+            {product.plans.length === 0 ? w.offer : w.addAnother}
           </button>
         )}
         {product.plans.length > 0 && (
@@ -2026,38 +2027,28 @@ function SubscriptionSection({
               onChange={(e) => update((p) => ({ ...p, subscriptionOnly: e.target.checked }))}
               className="size-4"
             />
-            Only sell as a subscription (no one-time purchase)
+            {w.only}
           </label>
         )}
       </div>
       {product.plans.length > 0 && (
-        <p className="mt-3 text-xs text-muted">
-          Subscribers keep the price they signed up at. Changing or removing an option affects
-          new subscribers only.
-        </p>
+        <p className="mt-3 text-xs text-muted">{w.keepPrice}</p>
       )}
     </section>
   );
 }
 
-const PRODUCT_AUDIENCE_LABELS: Record<ProductAudience, { label: string; hint: string }> = {
-  all: { label: "Everyone", hint: "Private shoppers and businesses." },
-  consumers: { label: "Private shoppers only", hint: "Hidden from shoppers buying for a business." },
-  businesses: {
-    label: "Businesses only",
-    hint: "Shown only to shoppers buying for a business, who give their company's name and organisation number at checkout.",
-  },
-};
-
 /** Stores selling to both (B2B): whom the product is for. */
 function AudienceSection({ product, update }: SectionProps) {
+  const w = useAdminText("product").audience;
+  const labels: Record<ProductAudience, { label: string; hint: string }> = w.choices;
   return (
     <section aria-labelledby="audience-heading" className={card}>
       <fieldset>
         <legend id="audience-heading" className="mb-1 font-medium">
-          Customers
+          {w.title}
         </legend>
-        <p className="mb-4 text-sm text-muted">Who sees and can buy the product. Businesses see its prices without VAT.</p>
+        <p className="mb-4 text-sm text-muted">{w.intro}</p>
         <div className="flex flex-col gap-2 text-sm">
           {PRODUCT_AUDIENCES.map((value) => (
             <label key={value} className="flex items-start gap-2">
@@ -2069,8 +2060,8 @@ function AudienceSection({ product, update }: SectionProps) {
                 className="mt-0.5 size-4"
               />
               <span>
-                {PRODUCT_AUDIENCE_LABELS[value].label}
-                <span className="block text-muted">{PRODUCT_AUDIENCE_LABELS[value].hint}</span>
+                {labels[value].label}
+                <span className="block text-muted">{labels[value].hint}</span>
               </span>
             </label>
           ))}
@@ -2083,6 +2074,7 @@ function AudienceSection({ product, update }: SectionProps) {
 /** Goods, or an appointment booked for a time (D65). */
 function KindSection({ product, update, offered }: SectionProps & { offered: Record<ProductInput["kind"], boolean> }) {
   // Content for the unit price goes with a change to something that is not goods (D160): said once, where it happened.
+  const w = useAdminText("product").kind;
   const [lostContent, setLostContent] = useState(false);
   const choose = (kind: ProductInput["kind"]) => {
     setLostContent(kind !== "goods" && product.variants.some((v) => v.measure !== null));
@@ -2115,16 +2107,16 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
     <section aria-labelledby="kind-heading" className={card}>
       <fieldset>
         <legend id="kind-heading" className="mb-3 font-medium">
-          What is it?
+          {w.title}
         </legend>
         <div className="flex flex-wrap gap-2 text-sm">
           {(
             [
-              ["goods", "Goods", "Shipped or downloaded"],
-              ["appointment", "An appointment", "Booked for a time with your staff"],
-              ["stay", "A stay", "Nights in a room or a home"],
-              ["rental", "A rental", "Days with an item, such as a bike or a boat"],
-              ["gift_card", "A gift card", "Amounts emailed as a code, spent in your store"],
+              ["goods", w.goods, w.goodsNote],
+              ["appointment", w.appointment, w.appointmentNote],
+              ["stay", w.stay, w.stayNote],
+              ["rental", w.rental, w.rentalNote],
+              ["gift_card", w.giftCard, w.giftCardNote],
             ] as const
           ).filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label
@@ -2148,7 +2140,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
       </fieldset>
       {lostContent && (
         <p role="status" className="mt-3 text-sm text-muted">
-          The content of its variants was taken away: only shipped goods have a price per kg or litre.
+          {w.lostContent}
         </p>
       )}
     </section>
@@ -2168,17 +2160,17 @@ function AppointmentSection({
   const toggleStaff = (id: string, on: boolean) =>
     set({ resourceIds: on ? [...a.resourceIds, id] : a.resourceIds.filter((r) => r !== id) });
   const people = context.staff.filter((s) => s.kind === "staff");
+  const all = useAdminText("product");
+  const w = all.appointment;
   return (
     <section aria-labelledby="appointment-heading" className={card}>
       <h2 id="appointment-heading" className="mb-1 text-title text-ink">
-        Appointment
+        {w.title}
       </h2>
-      <p className="mb-4 text-sm text-muted">
-        Shoppers choose a day and a time within the hours of the staff below; each booking takes one of them.
-      </p>
+      <p className="mb-4 text-sm text-muted">{w.intro}</p>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
-          Length <span className={hint}>(minutes)</span>
+          {w.length} <span className={hint}>{w.minutes}</span>
           <input
             type="number"
             min={5}
@@ -2190,7 +2182,7 @@ function AppointmentSection({
           />
         </label>
         <label className={label}>
-          Free before <span className={hint}>(minutes)</span>
+          {w.before} <span className={hint}>{w.minutes}</span>
           <input
             type="number"
             min={0}
@@ -2202,7 +2194,7 @@ function AppointmentSection({
           />
         </label>
         <label className={label}>
-          Free after <span className={hint}>(minutes)</span>
+          {w.after} <span className={hint}>{w.minutes}</span>
           <input
             type="number"
             min={0}
@@ -2214,7 +2206,7 @@ function AppointmentSection({
           />
         </label>
         <label className={label}>
-          Times offered
+          {w.times}
           <select
             value={a.stepMinutes}
             onChange={(e) => set({ stepMinutes: Number(e.target.value) as AppointmentInput["stepMinutes"] })}
@@ -2222,13 +2214,13 @@ function AppointmentSection({
           >
             {[5, 10, 15, 20, 30, 60].map((step) => (
               <option key={step} value={step}>
-                {step === 60 ? "Every hour" : `Every ${step} minutes`}
+                {step === 60 ? w.everyHour : fillWords(w.everyMinutes, { n: step })}
               </option>
             ))}
           </select>
         </label>
         <label className={label}>
-          Notice <span className={hint}>(hours)</span>
+          {w.notice} <span className={hint}>{w.hours}</span>
           <input
             type="number"
             min={0}
@@ -2239,7 +2231,7 @@ function AppointmentSection({
           />
         </label>
         <label className={label}>
-          Booked up to <span className={hint}>(days ahead)</span>
+          {w.ahead} <span className={hint}>{w.daysAhead}</span>
           <input
             type="number"
             min={1}
@@ -2252,9 +2244,9 @@ function AppointmentSection({
       </div>
       {context.places.length > 0 && (
         <label className={`${label} mt-4 max-w-sm`}>
-          Where
+          {w.where}
           <select value={a.locationId ?? ""} onChange={(e) => set({ locationId: e.target.value || null })} className={input}>
-            <option value="">Not said</option>
+            <option value="">{w.notSaid}</option>
             {context.places.map((place) => (
               <option key={place.id} value={place.id}>
                 {place.name}
@@ -2264,14 +2256,14 @@ function AppointmentSection({
         </label>
       )}
       <fieldset className="mt-4 flex flex-col gap-2 text-sm">
-        <legend className="mb-1 font-medium">Who does it</legend>
+        <legend className="mb-1 font-medium">{w.who}</legend>
         {people.length === 0 ? (
           <p className="text-muted">
-            No staff yet.{" "}
+            {w.noStaff}{" "}
             <Link href={`/admin/${storeSlug}/bookings/staff/new`} className="underline" target="_blank">
-              Add the people who take appointments
+              {w.addStaff}
             </Link>
-            , then come back.
+            {w.comeBack}
           </p>
         ) : (
           people.map((s) => (
@@ -2283,12 +2275,12 @@ function AppointmentSection({
                 className="size-4"
               />
               {s.name}
-              {!s.active && <span className="text-muted">(not taking bookings)</span>}
+              {!s.active && <span className="text-muted">{w.notTaking}</span>}
             </label>
           ))
         )}
       </fieldset>
-      <PaymentFields a={a} set={set} where="the appointment" />
+      <PaymentFields a={a} set={set} where={all.payment.places.appointment} />
     </section>
   );
 }
@@ -2308,26 +2300,25 @@ function RangeSection({
   const units = context.staff.filter((s) => s.kind === (stay ? "unit" : "item"));
   const toggle = (id: string, on: boolean) =>
     set({ resourceIds: on ? [...a.resourceIds, id] : a.resourceIds.filter((r) => r !== id) });
-  const nights = stay ? "nights" : "days";
+  const all = useAdminText("product");
+  const w = all.range;
   return (
     <section aria-labelledby="range-heading" className={card}>
       <h2 id="range-heading" className="mb-1 text-title text-ink">
-        {stay ? "Stay" : "Rental"}
+        {stay ? w.stay : w.rental}
       </h2>
       <p className="mb-4 text-sm text-muted">
-        {stay
-          ? "Guests choose their arrival and departure dates. The price is per night, and each booking takes one of the rooms or homes below."
-          : "Shoppers choose the first and last day, or, for a variant rented by the half day or hour (set under Variants), a day and a time. Each variant's price is per day, half day or hour, and each booking takes one of the items below. Half days split the day between pick-up and return; hours start on the hour from pick-up."}
+        {stay ? w.stayIntro : w.rentalIntro}
       </p>
       {context.hosts.length > 0 && (
         <label className={`${label} mb-4 max-w-sm`}>
-          Host
+          {w.host}
           <select
             value={product.hostId ?? ""}
             onChange={(e) => update((p) => ({ ...p, hostId: e.target.value || null }))}
             className={input}
           >
-            <option value="">The store itself</option>
+            <option value="">{w.storeItself}</option>
             {context.hosts.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
@@ -2337,26 +2328,24 @@ function RangeSection({
           <span className={hint}>
             {(() => {
               const chosen = context.hosts.find((h) => h.id === product.hostId);
-              if (!chosen) return "Listed for someone else? Choose their host; they then see its bookings and keep its calendar.";
-              return chosen.vatRegistered
-                ? "Their bookings are paid to them, less your commission. The VAT category above applies."
-                : "Their bookings are paid to them, less your commission. They are not VAT registered, so it is sold without VAT.";
+              if (!chosen) return w.hostHint;
+              return chosen.vatRegistered ? w.hostVat : w.hostNoVat;
             })()}
           </span>
         </label>
       )}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
-          {stay ? "Check-in" : "Pick-up"}
+          {stay ? w.checkIn : w.pickUp}
           <input type="time" value={a.checkInTime} onChange={(e) => set({ checkInTime: e.target.value })} className={input} />
         </label>
         <label className={label}>
-          {stay ? "Check-out" : "Return"}
+          {stay ? w.checkOut : w.return}
           <input type="time" value={a.checkOutTime} onChange={(e) => set({ checkOutTime: e.target.value })} className={input} />
         </label>
         <span />
         <label className={label}>
-          Shortest <span className={hint}>({stay ? nights : "whole days"})</span>
+          {w.shortest} <span className={hint}>{stay ? w.nights : w.wholeDays}</span>
           <input
             type="number"
             min={1}
@@ -2367,7 +2356,7 @@ function RangeSection({
           />
         </label>
         <label className={label}>
-          Longest <span className={hint}>({stay ? nights : "whole days"})</span>
+          {w.longest} <span className={hint}>{stay ? w.nights : w.wholeDays}</span>
           <input
             type="number"
             min={1}
@@ -2378,7 +2367,7 @@ function RangeSection({
           />
         </label>
         <label className={label}>
-          Booked up to <span className={hint}>(days ahead)</span>
+          {all.appointment.ahead} <span className={hint}>{all.appointment.daysAhead}</span>
           <input
             type="number"
             min={1}
@@ -2389,7 +2378,7 @@ function RangeSection({
           />
         </label>
         <label className={label}>
-          Notice <span className={hint}>(hours before {stay ? "check-in" : "pick-up"})</span>
+          {all.appointment.notice} <span className={hint}>{stay ? w.noticeCheckIn : w.noticePickUp}</span>
           <input
             type="number"
             min={0}
@@ -2402,9 +2391,9 @@ function RangeSection({
       </div>
       {context.places.length > 0 && (
         <label className={`${label} mt-4 max-w-sm`}>
-          Where
+          {all.appointment.where}
           <select value={a.locationId ?? ""} onChange={(e) => set({ locationId: e.target.value || null })} className={input}>
-            <option value="">Not said</option>
+            <option value="">{all.appointment.notSaid}</option>
             {context.places.map((place) => (
               <option key={place.id} value={place.id}>
                 {place.name}
@@ -2414,14 +2403,14 @@ function RangeSection({
         </label>
       )}
       <fieldset className="mt-4 flex flex-col gap-2 text-sm">
-        <legend className="mb-1 font-medium">{stay ? "Rooms and homes" : "Items"}</legend>
+        <legend className="mb-1 font-medium">{stay ? w.units : w.items}</legend>
         {units.length === 0 ? (
           <p className="text-muted">
-            None yet.{" "}
+            {w.noneYet}{" "}
             <Link href={`/admin/${storeSlug}/bookings/units/new?kind=${stay ? "unit" : "item"}`} className="underline" target="_blank">
-              {stay ? "Add the rooms or homes guests stay in" : "Add the items you rent out"}
+              {stay ? w.addUnits : w.addItems}
             </Link>
-            , then come back.
+            {all.appointment.comeBack}
           </p>
         ) : (
           units.map((u) => (
@@ -2433,7 +2422,7 @@ function RangeSection({
                 className="size-4"
               />
               {u.name}
-              {!u.active && <span className="text-muted">(not taking bookings)</span>}
+              {!u.active && <span className="text-muted">{all.appointment.notTaking}</span>}
             </label>
           ))
         )}
@@ -2446,16 +2435,14 @@ function RangeSection({
         businesses={context.audience === "businesses"}
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
       />
-      <PaymentFields a={a} set={set} where={stay ? "check-in" : "pick-up"} />
+      <PaymentFields a={a} set={set} where={stay ? all.payment.places.checkIn : all.payment.places.pickUp} />
     </section>
   );
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 /** A day of the year as `MM-DD`, chosen as a month and a day. */
 function DayOfYear({ value, onChange, name }: { value: string; onChange: (value: string) => void; name: string }) {
+  const w = useAdminText("product").pricing;
   const [month, day] = value.split("-").map(Number);
   const set = (m: number, d: number) => onChange(`${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
   const cell = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
@@ -2467,11 +2454,11 @@ function DayOfYear({ value, onChange, name }: { value: string; onChange: (value:
         max={31}
         value={day}
         onChange={(e) => set(month, Math.max(1, Math.min(31, Math.round(Number(e.target.value) || 1))))}
-        aria-label={`${name}: day`}
+        aria-label={fillWords(w.dayOf, { name })}
         className={`${cell} w-16`}
       />
-      <select value={month} onChange={(e) => set(Number(e.target.value), day)} aria-label={`${name}: month`} className={cell}>
-        {MONTHS.map((label, i) => (
+      <select value={month} onChange={(e) => set(Number(e.target.value), day)} aria-label={fillWords(w.monthOf, { name })} className={cell}>
+        {w.months.map((label, i) => (
           <option key={label} value={i + 1}>
             {label}
           </option>
@@ -2502,17 +2489,18 @@ function PricingFields({
   /** The store's languages besides its main one, for each season's name there. */
   otherLocales: string[];
 }) {
-  const languageName = (locale: string) => new Intl.DisplayNames(["en"], { type: "language" }).of(locale.slice(0, 2)) ?? locale;
+  const w = useAdminText("product").pricing;
+  const lang = useAdminLang();
+  const languageName = (locale: string) =>
+    new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].tag], { type: "language" }).of(locale.slice(0, 2)) ?? locale;
   const setSeason = (index: number, change: Partial<SeasonInput>) =>
     set({ seasons: a.seasons.map((season, i) => (i === index ? { ...season, ...change } : season)) });
   const small = "min-h-9 rounded-pill border border-edge bg-card px-2 text-sm";
   return (
     <>
       <fieldset className="mt-6 flex flex-col gap-2 text-sm">
-        <legend className="mb-1 font-medium">{stay ? "Final cleaning" : "Fee per rental"}</legend>
-        <p className="text-muted">
-          Added once to each booking, {businesses ? "without" : "with"} VAT at the product&apos;s rate. Leave empty for none.
-        </p>
+        <legend className="mb-1 font-medium">{stay ? w.cleaning : w.feePerRental}</legend>
+        <p className="text-muted">{businesses ? w.feeHintNet : w.feeHint}</p>
         <div className="flex flex-wrap gap-3">
           {markets.map((market) => (
             <label key={market.code} className={label}>
@@ -2531,19 +2519,15 @@ function PricingFields({
       </fieldset>
 
       <fieldset className="mt-6 flex flex-col gap-3 text-sm">
-        <legend className="mb-1 font-medium">Seasons</legend>
-        <p className="text-muted">
-          Raise or lower the price of the {stay ? "nights" : "days"} a season covers, every year. Where seasons meet, both apply,
-          one on top of the other (a summer weekend at +30 % and +20 % costs 56 % more). A {stay ? "night" : "day"} counts as the
-          weekday it starts.
-        </p>
+        <legend className="mb-1 font-medium">{w.seasons}</legend>
+        <p className="text-muted">{stay ? w.seasonsStay : w.seasonsRental}</p>
         {a.seasons.map((season, index) => {
           const allYear = season.fromDay === null;
           return (
             <div key={index} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-end gap-3">
                 <label className={label}>
-                  Name
+                  {w.name}
                   <input
                     value={season.name}
                     maxLength={60}
@@ -2554,7 +2538,7 @@ function PricingFields({
                 {otherLocales.map((locale) => (
                   <label key={locale} className={label}>
                     <span>
-                      {languageName(locale)} <span className={hint}>(optional)</span>
+                      {languageName(locale)} <span className={hint}>{w.optional}</span>
                     </span>
                     <input
                       value={season.names?.[locale] ?? ""}
@@ -2568,7 +2552,7 @@ function PricingFields({
                 ))}
                 <label className={label}>
                   <span>
-                    Change <span className={hint}>(%)</span>
+                    {w.change} <span className={hint}>(%)</span>
                   </span>
                   <input
                     type="number"
@@ -2584,7 +2568,7 @@ function PricingFields({
                   onClick={() => set({ seasons: a.seasons.filter((_, i) => i !== index) })}
                   className="min-h-9 rounded-pill px-2 underline"
                 >
-                  Remove <span className="sr-only">{season.name || "season"}</span>
+                  {w.remove} <span className="sr-only">{season.name || w.season}</span>
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -2597,20 +2581,28 @@ function PricingFields({
                     }
                     className="size-4"
                   />
-                  All year
+                  {w.allYear}
                 </label>
                 {!allYear && (
                   <>
-                    <span>From</span>
-                    <DayOfYear value={season.fromDay!} onChange={(fromDay) => setSeason(index, { fromDay })} name={`${season.name || "Season"} from`} />
-                    <span>to</span>
-                    <DayOfYear value={season.toDay!} onChange={(toDay) => setSeason(index, { toDay })} name={`${season.name || "Season"} to`} />
+                    <span>{w.from}</span>
+                    <DayOfYear
+                      value={season.fromDay!}
+                      onChange={(fromDay) => setSeason(index, { fromDay })}
+                      name={fillWords(w.fromOf, { name: season.name || w.seasonName })}
+                    />
+                    <span>{w.to}</span>
+                    <DayOfYear
+                      value={season.toDay!}
+                      onChange={(toDay) => setSeason(index, { toDay })}
+                      name={fillWords(w.toOf, { name: season.name || w.seasonName })}
+                    />
                   </>
                 )}
               </div>
               <fieldset className="flex flex-wrap gap-2">
-                <legend className="sr-only">Weekdays</legend>
-                {WEEKDAYS.map((day, i) => (
+                <legend className="sr-only">{w.weekdays}</legend>
+                {w.weekdayNames.map((day, i) => (
                   <label key={day} className={`${small} flex items-center gap-1`}>
                     <input
                       type="checkbox"
@@ -2645,7 +2637,7 @@ function PricingFields({
               }
               className="min-h-10 rounded-md border border-line px-3"
             >
-              Add a season
+              {w.add}
             </button>
           </div>
         )}
@@ -2665,15 +2657,16 @@ function PaymentFields({
   /** "the appointment", "check-in" or "pick-up": when the rest is paid. */
   where: string;
 }) {
+  const w = useAdminText("product").payment;
   const minutes = (text: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(text) || 0)));
   return (
     <fieldset className="mt-6 flex flex-col gap-3 text-sm">
-        <legend className="mb-1 font-medium">Payment and cancelling</legend>
+        <legend className="mb-1 font-medium">{w.title}</legend>
         {(
           [
-            ["now", "All at booking", "Shoppers pay the whole price when they book."],
-            ["deposit", "A deposit at booking", `Part now, the rest at ${where}. The card is saved for a no-show fee.`],
-            ["venue", `All at ${where}`, "Nothing to pay online; you mark it paid when they come."],
+            ["now", w.now, w.nowNote],
+            ["deposit", w.deposit, fillWords(w.depositNote, { where })],
+            ["venue", fillWords(w.venue, { where }), w.venueNote],
           ] as const
         ).map(([value, title, text]) => (
           <label key={value} className="flex items-start gap-2">
@@ -2693,7 +2686,7 @@ function PaymentFields({
         <div className="grid gap-4 sm:grid-cols-3">
           {a.payment === "deposit" && (
             <label className={label}>
-              Deposit <span className={hint}>(% of the price)</span>
+              {w.depositPercent} <span className={hint}>{w.ofPrice}</span>
               <input
                 type="number"
                 min={1}
@@ -2705,7 +2698,7 @@ function PaymentFields({
             </label>
           )}
           <label className={label}>
-            Free cancelling <span className={hint}>(hours before)</span>
+            {w.cancel} <span className={hint}>{w.hoursBefore}</span>
             <input
               type="number"
               min={0}
@@ -2717,7 +2710,7 @@ function PaymentFields({
           </label>
           {a.payment === "deposit" && (
             <label className={label}>
-              No-show fee <span className={hint}>(% of the price)</span>
+              {w.noShow} <span className={hint}>{w.ofPrice}</span>
               <input
                 type="number"
                 min={0}
@@ -2730,10 +2723,8 @@ function PaymentFields({
           )}
         </div>
         <p className="text-muted">
-          Until then shoppers can cancel or move the booking themselves, and get back what they paid. Later, they
-          contact you.
-          {a.payment === "deposit" &&
-            " A no-show fee is charged only when you ask for it on the booking, less the deposit already paid."}
+          {w.untilThen}
+          {a.payment === "deposit" && w.noShowNote}
         </p>
       </fieldset>
   );
@@ -2745,27 +2736,26 @@ function SafetySection({
   operators,
   countries,
 }: SectionProps & { operators: Operator[]; countries: CountryOption[] }) {
+  const w = useAdminText("product").safety;
   return (
     <section aria-labelledby="safety-heading" className={card}>
       <h2 id="safety-heading" className="mb-1 text-title text-ink">
-        Product safety
+        {w.title}
       </h2>
       <p className="mb-4 text-sm text-muted">
-        {product.variants.every((v) => v.delivery === "digital")
-          ? "Not needed for digital products: EU product-safety rules cover physical goods."
-          : "EU rules require the manufacturer\u2019s name and contact details on the listing, and a responsible person in the EU when the manufacturer is outside it."}
+        {product.variants.every((v) => v.delivery === "digital") ? w.digital : w.rules}
       </p>
       <div className="grid gap-5 md:grid-cols-2">
         <OperatorPicker
-          legend="Manufacturer"
+          legend={w.manufacturer}
           choice={product.manufacturer}
           operators={operators}
           countries={countries}
           onChange={(manufacturer) => update((p) => ({ ...p, manufacturer }))}
         />
         <OperatorPicker
-          legend="Responsible person in the EU"
-          note="Needed when the manufacturer is outside the EU (Norway included)."
+          legend={w.responsible}
+          note={w.responsibleNote}
           choice={product.responsiblePerson}
           operators={operators}
           countries={countries}
@@ -2791,6 +2781,7 @@ function OperatorPicker({
   countries: CountryOption[];
   onChange: (choice: OperatorChoice) => void;
 }) {
+  const w = useAdminText("product").safety;
   const value = choice === null ? "" : "id" in choice ? choice.id : "new";
   const blank = { name: "", postalAddress: "", electronicAddress: "", country: "" };
   const fresh = choice && "new" in choice ? choice.new : null;
@@ -2808,22 +2799,22 @@ function OperatorPicker({
         aria-label={legend}
         className={input}
       >
-        <option value="">None</option>
+        <option value="">{w.none}</option>
         {operators.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name} ({o.country})
           </option>
         ))}
-        <option value="new">Add a new company …</option>
+        <option value="new">{w.addCompany}</option>
       </select>
       {fresh && (
         <div className="flex flex-col gap-3 rounded-md border border-line p-3">
           <label className={label}>
-            Company name
+            {w.companyName}
             <input value={fresh.name} onChange={(e) => setNew({ name: e.target.value })} className={input} />
           </label>
           <label className={label}>
-            Postal address
+            {w.postalAddress}
             <textarea
               value={fresh.postalAddress}
               onChange={(e) => setNew({ postalAddress: e.target.value })}
@@ -2832,7 +2823,7 @@ function OperatorPicker({
             />
           </label>
           <label className={label}>
-            Email or website for safety questions
+            {w.electronic}
             <input
               value={fresh.electronicAddress}
               onChange={(e) => setNew({ electronicAddress: e.target.value })}
@@ -2840,9 +2831,9 @@ function OperatorPicker({
             />
           </label>
           <label className={label}>
-            Country
+            {w.country}
             <select value={fresh.country} onChange={(e) => setNew({ country: e.target.value })} className={input}>
-              <option value="">Choose …</option>
+              <option value="">{w.choose}</option>
               {countries.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.name}
@@ -2869,11 +2860,13 @@ function LegalSection({
   terms: EditorContext["terms"];
   primaryLocale: string;
 }) {
+  const all = useAdminText("product");
+  const w = all.legal;
   const general = product.taxCode === GENERAL_TAX_CODE;
   return (
     <section aria-labelledby="legal-heading" className={card}>
       <h2 id="legal-heading" className="mb-4 text-title text-ink">
-        Tax, returns and recycling
+        {w.title}
       </h2>
       <div className="flex flex-col gap-5">
         <VatCategoryField
@@ -2882,25 +2875,26 @@ function LegalSection({
           categories={vatCategories}
           markets={markets}
           onChange={(vatCategory) => update((p) => ({ ...p, vatCategory }))}
+          words={all.vatCategory}
         />
 
         {product.kind === "goods" && (
           <SoldByMeasureField
             checked={product.soldByMeasure}
             onChange={(soldByMeasure) => update((p) => ({ ...p, soldByMeasure }))}
-            state={contentState(product, terms, primaryLocale)}
+            state={contentState(product, terms, primaryLocale, all.unitPrice.editor)}
           />
         )}
 
         <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">Tax code for Stripe</legend>
+          <legend className="mb-1 font-medium">{w.taxCode}</legend>
           <label className="flex items-center gap-2">
             <input
               type="radio"
               checked={general}
               onChange={() => update((p) => ({ ...p, taxCode: GENERAL_TAX_CODE }))}
             />
-            General goods (standard VAT rate)
+            {w.general}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -2908,19 +2902,19 @@ function LegalSection({
               checked={!general}
               onChange={() => update((p) => ({ ...p, taxCode: "" }))}
             />
-            Something else (books, food, children&apos;s clothing …)
+            {w.other}
           </label>
           {!general && (
             <label className={`${label} pl-6`}>
               <span>
-                Stripe tax code{" "}
+                {w.stripeCode}{" "}
                 <a
                   href="https://docs.stripe.com/tax/tax-codes"
                   target="_blank"
                   rel="noreferrer"
                   className="font-normal underline"
                 >
-                  (find the right code)
+                  {w.findCode}
                 </a>
               </span>
               <input
@@ -2934,30 +2928,27 @@ function LegalSection({
         </fieldset>
 
         <label className={label}>
-          Right of withdrawal
+          {w.withdrawal}
           <select
             value={product.withdrawalExclusion}
             onChange={(e) => update((p) => ({ ...p, withdrawalExclusion: e.target.value }))}
             className={input}
           >
-            {WITHDRAWAL_EXCLUSIONS.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.label}
+            {WITHDRAWAL_EXCLUSIONS.map((exclusion) => (
+              <option key={exclusion.id} value={exclusion.id}>
+                {w.exclusions[exclusion.id]}
               </option>
             ))}
           </select>
           <span className={hint}>
-            Most products have no exclusion. Only choose one that clearly applies.
-            {product.variants.some((v) => v.delivery === "digital") &&
-              " Downloads are handled for you: shoppers agree at checkout that the right ends once the download is available."}
+            {w.withdrawalHint}
+            {product.variants.some((v) => v.delivery === "digital") && w.withdrawalDownloads}
           </span>
         </label>
 
         <fieldset className="text-sm">
-          <legend className="mb-1 font-medium">Recycling schemes this product falls under</legend>
-          <p className="mb-2 text-muted">
-            Producer responsibility: you may need to register and pay a recycling fee in each country.
-          </p>
+          <legend className="mb-1 font-medium">{w.schemes}</legend>
+          <p className="mb-2 text-muted">{w.schemesHint}</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {PRODUCER_SCHEMES.map((scheme) => (
               <label key={scheme.id} className="flex items-center gap-2">
@@ -2974,7 +2965,7 @@ function LegalSection({
                   }
                   className="size-4"
                 />
-                {scheme.label}
+                {w.schemeNames[scheme.id]}
               </label>
             ))}
           </div>
@@ -2999,11 +2990,12 @@ function ShippingProfileField({
   profiles: { id: string; name: string }[];
   onChange: (id: string | null) => void;
 }) {
+  const w = useAdminText("product").shipping;
   return (
     <label className="mt-4 flex max-w-md flex-col gap-1 text-sm">
-      <span className="font-medium">Shipping profile</span>
+      <span className="font-medium">{w.profile}</span>
       <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className="min-h-10 rounded-md border border-line bg-card px-3">
-        <option value="">General</option>
+        <option value="">{w.general}</option>
         {profiles.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -3011,9 +3003,9 @@ function ShippingProfileField({
         ))}
       </select>
       <span className="text-muted">
-        Which rates of your shipping methods price it.{" "}
+        {w.hint}{" "}
         <Link href={`/admin/${storeSlug}/settings/shipping/profiles`} className="underline">
-          Shipping profiles
+          {w.profiles}
         </Link>
       </span>
     </label>

@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
 
-import { ACTION_WORDS, buildBulkRequest, cappedNote, emptyPanel, gridSelectionProblem, type BulkRequestInput, type ListAction, type PanelForm } from "@/lib/bulk-admin";
-import { OMNIBUS_SENTENCE } from "@/lib/bulk-edit";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { actionWords, buildBulkRequest, cappedNote, emptyPanel, gridSelectionProblem, type BulkRequestInput, type ListAction, type PanelForm } from "@/lib/bulk-admin";
 import { BULK_MAX_PRODUCTS } from "@/lib/data-limits";
 import { formatMoney } from "@/lib/money";
 import type { BatchSummary, BulkPreview, UndoResult } from "@/server/bulk-edit";
 import type { BulkRun } from "@/app/admin/(gated)/[store]/products/bulk/actions";
 
+import { useAdminText } from "./admin-text";
 import { BulkFailures, BulkResult } from "./bulk-result";
 import { card, field, hint, label, primary, secondary } from "./data/ui";
 
@@ -52,6 +53,9 @@ const ACTIONS_ARCHIVED: ListAction[] = ["unarchive"];
  * chunks, each product through the editor's own door on the server. Without the right to change products (`bulk` null) it is the plain list.
  */
 export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk }: { slug: string; rows: ProductRowView[]; archived: boolean; priceHeader: string; locale: string; bulk: BulkTools | null }) {
+  const all = useAdminText("products");
+  const w = all.table;
+  const lib = all.bulkLib;
   const base = `/admin/${slug}/products`;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
@@ -78,13 +82,13 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
     if (allShown) return setSelected(new Set());
     const take = rows.slice(0, BULK_MAX_PRODUCTS).map((r) => r.id);
     setSelected(new Set(take));
-    setNote(cappedNote(rows.length));
+    setNote(cappedNote(rows.length, lib));
   };
   const selectMatching = () =>
     start(async () => {
       const result = await bulk!.matching(archived ? { status: "archived" } : {});
       setSelected(new Set(result.ids));
-      setNote(cappedNote(result.total) ?? `${result.total} ${result.total === 1 ? "product matches" : "products match"} and all of them are chosen.`);
+      setNote(cappedNote(result.total, lib) ?? countWords(result.total, w.allChosen));
     });
   const clear = () => {
     setSelected(new Set());
@@ -96,7 +100,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
   const review = (action: ListAction) =>
     start(async () => {
       setProblem(null);
-      const built = buildBulkRequest(action, form, ids, bulk!.terms);
+      const built = buildBulkRequest(action, form, ids, bulk!.terms, lib);
       if (!built.ok) return setProblem(built.problem);
       const preview = await bulk!.preview(built.request);
       if (!preview.ok) return setProblem(preview.problem);
@@ -120,20 +124,20 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
       if (run.summary) setPhase({ kind: "done", summary: run.summary });
     });
 
-  const gridProblem = gridSelectionProblem(ids.length);
+  const gridProblem = gridSelectionProblem(ids.length, lib);
   const gridHref = `${base}/bulk?ids=${ids.slice(0, 50).join(",")}`;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
   return (
     <div className="flex flex-col gap-3">
       {bulk && selected.size > 0 && (
-        <div role="region" aria-label="Bulk actions" className={`${card} sticky top-2 z-10 flex flex-col gap-3`}>
+        <div role="region" aria-label={w.bulkActions} className={`${card} sticky top-2 z-10 flex flex-col gap-3`}>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium" aria-live="polite">
-              {selected.size} {selected.size === 1 ? "product" : "products"} chosen
+              {countWords(selected.size, w.chosen)}
             </p>
             <button type="button" onClick={clear} className="text-sm underline underline-offset-2">
-              Clear
+              {w.clear}
             </button>
             <span className="mx-1 hidden h-5 w-px bg-line sm:block" aria-hidden="true" />
             {actions.map((a) => (
@@ -141,7 +145,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                   setPhase({ kind: "form", action: a });
                   setProblem(null);
                 }} className={secondary} aria-pressed={phase.kind === "form" && phase.action === a}>
-                {ACTION_WORDS[a]}
+                {actionWords(a, lib)}
               </button>
             ))}
             {!archived &&
@@ -149,7 +153,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                 <span className={hint}>{gridProblem}</span>
               ) : (
                 <Link href={gridHref} className={secondary}>
-                  Edit in a grid
+                  {w.editGrid}
                 </Link>
               ))}
           </div>
@@ -167,25 +171,28 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
             />
           )}
           {phase.kind === "review" && (
-            <div role="group" aria-label="Confirm" className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
+            <div role="group" aria-label={w.confirm} className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
               <p className="text-sm font-medium">
-                {ACTION_WORDS[phase.action]}: this will change {phase.preview.counts.changed} of {phase.preview.counts.products} products
-                {phase.preview.counts.unchanged > 0 ? `, leave ${phase.preview.counts.unchanged} as they are` : ""}
-                {phase.preview.counts.failed > 0 ? ` and cannot change ${phase.preview.counts.failed}` : ""}.
+                {fillWords(w.reviewLine, {
+                  action: actionWords(phase.action, lib),
+                  changed: phase.preview.counts.changed,
+                  products: phase.preview.counts.products,
+                  unchanged: phase.preview.counts.unchanged > 0 ? fillWords(w.reviewUnchanged, { n: phase.preview.counts.unchanged }) : "",
+                  failed: phase.preview.counts.failed > 0 ? fillWords(w.reviewFailed, { n: phase.preview.counts.failed }) : "",
+                })}
               </p>
-              {phase.preview.notFound > 0 && <p className={hint}>{phase.preview.notFound} of the chosen products are not in this store and are not changed.</p>}
+              {phase.preview.notFound > 0 && <p className={hint}>{fillWords(w.notFound, { n: phase.preview.notFound })}</p>}
               {phase.action === "price" && phase.preview.prices.length > 0 && (
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">The first {phase.preview.prices.length}:</p>
+                  <p className="text-sm font-medium">{fillWords(w.firstPrices, { n: phase.preview.prices.length })}</p>
                   <ul className="text-sm">
                     {phase.preview.prices.map((p, i) => (
                       <li key={`${p.productId}-${p.sku}-${p.market}-${i}`}>
-                        {p.title}
-                        {p.sku ? ` (${p.sku})` : ""}, {p.market}: {money(p.before, p.currency)} to {money(p.after, p.currency)}
+                        {fillWords(w.priceLine, { title: p.title, sku: p.sku ? ` (${p.sku})` : "", market: p.market, before: money(p.before, p.currency), after: money(p.after, p.currency) })}
                       </li>
                     ))}
                   </ul>
-                  <p className="text-sm">{OMNIBUS_SENTENCE}</p>
+                  <p className="text-sm">{w.omnibus}</p>
                 </div>
               )}
               {phase.preview.failures.length > 0 && (
@@ -193,18 +200,18 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
               )}
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={pending || phase.preview.counts.changed === 0} className={primary} onClick={() => apply((phase as { request: BulkRequestInput }).request)}>
-                  {pending ? "Applying …" : `Apply to ${phase.preview.counts.changed} ${phase.preview.counts.changed === 1 ? "product" : "products"}`}
+                  {pending ? w.applying : countWords(phase.preview.counts.changed, w.applyTo)}
                 </button>
                 <button type="button" disabled={pending} className={secondary} onClick={() => setPhase({ kind: "form", action: (phase as { action: ListAction }).action })}>
-                  Back
+                  {w.back}
                 </button>
               </div>
-              {phase.preview.counts.changed === 0 && <p className={hint}>Nothing would change.</p>}
+              {phase.preview.counts.changed === 0 && <p className={hint}>{w.nothingChanges}</p>}
             </div>
           )}
           {phase.kind === "running" && (
             <p role="status" className="text-sm" aria-live="polite">
-              Changing products: {phase.processed} of {phase.total} done. You can leave this page; what is done stays done.
+              {fillWords(w.running, { processed: phase.processed, total: phase.total })}
             </p>
           )}
           {phase.kind === "done" && <BulkResult summary={phase.summary} undo={bulk.undo} onReload={clear} />}
@@ -216,22 +223,22 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
         </div>
       )}
       <table className="w-full overflow-hidden rounded-panel border border-line bg-card text-left text-sm">
-        <caption className="sr-only">{archived ? "Archived products" : "Products"}</caption>
+        <caption className="sr-only">{archived ? w.captionArchived : w.caption}</caption>
         <thead>
           <tr className="border-b border-line">
             {bulk && (
               <th scope="col" className="w-10 px-4 py-2">
-                <input type="checkbox" aria-label={allShown ? "Clear the choice" : "Choose all products shown"} checked={allShown} onChange={selectShown} />
+                <input type="checkbox" aria-label={allShown ? w.clearChoice : w.chooseShown} checked={allShown} onChange={selectShown} />
               </th>
             )}
             <th scope="col" className="px-4 py-2 font-medium">
-              Product
+              {w.product}
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              Status
+              {w.status}
             </th>
             <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-              Stock
+              {w.stock}
             </th>
             <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
               {priceHeader}
@@ -243,7 +250,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
             <tr key={product.id} className="border-b border-line last:border-0">
               {bulk && (
                 <td className="px-4 py-2">
-                  <input type="checkbox" aria-label={`Choose ${product.title}`} checked={selected.has(product.id)} onChange={() => toggle(product.id)} />
+                  <input type="checkbox" aria-label={fillWords(w.choose, { title: product.title })} checked={selected.has(product.id)} onChange={() => toggle(product.id)} />
                 </td>
               )}
               <td className="px-4 py-2">
@@ -256,23 +263,23 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                   )}
                   <span>
                     {product.title}
-                    {product.variants > 1 && <span className="block text-xs font-normal text-muted">{product.variants} variants</span>}
+                    {product.variants > 1 && <span className="block text-xs font-normal text-muted">{fillWords(w.variants, { n: product.variants })}</span>}
                   </span>
                 </Link>
               </td>
               <td className="px-4 py-2">
-                {product.status === "active" ? "Published" : product.status === "draft" ? "Draft" : "Archived"}
-                {product.status === "active" && product.hiddenBy && <span className="block text-xs text-muted">Not shown: {product.hiddenBy} is off</span>}
+                {product.status === "active" ? w.published : product.status === "draft" ? w.draft : w.archived}
+                {product.status === "active" && product.hiddenBy && <span className="block text-xs text-muted">{fillWords(w.notShown, { feature: product.hiddenBy })}</span>}
               </td>
               <td className="hidden px-4 py-2 sm:table-cell">
                 {product.digitalVariants > 0 && product.digitalVariants === product.variants ? (
-                  <span className="text-muted">Digital</span>
+                  <span className="text-muted">{w.digital}</span>
                 ) : product.stock === 0 ? (
-                  <span className="text-muted">Out of stock</span>
+                  <span className="text-muted">{w.outOfStock}</span>
                 ) : (
                   product.stock
                 )}
-                {product.digitalVariants > 0 && product.digitalVariants < product.variants && <span className="block text-xs text-muted">and digital</span>}
+                {product.digitalVariants > 0 && product.digitalVariants < product.variants && <span className="block text-xs text-muted">{w.andDigital}</span>}
               </td>
               <td className="hidden px-4 py-2 sm:table-cell">
                 {product.price ? (
@@ -282,7 +289,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                     `${money(product.price.min, product.price.currency)} – ${money(product.price.max, product.price.currency)}`
                   )
                 ) : (
-                  <span className="text-muted">No price</span>
+                  <span className="text-muted">{w.noPrice}</span>
                 )}
               </td>
             </tr>
@@ -291,9 +298,9 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
       </table>
       {bulk && rows.length > 0 && (
         <p className={hint}>
-          {rows.length > BULK_MAX_PRODUCTS ? `A bulk action takes at most ${BULK_MAX_PRODUCTS} products at a time. ` : ""}
+          {rows.length > BULK_MAX_PRODUCTS ? fillWords(w.atMost, { max: BULK_MAX_PRODUCTS }) : ""}
           <button type="button" onClick={selectMatching} disabled={pending} className="underline underline-offset-2">
-            Choose all {rows.length} {archived ? "archived" : "listed"} products
+            {fillWords(archived ? w.chooseAllArchived : w.chooseAll, { n: rows.length })}
           </button>
         </p>
       )}
@@ -320,6 +327,8 @@ function ActionPanel({
   onReview: () => void;
   onCancel: () => void;
 }) {
+  const all = useAdminText("products");
+  const w = all.panel;
   const set = (patch: Partial<PanelForm>) => setForm({ ...form, ...patch });
   const toggleIn = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   return (
@@ -329,34 +338,34 @@ function ActionPanel({
         e.preventDefault();
         onReview();
       }}
-      aria-label={ACTION_WORDS[action]}
+      aria-label={actionWords(action, all.bulkLib)}
     >
       {action === "status" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="bulk-status" className={label}>
-            Set the status to
+            {w.statusTo}
           </label>
           <select id="bulk-status" value={form.to} onChange={(e) => set({ to: e.target.value as PanelForm["to"] })} className={field}>
-            <option value="active">Published</option>
-            <option value="draft">Draft</option>
+            <option value="active">{all.table.published}</option>
+            <option value="draft">{all.table.draft}</option>
           </select>
-          <p className={hint}>A product that cannot be published (no picture or price, say) is not changed, and the reason is listed.</p>
+          <p className={hint}>{w.statusHint}</p>
         </div>
       )}
       {(action === "archive" || action === "unarchive") && (
-        <p className="text-sm">{action === "archive" ? "The chosen products are archived: they leave the shop and the list." : "The chosen products come back as drafts. Publish them one by one, or set their status in bulk."}</p>
+        <p className="text-sm">{action === "archive" ? w.archiveText : w.unarchiveText}</p>
       )}
       {(action === "terms_add" || action === "terms_remove") && (
         <fieldset className="flex flex-col gap-1">
-          <legend className={label}>{action === "terms_add" ? "Add the chosen products to" : "Remove the chosen products from"}</legend>
+          <legend className={label}>{action === "terms_add" ? w.addTo : w.removeFrom}</legend>
           {terms.length === 0 ? (
-            <p className={hint}>This store has no categories or tags yet.</p>
+            <p className={hint}>{w.noTerms}</p>
           ) : (
             <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
               {terms.map((t) => (
                 <label key={t.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={form.termIds.includes(t.id)} onChange={() => set({ termIds: toggleIn(form.termIds, t.id) })} />
-                  {t.kind === "category" ? "Category" : "Tag"}: {t.name}
+                  {fillWords(w.termLine, { kind: t.kind === "category" ? w.category : w.tag, name: t.name })}
                 </label>
               ))}
             </div>
@@ -366,40 +375,40 @@ function ActionPanel({
       {action === "stock" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="bulk-stock" className={label}>
-            Stock
+            {w.stock}
           </label>
-          <input id="bulk-stock" value={form.stock} onChange={(e) => set({ stock: e.target.value })} inputMode="text" placeholder="12, +5 or -3" className={field} />
-          <p className={hint}>A number sets the stock of every variant. A number with a sign, such as +5 or -3, changes it. Digital variants have no stock and are skipped.</p>
+          <input id="bulk-stock" value={form.stock} onChange={(e) => set({ stock: e.target.value })} inputMode="text" placeholder={w.stockPlaceholder} className={field} />
+          <p className={hint}>{w.stockHint}</p>
         </div>
       )}
       {action === "price" && (
         <div className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-1">
-            <legend className={label}>Which markets</legend>
+            <legend className={label}>{w.markets}</legend>
             {markets.map((m) => (
               <label key={m.code} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={form.markets.includes(m.code)} onChange={() => set({ markets: toggleIn(form.markets, m.code) })} />
-                {m.name} ({m.currency})
+                {fillWords(w.marketLine, { name: m.name, currency: m.currency })}
               </label>
             ))}
-            <p className={hint}>By default only the main market changes, so a percentage never rewrites every country&apos;s price by accident.</p>
+            <p className={hint}>{w.marketsHint}</p>
           </fieldset>
           <fieldset className="flex flex-col gap-2">
-            <legend className={label}>Change by</legend>
+            <legend className={label}>{w.changeBy}</legend>
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" checked={form.mode === "percent"} onChange={() => set({ mode: "percent" })} /> A percentage
+              <input type="radio" checked={form.mode === "percent"} onChange={() => set({ mode: "percent" })} /> {w.percentage}
             </label>
             {form.mode === "percent" && (
               <div className="ml-6 flex flex-col gap-1">
                 <label htmlFor="bulk-percent" className="sr-only">
-                  Percentage
+                  {w.percentLabel}
                 </label>
-                <input id="bulk-percent" value={form.percent} onChange={(e) => set({ percent: e.target.value })} placeholder="-10 or 5.5" className={`${field} max-w-40`} />
-                <p className={hint}>From -90 to +500, two decimals at most. The new price is rounded half up to the smallest unit of the currency.</p>
+                <input id="bulk-percent" value={form.percent} onChange={(e) => set({ percent: e.target.value })} placeholder={w.percentPlaceholder} className={`${field} max-w-40`} />
+                <p className={hint}>{w.percentHint}</p>
               </div>
             )}
             <label className="flex items-center gap-2 text-sm">
-              <input type="radio" checked={form.mode === "amount"} onChange={() => set({ mode: "amount" })} /> An amount
+              <input type="radio" checked={form.mode === "amount"} onChange={() => set({ mode: "amount" })} /> {w.amount}
             </label>
             {form.mode === "amount" && (
               <div className="ml-6 flex flex-col gap-2">
@@ -407,13 +416,11 @@ function ActionPanel({
                   .filter((m) => form.markets.includes(m.code))
                   .map((m) => (
                     <label key={m.code} className="flex items-center gap-2 text-sm">
-                      <span className="w-28">
-                        {m.name} ({m.currency})
-                      </span>
-                      <input value={form.amounts[m.code] ?? ""} onChange={(e) => set({ amounts: { ...form.amounts, [m.code]: e.target.value } })} placeholder="+5 or -2,50" className={`${field} max-w-40`} />
+                      <span className="w-28">{fillWords(w.marketLine, { name: m.name, currency: m.currency })}</span>
+                      <input value={form.amounts[m.code] ?? ""} onChange={(e) => set({ amounts: { ...form.amounts, [m.code]: e.target.value } })} placeholder={w.amountPlaceholder} className={`${field} max-w-40`} />
                     </label>
                   ))}
-                <p className={hint}>An amount is in each market&apos;s own currency, never applied across currencies. It is the price as you type it in the editor.</p>
+                <p className={hint}>{w.amountHint}</p>
               </div>
             )}
           </fieldset>
@@ -421,10 +428,10 @@ function ActionPanel({
       )}
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={pending} className={primary}>
-          {pending ? "Checking …" : "Review"}
+          {pending ? w.checking : w.review}
         </button>
         <button type="button" disabled={pending} onClick={onCancel} className={secondary}>
-          Close
+          {w.close}
         </button>
       </div>
     </form>

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { InventoryView } from "@/components/admin/inventory/inventory-view";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { listQuery } from "@/lib/inventory-admin";
 import { inventoryPage } from "@/server/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -26,14 +29,11 @@ export default async function InventoryPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.list;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead
-        slug={store.slug}
-        active="list"
-        title="Inventory"
-        intro="Stock for each variant and location. On hand is what is counted and not yet drawn by a paid order; committed is what checkouts in progress hold; available is the difference. Change a figure with a reason: every change is kept in the history."
-      />
+      <InventoryHead slug={store.slug} active="list" title={w.title} intro={w.intro} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -44,15 +44,19 @@ export default async function InventoryPage({ params, searchParams }: Props) {
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
   const query = listQuery(await searchParams);
   const page = await inventoryPage(store, { search: query.search, locationId: query.location, status: query.status, after: query.after });
   return (
-    <InventoryView
-      slug={store.slug}
-      page={page}
-      query={query}
-      canWrite={memberCan(member, "products:write")}
-      tools={{ adjust: adjustStockAction.bind(null, store.slug), setPolicy: setPoliciesAction.bind(null, store.slug) }}
-    />
+    <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+      <InventoryView
+        slug={store.slug}
+        page={page}
+        query={query}
+        canWrite={memberCan(member, "products:write")}
+        tools={{ adjust: adjustStockAction.bind(null, store.slug), setPolicy: setPoliciesAction.bind(null, store.slug) }}
+        lang={lang}
+      />
+    </AdminTextScope>
   );
 }

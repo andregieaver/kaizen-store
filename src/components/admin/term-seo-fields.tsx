@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
+import { fillWords } from "@/lib/admin-fill";
 import { DESCRIPTION_MAX, TITLE_MAX } from "@/lib/seo";
 import { hasTermSeo, type TermSeo } from "@/lib/term-seo";
 
@@ -30,18 +32,17 @@ const EMPTY = { title: "", description: "" };
  * term's draft.
  */
 export function TermSeoFields({ setup, name, kind, slug, value, onChange }: { setup: TermSeoSetup; name: string; kind: "category" | "tag"; slug: string; value: TermSeo; onChange: (value: TermSeo) => void }) {
+  const w = useAdminText("products").termSeo;
   const [locale, setLocale] = useState(setup.locales[0] ?? "");
   const current = value[locale] ?? EMPTY;
   const set = (next: { title: string; description: string }) => onChange({ ...value, [locale]: { title: next.title.slice(0, TITLE_MAX), description: next.description.slice(0, DESCRIPTION_MAX) } });
   const filled = (l: string) => Boolean(value[l] && (value[l].title || value[l].description));
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border bg-background p-3">
-      <legend className="px-1 text-xs font-medium">Search results</legend>
-      <p className="text-xs text-muted">
-        Optional. A language without a text uses the name{setup.storeName ? ` and the store's own description` : ""}. A text is used only in its own language, never in another.
-      </p>
+      <legend className="px-1 text-xs font-medium">{w.legend}</legend>
+      <p className="text-xs text-muted">{fillWords(w.optional, { store: setup.storeName ? w.storeDescription : "" })}</p>
       {setup.locales.length > 1 && (
-        <div role="group" aria-label="Language of the search text" className="flex flex-wrap gap-1">
+        <div role="group" aria-label={w.language} className="flex flex-wrap gap-1">
           {setup.locales.map((l) => (
             <button
               key={l}
@@ -51,7 +52,7 @@ export function TermSeoFields({ setup, name, kind, slug, value, onChange }: { se
               className="min-h-9 rounded-pill border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
             >
               {setup.languageNames[l] ?? l}
-              {filled(l) ? <span className="sr-only"> (has a text)</span> : null}
+              {filled(l) ? <span className="sr-only">{w.hasText}</span> : null}
               {filled(l) ? <span aria-hidden="true"> ·</span> : null}
             </button>
           ))}

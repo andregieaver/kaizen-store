@@ -1,19 +1,14 @@
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
 import { entityFieldsSetup } from "@/app/admin/(gated)/[store]/fields/data";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { staffFieldsForEditor, type StaffEntity } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
 import type { Store } from "@/server/stores";
 
-const WORDS: Record<StaffEntity, { thing: string; more: string }> = {
-  customer: {
-    thing: "customer",
-    more: "Personal data: it goes with the customer if they delete their account.",
-  },
-  order: {
-    thing: "order",
-    more: "Kept with the order, which stays for bookkeeping: keep personal details out of it that you do not need.",
-  },
-};
 
 /**
  * The custom fields of a customer or an order on its admin page (D120): every
@@ -34,15 +29,20 @@ export async function StaffFieldsSection({
 }) {
   const editor = await staffFieldsForEditor(store.id, entity, id);
   if (!editor || editor.groups.length === 0) return null;
+  // In the account's language (D312 A5), as the page around it is.
+  const lang = await requestAdminLang();
+  const w = adminText(lang, "fields").form;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
     <EntityFieldsCard
       groups={editor.groups}
       data={editor.data}
       lookups={editor.lookups}
-      setup={entityFieldsSetup(store)}
+      setup={entityFieldsSetup(store, ADMIN_LANG_FACTS[lang].locale)}
       save={save}
-      intro={`Only staff see this, never the shopper. ${WORDS[entity].more}`}
+      intro={fillWords(w.staffOnly, { more: entity === "customer" ? w.customerMore : w.orderMore })}
       idPrefix={`${entity}-fields`}
     />
+    </AdminTextScope>
   );
 }

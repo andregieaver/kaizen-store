@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { changedCellCount, changedEdits, figureText, fieldWords, type GridCells, type GridEditInput } from "@/lib/bulk-admin";
 import type { BatchSummary, BulkProblem, GridPreview, UndoResult } from "@/server/bulk-edit";
 import type { GridApplied } from "@/app/admin/(gated)/[store]/products/bulk/actions";
 
+import { useAdminText } from "./admin-text";
 import { BulkResult } from "./bulk-result";
 import { card, field, hint, primary, secondary, tableShell, td, th } from "./data/ui";
 
@@ -28,6 +30,9 @@ const cellsOf = (rows: readonly GridRowView[]): Record<string, GridCells> => Obj
  * change made them.
  */
 export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { rows: GridRowView[]; markets: { code: string; currency: string }[]; mainCurrency: string; tools: GridTools; locale: string }) {
+  const all = useAdminText("products");
+  const w = all.grid;
+  const lib = all.bulkLib;
   const router = useRouter();
   const codes = useMemo(() => markets.map((m) => m.code), [markets]);
   const [edited, setEdited] = useState<Record<string, GridCells>>(() => cellsOf(rows));
@@ -84,28 +89,28 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
     <div className="flex flex-col gap-4" aria-busy={pending}>
       <div className={tableShell}>
         <table className="w-full text-sm">
-          <caption className="sr-only">One row for each variant of the chosen products. Edit a cell, then review the changes.</caption>
+          <caption className="sr-only">{w.caption}</caption>
           <thead>
             <tr className="border-b border-line">
               <th scope="col" className={th}>
-                Product
+                {w.product}
               </th>
               <th scope="col" className={th}>
-                Options
+                {w.options}
               </th>
               <th scope="col" className={th}>
-                SKU
+                {w.sku}
               </th>
               {markets.map((m) => (
                 <th key={m.code} scope="col" className={th}>
-                  Price {m.code} ({m.currency})
+                  {fillWords(w.priceHeader, { market: m.code, currency: m.currency })}
                 </th>
               ))}
               <th scope="col" className={th}>
-                Stock
+                {w.stock}
               </th>
               <th scope="col" className={th}>
-                Cost ({mainCurrency}, excl. VAT)
+                {fillWords(w.costHeader, { currency: mainCurrency })}
               </th>
             </tr>
           </thead>
@@ -117,16 +122,16 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
                 <tr key={row.variantId} className="border-b border-line last:border-0">
                   <td className={td}>
                     <span className="font-medium">{row.title}</span>
-                    {!row.active && <span className={`${hint} block`}>Switched off</span>}
+                    {!row.active && <span className={`${hint} block`}>{w.switchedOff}</span>}
                   </td>
                   <td className={td}>{row.options || <span className={hint}>-</span>}</td>
                   <td className={td}>
-                    <input aria-label={`SKU, ${row.title} ${row.options}`} value={now.sku} onChange={(e) => change(row.variantId, (c) => ({ ...c, sku: e.target.value }))} className={cellClass(now.sku !== was.sku)} />
+                    <input aria-label={fillWords(w.skuCell, { title: row.title, options: row.options })} value={now.sku} onChange={(e) => change(row.variantId, (c) => ({ ...c, sku: e.target.value }))} className={cellClass(now.sku !== was.sku)} />
                   </td>
                   {markets.map((m) => (
                     <td key={m.code} className={td}>
                       <input
-                        aria-label={`Price ${m.code}, ${row.title} ${row.options}`}
+                        aria-label={fillWords(w.priceCell, { market: m.code, title: row.title, options: row.options })}
                         inputMode="decimal"
                         value={now.prices[m.code] ?? ""}
                         onChange={(e) => change(row.variantId, (c) => ({ ...c, prices: { ...c.prices, [m.code]: e.target.value } }))}
@@ -135,10 +140,10 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
                     </td>
                   ))}
                   <td className={td}>
-                    <input aria-label={`Stock, ${row.title} ${row.options}`} inputMode="numeric" value={now.stock} onChange={(e) => change(row.variantId, (c) => ({ ...c, stock: e.target.value }))} className={cellClass(now.stock !== was.stock)} />
+                    <input aria-label={fillWords(w.stockCell, { title: row.title, options: row.options })} inputMode="numeric" value={now.stock} onChange={(e) => change(row.variantId, (c) => ({ ...c, stock: e.target.value }))} className={cellClass(now.stock !== was.stock)} />
                   </td>
                   <td className={td}>
-                    <input aria-label={`Cost, ${row.title} ${row.options}`} inputMode="decimal" value={now.cost} onChange={(e) => change(row.variantId, (c) => ({ ...c, cost: e.target.value }))} className={cellClass(now.cost !== was.cost)} />
+                    <input aria-label={fillWords(w.costCell, { title: row.title, options: row.options })} inputMode="decimal" value={now.cost} onChange={(e) => change(row.variantId, (c) => ({ ...c, cost: e.target.value }))} className={cellClass(now.cost !== was.cost)} />
                   </td>
                 </tr>
               );
@@ -146,14 +151,14 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           </tbody>
         </table>
       </div>
-      <p className={hint}>Prices are typed as in the editor: with VAT for each country, and without VAT in a store that sells only to businesses. Every change is checked like an editor save, and a price changes only through the price history.</p>
+      <p className={hint}>{w.pricesHint}</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={pending || edits.length === 0} onClick={review} className={primary}>
-          {pending && !preview ? "Reviewing …" : `Review changes${cells > 0 ? ` (${cells})` : ""}`}
+          {pending && !preview ? w.reviewing : cells > 0 ? fillWords(w.reviewCount, { n: cells }) : w.review}
         </button>
         <button type="button" disabled={pending || edits.length === 0} onClick={discard} className={secondary}>
-          Discard my edits
+          {w.discard}
         </button>
         {problem && (
           <span role="alert" className="text-sm text-danger-text">
@@ -163,27 +168,29 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
       </div>
 
       {preview && (
-        <section aria-label="Review" className={`${card} flex flex-col gap-3`}>
+        <section aria-label={w.reviewLabel} className={`${card} flex flex-col gap-3`}>
           <h2 className="text-title text-ink">
-            {preview.changes.length === 0 ? "Nothing would change" : `${preview.changes.length} ${preview.changes.length === 1 ? "change" : "changes"} in ${preview.products} ${preview.products === 1 ? "product" : "products"} and ${preview.variants} ${preview.variants === 1 ? "variant" : "variants"}`}
+            {preview.changes.length === 0
+              ? w.nothing
+              : fillWords(w.changesIn, { changes: countWords(preview.changes.length, w.changes), products: countWords(preview.products, w.products), variants: countWords(preview.variants, w.variants) })}
           </h2>
           {preview.changes.length > 0 && (
             <div className={tableShell}>
               <table className="w-full text-sm">
-                <caption className="sr-only">Every changed cell, before and after</caption>
+                <caption className="sr-only">{w.changedCaption}</caption>
                 <thead>
                   <tr className="border-b border-line">
                     <th scope="col" className={th}>
-                      Product
+                      {w.product}
                     </th>
                     <th scope="col" className={th}>
-                      What
+                      {w.what}
                     </th>
                     <th scope="col" className={th}>
-                      Before
+                      {w.before}
                     </th>
                     <th scope="col" className={th}>
-                      After
+                      {w.after}
                     </th>
                   </tr>
                 </thead>
@@ -194,9 +201,9 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
                         {c.title}
                         {c.sku ? <span className={`${hint} block`}>{c.sku}</span> : null}
                       </td>
-                      <td className={td}>{fieldWords(c.field)}</td>
-                      <td className={td}>{figureText(c.field, c.before, currencyOf, locale)}</td>
-                      <td className={`${td} font-medium`}>{figureText(c.field, c.after, currencyOf, locale)}</td>
+                      <td className={td}>{fieldWords(c.field, lib)}</td>
+                      <td className={td}>{figureText(c.field, c.before, currencyOf, locale, lib)}</td>
+                      <td className={`${td} font-medium`}>{figureText(c.field, c.after, currencyOf, locale, lib)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -205,12 +212,11 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           {preview.invalid.length > 0 && (
             <div className="flex flex-col gap-1">
-              <h3 className="text-danger-text text-body-strong text-ink">Cannot be changed</h3>
+              <h3 className="text-danger-text text-body-strong text-ink">{w.cannot}</h3>
               <ul className="text-sm">
                 {preview.invalid.map((c, i) => (
                   <li key={`${c.variantId}-${c.field}-${i}`}>
-                    {c.title}
-                    {c.sku ? ` (${c.sku})` : ""}, {fieldWords(c.field).toLowerCase()}: {c.reason}
+                    {fillWords(w.invalidLine, { title: c.title, sku: c.sku ? ` (${c.sku})` : "", field: fieldWords(c.field, lib).toLowerCase(), reason: c.reason })}
                   </li>
                 ))}
               </ul>
@@ -218,13 +224,17 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           {preview.conflicts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <h3 className="text-body-strong text-ink">Changed in the store since you opened this page</h3>
-              <p className={hint}>These are not overwritten. Reload the page to see the current values.</p>
+              <h3 className="text-body-strong text-ink">{w.conflicts}</h3>
+              <p className={hint}>{w.conflictsHint}</p>
               <ul className="text-sm">
                 {preview.conflicts.map((c, i) => (
                   <li key={`${c.variantId}-${c.field}-${i}`}>
-                    {c.title}
-                    {c.sku ? ` (${c.sku})` : ""}, {fieldWords(c.field).toLowerCase()}: now {figureText(c.field, c.current, currencyOf, locale)}
+                    {fillWords(w.conflictLine, {
+                      title: c.title,
+                      sku: c.sku ? ` (${c.sku})` : "",
+                      field: fieldWords(c.field, lib).toLowerCase(),
+                      now: figureText(c.field, c.current, currencyOf, locale, lib),
+                    })}
                   </li>
                 ))}
               </ul>
@@ -232,10 +242,10 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" disabled={pending || preview.changes.length === 0} onClick={apply} className={primary}>
-              {pending ? "Applying …" : "Apply"}
+              {pending ? w.applying : w.apply}
             </button>
             <button type="button" disabled={pending} onClick={() => setPreview(null)} className={secondary}>
-              Keep editing
+              {w.keepEditing}
             </button>
           </div>
         </section>
@@ -253,8 +263,8 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
       )}
       {result && result.summary && (result.conflicts > 0 || result.invalid > 0) && (
         <p className={hint}>
-          {result.conflicts > 0 ? `${result.conflicts} ${result.conflicts === 1 ? "cell was" : "cells were"} left as they were because the store had changed. ` : ""}
-          {result.invalid > 0 ? `${result.invalid} ${result.invalid === 1 ? "cell was" : "cells were"} invalid and not written.` : ""}
+          {result.conflicts > 0 ? countWords(result.conflicts, w.leftCells) : ""}
+          {result.invalid > 0 ? countWords(result.invalid, w.invalidCells) : ""}
         </p>
       )}
     </div>

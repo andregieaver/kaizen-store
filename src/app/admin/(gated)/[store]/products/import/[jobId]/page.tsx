@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { FindingsTable, type FindingItem } from "@/components/admin/data/findings-table";
 import { CancelJobButton, ImportApply, ImportOptionsForm } from "@/components/admin/data/import-flow";
@@ -11,7 +12,9 @@ import { JobTracker } from "@/components/admin/data/job-tracker";
 import { JobProgressView } from "@/components/admin/data/job-views";
 import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { appliedCountsOfJob, dryCountsOfJob, importStage, isWorking, momentText, severityFilterOf, type SeverityFilter } from "@/lib/data-admin";
-import { STATUS_WORDS } from "@/lib/data-job";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { parseImportOptions } from "@/lib/product-import";
 import { isJobId, listItems } from "@/server/data-job-store";
 import { jobFor } from "@/server/data-jobs";
@@ -38,14 +41,10 @@ export default async function ImportJobPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const w = adminText(adminLangOf(gated.account.adminLocale), "products").jobPage;
   return (
     <div className="flex flex-col gap-6">
-      <DataPageHead
-        backHref={`/admin/${store.slug}/products/import`}
-        backLabel="Import products"
-        title="Product import"
-        intro="Check the file first. Nothing is changed in your store until you press Import."
-      />
+      <DataPageHead backHref={`/admin/${store.slug}/products/import`} backLabel={w.back} title={w.title} intro={w.intro} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} jobId={jobId} searchParams={searchParams} />
       </Suspense>
@@ -79,6 +78,10 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   const applied = appliedCountsOfJob(job.counts);
   const dry = dryCountsOfJob(job.counts);
   const view = { id: job.id, kind: job.kind, status: job.status, phase: job.phase, rowsDone: job.rowsDone, rowsTotal: job.rowsTotal, problem: job.problem };
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "products");
+  const w = all.jobPage;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const hrefFor = (q: { severity?: SeverityFilter; page?: number }) => {
     const sp = new URLSearchParams();
     if (q.severity && q.severity !== "all") sp.set("severity", q.severity);
@@ -88,23 +91,23 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
   };
 
   return (
-    <>
-      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label="The file">
-        <span className="font-medium break-all">{job.inputName ?? "Product file"}</span>
-        <span className="text-muted">{job.format === "shopify" ? "Shopify file" : "Kaizena Flow file"}</span>
-        <span className="text-muted">Uploaded {momentText(job.createdAt, store.timeZone)}</span>
-        <span className="text-muted">{STATUS_WORDS[job.status]}</span>
+    <AdminTextScope texts={adminTexts(lang, ["products"])}>
+      <section className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm" aria-label={w.theFile}>
+        <span className="font-medium break-all">{job.inputName ?? w.productFile}</span>
+        <span className="text-muted">{job.format === "shopify" ? w.shopifyFile : w.kaizenFile}</span>
+        <span className="text-muted">{fillWords(w.uploaded, { moment: momentText(job.createdAt, store.timeZone, locale) })}</span>
+        <span className="text-muted">{all.jobStatus[job.status]}</span>
       </section>
 
       {isWorking(job.status) && <JobTracker tickUrl={`${base}/tick`} initial={view} />}
       {isWorking(job.status) && (
         <div>
-          <CancelJobButton cancel={cancelImportAction.bind(null, store.slug, job.id)} label="Cancel the import" />
+          <CancelJobButton cancel={cancelImportAction.bind(null, store.slug, job.id)} label={w.cancel} stopping={w.stopping} />
         </div>
       )}
       {(stage === "failed" || stage === "cancelled" || stage === "expired") && <JobProgressView job={view} />}
-      {stage === "cancelled" && <Notice>The import was cancelled. What was written before it stopped is kept, and nothing is rolled back.</Notice>}
-      {stage === "expired" && <Notice>The file of this import has been removed. Upload it again to import it.</Notice>}
+      {stage === "cancelled" && <Notice>{w.cancelled}</Notice>}
+      {stage === "expired" && <Notice>{w.expired}</Notice>}
 
       {(stage === "uploaded" || stage === "checked") && editor && (
         <ImportOptionsForm
@@ -121,13 +124,13 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
       )}
       {stage === "checked" && (
         <>
-          <DryRunSummary counts={dry} />
+          <DryRunSummary counts={dry} words={all.summary} locale={locale} />
           <ImportApply counts={dry} apply={applyImportAction.bind(null, store.slug, job.id)} cancel={cancelImportAction.bind(null, store.slug, job.id)} />
-          <p className="text-sm text-muted">Changed an option above? Check the file again before importing: the import uses the options it was last checked with.</p>
+          <p className="text-sm text-muted">{w.changedOption}</p>
         </>
       )}
       {(stage === "applying" || stage === "done" || stage === "failed" || stage === "cancelled") && (stage === "done" || Object.values(applied).some((n) => n > 0)) && (
-        <AppliedSummary counts={applied} jobId={job.id} written={stage === "done"} />
+        <AppliedSummary counts={applied} jobId={job.id} written={stage === "done"} words={all.summary} locale={locale} />
       )}
 
       {showItems && (
@@ -143,9 +146,9 @@ async function Body({ storeSlug, jobId, searchParams }: { storeSlug: string; job
       )}
       <p className="text-sm">
         <Link href={`/admin/${store.slug}/products`} className="underline underline-offset-2">
-          Back to the products
+          {w.backToProducts}
         </Link>
       </p>
-    </>
+    </AdminTextScope>
   );
 }

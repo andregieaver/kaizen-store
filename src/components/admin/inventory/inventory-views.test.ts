@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
+import { AdminTextProvider } from "@/components/admin/admin-text";
+import { adminTexts } from "@/lib/admin-text";
 import type { HistoryRow, InventoryPage, InventoryRow } from "@/server/inventory";
 
 import { HistoryView } from "./history-view";
@@ -365,5 +367,69 @@ describe("the stock file", () => {
     expect(stockResultWords({ outcome: "checked", will: null })).toBe("Checked");
     expect(findings([], "error")).toContain("No row has a finding of this kind.");
     expect(findings([], "all")).toContain("Nothing to show.");
+  });
+});
+
+describe("the Inventory pages in Norwegian (D312 A5)", () => {
+  const inNb = (children: ReactNode) =>
+    html(createElement(AdminTextProvider, { lang: "nb", texts: adminTexts("nb", ["inventory"]) } as Parameters<typeof AdminTextProvider>[0], children));
+
+  it("names the tabs, the list and its figures in Norwegian", () => {
+    const head = html(createElement(InventoryHead, { slug: "shop", active: "list", title: "Lager", intro: "x", lang: "nb" }));
+    expect(head).toContain("Historikk");
+    expect(head).toContain("Lagersteder");
+    expect(head).not.toContain(">History<");
+    const one = page({ rows: [row({ onHand: 1200, available: 1200 })] });
+    const view = inNb(createElement(InventoryView, { slug: "shop", page: one, query: { search: "", location: null, status: "all", after: null }, canWrite: true, tools, lang: "nb" }));
+    expect(view).toContain("Varenummer");
+    expect(view).toContain("På lager");
+    expect(view).toContain("Se over endringene");
+    expect(view).toContain((1200).toLocaleString("nb-NO"));
+    expect(view).not.toContain("Review changes");
+  });
+
+  it("says the history's reasons and who made a change in Norwegian", () => {
+    const entry = {
+      id: "10",
+      createdAt: "2026-10-05T10:00:00Z",
+      variantId: V1,
+      productId: "p1",
+      handle: "cup",
+      title: "Cup",
+      options: {},
+      sku: "CUP-RED",
+      locationId: L1,
+      location: "Oslo",
+      delta: -2,
+      onHandAfter: 10,
+      reason: "sale",
+      by: "Order 1001",
+      byFacts: { source: "checkout", actorName: null, orderNumber: "1001", returnNumber: null },
+      note: null,
+      orderId: "o1",
+      returnId: null,
+    } satisfies HistoryRow;
+    const out = html(
+      createElement(HistoryView, {
+        slug: "shop",
+        rows: [entry],
+        nextCursor: null,
+        query: { sku: "", variant: null, location: null, reason: null, from: null, to: null, after: null },
+        locations: [{ id: L1, name: "Oslo", active: true }],
+        timeZone: "Europe/Oslo",
+        lang: "nb",
+      }),
+    );
+    expect(out).toContain("Ordre 1001");
+    expect(out).toContain(">Salg<");
+    expect(out).toContain("Historikken tas vare på i 24 måneder");
+    expect(out).not.toContain("Order 1001");
+  });
+
+  it("asks for the stock file and counts the check in Norwegian", () => {
+    expect(inNb(createElement(StockUpload, { slug: "shop", start: async () => ({ ok: false as const, problem: "x" }), register: async () => ({ ok: false as const, problems: [] }) }))).toContain("Last opp og les filen");
+    expect(html(createElement(StockDryRun, { counts: { toUpdate: 2, unchanged: 1, conflicts: 0, withProblems: 0 }, lang: "nb" }))).toContain("Hva sjekken fant");
+    expect(stockResultWords({ outcome: "checked", will: "skip" }, adminTexts("nb", ["inventory"]).inventory.import)).toBe("Ville bli hoppet over");
+    expect(html(createElement(StockExportForm, { slug: "shop", lang: "nb" }))).toContain("Eksporter lager");
   });
 });

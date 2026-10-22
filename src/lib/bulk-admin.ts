@@ -3,6 +3,8 @@
  * form makes, which cells of the grid changed, and how a before or after figure is shown. The server checks everything again (`previewBulk()`,
  * `applyGrid()`): nothing here is trusted, it only saves a round trip and keeps the screens' wording in one place.
  */
+import type { Widen } from "./admin-messages/common.en";
+import { countWords, fillWords } from "./admin-fill";
 import { BULK_GRID_MAX_PRODUCTS, BULK_MAX_PRODUCTS } from "./data-limits";
 import { formatMoney } from "./money";
 
@@ -17,7 +19,7 @@ export type BulkRequestInput =
   | { action: "price"; productIds: string[]; markets?: string[]; percent?: string; amounts?: Record<string, string> }
   | { action: "stock"; productIds: string[]; change: string };
 
-export const ACTION_WORDS: Record<string, string> = {
+const ACTIONS = {
   status: "Set status",
   archive: "Archive",
   unarchive: "Unarchive",
@@ -28,6 +30,37 @@ export const ACTION_WORDS: Record<string, string> = {
   grid: "Edit in a grid",
   undo: "Undo",
 };
+
+export const ACTION_WORDS: Record<string, string> = ACTIONS;
+
+/**
+ * Every word this module gives a person, in English (D312 A5): the admin's `products` catalogue carries them in each language, and each
+ * function takes them as its last argument, English unless given.
+ */
+export const BULK_WORDS = {
+  actions: ACTIONS,
+  chooseTerm: "Choose at least one category or tag.",
+  writeStock: "Write a stock figure such as 12, or a change such as +5 or -3.",
+  chooseMarket: "Choose at least one market.",
+  writePercent: "Write a percentage, such as -10 or 5.5.",
+  writeAmounts: "Write an amount for {markets}: an amount is never applied across currencies.",
+  chooseProduct: "Choose at least one product.",
+  gridMax: "The grid takes at most {max} products; you chose {count}.",
+  capped: "{matching} products match; a bulk action takes the first {max}. Narrow the list to take the rest.",
+  none: "none",
+  categories: { one: "{n} category", many: "{n} categories" },
+  tags: { one: "{n} tag", many: "{n} tags" },
+  terms: "{categories}, {tags}",
+  archived: "archived",
+  notArchived: "not archived",
+  price: "Price ({market})",
+  fields: { status: "Status", archived: "Archived", terms: "Categories and tags", stock: "Stock", cost: "Cost", sku: "SKU" },
+};
+
+export type BulkWords = Widen<typeof BULK_WORDS>;
+
+/** An action's name in `words`, or the action itself. */
+export const actionWords = (action: string, words: BulkWords = BULK_WORDS): string => (words.actions as Record<string, string>)[action] ?? action;
 
 /** The form of the action panel: everything any action asks for, held as text. */
 export type PanelForm = {
@@ -43,7 +76,13 @@ export type PanelForm = {
 export const emptyPanel = (mainMarket: string): PanelForm => ({ to: "active", termIds: [], markets: [mainMarket], mode: "percent", percent: "", amounts: {}, stock: "" });
 
 /** The request a panel makes for the selected products, or the sentence saying what is missing. */
-export function buildBulkRequest(action: ListAction, form: PanelForm, productIds: readonly string[], terms: readonly { id: string; kind: "category" | "tag" }[]): { ok: true; request: BulkRequestInput } | { ok: false; problem: string } {
+export function buildBulkRequest(
+  action: ListAction,
+  form: PanelForm,
+  productIds: readonly string[],
+  terms: readonly { id: string; kind: "category" | "tag" }[],
+  words: BulkWords = BULK_WORDS,
+): { ok: true; request: BulkRequestInput } | { ok: false; problem: string } {
   const ids = [...productIds];
   switch (action) {
     case "status":
@@ -53,7 +92,7 @@ export function buildBulkRequest(action: ListAction, form: PanelForm, productIds
       return { ok: true, request: { action, productIds: ids } };
     case "terms_add":
     case "terms_remove": {
-      if (form.termIds.length === 0) return { ok: false, problem: "Choose at least one category or tag." };
+      if (form.termIds.length === 0) return { ok: false, problem: words.chooseTerm };
       const kind = new Map(terms.map((t) => [t.id, t.kind]));
       return {
         ok: true,
@@ -61,25 +100,26 @@ export function buildBulkRequest(action: ListAction, form: PanelForm, productIds
       };
     }
     case "stock":
-      return form.stock.trim() === "" ? { ok: false, problem: "Write a stock figure such as 12, or a change such as +5 or -3." } : { ok: true, request: { action, productIds: ids, change: form.stock.trim() } };
+      return form.stock.trim() === "" ? { ok: false, problem: words.writeStock } : { ok: true, request: { action, productIds: ids, change: form.stock.trim() } };
     case "price": {
-      if (form.markets.length === 0) return { ok: false, problem: "Choose at least one market." };
+      if (form.markets.length === 0) return { ok: false, problem: words.chooseMarket };
       if (form.mode === "percent") {
-        return form.percent.trim() === "" ? { ok: false, problem: "Write a percentage, such as -10 or 5.5." } : { ok: true, request: { action, productIds: ids, markets: [...form.markets], percent: form.percent.trim() } };
+        return form.percent.trim() === "" ? { ok: false, problem: words.writePercent } : { ok: true, request: { action, productIds: ids, markets: [...form.markets], percent: form.percent.trim() } };
       }
       const missing = form.markets.filter((m) => (form.amounts[m] ?? "").trim() === "");
-      if (missing.length > 0) return { ok: false, problem: `Write an amount for ${missing.join(", ")}: an amount is never applied across currencies.` };
+      if (missing.length > 0) return { ok: false, problem: fillWords(words.writeAmounts, { markets: missing.join(", ") }) };
       return { ok: true, request: { action, productIds: ids, markets: [...form.markets], amounts: Object.fromEntries(form.markets.map((m) => [m, form.amounts[m].trim()])) } };
     }
   }
 }
 
 /** Why the selection cannot go into a grid (or null), in the server's own words. */
-export const gridSelectionProblem = (count: number): string | null =>
-  count < 1 ? "Choose at least one product." : count > BULK_GRID_MAX_PRODUCTS ? `The grid takes at most ${BULK_GRID_MAX_PRODUCTS} products; you chose ${count}.` : null;
+export const gridSelectionProblem = (count: number, words: BulkWords = BULK_WORDS): string | null =>
+  count < 1 ? words.chooseProduct : count > BULK_GRID_MAX_PRODUCTS ? fillWords(words.gridMax, { max: BULK_GRID_MAX_PRODUCTS, count }) : null;
 
 /** Said when a "select all matching" is cut at the limit. */
-export const cappedNote = (matching: number): string | null => (matching > BULK_MAX_PRODUCTS ? `${matching} products match; a bulk action takes the first ${BULK_MAX_PRODUCTS}. Narrow the list to take the rest.` : null);
+export const cappedNote = (matching: number, words: BulkWords = BULK_WORDS): string | null =>
+  matching > BULK_MAX_PRODUCTS ? fillWords(words.capped, { matching, max: BULK_MAX_PRODUCTS }) : null;
 
 // ---------------------------------------------------------------------------
 // The grid
@@ -115,22 +155,22 @@ export function changedCellCount(edits: readonly GridEditInput[]): number {
 }
 
 /** A recorded before or after figure as text: a price or a cost in its currency, stock as a number, a SKU or a status as it is, a list of terms by count. */
-export function figureText(field: string, value: unknown, currencyOf: (field: string) => string | null, locale: string): string {
-  if (value === null || value === undefined) return "none";
+export function figureText(field: string, value: unknown, currencyOf: (field: string) => string | null, locale: string, words: BulkWords = BULK_WORDS): string {
+  if (value === null || value === undefined) return words.none;
   if (field === "terms" && typeof value === "object") {
     const v = value as { categories?: unknown[]; tags?: unknown[] };
     const c = v.categories?.length ?? 0;
     const t = v.tags?.length ?? 0;
-    return `${c} ${c === 1 ? "category" : "categories"}, ${t} ${t === 1 ? "tag" : "tags"}`;
+    return fillWords(words.terms, { categories: countWords(c, words.categories), tags: countWords(t, words.tags) });
   }
-  if (field === "archived") return value === true ? "archived" : "not archived";
+  if (field === "archived") return value === true ? words.archived : words.notArchived;
   const currency = currencyOf(field);
   if (currency && typeof value === "number" && Number.isSafeInteger(value)) return formatMoney(value, currency, locale);
   return String(value);
 }
 
 /** The name of a field for a person: `price:NO` is the price for NO. */
-export function fieldWords(field: string): string {
-  if (field.startsWith("price:")) return `Price (${field.slice(6)})`;
-  return ({ status: "Status", archived: "Archived", terms: "Categories and tags", stock: "Stock", cost: "Cost", sku: "SKU" } as Record<string, string>)[field] ?? field;
+export function fieldWords(field: string, words: BulkWords = BULK_WORDS): string {
+  if (field.startsWith("price:")) return fillWords(words.price, { market: field.slice(6) });
+  return (words.fields as Record<string, string>)[field] ?? field;
 }

@@ -2,11 +2,13 @@
 
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+
 import {
   FIELD_ACCESS,
   FILTER_TYPES,
   SEARCH_TYPES,
-  FIELD_TYPES,
   FIELD_WIDTHS,
   MAX_CHOICES,
   MAX_GALLERY,
@@ -20,7 +22,6 @@ import {
   nameOf,
   operatorsFor,
   uniqueName,
-  CONDITION_OPERATORS,
   type Choice,
   type Condition,
   type FieldDef,
@@ -43,6 +44,7 @@ import {
   moveItem,
   moveSubField,
   newCondition,
+  operatorLabel,
   parseUnits,
   removeLayout,
   removeSubField,
@@ -124,6 +126,8 @@ export function FieldEditorDialog({
   onApply: (field: FieldDef) => void;
   onClose: () => void;
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   const [draft, setDraft] = useState<FieldDef | null>(field);
   const [tab, setTab] = useState<Tab>("general");
   const [attempted, setAttempted] = useState(false);
@@ -146,7 +150,7 @@ export function FieldEditorDialog({
   const shownTab = tabs.some((item) => item.id === tab) ? tab : "general";
 
   const update = (patch: Partial<FieldDef>) => setDraft((d) => (d ? { ...d, ...patch } : d));
-  const problems = draft ? fieldProblems(draft, otherNames, above) : [];
+  const problems = draft ? fieldProblems(draft, otherNames, above, fw) : [];
   const apply = () => {
     if (!draft) return;
     if (problems.length > 0) {
@@ -172,8 +176,10 @@ export function FieldEditorDialog({
       wide
       title={
         draft
-          ? `${fresh ? "New" : "Edit"} ${sub ? "field inside" : "field"}: ${draft.label || FIELD_TYPES[draft.type].label}`
-          : "Field"
+          ? fillWords(sub ? (fresh ? w.titleNewSub : w.titleEditSub) : fresh ? w.titleNew : w.titleEdit, {
+              label: draft.label || fw.types[draft.type].label,
+            })
+          : w.titleClosed
       }
       footer={
         <>
@@ -182,14 +188,14 @@ export function FieldEditorDialog({
             onClick={onClose}
             className="min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken"
           >
-            Cancel
+            {w.cancel}
           </button>
           <button
             type="button"
             onClick={apply}
             className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
-            Apply
+            {w.apply}
           </button>
         </>
       }
@@ -198,7 +204,7 @@ export function FieldEditorDialog({
         <div className="flex flex-col gap-4">
           {attempted && problems.length > 0 && (
             <div role="alert" className="rounded-md border border-danger-text p-3 text-sm">
-              <p className="font-medium">The field cannot be used yet. Please fix:</p>
+              <p className="font-medium">{w.fixFirst}</p>
               <ul className="mt-1 list-disc pl-5">
                 {problems.map((problem, index) => (
                   <li key={`${index}:${problem}`}>{problem}</li>
@@ -206,7 +212,7 @@ export function FieldEditorDialog({
               </ul>
             </div>
           )}
-          <div role="tablist" aria-label="Field settings" className="flex flex-wrap gap-1 border-b border-line">
+          <div role="tablist" aria-label={w.settings} className="flex flex-wrap gap-1 border-b border-line">
             {tabs.map((item, index) => (
               <button
                 key={item.id}
@@ -220,7 +226,7 @@ export function FieldEditorDialog({
                 onKeyDown={(event) => onTabKey(event, index)}
                 className="-mb-px min-h-10 border-b-2 border-transparent px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
               >
-                {item.label}
+                {w.tabs[item.id]}
               </button>
             ))}
           </div>
@@ -288,16 +294,16 @@ function General({
         ? "taken"
         : null;
   const others = languages.slice(1);
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   return (
     <>
       <p className="text-sm">
-        <span className="font-medium">Type:</span> {FIELD_TYPES[draft.type].label}
-        <span className={`block ${hint}`}>
-          The type cannot be changed once the field is made. To use another type, add a new field and delete this one.
-        </span>
+        <span className="font-medium">{w.type}</span> {fw.types[draft.type].label}
+        <span className={`block ${hint}`}>{w.typeFixed}</span>
       </p>
       <label className={label}>
-        Label
+        {w.label}
         <input
           value={draft.label}
           maxLength={80}
@@ -313,12 +319,12 @@ function General({
           aria-describedby="field-label-hint"
         />
         <span id="field-label-hint" className={hint}>
-          What staff see above the input{languages.length > 1 ? ` in ${languages[0].name}, the main language` : ""}.
+          {languages.length > 1 ? fillWords(w.labelHintMain, { language: languages[0].name }) : w.labelHint}
         </span>
       </label>
       {others.length > 0 && (
         <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
-          <legend className="px-1 text-sm font-medium">Label in other languages</legend>
+          <legend className="px-1 text-sm font-medium">{w.otherLabels}</legend>
           {others.map((language) => (
             <label key={language.locale} className={label}>
               {language.name}
@@ -332,11 +338,11 @@ function General({
               />
             </label>
           ))}
-          <p className={hint}>Left empty, the label above is used.</p>
+          <p className={hint}>{w.otherLabelsHint}</p>
         </fieldset>
       )}
       <label className={label}>
-        Name
+        {w.name}
         <input
           value={draft.name}
           maxLength={40}
@@ -347,20 +353,19 @@ function General({
           className={`${input} font-mono`}
         />
         <span id="field-name-hint" className={hint}>
-          What templates and files call the field. Renaming it is safe: what has been entered is kept under the
-          field&apos;s own id, not its name.
+          {w.nameHint}
         </span>
         {nameProblem === "invalid" && (
           <span className="text-xs font-normal text-danger-text">
-            Use lowercase letters, digits and underscores, starting with a letter.
+            {w.nameInvalid}
           </span>
         )}
         {nameProblem === "taken" && (
-          <span className="text-xs font-normal text-danger-text">Another field next to this one has that name.</span>
+          <span className="text-xs font-normal text-danger-text">{w.nameTaken}</span>
         )}
       </label>
       <label className={label}>
-        Instructions for staff (optional)
+        {w.instructions}
         <textarea
           value={draft.instructions ?? ""}
           maxLength={300}
@@ -368,7 +373,7 @@ function General({
           onChange={(event) => update({ instructions: event.target.value || undefined })}
           className={`${input} py-2`}
         />
-        <span className={hint}>Shown under the label when filling in the field. Shoppers never see it.</span>
+        <span className={hint}>{w.instructionsHint}</span>
       </label>
       <label className="flex items-start gap-3 text-sm">
         <input
@@ -378,10 +383,8 @@ function General({
           className="mt-0.5 size-4"
         />
         <span>
-          <span className="font-medium">Required</span>
-          <span className={`block ${hint}`}>
-            Staff must fill it in before saving. A field hidden by its logic is never required.
-          </span>
+          <span className="font-medium">{w.required}</span>
+          <span className={`block ${hint}`}>{w.requiredHint}</span>
         </span>
       </label>
     </>
@@ -396,10 +399,11 @@ function Presentation({
   fresh,
 }: PanelProps & { languages: FieldLanguage[]; savedKeys: string[]; fresh: boolean }) {
   const type = draft.type;
+  const w = useAdminText("fields").dialog;
   return (
     <>
       <label className={`${label} max-w-56`}>
-        Width in the form
+        {w.width}
         <select
           value={draft.width ?? 100}
           onChange={(event) => update({ width: Number(event.target.value) as (typeof FIELD_WIDTHS)[number] })}
@@ -411,53 +415,53 @@ function Presentation({
             </option>
           ))}
         </select>
-        <span className={hint}>On wide screens; fields always fill the line on phones.</span>
+        <span className={hint}>{w.widthHint}</span>
       </label>
       {PLACEHOLDER_TYPES.includes(type) && (
         <label className={label}>
-          Placeholder (optional)
+          {w.placeholder}
           <input
             value={draft.placeholder ?? ""}
             maxLength={100}
             onChange={(event) => update({ placeholder: event.target.value || undefined })}
             className={input}
           />
-          <span className={hint}>Grey example text shown in the empty input.</span>
+          <span className={hint}>{w.placeholderHint}</span>
         </label>
       )}
       {(type === "text" || type === "textarea") && (
         <OptionalNumber
-          label="Most characters (optional)"
+          label={w.mostCharacters}
           value={draft.maxLength}
           min={1}
           max={type === "text" ? TEXT_MAX : TEXTAREA_MAX}
           integer
           onChange={(maxLength) => update({ maxLength })}
-          hintText={`At most ${type === "text" ? TEXT_MAX : TEXTAREA_MAX}.`}
+          hintText={fillWords(w.atMost, { n: type === "text" ? TEXT_MAX : TEXTAREA_MAX })}
         />
       )}
       {type === "number" && (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <OptionalNumber label="Least (optional)" value={draft.min} onChange={(min) => update({ min })} />
-            <OptionalNumber label="Most (optional)" value={draft.max} onChange={(max) => update({ max })} />
+            <OptionalNumber label={w.least} value={draft.min} onChange={(min) => update({ min })} />
+            <OptionalNumber label={w.most} value={draft.max} onChange={(max) => update({ max })} />
             <OptionalNumber
-              label="Step (optional)"
+              label={w.step}
               value={draft.step}
               min={0}
               onChange={(step) => update({ step: step && step > 0 ? step : undefined })}
             />
           </div>
           <label className={`${label} max-w-56`}>
-            Unit (optional)
+            {w.unit}
             <input
               value={draft.unit ?? ""}
               maxLength={12}
-              placeholder="e.g. months"
+              placeholder={w.unitExample}
               onChange={(event) => update({ unit: event.target.value || undefined })}
               className={input}
             />
-            <span className={hint}>Shown after the number.</span>
+            <span className={hint}>{w.unitHint}</span>
           </label>
         </>
       )}
@@ -465,8 +469,8 @@ function Presentation({
         <>
           <UnitsInput units={draft.units ?? []} onChange={(units) => update({ units })} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <OptionalNumber label="Least (optional)" value={draft.min} onChange={(min) => update({ min })} />
-            <OptionalNumber label="Most (optional)" value={draft.max} onChange={(max) => update({ max })} />
+            <OptionalNumber label={w.least} value={draft.min} onChange={(min) => update({ min })} />
+            <OptionalNumber label={w.most} value={draft.max} onChange={(max) => update({ max })} />
           </div>
         </>
       )}
@@ -481,13 +485,13 @@ function Presentation({
       )}
       {type === "gallery" && (
         <OptionalNumber
-          label="Most pictures (optional)"
+          label={w.mostPictures}
           value={draft.maxItems}
           min={1}
           max={MAX_GALLERY}
           integer
           onChange={(maxItems) => update({ maxItems })}
-          hintText={`At most ${MAX_GALLERY}.`}
+          hintText={fillWords(w.atMost, { n: MAX_GALLERY })}
         />
       )}
       {(type === "product" || type === "page" || type === "term") && (
@@ -499,12 +503,8 @@ function Presentation({
             className="mt-0.5 size-4"
           />
           <span>
-            <span className="font-medium">Allow several</span>
-            <span className={`block ${hint}`}>
-              {draft.multiple
-                ? "Staff choose any number, in the order they like, up to 50."
-                : "Staff choose one. Turn this on to choose several."}
-            </span>
+            <span className="font-medium">{w.several}</span>
+            <span className={`block ${hint}`}>{draft.multiple ? w.severalOn : w.severalOff}</span>
           </span>
         </label>
       )}
@@ -514,26 +514,20 @@ function Presentation({
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             <OptionalNumber
-              label="Least (optional)"
+              label={w.least}
               value={draft.min}
               min={0}
               onChange={(min) => update({ min })}
-              hintText="An amount in the currency staff choose, such as 10 for 10.00."
+              hintText={w.moneyLeast}
             />
-            <OptionalNumber label="Most (optional)" value={draft.max} min={0} onChange={(max) => update({ max })} />
+            <OptionalNumber label={w.most} value={draft.max} min={0} onChange={(max) => update({ max })} />
           </div>
-          <p className={hint}>
-            Staff choose the currency among those the store offers, starting with its main one. Shoppers see the amount
-            in their market&apos;s currency at the store&apos;s rates. It is shown as entered, with no VAT label: it is
-            not a price shoppers pay.
-          </p>
+          <p className={hint}>{w.moneyHint}</p>
         </>
       )}
       {!hasTypeSettings(type) && (
         <p className={hint}>
-          {type === "group"
-            ? "A group has no settings of its own besides its fields, which are on the Fields tab."
-            : "This type has no other settings."}
+          {type === "group" ? w.groupNoSettings : w.noSettings}
         </p>
       )}
     </>
@@ -542,6 +536,7 @@ function Presentation({
 
 /** Which of the categories and tags a category-or-tag field offers: at least one of the two. */
 function TermKinds({ draft, update }: PanelProps) {
+  const w = useAdminText("fields").dialog;
   const kinds = draft.termKinds && draft.termKinds.length > 0 ? draft.termKinds : (["category", "tag"] as const);
   const set = (kind: "category" | "tag", on: boolean) => {
     const next = (["category", "tag"] as const).filter((k) => (k === kind ? on : kinds.includes(k)));
@@ -549,7 +544,7 @@ function TermKinds({ draft, update }: PanelProps) {
   };
   return (
     <fieldset className="flex flex-col gap-1">
-      <legend className="mb-1 text-sm font-medium">Which to choose from</legend>
+      <legend className="mb-1 text-sm font-medium">{w.whichTerms}</legend>
       {(["category", "tag"] as const).map((kind) => (
         <label key={kind} className="flex min-h-10 items-center gap-3 text-sm">
           <input
@@ -559,57 +554,58 @@ function TermKinds({ draft, update }: PanelProps) {
             onChange={(event) => set(kind, event.target.checked)}
             className="size-4"
           />
-          {kind === "category" ? "Categories" : "Tags"}
+          {kind === "category" ? w.categories : w.tags}
         </label>
       ))}
-      <p className={hint}>At least one. Staff choose among the ones the store has made, of any kind of content.</p>
+      <p className={hint}>{w.termsHint}</p>
     </fieldset>
   );
 }
 
 /** A repeater's or flexible content's fewest and most rows, the words on its add button, and (repeater only) how its rows are laid out in the form. */
 function RepeaterSettings({ draft, update }: PanelProps) {
+  const w = useAdminText("fields").dialog;
   const layout = draft.rowLayout ?? "block";
   const flexible = draft.type === "flexible";
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
         <OptionalNumber
-          label="Fewest rows (optional)"
+          label={w.fewestRows}
           value={draft.minRows}
           min={0}
           max={MAX_REPEATER_ROWS}
           integer
           onChange={(minRows) => update({ minRows })}
-          hintText="Staff must add at least this many before saving."
+          hintText={w.fewestRowsHint}
         />
         <OptionalNumber
-          label="Most rows (optional)"
+          label={w.mostRows}
           value={draft.maxRows}
           min={1}
           max={MAX_REPEATER_ROWS}
           integer
           onChange={(maxRows) => update({ maxRows })}
-          hintText={`At most ${MAX_REPEATER_ROWS}.`}
+          hintText={fillWords(w.atMost, { n: MAX_REPEATER_ROWS })}
         />
       </div>
       <label className={`${label} max-w-72`}>
-        Words on the add button
+        {w.buttonWords}
         <input
           value={draft.buttonLabel ?? ""}
           maxLength={40}
-          placeholder="Add row"
+          placeholder={w.addRow}
           onChange={(event) => update({ buttonLabel: event.target.value || undefined })}
           className={input}
         />
       </label>
       {!flexible && (
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">How rows are laid out in the form</legend>
+        <legend className="mb-1 text-sm font-medium">{w.rowLayout}</legend>
         {(
           [
-            ["block", "Blocks", "Each row is a box with its fields, laid out by their widths."],
-            ["table", "Table", "Each row is a line with a column for each field. Best for short fields."],
+            ["block", w.blocks, w.blocksHint],
+            ["table", w.table, w.tableHint],
           ] as const
         ).map(([value, name, text]) => (
           <label
@@ -655,7 +651,10 @@ function SubFieldsEditor({
   /** What holds the fields, in words ("layout" for one layout of flexible content); a group's or repeater's by default. */
   noun?: string;
 }) {
-  const holder = noun ?? (draft.type === "group" ? "group" : "repeater");
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
+  const holderKey = noun === "layout" ? "layout" : draft.type === "group" ? "group" : "repeater";
+  const holder = w.holders[holderKey];
   const [editing, setEditing] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -673,38 +672,41 @@ function SubFieldsEditor({
     setPicking(false);
     if (!result.added) return;
     onFresh([result.added.id]);
-    set(result.fields, `${FIELD_TYPES[type].label} field added.`);
+    set(result.fields, fillWords(fw.group.added, { type: fw.types[type].label }));
     setEditing(result.added.id);
   };
   const copy = (id: string) => {
     const result = duplicateSubField(wrapped, draft.id, id);
     if (!result) return;
     onFresh([result.copy.id]);
-    set(result.fields, `${result.copy.label} added below.`);
+    set(result.fields, fillWords(fw.group.addedBelow, { label: result.copy.label }));
     setEditing(result.copy.id);
   };
   const remove = (sub: FieldDef) => {
     if (
       !freshIds.has(sub.id) &&
-      !window.confirm(`Delete the field ${sub.label}? What was entered in it is deleted when you save the group.`)
+      !window.confirm(fillWords(fw.group.confirmDelete, { label: sub.label }))
     )
       return;
     const result = removeSubField(wrapped, draft.id, sub.id);
     set(
       result.fields,
-      `${sub.label} deleted.${result.changed.length > 0 ? ` The logic of ${result.changed.join(", ")} that looked at it was taken away.` : ""}`,
+      `${fillWords(fw.group.deleted, { label: sub.label })}${result.changed.length > 0 ? fillWords(fw.group.logicRemoved, { names: result.changed.join(", ") }) : ""}`,
     );
   };
   const move = (from: number, to: number) => {
     if (to < 0 || to >= subs.length) return;
-    set(moveSubField(wrapped, draft.id, from, to), `${subs[from].label} moved to place ${to + 1} of ${subs.length}.`);
+    set(
+      moveSubField(wrapped, draft.id, from, to),
+      fillWords(fw.group.moved, { label: subs[from].label, to: to + 1, total: subs.length }),
+    );
   };
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          Fields inside <span className="font-normal text-muted">({subs.length})</span>
+          {w.fieldsInside} <span className="font-normal text-muted">({subs.length})</span>
         </p>
         <button
           type="button"
@@ -712,15 +714,15 @@ function SubFieldsEditor({
           onClick={() => setPicking(true)}
           disabled={subs.length >= MAX_SUB_FIELDS}
         >
-          Add a field inside
+          {w.addInside}
         </button>
       </div>
       {subs.length === 0 ? (
         <p role="alert" className="rounded-md border border-dashed border-danger-text p-4 text-center text-sm">
-          A {holder} needs at least one field. Add one to start.
+          {fillWords(w.needsField, { holder })}
         </p>
       ) : (
-        <ol aria-label={`Fields inside ${draft.label || "the field"}`} className="flex flex-col gap-2">
+        <ol aria-label={fillWords(w.insideOf, { label: draft.label || w.theField })} className="flex flex-col gap-2">
           {subs.map((sub, index) => {
             const name = sub.label || sub.name;
             return (
@@ -729,16 +731,16 @@ function SubFieldsEditor({
                 className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-sunken p-2"
               >
                 <div className="min-w-0 flex-1 basis-40">
-                  <p className="truncate text-sm font-medium">{sub.label || "Untitled field"}</p>
+                  <p className="truncate text-sm font-medium">{sub.label || fw.group.untitledField}</p>
                   <p className="truncate font-mono text-xs text-muted">{sub.name}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1 text-xs">
-                  <span className="rounded-full border border-line px-2 py-0.5">{FIELD_TYPES[sub.type].label}</span>
+                  <span className="rounded-full border border-line px-2 py-0.5">{fw.types[sub.type].label}</span>
                   {sub.required && (
-                    <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">Required</span>
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">{fw.group.required}</span>
                   )}
                   {sub.when && sub.when.length > 0 && (
-                    <span className="rounded-full border border-line px-2 py-0.5">Has logic</span>
+                    <span className="rounded-full border border-line px-2 py-0.5">{fw.group.hasLogic}</span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
@@ -746,7 +748,7 @@ function SubFieldsEditor({
                     type="button"
                     className={small}
                     disabled={index === 0}
-                    aria-label={`Move ${name} up`}
+                    aria-label={fillWords(fw.group.moveUp, { name })}
                     onClick={() => move(index, index - 1)}
                   >
                     ↑
@@ -755,7 +757,7 @@ function SubFieldsEditor({
                     type="button"
                     className={small}
                     disabled={index === subs.length - 1}
-                    aria-label={`Move ${name} down`}
+                    aria-label={fillWords(fw.group.moveDown, { name })}
                     onClick={() => move(index, index + 1)}
                   >
                     ↓
@@ -763,21 +765,26 @@ function SubFieldsEditor({
                   <button
                     type="button"
                     className={small}
-                    aria-label={`Edit ${name}`}
+                    aria-label={fillWords(fw.group.editName, { name })}
                     onClick={() => setEditing(sub.id)}
                   >
-                    Edit
+                    {fw.group.edit}
                   </button>
-                  <button type="button" className={small} aria-label={`Duplicate ${name}`} onClick={() => copy(sub.id)}>
-                    Duplicate
+                  <button
+                    type="button"
+                    className={small}
+                    aria-label={fillWords(fw.group.duplicateName, { name })}
+                    onClick={() => copy(sub.id)}
+                  >
+                    {fw.group.duplicate}
                   </button>
                   <button
                     type="button"
                     className={`${small} text-danger-text`}
-                    aria-label={`Delete ${name}`}
+                    aria-label={fillWords(fw.group.deleteName, { name })}
                     onClick={() => remove(sub)}
                   >
-                    Delete
+                    {fw.group.delete}
                   </button>
                 </div>
               </li>
@@ -786,8 +793,7 @@ function SubFieldsEditor({
         </ol>
       )}
       <p className={hint}>
-        {subFieldsSummary(draft)}. A field can only be shown by the fields above it here. What is entered in them
-        follows the {noun ? "flexible content" : holder}&apos;s own access.
+        {fillWords(w.insideHint, { summary: subFieldsSummary(draft, fw), holder: noun ? w.holders.flexible : holder })}
       </p>
       <p role="status" aria-live="polite" className="sr-only">
         {announcement}
@@ -797,7 +803,7 @@ function SubFieldsEditor({
         onClose={() => setPicking(false)}
         onPick={add}
         types={SUB_FIELD_TYPES}
-        title="Add a field inside"
+        title={w.addInside}
       />
       <FieldEditorDialog
         sub
@@ -807,7 +813,7 @@ function SubFieldsEditor({
         fresh={editingField ? freshIds.has(editingField.id) : false}
         languages={languages}
         onApply={(next) => {
-          set(replaceSubField(wrapped, draft.id, next), `${next.label} updated.`);
+          set(replaceSubField(wrapped, draft.id, next), fillWords(fw.group.updated, { label: next.label }));
           setEditing(null);
         }}
         onClose={() => setEditing(null)}
@@ -835,6 +841,8 @@ function LayoutsEditor({
   onFresh: (ids: string[]) => void;
   savedLayoutKeys: string[];
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   const layouts = draft.layouts ?? [];
   const [open, setOpen] = useState<string | null>(layouts[0]?.key ?? null);
   const [announcement, setAnnouncement] = useState("");
@@ -846,33 +854,33 @@ function LayoutsEditor({
   };
   const change = (key: string, next: FieldLayout) => set(replaceLayout(wrapped, draft.id, key, next));
   const add = () => {
-    const result = addLayout(wrapped, draft.id);
+    const result = addLayout(wrapped, draft.id, fw.text.newLayout);
     if (!result.added) return;
     onFresh(result.added.subFields.map((f) => f.id));
-    set(result.fields, `Layout ${result.added.label} added.`);
+    set(result.fields, fillWords(w.layoutAdded, { label: result.added.label }));
     setOpen(result.added.key);
   };
   const copy = (key: string) => {
-    const result = duplicateLayout(wrapped, draft.id, key);
+    const result = duplicateLayout(wrapped, draft.id, key, fw.text.copyOf);
     if (!result) return;
     onFresh(result.copy.subFields.map((f) => f.id));
-    set(result.fields, `${result.copy.label} added below.`);
+    set(result.fields, fillWords(fw.group.addedBelow, { label: result.copy.label }));
     setOpen(result.copy.key);
   };
   const remove = (layout: FieldLayout) => {
     if (
       savedLayoutKeys.includes(layout.key) &&
-      !window.confirm(`Delete the layout ${layout.label}? Rows that use it are dropped from the content when it is next saved.`)
+      !window.confirm(fillWords(w.confirmLayout, { label: layout.label }))
     )
       return;
-    set(removeLayout(wrapped, draft.id, layout.key), `Layout ${layout.label} deleted.`);
+    set(removeLayout(wrapped, draft.id, layout.key), fillWords(w.layoutDeleted, { label: layout.label }));
     if (open === layout.key) setOpen(null);
   };
   const move = (from: number, to: number) => {
     if (to < 0 || to >= layouts.length) return;
     set(
       [{ ...draft, layouts: moveItem(layouts, from, to) }],
-      `${layouts[from].label} moved to place ${to + 1} of ${layouts.length}.`,
+      fillWords(fw.group.moved, { label: layouts[from].label, to: to + 1, total: layouts.length }),
     );
   };
 
@@ -880,18 +888,18 @@ function LayoutsEditor({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          Layouts <span className="font-normal text-muted">({layouts.length})</span>
+          {w.layouts} <span className="font-normal text-muted">({layouts.length})</span>
         </p>
         <button type="button" className={small} onClick={add} disabled={layouts.length >= MAX_LAYOUTS}>
-          Add a layout
+          {w.addLayout}
         </button>
       </div>
       {layouts.length === 0 ? (
         <p role="alert" className="rounded-md border border-dashed border-danger-text p-4 text-center text-sm">
-          Flexible content needs at least one layout. Add one to start.
+          {w.needsLayout}
         </p>
       ) : (
-        <ol aria-label={`Layouts of ${draft.label || "the field"}`} className="flex flex-col gap-2">
+        <ol aria-label={fillWords(w.layoutsOf, { label: draft.label || w.theField })} className="flex flex-col gap-2">
           {layouts.map((layout, index) => {
             const name = layout.label || layout.key;
             const locked = savedLayoutKeys.includes(layout.key);
@@ -901,15 +909,15 @@ function LayoutsEditor({
               <li key={index} className="rounded-md border border-line bg-sunken">
                 <div className="flex flex-wrap items-center gap-2 p-2">
                   <div className="min-w-0 flex-1 basis-40">
-                    <p className="truncate text-sm font-medium">{layout.label || "Untitled layout"}</p>
-                    <p className="truncate text-xs text-muted">{subFieldsSummary({ type: "group", subFields: layout.subFields })}</p>
+                    <p className="truncate text-sm font-medium">{layout.label || w.untitledLayout}</p>
+                    <p className="truncate text-xs text-muted">{subFieldsSummary({ type: "group", subFields: layout.subFields }, fw)}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
                     <button
                       type="button"
                       className={small}
                       disabled={index === 0}
-                      aria-label={`Move layout ${name} up`}
+                      aria-label={fillWords(w.moveLayoutUp, { name })}
                       onClick={() => move(index, index - 1)}
                     >
                       ↑
@@ -918,7 +926,7 @@ function LayoutsEditor({
                       type="button"
                       className={small}
                       disabled={index === layouts.length - 1}
-                      aria-label={`Move layout ${name} down`}
+                      aria-label={fillWords(w.moveLayoutDown, { name })}
                       onClick={() => move(index, index + 1)}
                     >
                       ↓
@@ -927,21 +935,26 @@ function LayoutsEditor({
                       type="button"
                       className={small}
                       aria-expanded={isOpen}
-                      aria-label={`${isOpen ? "Close" : "Edit"} layout ${name}`}
+                      aria-label={fillWords(isOpen ? w.closeLayout : w.editLayout, { name })}
                       onClick={() => setOpen(isOpen ? null : layout.key)}
                     >
-                      {isOpen ? "Close" : "Edit"}
+                      {isOpen ? w.close : fw.group.edit}
                     </button>
-                    <button type="button" className={small} aria-label={`Duplicate layout ${name}`} onClick={() => copy(layout.key)}>
-                      Duplicate
+                    <button
+                      type="button"
+                      className={small}
+                      aria-label={fillWords(w.duplicateLayout, { name })}
+                      onClick={() => copy(layout.key)}
+                    >
+                      {fw.group.duplicate}
                     </button>
                     <button
                       type="button"
                       className={`${small} text-danger-text`}
-                      aria-label={`Delete layout ${name}`}
+                      aria-label={fillWords(w.deleteLayout, { name })}
                       onClick={() => remove(layout)}
                     >
-                      Delete
+                      {fw.group.delete}
                     </button>
                   </div>
                 </div>
@@ -949,7 +962,7 @@ function LayoutsEditor({
                   <div className="flex flex-col gap-3 border-t border-line p-3">
                     <div className="flex flex-wrap items-end gap-2">
                       <label className={`${label} min-w-40 flex-1`}>
-                        Layout label
+                        {w.layoutLabel}
                         <input
                           value={layout.label}
                           maxLength={80}
@@ -965,7 +978,7 @@ function LayoutsEditor({
                         />
                       </label>
                       <label className={`${label} w-44`}>
-                        Key
+                        {w.key}
                         <input
                           value={layout.key}
                           maxLength={40}
@@ -978,10 +991,10 @@ function LayoutsEditor({
                         />
                       </label>
                     </div>
-                    {locked && <p className={hint}>A saved layout&apos;s key cannot change: the rows use it. Delete the layout and add a new one instead.</p>}
+                    {locked && <p className={hint}>{w.layoutKeyLocked}</p>}
                     {others.length > 0 && (
                       <details>
-                        <summary className="cursor-pointer text-sm">Label in other languages</summary>
+                        <summary className="cursor-pointer text-sm">{w.otherLabels}</summary>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           {others.map((language) => (
                             <label key={language.locale} className={label}>
@@ -1014,11 +1027,7 @@ function LayoutsEditor({
           })}
         </ol>
       )}
-      <p className={hint}>
-        {layoutsSummary(draft)}. Each row of the content takes one of these layouts and shows its fields. The layout
-        label is read out to screen readers on the site, never shown as a heading. Rows and their words are kept under a
-        layout&apos;s key.
-      </p>
+      <p className={hint}>{fillWords(w.layoutsHint, { summary: layoutsSummary(draft, fw) })}</p>
       <p role="status" aria-live="polite" className="sr-only">
         {announcement}
       </p>
@@ -1075,22 +1084,23 @@ function OptionalNumber({
 
 /** Units as a comma list, kept as typed (a trailing comma is allowed while typing). */
 function UnitsInput({ units, onChange }: { units: string[]; onChange: (units: string[]) => void }) {
+  const w = useAdminText("fields").dialog;
   const [typed, setTyped] = useState(units.join(", "));
   return (
     <label className={label}>
-      Units to choose from
+      {w.units}
       <input
         value={typed}
         onChange={(event) => {
           setTyped(event.target.value);
           onChange(parseUnits(event.target.value).map((unit) => unit.slice(0, 12)));
         }}
-        placeholder="g, kg"
+        placeholder={w.unitsExample}
         className={input}
         aria-describedby="units-hint"
       />
       <span id="units-hint" className={hint}>
-        Separate with commas. The first is the one staff start with.
+        {w.unitsHint}
       </span>
     </label>
   );
@@ -1109,10 +1119,12 @@ function ChoicesEditor({
   savedKeys: string[];
   fresh: boolean;
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   const others = languages.slice(1);
   const change = (index: number, next: Choice) => onChange(choices.map((c, i) => (i === index ? next : c)));
   const add = () => {
-    const text = `Option ${choices.length + 1}`;
+    const text = fillWords(w.option, { n: choices.length + 1 });
     onChange([
       ...choices,
       {
@@ -1126,7 +1138,7 @@ function ChoicesEditor({
   };
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">Choices</legend>
+      <legend className="mb-1 text-sm font-medium">{w.choices}</legend>
       <ol className="flex flex-col gap-2">
         {choices.map((choice, index) => {
           const locked = savedKeys.includes(choice.key);
@@ -1135,7 +1147,7 @@ function ChoicesEditor({
             <li key={index} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-end gap-2">
                 <label className={`${label} min-w-40 flex-1`}>
-                  Label
+                  {w.label}
                   <input
                     value={choice.label}
                     maxLength={80}
@@ -1149,7 +1161,7 @@ function ChoicesEditor({
                   />
                 </label>
                 <label className={`${label} w-40`}>
-                  Key
+                  {w.key}
                   <input
                     value={choice.key}
                     maxLength={40}
@@ -1164,7 +1176,7 @@ function ChoicesEditor({
                     type="button"
                     className={small}
                     disabled={index === 0}
-                    aria-label={`Move choice ${choice.label || index + 1} up`}
+                    aria-label={fillWords(w.moveChoiceUp, { name: choice.label || index + 1 })}
                     onClick={() => onChange(moveItem(choices, index, index - 1))}
                   >
                     ↑
@@ -1173,7 +1185,7 @@ function ChoicesEditor({
                     type="button"
                     className={small}
                     disabled={index === choices.length - 1}
-                    aria-label={`Move choice ${choice.label || index + 1} down`}
+                    aria-label={fillWords(w.moveChoiceDown, { name: choice.label || index + 1 })}
                     onClick={() => onChange(moveItem(choices, index, index + 1))}
                   >
                     ↓
@@ -1181,16 +1193,16 @@ function ChoicesEditor({
                   <button
                     type="button"
                     className={`${small} text-danger-text`}
-                    aria-label={`Remove choice ${choice.label || index + 1}`}
+                    aria-label={fillWords(w.removeChoice, { name: choice.label || index + 1 })}
                     onClick={() => onChange(choices.filter((_, i) => i !== index))}
                   >
-                    Remove
+                    {fw.group.remove}
                   </button>
                 </div>
               </div>
               {others.length > 0 && (
                 <details>
-                  <summary className="cursor-pointer text-sm">Label in other languages</summary>
+                  <summary className="cursor-pointer text-sm">{w.otherLabels}</summary>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {others.map((language) => (
                       <label key={language.locale} className={label}>
@@ -1214,12 +1226,11 @@ function ChoicesEditor({
       </ol>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className={small} onClick={add} disabled={choices.length >= MAX_CHOICES}>
-          Add a choice
+          {w.addChoice}
         </button>
         {!fresh && savedKeys.length > 0 && (
           <span id="key-locked-hint" className={hint}>
-            Keys already saved cannot change: what has been entered is kept under them. Remove the choice and add a new
-            one instead.
+            {w.keysLocked}
           </span>
         )}
       </div>
@@ -1228,6 +1239,8 @@ function ChoicesEditor({
 }
 
 function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; sub: boolean }) {
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   const groups: Condition[][] = draft.when ?? [];
   const set = (next: Condition[][]) => update({ when: next.length > 0 ? next : undefined });
   const start = () => {
@@ -1241,39 +1254,33 @@ function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; 
 
   if (above.length === 0) {
     return (
-      <p className="text-sm text-muted">
-        A field can be shown by the value of a field above it in the {sub ? "group or repeater" : "group"}. There are
-        none above this one yet: move it down, or add a field above it first.
-      </p>
+      <p className="text-sm text-muted">{sub ? w.noneAboveSub : w.noneAbove}</p>
     );
   }
   return (
     <>
-      <p className={hint}>
-        Show this field only when other fields above it have certain values. A field that is hidden is left out of the
-        form and never required; what was entered in it is kept.
-      </p>
+      <p className={hint}>{w.logicHint}</p>
       {groups.length === 0 ? (
         <div className="flex flex-col items-start gap-2">
-          <p className="text-sm">Always shown.</p>
+          <p className="text-sm">{w.alwaysShown}</p>
           <button type="button" className={small} onClick={start}>
-            Show this field only if …
+            {w.showOnlyIf}
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium">Show this field if</p>
+          <p className="text-sm font-medium">{w.showIf}</p>
           {groups.map((all, g) => (
             <div key={g} className="flex flex-col gap-2">
-              {g > 0 && <p className="text-sm font-medium text-muted">or</p>}
+              {g > 0 && <p className="text-sm font-medium text-muted">{fw.group.or}</p>}
               <ul className="flex flex-col gap-2 rounded-md border border-line p-3">
                 {all.map((condition, r) => (
                   <li key={r} className="flex flex-col gap-1">
-                    {r > 0 && <span className="text-xs font-medium text-muted">and</span>}
+                    {r > 0 && <span className="text-xs font-medium text-muted">{fw.group.and}</span>}
                     <ConditionRow
                       condition={condition}
                       above={above}
-                      name={`Rule ${g + 1}.${r + 1}`}
+                      name={fillWords(fw.group.ruleName, { n: `${g + 1}.${r + 1}` })}
                       onChange={(next) => editRule(g, r, next)}
                       onRemove={() => removeRule(g, r)}
                     />
@@ -1288,7 +1295,7 @@ function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; 
                       if (next) set(groups.map((c, i) => (i === g ? [...c, next] : c)));
                     }}
                   >
-                    Add an “and” rule
+                    {fw.group.addAnd}
                   </button>
                 </li>
               </ul>
@@ -1303,10 +1310,10 @@ function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; 
                 if (next) set([...groups, [next]]);
               }}
             >
-              Add an “or” group
+              {fw.group.addOr}
             </button>
             <button type="button" className={small} onClick={() => update({ when: undefined })}>
-              Always show this field
+              {w.alwaysShow}
             </button>
           </div>
         </div>
@@ -1328,11 +1335,13 @@ function ConditionRow({
   onChange: (condition: Condition) => void;
   onRemove: () => void;
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.dialog;
   const trigger = above.find((f) => f.id === condition.field);
   const operators = trigger ? operatorsFor(trigger.type) : [];
   const kind = valueKindFor(trigger?.type, condition.operator);
   const value = condition.value ?? "";
-  const valueLabel = `${name} value`;
+  const valueLabel = fillWords(fw.group.value, { name });
   let control: ReactNode = null;
   if (kind === "choice") {
     control = (
@@ -1357,8 +1366,8 @@ function ConditionRow({
         onChange={(event) => onChange({ ...condition, value: event.target.value })}
         className={`${input} min-w-32 flex-1`}
       >
-        <option value="1">Yes</option>
-        <option value="0">No</option>
+        <option value="1">{w.yes}</option>
+        <option value="0">{w.no}</option>
       </select>
     );
   } else if (kind !== "none") {
@@ -1379,7 +1388,7 @@ function ConditionRow({
         step={kind === "number" ? "any" : undefined}
         value={value}
         maxLength={200}
-        placeholder={condition.operator === "matches" ? "A pattern, e.g. ^EU" : undefined}
+        placeholder={condition.operator === "matches" ? w.pattern : undefined}
         onChange={(event) => onChange({ ...condition, value: event.target.value })}
         className={`${input} min-w-32 flex-1`}
       />
@@ -1388,7 +1397,7 @@ function ConditionRow({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
-        aria-label={`${name} field`}
+        aria-label={fillWords(w.fieldOf, { name })}
         value={condition.field}
         onChange={(event) => {
           const next = above.find((f) => f.id === event.target.value);
@@ -1396,7 +1405,7 @@ function ConditionRow({
         }}
         className={`${input} min-w-32 flex-1`}
       >
-        {!trigger && <option value={condition.field}>A field that is gone</option>}
+        {!trigger && <option value={condition.field}>{w.fieldGone}</option>}
         {above.map((f) => (
           <option key={f.id} value={f.id}>
             {f.label || f.name}
@@ -1404,7 +1413,7 @@ function ConditionRow({
         ))}
       </select>
       <select
-        aria-label={`${name} operator`}
+        aria-label={fillWords(fw.group.operator, { name })}
         value={condition.operator}
         onChange={(event) =>
           onChange(settleCondition({ ...condition, operator: event.target.value as Condition["operator"] }, trigger))
@@ -1413,23 +1422,29 @@ function ConditionRow({
       >
         {operators.map((operator) => (
           <option key={operator} value={operator}>
-            {CONDITION_OPERATORS[operator]}
+            {operatorLabel(operator, fw)}
           </option>
         ))}
       </select>
       {control}
-      <button type="button" className={`${small} text-danger-text`} onClick={onRemove} aria-label={`Remove ${name}`}>
-        Remove
+      <button
+        type="button"
+        className={`${small} text-danger-text`}
+        onClick={onRemove}
+        aria-label={fillWords(fw.group.removeName, { name })}
+      >
+        {fw.group.remove}
       </button>
     </div>
   );
 }
 
 function Storefront({ draft, update }: PanelProps) {
+  const w = useAdminText("fields").dialog;
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">Who can see what is entered</legend>
-      {isStructural(draft.type) && <p className={hint}>What is entered in the fields inside follows this choice.</p>}
+      <legend className="mb-1 text-sm font-medium">{w.whoSees}</legend>
+      {isStructural(draft.type) && <p className={hint}>{w.insideFollows}</p>}
       {(Object.keys(FIELD_ACCESS) as (keyof typeof FIELD_ACCESS)[]).map((access) => (
         <label
           key={access}
@@ -1444,12 +1459,10 @@ function Storefront({ draft, update }: PanelProps) {
           />
           <span>
             <span className="font-medium">
-              {access === "private" ? "Private: only staff" : "Public: may be shown on the site"}
+              {access === "private" ? w.private : w.public}
             </span>
             <span className={`block ${hint}`}>
-              {access === "private"
-                ? "Only staff see it, in the editor. It is never drawn on the site. New fields start here."
-                : "Templates and product pages may show it to shoppers. Only make a field public when what is written in it is meant for them."}
+              {access === "private" ? w.privateHint : w.publicHint}
             </span>
           </span>
         </label>
@@ -1461,35 +1474,34 @@ function Storefront({ draft, update }: PanelProps) {
 
 /** Where else a public field is used besides templates (D118, phase 2): the listing's filters, keyword search and the chat assistant. */
 function Uses({ draft, update }: PanelProps) {
+  const w = useAdminText("fields").dialog;
   const uses: { key: "filter" | "search" | "chat"; label: string; hint: string; allowed: boolean }[] = [
     {
       key: "filter",
-      label: "Offer as a filter in product lists",
+      label: w.filter,
       hint:
         draft.type === "number" || draft.type === "measurement"
-          ? `Shoppers can narrow product lists by this field as a range, from and to.${
-              draft.type === "measurement" ? " It compares the values entered in the first unit." : ""
-            } Only for products.`
-          : "Shoppers can narrow product lists by this field's choices. Only for products.",
+          ? `${w.filterRange}${draft.type === "measurement" ? w.filterFirstUnit : ""}${w.onlyProducts}`
+          : w.filterChoices,
       allowed: FILTER_TYPES.includes(draft.type),
     },
     {
       key: "search",
-      label: "Include in the store's search",
-      hint: "Products are found by the words written in this field. Only for products.",
+      label: w.search,
+      hint: w.searchHint,
       allowed: SEARCH_TYPES.includes(draft.type),
     },
     {
       key: "chat",
-      label: "Let the chat assistant say it",
-      hint: "The assistant may tell shoppers what is written here about a product, worded as it is.",
+      label: w.chat,
+      hint: w.chatHint,
       // Never an amount: the assistant states no amount from a field.
       allowed: draft.type !== "money",
     },
   ];
   return (
     <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
-      <p className="text-sm font-medium">Also use it for</p>
+      <p className="text-sm font-medium">{w.alsoUse}</p>
       {uses
         .filter((use) => use.allowed)
         .map((use) => (

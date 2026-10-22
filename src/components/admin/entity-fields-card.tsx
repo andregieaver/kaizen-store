@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { EntityFields } from "@/components/admin/entity-fields";
 import { fieldFileUploader, type StartFieldFile } from "@/components/admin/field-file-upload";
 import { uploadFieldPicture } from "@/components/admin/field-picture-upload";
@@ -28,7 +29,7 @@ export function EntityFieldsCard({
   lookups,
   setup,
   save,
-  title = "Custom fields",
+  title,
   intro,
   idPrefix,
 }: {
@@ -41,6 +42,7 @@ export function EntityFieldsCard({
   intro: string;
   idPrefix: string;
 }) {
+  const w = useAdminText("fields").form;
   const [data, setData] = useState<FieldData>(initial);
   const [problems, setProblems] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
@@ -94,11 +96,11 @@ export function EntityFieldsCard({
           disabled={busy}
           className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
-          {busy ? "Saving …" : "Save fields"}
+          {busy ? w.saving : w.saveFields}
         </button>
         {saved && (
           <span role="status" className="text-sm">
-            Saved.
+            {w.saved}
           </span>
         )}
       </div>

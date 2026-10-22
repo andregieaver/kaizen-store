@@ -3,11 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { BulkRecent } from "@/components/admin/bulk-recent";
 import { ProductsGrid } from "@/components/admin/products-grid";
 import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, label, primary } from "@/components/admin/data/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { gridSelectionProblem } from "@/lib/bulk-admin";
 import { BULK_GRID_MARKETS_MAX } from "@/lib/data-limits";
 import { loadGrid } from "@/server/bulk-edit";
@@ -38,14 +42,10 @@ export default async function BulkGridPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const w = adminText(adminLangOf(gated.account.adminLocale), "products").gridPage;
   return (
     <div className="flex flex-col gap-6">
-      <DataPageHead
-        backHref={`/admin/${store.slug}/products`}
-        backLabel="Products"
-        title="Edit products in a grid"
-        intro="Change prices, SKUs, stock and cost across many variants at once. You review every change before it is written, and you can undo it for seven days."
-      />
+      <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={w.intro} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -62,26 +62,36 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const markets = list(query.markets).map((m) => m.toUpperCase());
   const base = `/admin/${store.slug}/products`;
   const editor = await getEditorContext(store);
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "products");
+  const w = all.gridPage;
+  const recent = (
+    <Suspense fallback={<DataSkeleton />}>
+      <BulkRecent storeId={store.id} timeZone={store.timeZone} undo={undoBatchAction.bind(null, store.slug)} heading={all.recent.heading} locale={ADMIN_LANG_FACTS[lang].locale} />
+    </Suspense>
+  );
 
   if (ids.length === 0) {
     return (
-      <>
-        <Notice title="Choose products first">
+      <AdminTextScope texts={adminTexts(lang, ["products"])}>
+        <Notice title={w.chooseFirst}>
           <p>
-            Tick the products to change in <Link href={base} className="underline underline-offset-2">the products list</Link> and choose Edit in a grid, or choose another action in the bar that appears there.
+            {w.choosePrefix}
+            <Link href={base} className="underline underline-offset-2">
+              {w.chooseLink}
+            </Link>
+            {w.chooseSuffix}
           </p>
         </Notice>
-        <Suspense fallback={<DataSkeleton />}>
-          <BulkRecent storeId={store.id} timeZone={store.timeZone} undo={undoBatchAction.bind(null, store.slug)} />
-        </Suspense>
-      </>
+        {recent}
+      </AdminTextScope>
     );
   }
 
-  const problem = gridSelectionProblem(ids.length);
+  const problem = gridSelectionProblem(ids.length, all.bulkLib);
   if (problem) {
     return (
-      <Notice title="Too many products">
+      <Notice title={w.tooMany}>
         <p>{problem}</p>
       </Notice>
     );
@@ -89,7 +99,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const data = await loadGrid(member, ids, markets.length > 0 ? markets : undefined);
   if (!data.ok) {
     return (
-      <Notice title="The grid could not be opened">
+      <Notice title={w.notOpened}>
         <p>{data.problem}</p>
       </Notice>
     );
@@ -98,26 +108,26 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const locale = store.markets[0]?.locale ?? "en";
   const rows = data.rows.map((r) => ({ productId: r.productId, variantId: r.variantId, title: r.title, handle: r.handle, options: r.options, active: r.active, cells: r.cells }));
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["products"])}>
       <form method="get" className={`${card} flex flex-wrap items-end gap-3`}>
         <input type="hidden" name="ids" value={ids.join(",")} />
         <fieldset className="flex flex-col gap-1">
-          <legend className={label}>Price columns (at most {BULK_GRID_MARKETS_MAX})</legend>
+          <legend className={label}>{fillWords(w.priceColumns, { max: BULK_GRID_MARKETS_MAX })}</legend>
           <div className="flex flex-wrap gap-3">
             {editor.markets.map((m) => (
               <label key={m.code} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="markets" value={m.code} defaultChecked={shown.includes(m.code)} /> {m.name} ({m.currency})
+                <input type="checkbox" name="markets" value={m.code} defaultChecked={shown.includes(m.code)} /> {fillWords(all.panel.marketLine, { name: m.name, currency: m.currency })}
               </label>
             ))}
           </div>
         </fieldset>
         <button type="submit" className={primary}>
-          Show these markets
+          {w.showMarkets}
         </button>
       </form>
-      {data.notFound > 0 && <Notice>{data.notFound} of the chosen products are not in this store and are left out.</Notice>}
+      {data.notFound > 0 && <Notice>{fillWords(w.notFound, { n: data.notFound })}</Notice>}
       {rows.length === 0 ? (
-        <Notice>The chosen products have no variants to edit.</Notice>
+        <Notice>{w.noVariants}</Notice>
       ) : (
         <ProductsGrid
           key={`${rows.map((r) => r.variantId).join(",")}|${shown.join(",")}`}
@@ -132,9 +142,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           }}
         />
       )}
-      <Suspense fallback={<DataSkeleton />}>
-        <BulkRecent storeId={store.id} timeZone={store.timeZone} undo={undoBatchAction.bind(null, store.slug)} />
-      </Suspense>
-    </>
+      {recent}
+    </AdminTextScope>
   );
 }

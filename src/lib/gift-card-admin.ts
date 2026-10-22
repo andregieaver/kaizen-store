@@ -4,6 +4,8 @@
  * with the rows; this only names what the database says.
  */
 
+import { countWords, fillWords } from "./admin-fill";
+
 /** What a card is, read from its row, its balance and the time: spent and expired are never stored. */
 export type GiftCardState = "waiting" | "active" | "spent" | "expired" | "deactivated";
 
@@ -51,8 +53,17 @@ export const ENTRY_WORDS: Record<string, string> = {
 /** The expiry choices the settings offer: 12 to 120 months (the database's range), or none. */
 export const EXPIRY_CHOICES: readonly (number | null)[] = [12, 24, 36, 48, 60, 120, null];
 
-export const expiryWords = (months: number | null): string =>
-  months === null ? "Never" : months % 12 === 0 ? `${months / 12} ${months === 12 ? "year" : "years"}` : `${months} months`;
+/** How long a card lasts in words; `words` are the `giftCards` catalogue's `expiry` (D312 A5), English unless given. */
+export type ExpiryWords = { never: string; years: { one: string; many: string }; months: string };
+
+const ENGLISH_EXPIRY: ExpiryWords = { never: "Never", years: { one: "{n} year", many: "{n} years" }, months: "{n} months" };
+
+export const expiryWords = (months: number | null, words: ExpiryWords = ENGLISH_EXPIRY): string =>
+  months === null
+    ? words.never
+    : months % 12 === 0
+      ? countWords(months / 12, words.years)
+      : fillWords(words.months, { n: months });
 
 /** The longest note staff can give when they change or deactivate a card (the ledger's limit). */
 export const GIFT_CARD_NOTE_MAX = 500;

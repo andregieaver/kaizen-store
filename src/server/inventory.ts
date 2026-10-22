@@ -446,12 +446,16 @@ export type HistoryRow = {
   onHandAfter: number;
   reason: MovementReason | "other";
   by: string;
+  /** What `by` is written from, so a page can say it in the admin's language (`byIn()`). */
+  byFacts?: { source: string; actorName: string | null; orderNumber: string | null; returnNumber: string | null };
   note: string | null;
   orderId: string | null;
   returnId: string | null;
 };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+const byOf = (byFacts: NonNullable<HistoryRow["byFacts"]>) => ({ by: byWords(byFacts), byFacts });
 
 /**
  * The movements of the store, newest first, paged by id. A movement holds no personal data (an account id, an order id, a note about stock), and
@@ -508,7 +512,7 @@ export async function stockHistory(store: Pick<Store, "id" | "timeZone" | "local
       delta: Number(r.delta),
       onHandAfter: Number(r.on_hand_after),
       reason: isMovementReason(r.reason) ? r.reason : "other",
-      by: byWords({ source: String(r.source), actorName: r.actor_name ? String(r.actor_name) : null, orderNumber: r.order_number ? String(r.order_number) : null, returnNumber: r.return_number ? String(r.return_number) : null }),
+      ...byOf({ source: String(r.source), actorName: r.actor_name ? String(r.actor_name) : null, orderNumber: r.order_number ? String(r.order_number) : null, returnNumber: r.return_number ? String(r.return_number) : null }),
       note: r.note ? String(r.note) : null,
       orderId: r.order_id ? String(r.order_id) : null,
       returnId: r.return_id ? String(r.return_id) : null,

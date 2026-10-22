@@ -7,6 +7,9 @@ import { DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page
 import { ExportSection } from "@/components/admin/data/export-section";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StockExportForm } from "@/components/admin/inventory/stock-export-form";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
@@ -28,13 +31,16 @@ export default async function StockExportPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.export;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead
         slug={store.slug}
         active="export"
-        title="Export stock"
-        intro={`One row for each variant at each active location, with on hand, committed, available, the policy at zero stock and the low-stock level. A store with more than ${DIRECT_EXPORT_MAX_ROWS.toLocaleString("en-GB")} rows gets the file as a job.`}
+        title={w.title}
+        intro={fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        lang={lang}
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
@@ -49,25 +55,27 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const code = first(query.problem);
   const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
   const base = inventoryPaths(member.store.slug);
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "inventory").export;
+  const a = w.about;
   return (
     <>
       <ProblemAlert text={problem} />
-      <StockExportForm slug={member.store.slug} />
-      <Notice title="About the file">
+      <StockExportForm slug={member.store.slug} lang={lang} />
+      <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
-            The file holds a row for each variant that is shipped at each active location, written as the figures stood when the file was made: <code>on_hand</code> is the figure to change, <code>committed</code> is what checkouts in progress hold
-            and <code>available</code> is the difference.
+            {a.holds} <code>on_hand</code> {a.onHand} <code>committed</code> {a.committed} <code>available</code> {a.available}
           </li>
           <li>
-            To count from it, change <code>on_hand</code> and bring the file back with{" "}
+            {a.countStart} <code>on_hand</code> {a.countBack}{" "}
             <Link className="underline underline-offset-2" href={base.import}>
-              Import stock
+              {a.importLink}
             </Link>
-            . To make a row that is out of date become a conflict instead of undoing a sale, first copy the <code>on_hand</code> column into a new column named <code>on_hand_was</code>: the import then leaves a row alone when the stock has changed since
-            the file was made.
+            {a.conflictStart} <code>on_hand</code> {a.conflictMid} <code>on_hand_was</code>
+            {a.conflictEnd}
           </li>
-          <li>A figure below zero is exported as it is (it is stock that was sold on backorder and is still owed); an import never writes a figure below zero.</li>
+          <li>{a.negative}</li>
         </ul>
       </Notice>
       <ExportSection member={member} kind="inventory_export" jobId={first(query.job)} base={base.export} now={new Date()} />

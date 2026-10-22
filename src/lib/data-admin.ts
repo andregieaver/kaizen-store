@@ -56,17 +56,17 @@ export function formatBytes(bytes: number): string {
 }
 
 /** A number with thousands separators, the same on the server and in the browser. */
-export const wholeNumber = (n: number): string => Math.round(n).toLocaleString("en-GB");
+export const wholeNumber = (n: number, locale = "en-GB"): string => Math.round(n).toLocaleString(locale);
 
-/** A moment as `5 Oct 2026, 14:22` in a time zone (the store's), the same on the server and in the browser. */
-export function momentText(iso: string | null | undefined, timeZone: string): string {
+/** A moment as `5 Oct 2026, 14:22` in a time zone (the store's), the same on the server and in the browser; `locale` is the admin's (D312), en-GB unless given. */
+export function momentText(iso: string | null | undefined, timeZone: string, locale = "en-GB"): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   try {
-    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone }).format(date);
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone }).format(date);
   } catch {
-    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(date);
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(date);
   }
 }
 

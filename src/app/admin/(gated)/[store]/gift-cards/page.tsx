@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
-import { EXPIRY_CHOICES, expiryWords, GIFT_CARD_STATES, STATE_SIGNAL, STATE_WORDS, type GiftCardState } from "@/lib/gift-card-admin";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { EXPIRY_CHOICES, expiryWords, GIFT_CARD_STATES, STATE_SIGNAL, type GiftCardState } from "@/lib/gift-card-admin";
 import { formatMoney } from "@/lib/money";
 import { featureOn } from "@/lib/store-features";
 import { giftCardCounts, giftCardOutstanding, giftCardSettings, listGiftCards } from "@/server/gift-cards-admin";
@@ -35,8 +38,13 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
     giftCardSettings(store.id),
   ]);
   const base = `/admin/${store.slug}/gift-cards`;
-  const locale = store.markets[0]?.locale ?? "en";
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: store.timeZone });
+  const lang = adminLangOf(member.account.adminLocale);
+  const g = adminText(lang, "giftCards");
+  const w = g.list;
+  // English keeps the store's own number format and en-GB dates, as before; another language its own.
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;
+  const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: store.timeZone });
   const filter = (next: { state?: GiftCardState | null; before?: string }) => {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
@@ -53,39 +61,39 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Gift cards"
-        description="Money your customers hold to spend in the store: cards they bought, and cards you issue. A card sold is not a sale until it is spent."
-        actions={canIssue ? <ButtonLink href={`${base}/new`} kind="main">Issue a gift card</ButtonLink> : undefined}
+        title={w.title}
+        description={w.description}
+        actions={canIssue ? <ButtonLink href={`${base}/new`} kind="main">{w.issue}</ButtonLink> : undefined}
       />
 
       {!featureOn(store, "gift_cards") && (
         <p className={`p-4 text-body text-ink-2 ${CARD_CLASS}`}>
-          Gift cards are switched off: none are sold and the checkout has no gift card field. Cards already sold or issued are kept here.{" "}
+          {w.off}{" "}
           <Link href={`/admin/${store.slug}/settings/features`} className="underline underline-offset-2">
-            Features
+            {w.features}
           </Link>
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {outstanding.length === 0 ? (
-          <KpiTile label="Customers hold" value={formatMoney(0, store.localization.currencies[0]?.currency ?? "EUR", locale)} context="On no card yet." />
+          <KpiTile label={w.customersHold} value={formatMoney(0, store.localization.currencies[0]?.currency ?? "EUR", locale)} context={w.onNoCard} />
         ) : (
           outstanding.map((o) => (
-            <KpiTile key={o.currency} label={`Customers hold, ${o.currency}`} value={formatMoney(o.amountMinor, o.currency, locale)} context={`On ${o.cards} ${o.cards === 1 ? "card" : "cards"}.`} />
+            <KpiTile key={o.currency} label={fillWords(w.customersHoldIn, { currency: o.currency })} value={formatMoney(o.amountMinor, o.currency, locale)} context={countWords(o.cards, w.onCards)} />
           ))
         )}
-        <KpiTile label="Active cards" value={counts.active.toLocaleString("en-GB")} href={filter({ state: "active" })} />
+        <KpiTile label={w.activeCards} value={counts.active.toLocaleString(dateLocale)} href={filter({ state: "active" })} />
       </div>
 
       {total === 0 ? (
         <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          No gift cards yet. Add a product of the kind Gift card for customers to buy, or issue one here.
+          {w.empty}
         </p>
       ) : (
         <Card
           compact
-          title={state ? STATE_WORDS[state] : "All cards"}
+          title={state ? g.states[state] : w.allCards}
           aside={
             <form method="get" action={base} className="flex flex-wrap items-center gap-2">
               {state && <input type="hidden" name="state" value={state} />}
@@ -93,20 +101,20 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
                 type="search"
                 name="q"
                 defaultValue={q}
-                placeholder={people ? "Last four, order or person" : "Last four or order"}
-                aria-label="Search gift cards"
+                placeholder={people ? w.searchPeople : w.searchPlain}
+                aria-label={w.searchLabel}
                 className="min-h-10 w-64 rounded-md border border-line px-3"
               />
-              <Button type="submit">Search</Button>
+              <Button type="submit">{w.search}</Button>
               {(q || state) && (
                 <Link href={base} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                  Show all
+                  {w.showAll}
                 </Link>
               )}
             </form>
           }
         >
-          <nav aria-label="Filter by state" className="mb-4 flex flex-wrap gap-2">
+          <nav aria-label={w.filterLabel} className="mb-4 flex flex-wrap gap-2">
             {GIFT_CARD_STATES.map((s) => (
               <Link
                 key={s}
@@ -114,28 +122,28 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
                 aria-current={state === s ? "true" : undefined}
                 className={`rounded-pill border px-3 py-1 text-caption ${state === s ? "border-edge bg-sunken text-ink" : "border-line text-ink-2"}`}
               >
-                {STATE_WORDS[s]} {counts[s]}
+                {g.states[s]} {counts[s]}
               </Link>
             ))}
           </nav>
           {page.rows.length === 0 ? (
-            <p className="p-4 text-body text-muted">No card matches.</p>
+            <p className="p-4 text-body text-muted">{w.noMatch}</p>
           ) : (
-            <List label="Gift cards">
+            <List label={w.listLabel}>
               {page.rows.map((row) => (
                 <ListRow key={row.id}>
                   <RowLead
-                    title={row.last4 ? `•••• ${row.last4}` : "No code yet"}
+                    title={row.last4 ? `•••• ${row.last4}` : w.noCode}
                     href={`${base}/${row.id}`}
-                    sub={[row.source === "order" ? (row.orderNumber ? `Bought with order ${row.orderNumber}` : "Bought") : "Issued by staff", row.to, row.testMode ? "Test card" : null].filter(Boolean).join(" · ")}
+                    sub={[row.source === "order" ? (row.orderNumber ? fillWords(w.boughtWith, { number: row.orderNumber }) : w.bought) : w.issuedByStaff, row.to, row.testMode ? w.testCard : null].filter(Boolean).join(" · ")}
                   />
                   <RowFact className="hidden sm:block">{date(row.issuedAt)}</RowFact>
                   <RowAmount>
                     {formatMoney(row.balanceMinor, row.currency, locale)}
-                    <span className="block text-caption text-muted">of {formatMoney(row.initialMinor, row.currency, locale)}</span>
+                    <span className="block text-caption text-muted">{fillWords(w.of, { amount: formatMoney(row.initialMinor, row.currency, locale) })}</span>
                   </RowAmount>
                   <Chip signal={STATE_SIGNAL[row.state]} dot>
-                    {STATE_WORDS[row.state]}
+                    {g.states[row.state]}
                   </Chip>
                 </ListRow>
               ))}
@@ -144,33 +152,33 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
           {page.more && last && (
             <div className="mt-4">
               <Link href={filter({ before: `${last.issuedAt}_${last.id}` })} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                Older
+                {w.older}
               </Link>
             </div>
           )}
         </Card>
       )}
 
-      <Card title="How long cards last" description="For cards sold or issued from now on; a card keeps the date it was issued with. Many countries expect at least three years: check yours." compact>
+      <Card title={w.lastTitle} description={w.lastDescription} compact>
         {memberCan(member, "products:write") ? (
           <ActionForm action={saveGiftCardSettingsAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-body">
-              <span className="text-caption text-muted">New cards last</span>
+              <span className="text-caption text-muted">{w.newCardsLast}</span>
               <select name="expiry" defaultValue={settings.expiryMonths === null ? "never" : String(settings.expiryMonths)} className="min-h-10 rounded-md border border-line px-3">
                 {EXPIRY_CHOICES.map((months) => (
                   <option key={String(months)} value={months === null ? "never" : String(months)}>
-                    {expiryWords(months)}
+                    {expiryWords(months, g.expiry)}
                   </option>
                 ))}
                 {settings.expiryMonths !== null && !EXPIRY_CHOICES.includes(settings.expiryMonths) && (
-                  <option value={String(settings.expiryMonths)}>{expiryWords(settings.expiryMonths)}</option>
+                  <option value={String(settings.expiryMonths)}>{expiryWords(settings.expiryMonths, g.expiry)}</option>
                 )}
               </select>
             </label>
-            <SubmitButton>Save</SubmitButton>
+            <SubmitButton>{w.save}</SubmitButton>
           </ActionForm>
         ) : (
-          <p className="text-body text-ink">{expiryWords(settings.expiryMonths)}</p>
+          <p className="text-body text-ink">{expiryWords(settings.expiryMonths, g.expiry)}</p>
         )}
       </Card>
     </div>

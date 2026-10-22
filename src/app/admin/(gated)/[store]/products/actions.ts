@@ -5,11 +5,15 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import type { FieldData } from "@/lib/custom-fields";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { addressChangeWords, type AddressChange } from "@/lib/redirect-admin";
 import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
 import { AiError, aiFor } from "@/server/ai";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { type Membership } from "@/server/auth";
 import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -52,6 +56,10 @@ export type SaveState =
     }
   | { status: "error"; problems: string[] };
 
+/** The editor's answers in the account's language (D312 A5); a refusal before a member is known in the request's. */
+const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "product").actions;
+const noAccess = async () => adminText(await actionAdminLang(), "product").actions.noAccess;
+
 function refreshCatalogue(member: Membership) {
   updateTag(catalogTag(member.store.id));
   // A product's custom fields (D118) are read under their own tag.
@@ -68,15 +76,16 @@ export async function saveProductAction(
   payload: string,
 ): Promise<SaveState> {
   const member = await checkPermission(storeSlug, "products:write");
-  if (!member) return { status: "error", problems: [NO_ACCESS] };
+  if (!member) return { status: "error", problems: [await noAccess()] };
+  const w = wordsOf(member);
   if (productId !== null && !z.uuid().safeParse(productId).success) {
-    return { status: "error", problems: ["Unknown product."] };
+    return { status: "error", problems: [w.unknownProduct] };
   }
   let json: unknown;
   try {
     json = JSON.parse(payload);
   } catch {
-    return { status: "error", problems: ["The form could not be read. Reload the page and try again."] };
+    return { status: "error", problems: [w.unreadable] };
   }
   const parsed = productInput.safeParse(json);
   if (!parsed.success) {
@@ -95,7 +104,7 @@ export async function saveProductAction(
   after(() => refreshStoreEmbeddings(member.store.id));
   const fresh = await getEditorContext(member.store);
   const product = await getProductForEdit(member.store, fresh, result.productId);
-  if (!product) return { status: "error", problems: ["The product was saved but could not be reloaded."] };
+  if (!product) return { status: "error", problems: [w.notReloaded] };
   const { archived, ...input } = product;
   void archived;
   return {
@@ -114,7 +123,7 @@ export async function saveProductAction(
 export async function uploadImageAction(storeSlug: string, formData: FormData): Promise<UploadResult> {
   // The page builder uploads its pictures here too, so the website's members may as well (and only these two areas' members).
   const member = await checkAnyPermission(storeSlug, ["products:write", "website:write"]);
-  if (!member) return { ok: false, problem: NO_ACCESS };
+  if (!member) return { ok: false, problem: await noAccess() };
   // Kept in the store's media library too (D88).
   return uploadToLibrary({ storeId: member.store.id, accountId: member.account.id }, formData);
 }
@@ -146,9 +155,9 @@ export async function startVideoUploadAction(storeSlug: string, file: unknown): 
 /** Starts an upload of a download file straight from the browser to the private bucket (D24). */
 export async function startFileUploadAction(storeSlug: string, fileName: string): Promise<FileUpload> {
   const member = await checkPermission(storeSlug, "products:write");
-  if (!member) return { ok: false, problem: NO_ACCESS };
+  if (!member) return { ok: false, problem: await noAccess() };
   const name = z.string().trim().min(1).max(200).safeParse(fileName);
-  if (!name.success) return { ok: false, problem: "The file needs a name." };
+  if (!name.success) return { ok: false, problem: wordsOf(member).fileName };
   return startFileUpload(member.store.id, name.data);
 }
 
@@ -201,15 +210,16 @@ export type SuggestResult = { ok: true; written: WrittenText; model: string } | 
  */
 export async function suggestTextAction(storeSlug: string, productId: string | null, request: unknown): Promise<SuggestResult> {
   const member = await checkPermission(storeSlug, "products:write");
-  if (!member) return { ok: false, problem: NO_ACCESS };
-  if (productId !== null && !z.uuid().safeParse(productId).success) return { ok: false, problem: "Unknown product." };
+  if (!member) return { ok: false, problem: await noAccess() };
+  const w = wordsOf(member);
+  if (productId !== null && !z.uuid().safeParse(productId).success) return { ok: false, problem: w.unknownProduct };
   const parsed = writeRequest.safeParse(request);
-  if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
+  if (!parsed.success) return { ok: false, problem: w.textsUnreadable };
   if (!canWrite(parsed.data.kind, parsed.data.facts)) {
-    return { ok: false, problem: parsed.data.kind === "improve" ? "Write a description first." : "Give the product a title first." };
+    return { ok: false, problem: parsed.data.kind === "improve" ? w.descriptionFirst : w.titleFirst };
   }
   const connection = await aiFor(member.store.id, { feature: "product_writer", accountId: member.account.id });
-  if (!connection?.textModel) return { ok: false, problem: "The store has no AI text model. Choose one under Settings → AI." };
+  if (!connection?.textModel) return { ok: false, problem: w.noModel };
   try {
     const { written, model } = await suggestProductText(
       connection,
@@ -220,7 +230,7 @@ export async function suggestTextAction(storeSlug: string, productId: string | n
   } catch (error) {
     return {
       ok: false,
-      problem: error instanceof AiError ? `The AI could not write it: ${error.message}` : "The AI could not write it. Try again.",
+      problem: error instanceof AiError ? fillWords(w.aiFailedBecause, { reason: error.message }) : w.aiFailed,
     };
   }
 }

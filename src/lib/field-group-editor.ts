@@ -1,7 +1,5 @@
 import {
   CONDITION_OPERATORS,
-  FIELD_ENTITIES,
-  FIELD_TYPES,
   FIELD_TYPE_KEYS,
   LOCATION_CHOICES,
   LOCATION_PARAMS,
@@ -29,6 +27,8 @@ import {
   type LocationRule,
   type RuleGroups,
 } from "./custom-fields";
+import { countWords, fillWords } from "./admin-fill";
+import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
 
 /**
  * The pure parts of the field group generator (D118): the location rule
@@ -51,18 +51,27 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
 // ---------------------------------------------------------------------------
 
 /** What rules can ask about, for the kinds of thing chosen: each param once. */
-export function locationParamsFor(entities: readonly FieldEntity[]): { param: string; label: string }[] {
+export function locationParamsFor(entities: readonly FieldEntity[], w: FieldsMessages = fieldsEn): { param: string; label: string }[] {
   const seen = new Set<string>();
   const out: { param: string; label: string }[] = [];
   for (const entity of entities) {
     for (const p of LOCATION_PARAMS[entity]) {
       if (seen.has(p.param)) continue;
       seen.add(p.param);
-      out.push(p);
+      out.push({ param: p.param, label: paramWord(p.label, w) });
     }
   }
   return out;
 }
+
+/** What a rule asks about in the admin's words, by the English label `LOCATION_PARAMS` gives it (D312). */
+export const paramWord = (label: string, w: FieldsMessages = fieldsEn): string =>
+  (w.params as Record<string, string>)[label] ?? label;
+
+/** A fixed answer of a rule (`LOCATION_CHOICES`) in the admin's words. */
+export const choiceWord = (param: string, value: string, w: FieldsMessages = fieldsEn): string | undefined =>
+  (w.choices as Record<string, Record<string, string> | undefined>)[param]?.[value] ??
+  LOCATION_CHOICES[param]?.find((c) => c.value === value)?.label;
 
 /** Whether a rule asks about something the chosen kinds of thing have. */
 export const ruleFits = (rule: LocationRule, entities: readonly FieldEntity[]): boolean =>
@@ -80,30 +89,32 @@ export function newLocationRule(entities: readonly FieldEntity[]): LocationRule 
 export function describeRule(
   rule: LocationRule,
   lookup: { term: (id: string) => string | undefined; role: (role: string) => string | undefined },
+  w: FieldsMessages = fieldsEn,
 ): string {
-  const param =
-    Object.values(LOCATION_PARAMS)
-      .flat()
-      .find((p) => p.param === rule.param)?.label ?? rule.param;
+  const found = Object.values(LOCATION_PARAMS)
+    .flat()
+    .find((p) => p.param === rule.param)?.label;
+  const param = found ? paramWord(found, w) : rule.param;
   let value: string;
-  if (rule.param === "category" || rule.param === "tag") value = lookup.term(rule.value) ?? "a removed one";
+  if (rule.param === "category" || rule.param === "tag") value = lookup.term(rule.value) ?? w.text.removedOne;
   else if (rule.param === "role") value = lookup.role(rule.value) ?? rule.value;
-  else value = LOCATION_CHOICES[rule.param]?.find((c) => c.value === rule.value)?.label ?? rule.value;
-  return `${param} ${rule.operator === "==" ? "is" : "is not"} ${value}`;
+  else value = choiceWord(rule.param, rule.value, w) ?? rule.value;
+  return fillWords(rule.operator === "==" ? w.text.rule : w.text.ruleNot, { param, value });
 }
 
 /** All of a group's rules in a line: rules in a rule group with "and", rule groups with "or". */
 export function describeLocation(
   location: RuleGroups<LocationRule>,
   lookup: Parameters<typeof describeRule>[1],
+  w: FieldsMessages = fieldsEn,
 ): string {
-  return location.map((all) => all.map((rule) => describeRule(rule, lookup)).join(" and ")).join(" or ");
+  return location.map((all) => all.map((rule) => describeRule(rule, lookup, w)).join(w.text.and)).join(w.text.or);
 }
 
 /** The kinds of thing a group is on, as words: "Products and pages". */
-export function entitiesText(entities: readonly FieldEntity[]): string {
-  const words = entities.map((entity) => FIELD_ENTITIES[entity].toLowerCase());
-  const list = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : (words[0] ?? "");
+export function entitiesText(entities: readonly FieldEntity[], w: FieldsMessages = fieldsEn): string {
+  const words = entities.map((entity) => w.entities[entity].toLowerCase());
+  const list = words.length > 1 ? `${words.slice(0, -1).join(", ")}${w.text.listAnd}${words[words.length - 1]}` : (words[0] ?? "");
   return list.charAt(0).toUpperCase() + list.slice(1);
 }
 
@@ -338,6 +349,7 @@ export function duplicateLayout(
   fields: readonly FieldDef[],
   parentId: string,
   key: string,
+  copyOf: string = fieldsEn.text.copyOf,
 ): { fields: FieldDef[]; copy: FieldLayout } | null {
   const parent = fields.find((f) => f.id === parentId);
   const source = parent?.layouts?.find((l) => l.key === key);
@@ -347,7 +359,7 @@ export function duplicateLayout(
   const copy: FieldLayout = {
     ...(holder.layouts?.[0] as FieldLayout),
     key: layoutKey(`${source.key}-copy`, layouts.map((l) => l.key)),
-    label: uniqueName(`${source.label} (copy)`.slice(0, 80), layouts.map((l) => l.label), " "),
+    label: uniqueName(fillWords(copyOf, { label: source.label }).slice(0, 80), layouts.map((l) => l.label), " "),
     labels: undefined,
   };
   const index = layouts.findIndex((l) => l.key === key);
@@ -375,20 +387,20 @@ export const withHeldFields = (layout: FieldLayout, holder: Pick<FieldDef, "subF
 });
 
 /** What a flexible field's layouts are, in a line for the list: "3 layouts: Text, Picture, Quote". */
-export function layoutsSummary(field: Pick<FieldDef, "layouts">): string {
+export function layoutsSummary(field: Pick<FieldDef, "layouts">, w: FieldsMessages = fieldsEn): string {
   const layouts = field.layouts ?? [];
-  if (layouts.length === 0) return "No layouts yet";
+  if (layouts.length === 0) return w.text.noLayouts;
   const names = layouts.slice(0, 3).map((l) => l.label || l.key);
-  return `${layouts.length} ${layouts.length === 1 ? "layout" : "layouts"}: ${names.join(", ")}${layouts.length > 3 ? " …" : ""}`;
+  return countWords(layouts.length, w.text.layouts, { names: `${names.join(", ")}${layouts.length > 3 ? " …" : ""}` });
 }
 
 /** What a group, repeater or flexible content holds, in a line for the list: "3 fields: Title, Text, Picture". */
-export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields" | "layouts">): string {
-  if (field.type === "flexible") return layoutsSummary(field);
+export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields" | "layouts">, w: FieldsMessages = fieldsEn): string {
+  if (field.type === "flexible") return layoutsSummary(field, w);
   const subs = subFieldsOf(field);
-  if (subs.length === 0) return "No fields yet";
+  if (subs.length === 0) return w.text.noFields;
   const names = subs.slice(0, 3).map((s) => s.label || s.name);
-  return `${subs.length} ${subs.length === 1 ? "field" : "fields"}: ${names.join(", ")}${subs.length > 3 ? " …" : ""}`;
+  return countWords(subs.length, w.text.fields, { names: `${names.join(", ")}${subs.length > 3 ? " …" : ""}` });
 }
 
 /** How a condition's value is asked for, by the type of the field it looks at. */
@@ -424,7 +436,8 @@ export function newCondition(above: readonly FieldDef[]): Condition | null {
   return settleCondition({ field: trigger.id, operator: operatorsFor(trigger.type)[0] }, trigger);
 }
 
-export const operatorLabel = (operator: ConditionOperator): string => CONDITION_OPERATORS[operator];
+export const operatorLabel = (operator: ConditionOperator, w: FieldsMessages = fieldsEn): string =>
+  w.operators[operator] ?? CONDITION_OPERATORS[operator];
 
 // ---------------------------------------------------------------------------
 // A group before Save
@@ -449,42 +462,35 @@ export function fieldsWithBrokenLogic(fields: readonly FieldDef[]): Set<string> 
 }
 
 /** What is wrong with a group that the editor can tell without the server: the server checks the rest. */
-export function draftProblems(draft: FieldGroupInput): string[] {
+export function draftProblems(draft: FieldGroupInput, w: FieldsMessages = fieldsEn): string[] {
+  const p = w.problems;
   const problems: string[] = [];
   const misfits = draft.location.flat().filter((rule) => !ruleFits(rule, draft.entities));
-  if (misfits.length > 0) {
-    problems.push(
-      "Some location rules ask about something the chosen kinds of thing do not have. Remove them or choose the kind again.",
-    );
-  }
-  if (draft.location.flat().some((rule) => rule.value.trim() === ""))
-    problems.push("Choose what each location rule compares with.");
-  const staffProblem = staffGroupProblem(draft as { entities: FieldEntity[]; fields: FieldDef[] });
+  if (misfits.length > 0) problems.push(p.misfits);
+  if (draft.location.flat().some((rule) => rule.value.trim() === "")) problems.push(p.ruleValue);
+  const staffProblem = staffGroupProblem(draft as { entities: FieldEntity[]; fields: FieldDef[] }, p);
   if (staffProblem) problems.push(staffProblem);
   draft.fields.forEach((field, index) => {
     const above = new Set(draft.fields.slice(0, index).map((f) => f.id));
     if ((field.when ?? []).flat().some((c) => !above.has(c.field))) {
-      problems.push(
-        `${field.label || "A field"} is shown by a field that is no longer above it. Change its logic or move the fields.`,
-      );
+      problems.push(fillWords(p.shownByMissing, { label: field.label || p.aField }));
     }
     if (field.type === "flexible") {
       const layouts = (field.layouts ?? []) as FieldLayout[];
-      if (layouts.length === 0) problems.push(`Add layouts to ${field.label || "the flexible content"}.`);
-      if (layouts.some((layout) => layout.subFields.length === 0)) problems.push(`Add fields to every layout of ${field.label || "the flexible content"}.`);
+      if (layouts.length === 0) problems.push(fillWords(p.addLayoutsTo, { label: field.label || p.theFlexible }));
+      if (layouts.some((layout) => layout.subFields.length === 0))
+        problems.push(fillWords(p.addFieldsToEveryLayout, { label: field.label || p.theFlexible }));
       if (layouts.some((layout) => fieldsWithBrokenLogic(layout.subFields).size > 0)) {
-        problems.push(
-          `Some fields in ${field.label || "a field"} are shown by a field that is no longer above them. Change their logic or move the fields.`,
-        );
+        problems.push(fillWords(p.someShownByMissing, { label: field.label || p.aFieldLower }));
       }
     } else if (isStructural(field.type as FieldType)) {
       const subs = (field.subFields ?? []) as FieldDef[];
-      if (subs.length === 0)
-        problems.push(`Add fields to ${field.label || "the " + FIELD_TYPES[field.type].label.toLowerCase()}.`);
+      if (subs.length === 0) {
+        const type = fillWords(p.theType, { type: w.types[field.type as FieldType].label.toLowerCase() });
+        problems.push(fillWords(p.addFieldsTo, { label: field.label || type }));
+      }
       if (fieldsWithBrokenLogic(subs).size > 0) {
-        problems.push(
-          `Some fields in ${field.label || "a field"} are shown by a field that is no longer above them. Change their logic or move the fields.`,
-        );
+        problems.push(fillWords(p.someShownByMissing, { label: field.label || p.aFieldLower }));
       }
     }
   });
@@ -504,65 +510,68 @@ export const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
  * container). `otherNames` are the names of the fields next to it, `above` the
  * fields its logic may look at.
  */
-export function fieldProblems(field: FieldDef, otherNames: readonly string[], above: readonly FieldDef[]): string[] {
+export function fieldProblems(
+  field: FieldDef,
+  otherNames: readonly string[],
+  above: readonly FieldDef[],
+  w: FieldsMessages = fieldsEn,
+): string[] {
+  const p = w.problems;
   const problems: string[] = [];
-  if (field.label.trim() === "") problems.push("Give the field a label.");
+  if (field.label.trim() === "") problems.push(p.label);
   if (!NAME_PATTERN.test(field.name) || field.name.length > 40) {
-    problems.push("The name starts with a lowercase letter and uses lowercase letters, digits and underscores.");
-  } else if (otherNames.includes(field.name)) problems.push(`Another field is already named ${field.name}.`);
+    problems.push(p.name);
+  } else if (otherNames.includes(field.name)) problems.push(fillWords(p.nameTaken, { name: field.name }));
   if (hasChoices(field.type)) {
     const choices = field.choices ?? [];
-    if (choices.length === 0) problems.push("Add at least one choice.");
-    if (choices.some((c) => c.label.trim() === "")) problems.push("Give each choice a label.");
+    if (choices.length === 0) problems.push(p.oneChoice);
+    if (choices.some((c) => c.label.trim() === "")) problems.push(p.choiceLabels);
     if (choices.some((c) => !KEY_PATTERN.test(c.key) || c.key.length > 40)) {
-      problems.push("A choice's key uses lowercase letters, digits, hyphens and underscores.");
+      problems.push(p.choiceKeys);
     }
-    if (new Set(choices.map((c) => c.key)).size !== choices.length) problems.push("Two choices have the same key.");
+    if (new Set(choices.map((c) => c.key)).size !== choices.length) problems.push(p.choiceTwice);
   }
-  if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push("Add at least one unit.");
-  if (field.min !== undefined && field.max !== undefined && field.min > field.max)
-    problems.push("The least is more than the most.");
+  if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push(p.oneUnit);
+  if (field.min !== undefined && field.max !== undefined && field.min > field.max) problems.push(p.leastMost);
   if (field.type === "flexible") {
     const layouts = field.layouts ?? [];
-    if (layouts.length === 0) problems.push("Add at least one layout.");
-    if (layouts.some((l) => l.label.trim() === "")) problems.push("Give each layout a label.");
+    if (layouts.length === 0) problems.push(p.oneLayout);
+    if (layouts.some((l) => l.label.trim() === "")) problems.push(p.layoutLabels);
     if (layouts.some((l) => !KEY_PATTERN.test(l.key) || l.key.length > 40)) {
-      problems.push("A layout's key uses lowercase letters, digits, hyphens and underscores.");
+      problems.push(p.layoutKeys);
     }
-    if (new Set(layouts.map((l) => l.key)).size !== layouts.length) problems.push("Two layouts have the same key.");
+    if (new Set(layouts.map((l) => l.key)).size !== layouts.length) problems.push(p.layoutTwice);
     if (field.minRows !== undefined && field.maxRows !== undefined && field.minRows > field.maxRows) {
-      problems.push("The fewest rows is more than the most.");
+      problems.push(p.fewestMost);
     }
     for (const layout of layouts) {
       const where = layout.label.trim() || layout.key;
-      if (layout.subFields.length === 0) problems.push(`Add at least one field to the layout ${where}.`);
+      if (layout.subFields.length === 0) problems.push(fillWords(p.layoutField, { layout: where }));
       layout.subFields.forEach((sub, index) => {
         const others = layout.subFields.filter((_, i) => i !== index).map((s) => s.name);
-        for (const problem of fieldProblems(sub, others, layout.subFields.slice(0, index)))
-          problems.push(`${where}, ${sub.label.trim() || "a field inside"}: ${problem}`);
+        for (const problem of fieldProblems(sub, others, layout.subFields.slice(0, index), w))
+          problems.push(fillWords(p.inLayout, { layout: where, field: sub.label.trim() || p.aFieldInside, problem }));
       });
     }
   } else if (isStructural(field.type)) {
     const subs = field.subFields ?? [];
-    if (subs.length === 0)
-      problems.push(`Add at least one field to the ${FIELD_TYPES[field.type].label.toLowerCase()}.`);
+    if (subs.length === 0) problems.push(fillWords(p.oneFieldIn, { type: w.types[field.type].label.toLowerCase() }));
     if (
       field.type === "repeater" &&
       field.minRows !== undefined &&
       field.maxRows !== undefined &&
       field.minRows > field.maxRows
     ) {
-      problems.push("The fewest rows is more than the most.");
+      problems.push(p.fewestMost);
     }
     subs.forEach((sub, index) => {
       const others = subs.filter((_, i) => i !== index).map((s) => s.name);
-      const inner = fieldProblems(sub, others, subs.slice(0, index));
-      for (const problem of inner) problems.push(`${sub.label.trim() || "A field inside"}: ${problem}`);
+      const inner = fieldProblems(sub, others, subs.slice(0, index), w);
+      for (const problem of inner) problems.push(fillWords(p.inside, { field: sub.label.trim() || p.AFieldInside, problem }));
     });
   }
   const known = new Set(above.map((f) => f.id));
-  if ((field.when ?? []).flat().some((c) => !known.has(c.field)))
-    problems.push("The logic looks at a field that is no longer above this one.");
+  if ((field.when ?? []).flat().some((c) => !known.has(c.field))) problems.push(p.logicGone);
   return problems;
 }
 

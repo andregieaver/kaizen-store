@@ -6,6 +6,9 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { HistoryView } from "@/components/admin/inventory/history-view";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { INVENTORY_RETENTION_MONTHS } from "@/lib/inventory";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { historyQuery } from "@/lib/inventory-admin";
 import { stockHistory } from "@/server/inventory";
 import { listLocations } from "@/server/inventory-locations";
@@ -25,14 +28,11 @@ export default async function StockHistoryPage({ params, searchParams }: Props) 
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.history;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead
-        slug={store.slug}
-        active="history"
-        title="Stock history"
-        intro={`Every change of a stock level: from a count or a delivery, a sale, a refund, a return, a file or the AI manager. Kept ${INVENTORY_RETENTION_MONTHS} months.`}
-      />
+      <InventoryHead slug={store.slug} active="history" title={w.title} intro={fillWords(w.intro, { months: INVENTORY_RETENTION_MONTHS })} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -41,11 +41,12 @@ export default async function StockHistoryPage({ params, searchParams }: Props) 
 }
 
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
-  const { store } = await requirePermission(storeSlug, "products:read");
+  const member = await requirePermission(storeSlug, "products:read");
+  const { store } = member;
   const query = historyQuery(await searchParams);
   const [history, locations] = await Promise.all([
     stockHistory(store, { variantId: query.variant, sku: query.sku || null, locationId: query.location, reason: query.reason, from: query.from, to: query.to, after: query.after }),
     listLocations(store.id),
   ]);
-  return <HistoryView slug={store.slug} rows={history.rows} nextCursor={history.nextCursor} query={query} locations={locations} timeZone={store.timeZone} />;
+  return <HistoryView slug={store.slug} rows={history.rows} nextCursor={history.nextCursor} query={query} locations={locations} timeZone={store.timeZone} lang={adminLangOf(member.account.adminLocale)} />;
 }

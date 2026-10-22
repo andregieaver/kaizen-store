@@ -19,23 +19,23 @@ export async function editorTerms(storeId: string): Promise<EditorTerm[]> {
   );
 }
 
-/** The special pages a rule can ask about, named as the admin names them. */
+/** The special pages a rule can ask about, named as the admin names them (English: the pages' own catalogue is another area's). */
 export const roleOptions = (): { value: string; label: string }[] =>
   PAGE_ROLES.map((role) => ({ value: role, label: ROLE_COPY[role].name }));
 
-/** The store's languages, the main one first, named in English. */
-export function storeLanguages(store: Store): FieldLanguage[] {
-  const names = new Intl.DisplayNames(["en"], { type: "language" });
+/** The store's languages, the main one first, named in English or in the admin's language (`displayLocale`, D312). */
+export function storeLanguages(store: Store, displayLocale = "en"): FieldLanguage[] {
+  const names = new Intl.DisplayNames([displayLocale], { type: "language" });
   return store.localization.locales.map((locale) => ({ locale, name: names.of(locale) ?? locale }));
 }
 
 /** What a categories and tags page needs to edit their custom fields (D118, phase 2); nothing when the store has no group for them. */
-export async function termFieldsSetup(store: Store): Promise<TermFieldsSetup | undefined> {
+export async function termFieldsSetup(store: Store, displayLocale = "en"): Promise<TermFieldsSetup | undefined> {
   if ((await activeFieldGroups(store.id, "term")).length === 0) return undefined;
   return {
     storeSlug: store.slug,
     locales: store.localization.locales,
-    languageNames: Object.fromEntries(storeLanguages(store).map((l) => [l.locale, l.name])),
+    languageNames: Object.fromEntries(storeLanguages(store, displayLocale).map((l) => [l.locale, l.name])),
     uploads: uploadsEnabled(),
     open: termFieldsAction.bind(null, store.slug),
     save: saveTermFieldsAction.bind(null, store.slug),
@@ -44,11 +44,11 @@ export async function termFieldsSetup(store: Store): Promise<TermFieldsSetup | u
 }
 
 /** What an editor of the store's, a customer's or an order's custom fields needs (D120): the languages, and uploads for pictures and files. */
-export function entityFieldsSetup(store: Store): EntityFieldsSetup {
+export function entityFieldsSetup(store: Store, displayLocale = "en"): EntityFieldsSetup {
   return {
     storeSlug: store.slug,
     locales: store.localization.locales,
-    languageNames: Object.fromEntries(storeLanguages(store).map((l) => [l.locale, l.name])),
+    languageNames: Object.fromEntries(storeLanguages(store, displayLocale).map((l) => [l.locale, l.name])),
     uploads: uploadsEnabled(),
     startFile: startFieldFileUploadAction.bind(null, store.slug),
   };

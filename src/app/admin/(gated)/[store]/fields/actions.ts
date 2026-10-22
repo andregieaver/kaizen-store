@@ -4,6 +4,8 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { groupFromPreset, type FieldGroupInput } from "@/lib/custom-fields";
 import { startFieldFileUpload, type FieldFileUpload } from "@/server/media";
 import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } from "@/server/permissions";
@@ -24,7 +26,9 @@ import type { SaveResult } from "@/server/settings";
 import { storeTag } from "@/server/stores";
 
 const idSchema = z.uuid();
-const unknownGroup = (): SaveResult => ({ ok: false, problems: ["Unknown group."] });
+/** An action's own refusals in the member's admin language (D312 A5). */
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "fields").actions;
+const unknownGroup = (member: { account: { adminLocale?: string | null } }): SaveResult => ({ ok: false, problems: [wordsOf(member).unknownGroup] });
 
 /** Creates a group (id null) or changes one (D118); the server checks all of it again. */
 export async function saveFieldGroupAction(
@@ -42,7 +46,7 @@ export async function saveFieldGroupAction(
 export async function deleteFieldGroupAction(storeSlug: string, id: string): Promise<SaveResult> {
   const member = await checkPermission(storeSlug, "products:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!idSchema.safeParse(id).success) return unknownGroup();
+  if (!idSchema.safeParse(id).success) return unknownGroup(member);
   const result = await deleteFieldGroup(member, id);
   if (!result.ok) return result;
   updateTag(fieldsTag(member.store.id));
@@ -78,7 +82,7 @@ export async function createFromPresetAction(storeSlug: string, key: string): Pr
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   const taken = (await listFieldGroups(member.store.id)).map((g) => g.slug);
   const group = groupFromPreset(key, taken);
-  if (!group) return { ok: false, problems: ["Unknown preset."] };
+  if (!group) return { ok: false, problems: [wordsOf(member).unknownPreset] };
   const result = await saveFieldGroup(member, group);
   if (result.ok) updateTag(fieldsTag(member.store.id));
   return result;
@@ -107,7 +111,7 @@ export async function startFieldFileUploadAction(storeSlug: string, file: unknow
   const member = await checkAnyPermission(storeSlug, ["products:write", "website:write"]);
   if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = fieldFile.safeParse(file);
-  if (!parsed.success) return { ok: false, problem: "Choose a file to upload." };
+  if (!parsed.success) return { ok: false, problem: wordsOf(member).chooseFile };
   return startFieldFileUpload(member.store.id, parsed.data);
 }
 
@@ -122,7 +126,7 @@ export async function termFieldsAction(storeSlug: string, termId: string): Promi
 export async function saveTermFieldsAction(storeSlug: string, termId: string, changes: unknown): Promise<SaveResult> {
   const member = await checkPermission(storeSlug, "products:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!idSchema.safeParse(termId).success) return { ok: false, problems: ["Unknown category or tag."] };
+  if (!idSchema.safeParse(termId).success) return { ok: false, problems: [wordsOf(member).unknownTerm] };
   const result = await saveTermFields(member, termId, changes);
   if (result.ok) updateTag(fieldsTag(member.store.id));
   return result;

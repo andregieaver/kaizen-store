@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { FieldsToolbar } from "@/components/admin/fields-toolbar";
+import { countWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { describeLocation, entitiesText } from "@/lib/field-group-editor";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
@@ -22,7 +26,10 @@ export const metadata: Metadata = { title: "Custom fields" };
 
 /** A store's groups of custom fields (D118): what each is on, whether it is on, and their order in the editors. */
 export default async function FieldsPage({ params }: PageProps<"/admin/[store]/fields">) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const { store, account } = await requirePermission((await params).store, "products:read");
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "fields");
+  const t = w.list;
   const [groups, terms] = await Promise.all([listFieldGroups(store.id), editorTerms(store.id)]);
   const roles = roleOptions();
   const lookup = {
@@ -32,18 +39,16 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
   const base = `/admin/${store.slug}/fields`;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
     <div className="flex flex-col gap-6">
       <div>
-        <PageHeader
-          title="Custom fields"
-          description={<>Add your own fields to products, pages and articles: a size guide, ingredients, a warranty, a designer&apos;s name. Group the fields, choose where each group shows, and staff fill them in where they edit. New fields are private until you make them public.</>}
-        />
+        <PageHeader title={t.title} description={t.description} />
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Groups can also be on the store itself (opening hours, a brand story: fill them in under{" "}
+          {t.alsoBefore}
           <Link href={`${base}/store`} className="underline">
-            Store details
+            {t.storeDetails}
           </Link>
-          ), and on customers and orders, which are for staff only and never shown on the site.
+          {t.alsoAfter}
         </p>
       </div>
       <FieldsToolbar
@@ -54,11 +59,11 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
       />
       {groups.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          No groups yet. Start from a preset such as Specifications or Size guide, or make your own.
+          {t.empty}
         </p>
       ) : (
         <Card compact>
-          <List label="Groups of custom fields, in the order editors show them">
+          <List label={t.label}>
             {groups.map((group, index) => (
               <ListRow key={group.id}>
                 <RowLead
@@ -66,45 +71,45 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
                   href={`${base}/${group.id}`}
                   sub={
                     <>
-                      <span className="font-mono">{group.slug}</span> · {entitiesText(group.entities)} ·{" "}
-                      {group.location.length === 0 ? "Everywhere" : describeLocation(group.location, lookup)}
+                      <span className="font-mono">{group.slug}</span> · {entitiesText(group.entities, w)} ·{" "}
+                      {group.location.length === 0 ? t.everywhere : describeLocation(group.location, lookup, w)}
                     </>
                   }
                 />
-                <RowFact className="hidden sm:block" sub={group.position === "side" ? "Side column" : "Main column"}>
-                  {group.fields.length === 1 ? "1 field" : `${group.fields.length} fields`}
+                <RowFact className="hidden sm:block" sub={w.positions[group.position]}>
+                  {countWords(group.fields.length, t.fieldCount)}
                 </RowFact>
                 <Chip signal={group.active ? "positive" : "neutral"} dot>
-                  {group.active ? "On" : "Off"}
+                  {group.active ? t.on : t.off}
                 </Chip>
                 <RowActions>
                   <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "up")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={index === 0}>
-                      Move up<span className="sr-only"> {group.name}</span>
+                      {t.moveUp}<span className="sr-only"> {group.name}</span>
                     </Button>
                   </form>
                   <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "down")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={index === groups.length - 1}>
-                      Move down<span className="sr-only"> {group.name}</span>
+                      {t.moveDown}<span className="sr-only"> {group.name}</span>
                     </Button>
                   </form>
                   <form action={setFieldGroupActiveAction.bind(null, store.slug, group.id, !group.active)}>
                     <Button type="submit" kind="quiet" size="dense">
-                      {group.active ? "Switch off" : "Switch on"}
+                      {group.active ? t.switchOff : t.switchOn}
                       <span className="sr-only"> {group.name}</span>
                     </Button>
                   </form>
                   <ButtonLink href={`${base}/${group.id}`} kind="quiet" size="dense">
-                    Edit<span className="sr-only"> {group.name}</span>
+                    {t.edit}<span className="sr-only"> {group.name}</span>
                   </ButtonLink>
                   <a href={`${base}/export?group=${group.id}`} download className={buttonClass("quiet", "dense")}>
-                    Export<span className="sr-only"> {group.name}</span>
+                    {t.export}<span className="sr-only"> {group.name}</span>
                   </a>
                   <DeleteDiscountButton
                     action={deleteFieldGroupAction.bind(null, store.slug, group.id)}
                     code={group.name}
                     compact
-                    question={`Delete the group ${group.name}? What was entered in its ${group.fields.length === 1 ? "field" : "fields"} is deleted too, for every product, page and article. This cannot be undone.`}
+                    question={countWords(group.fields.length, t.deleteQuestion, { name: group.name })}
                   />
                 </RowActions>
               </ListRow>
@@ -113,5 +118,6 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
         </Card>
       )}
     </div>
+    </AdminTextScope>
   );
 }

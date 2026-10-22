@@ -6,7 +6,9 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DataPageHead, DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { ProductExportForm } from "@/components/admin/data/export-forms";
-import { NOT_IN_PRODUCT_FILE } from "@/lib/data-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { requirePermission } from "@/server/permissions";
@@ -28,13 +30,15 @@ export default async function ProductExportPage({ params, searchParams }: Props)
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "products").exportPage;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
         backHref={`/admin/${store.slug}/products`}
-        backLabel="Products"
-        title="Export products"
-        intro={`One row for each variant of a product, with its texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A store with more than ${DIRECT_EXPORT_MAX_ROWS.toLocaleString("en-GB")} rows gets the file as a job.`}
+        backLabel={w.back}
+        title={w.title}
+        intro={fillWords(w.intro, { rows: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
       />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
@@ -49,17 +53,24 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const code = first(query.problem);
   const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
   const terms = await listTerms({ storeId: member.store.id, contentType: "product" });
+  const w = adminText(adminLangOf(member.account.adminLocale), "products").exportPage;
   return (
     <>
       <ProblemAlert text={problem} />
       <ProductExportForm slug={member.store.slug} terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind }))} />
-      <Notice title="What the file does not carry">
+      <Notice title={w.notCarried}>
         <ul className="list-disc pl-5">
-          {NOT_IN_PRODUCT_FILE.map((line) => (
+          {w.notInFile.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="mt-2">An import leaves these as they are. The file reads back into Kaizena Flow as it is: <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/products/import`}>import products</Link>.</p>
+        <p className="mt-2">
+          {w.readsBack}
+          <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/products/import`}>
+            {w.importLink}
+          </Link>
+          .
+        </p>
       </Notice>
       <ExportSection member={member} kind="product_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/products/export`} now={new Date()} />
     </>

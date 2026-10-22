@@ -4,6 +4,9 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
+import { adminText } from "@/lib/admin-text";
 import { parseAmount } from "@/lib/field-money";
 import { GIFT_CARD_NOTE_MAX } from "@/lib/gift-card-admin";
 import { deliverGiftCards } from "@/server/gift-card-delivery";
@@ -14,6 +17,10 @@ import { requirePermission } from "@/server/permissions";
 export type IssueState = { status: "idle" } | { status: "error"; message: string } | { status: "ok"; cardId: string; code: string; emailed: "sent" | "failed" | "not_asked" };
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
+
+/** What the actions answer, in the account's language (D312 A5). */
+const wordsOf = (member: { account: { adminLocale?: string | null } }): GiftCardsMessages["actions"] =>
+  adminText(adminLangOf(member.account.adminLocale), "giftCards").actions;
 
 const issueInput = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),
@@ -30,6 +37,7 @@ const issueInput = z.object({
  */
 export async function issueGiftCardAction(storeSlug: string, _state: IssueState, form: FormData): Promise<IssueState> {
   const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
   const parsed = issueInput.safeParse({
     currency: text(form, "currency").toUpperCase(),
     email: text(form, "email"),
@@ -38,9 +46,9 @@ export async function issueGiftCardAction(storeSlug: string, _state: IssueState,
     note: text(form, "note"),
     lang: text(form, "lang") || "en",
   });
-  if (!parsed.success) return { status: "error", message: "Check the currency and the email address." };
+  if (!parsed.success) return { status: "error", message: w.checkCurrencyEmail };
   const amountMinor = parseAmount(text(form, "amount"), parsed.data.currency);
-  if (amountMinor === null || amountMinor <= 0) return { status: "error", message: "Give an amount above zero, such as 500 or 250.50." };
+  if (amountMinor === null || amountMinor <= 0) return { status: "error", message: w.amountAboveZero };
   const lang = member.store.localization.locales.some((l) => l.startsWith(parsed.data.lang)) ? parsed.data.lang : (member.store.localization.locales[0] ?? "en").slice(0, 2);
   const outcome = await issueGiftCard(member.store, member.account.id, {
     amountMinor,
@@ -55,28 +63,26 @@ export async function issueGiftCardAction(storeSlug: string, _state: IssueState,
     return {
       status: "error",
       message:
-        outcome.problem === "currency"
-          ? "Choose a currency the store sells in."
-          : outcome.problem === "amount"
-            ? "Give an amount above zero."
-            : "Gift cards can't be made on this server: its settings key is missing.",
+        outcome.problem === "currency" ? w.chooseCurrency : outcome.problem === "amount" ? w.amountPositive : w.noKey,
     };
   }
   refresh();
   return { status: "ok", cardId: outcome.cardId, code: outcome.code, emailed: outcome.emailed };
 }
 
-const CHANGE_WORDS: Record<ChangeProblem, string> = {
-  unknown: "That gift card is not in this store.",
-  inactive: "A deactivated gift card can't be changed.",
-  below_zero: "That would take the card below zero: it holds less than that.",
-  reason: "Say why: the reason is kept with the change.",
-  amount: "Give an amount that is not zero.",
-};
+const changeWords = (w: GiftCardsMessages["actions"]): Record<ChangeProblem, string> => ({
+  unknown: w.unknown,
+  inactive: w.inactive,
+  below_zero: w.belowZero,
+  reason: w.reason,
+  amount: w.notZero,
+});
 
 /** Changes a card's balance up or down with a reason (`products:write`). */
 export async function adjustGiftCardAction(storeSlug: string, cardId: string, currency: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
+  const CHANGE_WORDS = changeWords(w);
   if (!z.uuid().safeParse(cardId).success) return { status: "error", messages: [CHANGE_WORDS.unknown] };
   const amount = parseAmount(text(form, "amount"), currency);
   if (amount === null || amount === 0) return { status: "error", messages: [CHANGE_WORDS.amount] };
@@ -84,35 +90,38 @@ export async function adjustGiftCardAction(storeSlug: string, cardId: string, cu
   const done = await adjustGiftCard(member.store.id, member.account.id, cardId, signed, text(form, "reason"));
   if (!done.ok) return { status: "error", messages: [CHANGE_WORDS[done.problem]] };
   refresh();
-  return { status: "ok", messages: ["Changed."] };
+  return { status: "ok", messages: [w.changed] };
 }
 
 /** Deactivates a card: what is left on it goes, for good (`products:write`). */
 export async function deactivateGiftCardAction(storeSlug: string, cardId: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
+  const CHANGE_WORDS = changeWords(w);
   if (!z.uuid().safeParse(cardId).success) return { status: "error", messages: [CHANGE_WORDS.unknown] };
   const done = await deactivateGiftCard(member.store.id, member.account.id, cardId, text(form, "reason"));
   if (!done.ok) return { status: "error", messages: [CHANGE_WORDS[done.problem]] };
   refresh();
-  return { status: "ok", messages: ["Deactivated."] };
+  return { status: "ok", messages: [w.deactivated] };
 }
 
 /** Tries again to deliver a bought card whose day has come and whose email did not go (`products:write`). */
 export async function sendGiftCardAgainAction(storeSlug: string, cardId: string, _state: FormState): Promise<FormState> {
-  await requirePermission(storeSlug, "products:write");
-  if (!z.uuid().safeParse(cardId).success) return { status: "error", messages: [CHANGE_WORDS.unknown] };
+  const w = wordsOf(await requirePermission(storeSlug, "products:write"));
+  if (!z.uuid().safeParse(cardId).success) return { status: "error", messages: [w.unknown] };
   const run = await deliverGiftCards({ cardId });
   refresh();
-  return run.sent > 0 ? { status: "ok", messages: ["Sent."] } : { status: "error", messages: ["It was not sent: its day may not have come, or the email failed again. Look at Emails for why."] };
+  return run.sent > 0 ? { status: "ok", messages: [w.sent] } : { status: "error", messages: [w.notSent] };
 }
 
 /** How long new cards last (`products:write`): cards already issued keep their date. */
 export async function saveGiftCardSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await requirePermission(storeSlug, "products:write");
+  const w = wordsOf(member);
   const value = text(form, "expiry");
   const months = value === "never" ? null : Number(value);
   const ok = await saveGiftCardSettings(member.store.id, member.account.id, months);
-  if (!ok) return { status: "error", messages: ["Choose 12 to 120 months, or Never."] };
+  if (!ok) return { status: "error", messages: [w.expiryRange] };
   refresh();
-  return { status: "ok", messages: ["Saved. Cards already issued keep their date."] };
+  return { status: "ok", messages: [w.saved] };
 }

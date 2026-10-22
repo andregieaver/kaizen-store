@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { storeFieldsForEditor } from "@/server/field-entities";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
@@ -19,37 +22,37 @@ export const metadata: Metadata = { title: "Store details" };
  * the store's fields.
  */
 export default async function StoreFieldsPage({ params }: PageProps<"/admin/[store]/fields/store">) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const { store, account } = await requirePermission((await params).store, "products:read");
+  const lang = adminLangOf(account.adminLocale);
+  const t = adminText(lang, "fields").list;
   const editor = await storeFieldsForEditor(store.id);
   const base = `/admin/${store.slug}/fields`;
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: base, label: "Custom fields" }}
-        title={<>Store details</>}
-        description={<>Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on the site only if you made it public, and you place it in a page, a product layout, a header or a footer.</>}
-      />
+      <PageHeader back={{ href: base, label: t.title }} title={t.storeTitle} description={t.storeDescription} />
       {editor.groups.length === 0 ? (
         <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-          No group of custom fields is on the store yet.{" "}
+          {t.storeEmptyBefore}{" "}
           <Link href={`${base}/new?entity=store`} className="underline">
-            Make one
+            {t.makeOne}
           </Link>{" "}
-          with the store ticked under Where it can be used.
+          {t.storeEmptyAfter}
         </p>
       ) : (
         <EntityFieldsCard
           groups={editor.groups}
           data={editor.data}
           lookups={editor.lookups}
-          setup={entityFieldsSetup(store)}
+          setup={entityFieldsSetup(store, ADMIN_LANG_FACTS[lang].locale)}
           save={saveStoreFieldsAction.bind(null, store.slug)}
-          title="Store details"
-          intro="Shown on the site when a field is public."
+          title={t.storeTitle}
+          intro={t.storeIntro}
           idPrefix="store-fields"
         />
       )}
     </div>
+    </AdminTextScope>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { FIELD_CATEGORIES, FIELD_TYPES, FIELD_TYPE_KEYS, type FieldType } from "@/lib/custom-fields";
 
 import { Modal } from "./modal";
@@ -17,7 +18,7 @@ export function FieldTypePicker({
   onClose,
   onPick,
   types = FIELD_TYPE_KEYS,
-  title = "Add a field",
+  title,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,8 +26,9 @@ export function FieldTypePicker({
   types?: readonly FieldType[];
   title?: string;
 }) {
+  const w = useAdminText("fields");
   return (
-    <Modal open={open} onClose={onClose} title={title} wide>
+    <Modal open={open} onClose={onClose} title={title ?? w.typePicker.title} wide>
       <div className="flex flex-col gap-5">
         {FIELD_CATEGORIES.map((category) => {
           const inCategory = FIELD_TYPE_KEYS.filter(
@@ -34,8 +36,8 @@ export function FieldTypePicker({
           );
           if (inCategory.length === 0) return null;
           return (
-            <section key={category} aria-label={category}>
-              <h3 className="mb-2 text-body-strong text-ink">{category}</h3>
+            <section key={category} aria-label={w.categories[category]}>
+              <h3 className="mb-2 text-body-strong text-ink">{w.categories[category]}</h3>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {inCategory.map((type) => (
                   <li key={type}>
@@ -44,8 +46,8 @@ export function FieldTypePicker({
                       onClick={() => onPick(type)}
                       className="flex h-full w-full flex-col items-start gap-0.5 rounded-pill border border-edge p-3 text-left hover:border-brand hover:bg-sunken"
                     >
-                      <span className="text-sm font-medium">{FIELD_TYPES[type].label}</span>
-                      <span className={hint}>{FIELD_TYPES[type].hint}</span>
+                      <span className="text-sm font-medium">{w.types[type].label}</span>
+                      <span className={hint}>{w.types[type].hint}</span>
                     </button>
                   </li>
                 ))}
@@ -54,7 +56,7 @@ export function FieldTypePicker({
           );
         })}
         <p className={hint}>
-          Not here: raw HTML, scripts and CSS. Pages and the site&apos;s own code have their places for those.
+          {w.typePicker.notHere}
         </p>
       </div>
     </Modal>

@@ -19,13 +19,14 @@ import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+
 import {
   EMPTY_DATA,
   EMPTY_LOOKUPS,
-  FIELD_ENTITIES,
   FIELD_ENTITY_KEYS,
   FIELD_POSITIONS,
-  FIELD_TYPES,
   LOCATION_CHOICES,
   MAX_GROUP_FIELDS,
   MAX_RULES,
@@ -43,6 +44,7 @@ import {
   type LocationRule,
 } from "@/lib/custom-fields";
 import {
+  choiceWord,
   duplicateField,
   entitiesText,
   fieldsWithBrokenLogic,
@@ -113,6 +115,8 @@ export function FieldGroupEditor({
   /** Extra controls after Save (deleting the group). */
   actions?: ReactNode;
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.group;
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(initial as Draft);
   const [dirty, setDirty] = useState(false);
@@ -154,7 +158,7 @@ export function FieldGroupEditor({
 
   const submit = () => {
     setSaved(false);
-    const local = draftProblems(draft);
+    const local = draftProblems(draft, fw);
     if (local.length > 0) {
       setProblems(local);
       problemsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -181,7 +185,7 @@ export function FieldGroupEditor({
   const addField = (type: FieldType) => {
     const created = newField(type, names);
     markFresh([created.id, ...subFieldsOf(created).map((sub) => sub.id)]);
-    setFields([...fields, created], `${FIELD_TYPES[type].label} field added.`);
+    setFields([...fields, created], fillWords(w.added, { type: fw.types[type].label }));
     setPicking(false);
     setEditing(created.id);
   };
@@ -190,25 +194,25 @@ export function FieldGroupEditor({
     if (!field) return;
     if (
       !fresh.has(id) &&
-      !window.confirm(`Delete the field ${field.label}? What was entered in it is deleted when you save the group.`)
+      !window.confirm(fillWords(w.confirmDelete, { label: field.label }))
     )
       return;
     const pruned = pruneConditions(fields.filter((f) => f.id !== id));
     setFields(
       pruned.fields,
-      `${field.label} deleted.${pruned.changed.length > 0 ? ` The logic of ${pruned.changed.join(", ")} that looked at it was taken away.` : ""}`,
+      `${fillWords(w.deleted, { label: field.label })}${pruned.changed.length > 0 ? fillWords(w.logicRemoved, { names: pruned.changed.join(", ") }) : ""}`,
     );
   };
   const copyField = (id: string) => {
     const result = duplicateField(fields, id);
     if (!result) return;
     markFresh([result.copy.id, ...subFieldsOf(result.copy).map((sub) => sub.id)]);
-    setFields(result.fields, `${result.copy.label} added below.`);
+    setFields(result.fields, fillWords(w.addedBelow, { label: result.copy.label }));
     setEditing(result.copy.id);
   };
   const moveField = (from: number, to: number) => {
     if (to < 0 || to >= fields.length || from === to) return;
-    setFields(moveItem(fields, from, to), `${fields[from].label} moved to place ${to + 1} of ${fields.length}.`);
+    setFields(moveItem(fields, from, to), fillWords(w.moved, { label: fields[from].label, to: to + 1, total: fields.length }));
   };
 
   const editingIndex = editing ? fields.findIndex((f) => f.id === editing) : -1;
@@ -228,7 +232,7 @@ export function FieldGroupEditor({
   const previewGroup: FieldGroup = {
     ...draft,
     id: draft.id ?? "preview",
-    name: draft.name || "Untitled group",
+    name: draft.name || w.untitledGroup,
     sort: 0,
   };
 
@@ -245,7 +249,7 @@ export function FieldGroupEditor({
         <div ref={problemsRef}>
           {problems.length > 0 && (
             <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-              <p className="font-medium">Nothing was saved yet. Please fix:</p>
+              <p className="font-medium">{w.fixFirst}</p>
               <ul className="mt-2 list-disc pl-5">
                 {problems.map((problem) => (
                   <li key={problem}>{problem}</li>
@@ -260,10 +264,10 @@ export function FieldGroupEditor({
 
         <section aria-labelledby="group-heading" className={card}>
           <h2 id="group-heading" className="text-title text-ink">
-            The group
+            {w.theGroup}
           </h2>
           <label className={label}>
-            Name
+            {w.name}
             <input
               value={draft.name}
               onChange={(event) => {
@@ -276,11 +280,11 @@ export function FieldGroupEditor({
               aria-describedby="group-name-hint"
             />
             <span id="group-name-hint" className={hint}>
-              What staff see above the fields: “Specifications”, “Size guide”.
+              {w.nameHint}
             </span>
           </label>
           <label className={label}>
-            Web name
+            {w.webName}
             <input
               value={draft.slug}
               onChange={(event) => {
@@ -293,12 +297,11 @@ export function FieldGroupEditor({
               aria-describedby="group-slug-hint"
             />
             <span id="group-slug-hint" className={hint}>
-              What templates and exported files call the group. Lowercase letters, digits and hyphens; unique in the
-              store.
+              {w.webNameHint}
             </span>
           </label>
           <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 text-sm font-medium">Can be used on</legend>
+            <legend className="mb-1 text-sm font-medium">{w.usedOn}</legend>
             {FIELD_ENTITY_KEYS.map((entity) => (
               <label key={entity} className="flex min-h-10 items-center gap-3 text-sm">
                 <input
@@ -308,24 +311,16 @@ export function FieldGroupEditor({
                   onChange={(event) => setEntity(entity, event.target.checked)}
                   className="size-4"
                 />
-                {FIELD_ENTITIES[entity]}
+                {fw.entities[entity]}
               </label>
             ))}
-            <p className={hint}>
-              At least one. Which of them the group is on is set under “Where it applies”. The store has one set of
-              values, filled in under Store details. Customers and orders are for staff only and go with nothing else.
-            </p>
+            <p className={hint}>{w.usedOnHint}</p>
             {staffOnly && (
-              <p className={hint}>
-                What staff enter here is never shown on the site, to shoppers or to the chat assistant. A customer&apos;s
-                values are personal data and are deleted with the customer; an order&apos;s stay with the order, which is
-                kept for bookkeeping, so keep out of it what you do not need. Pictures and files are kept in the
-                store&apos;s public storage under addresses nobody can guess: do not put anything sensitive in them.
-              </p>
+              <p className={hint}>{w.staffHint}</p>
             )}
           </fieldset>
           <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 text-sm font-medium">Position in the editor</legend>
+            <legend className="mb-1 text-sm font-medium">{w.position}</legend>
             {(Object.keys(FIELD_POSITIONS) as (keyof typeof FIELD_POSITIONS)[]).map((position) => (
               <label key={position} className="flex min-h-10 items-center gap-3 text-sm">
                 <input
@@ -335,7 +330,7 @@ export function FieldGroupEditor({
                   onChange={() => change((g) => ({ ...g, position }))}
                   className="size-4"
                 />
-                {FIELD_POSITIONS[position]}
+                {fw.positions[position]}
               </label>
             ))}
           </fieldset>
@@ -347,17 +342,15 @@ export function FieldGroupEditor({
               className="mt-0.5 size-4"
             />
             <span>
-              <span className="font-medium">Switched on</span>
-              <span className={`block ${hint}`}>
-                A group that is off is not shown in editors. What was entered in it is kept.
-              </span>
+              <span className="font-medium">{w.switchedOn}</span>
+              <span className={`block ${hint}`}>{w.switchedOnHint}</span>
             </span>
           </label>
         </section>
 
         <section aria-labelledby="where-heading" className={card}>
           <h2 id="where-heading" className="text-title text-ink">
-            Where it applies
+            {w.where}
           </h2>
           <LocationBuilder
             draft={draft}
@@ -371,7 +364,7 @@ export function FieldGroupEditor({
         <section aria-labelledby="fields-heading" className={card}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="fields-heading" className="text-title text-ink">
-              Fields <span className="font-normal text-muted">({fields.length})</span>
+              {w.fields} <span className="font-normal text-muted">({fields.length})</span>
             </h2>
             <button
               type="button"
@@ -379,12 +372,12 @@ export function FieldGroupEditor({
               disabled={fields.length >= MAX_GROUP_FIELDS}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
-              Add field
+              {w.addField}
             </button>
           </div>
           {fields.length === 0 ? (
             <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
-              No fields yet. Add one to start.
+              {w.noFields}
             </p>
           ) : (
             <FieldList
@@ -396,11 +389,7 @@ export function FieldGroupEditor({
               onRemove={removeField}
             />
           )}
-          <p className={hint}>
-            Drag by the handle, or use the arrows, to put the fields in order. A field can only be shown by the fields
-            above it. Values are kept under a field&apos;s id, so changing its name or label loses nothing; deleting a
-            field deletes what was entered in it.
-          </p>
+          <p className={hint}>{w.orderHint}</p>
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -409,13 +398,13 @@ export function FieldGroupEditor({
             disabled={saving}
             className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
-            {saving ? "Saving …" : "Save group"}
+            {saving ? w.saving : w.save}
           </button>
           <a href={base} className="text-sm underline">
-            {dirty ? "Leave without saving" : "Back to the list"}
+            {dirty ? w.leave : w.back}
           </a>
           <span role="status" className="text-sm text-muted">
-            {saved && !dirty ? "Saved." : dirty ? "Unsaved changes." : ""}
+            {saved && !dirty ? w.saved : dirty ? w.unsaved : ""}
           </span>
         </div>
         {actions}
@@ -425,13 +414,13 @@ export function FieldGroupEditor({
         <div className={card}>
           <div>
             <h2 id="preview-heading" className="text-title text-ink">
-              Preview (nothing is saved)
+              {w.preview}
             </h2>
             <p className={hint}>
-              The form staff will get. Try it, logic included: what you type here goes nowhere.{" "}
+              {w.previewHint}{" "}
               {Object.keys(data.values).length + Object.keys(data.translations).length > 0 && (
                 <button type="button" onClick={() => setData(EMPTY_DATA)} className="underline">
-                  Clear the preview
+                  {w.clearPreview}
                 </button>
               )}
             </p>
@@ -464,7 +453,7 @@ export function FieldGroupEditor({
         onApply={(next) => {
           setFields(
             fields.map((f) => (f.id === next.id ? next : f)),
-            `${next.label} updated.`,
+            fillWords(w.updated, { label: next.label }),
           );
           setEditing(null);
         }}
@@ -500,6 +489,7 @@ function FieldList({
   onCopy: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
+  const w = useAdminText("fields").group;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -514,7 +504,7 @@ function FieldList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-        <ol aria-label="Fields in order" className="flex flex-col gap-2">
+        <ol aria-label={w.inOrder} className="flex flex-col gap-2">
           {fields.map((field, index) => (
             <FieldRow
               key={field.id}
@@ -553,6 +543,8 @@ function FieldRow({
   onCopy: () => void;
   onRemove: () => void;
 }) {
+  const fw = useAdminText("fields");
+  const w = fw.group;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
   const name = field.label || field.name;
   return (
@@ -566,8 +558,8 @@ function FieldRow({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Drag ${name}`}
-          aria-roledescription="sortable field"
+          aria-label={fillWords(w.drag, { name })}
+          aria-roledescription={w.sortable}
           className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted hover:bg-card active:cursor-grabbing"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
@@ -580,21 +572,21 @@ function FieldRow({
           </svg>
         </button>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="truncate text-sm font-medium">{field.label || "Untitled field"}</p>
+          <p className="truncate text-sm font-medium">{field.label || w.untitledField}</p>
           <p className="truncate font-mono text-xs text-muted">{field.name}</p>
-          {isStructural(field.type) && <p className="truncate text-xs text-muted">{subFieldsSummary(field)}</p>}
+          {isStructural(field.type) && <p className="truncate text-xs text-muted">{subFieldsSummary(field, fw)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-1 text-xs">
-          <span className="rounded-full border border-line px-2 py-0.5">{FIELD_TYPES[field.type].label}</span>
-          {field.required && <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">Required</span>}
+          <span className="rounded-full border border-line px-2 py-0.5">{fw.types[field.type].label}</span>
+          {field.required && <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">{w.required}</span>}
           {field.access === "public" && (
-            <span className="rounded-full border border-brand px-2 py-0.5">Public</span>
+            <span className="rounded-full border border-brand px-2 py-0.5">{w.public}</span>
           )}
           {field.when && field.when.length > 0 && (
-            <span className="rounded-full border border-line px-2 py-0.5">Has logic</span>
+            <span className="rounded-full border border-line px-2 py-0.5">{w.hasLogic}</span>
           )}
           {broken && (
-            <span className="rounded-full border border-danger-text px-2 py-0.5 text-danger-text">Logic needs a look</span>
+            <span className="rounded-full border border-danger-text px-2 py-0.5 text-danger-text">{w.logicLook}</span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1">
@@ -602,7 +594,7 @@ function FieldRow({
             type="button"
             className={small}
             disabled={index === 0}
-            aria-label={`Move ${name} up`}
+            aria-label={fillWords(w.moveUp, { name })}
             onClick={() => onMove(index - 1)}
           >
             ↑
@@ -611,19 +603,24 @@ function FieldRow({
             type="button"
             className={small}
             disabled={last}
-            aria-label={`Move ${name} down`}
+            aria-label={fillWords(w.moveDown, { name })}
             onClick={() => onMove(index + 1)}
           >
             ↓
           </button>
-          <button type="button" className={small} onClick={onEdit} aria-label={`Edit ${name}`}>
-            Edit
+          <button type="button" className={small} onClick={onEdit} aria-label={fillWords(w.editName, { name })}>
+            {w.edit}
           </button>
-          <button type="button" className={small} onClick={onCopy} aria-label={`Duplicate ${name}`}>
-            Duplicate
+          <button type="button" className={small} onClick={onCopy} aria-label={fillWords(w.duplicateName, { name })}>
+            {w.duplicate}
           </button>
-          <button type="button" className={`${small} text-danger-text`} onClick={onRemove} aria-label={`Delete ${name}`}>
-            Delete
+          <button
+            type="button"
+            className={`${small} text-danger-text`}
+            onClick={onRemove}
+            aria-label={fillWords(w.deleteName, { name })}
+          >
+            {w.delete}
           </button>
         </div>
       </div>
@@ -645,17 +642,20 @@ function LocationBuilder({
   roles: { value: string; label: string }[];
   onChange: (location: LocationRule[][]) => void;
 }) {
-  const params = locationParamsFor(draft.entities).filter((p) => sellsToBusinesses || p.param !== "audience");
+  const fw = useAdminText("fields");
+  const w = fw.group;
+  const params = locationParamsFor(draft.entities, fw).filter((p) => sellsToBusinesses || p.param !== "audience");
   const location = draft.location;
-  const everywhere = entitiesText(draft.entities).toLowerCase();
+  const everywhere = entitiesText(draft.entities, fw).toLowerCase();
   // The store, customers and orders have nothing for rules to ask about.
   if (params.length === 0) {
-    return <p className="text-sm">No rules: the group is on all of the {everywhere}.</p>;
+    return <p className="text-sm">{fillWords(w.noRulesAll, { everywhere })}</p>;
   }
 
   const valueOptions = (param: string): { value: string; label: string }[] => {
     if (param === "role") return roles;
-    if (LOCATION_CHOICES[param]) return [...LOCATION_CHOICES[param]];
+    if (LOCATION_CHOICES[param])
+      return LOCATION_CHOICES[param].map((c) => ({ value: c.value, label: choiceWord(param, c.value, fw) ?? c.label }));
     const kind = param === "tag" ? "tag" : "category";
     const many = draft.entities.length > 1;
     const inScope = terms.filter((t) => t.kind === kind && draft.entities.includes(t.entity));
@@ -666,7 +666,7 @@ function LocationBuilder({
     };
     return inScope.map((t) => ({
       value: t.id,
-      label: `${kind === "tag" ? "#" : ""}${kind === "tag" ? t.name : path(t)}${many ? ` (${FIELD_ENTITIES[t.entity].toLowerCase()})` : ""}`,
+      label: `${kind === "tag" ? "#" : ""}${kind === "tag" ? t.name : path(t)}${many ? ` (${fw.entities[t.entity].toLowerCase()})` : ""}`,
     }));
   };
 
@@ -679,27 +679,24 @@ function LocationBuilder({
   return (
     <>
       {location.length === 0 ? (
-        <p className="text-sm">No rules: the group is on every one of the {everywhere} it can be on.</p>
+        <p className="text-sm">{fillWords(w.noRules, { everywhere })}</p>
       ) : (
-        <p className={hint}>
-          The group is on a thing when all the rules in one of the groups below hold. Rules in a group are joined by
-          “and”, the groups by “or”.
-        </p>
+        <p className={hint}>{w.rulesHint}</p>
       )}
       {location.map((all, g) => (
         <div key={g} className="flex flex-col gap-2">
-          {g > 0 && <p className="text-sm font-medium text-muted">or</p>}
+          {g > 0 && <p className="text-sm font-medium text-muted">{w.or}</p>}
           <ul className="flex flex-col gap-2 rounded-md border border-line p-3">
             {all.map((rule, r) => {
               const fits = ruleFits(rule, draft.entities);
               const options = valueOptions(rule.param);
-              const name = `Rule ${g + 1}.${r + 1}`;
+              const name = fillWords(w.ruleName, { n: `${g + 1}.${r + 1}` });
               return (
                 <li key={r} className="flex flex-col gap-1">
-                  {r > 0 && <span className="text-xs font-medium text-muted">and</span>}
+                  {r > 0 && <span className="text-xs font-medium text-muted">{w.and}</span>}
                   <div className="flex flex-wrap items-center gap-2">
                     <select
-                      aria-label={`${name} asks about`}
+                      aria-label={fillWords(w.asksAbout, { name })}
                       value={rule.param}
                       onChange={(event) =>
                         edit(g, r, {
@@ -718,23 +715,23 @@ function LocationBuilder({
                       ))}
                     </select>
                     <select
-                      aria-label={`${name} operator`}
+                      aria-label={fillWords(w.operator, { name })}
                       value={rule.operator}
                       onChange={(event) => edit(g, r, { ...rule, operator: event.target.value === "!=" ? "!=" : "==" })}
                       className={`${input} w-32`}
                     >
-                      <option value="==">is</option>
-                      <option value="!=">is not</option>
+                      <option value="==">{w.is}</option>
+                      <option value="!=">{w.isNot}</option>
                     </select>
                     <select
-                      aria-label={`${name} value`}
+                      aria-label={fillWords(w.value, { name })}
                       value={rule.value}
                       onChange={(event) => edit(g, r, { ...rule, value: event.target.value })}
                       className={`${input} min-w-36 flex-1`}
                     >
-                      <option value="">{options.length === 0 ? "None to choose from yet" : "Choose …"}</option>
+                      <option value="">{options.length === 0 ? w.noneYet : w.choose}</option>
                       {rule.value !== "" && !options.some((o) => o.value === rule.value) && (
-                        <option value={rule.value}>A removed one</option>
+                        <option value={rule.value}>{w.removedOne}</option>
                       )}
                       {options.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -746,14 +743,14 @@ function LocationBuilder({
                       type="button"
                       className={`${small} text-danger-text`}
                       onClick={() => remove(g, r)}
-                      aria-label={`Remove ${name}`}
+                      aria-label={fillWords(w.removeName, { name })}
                     >
-                      Remove
+                      {w.remove}
                     </button>
                   </div>
                   {!fits && (
                     <p role="alert" className="text-xs text-danger-text">
-                      The kinds of thing chosen above do not have this. Remove the rule, or choose the kind again.
+                      {w.misfit}
                     </p>
                   )}
                 </li>
@@ -768,7 +765,7 @@ function LocationBuilder({
                   onChange(location.map((rules, i) => (i === g ? [...rules, newLocationRule(draft.entities)] : rules)))
                 }
               >
-                Add an “and” rule
+                {w.addAnd}
               </button>
             </li>
           </ul>
@@ -781,11 +778,11 @@ function LocationBuilder({
           disabled={location.length >= MAX_RULES || total >= MAX_RULES * 2}
           onClick={() => onChange([...location, [newLocationRule(draft.entities)]])}
         >
-          {location.length === 0 ? "Add a rule" : "Add an “or” group"}
+          {location.length === 0 ? w.addRule : w.addOr}
         </button>
         {location.length > 0 && (
           <button type="button" className={small} onClick={() => onChange([])}>
-            Remove all rules
+            {w.removeAll}
           </button>
         )}
       </div>

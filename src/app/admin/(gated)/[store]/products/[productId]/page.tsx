@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ProductEditor } from "@/components/admin/product-editor";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
@@ -26,26 +29,28 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   if (!product) notFound();
   const { archived, ...initial } = product;
   const fields = await fieldsForEditor(store.id, "product", productId);
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "product").page;
 
   return (
     <div className="flex flex-col gap-6">
       {archived && (
         <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
-          This product is archived: shoppers cannot see it.
+          {w.archived}
         </p>
       )}
-      <ProductEditor {...editorProps(store, context)} productId={productId} initial={initial} fields={fields} />
+      <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields"])}>
+        <ProductEditor {...editorProps(store, context, lang)} productId={productId} initial={initial} fields={fields} />
+      </AdminTextScope>
       <form
         action={archiveProductAction.bind(null, store.slug, productId, !archived)}
         className="border-t border-line pt-4"
       >
         <button type="submit" className="text-sm underline">
-          {archived ? "Restore this product (as a draft)" : "Archive this product"}
+          {archived ? w.restore : w.archive}
         </button>
         {!archived && (
-          <span className="ml-2 text-sm text-muted">
-            Takes it off sale and out of the list. Order history is kept.
-          </span>
+          <span className="ml-2 text-sm text-muted">{w.archiveHint}</span>
         )}
       </form>
     </div>

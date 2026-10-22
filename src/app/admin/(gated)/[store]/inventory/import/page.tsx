@@ -3,16 +3,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StockUpload } from "@/components/admin/inventory/stock-import-flow";
-import { KIND_TITLES, momentText } from "@/lib/data-admin";
-import { ACTIVE_IMPORT_STATUSES, STATUS_WORDS } from "@/lib/data-job";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { IMPORT_FILE_KEEP_DAYS } from "@/lib/data-limits";
 import { INVENTORY_FILE_ROWS_MAX, STOCK_MAX } from "@/lib/inventory";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { momentIn } from "@/lib/inventory-words";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -33,14 +37,11 @@ export default async function StockImportPage({ params }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.import;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead
-        slug={store.slug}
-        active="import"
-        title="Import stock"
-        intro="Set stock from a counted CSV file. You see what the import would do, row by row, before anything is changed, and every change is kept in the history with the file's reference."
-      />
+      <InventoryHead slug={store.slug} active="import" title={w.title} intro={w.intro} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -55,37 +56,42 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const jobs = await listJobs(member, "inventory_import", 10);
   const open = jobs.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const base = inventoryPaths(store.slug).import;
+  const lang = adminLangOf(member.account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const w = adminText(lang, "inventory").import;
+  const r = w.rules;
   return (
     <>
       {open ? (
-        <Notice title="An import is already open">
+        <Notice title={w.openTitle}>
           <p>
-            {open.inputName ?? "A file"} ({STATUS_WORDS[open.status].toLowerCase()}). Only one stock import is open at a time.{" "}
+            {fillWords(w.openText, { file: open.inputName ?? w.aFile, status: w.jobStatus[open.status].toLowerCase() })}{" "}
             <Link href={`${base}/${open.id}`} className="underline underline-offset-2">
-              Continue it
+              {w.continue}
             </Link>{" "}
-            or cancel it there to start another.
+            {w.orCancel}
           </p>
         </Notice>
       ) : (
-        <StockUpload slug={store.slug} start={startStockUploadAction.bind(null, store.slug)} register={registerStockUploadAction.bind(null, store.slug)} />
+        <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+          <StockUpload slug={store.slug} start={startStockUploadAction.bind(null, store.slug)} register={registerStockUploadAction.bind(null, store.slug)} />
+        </AdminTextScope>
       )}
-      <Notice title="What an import does and does not do">
+      <Notice title={w.rulesTitle}>
         <ul className="list-disc pl-5">
-          <li>A variant is found by its SKU and a location by its name. The location column may be left empty only when the store has one active location.</li>
+          <li>{r.find}</li>
           <li>
-            <code>on_hand</code> is the counted figure, a whole number from 0 to {STOCK_MAX.toLocaleString("en-GB")}: it is set as it is. With a column <code>on_hand_was</code> (the figure the file was made from) a row whose stock has changed since is left alone
-            and listed, so a sale made while you counted is never undone.
+            <code>on_hand</code> {fillWords(r.onHand, { max: STOCK_MAX.toLocaleString(locale) })} <code>on_hand_was</code> {r.onHandWas}
           </li>
           <li>
-            <code>reason</code> is one of received, correction, count, damaged, lost or promotion; without it a row is a count. <code>stock_policy</code> (deny or continue), <code>backorder_days</code> (1 to 90, required with continue) and{" "}
-            <code>low_stock_threshold</code> may be set in the same file.
+            <code>reason</code> {r.reason} <code>stock_policy</code> {r.policy} <code>backorder_days</code> {r.days}{" "}
+            <code>low_stock_threshold</code> {r.sameFile}
           </li>
-          <li>An unknown SKU, a SKU that is not goods that are shipped, an unknown location, the same SKU and location twice, or a figure that is not allowed makes that row a problem: it is skipped and the others go on. At most {INVENTORY_FILE_ROWS_MAX.toLocaleString("en-GB")} rows in a file.</li>
+          <li>{fillWords(r.problem, { max: INVENTORY_FILE_ROWS_MAX.toLocaleString(locale) })}</li>
           <li>
-            An import never creates a variant, a location or a product, never deletes anything and never writes a figure below zero. Start from an export to see the layout:{" "}
+            {r.never}{" "}
             <Link href={inventoryPaths(store.slug).export} className="underline underline-offset-2">
-              Export stock
+              {r.exportLink}
             </Link>
             .
           </li>
@@ -94,36 +100,36 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       {jobs.length > 0 && (
         <section aria-labelledby="recent-stock-imports" className="flex flex-col gap-2">
           <h2 id="recent-stock-imports" className="text-title text-ink">
-            Recent imports
+            {w.recent}
           </h2>
           <div className={tableShell}>
             <table className="w-full text-sm">
-              <caption className="sr-only">Recent stock imports of this store</caption>
+              <caption className="sr-only">{w.recentCaption}</caption>
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className={th}>
-                    File
+                    {w.file}
                   </th>
                   <th scope="col" className={th}>
-                    Started
+                    {w.started}
                   </th>
                   <th scope="col" className={th}>
-                    State
+                    {w.state}
                   </th>
                   <th scope="col" className={th}>
-                    <span className="sr-only">Open</span>
+                    <span className="sr-only">{w.open}</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
                   <tr key={job.id} className="border-b border-line last:border-0">
-                    <td className={`${td} break-all`}>{job.inputName ?? KIND_TITLES.inventory_import}</td>
-                    <td className={td}>{momentText(job.createdAt, store.timeZone)}</td>
-                    <td className={td}>{STATUS_WORDS[job.status]}</td>
+                    <td className={`${td} break-all`}>{job.inputName ?? w.kindTitle}</td>
+                    <td className={td}>{momentIn(job.createdAt, store.timeZone, locale)}</td>
+                    <td className={td}>{w.jobStatus[job.status]}</td>
                     <td className={`${td} text-right`}>
                       <Link href={`${base}/${job.id}`} className="underline underline-offset-2">
-                        Open
+                        {w.open}
                       </Link>
                     </td>
                   </tr>
@@ -133,7 +139,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>Your file is kept privately for {IMPORT_FILE_KEEP_DAYS} days after the import ends, then deleted. The history of the stock it changed stays.</p>
+      <p className={`${hint} ${card} !p-3`}>{fillWords(w.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
     </>
   );
 }

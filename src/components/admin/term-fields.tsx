@@ -6,6 +6,8 @@ import { EntityFields } from "@/components/admin/entity-fields";
 import { fieldFileUploader } from "@/components/admin/field-file-upload";
 import { uploadFieldPicture } from "@/components/admin/field-picture-upload";
 import { Modal } from "@/components/admin/modal";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { changesFrom, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 
 /** What a category's or tag's fields need from the page that lists them (D118, phase 2). */
@@ -33,6 +35,8 @@ export function TermFieldsButton({
   term: { id: string; name: string; kind: string };
   setup: TermFieldsSetup;
 }) {
+  const w = useAdminText("products").termFields;
+  const kind = term.kind === "tag" ? "tag" : "category";
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<{ groups: FieldGroup[]; data: FieldData; lookups: FieldLookups } | null>(null);
   const [data, setData] = useState<FieldData | null>(null);
@@ -47,7 +51,7 @@ export function TermFieldsButton({
     setSaved(false);
     start(async () => {
       const editor = await setup.open(term.id);
-      if (!editor) return setProblems(["The fields could not be read."]);
+      if (!editor) return setProblems([w.unreadable]);
       setLoaded(editor);
       setData(editor.data);
     });
@@ -73,13 +77,13 @@ export function TermFieldsButton({
 
   return (
     <>
-      <button type="button" onClick={show} className={button} aria-label={`Custom fields of ${term.kind} ${term.name}`}>
-        Fields
+      <button type="button" onClick={show} className={button} aria-label={fillWords(w.aria[kind], { name: term.name })}>
+        {w.button}
       </button>
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={`Custom fields: ${term.name}`}
+        title={fillWords(w.modalTitle, { name: term.name })}
         wide
         footer={
           <div className="flex items-center gap-3">
@@ -89,11 +93,11 @@ export function TermFieldsButton({
               disabled={busy || !loaded || loaded.groups.length === 0}
               className={`${button} bg-brand font-medium text-brand-ink`}
             >
-              {busy ? "Saving …" : "Save fields"}
+              {busy ? w.saving : w.save}
             </button>
             {saved && (
               <span role="status" className="text-sm">
-                Saved.
+                {w.saved}
               </span>
             )}
           </div>
@@ -106,7 +110,7 @@ export function TermFieldsButton({
         )}
         {loaded && loaded.groups.length === 0 && (
           <p className="text-sm text-muted">
-            No group of custom fields applies to this {term.kind}. Make one under Custom fields.
+            {w.noGroup[kind]}
           </p>
         )}
         {loaded && data && loaded.groups.length > 0 && (
@@ -123,12 +127,12 @@ export function TermFieldsButton({
             upload={setup.uploads ? (file: File) => uploadFieldPicture(setup.storeSlug, file) : null}
             fileUpload={setup.uploads ? fieldFileUploader(setup.startFile) : null}
             lookups={loaded.lookups}
-            title="Custom fields"
-            intro={`Shown on the ${term.kind}'s page when a field is public.`}
+            title={w.title}
+            intro={w.intro[kind]}
             idPrefix={`term-fields-${term.id}`}
           />
         )}
-        {!loaded && problems.length === 0 && <p className="text-sm text-muted">Reading the fields …</p>}
+        {!loaded && problems.length === 0 && <p className="text-sm text-muted">{w.reading}</p>}
       </Modal>
     </>
   );

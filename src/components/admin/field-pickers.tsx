@@ -2,6 +2,9 @@
 
 import { useId, useState } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+
 import {
   LINK_KINDS,
   MAX_RELATED,
@@ -50,33 +53,34 @@ function SingleSelect({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const w = useAdminText("fields").pickers;
   const [query, setQuery] = useState("");
   const matches = filterOptions(options, query);
   const missing = value !== "" && !options.some((option) => option.id === value);
   const shown = value !== "" ? [...matches, ...options.filter((o) => o.id === value && !matches.includes(o))] : matches;
-  if (options.length === 0 && value === "") return <p className={`${hint} text-xs`}>Nothing to choose from yet.</p>;
+  if (options.length === 0 && value === "") return <p className={`${hint} text-xs`}>{w.nothing}</p>;
   return (
     <div className="flex flex-col gap-1">
       {options.length > 8 && (
         <input
           type="search"
-          aria-label={`Search ${label}`}
-          placeholder="Search"
+          aria-label={fillWords(w.searchLabel, { label })}
+          placeholder={w.search}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className={input}
         />
       )}
       <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className={input}>
-        <option value="">None</option>
-        {missing && <option value={value}>A removed one</option>}
+        <option value="">{w.none}</option>
+        {missing && <option value={value}>{w.removedOne}</option>}
         {shown.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}
           </option>
         ))}
       </select>
-      {query.trim() !== "" && matches.length === 0 && <p className={`${hint} text-xs`}>Nothing matches that search.</p>}
+      {query.trim() !== "" && matches.length === 0 && <p className={`${hint} text-xs`}>{w.noMatch}</p>}
     </div>
   );
 }
@@ -93,6 +97,7 @@ function MultiSelect({
   ids: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const w = useAdminText("fields").pickers;
   const [query, setQuery] = useState("");
   const [pick, setPick] = useState("");
   const [status, setStatus] = useState("");
@@ -103,25 +108,25 @@ function MultiSelect({
   const add = () => {
     if (pick === "" || full) return;
     onChange([...ids, pick]);
-    setStatus(`${names.get(pick) ?? "An item"} added.`);
+    setStatus(fillWords(w.added, { name: names.get(pick) ?? w.anItem }));
     setPick("");
   };
   const move = (from: number, to: number) => {
     onChange(moveItem(ids, from, to));
-    setStatus(`${names.get(ids[from]) ?? "An item"} moved to place ${to + 1} of ${ids.length}.`);
+    setStatus(fillWords(w.moved, { name: names.get(ids[from]) ?? w.anItem, to: to + 1, total: ids.length }));
   };
   return (
     <div className="flex flex-col gap-2">
       {ids.length > 0 && (
-        <ol aria-label={`${label}: chosen`} className="flex flex-col gap-1">
+        <ol aria-label={fillWords(w.chosen, { label })} className="flex flex-col gap-1">
           {ids.map((chosen, index) => {
-            const name = names.get(chosen) ?? "A removed one";
+            const name = names.get(chosen) ?? w.removedOne;
             return (
               <li key={chosen} className="flex items-center gap-2 rounded-md border border-line px-2 py-1 text-sm">
                 <span className="min-w-0 flex-1 truncate">{name}</span>
                 <button
                   type="button"
-                  aria-label={`Move ${name} up`}
+                  aria-label={fillWords(w.moveUp, { name })}
                   disabled={index === 0}
                   onClick={() => move(index, index - 1)}
                   className={small}
@@ -130,7 +135,7 @@ function MultiSelect({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Move ${name} down`}
+                  aria-label={fillWords(w.moveDown, { name })}
                   disabled={index === ids.length - 1}
                   onClick={() => move(index, index + 1)}
                   className={small}
@@ -139,14 +144,14 @@ function MultiSelect({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Remove ${name}`}
+                  aria-label={fillWords(w.removeName, { name })}
                   onClick={() => {
                     onChange(ids.filter((_, i) => i !== index));
-                    setStatus(`${name} removed.`);
+                    setStatus(fillWords(w.removed, { name }));
                   }}
                   className={`${small} px-3 text-xs`}
                 >
-                  Remove
+                  {w.remove}
                 </button>
               </li>
             );
@@ -154,28 +159,28 @@ function MultiSelect({
         </ol>
       )}
       {options.length === 0 && ids.length === 0 ? (
-        <p className={`${hint} text-xs`}>Nothing to choose from yet.</p>
+        <p className={`${hint} text-xs`}>{w.nothing}</p>
       ) : full ? (
-        <p className={`${hint} text-xs`}>The most is {MAX_RELATED}.</p>
+        <p className={`${hint} text-xs`}>{fillWords(w.most, { n: MAX_RELATED })}</p>
       ) : (
         <div className="flex flex-wrap items-start gap-2">
           {free.length > 8 && (
             <input
               type="search"
-              aria-label={`Search ${label} to add`}
-              placeholder="Search"
+              aria-label={fillWords(w.searchToAdd, { label })}
+              placeholder={w.search}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className={`${input} min-w-32 flex-1`}
             />
           )}
           <select
-            aria-label={`Choose ${label} to add`}
+            aria-label={fillWords(w.chooseToAdd, { label })}
             value={pick}
             onChange={(event) => setPick(event.target.value)}
             className={`${input} min-w-40 flex-1`}
           >
-            <option value="">{free.length === 0 ? "Everything is chosen" : "Choose one to add …"}</option>
+            <option value="">{free.length === 0 ? w.allChosen : w.chooseOne}</option>
             {matches.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
@@ -188,7 +193,7 @@ function MultiSelect({
             disabled={pick === ""}
             className="min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-40"
           >
-            Add
+            {w.add}
           </button>
         </div>
       )}
@@ -250,6 +255,8 @@ export function LinkField({
   lookups: FieldLookups;
   onChange: (value: FieldLink | undefined) => void;
 }) {
+  const w = useAdminText("fields");
+  const p = w.pickers;
   const words = useId();
   const tab = useId();
   const kind: LinkKind | "" = value?.kind ?? "";
@@ -258,7 +265,7 @@ export function LinkField({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-start gap-2">
         <select
-          aria-label={`${def.label}: what to link to`}
+          aria-label={fillWords(p.linkTo, { label: def.label })}
           value={kind}
           onChange={(event) => {
             const next = event.target.value as LinkKind | "";
@@ -268,10 +275,10 @@ export function LinkField({
           }}
           className={`${input} w-auto min-w-44`}
         >
-          <option value="">Choose what to link to …</option>
+          <option value="">{p.chooseLink}</option>
           {(Object.keys(LINK_KINDS) as LinkKind[]).map((k) => (
             <option key={k} value={k}>
-              {LINK_KINDS[k]}
+              {w.linkKinds[k]}
             </option>
           ))}
         </select>
@@ -279,18 +286,18 @@ export function LinkField({
           <div className="min-w-48 flex-1">
             {value.kind === "url" ? (
               <input
-                aria-label={`${def.label}: web address or path`}
+                aria-label={fillWords(p.address, { label: def.label })}
                 type="text"
                 inputMode="url"
                 value={value.ref}
                 maxLength={1000}
-                placeholder="https://…, /path or #anchor"
+                placeholder={p.addressExample}
                 onChange={(event) => set({ ref: event.target.value })}
                 className={input}
               />
             ) : (
               <SingleSelect
-                label={`${def.label}: ${LINK_KINDS[value.kind].toLowerCase()}`}
+                label={`${def.label}: ${w.linkKinds[value.kind].toLowerCase()}`}
                 options={linkOptions(value.kind, lookups)}
                 value={value.ref}
                 onChange={(ref) => set({ ref })}
@@ -303,7 +310,7 @@ export function LinkField({
         <>
           <div className="flex flex-col gap-1">
             <label htmlFor={words} className="text-xs font-medium">
-              Link text
+              {p.linkText}
             </label>
             <input
               id={words}
@@ -329,13 +336,15 @@ export function LinkField({
                 })
               }
             />
-            Open in a new tab
+            {p.newTab}
           </label>
         </>
       )}
       {!value && inherited && inheritedFrom && (
         <p className={`${hint} text-xs`}>
-          Empty: shoppers see the {inheritedFrom} link{inherited.label ? ` (${inherited.label})` : ""}.
+          {inherited.label
+            ? fillWords(p.emptyLinkLabel, { language: inheritedFrom, label: inherited.label })
+            : fillWords(p.emptyLink, { language: inheritedFrom })}
         </p>
       )}
     </div>
@@ -354,11 +363,12 @@ export function FileField({
   onChange: (value: FieldFile | undefined) => void;
   upload: FieldFileUploader | null;
 }) {
+  const w = useAdminText("fields").pickers;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const choose = async (file: File | undefined) => {
     if (!file || !upload) return;
-    const tooBig = fileProblem(file);
+    const tooBig = fileProblem(file, w);
     if (tooBig) return setProblem(tooBig);
     setBusy(true);
     setProblem(null);
@@ -367,7 +377,7 @@ export function FileField({
       if ("problem" in outcome) setProblem(outcome.problem);
       else onChange(outcome);
     } catch {
-      setProblem(`${file.name} could not be uploaded. Try again.`);
+      setProblem(fillWords(w.uploadFailed, { name: file.name }));
     }
     setBusy(false);
   };
@@ -380,11 +390,11 @@ export function FileField({
           </span>
           <button
             type="button"
-            aria-label={`Remove the file from ${def.label}`}
+            aria-label={fillWords(w.removeFile, { label: def.label })}
             onClick={() => onChange(undefined)}
             className="text-xs underline"
           >
-            Remove
+            {w.remove}
           </button>
         </div>
       )}
@@ -393,7 +403,7 @@ export function FileField({
           <label
             className={`inline-block w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2 ${busy ? "opacity-50" : ""}`}
           >
-            {busy ? "Uploading …" : value ? "Replace file" : "Choose file"}
+            {busy ? w.uploading : value ? w.replaceFile : w.chooseFile}
             <input
               type="file"
               accept={FIELD_FILE_ACCEPT_TYPES}
@@ -405,10 +415,10 @@ export function FileField({
               }}
             />
           </label>
-          <p className={`${hint} mt-1 text-xs`}>PDF, Word, Excel, PowerPoint, text, CSV or zip, up to 50 MB.</p>
+          <p className={`${hint} mt-1 text-xs`}>{w.fileKinds}</p>
         </div>
       ) : (
-        <p className={`${hint} text-xs`}>Uploads are not set up here.</p>
+        <p className={`${hint} text-xs`}>{w.noUploads}</p>
       )}
       {problem && (
         <p role="alert" className="text-sm text-danger-text">

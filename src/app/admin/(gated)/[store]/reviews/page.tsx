@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Button, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
-import { HIDE_REASONS, REVIEW_ANSWER_MAX, REVIEW_STATUSES, type HideReason, type ReviewStatus } from "@/lib/review-status";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { HIDE_REASONS, REVIEW_ANSWER_MAX, REVIEW_STATUSES, type ReviewStatus } from "@/lib/review-status";
 import { featureOn } from "@/lib/store-features";
 import { listReviews, reviewCounts } from "@/server/reviews-admin";
 import { reviewSettings } from "@/server/reviews";
@@ -13,15 +16,7 @@ import { answerReviewAction, hideReviewAction, publishReviewAction, savePublishM
 
 export const metadata: Metadata = { title: "Reviews" };
 
-const STATUS_WORDS: Record<ReviewStatus, string> = { pending: "Waiting", published: "Published", hidden: "Not shown" };
 const STATUS_SIGNAL = { pending: "warning", published: "positive", hidden: "neutral" } as const;
-const REASON_WORDS: Record<HideReason, string> = {
-  not_about_product: "Not about the product",
-  offensive: "Offensive or hateful",
-  personal_data: "Holds personal details",
-  spam: "Spam or advertising",
-  other: "Another reason",
-};
 
 const first = (value: string | string[] | undefined): string => (typeof value === "string" ? value : "");
 const stars = (n: number) => `${"★".repeat(n)}${"☆".repeat(5 - n)}`;
@@ -52,7 +47,14 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
   const base = `/admin/${store.slug}/reviews`;
   const canChange = memberCan(member, "products:write");
   const canOrders = memberCan(member, "orders:read");
-  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: store.timeZone });
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "reviews");
+  const w = words.page;
+  const STATUS_WORDS = words.statuses;
+  const REASON_WORDS = words.reasons;
+  // English keeps en-GB dates and numbers, as before; another language its own.
+  const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
+  const date = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { dateStyle: "medium", timeZone: store.timeZone });
   const link = (next: { state?: string | null; before?: string; stars?: number | null }) => {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
@@ -69,42 +71,42 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Reviews"
-        description="What buyers say about your products. Only people who bought and received a product can review it; you decide what is shown."
+        title={w.title}
+        description={w.description}
       />
 
       {!featureOn(store, "reviews") && (
         <p className={`p-4 text-body text-ink-2 ${CARD_CLASS}`}>
-          Reviews are switched off: they are not shown and customers cannot write new ones. Every review is kept here.{" "}
+          {w.off}{" "}
           <Link href={`/admin/${store.slug}/settings/features`} className="underline underline-offset-2">
-            Features
+            {w.features}
           </Link>
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label="Waiting to be checked" value={counts.pending.toLocaleString("en-GB")} href={link({ state: "pending" })} />
-        <KpiTile label="Published" value={counts.published.toLocaleString("en-GB")} href={link({ state: "published" })} />
-        <KpiTile label="Not shown" value={counts.hidden.toLocaleString("en-GB")} href={link({ state: "hidden" })} />
+        <KpiTile label={w.waiting} value={counts.pending.toLocaleString(dateLocale)} href={link({ state: "pending" })} />
+        <KpiTile label={w.published} value={counts.published.toLocaleString(dateLocale)} href={link({ state: "published" })} />
+        <KpiTile label={w.hidden} value={counts.hidden.toLocaleString(dateLocale)} href={link({ state: "hidden" })} />
       </div>
 
       {total === 0 ? (
         <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          No reviews yet. Customers review what they bought from My account once it has reached them.
+          {w.empty}
         </p>
       ) : (
         <Card
           compact
-          title={state ? (state === "pending" ? "Waiting to be checked" : STATUS_WORDS[state]) : "All reviews"}
+          title={state ? (state === "pending" ? w.waiting : STATUS_WORDS[state]) : w.all}
           aside={
             <form method="get" action={base} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="state" value={state ?? "all"} />
-              <input type="search" name="q" defaultValue={q} placeholder="Product or words" aria-label="Search reviews" className="min-h-10 w-64 rounded-md border border-line px-3" />
-              <Button type="submit">Search</Button>
+              <input type="search" name="q" defaultValue={q} placeholder={w.searchPlaceholder} aria-label={w.searchLabel} className="min-h-10 w-64 rounded-md border border-line px-3" />
+              <Button type="submit">{w.search}</Button>
             </form>
           }
         >
-          <nav aria-label="Filter reviews" className="mb-4 flex flex-wrap gap-2">
+          <nav aria-label={w.filterLabel} className="mb-4 flex flex-wrap gap-2">
             {[null, ...REVIEW_STATUSES].map((s) => (
               <Link
                 key={s ?? "all"}
@@ -112,7 +114,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                 aria-current={state === s ? "true" : undefined}
                 className={`rounded-pill border px-3 py-1 text-caption ${state === s ? "border-edge bg-sunken text-ink" : "border-line text-ink-2"}`}
               >
-                {s ? `${STATUS_WORDS[s]} ${counts[s]}` : `All ${total}`}
+                {s ? `${STATUS_WORDS[s]} ${counts[s]}` : fillWords(w.allCount, { count: total })}
               </Link>
             ))}
             {[5, 4, 3, 2, 1].map((n) => (
@@ -120,7 +122,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                 key={n}
                 href={link({ stars: starFilter === n ? null : n })}
                 aria-current={starFilter === n ? "true" : undefined}
-                aria-label={`${n} of 5 stars`}
+                aria-label={fillWords(w.starsLabel, { n })}
                 className={`rounded-pill border px-3 py-1 text-caption ${starFilter === n ? "border-edge bg-sunken text-ink" : "border-line text-ink-2"}`}
               >
                 {n} ★
@@ -128,7 +130,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
             ))}
           </nav>
           {page.rows.length === 0 ? (
-            <p className="p-4 text-body text-muted">No review matches.</p>
+            <p className="p-4 text-body text-muted">{w.noMatch}</p>
           ) : (
             <ul className="divide-y divide-line">
               {page.rows.map((r) => (
@@ -138,11 +140,11 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                       <p className="text-body-strong text-ink">{r.product}</p>
                       <p className="text-caption text-muted">
                         {[
-                          r.source === "buyer" ? "Verified purchase" : `Imported from ${r.importedFrom}`,
+                          r.source === "buyer" ? w.verified : fillWords(w.importedFrom, { source: r.importedFrom ?? "" }),
                           r.bought,
                           r.authorName,
                           date(r.writtenAt),
-                          r.editedAt ? `edited ${date(r.editedAt)}` : null,
+                          r.editedAt ? fillWords(w.edited, { date: date(r.editedAt) }) : null,
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -150,7 +152,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                           <>
                             {" · "}
                             <Link href={`/admin/${store.slug}/orders/${r.orderId}`} className="underline underline-offset-2">
-                              Order {r.orderNumber}
+                              {fillWords(w.order, { number: r.orderNumber })}
                             </Link>
                           </>
                         )}
@@ -162,7 +164,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                     </Chip>
                   </div>
                   <div>
-                    <p className="text-body text-ink" aria-label={`${r.rating} of 5 stars`}>
+                    <p className="text-body text-ink" aria-label={fillWords(w.starsLabel, { n: r.rating })}>
                       <span aria-hidden>{stars(r.rating)}</span>
                     </p>
                     {r.title && <p className="text-body-strong text-ink" lang={r.locale}>{r.title}</p>}
@@ -172,18 +174,18 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                     <div className="flex flex-wrap items-start gap-3">
                       {r.status !== "published" && (
                         <ActionForm action={publishReviewAction.bind(null, store.slug, r.id)}>
-                          <SubmitButton>Publish</SubmitButton>
+                          <SubmitButton>{w.publish}</SubmitButton>
                         </ActionForm>
                       )}
                       {r.status !== "hidden" && (
                         <details className="rounded-panel border border-line px-3 py-2">
-                          <summary className="cursor-pointer text-body text-ink">Hide</summary>
+                          <summary className="cursor-pointer text-body text-ink">{w.hide}</summary>
                           <ActionForm action={hideReviewAction.bind(null, store.slug, r.id)} className="mt-2 flex flex-wrap items-end gap-2">
                             <label className="flex flex-col gap-1 text-body">
-                              <span className="text-caption text-muted">Why it is not shown</span>
+                              <span className="text-caption text-muted">{w.whyHidden}</span>
                               <select name="reason" required defaultValue="" className="min-h-10 rounded-md border border-line px-3">
                                 <option value="" disabled>
-                                  Choose
+                                  {w.choose}
                                 </option>
                                 {HIDE_REASONS.map((reason) => (
                                   <option key={reason} value={reason}>
@@ -192,24 +194,24 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                                 ))}
                               </select>
                             </label>
-                            <SubmitButton variant="secondary">Hide</SubmitButton>
-                            <p className="w-full text-caption text-muted">Hiding a review because it is negative is not allowed.</p>
+                            <SubmitButton variant="secondary">{w.hide}</SubmitButton>
+                            <p className="w-full text-caption text-muted">{w.negativeNote}</p>
                           </ActionForm>
                         </details>
                       )}
                       <details className="min-w-0 flex-1 rounded-panel border border-line px-3 py-2" open={Boolean(r.answer)}>
-                        <summary className="cursor-pointer text-body text-ink">{r.answer ? "Your answer" : "Answer"}</summary>
+                        <summary className="cursor-pointer text-body text-ink">{r.answer ? w.yourAnswer : w.answer}</summary>
                         <ActionForm action={answerReviewAction.bind(null, store.slug, r.id)} className="mt-2 flex flex-col gap-2">
                           <textarea
                             name="answer"
                             defaultValue={r.answer ?? ""}
                             maxLength={REVIEW_ANSWER_MAX}
                             rows={3}
-                            aria-label="Your answer, shown under the review"
+                            aria-label={w.answerLabel}
                             className="rounded-md border border-line px-3 py-2"
                           />
                           <div>
-                            <SubmitButton variant="secondary">Save the answer</SubmitButton>
+                            <SubmitButton variant="secondary">{w.saveAnswer}</SubmitButton>
                           </div>
                         </ActionForm>
                       </details>
@@ -225,36 +227,36 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
           {page.more && last && (
             <div className="mt-4">
               <Link href={link({ before: `${last.writtenAt}_${last.id}` })} className="text-body text-ink-2 underline-offset-2 hover:underline">
-                Older
+                {w.older}
               </Link>
             </div>
           )}
         </Card>
       )}
 
-      <Card title="Checking new reviews" description="For reviews written or edited from now on; reviews already written keep their state." compact>
+      <Card title={w.checkingTitle} description={w.checkingDescription} compact>
         {canChange ? (
           <ActionForm action={savePublishModeAction.bind(null, store.slug)} className="flex flex-col gap-3">
             <label className="flex items-start gap-2 text-body">
               <input type="radio" name="publish" value="after_check" defaultChecked={settings.publish === "after_check"} className="mt-1" />
               <span>
-                <span className="block text-ink">Check each one first</span>
-                <span className="block text-caption text-muted">A new or edited review waits here until you publish it.</span>
+                <span className="block text-ink">{w.checkFirst}</span>
+                <span className="block text-caption text-muted">{w.checkFirstHint}</span>
               </span>
             </label>
             <label className="flex items-start gap-2 text-body">
               <input type="radio" name="publish" value="at_once" defaultChecked={settings.publish === "at_once"} className="mt-1" />
               <span>
-                <span className="block text-ink">Publish at once</span>
-                <span className="block text-caption text-muted">Reviews show as soon as they are written; you can hide one after.</span>
+                <span className="block text-ink">{w.atOnce}</span>
+                <span className="block text-caption text-muted">{w.atOnceHint}</span>
               </span>
             </label>
             <div>
-              <SubmitButton>Save</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
-          <p className="text-body text-ink">{settings.publish === "at_once" ? "Reviews are published at once." : "Each review is checked first."}</p>
+          <p className="text-body text-ink">{settings.publish === "at_once" ? w.isAtOnce : w.isChecked}</p>
         )}
       </Card>
     </div>

@@ -1,58 +1,75 @@
 import Link from "next/link";
 
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
-import { SEVERITY_FILTERS, SEVERITY_WORDS, rowsPhrase, wholeNumber, type SeverityFilter } from "@/lib/data-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import type { InventoryMessages } from "@/lib/admin-messages/inventory.en";
+import { adminText } from "@/lib/admin-text";
+import { SEVERITY_FILTERS, type SeverityFilter } from "@/lib/data-admin";
 import type { Finding, ItemOutcome } from "@/lib/data-job";
-import { deltaText, figureText } from "@/lib/inventory-admin";
+import { deltaIn, figureIn, numberIn, rowsIn } from "@/lib/inventory-words";
 
-/** The numbers of a dry run: what an import would do. */
-export function StockDryRun({ counts }: { counts: { toUpdate: number; unchanged: number; conflicts: number; withProblems: number } }) {
+const wholeIn = (n: number, lang: AdminLang) => numberIn(Math.round(n), ADMIN_LANG_FACTS[lang].locale);
+
+/** The numbers of a dry run: what an import would do. In the admin's language (`lang`, D312 A5), as are the parts below. */
+export function StockDryRun({ counts, lang = "en" }: { counts: { toUpdate: number; unchanged: number; conflicts: number; withProblems: number }; lang?: AdminLang }) {
+  const w = adminText(lang, "inventory").import.dry;
   const items: [string, number][] = [
-    ["To change", counts.toUpdate],
-    ["Unchanged", counts.unchanged],
-    ["Out of date", counts.conflicts],
-    ["With problems", counts.withProblems],
+    [w.toChange, counts.toUpdate],
+    [w.unchanged, counts.unchanged],
+    [w.outOfDate, counts.conflicts],
+    [w.withProblems, counts.withProblems],
   ];
   return (
-    <section aria-label="What the check found" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">What the check found</h2>
+    <section aria-label={w.label} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{w.label}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeIn(n, lang)}</dd>
           </div>
         ))}
       </dl>
       <p className={hint}>
-        Nothing has changed in your store. A row that is out of date has an <code>on_hand_was</code> that is no longer the stock; it is left alone. A row with a problem is skipped and the others go on. The check is advice: every row is checked
-        again as it is written.
+        {w.hintStart} <code>on_hand_was</code> {w.hintEnd}
       </p>
     </section>
   );
 }
 
 /** The outcome of an applied import: the rows by what happened. */
-export function StockApplied({ counts, jobId, written }: { counts: { updated: number; unchanged: number; skipped: number; failed: number }; jobId: string; written: boolean }) {
+export function StockApplied({
+  counts,
+  jobId,
+  written,
+  lang = "en",
+}: {
+  counts: { updated: number; unchanged: number; skipped: number; failed: number };
+  jobId: string;
+  written: boolean;
+  lang?: AdminLang;
+}) {
+  const w = adminText(lang, "inventory").import.applied;
   const items: [string, number][] = [
-    ["Changed", counts.updated],
-    ["Unchanged", counts.unchanged],
-    ["Skipped (out of date or a problem)", counts.skipped],
-    ["Not saved", counts.failed],
+    [w.changed, counts.updated],
+    [w.unchanged, counts.unchanged],
+    [w.skipped, counts.skipped],
+    [w.failed, counts.failed],
   ];
   return (
-    <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">{written ? "What was imported" : "What was imported before it stopped"}</h2>
+    <section aria-label={w.label} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{written ? w.written : w.stopped}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeIn(n, lang)}</dd>
           </div>
         ))}
       </dl>
       <p className={hint}>
-        Reference for the activity log and the history: <code>{jobId}</code>. Each change is in the stock history with the reason of its row.
+        {w.reference} <code>{jobId}</code>. {w.referenceEnd}
       </p>
     </section>
   );
@@ -74,12 +91,13 @@ export type StockItem = {
   messages: Finding[];
 };
 
-const WILL_WORDS: Record<string, string> = { update: "Would be changed", unchanged: "Unchanged", conflict: "Out of date: left alone", skip: "Would be skipped" };
-const DONE_WORDS: Record<string, string> = { updated: "Changed", unchanged: "Unchanged", skipped: "Skipped", failed: "Not saved" };
-
-/** What a row's result is called: the check's advice, or what the apply did. */
-export const stockResultWords = (item: Pick<StockItem, "outcome" | "will">): string =>
-  item.outcome === "checked" ? (item.will ? (WILL_WORDS[item.will] ?? "Checked") : "Checked") : (DONE_WORDS[item.outcome] ?? item.outcome);
+/** What a row's result is called: the check's advice, or what the apply did, in the words given (English unless given). */
+export function stockResultWords(item: Pick<StockItem, "outcome" | "will">, words: Pick<InventoryMessages["import"], "will" | "done"> = adminText("en", "inventory").import): string {
+  const will: Record<string, string | undefined> = words.will;
+  const done: Record<string, string | undefined> = words.done;
+  if (item.outcome === "checked") return item.will && item.will !== "checked" ? (will[item.will] ?? words.will.checked) : words.will.checked;
+  return done[item.outcome] ?? item.outcome;
+}
 
 const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
@@ -96,6 +114,7 @@ export function StockFindings({
   pageSize,
   hrefFor,
   problemsHref,
+  lang = "en",
 }: {
   items: StockItem[];
   total: number;
@@ -104,81 +123,85 @@ export function StockFindings({
   pageSize: number;
   hrefFor: (query: { severity?: SeverityFilter; page?: number }) => string;
   problemsHref: string | null;
+  lang?: AdminLang;
 }) {
+  const t = adminText(lang, "inventory").import;
+  const w = t.findings;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <section aria-labelledby="stock-findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="stock-findings-title" className="text-title text-ink">
-          What the file says, row by row
+          {w.title}
         </h2>
         {problemsHref && (
           <form method="post" action={problemsHref}>
             <button type="submit" className="text-sm underline underline-offset-2">
-              Download the problems as CSV
+              {w.download}
             </button>
           </form>
         )}
       </div>
-      <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
+      <nav aria-label={w.bySeverity} className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
           <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
-            {s === "all" ? "All rows" : `${SEVERITY_WORDS[s]}s`}
+            {s === "all" ? w.allRows : w.severities[s]}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No row has a finding of this kind."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? w.nothing : w.noneOfKind}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
-            <caption className="sr-only">Rows of the file with what was found, {wholeNumber(total)} in all</caption>
+            <caption className="sr-only">{fillWords(w.caption, { n: wholeIn(total, lang) })}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className={th}>
-                  Rows
+                  {w.rows}
                 </th>
                 <th scope="col" className={th}>
-                  SKU
+                  {w.sku}
                 </th>
                 <th scope="col" className={th}>
-                  Location
+                  {w.location}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Now
+                  {w.now}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  New
+                  {w.new}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Change
+                  {w.change}
                 </th>
                 <th scope="col" className={th}>
-                  Result
+                  {w.result}
                 </th>
                 <th scope="col" className={th}>
-                  Findings
+                  {w.found}
                 </th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.seq} className="border-b border-line last:border-0">
-                  <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
-                  <td className={`${td} break-all font-mono text-xs`}>{item.ref ?? <span className={hint}>The file as a whole</span>}</td>
+                  <td className={`${td} whitespace-nowrap`}>{rowsIn(item.rows, w)}</td>
+                  <td className={`${td} break-all font-mono text-xs`}>{item.ref ?? <span className={hint}>{w.wholeFile}</span>}</td>
                   <td className={td}>{item.location ?? ""}</td>
-                  <td className={`${td} text-right tabular-nums`}>{item.current === null ? "" : figureText(item.current)}</td>
-                  <td className={`${td} text-right tabular-nums`}>{item.next === null ? "" : figureText(item.next)}</td>
-                  <td className={`${td} text-right tabular-nums`}>{item.change === null ? "" : deltaText(item.change)}</td>
-                  <td className={td}>{item.ref ? stockResultWords(item) : ""}</td>
+                  <td className={`${td} text-right tabular-nums`}>{item.current === null ? "" : figureIn(item.current, locale)}</td>
+                  <td className={`${td} text-right tabular-nums`}>{item.next === null ? "" : figureIn(item.next, locale)}</td>
+                  <td className={`${td} text-right tabular-nums`}>{item.change === null ? "" : deltaIn(item.change, locale)}</td>
+                  <td className={td}>{item.ref ? stockResultWords(item, t) : ""}</td>
                   <td className={td}>
                     {item.messages.length === 0 ? (
-                      <span className={hint}>Nothing to note</span>
+                      <span className={hint}>{w.nothingToNote}</span>
                     ) : (
                       <ul className="flex flex-col gap-1">
                         {item.messages.map((m, i) => (
                           <li key={`${m.code}-${i}`}>
-                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{SEVERITY_WORDS[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {m.text}
+                            <span className={`font-medium ${SEVERITY_STYLE[m.severity]}`}>{w.severity[m.severity]}</span> <code className="text-xs text-muted">{m.code}</code> {m.text}
                           </li>
                         ))}
                       </ul>
@@ -191,20 +214,20 @@ export function StockFindings({
         </div>
       )}
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex items-center justify-between text-sm">
+        <nav aria-label={w.pages} className="flex items-center justify-between text-sm">
           {page > 1 ? (
             <Link href={hrefFor({ severity, page: page - 1 })} className="underline underline-offset-2">
-              Earlier rows
+              {w.earlier}
             </Link>
           ) : (
             <span />
           )}
           <span className={hint}>
-            Page {page} of {pages}
+            {fillWords(w.pageOf, { page, pages })}
           </span>
           {page < pages ? (
             <Link href={hrefFor({ severity, page: page + 1 })} className="underline underline-offset-2">
-              Later rows
+              {w.later}
             </Link>
           ) : (
             <span />

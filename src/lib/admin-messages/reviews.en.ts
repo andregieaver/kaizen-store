@@ -1,0 +1,72 @@
+import type { Widen } from "./common.en";
+
+/**
+ * The words of checking a store's reviews in the admin (D312 A5): the queue, a review's facts, Publish, Hide (with a reason), Answer, the
+ * publish setting and what the actions answer. `{name}`-style placeholders are filled by `fillWords()`. The reviews' own words are the
+ * buyers', in their own language, and are never translated.
+ */
+export const reviewsEn = {
+  statuses: { pending: "Waiting", published: "Published", hidden: "Not shown" },
+  reasons: {
+    not_about_product: "Not about the product",
+    offensive: "Offensive or hateful",
+    personal_data: "Holds personal details",
+    spam: "Spam or advertising",
+    other: "Another reason",
+  },
+  page: {
+    title: "Reviews",
+    description: "What buyers say about your products. Only people who bought and received a product can review it; you decide what is shown.",
+    off: "Reviews are switched off: they are not shown and customers cannot write new ones. Every review is kept here.",
+    features: "Features",
+    waiting: "Waiting to be checked",
+    published: "Published",
+    hidden: "Not shown",
+    empty: "No reviews yet. Customers review what they bought from My account once it has reached them.",
+    all: "All reviews",
+    searchPlaceholder: "Product or words",
+    searchLabel: "Search reviews",
+    search: "Search",
+    filterLabel: "Filter reviews",
+    allCount: "All {count}",
+    starsLabel: "{n} of 5 stars",
+    noMatch: "No review matches.",
+    verified: "Verified purchase",
+    importedFrom: "Imported from {source}",
+    edited: "edited {date}",
+    order: "Order {number}",
+    publish: "Publish",
+    hide: "Hide",
+    whyHidden: "Why it is not shown",
+    choose: "Choose",
+    negativeNote: "Hiding a review because it is negative is not allowed.",
+    yourAnswer: "Your answer",
+    answer: "Answer",
+    answerLabel: "Your answer, shown under the review",
+    saveAnswer: "Save the answer",
+    older: "Older",
+    checkingTitle: "Checking new reviews",
+    checkingDescription: "For reviews written or edited from now on; reviews already written keep their state.",
+    checkFirst: "Check each one first",
+    checkFirstHint: "A new or edited review waits here until you publish it.",
+    atOnce: "Publish at once",
+    atOnceHint: "Reviews show as soon as they are written; you can hide one after.",
+    save: "Save",
+    isAtOnce: "Reviews are published at once.",
+    isChecked: "Each review is checked first.",
+  },
+  actions: {
+    unknown: "That review is not in this store.",
+    state: "The review changed meanwhile. Look at it again.",
+    reason: "Choose why it is not shown.",
+    answer: "The answer is too long: at most 2,000 characters.",
+    published: "Published.",
+    hidden: "Hidden.",
+    answerSaved: "Answer saved.",
+    answerRemoved: "Answer taken away.",
+    chooseOne: "Choose one of the two.",
+    saved: "Saved. Reviews already written keep their state.",
+  },
+};
+
+export type ReviewsMessages = Widen<typeof reviewsEn>;

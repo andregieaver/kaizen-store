@@ -68,20 +68,28 @@ export const isFieldEntity = (value: unknown): value is FieldEntity =>
 export const STAFF_ENTITIES = ["customer", "order"] as const satisfies readonly FieldEntity[];
 export const isStaffEntity = (entity: string): boolean => (STAFF_ENTITIES as readonly string[]).includes(entity);
 
+const STAFF_PROBLEMS = {
+  staffOnly: "A group for customers or orders can be on nothing else: their fields are for staff only.",
+  staffPublic: "{label} cannot be shown on the site: customer and order fields are for staff only.",
+  staffFile: "{label} cannot hold a picture or file: they are kept where anyone with the address can open them.",
+};
+
 /** Why a group on customers or orders cannot be saved as it is, or null (also for a group on other things). */
-export function staffGroupProblem(group: { entities: readonly string[]; fields: readonly FieldDef[] }): string | null {
+export function staffGroupProblem(
+  group: { entities: readonly string[]; fields: readonly FieldDef[] },
+  /** The admin's words for the three (D312, `fieldsNb.problems`); English, as the server's checks say them, when left out. */
+  words: { staffOnly: string; staffPublic: string; staffFile: string } = STAFF_PROBLEMS,
+): string | null {
   if (!group.entities.some(isStaffEntity)) return null;
-  if (!group.entities.every(isStaffEntity)) {
-    return "A group for customers or orders can be on nothing else: their fields are for staff only.";
-  }
+  if (!group.entities.every(isStaffEntity)) return words.staffOnly;
   const isPublic = (def: FieldDef): boolean => def.access === "public" || (def.subFields ?? []).some(isPublic);
   const shown = group.fields.find(isPublic);
-  if (shown) return `${shown.label} cannot be shown on the site: customer and order fields are for staff only.`;
+  if (shown) return words.staffPublic.replace("{label}", () => shown.label);
   // Pictures and files are kept in public storage, whose addresses anyone who has them can open.
   const kept = (def: FieldDef): FieldDef | undefined =>
     ["image", "gallery", "file"].includes(def.type) ? def : (def.subFields ?? []).map(kept).find(Boolean);
   const stored = group.fields.map(kept).find(Boolean);
-  if (stored) return `${stored.label} cannot hold a picture or file: they are kept where anyone with the address can open them.`;
+  if (stored) return words.staffFile.replace("{label}", () => stored.label);
   return null;
 }
 

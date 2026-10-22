@@ -13,6 +13,18 @@ import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
 import { returnsNb } from "./admin-messages/returns.nb";
 import { invoicesEn, type InvoicesMessages } from "./admin-messages/invoices.en";
 import { invoicesNb } from "./admin-messages/invoices.nb";
+import { productsEn, type ProductsMessages } from "./admin-messages/products.en";
+import { productsNb } from "./admin-messages/products.nb";
+import { productEn, type ProductMessages } from "./admin-messages/product.en";
+import { productNb } from "./admin-messages/product.nb";
+import { inventoryEn, type InventoryMessages } from "./admin-messages/inventory.en";
+import { inventoryNb } from "./admin-messages/inventory.nb";
+import { giftCardsEn, type GiftCardsMessages } from "./admin-messages/gift-cards.en";
+import { giftCardsNb } from "./admin-messages/gift-cards.nb";
+import { reviewsEn, type ReviewsMessages } from "./admin-messages/reviews.en";
+import { reviewsNb } from "./admin-messages/reviews.nb";
+import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
+import { fieldsNb } from "./admin-messages/fields.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
 import { homeNb } from "./admin-messages/home.nb";
 import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
@@ -33,6 +45,12 @@ export type AdminAreaMessages = {
   common: CommonMessages;
   domains: DomainsMessages;
   home: HomeMessages;
+  products: ProductsMessages;
+  product: ProductMessages;
+  inventory: InventoryMessages;
+  giftCards: GiftCardsMessages;
+  reviews: ReviewsMessages;
+  fields: FieldsMessages;
   orders: OrdersMessages;
   order: OrderMessages;
   drafts: DraftsMessages;
@@ -50,6 +68,12 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
   home: { en: homeEn, nb: homeNb },
+  products: { en: productsEn, nb: productsNb },
+  product: { en: productEn, nb: productNb },
+  inventory: { en: inventoryEn, nb: inventoryNb },
+  giftCards: { en: giftCardsEn, nb: giftCardsNb },
+  reviews: { en: reviewsEn, nb: reviewsNb },
+  fields: { en: fieldsEn, nb: fieldsNb },
   orders: { en: ordersEn, nb: ordersNb },
   order: { en: orderEn, nb: orderNb },
   drafts: { en: draftsEn, nb: draftsNb },

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 
 import {
-  TERM_LABELS,
   TERM_NAME_MAX,
   byName,
   categoryTree,
@@ -15,9 +14,10 @@ import {
 } from "@/lib/taxonomy";
 import type { TermsResult } from "@/server/taxonomy";
 
-import { categoryGapWords } from "@/lib/unit-price-editor";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import type { TermSeo } from "@/lib/term-seo";
 
+import { useAdminText } from "./admin-text";
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
 import { Card } from "@/components/admin/ui";
@@ -74,6 +74,7 @@ export function TermPicker({
   create: TermActions["create"];
   manageHref: string;
 }) {
+  const w = useAdminText("products").terms;
   const tree = categoryTree(terms);
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
   const toggle = (kind: TermKind, id: string, on: boolean) => {
@@ -88,9 +89,9 @@ export function TermPicker({
         const chosen = new Set(kind === "category" ? value.categories : value.tags);
         return (
           <fieldset key={kind} className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium">{TERM_LABELS[kind].many}</legend>
+            <legend className="mb-1 text-sm font-medium">{w.labels[kind].many}</legend>
             {list.length === 0 ? (
-              <p className="text-sm text-muted">None yet.</p>
+              <p className="text-sm text-muted">{w.noneYet}</p>
             ) : (
               <ul className={kind === "tag" ? "flex flex-wrap gap-2" : "flex flex-col gap-1"}>
                 {list.map((term) => (
@@ -126,7 +127,7 @@ export function TermPicker({
         );
       })}
       <Link href={manageHref} className="w-fit text-sm underline">
-        Manage categories and tags
+        {w.manage}
       </Link>
     </div>
   );
@@ -142,6 +143,7 @@ function QuickAdd({
   create: TermActions["create"];
   onCreated: (id: string, terms: Term[]) => void;
 }) {
+  const w = useAdminText("products").terms;
   const id = useId();
   const [name, setName] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
@@ -154,7 +156,7 @@ function QuickAdd({
       setName("");
       onCreated(result.id, result.terms);
     });
-  const label = `New ${TERM_LABELS[kind].one.toLowerCase()}`;
+  const label = w.newTerm[kind];
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-2">
@@ -177,7 +179,7 @@ function QuickAdd({
           className={`${input} min-w-0 flex-1`}
         />
         <button type="button" onClick={add} disabled={busy || !name.trim()} className={button}>
-          {busy ? "Adding …" : "Add"}
+          {busy ? w.adding : w.add}
         </button>
       </div>
       <Problems problems={problems} />
@@ -192,20 +194,16 @@ function QuickAdd({
  */
 export type UnitPriceCategories = { gaps: Record<string, number>; needsHref: string };
 
-const MARK_LABEL = "Products in this category need a price per kg or litre";
-
 /** The checkbox of the mark, with what it does. */
 function UnitPriceMark({ id, checked, onChange }: { id: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  const w = useAdminText("products").terms;
   return (
     <div className="flex flex-col gap-0.5 text-sm">
       <label className="flex items-center gap-2" htmlFor={id}>
         <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4" />
-        {MARK_LABEL}
+        {w.markLabel}
       </label>
-      <span className="pl-6 text-xs text-muted">
-        It applies to the category&apos;s products and its subcategories&apos;. Nothing changes in the shop at once; products on sale
-        without a content are listed, and one is refused the next time it is saved.
-      </span>
+      <span className="pl-6 text-xs text-muted">{w.markHint}</span>
     </div>
   );
 }
@@ -229,6 +227,7 @@ export function TermsManager({
   /** Only a store's product categories and tags (wave 2, D168): a title and a description for search results, in each of the store's languages. */
   seo?: TermSeoSetup;
 }) {
+  const w = useAdminText("products").terms;
   const [terms, setTerms] = useState(initial);
   const tree = categoryTree(terms);
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
@@ -239,18 +238,14 @@ export function TermsManager({
         return (
           <Card
             key={kind}
-            title={TERM_LABELS[kind].many}
-            description={
-              kind === "category"
-                ? `Group ${usedBy}; a category can hold subcategories. A grid showing a category shows its subcategories' ${usedBy} too.`
-                : `Label ${usedBy} across categories. Tags are one flat list.`
-            }
+            title={w.labels[kind].many}
+            description={fillWords(w.descriptions[kind], { usedBy })}
             className="flex flex-col gap-4"
             compact
           >
             <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} unitPrice={kind === "category" && unitPrice !== undefined} />
             {list.length === 0 ? (
-              <p className="text-sm text-muted">No {TERM_LABELS[kind].many.toLowerCase()} yet.</p>
+              <p className="text-sm text-muted">{w.emptyList[kind]}</p>
             ) : (
               <ul className="flex flex-col divide-y divide-line border-y border-line">
                 {list.map((term) => (
@@ -279,9 +274,10 @@ function ParentSelect({
   onChange: (value: string | null) => void;
   exclude: Set<string>;
 }) {
+  const w = useAdminText("products").terms;
   return (
     <select id={id} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)} className={input}>
-      <option value="">At the top</option>
+      <option value="">{w.top}</option>
       {categoryTree(terms)
         .filter((c) => !exclude.has(c.id))
         .map((c) => (
@@ -308,13 +304,13 @@ function NewTerm({
   /** Offer the unit price mark (a store's product categories). */
   unitPrice?: boolean;
 }) {
+  const w = useAdminText("products").terms;
   const id = useId();
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
   const [marked, setMarked] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
-  const one = TERM_LABELS[kind].one.toLowerCase();
   return (
     <form
       onSubmit={(event) => {
@@ -333,7 +329,7 @@ function NewTerm({
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex min-w-40 flex-1 flex-col gap-1">
           <label htmlFor={`${id}-name`} className="text-sm font-medium">
-            New {one}
+            {w.newTerm[kind]}
           </label>
           <input
             id={`${id}-name`}
@@ -346,13 +342,13 @@ function NewTerm({
         {kind === "category" && (
           <div className="flex flex-col gap-1">
             <label htmlFor={`${id}-parent`} className="text-sm font-medium">
-              Inside
+              {w.inside}
             </label>
             <ParentSelect id={`${id}-parent`} terms={terms} value={parentId} onChange={setParentId} exclude={new Set()} />
           </div>
         )}
         <button type="submit" disabled={busy || !name.trim()} className={`${button} bg-brand font-medium text-brand-ink`}>
-          {busy ? "Adding …" : `Add ${one}`}
+          {busy ? w.adding : w.addTerm[kind]}
         </button>
       </div>
       {unitPrice && <UnitPriceMark id={`${id}-unit-price`} checked={marked} onChange={setMarked} />}
@@ -380,6 +376,7 @@ function TermRow({
   /** Set on a store's product categories and tags (D168): the search texts. */
   seo?: TermSeoSetup;
 }) {
+  const w = useAdminText("products").terms;
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -398,7 +395,7 @@ function TermRow({
       onTerms(result.terms);
     });
   const seoLanguages = seo ? seoLanguagesOf(term.seo, seo) : [];
-  const one = TERM_LABELS[term.kind].one.toLowerCase();
+  const gaps = unitPrice?.gaps[term.id] ?? 0;
 
   return (
     <li className="flex flex-col gap-2 py-2" style={{ paddingLeft: `${term.depth * 1.5}rem` }}>
@@ -414,12 +411,12 @@ function TermRow({
             );
           }}
           className="flex flex-col gap-2"
-          aria-label={`Change ${term.name}`}
+          aria-label={fillWords(w.changeForm, { name: term.name })}
         >
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex min-w-36 flex-1 flex-col gap-1">
               <label htmlFor={`${id}-name`} className="text-xs font-medium">
-                Name
+                {w.name}
               </label>
               <input
                 id={`${id}-name`}
@@ -431,7 +428,7 @@ function TermRow({
             </div>
             <div className="flex min-w-36 flex-1 flex-col gap-1">
               <label htmlFor={`${id}-slug`} className="text-xs font-medium">
-                Address
+                {w.address}
               </label>
               <input
                 id={`${id}-slug`}
@@ -445,7 +442,7 @@ function TermRow({
             {term.kind === "category" && (
               <div className="flex flex-col gap-1">
                 <label htmlFor={`${id}-parent`} className="text-xs font-medium">
-                  Inside
+                  {w.inside}
                 </label>
                 <ParentSelect
                   id={`${id}-parent`}
@@ -463,10 +460,10 @@ function TermRow({
           {seo && (
             <TermSeoFields setup={seo} name={draft.name || term.name} kind={term.kind} slug={draft.slug || term.slug} value={draft.seo} onChange={(next) => setDraft({ ...draft, seo: next })} />
           )}
-          {seo && <p className="text-xs text-muted">If you change the address, the old address redirects to the new one.</p>}
+          {seo && <p className="text-xs text-muted">{w.redirectNote}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={`${button} bg-brand font-medium text-brand-ink`}>
-              Save
+              {w.save}
             </button>
             <button
               type="button"
@@ -477,7 +474,7 @@ function TermRow({
               }}
               className={button}
             >
-              Cancel
+              {w.cancel}
             </button>
           </div>
         </form>
@@ -487,14 +484,14 @@ function TermRow({
             <span className="text-sm font-medium">{term.name}</span>
             <span className="font-mono text-xs text-muted">{term.slug}</span>
             {seo && (
-              <span className="text-xs text-muted">{seoLanguages.length > 0 ? `Search results text in ${seoLanguages.join(", ")}` : "No text of its own in search results"}</span>
+              <span className="text-xs text-muted">{seoLanguages.length > 0 ? fillWords(w.seoIn, { languages: seoLanguages.join(", ") }) : w.seoNone}</span>
             )}
             {unitPrice && marked && (
               <span className="text-xs text-muted">
-                Needs a price per kg or litre. {categoryGapWords(unitPrice.gaps[term.id] ?? 0)}{" "}
-                {(unitPrice.gaps[term.id] ?? 0) > 0 && (
+                {w.needsUnit} {gaps === 0 ? w.gapNone : countWords(gaps, w.gaps)}{" "}
+                {gaps > 0 && (
                   <Link href={unitPrice.needsHref} className="underline">
-                    Show them
+                    {w.showThem}
                   </Link>
                 )}
               </span>
@@ -502,10 +499,9 @@ function TermRow({
           </span>
           {confirming ? (
             <span className="flex items-center gap-2 text-sm">
-              Delete {term.name}
-              {term.kind === "category" ? " (its subcategories move up)" : ""}?
+              {fillWords(w.deleteQuestion, { name: term.name, sub: term.kind === "category" ? w.deleteSub : "" })}
               <button type="button" onClick={() => setConfirming(false)} className={button}>
-                Keep
+                {w.keep}
               </button>
               <button
                 type="button"
@@ -513,17 +509,17 @@ function TermRow({
                 onClick={() => run(() => actions.remove(term.id), () => setConfirming(false))}
                 className={`${button} border-danger-text bg-danger-soft font-medium text-danger-text`}
               >
-                Delete
+                {w.delete}
               </button>
             </span>
           ) : (
             <span className="flex gap-2">
               {fields && <TermFieldsButton term={term} setup={fields} />}
-              <button type="button" onClick={() => setEditing(true)} className={button} aria-label={`Change ${one} ${term.name}`}>
-                Change
+              <button type="button" onClick={() => setEditing(true)} className={button} aria-label={fillWords(w.changeAria[term.kind], { name: term.name })}>
+                {w.change}
               </button>
-              <button type="button" onClick={() => setConfirming(true)} className={button} aria-label={`Delete ${one} ${term.name}`}>
-                Delete
+              <button type="button" onClick={() => setConfirming(true)} className={button} aria-label={fillWords(w.deleteAria[term.kind], { name: term.name })}>
+                {w.delete}
               </button>
             </span>
           )}

@@ -4,18 +4,21 @@ import { useId, useState } from "react";
 
 import type { StoreAudience } from "@/lib/b2b";
 import type { MeasureInput, VariantInput } from "@/lib/product-input";
+import { fillWords } from "@/lib/admin-fill";
 import { isUnit, packTotal, PACK_COUNT_MAX, basesFor } from "@/lib/unit-price";
-import { smallBaseNote } from "@/lib/unit-price-rules";
 import {
-  CONTENT_UNITS,
   baseAfterUnitChange,
   compareChoices,
   contentPreviews,
+  contentUnits,
   emptyContent,
   needWords,
+  smallBaseWords,
   type ContentPreview,
   type ContentState,
 } from "@/lib/unit-price-editor";
+
+import { useAdminText } from "./admin-text";
 
 /**
  * The unit price in the product editor (D160, `docs/wave-1d-unit-price.md` 2.2): a variant's content (the pack's total, its
@@ -62,6 +65,8 @@ export function ContentFields({
   context: ContentContext;
   onChange: (measure: MeasureInput | null) => void;
 }) {
+  const words = useAdminText("product").unitPrice;
+  const w = words.fields;
   const id = useId();
   const content = variant.measure;
   const shown = content ?? emptyContent();
@@ -73,7 +78,7 @@ export function ContentFields({
     onChange(next.amount.trim() === "" && next.unit === "g" && next.base === null ? null : next);
   };
   const marketCountries = context.markets.map((m) => m.code);
-  const choices = compareChoices(shown.unit, marketCountries, shown.base);
+  const choices = compareChoices(shown.unit, marketCountries, shown.base, words.editor);
   const previews = contentPreviews({
     content,
     prices: variant.prices,
@@ -81,35 +86,36 @@ export function ContentFields({
     audience: context.audience,
     vatCategory: context.vatCategory,
     locale: context.locale,
+    words: words.editor,
   });
 
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3 sm:col-span-3 lg:col-span-5">
-      <legend className="px-1 text-xs font-medium">Content, for the price per kg or litre</legend>
+      <legend className="px-1 text-xs font-medium">{w.legend}</legend>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Total content of {name}
+          {fillWords(w.total, { name })}
           <input
             inputMode="decimal"
             value={shown.amount}
             onChange={(e) => set({ amount: e.target.value })}
-            placeholder="For example 250 or 0,75"
+            placeholder={w.totalPlaceholder}
             aria-describedby={`${id}-preview`}
             className={field}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Unit
+          {w.unit}
           <select
             value={shown.unit}
             onChange={(e) => {
               const unit = e.target.value;
               if (isUnit(unit)) set({ unit, base: baseAfterUnitChange(unit, shown.base) });
             }}
-            aria-label={`Unit of the content of ${name}`}
+            aria-label={fillWords(w.unitOf, { name })}
             className={field}
           >
-            {CONTENT_UNITS.map((u) => (
+            {contentUnits(words.editor).map((u) => (
               <option key={u.value} value={u.value}>
                 {u.label}
               </option>
@@ -117,11 +123,11 @@ export function ContentFields({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Compare per
+          {w.comparePer}
           <select
             value={shown.base ?? ""}
             onChange={(e) => set({ base: (e.target.value || null) as MeasureInput["base"] })}
-            aria-label={`What the price of ${name} is compared per`}
+            aria-label={fillWords(w.comparedPer, { name })}
             className={field}
           >
             {choices.map((c) => (
@@ -132,10 +138,10 @@ export function ContentFields({
           </select>
         </label>
       </div>
-      {basesFor(shown.unit).length > 1 && <p className="text-xs text-muted">{smallBaseNote(marketCountries)}</p>}
+      {basesFor(shown.unit).length > 1 && <p className="text-xs text-muted">{smallBaseWords(marketCountries, words.editor)}</p>}
       <div className="flex flex-wrap items-end gap-2 text-xs">
         <label className="flex flex-col gap-1 font-medium">
-          Pack of
+          {w.packOf}
           <input
             inputMode="numeric"
             value={pack}
@@ -143,7 +149,7 @@ export function ContentFields({
               setPack(e.target.value);
               setPackProblem(null);
             }}
-            aria-label={`Number of items in the pack of ${name}`}
+            aria-label={fillWords(w.packCount, { name })}
             className={`${fieldBase} w-20`}
           />
         </label>
@@ -152,7 +158,7 @@ export function ContentFields({
           onClick={() => {
             const total = packTotal(pack, shown.amount);
             if (total === null) {
-              setPackProblem(`Type the content of one item above and a whole number of items from 1 to ${PACK_COUNT_MAX}.`);
+              setPackProblem(fillWords(w.packProblem, { max: PACK_COUNT_MAX }));
               return;
             }
             setPackProblem(null);
@@ -161,9 +167,9 @@ export function ContentFields({
           }}
           className="min-h-9 rounded-md border border-line px-3"
         >
-          Multiply the content
+          {w.multiply}
         </button>
-        <span className="text-muted">For several items in one pack: the content is the pack&apos;s total (6 × 33 cl is 198 cl).</span>
+        <span className="text-muted">{w.packHint}</span>
       </div>
       {packProblem && (
         <p role="alert" className="text-xs text-danger-text">
@@ -174,7 +180,7 @@ export function ContentFields({
         <ContentPreviewList previews={previews} id={`${id}-preview`} />
       ) : (
         <p id={`${id}-preview`} className="text-xs text-muted">
-          No content: shoppers see no price per kg or litre for this variant.
+          {w.noContent}
         </p>
       )}
     </fieldset>
@@ -188,17 +194,18 @@ export function ContentFields({
  * need once it is published.
  */
 export function SoldByMeasureField({ checked, onChange, state }: { checked: boolean; onChange: (checked: boolean) => void; state: ContentState }) {
+  const words = useAdminText("product").unitPrice;
+  const w = words.fields;
   const id = useId();
-  const why = needWords(state.need);
+  const why = needWords(state.need, words.editor);
   return (
     <div className="flex flex-col gap-2 text-sm">
       <label className="flex items-start gap-2">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-describedby={`${id}-note`} className="mt-0.5 size-4" />
         <span>
-          <span className="block font-medium">Sold by measure: every variant needs its content</span>
+          <span className="block font-medium">{w.soldByMeasure}</span>
           <span id={`${id}-note`} className="text-muted">
-            Shoppers see the price per kg, litre or metre beside the price. A product sold by measure cannot be put on sale while a
-            shipped variant has no content.
+            {w.soldByMeasureNote}
           </span>
         </span>
       </label>
@@ -206,13 +213,13 @@ export function SoldByMeasureField({ checked, onChange, state }: { checked: bool
       {state.nudge && <p className="text-muted">{state.nudge}</p>}
       {state.problems.length > 0 && (
         <div role="alert" className="text-danger-text">
-          <p className="font-medium">This product cannot be saved yet:</p>
+          <p className="font-medium">{w.cannotSave}</p>
           <ProblemList problems={state.problems} />
         </div>
       )}
       {state.pending.length > 0 && (
         <div role="status" className="text-muted">
-          <p className="font-medium">Before you publish this product:</p>
+          <p className="font-medium">{w.beforePublish}</p>
           <ProblemList problems={state.pending} />
         </div>
       )}

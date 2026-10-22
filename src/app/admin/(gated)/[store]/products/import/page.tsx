@@ -3,13 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ImportUpload } from "@/components/admin/data/import-flow";
 import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
-import { COMPARE_AT_NOTE, KIND_TITLES, momentText } from "@/lib/data-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { momentText } from "@/lib/data-admin";
 import { IMPORT_FILE_KEEP_DAYS, IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "@/lib/data-limits";
-import { ACTIVE_IMPORT_STATUSES, STATUS_WORDS } from "@/lib/data-job";
+import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -29,14 +33,10 @@ export default async function ProductImportPage({ params }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const w = adminText(adminLangOf(gated.account.adminLocale), "products").importPage;
   return (
     <div className="flex flex-col gap-6">
-      <DataPageHead
-        backHref={`/admin/${store.slug}/products`}
-        backLabel="Products"
-        title="Import products"
-        intro="Bring products in from a CSV file: the file Kaizena Flow exports, or a Shopify product file. You see what the import would do, row by row, before anything is changed. An import never deletes a product and never changes an address."
-      />
+      <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={w.intro} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -51,32 +51,36 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const jobs = await listJobs(member, "product_import", 10);
   const open = jobs.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const base = `/admin/${store.slug}/products/import`;
+  const lang = adminLangOf(member.account.adminLocale);
+  const all = adminText(lang, "products");
+  const w = all.importPage;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["products"])}>
       {open ? (
-        <Notice title="An import is already open">
+        <Notice title={w.alreadyOpen}>
           <p>
-            {open.inputName ?? "A file"} ({STATUS_WORDS[open.status].toLowerCase()}). Only one import is open at a time.{" "}
+            {fillWords(w.openLine, { name: open.inputName ?? w.aFile, status: all.jobStatus[open.status].toLowerCase() })}{" "}
             <Link href={`${base}/${open.id}`} className="underline underline-offset-2">
-              Continue it
+              {w.continueIt}
             </Link>{" "}
-            or cancel it there to start another.
+            {w.orCancel}
           </p>
         </Notice>
       ) : (
         <ImportUpload slug={store.slug} start={startUploadAction.bind(null, store.slug)} register={registerUploadAction.bind(null, store.slug)} />
       )}
-      <Notice title="What an import does and does not do">
+      <Notice title={w.what}>
         <ul className="list-disc pl-5">
-          <li>A product is found by its handle and a variant by its SKU. A SKU that belongs to another product is an error, never a move.</li>
-          <li>A column in the file with an empty cell clears that value. A column that is not in the file is left alone.</li>
-          <li>Prices are read in each country&apos;s own currency and never converted. A price that is the same as today&apos;s is not written.</li>
-          <li>{COMPARE_AT_NOTE}</li>
-          <li>Pictures at other websites are fetched and kept in your media library. At most {IMPORT_MAX_PRODUCTS.toLocaleString("en-GB")} products and {IMPORT_MAX_ROWS.toLocaleString("en-GB")} rows in one file.</li>
+          <li>{w.byHandle}</li>
+          <li>{w.emptyCell}</li>
+          <li>{w.prices}</li>
+          <li>{all.importNotes.compareAt}</li>
+          <li>{fillWords(w.pictures, { products: IMPORT_MAX_PRODUCTS.toLocaleString(locale), rows: IMPORT_MAX_ROWS.toLocaleString(locale) })}</li>
           <li>
-            Subscriptions, download files, booking settings and custom fields that are not plain values are neither read nor changed. Start from an export to see the layout:{" "}
+            {w.notRead}{" "}
             <Link href={`/admin/${store.slug}/products/export`} className="underline underline-offset-2">
-              Export products
+              {w.exportLink}
             </Link>
             .
           </li>
@@ -85,36 +89,36 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       {jobs.length > 0 && (
         <section aria-labelledby="recent-imports" className="flex flex-col gap-2">
           <h2 id="recent-imports" className="text-title text-ink">
-            Recent imports
+            {w.recent}
           </h2>
           <div className={tableShell}>
             <table className="w-full text-sm">
-              <caption className="sr-only">Recent product imports of this store</caption>
+              <caption className="sr-only">{w.recentCaption}</caption>
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className={th}>
-                    File
+                    {w.file}
                   </th>
                   <th scope="col" className={th}>
-                    Started
+                    {w.started}
                   </th>
                   <th scope="col" className={th}>
-                    State
+                    {w.state}
                   </th>
                   <th scope="col" className={th}>
-                    <span className="sr-only">Open</span>
+                    <span className="sr-only">{w.open}</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
                   <tr key={job.id} className="border-b border-line last:border-0">
-                    <td className={`${td} break-all`}>{job.inputName ?? KIND_TITLES.product_import}</td>
-                    <td className={td}>{momentText(job.createdAt, store.timeZone)}</td>
-                    <td className={td}>{STATUS_WORDS[job.status]}</td>
+                    <td className={`${td} break-all`}>{job.inputName ?? w.kindTitle}</td>
+                    <td className={td}>{momentText(job.createdAt, store.timeZone, locale)}</td>
+                    <td className={td}>{all.jobStatus[job.status]}</td>
                     <td className={`${td} text-right`}>
                       <Link href={`${base}/${job.id}`} className="underline underline-offset-2">
-                        Open
+                        {w.open}
                       </Link>
                     </td>
                   </tr>
@@ -124,7 +128,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>Your file is kept privately for {IMPORT_FILE_KEEP_DAYS} days after the import ends, then deleted. Pictures fetched from other websites stay in your media library.</p>
-    </>
+      <p className={`${hint} ${card} !p-3`}>{fillWords(w.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+    </AdminTextScope>
   );
 }

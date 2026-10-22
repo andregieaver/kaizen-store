@@ -1,54 +1,77 @@
 import { type AppliedCounts, wholeNumber } from "@/lib/data-admin";
+import { productsEn, type ProductsMessages } from "@/lib/admin-messages/products.en";
 
 import { card, hint } from "./ui";
 
 /** The numbers of a dry run: what an import would do. */
-export function DryRunSummary({ counts }: { counts: { toCreate: number; toUpdate: number; unchanged: number; withProblems: number } }) {
+export function DryRunSummary({
+  counts,
+  words = productsEn.summary,
+  locale = "en-GB",
+}: {
+  counts: { toCreate: number; toUpdate: number; unchanged: number; withProblems: number };
+  /** In the admin's language (D312 A5), English unless given. */
+  words?: ProductsMessages["summary"];
+  locale?: string;
+}) {
   const items: [string, number][] = [
-    ["To create", counts.toCreate],
-    ["To update", counts.toUpdate],
-    ["Unchanged", counts.unchanged],
-    ["With problems", counts.withProblems],
+    [words.toCreate, counts.toCreate],
+    [words.toUpdate, counts.toUpdate],
+    [words.unchanged, counts.unchanged],
+    [words.withProblems, counts.withProblems],
   ];
   return (
-    <section aria-label="What the check found" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">What the check found</h2>
+    <section aria-label={words.found} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{words.found}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n, locale)}</dd>
           </div>
         ))}
       </dl>
-      <p className={hint}>Nothing has changed in your store. A product with an error is skipped: nothing of it is written.</p>
+      <p className={hint}>{words.foundHint}</p>
     </section>
   );
 }
 
 /** The outcome of an applied import: products by what happened, and the prices, pictures and categories it touched. */
-export function AppliedSummary({ counts, jobId, written }: { counts: AppliedCounts; jobId: string; written: boolean }) {
+export function AppliedSummary({
+  counts,
+  jobId,
+  written,
+  words = productsEn.summary,
+  locale = "en-GB",
+}: {
+  counts: AppliedCounts;
+  jobId: string;
+  written: boolean;
+  /** In the admin's language (D312 A5), English unless given. */
+  words?: ProductsMessages["summary"];
+  locale?: string;
+}) {
   const items: [string, number][] = [
-    ["Created", counts.created],
-    ["Updated", counts.updated],
-    ["Unchanged", counts.unchanged],
-    ["Saved as drafts", counts.drafted],
-    ["Skipped", counts.skipped],
-    ["Failed", counts.failed],
+    [words.created, counts.created],
+    [words.updated, counts.updated],
+    [words.unchanged, counts.unchanged],
+    [words.drafted, counts.drafted],
+    [words.skipped, counts.skipped],
+    [words.failed, counts.failed],
   ];
   const extra: [string, number][] = [
-    ["Prices changed", counts.pricesChanged],
-    ["Pictures fetched", counts.picturesFetched],
-    ["Categories and tags made", counts.termsCreated],
+    [words.pricesChanged, counts.pricesChanged],
+    [words.picturesFetched, counts.picturesFetched],
+    [words.termsCreated, counts.termsCreated],
   ];
   return (
-    <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-title text-ink">{written ? "What was imported" : "What was imported before it stopped"}</h2>
+    <section aria-label={words.result} className={`${card} flex flex-col gap-3`}>
+      <h2 className="text-title text-ink">{written ? words.imported : words.importedBefore}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n, locale)}</dd>
           </div>
         ))}
       </dl>
@@ -56,13 +79,13 @@ export function AppliedSummary({ counts, jobId, written }: { counts: AppliedCoun
         {extra.map(([name, n], i) => (
           <span key={name}>
             {i > 0 ? ", " : ""}
-            {name.toLowerCase().replace(/^./, (c) => c.toUpperCase())}: {wholeNumber(n)}
+            {name.toLowerCase().replace(/^./, (c) => c.toUpperCase())}: {wholeNumber(n, locale)}
           </span>
         ))}
         .
       </p>
       <p className={hint}>
-        Reference for the activity log: <code>{jobId}</code>. A price that changed is in the product&apos;s price history.
+        {words.reference} <code>{jobId}</code>. {words.priceHistory}
       </p>
     </section>
   );

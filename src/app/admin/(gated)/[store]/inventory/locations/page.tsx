@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { LocationsView } from "@/components/admin/inventory/locations-view";
 import { db } from "@/db/client";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { locationImpact } from "@/server/inventory";
 import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -27,14 +30,11 @@ export default async function LocationsPage({ params }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "inventory").pages.locations;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead
-        slug={store.slug}
-        active="locations"
-        title="Stock locations"
-        intro="The places your stock is held. Each variant has its own stock at each location, and the shop sells the sum of the active ones. The order below is the order orders are taken in."
-      />
+      <InventoryHead slug={store.slug} active="locations" title={w.title} intro={w.intro} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -50,6 +50,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   // What each active location's deactivation would take off sale, read now for the owner's dialog (the server reads it again when confirmed).
   const impacts = isOwner ? await Promise.all(locations.map((l) => (l.active ? locationImpact(db(), store.id, l.id) : Promise.resolve(null)))) : locations.map(() => null);
   return (
+    <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["inventory"])}>
     <LocationsView
       rows={locations.map((l, i) => ({ id: l.id, name: l.name, country: l.country, active: l.active, priority: l.priority, units: l.units, variants: l.variants, impact: impacts[i] }))}
       countries={countries.map((c) => ({ code: c.code, name: c.name }))}
@@ -62,5 +63,6 @@ async function Body({ storeSlug }: { storeSlug: string }) {
         reactivate: reactivateLocationAction.bind(null, store.slug),
       }}
     />
+    </AdminTextScope>
   );
 }

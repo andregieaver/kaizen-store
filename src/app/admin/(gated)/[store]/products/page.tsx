@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ProductsTable, type BulkTools } from "@/components/admin/products-bulk";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -25,36 +29,37 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
+  const w = adminText(adminLangOf(member.account.adminLocale), "products").list;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title="Products" />
+        <PageHeader title={w.title} />
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/${store.slug}/products/export`}
             className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
           >
-            Export
+            {w.exportLink}
           </Link>
           {canWrite && (
             <Link
               href={`/admin/${store.slug}/products/import`}
               className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
             >
-              Import
+              {w.importLink}
             </Link>
           )}
           <Link
             href={`/admin/${store.slug}/products/categories`}
             className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
           >
-            Categories and tags
+            {w.categories}
           </Link>
           <Link
             href={`/admin/${store.slug}/products/new`}
             className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
-            Add product
+            {w.add}
           </Link>
         </div>
       </div>
@@ -75,6 +80,8 @@ async function ProductList({
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "products").list;
   const query = await searchParams;
   const archived = query.show === "archived";
   const needsFilter = !archived && query.needs === "unit-price";
@@ -102,32 +109,33 @@ async function ProductList({
   const base = `/admin/${store.slug}/products`;
   const needsHref = `${base}?needs=unit-price`;
 
+  const market = store.markets[0];
   return (
-    <>
+    <AdminTextScope texts={adminTexts(lang, ["products"])}>
       {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
       {openImport && (
         <p className="rounded-panel bg-sunken p-3 text-sm">
-          A product import is open ({openImport.inputName ?? "a file"}).{" "}
+          {fillWords(w.openImport, { name: openImport.inputName ?? w.aFile })}{" "}
           <Link href={`${base}/import/${openImport.id}`} className="underline underline-offset-2">
-            Continue it
+            {w.continueIt}
           </Link>
           .
         </p>
       )}
-      <nav aria-label="Product filters" className="flex gap-2 text-sm">
+      <nav aria-label={w.filters} className="flex gap-2 text-sm">
         <Link
           href={base}
           aria-current={archived || needsFilter ? undefined : "page"}
           className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
-          Current
+          {w.current}
         </Link>
         <Link
           href={`${base}?show=archived`}
           aria-current={archived ? "page" : undefined}
           className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
-          Archived
+          {w.archived}
         </Link>
         {(needing.length > 0 || needsFilter) && (
           <Link
@@ -135,7 +143,7 @@ async function ProductList({
             aria-current={needsFilter ? "page" : undefined}
             className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
           >
-            Needs content
+            {w.needsContent}
           </Link>
         )}
       </nav>
@@ -143,10 +151,10 @@ async function ProductList({
         <NeedsContentList products={needing} base={base} />
       ) : products.length === 0 ? (
         <div className={`p-8 text-center ${CARD_CLASS}`}>
-          <p className="mb-3">{archived ? "No archived products." : "No products yet."}</p>
+          <p className="mb-3">{archived ? w.noArchived : w.none}</p>
           {!archived && (
             <Link href={`${base}/new`} className="underline">
-              Add your first product
+              {w.addFirst}
             </Link>
           )}
         </div>
@@ -156,10 +164,10 @@ async function ProductList({
           archived={archived}
           locale={locale}
           bulk={bulk}
-          priceHeader={`Price${store.markets[0] ? ` (${store.markets[0].name}${store.audience === "businesses" ? ", excl. VAT" : ""})` : ""}`}
+          priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
           rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
         />
       )}
-    </>
+    </AdminTextScope>
   );
 }
