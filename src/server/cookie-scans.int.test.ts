@@ -103,7 +103,8 @@ describe("cookie scans (D58)", () => {
       expect(kaizen?.within("/s/demo/no")).toBe(false);
       expect(kaizen?.consent?.name).toBe("consent_kaizen");
       expect(decodeConsent(kaizen?.consent?.value)).toMatchObject({
-        version: "marketing",
+        // Preferences too: in more than one language (D312), the language bar remembers its closing as one.
+        version: "preferences+marketing",
         choices: { preferences: true, statistics: true, marketing: true },
       });
     } finally {
