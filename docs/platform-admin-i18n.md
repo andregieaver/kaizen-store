@@ -167,6 +167,16 @@ paraphrase of the English page.
   year is listed for checking.
 - The lawyer's review (decision 5) still decides; Lovdata's wording is what the page starts from, not a replacement for it.
 
+**As built in P0 (2026-10-22).** `src/lib/legal-wording-nb.ts` holds 23 passages (angrerettloven §§ 8, 20, 21, 24; forbrukerkjøpsloven
+§§ 26, 27; ekomloven § 3-15; ehandelsloven § 8; forskrift om opplysningsplikt og angrerett mv. §§ 1–2; the titles of personvernforordningen
+art. 13–18, 20, 21), all `proofread: false`: Lovdata refuses plain downloads, so they were read in short pieces and joined, and a person
+compares each with Lovdata before a page uses it. Two reads came back garbled and are left out (the lead-in of angrerettloven § 21's
+letters; a stray sentence in forbrukerkjøpsloven § 26). Its test checks the record, lists passages older than a year
+(`staleWording()`), refuses the repealed ekomloven § 2-7b and holds any prescribed passage a Norwegian legal text cites to its words.
+Open: the standard withdrawal form is not on Lovdata (the regulation points to the directive's Annex I B, and Forbrukertilsynet names
+the state form Q-0319B), so its source is the owner's choice; LOV-2026-06-19-34 (a withdrawal function, § 20 a) and inkassoloven 2026
+are passed but not in force, to read again when they are.
+
 ### 5.3 The glossary
 
 `docs/i18n/glossary-nb.md` (for people) and `src/lib/i18n-glossary.ts` (for the tests): each English term, its Norwegian term, a short
