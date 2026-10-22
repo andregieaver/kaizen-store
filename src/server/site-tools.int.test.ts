@@ -350,13 +350,14 @@ describe("Kaizena Flow's own site", () => {
     const email = `site-admin-${Date.now().toString(36)}@example.com`;
     const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${email}, 'Admin', true) returning id`);
     admin = { id: String(row.id), email, name: "Admin", platformAdmin: true };
-    [before] = await db().execute<Row>(sql`select navigation, header_menu_id, footer_menu_id from commerce.platform_settings`);
+    [before] = await db().execute<Row>(sql`select navigation, business, header_menu_id, footer_menu_id from commerce.platform_settings`);
   });
 
   afterAll(async () => {
     // Kaizena Flow's header and footer are the whole test database's: they are put back as they were.
     await db().execute(sql`
       update commerce.platform_settings set navigation = ${JSON.stringify(before.navigation ?? null)}::jsonb,
+        business = ${JSON.stringify(before.business ?? {})}::jsonb,
         header_menu_id = ${before.header_menu_id ? String(before.header_menu_id) : null}::uuid, footer_menu_id = ${before.footer_menu_id ? String(before.footer_menu_id) : null}::uuid
     `);
   });

@@ -8,7 +8,7 @@ import { planSection, type PagePlan, type PictureJob, type StudioMessage } from 
 import { PAGE_JOB_DAYS, PAGE_JOB_TRIES, type PageJobKind } from "@/lib/page-jobs";
 import type { PageContent, PageRow, PageType } from "@/lib/page-content";
 import { isLegalRole } from "@/lib/legal-roles";
-import { menuInput, parseNavigation, platformMenuInput, type AnyMenuEntry, type AnyMenuLink, type StoreNavigation } from "@/lib/navigation";
+import { menuInput, parseBusinessDetails, parseNavigation, platformMenuInput, type AnyMenuEntry, type AnyMenuLink, type BusinessDetails, type StoreNavigation } from "@/lib/navigation";
 import { isSpecialRole, type SpecialRole } from "@/lib/platform-roles";
 import { storeDomain } from "@/lib/paths";
 import { can, type PermissionHolder } from "@/lib/permissions";
@@ -728,8 +728,8 @@ type HeaderFooterChange = {
   words: Parameters<typeof headerFooterSummary>[0];
   /** The site shows a header or footer of its own design (D80), where the standard one's menus do not show. */
   custom: boolean;
-  /** Kaizena Flow's business details, saved back as they are with its navigation. */
-  business: unknown;
+  /** Kaizena Flow's business details, read as its Header and footer page reads them and saved back as they are. */
+  business: BusinessDetails;
 };
 
 /** A logo from the site's own media library, with the size the library knows. */
@@ -774,7 +774,7 @@ async function headerFooterChange(ctx: SiteToolContext, args: SetHeaderFooterArg
     next.logoDark = args.logo_dark === null ? null : await libraryLogo(ctx, args.logo_dark);
     words.logoDark = args.logo_dark !== null;
   }
-  return { navigation: next, headerMenuId, footerMenuId, words, custom: Boolean(row?.custom), business: row?.business ?? {} };
+  return { navigation: next, headerMenuId, footerMenuId, words, custom: Boolean(row?.custom), business: parseBusinessDetails(row?.business) };
 }
 
 /** `set_header_footer` (gated `public`): which menus the standard header and footer show and the logo, saved by Header and footer's own save. */
