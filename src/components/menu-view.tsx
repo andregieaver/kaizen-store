@@ -7,6 +7,7 @@ import { menuHoverStyle, type MenuHover } from "@/lib/menu-hover";
 import type { MegaMenu, MenuPicture } from "@/lib/navigation";
 
 import { Icon } from "./icons";
+import { MenuCloser } from "./menu-closer";
 import { MenuGlide } from "./menu-glide";
 
 /** A menu's link as the site draws it, with the links under it (D85). */
@@ -120,11 +121,11 @@ export function MenuTreeView({
     const mega = (node: MenuLinkNode, mega: MegaMenu) => {
       const columns = Math.max(1, mega.columns);
       return (
-        <li key={node.key} className={`group/menu ${item}`} data-mega-menu>
+        <li key={node.key} className={`group/menu ${item}`} data-mega-menu data-menu-item>
           {/* The link reaches down to the panel's edge, so the panel stays open on the way to it. */}
           {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-6`, true)}
           {/* In a header, globals.css lays it along the whole header's bottom edge (`data-mega-panel`). */}
-          <div data-mega-panel className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
+          <div data-mega-panel data-menu-panel className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
             <div className="border-y border-border bg-background text-foreground shadow-lg">
               <ul
                 className={`mx-auto flex max-w-[var(--content-width,64rem)] flex-wrap gap-6 px-4 py-6 ${mega.center ? "justify-center text-center" : ""}`}
@@ -153,12 +154,14 @@ export function MenuTreeView({
     };
     return boxed(
       <ul className={`flex flex-wrap items-center gap-1 ${justify}`}>
+        {/* A pressed link closes its open list or mega menu (the header stays as the next page is shown). */}
+        <MenuCloser />
         {nodes.map((node) => node.mega && node.children.length > 0 ? mega(node, node.mega) : (
-          <li key={node.key} className={`group/menu relative ${item}`}>
+          <li key={node.key} className={`group/menu relative ${item}`} data-menu-item>
             {anchor(node, `${linkClassName} gap-1`, node.children.length > 0)}
             {node.children.length > 0 && (
               // `pt-1` bridges the gap, so the list stays open on the way down to it.
-              <div className="invisible absolute top-full left-0 z-40 min-w-52 pt-1 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
+              <div data-menu-panel className="invisible absolute top-full left-0 z-40 min-w-52 pt-1 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
                 <div className="rounded-lg border border-border bg-background p-1 text-foreground shadow-lg">{dropdown(node.children)}</div>
               </div>
             )}

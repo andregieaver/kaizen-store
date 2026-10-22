@@ -434,6 +434,12 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   top: 100%;
 }
 
+/* A menu's list or mega menu closes once one of its links is pressed (`MenuCloser`), until the pointer leaves it. */
+[data-menu-shut] [data-menu-panel] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 /*
  * A carousel's row (D91, `Carousel`): tiles side by side, as many to a
  * screen as the grid's columns (and a part of the next with `--peek`),

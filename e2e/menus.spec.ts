@@ -137,6 +137,15 @@ test("a mega menu opens its links side by side across the header, in columns wit
   // Side by side, each a third of the content's width.
   expect(Math.abs((first?.y ?? 0) - (second?.y ?? 1))).toBeLessThan(200);
   expect(second!.x).toBeGreaterThan(first!.x + 200);
+
+  // Pressing one of its links closes it on the next page, though the header stays and the pointer still lies over it; it opens
+  // again once the pointer has left and comes back.
+  await main.getByRole("link", { name: "Lamper" }).click();
+  await expect(page).toHaveURL(/demo-bordlampe/);
+  await expect(kopper).toBeHidden();
+  await page.mouse.move(640, 700);
+  await main.getByRole("link", { name: "Kjøkken" }).hover();
+  await expect(kopper).toBeVisible();
 });
 
 test("in a header built in the page builder, a mega menu opens along the header's bottom edge, across the content's width (D87)", async ({ page }) => {
