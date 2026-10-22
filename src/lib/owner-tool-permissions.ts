@@ -50,6 +50,15 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_pages: "website:read",
   search_insights: "settings:read",
   setup_progress: "owner",
+  // Setting the store up (D308): what the setup wizard and the Company, Languages and Currencies pages leave to the owner is the owner's; the
+  // Countries and Shipping pages ask `settings:write`; opening the store is the wizard's, the owner's.
+  set_store_details: "owner",
+  set_countries: "settings:write",
+  set_languages: "owner",
+  set_currencies: "owner",
+  set_flat_shipping: "settings:write",
+  save_shipping_method: "settings:write",
+  open_store: "owner",
   // The store's features (D178): reading them is the owner's like the store's overview; switching is the owner's alone, as on the Features page.
   list_features: "owner",
   set_feature: "owner",

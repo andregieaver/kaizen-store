@@ -171,7 +171,18 @@ async function loadStore(slug: string): Promise<Store | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(storeTag(slug));
+  return readStore(slug);
+}
 
+/**
+ * The store as it is in the database now, past the cache: for the AI manager's setup tools (D308), which change a store and read it again in the
+ * same turn, where a refreshed tag still serves the store as it was until the refresh lands. Pages read `getStore()`.
+ */
+export async function currentStore(slug: string): Promise<Store | null> {
+  return isStoreSlug(slug) ? readStore(slug) : null;
+}
+
+async function readStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.setup_completed_at,

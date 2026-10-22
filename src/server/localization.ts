@@ -11,6 +11,7 @@ import { isCurrency } from "@/lib/money";
 import { audit, type Membership } from "./auth";
 import { listLanguages } from "./languages";
 import type { SaveResult } from "./settings";
+import type { Store } from "./stores";
 
 /**
  * A store's languages and currencies (D109), chosen independently of each
@@ -34,15 +35,11 @@ export async function fetchEcbRates(): Promise<EcbRates | null> {
 }
 
 /**
- * Saves the store's languages, main first, and each country's default
- * language. A language a country shows by default cannot be taken away, and
- * a store has one variant of a language ("en-GB" or "en-IE", not both).
+ * Why these languages cannot be saved, empty when they can: a language the platform does not offer, two variants of one language, or a country
+ * kept (offered or not, D178) whose default language would be left out. `saveLanguages()` asks it, and the AI manager's `set_languages` before a
+ * change is kept for the owner's yes (D308).
  */
-export async function saveLanguages(
-  { account, store }: Membership,
-  locales: string[],
-  marketLocales: Record<string, string>,
-): Promise<SaveResult> {
+export async function languagesProblems(store: Store, locales: readonly string[], marketLocales: Record<string, string>): Promise<string[]> {
   const problems: string[] = [];
   const unique = [...new Set(locales)];
   if (unique.length === 0) problems.push("Choose at least one language.");
@@ -59,6 +56,21 @@ export async function saveLanguages(
       problems.push(`${market.name} shows ${own} by default, so the store needs that language. Change the country's language first.`);
     }
   }
+  return problems;
+}
+
+/**
+ * Saves the store's languages, main first, and each country's default
+ * language. A language a country shows by default cannot be taken away, and
+ * a store has one variant of a language ("en-GB" or "en-IE", not both).
+ */
+export async function saveLanguages(
+  { account, store }: Membership,
+  locales: string[],
+  marketLocales: Record<string, string>,
+): Promise<SaveResult> {
+  const unique = [...new Set(locales)];
+  const problems = await languagesProblems(store, unique, marketLocales);
   if (problems.length > 0) return { ok: false, problems };
 
   await db().transaction(async (tx) => {

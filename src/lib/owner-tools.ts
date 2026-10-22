@@ -14,6 +14,14 @@ import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./fe
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
 import {
+  saveShippingMethodInput,
+  setCountriesInput,
+  setCurrenciesInput,
+  setFlatShippingInput,
+  setLanguagesInput,
+  setStoreDetailsInput,
+} from "./setup-tools";
+import {
   buildPageInput,
   editPageInput,
   getMenusInput,
@@ -353,8 +361,51 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "setup_progress",
-    "What the store has done before it can open, and what is left: details, countries, shipping, payments, products and a plan, with the page for each.",
+    "The store's setup, in the wizard's order: each step (what it sells, business details, countries, shipping, payments, products, a plan, opening) with whether it is done, its page, and either the tools that do it or, where only the owner can (the payment provider's identity and bank details, the plan, a domain's DNS records, a carrier's agreement), the one thing the owner does there. `next` is the first step left; `owner_only` is what waits on the owner. Start here when setting a store up, and tell the owner what only they can do, never try it.",
     z.object({}),
+  ),
+  // Setting the store up (D308, `docs/ai-autopilot.md` 5): at once while the store is being set up, waiting for the owner's yes once it is open.
+  tool(
+    "set_store_details",
+    "The business behind the store, as on the Company page: the store's name, the legal name, the organisation number, the contact email shoppers write to, the postal address and the country it is registered in. Only what is given changes. The store needs these to open. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    setStoreDetailsInput,
+    "public",
+  ),
+  tool(
+    "set_countries",
+    "The countries the store sells to, the whole list, as on the Countries page: each gets its own currency, language and prices. A country left out is no longer offered, its prices and settings kept. A new country needs its shipping price (set_flat_shipping) and its products' prices there. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    setCountriesInput,
+    "public",
+  ),
+  tool(
+    "set_languages",
+    "The store's languages, as on the Languages page: its main language (everything is written in it first), the others offered beside it (with Several languages on) and the language a country is shown in by default. Only what is given changes; a language a country shows by default is never taken away. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    setLanguagesInput,
+    "public",
+  ),
+  tool(
+    "set_currencies",
+    "The currencies shoppers may see prices in, as on the Currencies page (Several currencies on): add or change one with its rate per euro and rounding, take one away, or let every rate follow the ECB's. Prices stay in each country's own currency, which is never taken away. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    setCurrenciesInput,
+    "public",
+  ),
+  tool(
+    "set_flat_shipping",
+    "The flat shipping rate per country, as on the Shipping page: the price every basket can pay there (with VAT, in the country's own currency) and optionally free shipping above a basket value. Every country the store sells to needs one. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    setFlatShippingInput,
+    "public",
+  ),
+  tool(
+    "save_shipping_method",
+    "Makes or changes a shipping method of a country, as the method editor does: its name, transit days, free-above amount, whether it is offered, and its prices per zone and profile (one flat price, or tiers by weight or basket value). Shoppers choose among the methods that price their basket; the flat rate is charged when none does. Read shipping_overview first. Runs at once while the store is being set up; once it is open it needs the owner's approval.",
+    saveShippingMethodInput,
+    "public",
+  ),
+  tool(
+    "open_store",
+    "Opens the store to shoppers, as the setup wizard's last step does: its pages become public and search engines may list it. It needs the business details and a country (setup_progress says what is left), and takes no payment until payments are switched on. Needs the owner's approval.",
+    z.object({}),
+    "public",
   ),
   tool(
     "get_tax_profile",
@@ -992,6 +1043,21 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `${input.menu ? `Change the menu "${text("menu")}"` : `Make the menu "${text("name")}"`} to ${Array.isArray(input.items) ? input.items.length : 0} links.`;
     case "set_header_footer":
       return "Change the standard header and footer.";
+    // The setup tools' own words come from the store as it is (`setupApprovalWords()`); these stand when it cannot be read.
+    case "set_store_details":
+      return "Change the store's business details.";
+    case "set_countries":
+      return `Sell in ${((input.countries as string[] | undefined) ?? []).join(", ")}.`;
+    case "set_languages":
+      return "Change the store's languages.";
+    case "set_currencies":
+      return "Change the currencies shoppers see prices in.";
+    case "set_flat_shipping":
+      return "Change the flat shipping rates.";
+    case "save_shipping_method":
+      return `${input.method ? "Change" : "Make"} a shipping method in ${text("country").toUpperCase()}.`;
+    case "open_store":
+      return "Open the store to shoppers.";
     case "approve_return":
       return approveSummary(text("return"), text("instructions") || null);
     case "decline_return":

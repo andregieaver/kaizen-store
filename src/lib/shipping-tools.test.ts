@@ -39,12 +39,12 @@ describe("the shipping tools in the owner assistant's catalogue", () => {
     expect(readToolInput(OWNER_TOOLS_BY_NAME.pickup_orders, { kind: "parcel" }).ok).toBe(false);
   });
 
-  it("say what they do not do, and no tool changes shipping or hands an order over", () => {
+  it("say what they do not do, and no tool hands an order over; only the setup tools change shipping (D308), through the Shipping pages' savers", () => {
     expect(OWNER_TOOLS_BY_NAME.shipping_overview.description).toContain("never say what a particular basket pays");
     expect(OWNER_TOOLS_BY_NAME.pickup_orders.description).toContain("never a name or an address");
     expect(OWNER_TOOLS_BY_NAME.pickup_orders.description).toContain("never here");
     const names = [...OWNER_TOOLS.map((t) => t.name), ...MANAGER_TOOLS.map((t) => t.name)];
-    expect(names.filter((n) => /shipping_(method|zone|profile|rate)|set_shipping|save_shipping|pickup_option|local_area|ready_for_pickup|mark_ready|collected|out_for_delivery/.test(n))).toEqual([]);
+    expect(names.filter((n) => /shipping_(method|zone|profile|rate)|set_shipping|save_shipping|pickup_option|local_area|ready_for_pickup|mark_ready|collected|out_for_delivery/.test(n))).toEqual(["save_shipping_method"]);
   });
 
   it("teach the handover and shipping in the playbooks", () => {

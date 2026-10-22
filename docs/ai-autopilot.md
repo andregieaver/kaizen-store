@@ -192,6 +192,30 @@ What only a person can do is said, never attempted: Stripe's or Mollie's onboard
 agreement, a domain's DNS records; the tool answers with the page and the one thing to do there. Tests: a store set up by the tools reaches
 `readyToOpen` as the wizard's does.
 
+### 5.1 As built (2026-10-22)
+
+- **Where.** Arguments and the pure parts are `src/lib/setup-tools.ts` (`setStoreDetailsInput`, `setCountriesInput`, `setLanguagesInput`,
+  `setCurrenciesInput`, `setFlatShippingInput`, `saveShippingMethodInput`; `detailsOver()`, `resolveLocale()`, `languagesOver()`,
+  `currenciesOver()`, `flatRatesOver()`, `methodOver()`, `setupStatus()` and the approval words), the handlers `src/server/setup-tools.ts`.
+  Each saves only through the saver its screen calls (`saveStoreDetails()`, `setMarkets()`, `saveLanguages()`, `saveCurrencies()`,
+  `saveShippingSettings()`, `saveShippingMethod()` after `methodInput`, `completeSetup()`), and `saveLanguages()`'s checks are
+  `languagesProblems()` in `src/server/localization.ts`, asked by both.
+- **`setup_status` is `setup_progress`.** The tool that was there is the status: each step in the wizard's order with its page and either the
+  tools that do it or the one thing only the owner does there (the payment provider's identity and bank account, switching payments on, the
+  plan, bookable staff and places), `next`, and `owner_only` with a domain waiting for its DNS records and a carrier's agreement as optional.
+  The name stayed, since the store checkup and the owner's conversations name it.
+- **The gate.** While the store is being set up (`setup_completed_at` empty) its storefront is a preview nobody finds, so the six setup
+  changes run at once; once it is open they wait for a yes (`GATED_WHEN_OPEN`, `setupGateNeeded()`, read from the database each call).
+  `open_store` always waits. A change that would be refused is refused before it is kept (`preflightSetupTool()`), and the approval says
+  what it does from the store as it is (`setupApprovalWords()`).
+- **The store as it is now.** A turn may add a country and price its shipping in the next call while the cache still serves the store as it
+  was (`revalidateTag(…, "max")`), so every setup tool reads `currentStore()` (`src/server/stores.ts`: the store's reader without the cache).
+- **Permissions and features.** Details, languages, currencies and opening are the owner's, as on their pages; countries, the flat rate and
+  methods need `settings:write`. `set_currencies` stands behind Several currencies, the shipping tools behind the online shop. A store that
+  is closed or suspended is refused. Calls are audited in the Settings area.
+- **Tests.** `src/lib/setup-tools.test.ts`; `src/server/setup-tools.int.test.ts` sets a store up through the tools and holds its progress
+  equal to a store set up through the wizard's savers, opens it on a yes and shows that every change then waits.
+
 ## 6. Unit A4 (D308): design tools
 
 `list_themes` (published themes and presets, with prices, `listOfferedDesigns()` and `themeCharge()`), `add_theme` (`installDesignPreset()`,

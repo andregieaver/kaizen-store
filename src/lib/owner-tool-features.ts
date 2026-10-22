@@ -14,6 +14,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   subscription_boxes: "boxes",
   list_bookings: BOOKED,
   cancel_booking: BOOKED,
+  // Several currencies (D178): the Currencies page is hidden while it is off.
+  set_currencies: "currencies",
   get_bonus_program: "bonus",
   set_bonus_program: "bonus",
   adjust_customer_credits: "bonus",
@@ -27,6 +29,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   get_order: "shop",
   pick_list: "shop",
   shipping_overview: "shop",
+  set_flat_shipping: "shop",
+  save_shipping_method: "shop",
   pickup_orders: "shop",
   notification_settings: "shop",
   order_rules: "shop",

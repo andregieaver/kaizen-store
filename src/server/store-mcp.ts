@@ -9,6 +9,7 @@ import { publicEnv } from "@/lib/env";
 import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
 import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type OwnerTool } from "@/lib/owner-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
+import { GATED_WHEN_OPEN } from "@/lib/setup-tools";
 import { siteUrl } from "@/lib/site";
 
 import { holderOf, type Account, type Membership } from "./auth";
@@ -99,7 +100,9 @@ function withStore(tool: OwnerTool): McpToolInfo {
     ? ""
     : GATED_WHEN_LIVE.has(tool.name)
       ? " On a product that is on the site it is not done from here: it is kept for the owner to approve in Kaizena Flow's admin."
-      : " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin.";
+      : GATED_WHEN_OPEN.has(tool.name)
+        ? " On a store that is open it is not done from here: it is kept for the owner to approve in Kaizena Flow's admin."
+        : " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin.";
   return { name: tool.name, description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required } };
 }
 

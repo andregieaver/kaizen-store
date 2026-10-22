@@ -40,6 +40,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/platform.ts": "real",
   "src/server/referrals.ts": "real",
   "src/server/seo.ts": "real",
+  "src/server/setup-tools.ts": "real",
   "src/server/store-closure.ts": "template",
   "src/server/store-copy.ts": "real",
   "src/server/stores.ts": "both",

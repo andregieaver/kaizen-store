@@ -65,6 +65,18 @@ import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
+import {
+  openStoreTool,
+  preflightSetupTool,
+  saveShippingMethodTool,
+  setCountriesTool,
+  setCurrenciesTool,
+  setFlatShippingTool,
+  setLanguagesTool,
+  setStoreDetailsTool,
+  setupGateNeeded,
+  setupProgressTool,
+} from "./setup-tools";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
@@ -130,7 +142,6 @@ import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";
-import { stepApplies } from "@/lib/setup-steps";
 import { listFeaturesTool, preflightFeatureTool, setFeatureTool } from "./feature-tools";
 import {
   createProductTool,
@@ -142,6 +153,7 @@ import {
   writeProductTextsTool,
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
+import { SETUP_TOOLS } from "@/lib/setup-tools";
 import {
   buildPageTool,
   editPageTool,
@@ -803,34 +815,6 @@ type Handler = (ctx: OwnerToolContext, input: never) => Promise<unknown>;
 // The AI manager's store tools (D103) -----------------------------------------------
 
 const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
-
-async function setupProgressTool({ store }: OwnerToolContext) {
-  const p = await getSetupProgress(store);
-  const step = (done: boolean, what: string, page: string) => ({ what, done, page: adminLink(store, page) });
-  // The steps follow the store's features (D178 step 6): a website has no shipping, payments or products to set up.
-  const selling = featureOn(store, "shop");
-  return {
-    ready_to_open: p.readyToOpen,
-    status: store.status,
-    website: !selling,
-    steps: [
-      ...(store.setupCompletedAt ? [] : [step(p.features, "What the store will sell (the setup's first question)", "/setup/features")]),
-      step(p.details, "Business details", "/settings/company"),
-      step(p.countries, selling ? "Countries to sell to" : "The website's country", "/setup/countries"),
-      ...(stepApplies("bookings", store) ? [step(p.bookings, "Staff, rooms or items to book", "/setup/bookings")] : []),
-      ...(selling
-        ? [
-            step(p.shipping, "Shipping price for every country", "/settings/shipping"),
-            step(p.payments, "Stripe account set up", "/settings/payments"),
-            step(p.paymentsOn, "Payments switched on", "/settings/payments"),
-            step(p.products, "Own products (not only the demo ones)", "/products"),
-          ]
-        : []),
-      step(p.plan, "A Kaizena Flow plan", "/billing"),
-    ],
-    ...(selling && { products: { own: p.counts.ownProducts, demo: p.counts.demoProducts } }),
-  };
-}
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
@@ -1931,6 +1915,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (name === "save_menu") return preflightSaveMenu(ctx, input.input as OwnerToolInput<"save_menu">);
     return preflightHeaderFooter(ctx, input.input as OwnerToolInput<"set_header_footer">);
   }
+  // A setup change the screen would refuse (or one on a store that is not active) is refused now, never kept for a yes (D308).
+  if (SETUP_TOOLS.has(name)) {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSetupTool(ctx, name, input.input);
+  }
   // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
   if (name === "set_feature") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2041,7 +2031,14 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_product_status: setProductStatusTool,
   write_product_texts: writeProductTextsTool,
   unpublish_page: unpublishPageTool,
-  setup_progress: setupProgressTool,
+  setup_progress: (ctx: OwnerToolContext) => setupProgressTool(ctx),
+  set_store_details: (ctx: OwnerToolContext, input: OwnerToolInput<"set_store_details">) => setStoreDetailsTool(ctx, input),
+  set_countries: (ctx: OwnerToolContext, input: OwnerToolInput<"set_countries">) => setCountriesTool(ctx, input),
+  set_languages: (ctx: OwnerToolContext, input: OwnerToolInput<"set_languages">) => setLanguagesTool(ctx, input),
+  set_currencies: (ctx: OwnerToolContext, input: OwnerToolInput<"set_currencies">) => setCurrenciesTool(ctx, input),
+  set_flat_shipping: (ctx: OwnerToolContext, input: OwnerToolInput<"set_flat_shipping">) => setFlatShippingTool(ctx, input),
+  save_shipping_method: (ctx: OwnerToolContext, input: OwnerToolInput<"save_shipping_method">) => saveShippingMethodTool(ctx, input),
+  open_store: (ctx: OwnerToolContext) => openStoreTool(ctx),
   list_features: listFeaturesTool,
   set_feature: setFeatureTool,
   store_checkup: storeCheckup,
@@ -2120,8 +2117,14 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
   const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);
   if (tool.gate || AUDITED_UNGATED.has(name)) {
-    // The catalogue tools' entries are the Products area's and the page tools' the Website's (D308), so a member who may read those sees them in the activity log.
-    const area = PRODUCT_TOOLS.has(name) ? { area: "products" as const } : PAGE_TOOLS.has(name) ? { area: "website" as const } : {};
+    // The catalogue tools' entries are the Products area's, the page tools' the Website's and the setup tools' the Settings' (D308), so a member who may read those sees them in the activity log.
+    const area = PRODUCT_TOOLS.has(name)
+      ? { area: "products" as const }
+      : PAGE_TOOLS.has(name)
+        ? { area: "website" as const }
+        : SETUP_TOOLS.has(name)
+          ? { area: "settings" as const }
+          : {};
     await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> }, area);
   }
   return result;
@@ -2140,8 +2143,9 @@ export async function gateNeeded(store: Store, name: string, raw: unknown): Prom
   const tool = OWNER_TOOLS_BY_NAME[name];
   if (!tool?.gate) return false;
   const args = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
-  // A menu waits for a yes only while it is on the site (D308).
+  // A menu waits for a yes only while it is on the site, a setup change only once the store is open (D308).
   if (name === "save_menu") return menuGateNeeded({ store }, args);
+  if (SETUP_TOOLS.has(name)) return setupGateNeeded(store, name);
   if (!GATED_WHEN_LIVE.has(name)) return true;
   return productGateNeeded(store, args);
 }

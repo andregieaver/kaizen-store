@@ -20,6 +20,8 @@ import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
+import { setupApprovalWords } from "./setup-tools";
+import { SETUP_TOOLS } from "@/lib/setup-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
 import { effectiveFeatures } from "@/lib/store-features";
@@ -614,6 +616,8 @@ export async function keepForApproval(
   if (tool === "set_page_place") summary = (await placeApprovalWords(site, args)) ?? summary;
   if (tool === "save_menu") summary = (await menuApprovalWords(site, args)) ?? summary;
   if (tool === "set_header_footer") summary = (await headerFooterApprovalWords(site, args)) ?? summary;
+  // A setup change is described from the store as it is: its details, countries, languages, currencies and shipping (D308).
+  if (store && SETUP_TOOLS.has(tool)) summary = (await setupApprovalWords({ account: ctx.account, store, invalidate: ctx.invalidate }, tool, args)) ?? summary;
   if (store && tool === "unpublish_page") {
     const [page] = await db().execute<Row>(sql`
       select published ->> 'title' as title from commerce.pages where store_id = ${store.id}::uuid and id = ${String(args.page)}::uuid

@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish or spend are only kept for the owner's yes. Since D308 it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, through the product editor's own save) and the website (A2: build_page from a brief by the page studio after the answer with its pictures one by one, edit_page, publish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves); drafts and new menus are changed at once, what shoppers see waits for a yes. Still missing: setup and design tools (units A3, A4), and a turn otherwise runs inside one request: no goals, plan or notification when work is done (unit B).",
+    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish or spend are only kept for the owner's yes. Since D308 it makes and changes products (A1: create_product, update_product, set_prices, set_product_status, write_product_texts, through the product editor's own save) and the website (A2: build_page from a brief by the page studio after the answer with its pictures one by one, edit_page, publish_page, set_page_place, save_menu, set_header_footer, for a store and for Kaizena Flow's own site, through the builder's and the menu editor's own saves) and the setup (A3: set_store_details, set_countries, set_languages, set_currencies, set_flat_shipping, save_shipping_method, open_store, through the wizard's and Settings pages' own saves, with setup_progress saying what only the owner can do); drafts, new menus and a store not yet open are changed at once, what shoppers see waits for a yes. Still missing: design tools (unit A4), and a turn otherwise runs inside one request: no goals, plan or notification when work is done (unit B).",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -40,7 +40,9 @@
         "src/lib/product-tools.ts",
         "src/server/product-tools.ts",
         "src/lib/site-tools.ts",
-        "src/server/site-tools.ts"
+        "src/server/site-tools.ts",
+        "src/lib/setup-tools.ts",
+        "src/server/setup-tools.ts"
       ],
       "tests": [
         "src/server/owner-assistant.int.test.ts",
@@ -52,7 +54,9 @@
         "src/lib/product-tools.test.ts",
         "src/server/product-tools.int.test.ts",
         "src/lib/site-tools.test.ts",
-        "src/server/site-tools.int.test.ts"
+        "src/server/site-tools.int.test.ts",
+        "src/lib/setup-tools.test.ts",
+        "src/server/setup-tools.int.test.ts"
       ],
       "untested": false
     },
