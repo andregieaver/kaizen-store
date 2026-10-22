@@ -11,6 +11,7 @@ const CHANGING = new Set([
   "set_bonus_program", "adjust_customer_credits", "set_affiliate_program", "block_affiliate", "create_field_group", "set_fields", "email_customer",
   "resend_order_email", "set_stock", "set_backorder", "post_to_slack", "draft_experiment", "start_experiment", "stop_experiment", "apply_winner", "unpublish_page", "add_redirect",
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_feature",
+  "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts",
 ]);
 
 const owner: PermissionHolder = { role: "owner" };

@@ -12,6 +12,7 @@ import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASON
 import { backorderSummary, setStockSummary } from "./stock-tools";
 import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
+import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -166,8 +167,36 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "get_product",
-    "One product: its texts in the main language, status, and each variant's SKU, price per country and stock. A variant with its content set (a pack's weight, volume or length) also gives that content and the price per kg, litre or metre in each country, as the store shows it.",
+    "One product: its texts in the main language and which other languages have words, status, options, categories, tags, pictures, and each variant's SKU, price per country and stock. A variant with its content set (a pack's weight, volume or length) also gives that content and the price per kg, litre or metre in each country, as the store shows it.",
     z.object({ product: productRef }),
+  ),
+  tool(
+    "create_product",
+    "Makes a new product as a DRAFT, as the product editor makes one: physical goods shipped to the customer (an appointment, a stay, a rental, a download or a gift card is made in the editor). Give its title, and as much as is known: description and search texts, its words in the store's other languages, prices per country (store_overview lists the countries and currencies), stock, weight, options such as Size with their variants, categories and tags by name (new ones are made), pictures from the media library or described for the store's picture model to make, the VAT category and the manufacturer. A SKU is made for each variant when none is given. The answer says what is still needed before it can be published (a price, a picture, the manufacturer) and in which countries it is not priced; publish it with set_product_status. Never invent facts about a product (materials, sizes, origin, certifications): use what the owner gave, and write_product_texts for texts from them.",
+    createProductInput,
+  ),
+  tool(
+    "update_product",
+    "Changes a product: only the fields given change, laid over the product as its editor has it, and it is saved as the editor saves it. Variants are named by SKU: a new SKU adds a variant, `active: false` switches one off (variants are never deleted). Lists given (options, categories, tags, pictures) replace the ones there; add_pictures adds. An existing variant's stock is changed with set_stock. A draft is changed at once; a product on the site needs the owner's approval, with the change in words. An archived product is put back with archive_product first.",
+    updateProductInput,
+    "public",
+  ),
+  tool(
+    "set_prices",
+    "Sets prices of a product's variants per country (one variant by SKU, or every variant that is on), as text in each country's own currency, with VAT as shoppers pay (without in a store selling only to businesses); \"\" takes a country's price away, so it is not sold there. Saved as the product editor saves prices, with their history and the 30-day reference price. A draft is changed at once; a product on the site needs the owner's approval.",
+    setPricesInput,
+    "public",
+  ),
+  tool(
+    "set_product_status",
+    "Publishes a product (`active`: on the site, for sale) or takes it off the site as a draft. Publishing is checked as the editor checks it, and refused with what is missing (a picture, a price, the manufacturer, an EU responsible person, content for the unit price). Needs the owner's approval.",
+    setProductStatusInput,
+    "public",
+  ),
+  tool(
+    "write_product_texts",
+    "Writes a product's description, its search title and description, and its words in the store's other languages with the store's AI writer, from the product's own title, words, options, categories and tags and nothing else (never a price, stock or a fact it was not given). By default only empty texts are written; `rewrite` writes them again. Phrases the claims filter finds (green claims, urgency, best price) are left out and named. On a draft the texts are saved at once; on a product on the site they are only given back, to put on it with update_product (which needs the owner's approval).",
+    writeProductTextsInput,
   ),
   tool(
     "unit_price_gaps",
@@ -873,6 +902,11 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
     case "add_redirect":
       return redirectSummary(text("from"), text("to"));
+    // A product's own title and currencies are put in by the server (`productApprovalWords()`); these words name it as given.
+    case "update_product":
+    case "set_prices":
+    case "set_product_status":
+      return productApprovalSummary(name, input, text("product"), []);
     case "set_feature":
       return featureSwitchSummaryOf(input);
     case "unpublish_page":

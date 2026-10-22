@@ -17,7 +17,8 @@ import { experimentApprovalSummary } from "./experiment-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
-import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { productApprovalWords } from "./product-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
 import { effectiveFeatures } from "@/lib/store-features";
@@ -541,7 +542,8 @@ async function callTool(
   const manager = MANAGER_TOOLS_BY_NAME[name];
   const tool = (ctx.store ? OWNER_TOOLS_BY_NAME[name] : PLATFORM_TOOLS_BY_NAME[name]) ?? manager;
   if (!tool) return { error: `There is no tool called ${name}.` };
-  if (tool.gate) {
+  // A catalogue tool changes a draft at once and waits for a yes only while its product is on the site (D308, `gateNeeded()`).
+  if (tool.gate && (!ctx.store || manager || (await gateNeeded(ctx.store, name, args)))) {
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
@@ -598,6 +600,10 @@ export async function keepForApproval(
       );
       summary = `Cancel ${booking.service} on ${when}${booking.customer ? ` for ${booking.customer}` : ""}${args.notify === false ? "" : ", and email the customer"}.`;
     }
+  }
+  // A product's change is described with the product's own title and the store's currencies (D308).
+  if (store && (tool === "update_product" || tool === "set_prices" || tool === "set_product_status")) {
+    summary = (await productApprovalWords(store, tool, args)) ?? summary;
   }
   if (store && tool === "unpublish_page") {
     const [page] = await db().execute<Row>(sql`

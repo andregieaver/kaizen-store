@@ -16,7 +16,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "71 owner tools plus 8 manager tools (D94, D103 to D105, D153 added list_returns, explain_return, approve_return, decline_return), calls that send, publish or spend are only kept for the owner's yes. Writes are narrow: discounts, campaigns, recommendations, bonus and affiliate programmes, custom fields, stock by SKU, A/B tests, returns, refunds, email to one customer. There is no tool to create or edit a product, a page (only unpublish_page), a menu, a theme or a customer segment, and a turn runs inside one request: no background tasks and no notification when work is done.",
+    "gap": "Owner tools plus manager tools (D94, D103 to D105, D153); calls that send, publish or spend are only kept for the owner's yes. Since D308 (A1) it makes and changes products: create_product (a draft with variants, prices per country, stock, terms and pictures), update_product, set_prices, set_product_status and write_product_texts, all through the product editor's own save; a draft is changed at once and a live product waits for a yes. Still missing: tools for pages (only unpublish_page), menus, themes and setup (units A2 to A4), and a turn runs inside one request: no background tasks and no notification when work is done (unit B).",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -36,7 +36,9 @@
         "src/lib/return-tools.ts",
         "src/server/return-tools.ts",
         "src/server/store-mcp.ts",
-        "src/components/admin/ai-manager.tsx"
+        "src/components/admin/ai-manager.tsx",
+        "src/lib/product-tools.ts",
+        "src/server/product-tools.ts"
       ],
       "tests": [
         "src/server/owner-assistant.int.test.ts",
@@ -44,7 +46,9 @@
         "src/server/return-tools.int.test.ts",
         "src/lib/return-tools.test.ts",
         "src/server/owner-tools-fields.int.test.ts",
-        "src/server/store-mcp.int.test.ts"
+        "src/server/store-mcp.int.test.ts",
+        "src/lib/product-tools.test.ts",
+        "src/server/product-tools.int.test.ts"
       ],
       "untested": false
     },
@@ -53,7 +57,8 @@
       "D96",
       "D103",
       "D104",
-      "D153"
+      "D153",
+      "D308"
     ],
     "history": []
   },

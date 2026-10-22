@@ -525,7 +525,10 @@ describe("pictures made in the page builder (D283)", () => {
     expect(look.settings).toEqual(store.theme.settings);
     const brief = "A brass telescope on a wooden tripod on a hilltop at dusk. Seen from the side.";
     const result = await makeSitePicture({ store, accountId: admin.id }, { brief, shape: "portrait", follow: true }, { connection, make });
-    expect(result).toEqual({ ok: true, picture: { url: `https://example.invalid/site-${run}.webp`, width: 1024, height: 1536, alt: "A brass telescope on a wooden tripod on a hilltop at dusk" } });
+    expect(result).toEqual({
+      ok: true,
+      picture: { url: `https://example.invalid/site-${run}.webp`, thumbnailUrl: null, width: 1024, height: 1536, alt: "A brass telescope on a wooden tripod on a hilltop at dusk" },
+    });
     const request = requests.at(-1)!;
     expect(request.shape).toBe("portrait");
     expect(request.prompt.startsWith(brief)).toBe(true);

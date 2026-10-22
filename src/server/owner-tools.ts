@@ -131,6 +131,16 @@ import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";
 import { stepApplies } from "@/lib/setup-steps";
 import { listFeaturesTool, preflightFeatureTool, setFeatureTool } from "./feature-tools";
+import {
+  createProductTool,
+  preflightProductTool,
+  productGateNeeded,
+  setPricesTool,
+  setProductStatusTool,
+  updateProductTool,
+  writeProductTextsTool,
+} from "./product-tools";
+import { GATED_WHEN_LIVE } from "@/lib/product-tools";
 
 type Row = Record<string, unknown>;
 
@@ -464,9 +474,9 @@ async function listProductsTool({ store }: OwnerToolContext, input: OwnerToolInp
 async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToolInput<"get_product">) {
   const id = await findProductId(store, product);
   const locale = mainLocale(store);
-  const [[head], variants] = await Promise.all([
+  const [[head], variants, [extra]] = await Promise.all([
     db().execute<Row>(sql`
-      select p.handle, p.status, p.kind, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
+      select p.handle, p.status, p.kind, p.vat_category, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title, description from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
@@ -481,6 +491,15 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
       where v.store_id = ${store.id}::uuid and v.product_id = ${id}::uuid and v.active
       order by v.sku
     `),
+    // What the catalogue tools change (D308): its languages, options, terms and pictures, as the editor has them.
+    db().execute<Row>(sql`
+      select
+        coalesce((select jsonb_agg(t.locale order by t.locale) from commerce.product_translations t where t.product_id = p.id and t.title <> ''), '[]') as languages,
+        coalesce((select jsonb_agg(te.name order by te.name) from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id where pt.product_id = p.id and te.kind = 'category'), '[]') as categories,
+        coalesce((select jsonb_agg(te.name order by te.name) from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id where pt.product_id = p.id and te.kind = 'tag'), '[]') as tags,
+        coalesce((select jsonb_agg(jsonb_build_object('url', m.url, 'alt', coalesce(m.alt ->> ${locale}, '')) order by m.position) from commerce.product_media m where m.product_id = p.id), '[]') as pictures
+      from commerce.products p where p.store_id = ${store.id}::uuid and p.id = ${id}::uuid
+    `),
   ]);
   // The price per kg, litre or metre (D160), worked out by the store's own `unitPriceShown()`: the model repeats it.
   const unitPrices = await variantUnitPrices(store.id, id);
@@ -491,7 +510,20 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     handle: String(head.handle),
     status: String(head.status),
     kind: String(head.kind),
+    vat_category: String(head.vat_category),
     description: String(head.description).slice(0, 1500),
+    languages_with_words: extra?.languages ?? [],
+    // Options as the editor reads them: from the variants, in the order they first appear.
+    options: variants.reduce<{ name: string; values: string[] }[]>((all, v) => {
+      for (const [name, value] of Object.entries((v.options ?? {}) as Record<string, string>)) {
+        const option = all.find((o) => o.name === name) ?? (all.push({ name, values: [] }), all[all.length - 1]);
+        if (!option.values.includes(value)) option.values.push(value);
+      }
+      return all;
+    }, []),
+    categories: extra?.categories ?? [],
+    tags: extra?.tags ?? [],
+    pictures: extra?.pictures ?? [],
     variants: variants.map((v) => {
       const own = unitPrices.filter((u) => u.sku === String(v.sku));
       const measure = own.find((u) => u.measure)?.measure ?? null;
@@ -1863,6 +1895,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSendDraft(ctx, input.input as Parameters<typeof preflightSendDraft>[1]);
   }
+  // A product change that the editor would refuse (or one with claims) is refused now, never kept for a yes (D308).
+  if (name === "update_product" || name === "set_prices" || name === "set_product_status") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightProductTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
   if (name === "set_feature") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1957,6 +1996,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   mark_order_sent: markOrderSentTool,
   cancel_booking: cancelBookingTool,
   archive_product: archiveProductTool,
+  create_product: createProductTool,
+  update_product: updateProductTool,
+  set_prices: setPricesTool,
+  set_product_status: setProductStatusTool,
+  write_product_texts: writeProductTextsTool,
   unpublish_page: unpublishPageTool,
   setup_progress: setupProgressTool,
   list_features: listFeaturesTool,
@@ -2036,8 +2080,25 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
   const input = readToolInput(tool, raw);
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
   const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);
-  if (tool.gate || name === "add_order_note") {
-    await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> });
+  if (tool.gate || AUDITED_UNGATED.has(name)) {
+    // The catalogue tools' entries are the Products area's (D308), so a member who may read products sees them in the activity log.
+    const area = PRODUCT_TOOLS.has(name) ? { area: "products" as const } : {};
+    await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> }, area);
   }
   return result;
+}
+
+/** Tools that change the store without a gate, written down all the same: a note on an order, and products made or written for (D308). */
+const AUDITED_UNGATED = new Set(["add_order_note", "create_product", "write_product_texts"]);
+const PRODUCT_TOOLS = new Set(["create_product", "update_product", "set_prices", "set_product_status", "write_product_texts"]);
+
+/**
+ * Whether a gated tool needs the owner's yes for this call. Most always do; a catalogue tool of `GATED_WHEN_LIVE` only while its product is on
+ * the site (D308): a draft is changed at once, as the owner would in the editor, and the activity log keeps it.
+ */
+export async function gateNeeded(store: Store, name: string, raw: unknown): Promise<boolean> {
+  const tool = OWNER_TOOLS_BY_NAME[name];
+  if (!tool?.gate) return false;
+  if (!GATED_WHEN_LIVE.has(name)) return true;
+  return productGateNeeded(store, typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {});
 }

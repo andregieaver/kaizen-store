@@ -119,8 +119,8 @@ describe("the owner assistant (D94)", () => {
       explain_privacy_request: { request: "00000000-0000-4000-8000-000000000000" },
     };
     // A draft A/B test (D148) is a write that needs no yes: its own test makes one. So are tagging and archiving orders and writing a draft order (D173): they need arguments, and
-    // `order-ops-tools.int.test.ts` runs each of them.
-    const WRITES_WITHOUT_A_YES = new Set(["add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order"]);
+    // `order-ops-tools.int.test.ts` runs each of them. Making a draft product and writing a draft's texts (D308) are too: `product-tools.int.test.ts` runs them.
+    const WRITES_WITHOUT_A_YES = new Set(["add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");

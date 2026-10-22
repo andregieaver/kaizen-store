@@ -34,7 +34,7 @@ type Row = Record<string, unknown>;
 export type PictureOwner = { store: Store | null; accountId: string };
 
 export type MadeSitePicture =
-  | { ok: true; picture: { url: string; width: number; height: number; alt: string } }
+  | { ok: true; picture: { url: string; thumbnailUrl: string | null; width: number; height: number; alt: string } }
   | { ok: false; problem: string };
 
 const input = z.object({
@@ -97,7 +97,7 @@ export async function makeSitePicture(
   try {
     const made = await (deps.make ?? makePicture)(connection, { storeId, accountId: owner.accountId }, { prompt, alt, shape });
     if (!made.ok) return { ok: false, problem: made.problem };
-    return { ok: true, picture: { url: made.picture.url, width: made.picture.width, height: made.picture.height, alt } };
+    return { ok: true, picture: { url: made.picture.url, thumbnailUrl: made.picture.thumbnailUrl, width: made.picture.width, height: made.picture.height, alt } };
   } catch (error) {
     if (!(error instanceof AiError)) throw error;
     return { ok: false, problem: `The picture could not be made: ${error.message}` };

@@ -8,11 +8,12 @@ import { db } from "@/db/client";
 import { publicEnv } from "@/lib/env";
 import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
 import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type OwnerTool } from "@/lib/owner-tools";
+import { GATED_WHEN_LIVE } from "@/lib/product-tools";
 import { siteUrl } from "@/lib/site";
 
 import { holderOf, type Account, type Membership } from "./auth";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
-import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
+import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { getStore, type Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -94,7 +95,11 @@ function withStore(tool: OwnerTool): McpToolInfo {
   const { parameters } = toolDefinition(tool);
   const properties = { store: STORE_ARG, ...((parameters.properties as Record<string, unknown>) ?? {}) };
   const required = ["store", ...(((parameters.required as string[]) ?? []))];
-  const gate = tool.gate ? " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin." : "";
+  const gate = !tool.gate
+    ? ""
+    : GATED_WHEN_LIVE.has(tool.name)
+      ? " On a product that is on the site it is not done from here: it is kept for the owner to approve in Kaizena Flow's admin."
+      : " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin.";
   return { name: tool.name, description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required } };
 }
 
@@ -164,7 +169,7 @@ export async function callMcpTool(
   if (!tool) return text(`There is no tool called ${name}.`, true);
   const { store: _store, ...rest } = args;
   void _store;
-  if (tool.gate) {
+  if (tool.gate && (await gateNeeded(member.store, name, rest))) {
     const input = readToolInput(tool, rest);
     if (!input.ok) return text(`The arguments could not be read: ${input.problem}`, true);
     try {

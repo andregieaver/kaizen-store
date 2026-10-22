@@ -104,6 +104,12 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   mark_order_sent: "orders:write",
   cancel_booking: "bookings:write",
   archive_product: "products:write",
+  // The catalogue tools (D308, A1) make and change products as the product editor does, which needs `products:write`.
+  create_product: "products:write",
+  update_product: "products:write",
+  set_prices: "products:write",
+  set_product_status: "products:write",
+  write_product_texts: "products:write",
   refund_order: "orders:write",
   approve_return: "orders:write",
   decline_return: "orders:write",

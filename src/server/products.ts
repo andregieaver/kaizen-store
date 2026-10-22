@@ -977,8 +977,11 @@ async function stockLocation(tx: Tx, store: Store): Promise<string> {
 export type StockMode = {
   loaded: ReadonlyMap<string, number>;
   relative?: boolean;
-  /** Where the change comes from, for the history (wave 3, D172): the bulk editor says `bulk`, the product file `file`; the editor says nothing (`editor`). */
-  source?: "bulk" | "file";
+  /**
+   * Where the change comes from, for the history (wave 3, D172): the bulk editor says `bulk`, the product file `file`, the AI manager's catalogue
+   * tools `ai_manager` (D308); the editor says nothing (`editor`).
+   */
+  source?: "bulk" | "file" | "ai_manager";
   /** The member who made the change (the history's "by"), and the bulk batch or import job it belongs to. */
   accountId?: string | null;
   jobId?: string | null;

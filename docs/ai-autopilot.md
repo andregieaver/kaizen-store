@@ -82,6 +82,48 @@ language, the standard VAT category, `txcd_99999999`), turned into a `ProductInp
 admin page of the product. Tests: integration tests make, change, activate and price a product through the tools and read it back through
 the product screen's reader; a product with problems is refused with the screen's words; another store's product is never found.
 
+### 3.1 As built (2026-10-22)
+
+- **Where.** Arguments and the pure conversion are `src/lib/product-tools.ts` (`createProductInput`, `updateProductInput`, `setPricesInput`,
+  `setProductStatusInput`, `writeProductTextsInput`; `toProductInput()`, `mergeProduct()`, `pricesAsChange()`, `textJobs()`,
+  `productApprovalSummary()`), the handlers `src/server/product-tools.ts`, registered in `OWNER_TOOLS`, `HANDLERS`, `TOOL_PERMISSIONS`
+  (`products:write`), `TOOL_FEATURES` (`shop`) and `TOOL_WORDS`. They are owner tools, so the store's MCP server serves them too.
+- **One save.** Every product is built on the editor's own blank product (`emptyProduct()`) or its own read (`getProductForEdit()`) and saved
+  by `saveProduct()` with the person as `actor`: the editor's checks in its words, prices through `commerce.set_price`, the activity log. A
+  change lays only the fields given over what is there (variants by SKU; a new SKU adds one, `active: false` switches one off, none is
+  deleted); lists given (options, categories, tags, pictures) replace, `add_pictures` adds.
+- **Stock.** An existing variant's stock is never written from these tools: `set_stock` keeps its history. A save passes the stock it read
+  (`StockMode.loaded`), so a sale paid in between stays paid, and a new variant's opening stock is a movement whose source is `ai_manager`
+  and whose actor is the person (`StockMode.source` now takes `ai_manager`).
+- **The gate.** `create_product` and `write_product_texts` have none: a new product is always a draft, and texts are saved only on a
+  product shoppers do not see (on a live one they are given back for `update_product`). `update_product` and `set_prices` are declared
+  `public` but gated only while the product is live (`GATED_WHEN_LIVE`, `gateNeeded()` in `src/server/owner-tools.ts`, asked by the
+  assistant's `callTool()` and the MCP server): a draft is changed at once. `set_product_status` is always gated. Every gated call is
+  checked first by `preflightProductTool()` (the merge and `productProblems()` without making anything), and described from the product's
+  own title and the store's currencies (`productApprovalWords()`). An archived product is refused (saving would bring it back as a draft):
+  `archive_product` puts it back on the owner's yes.
+- **Nothing made for nothing.** `create_product` checks everything it can first (prices, languages, countries, companies, library
+  pictures, the editor's draft rules, claims) and only then makes new categories and tags (`createTerm()`) and pictures. A free address is
+  found by appending `-2`, `-3`… A country or language the store does not offer (D178) is refused with the store's own list.
+- **Pictures.** By address from the store's own media library (`libraryFilesByUrl()`), or `make`: D283's `makeSitePicture()` in the site's
+  look (feature `page_pictures`, at most `MADE_PICTURES_MAX` = 3 a call). `MadeSitePicture` now carries the small copy's address.
+- **Texts.** `write_product_texts` is D76's writer (`suggestProductText()`, feature `product_writer`) given the product's own words, options
+  and term names (`factsOf()`, never a price or stock): the main language's description (written when empty, rewritten with `rewrite`),
+  its search texts, and each other language translated from the main one. A field the claims filter finds is left out and named. No new
+  AI feature was needed: `ai_builder` stays for a later unit's own kind of call.
+- **Words in answers.** Amounts are `formatMoney()`'s; the answer names what changed, the countries the product is not priced in (not sold
+  there), and for a draft what publishing still needs, in the editor's words.
+- **Audit.** `store.assistant.create_product`, `…update_product`, `…set_prices`, `…set_product_status` and `…write_product_texts`, area
+  `products`, besides the editor's own product entries.
+- **`get_product`** now also gives the languages with words, options, categories, tags, pictures and the VAT category, so a change can name
+  what is there.
+- **Tests.** `src/lib/product-tools.test.ts` (the conversion, the merge, prices, text jobs, summaries) and
+  `src/server/product-tools.int.test.ts` (made, changed, priced, published and taken off through `runOwnerTool()`, read back by
+  `getProductForEdit()`; refusals before anything is made; the gate on a live product; another store's product never found; texts saved on
+  a draft and only given on a live product).
+- **Not in A1.** Appointments, stays, rentals, downloads and gift cards are made in the editor (they need staff, files or amounts); bulk
+  changes across many products wait for unit B's background work.
+
 ## 4. Unit A2 (D308): website tools
 
 | Tool | What | Gate |
