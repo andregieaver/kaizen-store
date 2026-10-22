@@ -106,7 +106,7 @@ signed-in browser tests (`e2e/signed-in/`, an owner with `admin_locale = nb-NO`)
 | P2 | The site's chrome catalogue in English and Norwegian: header, footer, sign-up and its errors, cookies, unsubscribe, support, not found | the scan finds no English in the platform's chrome |
 | P3 | The theme store in Norwegian: its parts, cards, filters, prices (without VAT, in the store's words), preview bar, listing words per language | `/nb/themes` and every theme page read in Norwegian |
 | P4 | Kaizena Flow's builder translates (3.2): the front page, the plans page, the theme store's pages and the other content pages in Norwegian | every published Kaizena Flow page has Norwegian texts |
-| P5 | Kaizena Flow's legal pages in Norwegian, marked for review; published after the lawyer's read | reviewed and published; until then the English one is binding and says so |
+| P5 | Kaizena Flow's legal pages in Norwegian in the law's own wording (5.2), marked for review; published after the lawyer's read. The stores' Norwegian legal starters (`src/lib/legal-starters/nb.ts`) are checked against the same wording | reviewed and published; until then the English one is binding and says so; every statement of a right cites its section |
 | P6 | Emails from the platform store in the requester's language | the access request emails in Norwegian for a Norwegian request |
 
 **Then the admin**, in the order an owner meets it
@@ -147,6 +147,25 @@ glossary says what Norwegian authorities call it and what the admin says, and th
 4. Språkrådet's advice and the Termportalen for words that are not legal terms; the payment providers' own Norwegian pages (Stripe, Mollie,
    Vipps) for what shoppers and owners already read.
 5. Never: a machine translation, another shop system's translation, a forum.
+
+### 5.2a The law's own wording in legal pages (the owner, 2026-10-22)
+
+The terms are not enough: where a legal page (Kaizena Flow's terms, privacy, data processing agreement and cookies pages, and the stores'
+Norwegian legal starters) says what the law gives or requires, it says it in the law's own words as Lovdata has them, not in a
+paraphrase of the English page.
+
+- **Rights and duties** (the right of withdrawal and its period, the complaint period, the data subject's rights, the duty to keep
+  accounting records) are written with the section's own wording, adapted only in grammar to the sentence, and cite the section
+  (`angrerettloven § 22`). The page keeps the English page's structure, but not its sentences where the law has its own.
+- **Prescribed texts** are copied word for word from the regulation on Lovdata, never reworded: the standard withdrawal form and the
+  information about the right of withdrawal (`forskrift om opplysningsplikt og angrerett`, its attachments), and any other text a law or
+  regulation prescribes.
+- **Each such passage is recorded** with its source: `LEGAL_WORDING_NB` beside the glossary (statute, section, Lovdata address, the date
+  read, the passage as the page uses it), and a test fails when a Norwegian legal page or starter quotes a prescribed text differently
+  from the record.
+- **When the law changes**, the passage is read again on Lovdata; the record's date says how old each one is, and a passage older than a
+  year is listed for checking.
+- The lawyer's review (decision 5) still decides; Lovdata's wording is what the page starts from, not a replacement for it.
 
 ### 5.3 The glossary
 
