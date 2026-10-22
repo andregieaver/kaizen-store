@@ -5,13 +5,15 @@ import { useId, useMemo, useState, useTransition } from "react";
 
 import type { BulkActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
 import { field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
-import { bulkSummary, groupRefusals, notifyText, type BulkResult } from "@/lib/order-bulk";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { BulkResult } from "@/lib/order-bulk";
+import { appliedWords, refusalGroups, shipCellWords } from "@/lib/order-list-words";
 import { pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
 import { BULK_MAX, BULK_PRINT_MAX } from "@/lib/order-limits";
-import { COLUMN_LABELS, type OrderColumn } from "@/lib/order-list";
-import { PAY_CELL_LABELS, shipWords, type DeliveryCell, type OrderListItem } from "@/lib/order-list-row";
+import type { OrderColumn } from "@/lib/order-list";
+import type { DeliveryCell, OrderListItem } from "@/lib/order-list-row";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
-import { SOURCE_LABELS } from "@/lib/order-list";
 
 /** A row with the words the server already worked out (the date in the store's own time zone, the total in its currency), so the page draws the same on the server and in the browser. */
 export type OrderTableRow = OrderListItem & { placedText: string; totalText: string };
@@ -30,6 +32,10 @@ export type OrderTableProps = {
   suggestions: string[];
   /** The bound server action of the bulk bar. */
   bulk: (request: { action: string; ids?: string[]; matchingQuery?: string; tags?: string[]; notify?: boolean }) => Promise<BulkActionResponse>;
+  /** The `orders` catalogue in the account's language (D312 A4), the order statuses' words, and the number format. */
+  words?: OrdersMessages;
+  statusWords?: Record<keyof typeof ORDER_STATUS_LABELS, string>;
+  locale?: string;
 };
 
 type Pending = "add_tags" | "remove_tags" | "archive" | "unarchive" | "mark_sent";
@@ -41,7 +47,23 @@ const badge = "ml-2 inline-block rounded-full border border-line px-2 py-0.5 ali
  * on this page*, and, when every row is ticked and no more than 250 orders match, *Select all {n} matching*. The bar offers tags, archive, unarchive, mark as sent (asks first, and
  * says how many customers will be emailed when that is on) and print. After an action the panel says "Applied to 41 of 43 orders" and lists each refusal with its reason.
  */
-export function OrderTable({ slug, rows, columns, matching, capped, matchingQuery, canWrite, suggestions, bulk }: OrderTableProps) {
+export function OrderTable({
+  slug,
+  rows,
+  columns,
+  matching,
+  capped,
+  matchingQuery,
+  canWrite,
+  suggestions,
+  bulk,
+  words = ordersEn,
+  statusWords = ORDER_STATUS_LABELS,
+  locale = "en",
+}: OrderTableProps) {
+  const b = words.bulk;
+  const t = words.table;
+  const num = (n: number) => n.toLocaleString(locale);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
   const [allMatching, setAllMatching] = useState(false);
   const [tagText, setTagText] = useState("");
@@ -85,7 +107,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
     setResult(null);
     const tags = action === "add_tags" || action === "remove_tags" ? tagText.split(",").map((t) => t.trim()).filter(Boolean) : undefined;
     if (tags && tags.length === 0) {
-      setProblem("Write at least one tag.");
+      setProblem(b.writeTag);
       return;
     }
     startTransition(async () => {
@@ -111,7 +133,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
 
   return (
     <div className="flex flex-col gap-3">
-      {result && <ResultPanel result={result} onClose={() => setResult(null)} />}
+      {result && <ResultPanel result={result} onClose={() => setResult(null)} words={b} />}
       {problem && (
         <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
           {problem}
@@ -119,19 +141,17 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
       )}
 
       {canWrite && selectedCount > 0 && (
-        <section aria-label="Bulk actions" className="flex flex-col gap-3 rounded-lg border border-brand bg-sunken p-3" aria-busy={working}>
+        <section aria-label={b.label} className="flex flex-col gap-3 rounded-lg border border-brand bg-sunken p-3" aria-busy={working}>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <strong>
-              {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} selected
-            </strong>
+            <strong>{countWords(selectedCount, b.selected, { n: num(selectedCount) })}</strong>
             <button type="button" onClick={clear} className="underline underline-offset-2">
-              Clear selection
+              {b.clear}
             </button>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
               <label htmlFor={`${listId}-tags`} className="text-xs font-medium">
-                Tags <span className="font-normal text-muted">(separate with commas)</span>
+                {b.tags} <span className="font-normal text-muted">{b.commas}</span>
               </label>
               <input
                 id={`${listId}-tags`}
@@ -149,83 +169,80 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
               </datalist>
             </div>
             <button type="button" disabled={working} onClick={() => run("add_tags")} className={secondary}>
-              Add tags
+              {b.actions.add_tags}
             </button>
             <button type="button" disabled={working} onClick={() => run("remove_tags")} className={secondary}>
-              Remove tags
+              {b.actions.remove_tags}
             </button>
             <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
             <button type="button" disabled={working} onClick={() => run("archive")} className={secondary}>
-              Archive
+              {b.actions.archive}
             </button>
             <button type="button" disabled={working} onClick={() => run("unarchive")} className={secondary}>
-              Unarchive
+              {b.actions.unarchive}
             </button>
             <button type="button" disabled={working} onClick={() => setConfirming(confirming === "mark_sent" ? null : "mark_sent")} className={secondary} aria-expanded={confirming === "mark_sent"}>
-              Mark as sent
+              {b.actions.mark_sent}
             </button>
             {printable ? (
               <>
                 <Link href={printHref(slug, [...ticked])} target="_blank" className={secondary}>
-                  Print packing slips
+                  {b.actions.print_slips}
                 </Link>
                 <Link href={pickListHref(slug, [...ticked])} target="_blank" className={secondary}>
-                  Print pick list
+                  {b.actions.print_pick_list}
                 </Link>
               </>
             ) : (
               <span className="text-xs text-muted">
-                {allMatching ? "Printing works on the orders ticked on a page." : `Tick at most ${BULK_PRINT_MAX} orders to print their packing slips or a pick list.`}
+                {allMatching ? b.printOnPage : fillWords(b.printAtMost, { max: BULK_PRINT_MAX })}
               </span>
             )}
           </div>
           {confirming === "mark_sent" && (
-            <div role="group" aria-label="Confirm mark as sent" className="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm">
-              <p>
-                Mark {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} as sent, without a tracking number. A partly sent order sends what is left as one parcel. Orders that are not paid, have nothing to ship, are copied history, wait for stock,
-                have a change waiting for the customer&apos;s payment or were already sent are skipped and listed afterwards.
-              </p>
+            <div role="group" aria-label={b.confirmLabel} className="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm">
+              <p>{countWords(selectedCount, b.confirm, { n: num(selectedCount) })}</p>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4" />
-                Tell the customers
+                {b.tell}
               </label>
               <p className={hint} aria-live="polite">
-                {notify ? (allMatching ? "Each customer whose order is sent gets an email." : notifyText(emails)) : "No emails are sent."}
+                {notify ? (allMatching ? b.eachEmailed : countWords(emails, b.willEmail)) : b.noEmails}
               </p>
               <div className="flex gap-2">
                 <button type="button" disabled={working} onClick={() => run("mark_sent")} className={primary}>
-                  {working ? "Working …" : "Mark as sent"}
+                  {working ? b.working : b.actions.mark_sent}
                 </button>
                 <button type="button" onClick={() => setConfirming(null)} className={secondary}>
-                  Cancel
+                  {b.cancel}
                 </button>
               </div>
             </div>
           )}
           <p className={hint}>
-            At most {BULK_MAX} orders at a time. Each order is handled on its own: one that cannot be changed is listed afterwards and does not stop the others.
+            {fillWords(b.atMost, { max: BULK_MAX })}
           </p>
         </section>
       )}
 
       {canWrite && banner.kind === "offer" && (
         <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
-          All {rows.length} orders on this page are selected.{" "}
+          {fillWords(b.pageSelected, { n: rows.length })}{" "}
           <button type="button" onClick={() => setAllMatching(true)} className="underline underline-offset-2">
-            Select all {banner.matching.toLocaleString("en")} matching
+            {fillWords(b.selectMatching, { n: num(banner.matching) })}
           </button>
         </p>
       )}
       {canWrite && banner.kind === "too_many" && (
         <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
-          All {rows.length} orders on this page are selected. More than {BULK_MAX} orders match, which is more than one batch takes: narrow the list to act on all of them.
+          {fillWords(b.pageSelected, { n: rows.length })} {fillWords(b.tooMany, { max: BULK_MAX })}
         </p>
       )}
       {canWrite && banner.kind === "all_matching" && (
         <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
-          All {banner.matching.toLocaleString("en")} matching orders are selected.{" "}
+          {fillWords(b.allMatching, { n: num(banner.matching) })}{" "}
           <button type="button" onClick={clear} className="underline underline-offset-2">
-            Clear selection
+            {b.clear}
           </button>
         </p>
       )}
@@ -236,67 +253,67 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
             <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={`${th} w-10`}>
-                  <input id={headerId} type="checkbox" checked={allTicked} onChange={toggleAll} aria-label="Select all orders on this page" className="size-4" />
+                  <input id={headerId} type="checkbox" checked={allTicked} onChange={toggleAll} aria-label={t.selectAllOnPage} className="size-4" />
                 </th>
               )}
               <th scope="col" className={th}>
-                Order
+                {t.order}
               </th>
               {col("placed") && (
                 <th scope="col" className={`${th} hidden sm:table-cell`}>
-                  {COLUMN_LABELS.placed}
+                  {t.columns.placed}
                 </th>
               )}
               {col("customer") && (
                 <th scope="col" className={th}>
-                  {COLUMN_LABELS.customer}
+                  {t.columns.customer}
                 </th>
               )}
               {col("market") && (
                 <th scope="col" className={th}>
-                  {COLUMN_LABELS.market}
+                  {t.columns.market}
                 </th>
               )}
               {col("payment") && (
                 <th scope="col" className={th}>
-                  {COLUMN_LABELS.payment}
+                  {t.columns.payment}
                 </th>
               )}
               {col("fulfilment") && (
                 <th scope="col" className={th}>
-                  {COLUMN_LABELS.fulfilment}
+                  {t.columns.fulfilment}
                 </th>
               )}
               {col("delivery") && (
                 <th scope="col" className={`${th} hidden md:table-cell`}>
-                  {COLUMN_LABELS.delivery}
+                  {t.columns.delivery}
                 </th>
               )}
               {col("items") && (
                 <th scope="col" className={`${th} hidden md:table-cell`}>
-                  {COLUMN_LABELS.items}
+                  {t.columns.items}
                 </th>
               )}
               {col("tags") && (
                 <th scope="col" className={`${th} hidden md:table-cell`}>
-                  {COLUMN_LABELS.tags}
+                  {t.columns.tags}
                 </th>
               )}
               {col("source") && (
                 <th scope="col" className={th}>
-                  {COLUMN_LABELS.source}
+                  {t.columns.source}
                 </th>
               )}
               {col("total") && (
                 <th scope="col" className={`${th} text-right`}>
-                  {COLUMN_LABELS.total}
+                  {t.columns.total}
                 </th>
               )}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <OrderRow key={row.id} row={row} slug={slug} columns={columns} canWrite={canWrite} ticked={ticked.has(row.id) || allMatching} onToggle={() => toggle(row.id)} />
+              <OrderRow key={row.id} row={row} slug={slug} columns={columns} canWrite={canWrite} ticked={ticked.has(row.id) || allMatching} onToggle={() => toggle(row.id)} words={t} statusWords={statusWords} />
             ))}
           </tbody>
         </table>
@@ -305,32 +322,52 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
   );
 }
 
-function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: OrderTableRow; slug: string; columns: readonly OrderColumn[]; canWrite: boolean; ticked: boolean; onToggle: () => void }) {
+function OrderRow({
+  row,
+  slug,
+  columns,
+  canWrite,
+  ticked,
+  onToggle,
+  words: t,
+  statusWords,
+}: {
+  row: OrderTableRow;
+  slug: string;
+  columns: readonly OrderColumn[];
+  canWrite: boolean;
+  ticked: boolean;
+  onToggle: () => void;
+  words: OrdersMessages["table"];
+  statusWords: Record<keyof typeof ORDER_STATUS_LABELS, string>;
+}) {
+  const g = t.badges;
+  const sources = t.sources;
   const col = (c: OrderColumn) => columns.includes(c);
   const base = `/admin/${slug}`;
   return (
     <tr className="border-b border-line last:border-0">
       {canWrite && (
         <td className={td}>
-          <input type="checkbox" checked={ticked} onChange={onToggle} aria-label={`Select order ${row.number}`} className="size-4" />
+          <input type="checkbox" checked={ticked} onChange={onToggle} aria-label={fillWords(t.selectOrder, { number: row.number })} className="size-4" />
         </td>
       )}
       <td className={td}>
         <Link href={`${base}/orders/${row.id}`} className="font-medium underline-offset-2 hover:underline">
           #{row.number}
         </Link>
-        {row.archived && <span className={badge}>Archived</span>}
-        {row.held && <span className={badge}>On hold</span>}
-        {row.disputed && <span className={badge}>Disputed</span>}
-        {row.risk && <span className={badge}>{row.risk === "highest" ? "Highest risk" : "Elevated risk"}</span>}
-        {row.gift && <span className={badge}>Gift</span>}
-        {row.source === "draft" && <span className={badge}>{row.draftNumber ? `Staff-made ${row.draftNumber}` : "Staff-made"}</span>}
-        {row.source === "exchange" && <span className={badge}>Exchange</span>}
-        {row.owed > 0 && <span className={badge}>Waiting for stock</span>}
-        {row.editPending && <span className={badge}>Change awaiting payment</span>}
-        {row.edited && <span className={badge}>Edited</span>}
-        {row.copied && <span className={badge}>Copied</span>}
-        {row.erased && <span className={badge}>Personal data erased</span>}
+        {row.archived && <span className={badge}>{g.archived}</span>}
+        {row.held && <span className={badge}>{g.held}</span>}
+        {row.disputed && <span className={badge}>{g.disputed}</span>}
+        {row.risk && <span className={badge}>{row.risk === "highest" ? g.highestRisk : g.elevatedRisk}</span>}
+        {row.gift && <span className={badge}>{g.gift}</span>}
+        {row.source === "draft" && <span className={badge}>{row.draftNumber ? fillWords(g.staffMadeNumber, { number: row.draftNumber }) : g.staffMade}</span>}
+        {row.source === "exchange" && <span className={badge}>{g.exchange}</span>}
+        {row.owed > 0 && <span className={badge}>{g.waiting}</span>}
+        {row.editPending && <span className={badge}>{g.editPending}</span>}
+        {row.edited && <span className={badge}>{g.edited}</span>}
+        {row.copied && <span className={badge}>{g.copied}</span>}
+        {row.erased && <span className={badge}>{g.erased}</span>}
       </td>
       {col("placed") && (
         <td className={`${td} hidden sm:table-cell`}>
@@ -340,7 +377,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
       {col("customer") && (
         <td className={td}>
           {row.erased ? (
-            <span className="text-muted">Erased</span>
+            <span className="text-muted">{t.erased}</span>
           ) : row.email ? (
             <Link href={`${base}/customers/${row.id}`} className="underline-offset-2 hover:underline">
               {row.name || row.email}
@@ -351,25 +388,25 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
         </td>
       )}
       {col("market") && <td className={td}>{row.marketCode}</td>}
-      {col("payment") && <td className={td}>{PAY_CELL_LABELS[row.pay]}</td>}
+      {col("payment") && <td className={td}>{t.pay[row.pay]}</td>}
       {col("fulfilment") && (
         <td className={td}>
-          {row.ship === "none" ? (row.status === "pending_payment" ? "–" : ORDER_STATUS_LABELS[row.status]) : shipWords(row)}
+          {row.ship === "none" ? (row.status === "pending_payment" ? "–" : statusWords[row.status]) : shipCellWords(row, t)}
           {row.owed > 0 && (
             <span className="block text-xs">
-              {row.owed} {row.owed === 1 ? "unit" : "units"} owed
+              {countWords(row.owed, t.owed)}
             </span>
           )}
         </td>
       )}
       {col("delivery") && (
         <td className={`${td} hidden md:table-cell`}>
-          <DeliveryText cell={row.delivery} />
+          <DeliveryText cell={row.delivery} words={t} />
         </td>
       )}
       {col("items") && (
         <td className={`${td} hidden md:table-cell`}>
-          {row.items} {row.items === 1 ? "item" : "items"}
+          {countWords(row.items, t.items)}
         </td>
       )}
       {col("tags") && (
@@ -387,41 +424,40 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
           )}
         </td>
       )}
-      {col("source") && <td className={td}>{row.copied ? SOURCE_LABELS.copied : row.source === "draft" ? SOURCE_LABELS.draft : row.source === "exchange" ? SOURCE_LABELS.exchange : SOURCE_LABELS.checkout}</td>}
+      {col("source") && <td className={td}>{row.copied ? sources.copied : row.source === "draft" ? sources.draft : row.source === "exchange" ? sources.exchange : sources.checkout}</td>}
       {col("total") && <td className={`${td} text-right tabular-nums`}>{row.totalText}</td>}
     </tr>
   );
 }
 
 /** What a bulk action did: "Applied to 41 of 43 orders", the emails sent, and each refusal grouped by its reason with the orders it was for. */
-export function ResultPanel({ result, onClose }: { result: BulkResult; onClose?: () => void }) {
-  const groups = groupRefusals(result.refused);
+export function ResultPanel({ result, onClose, words: b = ordersEn.bulk }: { result: BulkResult; onClose?: () => void; words?: OrdersMessages["bulk"] }) {
+  const groups = refusalGroups(result.refused, b);
+  const refusedName = (r: { number: string | null }) => (r.number ? `#${r.number}` : b.notFound);
   return (
-    <section aria-label="Result of the bulk action" role="status" className="flex flex-col gap-2 rounded-panel bg-sunken p-4 text-sm">
+    <section aria-label={b.resultLabel} role="status" className="flex flex-col gap-2 rounded-panel bg-sunken p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{bulkSummary(result)}</p>
+        <p className="font-medium">{appliedWords(result, b)}</p>
         {onClose && (
           <button type="button" onClick={onClose} className="text-xs underline underline-offset-2">
-            Close
+            {b.close}
           </button>
         )}
       </div>
       {result.emailed !== undefined && (
-        <p>
-          {result.emailed} {result.emailed === 1 ? "customer was" : "customers were"} emailed.
-        </p>
+        <p>{countWords(result.emailed, b.emailed)}</p>
       )}
       {groups.length > 0 && (
         <ul className="flex flex-col gap-1">
           {groups.map((group) => (
             <li key={group.reason}>
               <span className="font-medium">
-                {group.orders.length} {group.orders.length === 1 ? "order" : "orders"} not changed:
+                {countWords(group.orders.length, b.notChanged)}
               </span>{" "}
               {group.text}{" "}
               <span className="text-muted">
                 {group.orders.length > 12
-                  ? `${group.orders.slice(0, 12).map(refusedName).join(", ")} and ${group.orders.length - 12} more`
+                  ? fillWords(b.andMore, { list: group.orders.slice(0, 12).map(refusedName).join(", "), n: group.orders.length - 12 })
                   : group.orders.map(refusedName).join(", ")}
               </span>
             </li>
@@ -432,16 +468,15 @@ export function ResultPanel({ result, onClose }: { result: BulkResult; onClose?:
   );
 }
 
-const refusedName = (r: { number: string | null }) => (r.number ? `#${r.number}` : "an order that was not found");
 
 /** The *Delivery* cell (D237): the label kept on the order; a pickup place says *Collect at*, a local delivery where it goes and the start of the note. */
-export function DeliveryText({ cell }: { cell: DeliveryCell | undefined }) {
+export function DeliveryText({ cell, words: t = ordersEn.table }: { cell: DeliveryCell | undefined; words?: OrdersMessages["table"] }) {
   if (!cell || (!cell.label && cell.method === "ship")) return <span className="text-muted">–</span>;
-  if (cell.method === "pickup") return <>Collect at {cell.label ?? "your place"}</>;
+  if (cell.method === "pickup") return <>{fillWords(t.collectAt, { place: cell.label ?? t.yourPlace })}</>;
   if (cell.method === "local") {
     return (
       <>
-        Local delivery{cell.label ? `: ${cell.label}` : ""}
+        {cell.label ? fillWords(t.localDeliveryTo, { label: cell.label }) : t.localDelivery}
         {(cell.postalCode || cell.city) && <span className="block text-xs">{[cell.postalCode, cell.city].filter(Boolean).join(" ")}</span>}
         {cell.phone && <span className="block text-xs">{cell.phone}</span>}
         {cell.note && <span className="block text-xs text-muted">“{cell.note}”</span>}

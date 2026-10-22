@@ -8,6 +8,10 @@ import { draftMarketOptions, draftMarketSlug } from "@/lib/draft-markets";
 import { draftProblemText, type DraftProblem } from "@/lib/draft-order";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 import { formatPriceInput } from "@/lib/product-input";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { countWords, fillWords } from "@/lib/drafts-words";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, mayFindDraftCustomers } from "@/server/permissions";
 import { staffActor } from "@/server/order-actor";
 import {
@@ -28,14 +32,14 @@ import {
   type DraftVariantChoice,
 } from "@/server/draft-orders";
 
-const NO_ACCESS = "You do not have access to do this.";
-const GONE = "This draft no longer exists.";
-const CHANGED = "This draft was changed by someone else. Reload the page to see their changes.";
+/** The `drafts` catalogue in the account's language; without a member, the request's language (`actionAdminLang()`), for the one refusal it answers. */
+const draftWords = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "drafts");
+const noAccess = async () => adminText(await actionAdminLang(), "drafts").actions.noAccess;
 
 /** A problem with its words, so the browser draws what the server decided and never invents a sentence. */
 export type DraftProblemWords = { code: string; key: string | null; blocking: boolean; text: string };
-const wordsOf = (problems: readonly DraftProblem[]): DraftProblemWords[] =>
-  problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code) }));
+const wordsOf = (problems: readonly DraftProblem[], words: Record<DraftProblem["code"], string>): DraftProblemWords[] =>
+  problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code, words) }));
 
 export type SaveDraftResponse =
   | {
@@ -60,35 +64,37 @@ export type SaveDraftResponse =
  */
 export async function saveDraftAction(storeSlug: string, draftId: string, input: unknown): Promise<SaveDraftResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, kind: "denied", message: NO_ACCESS };
+  if (!member) return { ok: false, kind: "denied", message: await noAccess() };
+  const all = draftWords(member);
+  const w = all.actions;
   const saved = await saveDraft(member.store.id, staffActor(member.account.id), draftId, input);
   if (!saved.ok) {
     const message =
       saved.problem === "conflict"
-        ? CHANGED
+        ? w.changed
         : saved.problem === "not_open"
-          ? "This draft was sent or ended, so it cannot be edited. Reopen it first."
+          ? w.notOpen
           : saved.problem === "not_found"
-            ? GONE
+            ? w.gone
             : saved.problem === "market"
-              ? "Choose a market the store sells to."
-              : (saved.fields?.[0]?.message ?? "Check the draft.");
+              ? w.chooseMarket
+              : (saved.fields?.[0]?.message ?? w.checkDraft);
     return { ok: false, kind: saved.problem === "not_found" ? "gone" : saved.problem, message, fields: saved.fields };
   }
   const preview = await previewDraft(member.store.id, draftId);
   const change = saved.marketChange;
   const notes: string[] = [];
   if (change) {
-    if (change.changed.length > 0) notes.push(`${change.changed.length === 1 ? "A line took" : `${change.changed.length} lines took`} the new market's list price.`);
-    if (change.kept.length > 0) notes.push(`${change.kept.length === 1 ? "A typed price" : `${change.kept.length} typed prices`} stayed as typed, now in the new currency: check ${change.kept.length === 1 ? "it" : "them"}.`);
-    if (change.unavailable.length > 0) notes.push(`${change.unavailable.length === 1 ? "A line is" : `${change.unavailable.length} lines are`} not for sale in the new market.`);
+    if (change.changed.length > 0) notes.push(countWords(change.changed.length, w.tookList));
+    if (change.kept.length > 0) notes.push(countWords(change.kept.length, w.keptTyped));
+    if (change.unavailable.length > 0) notes.push(countWords(change.unavailable.length, w.unavailable));
   }
   // No refresh(): the editor holds the draft it is showing, and re-rendering the page on every autosave would only repaint it.
   return {
     ok: true,
     version: saved.draft.version,
     summary: preview?.summary ?? null,
-    problems: wordsOf(preview?.problems ?? []),
+    problems: wordsOf(preview?.problems ?? [], all.problems),
     blocking: (preview?.blocking.length ?? 1) > 0,
     marketNote: notes.length > 0 ? notes.join(" ") : null,
     market: preview?.market ? { slug: preview.market.slug, currency: preview.market.currency, locale: preview.market.locale, name: preview.market.name } : null,
@@ -128,54 +134,41 @@ export type DraftActionResponse = { ok: boolean; message: string; problems?: Dra
  */
 export async function sendDraftAction(storeSlug: string, draftId: string, request: { version: number; validDays?: number; createLink?: boolean }): Promise<DraftActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const all = draftWords(member);
+  const w = all.actions;
   const sent = await sendDraft(member.store.id, staffActor(member.account.id), draftId, request);
   if (!sent.ok) {
-    const message: Record<typeof sent.problem, string> = {
-      not_found: GONE,
-      not_open: "This draft was already sent.",
-      conflict: CHANGED,
-      invalid: "Check the number of days: a link is valid for 1 to 30.",
-      closed: "This store is not open, so a draft cannot be sent.",
-      payments_off: "Payments are off for this store, so there is nothing for the customer to pay with. Turn them on under Settings, Payments.",
-      limit: "Too many pay links were sent in the last hour. Try again later.",
-      problems: "The draft cannot be sent yet.",
-      market: "The market of this draft no longer exists.",
-    };
-    return { ok: false, message: message[sent.problem], problems: sent.problems ? wordsOf(sent.problems) : undefined };
+    const message: Record<typeof sent.problem, string> = { not_found: w.gone, conflict: w.changed, ...w.send };
+    return { ok: false, message: message[sent.problem], problems: sent.problems ? wordsOf(sent.problems, all.problems) : undefined };
   }
   refresh();
   const mailed =
     sent.emailed === null
-      ? "Copy the link below and share it: it is shown only now."
+      ? w.sentShare
       : sent.emailed === "sent"
-        ? "The pay link was emailed to the customer."
+        ? w.sentEmailed
         : sent.emailed === "logged"
-          ? "The pay link was recorded, but email is not set up for this store, so it was not sent. Create a link to share instead."
-          : "The email could not be sent. Send it again, or create a link to share.";
-  return { ok: sent.emailed !== "failed", message: `Order ${sent.number} was made and its stock is held until the link expires. ${mailed}`, link: sent.link, orderId: sent.orderId };
+          ? w.sentLogged
+          : w.sentFailed;
+  return { ok: sent.emailed !== "failed", message: fillWords(w.sentDone, { number: sent.number, mailed }), link: sent.link, orderId: sent.orderId };
 }
 
 /** *Send again* and *Create a link to share* on a draft that is already sent: a new link replaces the old one. */
 export async function resendDraftLinkAction(storeSlug: string, draftId: string, request: { createLink?: boolean }): Promise<DraftActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = draftWords(member).actions;
   const done = await resendDraftLink(member.store.id, staffActor(member.account.id), draftId, { createLink: request.createLink === true });
   if (!done.ok) {
-    const message: Record<typeof done.problem, string> = {
-      not_found: GONE,
-      not_sent: "This draft has not been sent.",
-      expired: "The link has expired. Reopen the draft and send it again.",
-      limit: "A draft's link can be sent 5 times a day and the store's 60 an hour. Try again later.",
-      closed: "This store is not open, so a link cannot be sent.",
-    };
+    const message: Record<typeof done.problem, string> = { not_found: w.gone, ...w.resend };
     return { ok: false, message: message[done.problem] };
   }
   refresh();
-  if (done.emailed === null) return { ok: true, message: "A new link was made and the old one no longer works. Copy it now: it is shown only once.", link: done.link };
-  if (done.emailed === "sent") return { ok: true, message: "A new link was emailed to the customer. The old one no longer works." };
-  if (done.emailed === "logged") return { ok: false, message: "Email is not set up for this store, so nothing was sent. Create a link to share instead." };
-  return { ok: false, message: "The email could not be sent. Try again, or create a link to share." };
+  if (done.emailed === null) return { ok: true, message: w.resendShare, link: done.link };
+  if (done.emailed === "sent") return { ok: true, message: w.resendEmailed };
+  if (done.emailed === "logged") return { ok: false, message: w.resendLogged };
+  return { ok: false, message: w.resendFailed };
 }
 
 /**
@@ -184,28 +177,24 @@ export async function resendDraftLinkAction(storeSlug: string, draftId: string, 
  */
 export async function reopenDraftAction(storeSlug: string, draftId: string): Promise<DraftActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = draftWords(member).actions;
   const done = await reopenDraft(member.store.id, staffActor(member.account.id), draftId);
   if (!done.ok) {
-    const message: Record<typeof done.problem, string> = {
-      not_found: GONE,
-      not_reopenable: "This draft cannot be reopened: a paid draft is final.",
-      paid: "The customer already paid through Stripe. The order is completed; the draft cannot be reopened.",
-      processing: "A payment is being processed for this order. Try again in a minute.",
-      changed: "The order was paid or changed meanwhile. Reload the page.",
-    };
+    const message: Record<typeof done.problem, string> = { not_found: w.gone, ...w.reopen };
     return { ok: false, message: message[done.problem] };
   }
   refresh();
-  return { ok: true, message: "The draft is open again. Its order was cancelled and its stock released." };
+  return { ok: true, message: w.reopened };
 }
 
 /** Deletes a draft that is not sent, then goes to the list. */
 export async function deleteDraftAction(storeSlug: string, draftId: string): Promise<DraftActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = draftWords(member).actions;
   const done = await deleteDraft(member.store.id, staffActor(member.account.id), draftId);
-  if (!done.ok) return { ok: false, message: done.problem === "sent" ? "A sent draft has an order: reopen it first." : GONE };
+  if (!done.ok) return { ok: false, message: done.problem === "sent" ? w.deleteSent : w.gone };
   refresh();
   redirect(`/admin/${member.store.slug}/orders/drafts`);
 }
@@ -216,44 +205,39 @@ export async function deleteDraftAction(storeSlug: string, draftId: string): Pro
  */
 export async function recordPaidOutsideAction(storeSlug: string, draftId: string, input: unknown): Promise<DraftActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const all = draftWords(member);
+  const w = all.actions;
   const done = await recordDraftPaidOutside(member, draftId, input);
   if (!done.ok) {
     const message: Record<typeof done.problem, string> = {
-      not_found: GONE,
-      not_allowed: "Only the owner can record a payment taken outside Kaizena Flow, unless the owner has allowed staff to (Settings, Orders).",
-      invalid: "Choose how it was paid.",
-      conflict: CHANGED,
-      closed: "This store is not open.",
-      no_email: "Add the customer's email address first: the confirmation of the order, which states the right of withdrawal, goes to it.",
-      already_paid: "This draft was already paid.",
-      processing: "A payment is being processed for this order. Try again in a minute.",
-      not_payable: "This draft cannot be marked as paid now.",
-      problems: "The draft cannot be turned into an order yet.",
-      received_on: `The day the money was received cannot be in the future or more than ${MANUAL_RECEIVED_DAYS_MAX} days back: it decides which VAT period the sale belongs to.`,
-      cash_limit: "This country does not let a business receive cash for an amount this large, so it cannot be recorded as cash. Record it as a bank transfer if that is how it was paid, or ask your accountant.",
+      not_found: w.gone,
+      conflict: w.changed,
+      ...w.outside,
+      received_on: fillWords(w.outside.received_on, { max: MANUAL_RECEIVED_DAYS_MAX }),
     };
-    return { ok: false, message: message[done.problem], problems: done.problems ? wordsOf(done.problems) : undefined };
+    return { ok: false, message: message[done.problem], problems: done.problems ? wordsOf(done.problems, all.problems) : undefined };
   }
   refresh();
-  const mailed = done.emailed === "sent" ? "The confirmation was emailed to the customer." : done.emailed === "logged" ? "Email is not set up for this store, so the confirmation was not sent." : "The confirmation could not be sent: send it again from the order.";
-  const cash = done.cashWarning ? " Take care: this country has a ceiling on cash payments close to this amount (see the warning beside Cash)." : "";
-  return { ok: done.emailed !== "failed", message: `Order ${done.number} is paid and its invoice was issued. ${mailed}${cash}`, orderId: done.orderId };
+  const mailed = done.emailed === "sent" ? w.outsideEmailed : done.emailed === "logged" ? w.outsideLogged : w.outsideFailed;
+  const cash = done.cashWarning ? w.outsideCash : "";
+  return { ok: done.emailed !== "failed", message: fillWords(w.outsideDone, { number: done.number, mailed, cash }), orderId: done.orderId };
 }
 
 /** Starts a draft in a market (a country in a language and a currency the store offers), then opens it. */
 export async function createDraftAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const w = draftWords(member).actions;
   const options = draftMarketOptions(member.store.markets, member.store.localization);
   const slug = draftMarketSlug(options, {
     country: String(form.get("country") ?? ""),
     lang: String(form.get("lang") ?? ""),
     currency: String(form.get("currency") ?? ""),
   });
-  if (!slug) return { status: "error", messages: ["Choose a country, a language and a currency the store offers."] };
+  if (!slug) return { status: "error", messages: [w.chooseView] };
   const made = await createDraft(member.store.id, staffActor(member.account.id), { marketSlug: slug });
-  if (!made.ok) return { status: "error", messages: [made.problem === "too_many_open_drafts" ? "The store has 500 open drafts. Delete or send one first." : "Choose a market the store sells to."] };
+  if (!made.ok) return { status: "error", messages: [made.problem === "too_many_open_drafts" ? w.tooMany : w.chooseMarket] };
   refresh();
   redirect(`/admin/${member.store.slug}/orders/drafts/${made.draft.id}`);
 }

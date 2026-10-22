@@ -8,7 +8,10 @@ import { hint, primary, secondary } from "@/components/admin/data/ui";
 import type { DraftLike } from "@/lib/draft-editor";
 import type { ManualPaymentMethod } from "@/lib/draft-input";
 import { DRAFT_SENDS_PER_DAY } from "@/lib/order-limits";
-import { canReopenDraft, isDraftDeletable, type DraftStatus, DRAFT_STATUS_LABELS } from "@/lib/draft-status";
+import { canReopenDraft, isDraftDeletable, type DraftStatus } from "@/lib/draft-status";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/drafts-words";
 import type { DraftSummary } from "@/server/draft-orders";
 
 import { DraftSummaryPanel } from "./draft-summary";
@@ -77,9 +80,12 @@ export function DraftSentPanel({
   onResult: (result: DraftActionResponse) => void;
 }) {
   const id = useId();
+  const all = useAdminText("drafts");
+  const w = all.sent;
+  const lang = useAdminLang();
   const [result, setResult] = useState<DraftActionResponse | null>(null);
   const [working, startTransition] = useTransition();
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
+  const when = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone });
   const run = (action: () => Promise<DraftActionResponse>) =>
     startTransition(async () => {
       setResult(null);
@@ -94,38 +100,36 @@ export function DraftSentPanel({
       <div className="flex min-w-0 flex-col gap-6">
         <section aria-labelledby={`${id}-status`} className={card}>
           <h2 id={`${id}-status`} className="text-title text-ink">
-            {number}: {DRAFT_STATUS_LABELS[status].toLowerCase()}
+            {number}: {all.status[status].toLowerCase()}
           </h2>
-          {status === "open" && <p className="text-muted">This draft is open. You can read it, but only someone who may change orders can edit it.</p>}
+          {status === "open" && <p className="text-muted">{w.openNote}</p>}
           {status === "sent" && (
             <p>
-              Sent to the customer. Its order {orderId && orderNumber ? <Link href={`/admin/${slug}/orders/${orderId}`} className="underline underline-offset-2">#{orderNumber}</Link> : "exists"} is waiting for payment and its stock is held
-              {expiresAt ? ` until ${when(expiresAt)}` : ""}. {linkLive ? "The pay link works." : "There is no live link."} {linkRanOut ? "The link has run out: the job cancels the order and releases the stock within minutes." : ""}
+              {w.sentStart} {orderId && orderNumber ? <Link href={`/admin/${slug}/orders/${orderId}`} className="underline underline-offset-2">#{orderNumber}</Link> : w.exists} {w.sentWaiting}
+              {expiresAt ? fillWords(w.until, { when: when(expiresAt) }) : ""}. {linkLive ? w.linkWorks : w.noLink} {linkRanOut ? w.ranOut : ""}
             </p>
           )}
           {status === "paid" && (
             <p>
-              Paid. Its order {orderId && orderNumber ? <Link href={`/admin/${slug}/orders/${orderId}`} className="underline underline-offset-2">#{orderNumber}</Link> : "is made"} is an ordinary order now. A paid draft is final.
+              {w.paidStart} {orderId && orderNumber ? <Link href={`/admin/${slug}/orders/${orderId}`} className="underline underline-offset-2">#{orderNumber}</Link> : w.isMade} {w.paidEnd}
             </p>
           )}
-          {status === "expired" && <p>The link ran out unpaid. The order was cancelled and its stock released; the order number stays on the cancelled order. Reopen the draft to send it again: that makes a new order and a new number.</p>}
-          {status === "cancelled" && <p>This draft was cancelled. Reopen it to send it again.</p>}
+          {status === "expired" && <p>{w.expired}</p>}
+          {status === "cancelled" && <p>{w.cancelled}</p>}
         </section>
 
         {status === "sent" && canWrite && (
           <section aria-labelledby={`${id}-send`} className={card}>
             <h2 id={`${id}-send`} className="text-title text-ink">
-              The pay link
+              {w.payLink}
             </h2>
-            <p className={hint}>
-              A new link replaces the old one, so an earlier link stops working. A draft&apos;s link can be sent {DRAFT_SENDS_PER_DAY} times a day ({paySendsToday} today). Kaizena Flow keeps only a fingerprint of a link, so one made for sharing is shown once.
-            </p>
+            <p className={hint}>{fillWords(w.payLinkHint, { max: DRAFT_SENDS_PER_DAY, today: paySendsToday })}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={working} onClick={() => run(() => actions.resend({ createLink: false }))} className={secondary}>
-                Send again
+                {w.sendAgain}
               </button>
               <button type="button" disabled={working} onClick={() => run(() => actions.resend({ createLink: true }))} className={secondary}>
-                Create a link to share
+                {w.share}
               </button>
             </div>
           </section>
@@ -134,24 +138,22 @@ export function DraftSentPanel({
         {canWrite && canReopenDraft(status) && (
           <section aria-labelledby={`${id}-reopen`} className={card}>
             <h2 id={`${id}-reopen`} className="text-title text-ink">
-              Change it
+              {w.change}
             </h2>
             <p className={hint}>
-              {status === "sent"
-                ? "To change a sent draft, reopen it: its Stripe session is closed, the unpaid order is cancelled (its number stays on it) and the stock is released. Sending again makes a new order and a new number."
-                : "Reopen the draft to edit it and send it again."}
+              {status === "sent" ? w.reopenSent : w.reopenOther}
             </p>
             <div>
               <button
                 type="button"
                 disabled={working}
                 onClick={() => {
-                  if (status === "sent" && !window.confirm(`Reopen ${number}? Its order is cancelled and the pay link stops working.`)) return;
+                  if (status === "sent" && !window.confirm(fillWords(w.reopenConfirm, { number }))) return;
                   run(actions.reopen);
                 }}
                 className={primary}
               >
-                Reopen to edit
+                {w.reopen}
               </button>
             </div>
           </section>
@@ -170,29 +172,29 @@ export function DraftSentPanel({
 
         <section aria-labelledby={`${id}-who`} className={card}>
           <h2 id={`${id}-who`} className="text-title text-ink">
-            Customer and notes
+            {w.who}
           </h2>
           <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[8rem_minmax(0,1fr)]">
-            <dt className="text-muted">Email</dt>
+            <dt className="text-muted">{w.email}</dt>
             <dd className="break-all">{draft.email ?? "–"}</dd>
-            <dt className="text-muted">Phone</dt>
+            <dt className="text-muted">{w.phone}</dt>
             <dd>{draft.phone ?? "–"}</dd>
-            <dt className="text-muted">Ship to</dt>
+            <dt className="text-muted">{w.shipTo}</dt>
             <dd>{ship.length === 0 ? "–" : ship.map((l, i) => <span key={`${i}-${l}`} className="block">{l}</span>)}</dd>
             {draft.companyName && (
               <>
-                <dt className="text-muted">Company</dt>
+                <dt className="text-muted">{w.company}</dt>
                 <dd>
                   {draft.companyName}
-                  {draft.organisationNumber && <span className="block text-muted">Organisation number {draft.organisationNumber}</span>}
+                  {draft.organisationNumber && <span className="block text-muted">{fillWords(w.orgNumber, { number: draft.organisationNumber })}</span>}
                 </dd>
               </>
             )}
-            <dt className="text-muted">Note to the buyer</dt>
+            <dt className="text-muted">{w.noteToBuyer}</dt>
             <dd className="whitespace-pre-wrap break-words">{draft.noteToBuyer ?? "–"}</dd>
-            <dt className="text-muted">Internal note</dt>
+            <dt className="text-muted">{w.internalNote}</dt>
             <dd className="whitespace-pre-wrap break-words">{draft.internalNote ?? "–"}</dd>
-            <dt className="text-muted">Tags</dt>
+            <dt className="text-muted">{w.tags}</dt>
             <dd>{draft.tags.length === 0 ? "–" : draft.tags.join(", ")}</dd>
           </dl>
         </section>
@@ -200,20 +202,20 @@ export function DraftSentPanel({
         {canWrite && isDraftDeletable(status) && (
           <section aria-labelledby={`${id}-delete`} className={card}>
             <h2 id={`${id}-delete`} className="text-title text-ink">
-              Delete the draft
+              {w.deleteTitle}
             </h2>
-            <p className={hint}>The order it made, if any, stays: it is a real order. Only the draft&apos;s own copy of the customer&apos;s details goes.</p>
+            <p className={hint}>{w.deleteHint}</p>
             <div>
               <button
                 type="button"
                 disabled={working}
                 onClick={() => {
-                  if (!window.confirm(`Delete draft ${number}? This cannot be undone.`)) return;
+                  if (!window.confirm(fillWords(w.deleteConfirm, { number }))) return;
                   run(actions.remove);
                 }}
                 className={secondary}
               >
-                Delete draft
+                {w.deleteButton}
               </button>
             </div>
           </section>

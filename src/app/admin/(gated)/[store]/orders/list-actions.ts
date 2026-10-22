@@ -2,19 +2,25 @@
 
 import { refresh } from "next/cache";
 
-import { BULK_REQUEST_TEXT, isBulkAction, type BulkAction, type BulkResult } from "@/lib/order-bulk";
-import { normaliseViewTitle, VIEW_TITLE_PROBLEM_TEXT } from "@/lib/order-list";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { isBulkAction, type BulkAction, type BulkResult } from "@/lib/order-bulk";
+import { normaliseViewTitle } from "@/lib/order-list";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { runBulk } from "@/server/order-bulk";
 import { resolveOrderList } from "@/server/order-list";
 import { staffActor } from "@/server/order-actor";
-import { deleteOrderView, reorderOrderViews, saveOrderView, updateOrderView, VIEW_PROBLEM_TEXT } from "@/server/order-views";
+import { deleteOrderView, reorderOrderViews, saveOrderView, updateOrderView } from "@/server/order-views";
 
 /** What a bulk action answers the table: the result to show, or one sentence for a request that could not be run at all. */
 export type BulkActionResponse = { ok: true; result: BulkResult } | { ok: false; message: string };
 export type ViewActionResponse = { ok: true; message: string } | { ok: false; message: string };
 
-const NO_ACCESS = "You do not have access to do this.";
+/** The list's words in the account's language (D312 A4); without a member, the request's. */
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "orders");
+const noAccess = async () => adminText(await actionAdminLang(), "orders").saved.noAccess;
 
 /**
  * A bulk action on ticked orders, or on every order the list's own query matches (wave 3, D173, `docs/wave-3-orders.md` 2.2.5). `orders:write`; printing is a link to the
@@ -26,8 +32,9 @@ export async function bulkOrdersAction(
   request: { action: string; ids?: string[]; matchingQuery?: string; tags?: string[]; notify?: boolean },
 ): Promise<BulkActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
-  if (!isBulkAction(request.action) || request.action === "print_slips") return { ok: false, message: BULK_REQUEST_TEXT.unknown_action };
+  if (!member) return { ok: false, message: await noAccess() };
+  const words = wordsOf(member);
+  if (!isBulkAction(request.action) || request.action === "print_slips") return { ok: false, message: words.bulk.requestProblems.unknown_action };
   const action: BulkAction = request.action;
   const tags = Array.isArray(request.tags) ? request.tags.filter((t): t is string => typeof t === "string").slice(0, 200) : undefined;
   const actor = staffActor(member.account.id);
@@ -42,7 +49,7 @@ export async function bulkOrdersAction(
     outcome = await runBulk(member.store.id, actor, { action, selection: { kind: "ids", ids }, tags, notify: request.notify === true });
   }
   refresh();
-  return outcome.ok ? { ok: true, result: outcome.result } : { ok: false, message: BULK_REQUEST_TEXT[outcome.problem] };
+  return outcome.ok ? { ok: true, result: outcome.result } : { ok: false, message: words.bulk.requestProblems[outcome.problem] };
 }
 
 /**
@@ -51,25 +58,27 @@ export async function bulkOrdersAction(
  */
 export async function saveOrderViewAction(storeSlug: string, request: { title: string; query: string; replaceId?: string | null }): Promise<ViewActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = wordsOf(member).saved;
   const resolved = await resolveOrderList(member.store.id, new URLSearchParams(String(request.query ?? "").slice(0, 2000)));
   const params = { ...resolved.params, after: null, view: null };
   const actor = staffActor(member.account.id);
   const saved = request.replaceId
     ? await updateOrderView(member.store.id, actor, request.replaceId, { title: String(request.title ?? "").trim() === "" ? undefined : request.title, params })
     : await saveOrderView(member.store.id, actor, { title: String(request.title ?? ""), params });
-  if (!saved.ok) return { ok: false, message: VIEW_PROBLEM_TEXT[saved.problem] };
+  if (!saved.ok) return { ok: false, message: w.problems[saved.problem] };
   refresh();
-  return { ok: true, message: request.replaceId ? `Updated the view “${saved.view.title}”.` : `Saved the view “${saved.view.title}”.` };
+  return { ok: true, message: fillWords(request.replaceId ? w.updatedView : w.savedView, { title: saved.view.title }) };
 }
 
 /** Renames a saved view, and/or replaces its state with the list's current one. */
 export async function updateOrderViewAction(storeSlug: string, viewId: string, request: { title?: string; query?: string }): Promise<ViewActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = wordsOf(member).saved;
   if (request.title !== undefined) {
     const title = normaliseViewTitle(request.title);
-    if (!title.ok) return { ok: false, message: VIEW_TITLE_PROBLEM_TEXT[title.problem] };
+    if (!title.ok) return { ok: false, message: w.titleProblems[title.problem] };
   }
   let params;
   if (typeof request.query === "string") {
@@ -77,26 +86,27 @@ export async function updateOrderViewAction(storeSlug: string, viewId: string, r
     params = { ...resolved.params, after: null, view: null };
   }
   const saved = await updateOrderView(member.store.id, staffActor(member.account.id), viewId, { title: request.title, params });
-  if (!saved.ok) return { ok: false, message: VIEW_PROBLEM_TEXT[saved.problem] };
+  if (!saved.ok) return { ok: false, message: w.problems[saved.problem] };
   refresh();
-  return { ok: true, message: `Updated the view “${saved.view.title}”.` };
+  return { ok: true, message: fillWords(w.updatedView, { title: saved.view.title }) };
 }
 
 /** Deletes a saved view. */
 export async function deleteOrderViewAction(storeSlug: string, viewId: string): Promise<ViewActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
+  const w = wordsOf(member).saved;
   const done = await deleteOrderView(member.store.id, staffActor(member.account.id), viewId);
-  if (!done.ok) return { ok: false, message: VIEW_PROBLEM_TEXT[done.problem] };
+  if (!done.ok) return { ok: false, message: w.problems[done.problem] };
   refresh();
-  return { ok: true, message: "Deleted the view." };
+  return { ok: true, message: w.deleted };
 }
 
 /** Puts the store's saved views in the given order. */
 export async function reorderOrderViewsAction(storeSlug: string, ids: string[]): Promise<ViewActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, message: NO_ACCESS };
+  if (!member) return { ok: false, message: await noAccess() };
   await reorderOrderViews(member.store.id, Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string").slice(0, 100) : []);
   refresh();
-  return { ok: true, message: "Moved." };
+  return { ok: true, message: wordsOf(member).saved.moved };
 }

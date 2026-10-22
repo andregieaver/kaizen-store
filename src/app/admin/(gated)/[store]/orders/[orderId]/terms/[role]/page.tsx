@@ -9,6 +9,9 @@ import { blockText } from "@/lib/page-content";
 import { requirePermission } from "@/server/permissions";
 import { snapshotForOrder } from "@/server/checkout-terms";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Terms as shown" };
 
@@ -24,24 +27,26 @@ export default async function OrderTermsAsShownPage({ params }: PageProps<"/admi
   const shopOff = await requireShopOrAfterSale(gated);
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "order").views;
   if (!z.uuid().safeParse(orderId).success || !isLegalRole(role)) notFound();
   const snapshot = await snapshotForOrder(store.id, orderId, role, null);
   if (!snapshot) notFound();
-  const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" }).format(snapshot.acceptedAt);
+  const when = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" }).format(snapshot.acceptedAt);
   const paragraphs = snapshot.content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.map((block) => blockText(block).trim()).filter(Boolean)));
   return (
     <div className="flex max-w-3xl flex-col gap-4">
       <p className="text-sm">
         <Link href={`/admin/${slug}/orders/${orderId}`} className="underline">
-          Back to the order
+          {w.backToOrder}
         </Link>
       </p>
       <PageHeader
         title={<>{snapshot.title}</>}
-        description={<>{LEGAL_ROLE_COPY[role].name} as the shopper saw it when they ordered, {when}. Version {snapshot.hash.slice(0, 8)}, language {snapshot.locale}. The mode was {snapshot.mode === "checkbox" ? "a tick box" : "a link"}. This is the plain text of the kept copy, not today&apos;s page.</>}
+        description={<>{fillWords(w.shownDescription, { name: LEGAL_ROLE_COPY[role].name, when, version: snapshot.hash.slice(0, 8), locale: snapshot.locale, mode: snapshot.mode === "checkbox" ? w.tickBox : w.link })}</>}
       />
       <div className={`flex flex-col gap-3 p-5 text-sm ${CARD_CLASS}`}>
-        {paragraphs.length === 0 ? <p className="text-muted">The kept copy has no text.</p> : paragraphs.map((text, index) => <p key={index} className="break-words whitespace-pre-line">{text}</p>)}
+        {paragraphs.length === 0 ? <p className="text-muted">{w.noText}</p> : paragraphs.map((text, index) => <p key={index} className="break-words whitespace-pre-line">{text}</p>)}
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import type { InstructionTranslations } from "@/lib/return-instructions";
 import { MAX_INSTRUCTIONS, MAX_TRANSIT_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, type ReturnSettings } from "@/lib/withdrawal";
 
@@ -25,6 +27,7 @@ export function ReturnSettingsForm({
   action,
   translateHref,
   sellsToBusinesses = true,
+  words = returnsEn,
 }: {
   settings: ReturnSettings;
   translations: InstructionTranslations;
@@ -36,81 +39,71 @@ export function ReturnSettingsForm({
   translateHref: string;
   /** Sell to businesses is on (D178): only then is the choice about companies' returns shown; off, it is kept as it was. */
   sellsToBusinesses?: boolean;
+  words?: ReturnsMessages;
 }) {
+  const t = words.settings;
   const address = settings.returnAddress;
   return (
-    <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-6">
+    <ActionForm action={action} successMessage={t.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="window" className={card}>
           <h2 id="window" className="text-title text-ink">
-            How long customers have
+            {t.window}
           </h2>
-          <p className="text-sm text-muted">
-            The law gives every consumer {MIN_WINDOW_DAYS} days to change their mind about what they bought, and you cannot shorten that. If you give
-            more, the days beyond are your own offer: a customer asks for a return, and you may approve or decline it.
-          </p>
+          <p className="text-sm text-muted">{fillWords(t.windowText, { min: MIN_WINDOW_DAYS })}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
-              Return window (days) <span className={hint}>{MIN_WINDOW_DAYS} to {MAX_WINDOW_DAYS}</span>
+              {t.windowDays} <span className={hint}>{fillWords(t.range, { min: MIN_WINDOW_DAYS, max: MAX_WINDOW_DAYS })}</span>
               <input name="windowDays" type="number" inputMode="numeric" min={MIN_WINDOW_DAYS} max={MAX_WINDOW_DAYS} defaultValue={settings.windowDays} required className={input} />
             </label>
             <label className={label}>
-              Transit allowance (days) <span className={hint}>0 to {MAX_TRANSIT_DAYS}</span>
+              {t.transit} <span className={hint}>{fillWords(t.transitRange, { max: MAX_TRANSIT_DAYS })}</span>
               <input name="transitDays" type="number" inputMode="numeric" min={0} max={MAX_TRANSIT_DAYS} defaultValue={settings.transitDays} required className={input} />
-              <span className={hint}>
-                When goods were sent but nobody marked them delivered, the {MIN_WINDOW_DAYS} days start this many days after they were sent. It is your
-                estimate of how long delivery takes.
-              </span>
+              <span className={hint}>{fillWords(t.transitHint, { min: MIN_WINDOW_DAYS })}</span>
             </label>
           </div>
         </section>
 
         <section aria-labelledby="money" className={card}>
           <h2 id="money" className="text-title text-ink">
-            Who pays, and when
+            {t.money}
           </h2>
           <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">Return shipping</legend>
+            <legend className="mb-1 font-medium">{t.returnShipping}</legend>
             <label className="flex items-start gap-2">
               <input type="radio" name="whoPaysReturn" value="shopper" defaultChecked={settings.whoPaysReturn === "shopper"} className="mt-0.5 size-4" />
-              <span>The customer pays to send the goods back. This is the default in the law, if you tell them before they buy.</span>
+              <span>{t.shopperPays}</span>
             </label>
             <label className="flex items-start gap-2">
               <input type="radio" name="whoPaysReturn" value="store" defaultChecked={settings.whoPaysReturn === "store"} className="mt-0.5 size-4" />
-              <span>The store pays.</span>
+              <span>{t.storePays}</span>
             </label>
           </fieldset>
           <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">When refunds are made</legend>
+            <legend className="mb-1 font-medium">{t.when}</legend>
             <label className="flex items-start gap-2">
               <input type="radio" name="refundWhen" value="received" defaultChecked={settings.refundWhen === "received"} className="mt-0.5 size-4" />
-              <span>
-                When the goods are back, or the customer shows proof that they sent them. The law allows this. The refund is still due within 14 days
-                of being told about the withdrawal.
-              </span>
+              <span>{t.whenReceived}</span>
             </label>
             <label className="flex items-start gap-2">
               <input type="radio" name="refundWhen" value="request" defaultChecked={settings.refundWhen === "request"} className="mt-0.5 size-4" />
-              <span>As soon as the customer asks, before the goods arrive.</span>
+              <span>{t.whenRequest}</span>
             </label>
           </fieldset>
         </section>
 
         <section aria-labelledby="scope" className={card}>
           <h2 id="scope" className="text-title text-ink">
-            What can come back
+            {t.scope}
           </h2>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="acceptExcluded" defaultChecked={settings.acceptExcluded} className="mt-0.5 size-4" />
-            <span>
-              Also accept returns of goods the law excludes from withdrawal, such as made-to-order goods or opened hygiene products. They are only
-              ever return requests you may decline, and only inside your own window.
-            </span>
+            <span>{t.acceptExcluded}</span>
           </label>
           {sellsToBusinesses ? (
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" name="b2bReturns" defaultChecked={settings.b2bReturns} className="mt-0.5 size-4" />
-              <span>Also accept return requests from companies. A company has no legal right of withdrawal, so this is your own offer.</span>
+              <span>{t.b2b}</span>
             </label>
           ) : (
             // Kept as it is while Sell to businesses is off (D178).
@@ -120,28 +113,28 @@ export function ReturnSettingsForm({
 
         <section aria-labelledby="address" className={card}>
           <h2 id="address" className="text-title text-ink">
-            Where goods are sent back
+            {t.address}
           </h2>
-          <p className="text-sm text-muted">Leave all of it empty to use the store&apos;s postal address, from its company details.</p>
+          <p className="text-sm text-muted">{t.addressText}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
-              Name
+              {t.name}
               <input name="addressName" defaultValue={address?.name ?? ""} autoComplete="off" className={input} />
             </label>
             <label className={label}>
-              Street
+              {t.street}
               <input name="addressStreet" defaultValue={address?.street ?? ""} autoComplete="off" className={input} />
             </label>
             <label className={label}>
-              Postal code
+              {t.postalCode}
               <input name="addressPostalCode" defaultValue={address?.postalCode ?? ""} autoComplete="off" className={input} />
             </label>
             <label className={label}>
-              City
+              {t.city}
               <input name="addressCity" defaultValue={address?.city ?? ""} autoComplete="off" className={input} />
             </label>
             <label className={label}>
-              Country <span className={hint}>(two letters, such as NO)</span>
+              {t.country} <span className={hint}>{t.countryHint}</span>
               <input name="addressCountry" defaultValue={address?.country ?? ""} maxLength={2} autoComplete="off" className={`${input} uppercase sm:w-24`} />
             </label>
           </div>
@@ -149,24 +142,21 @@ export function ReturnSettingsForm({
 
         <section aria-labelledby="instructions" className={card}>
           <h2 id="instructions" className="text-title text-ink">
-            Instructions for customers
+            {t.instructions}
           </h2>
-          <p className="text-sm text-muted">
-            How to pack and send the goods back. Customers read this on their withdrawal and in the emails they get. Do not put legal promises in
-            it: it is practical help.
-          </p>
+          <p className="text-sm text-muted">{t.instructionsText}</p>
           <label className={label}>
-            {main.name} <span className={hint}>(the store&apos;s main language)</span>
+            {main.name} <span className={hint}>{t.mainLanguage}</span>
             <textarea name="instructions" defaultValue={settings.instructions} rows={5} maxLength={MAX_INSTRUCTIONS} className={`${input} py-2`} />
           </label>
           {others.length > 0 && (
             <div className="flex flex-col gap-3 border-t border-line pt-4">
               <p className="text-sm text-muted">
-                A text for each of the other languages. Where there is none, customers read the {main.name} text. You can have AI suggest them from{" "}
+                {fillWords(t.others, { main: main.name })}{" "}
                 <a href={translateHref} className="underline">
-                  Translate the store
+                  {t.translate}
                 </a>
-                ; you read each one before it is kept.
+                {t.othersAfter}
               </p>
               {others.map((language) => (
                 <label key={language.locale} className={label}>
@@ -181,11 +171,11 @@ export function ReturnSettingsForm({
 
       {canEdit ? (
         <div>
-          <SubmitButton>Save the return rules</SubmitButton>
+          <SubmitButton>{t.save}</SubmitButton>
         </div>
       ) : (
         <p role="note" className="text-sm text-muted">
-          Only an owner can change these rules.
+          {t.ownerOnly}
         </p>
       )}
     </ActionForm>

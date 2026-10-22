@@ -7,7 +7,9 @@ import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
 import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
-import { BULK_REASON_TEXT } from "@/lib/order-bulk";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { packingSlipData, parcelSlipData, type PackingSlip } from "@/server/packing-slips";
 import { requirePermission } from "@/server/permissions";
 
@@ -27,13 +29,15 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
   const shopOff = await requireShopOrAfterSale(gated);
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "order").views;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const shipment = (await searchParams).shipment;
   if (shipment !== undefined) {
     if (typeof shipment !== "string" || !z.uuid().safeParse(shipment).success) notFound();
     const parcel = await parcelSlipData(store.id, orderId, shipment);
     if (!parcel) notFound();
-    return <SlipPage slip={parcel} storeName={store.name} seller={store.details} />;
+    return <SlipPage slip={parcel} storeName={store.name} seller={store.details} print={w.print} />;
   }
   const set = await packingSlipData(store.id, [orderId], { reprint: true });
   if (!set.ok) notFound();
@@ -43,22 +47,22 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
     if (!skipped || skipped.reason === "not_found") notFound();
     return (
       <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold">Packing slip</h1>
-        <p className="rounded-lg border border-border bg-surface p-4 text-sm">There is no slip for this order: {BULK_REASON_TEXT[skipped.reason].replace(/^It /, "it ").replace(/\.$/, "")}.</p>
+        <h1 className="text-2xl font-semibold">{w.slipTitle}</h1>
+        <p className="rounded-lg border border-border bg-surface p-4 text-sm">{fillWords(w.noSlip, { reason: adminText(lang, "orders").bulk.reasons[skipped.reason].replace(/^It /, "it ").replace(/\.$/, "") })}</p>
         <Link href={`/admin/${store.slug}/orders/${orderId}`} className="text-sm underline underline-offset-2">
-          Back to the order
+          {w.backToOrder}
         </Link>
       </div>
     );
   }
-  return <SlipPage slip={slip} storeName={store.name} seller={store.details} />;
+  return <SlipPage slip={slip} storeName={store.name} seller={store.details} print={w.print} />;
 }
 
-function SlipPage({ slip, storeName, seller }: { slip: PackingSlip; storeName: string; seller: Parameters<typeof PackingSlipView>[0]["seller"] }) {
+function SlipPage({ slip, storeName, seller, print }: { slip: PackingSlip; storeName: string; seller: Parameters<typeof PackingSlipView>[0]["seller"]; print: string }) {
   return (
     <PrintArea className="flex flex-col gap-4">
       <div className="mx-auto flex w-full max-w-2xl justify-end print:hidden">
-        <PrintButton label="Print" />
+        <PrintButton label={print} />
       </div>
       <PackingSlipView slip={slip} storeName={storeName} seller={seller} />
     </PrintArea>

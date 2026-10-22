@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { FOOTER_NOTE_MAX, type SeriesName } from "@/lib/invoice-settings";
-import { dayLabel, INVOICE_NOTES, SELLER_FIELD_LABELS } from "@/lib/invoice-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
+import { FOOTER_NOTE_MAX } from "@/lib/invoice-settings";
+import { dayLabel, sellerFieldLabel } from "@/lib/invoice-admin";
 import type { InvoiceReadiness, InvoiceSettings, SeriesState } from "@/server/invoice-settings";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
@@ -12,33 +14,30 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
-const SERIES_TITLES: Record<SeriesName, string> = { invoice: "Invoice numbers", credit_note: "Credit note numbers" };
 
 /**
  * What is missing before invoices can be issued (D159, `docs/wave-1b-invoices.md` 2.3): the seller's details with a link to where each is
  * given, the tax profile, and the two things an owner should know before switching on (rates kept by hand, Stripe's own invoice).
  */
-export function InvoiceReadinessList({ base, readiness }: { base: string; readiness: InvoiceReadiness }) {
+export function InvoiceReadinessList({ base, readiness, words: w = invoicesEn }: { base: string; readiness: InvoiceReadiness; words?: InvoicesMessages }) {
+  const t = w.settings;
   const items: { key: string; text: string; href: string | null }[] = [];
   for (const field of readiness.missing) {
-    items.push({ key: field, text: `${SELLER_FIELD_LABELS[field] ?? field} is missing.`, href: `${base}${readiness.fixAt[field] ?? "/settings/company"}` });
+    items.push({ key: field, text: fillWords(t.missing, { field: sellerFieldLabel(field, w) }), href: `${base}${readiness.fixAt[field] ?? "/settings/company"}` });
   }
-  if (!readiness.taxProfileSaved) items.push({ key: "tax", text: "The tax profile is not saved, so it is not known whether the store is registered for VAT.", href: `${base}/settings/tax` });
+  if (!readiness.taxProfileSaved) items.push({ key: "tax", text: t.taxMissing, href: `${base}/settings/tax` });
   return (
     <section aria-labelledby="readiness" className={card}>
       <h2 id="readiness" className="text-title text-ink">
-        Before you switch on
+        {t.before}
       </h2>
       {items.length === 0 ? (
         <p role="status" className="text-sm">
-          The business details and the tax profile an invoice needs are complete.
+          {t.complete}
         </p>
       ) : (
         <>
-          <p className="text-sm text-muted">
-            Orders paid while something is missing wait for their invoice; the payment is never held back. They are issued, with that day as the issue date,
-            within five minutes of the cause being put right.
-          </p>
+          <p className="text-sm text-muted">{t.waitText}</p>
           <ul className="divide-y divide-line rounded-panel border border-line text-sm">
             {items.map((item) => (
               <li key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
@@ -46,7 +45,7 @@ export function InvoiceReadinessList({ base, readiness }: { base: string; readin
                 <span className="min-w-0 flex-1">{item.text}</span>
                 {item.href && (
                   <Link href={item.href} className="shrink-0 underline">
-                    Fix it
+                    {t.fixIt}
                   </Link>
                 )}
               </li>
@@ -56,10 +55,9 @@ export function InvoiceReadinessList({ base, readiness }: { base: string; readin
       )}
       {readiness.ratesByHand && (
         <p className="text-sm text-muted">
-          The store keeps its exchange rates by hand. An invoice in another currency than your country&apos;s shows the VAT in your country&apos;s currency at
-          that rate, which the rules ask to come from the ECB or the central bank: ask your accountant, or switch on automatic rates under{" "}
+          {t.ratesByHand}{" "}
           <Link href={`${base}/settings/localization`} className="underline">
-            Languages and currencies
+            {t.languagesAndCurrencies}
           </Link>
           .
         </p>
@@ -74,58 +72,59 @@ export function InvoiceSettingsForm({
   readiness,
   paymentsHref,
   saveAction,
+  words: w = invoicesEn,
 }: {
   settings: InvoiceSettings;
   readiness: InvoiceReadiness;
   paymentsHref: string;
   saveAction: Action;
+  words?: InvoicesMessages;
 }) {
+  const t = w.settings;
   return (
-    <ActionForm action={saveAction} successMessage="Saved." className="flex flex-col gap-6">
+    <ActionForm action={saveAction} successMessage={t.saved} className="flex flex-col gap-6">
       <section aria-labelledby="switch" className={card}>
         <h2 id="switch" className="text-title text-ink">
-          Invoices
+          {t.invoices}
         </h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="mt-0.5 size-4" />
           <span>
-            Make an invoice for every paid order
+            {t.makeInvoice}
             <span className={`block ${hint}`}>
-              From the moment this is on. Orders paid before it was switched on are never invoiced afterwards.
-              {settings.enabled && settings.enabledFrom ? ` Switched on ${dayLabel(settings.enabledFrom.slice(0, 10))}.` : ""}
-              {!settings.enabled && settings.saved ? " It is off now, so new orders get no invoice." : ""}
+              {t.fromNow}
+              {settings.enabled && settings.enabledFrom ? fillWords(t.switchedOn, { day: dayLabel(settings.enabledFrom.slice(0, 10), w) }) : ""}
+              {!settings.enabled && settings.saved ? t.offNow : ""}
             </span>
           </span>
         </label>
         {!settings.enabled && !readiness.ready && (
-          <p className="text-sm text-muted">Complete the list above first, or orders will wait for their invoice once you switch it on.</p>
+          <p className="text-sm text-muted">{t.completeFirst}</p>
         )}
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="emailWithConfirmation" defaultChecked={settings.emailWithConfirmation} className="mt-0.5 size-4" />
           <span>
-            Send the invoice with the order confirmation
-            <span className={`block ${hint}`}>
-              The email links to the invoice, and attaches the PDF when it exists. The invoice is always on the order page whatever you choose here.
-            </span>
+            {t.withConfirmation}
+            <span className={`block ${hint}`}>{t.withConfirmationHint}</span>
           </span>
         </label>
         {readiness.stripeInvoicesIgnored && (
           <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
-            Stripe&apos;s own invoice for orders is switched on under{" "}
+            {t.stripeBefore}{" "}
             <Link href={paymentsHref} className="underline">
-              Payments
+              {t.payments}
             </Link>
-            , and is not used while Kaizena Flow makes the invoices, so a shopper never gets two.
+            {t.stripeAfter}
           </p>
         )}
       </section>
 
       <section aria-labelledby="note" className={card}>
         <h2 id="note" className="text-title text-ink">
-          Note on every document
+          {t.note}
         </h2>
         <label className={label}>
-          Text <span className={hint}>(up to {FOOTER_NOTE_MAX} characters, in the store&apos;s main language)</span>
+          {t.text} <span className={hint}>{fillWords(t.textHint, { max: FOOTER_NOTE_MAX })}</span>
           <textarea
             name="footerNote"
             defaultValue={settings.footerNote ?? ""}
@@ -133,15 +132,12 @@ export function InvoiceSettingsForm({
             maxLength={FOOTER_NOTE_MAX}
             className={`${input} min-h-24 py-2`}
           />
-          <span className={hint}>
-            Printed at the bottom of every invoice and credit note, for example the bank details or a returns address. Plain text only. It is not translated:
-            it is shown as written on documents in every language, and a change applies to documents issued from then on.
-          </span>
+          <span className={hint}>{t.noteHint}</span>
         </label>
       </section>
 
       <div>
-        <SubmitButton>Save</SubmitButton>
+        <SubmitButton>{t.save}</SubmitButton>
       </div>
     </ActionForm>
   );
@@ -151,8 +147,9 @@ export function InvoiceSettingsForm({
  * One series' prefix and first number. Open until its first document is issued, then shown and locked: numbers already issued cannot be
  * changed, and the next one always follows the last.
  */
-export function SeriesForm({ state, action }: { state: SeriesState; action: Action }) {
-  const title = SERIES_TITLES[state.series];
+export function SeriesForm({ state, action, words: w = invoicesEn }: { state: SeriesState; action: Action; words?: InvoicesMessages }) {
+  const t = w.settings;
+  const title = t.series[state.series];
   return (
     <section aria-labelledby={`series-${state.series}`} className={card}>
       <h2 id={`series-${state.series}`} className="text-title text-ink">
@@ -160,15 +157,15 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
       </h2>
       {state.locked ? (
         <p className="text-sm">
-          {state.issued} issued. The next number is <span className="font-medium">{state.nextDocumentNumber}</span>.
-          <span className={`block ${hint}`}>Numbers already issued cannot be changed, and none can be skipped or removed.</span>
+          {fillWords(t.issued, { n: state.issued })} <span className="font-medium">{state.nextDocumentNumber}</span>.
+          <span className={`block ${hint}`}>{t.locked}</span>
         </p>
       ) : (
-        <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-4">
+        <ActionForm action={action} successMessage={t.saved} className="flex flex-col gap-4">
           <input type="hidden" name="series" value={state.series} />
           <div className="flex flex-wrap gap-4">
             <label className={label}>
-              Prefix <span className={hint}>(up to 10 letters, digits and . _ / -)</span>
+              {t.prefix} <span className={hint}>{t.prefixHint}</span>
               <input
                 name="prefix"
                 defaultValue={state.prefix}
@@ -179,16 +176,16 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
               />
             </label>
             <label className={label}>
-              First number
+              {t.firstNumber}
               <input name="nextNumber" type="number" inputMode="numeric" min={1} step={1} defaultValue={state.nextNumber} className={`${input} sm:w-40`} />
             </label>
           </div>
           <p className="text-sm text-muted">
-            The first {state.series === "invoice" ? "invoice" : "credit note"} will be <span className="font-medium text-ink">{state.nextDocumentNumber}</span>. You can
-            change this until it is issued; to continue numbers from another system, set the number after the last one you used there.
+            {state.series === "invoice" ? t.firstInvoice : t.firstCreditNote} <span className="font-medium text-ink">{state.nextDocumentNumber}</span>
+            {t.firstAfter}
           </p>
           <div>
-            <SubmitButton variant="secondary">Save the numbers</SubmitButton>
+            <SubmitButton variant="secondary">{t.saveNumbers}</SubmitButton>
           </div>
         </ActionForm>
       )}
@@ -197,18 +194,18 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
 }
 
 /** The plain-English notes for an accountant's eyes. */
-export function InvoiceNotes() {
+export function InvoiceNotes({ words: w = invoicesEn }: { words?: InvoicesMessages }) {
   return (
     <section aria-labelledby="notes" className={card}>
       <h2 id="notes" className="text-title text-ink">
-        What the system does
+        {w.settings.notesTitle}
       </h2>
       <ul className="list-disc space-y-2 pl-5 text-sm text-muted">
-        {INVOICE_NOTES.map((note) => (
+        {w.notes.map((note) => (
           <li key={note}>{note}</li>
         ))}
       </ul>
-      <p className="text-sm text-muted">This is not legal, tax or accounting advice.</p>
+      <p className="text-sm text-muted">{w.settings.notAdvice}</p>
     </section>
   );
 }

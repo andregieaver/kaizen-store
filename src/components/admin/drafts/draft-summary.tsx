@@ -4,8 +4,11 @@ import { t } from "@/lib/i18n";
 import { unitPrice } from "@/lib/unit-price";
 import type { DraftProblemWords } from "@/app/admin/(gated)/[store]/orders/drafts/actions";
 import type { DraftSummary } from "@/server/draft-orders";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/drafts-words";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 
-const percent = (rate: number): string => `${(Math.round(rate * 10000) / 100).toLocaleString("en", { maximumFractionDigits: 2 })} %`;
+const percent = (rate: number, lang: string = "en"): string => `${(Math.round(rate * 10000) / 100).toLocaleString(lang, { maximumFractionDigits: 2 })} %`;
 
 /**
  * The summary beside the draft editor (wave 3, D173, `docs/wave-3-orders.md` 2.4): what the draft totals, worked out by the SERVER from what it saved (`previewDraft()`, the same pricing the send uses),
@@ -26,18 +29,20 @@ export function DraftSummaryPanel({
   /** `fresh`: these are the saved draft's figures; `stale`: there are changes not yet saved; `working`: being saved. */
   state: "fresh" | "stale" | "working";
 }) {
+  const lang = useAdminLang();
+  const w = useAdminText("drafts").summary;
   const money = (minor: number) => formatMoney(minor, currency, locale);
-  const bases = t("en").unitPrice.bases;
+  const bases = t(lang).unitPrice.bases;
   const blocking = problems.filter((p) => p.blocking);
   const notes = problems.filter((p) => !p.blocking);
   return (
     <section aria-labelledby="draft-summary" className="flex flex-col gap-3 rounded-panel bg-sunken p-4 text-sm" aria-busy={state === "working"}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="draft-summary" className="text-title text-ink">
-          Summary
+          {w.title}
         </h2>
         <span className={hint} aria-live="polite">
-          {state === "working" ? "Calculating …" : state === "stale" ? "Save to update" : "Worked out by the checkout's rules"}
+          {state === "working" ? w.calculating : state === "stale" ? w.saveToUpdate : w.rules}
         </span>
       </div>
 
@@ -57,7 +62,7 @@ export function DraftSummaryPanel({
       )}
 
       {!summary ? (
-        <p className="text-muted">Add a line to see the totals.</p>
+        <p className="text-muted">{w.addLine}</p>
       ) : (
         <>
           <ul className="flex flex-col divide-y divide-line">
@@ -69,17 +74,17 @@ export function DraftSummaryPanel({
                     <p className="break-words">{line.title}</p>
                     <p className="text-xs text-muted">
                       {line.quantity} × {money(line.unitPriceMinor)}
-                      {line.customPrice && line.listPriceMinor !== null && ` (custom price, list ${money(line.listPriceMinor)})`}
-                      {line.customPrice && line.listPriceMinor === null && " (custom item)"}
+                      {line.customPrice && line.listPriceMinor !== null && fillWords(w.customPrice, { price: money(line.listPriceMinor) })}
+                      {line.customPrice && line.listPriceMinor === null && w.customItem}
                       {per?.ok && ` · ${money(per.minor)}/${bases[per.base]}`}
                     </p>
-                    {line.staffDiscountMinor > 0 && <p className="text-xs text-muted">Discount −{money(line.staffDiscountMinor)}</p>}
+                    {line.staffDiscountMinor > 0 && <p className="text-xs text-muted">{fillWords(w.discount, { amount: money(line.staffDiscountMinor) })}</p>}
                     {line.backorder && (
                       <p className="text-xs font-medium">
-                        Backorder: {line.backorder.units} {line.backorder.units === 1 ? "unit" : "units"}, shipped within {line.backorder.days} {line.backorder.days === 1 ? "day" : "days"}
+                        {fillWords(w.backorder, { units: countWords(line.backorder.units, w.units), days: countWords(line.backorder.days, w.days) })}
                       </p>
                     )}
-                    {line.currentListMinor !== null && <p className="text-xs font-medium">The list price is now {money(line.currentListMinor)}: save the line again to take it.</p>}
+                    {line.currentListMinor !== null && <p className="text-xs font-medium">{fillWords(w.listNow, { price: money(line.currentListMinor) })}</p>}
                   </div>
                   <span className="shrink-0 tabular-nums">{money(line.totalMinor)}</span>
                 </li>
@@ -88,41 +93,39 @@ export function DraftSummaryPanel({
           </ul>
           <dl className="flex flex-col gap-1 border-t border-line pt-2">
             <div className="flex justify-between">
-              <dt>Subtotal</dt>
+              <dt>{w.subtotal}</dt>
               <dd className="tabular-nums">{money(summary.subtotalMinor)}</dd>
             </div>
             {summary.staffDiscountMinor > 0 && (
               <div className="flex justify-between">
                 <dt>
-                  {summary.staffDiscountLabel ?? "Discount"} <span className="text-xs text-muted">(the buyer sees this)</span>
+                  {summary.staffDiscountLabel ?? w.discountLabel} <span className="text-xs text-muted">{w.buyerSees}</span>
                 </dt>
                 <dd className="tabular-nums">−{money(summary.staffDiscountMinor)}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt>Shipping</dt>
-              <dd className="tabular-nums">{summary.shippingMinor === 0 ? "Free" : money(summary.shippingMinor)}</dd>
+              <dt>{w.shipping}</dt>
+              <dd className="tabular-nums">{summary.shippingMinor === 0 ? w.free : money(summary.shippingMinor)}</dd>
             </div>
             <div className="flex justify-between border-t border-line pt-1 text-base font-medium">
-              <dt>Total</dt>
+              <dt>{w.total}</dt>
               <dd className="tabular-nums">{money(summary.totalMinor)}</dd>
             </div>
             {summary.vatPerRate.map((v) => (
               <div key={v.rate} className="flex justify-between text-muted">
-                <dt>VAT included, {percent(v.rate)}</dt>
+                <dt>{fillWords(w.vatAt, { rate: percent(v.rate, lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale) })}</dt>
                 <dd className="tabular-nums">{money(v.taxMinor)}</dd>
               </div>
             ))}
             {summary.vatPerRate.length === 0 && (
               <div className="flex justify-between text-muted">
-                <dt>VAT included</dt>
+                <dt>{w.vat}</dt>
                 <dd className="tabular-nums">{money(summary.taxMinor)}</dd>
               </div>
             )}
           </dl>
-          <p className={hint}>
-            Prices include VAT. Campaigns, discount codes, bonus credits and VAT-number checks do not apply to a draft: the price and the discount are the ones you set.
-          </p>
+          <p className={hint}>{w.hint}</p>
         </>
       )}
     </section>

@@ -3,7 +3,10 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import type { ReturnAddress } from "@/lib/withdrawal";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { audit } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -18,7 +21,8 @@ const text = (form: FormData, name: string): string => String(form.get(name) ?? 
  */
 export async function saveReturnSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { status: "error", messages: ["Only an owner can change the return rules."] };
+  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "returns").settings.ownerRules] };
+  const words = adminText(adminLangOf(member.account.adminLocale), "returns");
 
   const parts = [text(form, "addressName"), text(form, "addressStreet"), text(form, "addressPostalCode"), text(form, "addressCity"), text(form, "addressCountry")];
   const returnAddress: ReturnAddress | null = parts.every((p) => p === "")
@@ -62,7 +66,7 @@ export async function saveReturnSettingsAction(storeSlug: string, _previous: For
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
   refresh();
-  return { status: "ok", messages: ["Saved."] };
+  return { status: "ok", messages: [words.actions.saved] };
 }
 
 /**
@@ -72,7 +76,7 @@ export async function saveReturnSettingsAction(storeSlug: string, _previous: For
  */
 export async function saveExchangeLabelSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return { status: "error", messages: ["Only an owner can change the exchange and label settings."] };
+  if (!member) return { status: "error", messages: [adminText(await actionAdminLang(), "returns").settings.ownerExchanges] };
   const saved = await saveExchangeLabelSettings(
     member.store.id,
     {
@@ -87,5 +91,5 @@ export async function saveExchangeLabelSettingsAction(storeSlug: string, _previo
   await audit(member.account.id, member.store.id, "returns.settings_saved", { part: "exchanges_labels", ...saved.settings });
   updateTag(storeTag(member.store.slug));
   refresh();
-  return { status: "ok", messages: ["Saved."] };
+  return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "returns").actions.saved] };
 }

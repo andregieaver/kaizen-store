@@ -615,14 +615,43 @@ export function sameBase(a: ReturnType<typeof editBase>, b: ReturnType<typeof ed
  * What happens to the money, in the summary beside the editor. `amount` is the difference already written by `formatMoney()` (never worked out here); `outside`
  * is a payment taken outside Kaizen (D173), which the store pays back itself.
  */
-export function moneySentence(money: PricedEdit["money"], amount: string, outside = false): string {
+export function moneySentence(money: PricedEdit["money"], amount: string, outside = false, words?: EditSentenceWords): string {
+  if (words) {
+    const fill = (text: string) => text.replace("{amount}", amount);
+    if (money === "charge") return fill(words.charge);
+    if (money === "refund") return fill(outside ? words.refundOutside : words.refund);
+    return words.none;
+  }
   if (money === "charge") return `The customer will be asked to pay ${amount}. The order stays as it is until they pay.`;
   if (money === "refund") return outside ? `${amount} is recorded as paid back to the customer: the store pays it back itself.` : `${amount} is refunded to the customer's card.`;
   return "Nothing to pay or refund.";
 }
 
+/** The words of the summary's sentences in another language than English (D312 A4: the admin catalogue's `drafts.edit.sentences`). */
+export type EditSentenceWords = {
+  charge: string;
+  refundOutside: string;
+  refund: string;
+  none: string;
+  noInvoice: string;
+  ref: string;
+  both: string;
+  credit: string;
+  invoice: string;
+  nothing: string;
+};
+
+/** What decides the documents a change issues: kept on the preview so the screen can say it in the person's language. */
+export type EditDocumentFacts = { invoiced: boolean; creditMinor: number; invoiceMinor: number; invoiceNumber: string | null };
+
 /** The documents a change will issue (4.6), for the summary. */
-export function documentsSentence(input: { invoiced: boolean; creditMinor: number; invoiceMinor: number; invoiceNumber: string | null }): string {
+export function documentsSentence(input: EditDocumentFacts, words?: EditSentenceWords): string {
+  if (words) {
+    if (!input.invoiced) return words.noInvoice;
+    const ref = input.invoiceNumber ? words.ref.replace("{number}", input.invoiceNumber) : "";
+    const pick = input.creditMinor > 0 && input.invoiceMinor > 0 ? words.both : input.creditMinor > 0 ? words.credit : input.invoiceMinor > 0 ? words.invoice : null;
+    return pick === null ? words.nothing : pick.replace("{ref}", ref);
+  }
   if (!input.invoiced) return "This order has no invoice, so the change issues no documents.";
   const ref = input.invoiceNumber ? `, referring to invoice ${input.invoiceNumber}` : "";
   if (input.creditMinor > 0 && input.invoiceMinor > 0) return `A credit note for what is taken off and an additional invoice for what is added${ref}.`;

@@ -5,6 +5,9 @@ import { NewDraftForm } from "@/components/admin/drafts/new-draft-form";
 import { draftMarketOptions } from "@/lib/draft-markets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { createDraftAction } from "../actions";
 
@@ -18,17 +21,17 @@ export default async function NewDraftPage({ params }: PageProps<"/admin/[store]
   if (shopOff) return shopOff;
   const { store } = member;
   const options = draftMarketOptions(store.markets, store.localization);
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "drafts").pages;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: `/admin/${store.slug}/orders/drafts`, label: "Draft orders" }}
-        title="New draft order"
-        description={<>Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.</>}
-      />
+      <PageHeader back={{ href: `/admin/${store.slug}/orders/drafts`, label: w.listTitle }} title={w.newTitle} description={w.newDescription} />
       {memberCan(member, "orders:write") ? (
-        <NewDraftForm options={options} action={createDraftAction.bind(null, store.slug)} defaultCountry={store.markets[0]?.code ?? ""} />
+        <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
+          <NewDraftForm options={options} action={createDraftAction.bind(null, store.slug)} defaultCountry={store.markets[0]?.code ?? ""} />
+        </AdminTextScope>
       ) : (
-        <p className="rounded-panel bg-sunken p-4 text-sm">You can look at draft orders but not make one: that needs the right to change orders.</p>
+        <p className="rounded-panel bg-sunken p-4 text-sm">{w.newNoWrite}</p>
       )}
     </div>
   );

@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ExchangeSettingsForm } from "@/components/admin/returns/exchange-settings-form";
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { carrierInfo } from "@/lib/shipping-carriers";
 import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
@@ -37,11 +39,12 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
     return info?.available.includes("return_labels") ? [{ id: c.carrier, name: info.name, ready: c.complete && c.check?.ok === true }] : [];
   });
   const [main, ...others] = store.localization.locales;
+  const words = adminText(adminLangOf(current.account.adminLocale), "returns");
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Returns"
-        description={<>Customers in the EU can withdraw from most purchases within 14 days, without giving a reason. These are the store&apos;s rules around that: the days it offers on top, who pays to send goods back, and when the refund is made. The defaults are the law&apos;s. The texts customers read about their right are reviewed by a person: this is not legal advice.</>}
+        title={words.settings.title}
+        description={words.settings.description}
       />
       <ReturnSettingsForm
         settings={settings}
@@ -52,6 +55,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
         action={saveReturnSettingsAction.bind(null, store.slug)}
         translateHref={`/admin/${store.slug}/translate`}
         sellsToBusinesses={featureOn(store, "business")}
+        words={words}
       />
       <ExchangeSettingsForm
         values={exchangeSettings}
@@ -59,6 +63,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
         canEdit={memberCan(current, "owner")}
         action={saveExchangeLabelSettingsAction.bind(null, store.slug)}
         integrationsHref={`/admin/${store.slug}/integrations`}
+        words={words}
       />
     </div>
   );

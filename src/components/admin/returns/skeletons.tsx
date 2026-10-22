@@ -1,10 +1,12 @@
+import { returnsEn } from "@/lib/admin-messages/returns.en";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The queue's shape while it is read: the heading, the four figures, the filter and the table, in the admin's placeholder style. */
-export function QueueSkeleton() {
+export function QueueSkeleton({ label = returnsEn.queue.loading }: { label?: string }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the returns…</span>
+      <span className="sr-only">{label}</span>
       <div className="space-y-3">
         <div className={`${block} h-8 w-32`} />
         <div className={`${block} h-4 w-full max-w-xl`} />

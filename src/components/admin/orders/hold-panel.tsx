@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { RULE_LIMITS } from "@/lib/order-rules";
 import type { OrderHold } from "@/server/order-hold";
+import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import { fillWords } from "@/lib/admin-fill";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -17,7 +19,10 @@ export function HoldPanel({
   when,
   release,
   holdAction,
+  words: w = orderEn.hold,
 }: {
+  /** The `order` catalogue's `hold` words in the account's language (D312 A4). */
+  words?: OrderMessages["hold"];
   hold: OrderHold | null;
   /** `/admin/{store}`. */
   base: string;
@@ -30,27 +35,27 @@ export function HoldPanel({
   if (hold) {
     const by = hold.rule ? (
       <>
-        by the rule{" "}
+        {w.byRule}{" "}
         {hold.rule.name ? (
           <Link href={`${base}/settings/automation/${hold.rule.id}`} className="underline underline-offset-2">
             {hold.rule.name}
           </Link>
         ) : (
-          "that was deleted since"
+          w.ruleDeleted
         )}
       </>
     ) : hold.byAccount ? (
-      <>by {hold.byAccount.name ?? "a member of staff"}</>
+      <>{fillWords(w.byPerson, { name: hold.byAccount.name ?? w.staffMember })}</>
     ) : null;
     return (
-      <section role="status" aria-label="On hold" className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warning-line bg-warning-soft p-4 text-warning-text">
+      <section role="status" aria-label={w.onHold} className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warning-line bg-warning-soft p-4 text-warning-text">
         <p className="text-body">
-          <span className="text-body-strong">On hold: {hold.reason}</span> ({by ? <>{by}, </> : null}
-          {when(hold.heldAt)}). Nothing of this order can be sent or handed over until it is released.
+          <span className="text-body-strong">{fillWords(w.onHoldReason, { reason: hold.reason })}</span> ({by ? <>{by}, </> : null}
+          {when(hold.heldAt)}{w.nothing}
         </p>
         {release && (
-          <ActionForm action={release} successMessage="Released.">
-            <SubmitButton variant="secondary">Release</SubmitButton>
+          <ActionForm action={release} successMessage={w.released}>
+            <SubmitButton variant="secondary">{w.release}</SubmitButton>
           </ActionForm>
         )}
       </section>
@@ -59,14 +64,14 @@ export function HoldPanel({
   if (!holdAction) return null;
   return (
     <details className="rounded-panel border border-line bg-card p-4">
-      <summary className="cursor-pointer text-sm">Hold fulfilment</summary>
-      <ActionForm action={holdAction} successMessage="The order is on hold." className="mt-3 flex flex-col gap-3">
+      <summary className="cursor-pointer text-sm">{w.holdFulfilment}</summary>
+      <ActionForm action={holdAction} successMessage={w.isOnHold} className="mt-3 flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Why it is held <span className="font-normal text-muted">(staff see this; at most {RULE_LIMITS.reason} characters)</span>
+          {w.why} <span className="font-normal text-muted">{fillWords(w.whyHint, { max: RULE_LIMITS.reason })}</span>
           <input name="reason" required maxLength={RULE_LIMITS.reason} className="min-h-10 w-full max-w-xl rounded-md border border-line bg-card px-3 text-sm font-normal" />
         </label>
         <div>
-          <SubmitButton variant="secondary">Hold</SubmitButton>
+          <SubmitButton variant="secondary">{w.hold}</SubmitButton>
         </div>
       </ActionForm>
     </details>

@@ -1,50 +1,41 @@
 import Link from "next/link";
 
-import { dayText, KIND_LABELS } from "@/lib/return-admin";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import { dayText } from "@/lib/return-admin";
 import { formatStoreDay } from "@/lib/return-time";
 import type { OrderReturnsOverview } from "@/server/order-returns";
 
 import { DayStepForm, RegisterWithdrawalForm, type StepAction } from "./step-forms";
 import { Card, StatusBadge } from "./ui";
 
-const REFUSAL_WORDS: Record<string, string> = {
-  order_not_paid: "not paid",
-  copied_order: "copied history",
-  already_returned: "all of it is already withdrawn or returned",
-  excluded_by_law: "excluded by law",
-  digital_content: "digital content",
-  booking: "a booking",
-  business_order: "a company's order",
-  period_over: "the 14 days had passed by the records",
-  gift_card_spent: "part of the gift card was used",
-};
 
 /** Where an order stands in the 14 days, in a sentence for staff. */
-export function windowSentence(overview: Pick<OrderReturnsOverview, "window" | "business" | "copied" | "unitsLeft" | "right">, locale = "en-GB"): string {
-  if (overview.copied) return "This order is history copied from another store, so nothing can be withdrawn or returned on it.";
+export function windowSentence(
+  overview: Pick<OrderReturnsOverview, "window" | "business" | "copied" | "unitsLeft" | "right">,
+  locale = "en-GB",
+  w: ReturnsMessages = returnsEn,
+): string {
+  const c = w.orderCard;
+  if (overview.copied) return c.copied;
   const { window } = overview;
-  if (!window) return "The order is not paid, so there is nothing to withdraw from yet.";
-  if (overview.business) {
-    return overview.right === "return"
-      ? "This order was placed by a company, which has no legal right of withdrawal. Your own return window is open for it."
-      : "This order was placed by a company, which has no legal right of withdrawal.";
-  }
+  if (!window) return c.notPaid;
+  if (overview.business) return overview.right === "return" ? c.companyReturn : c.company;
   const day = (value: string | null) => (value ? formatStoreDay(value, locale) : "");
   switch (window.state) {
     case "before_delivery":
-      return "The order has not been sent. The customer can withdraw from it at any time before it arrives.";
+      return c.beforeDelivery;
     case "statutory":
       // Sent but not recorded as received: the 14 days have not started, so there is no end day (an estimate is never a deadline).
       if (!window.statutoryEndDay) {
-        return `The goods have been sent, but their receipt is not recorded, so the customer's 14 days have not started and they can withdraw. Record the day they received the goods below.${
-          window.estimatedEndDay ? ` If the parcel took your usual transit time the days would run to about ${day(window.estimatedEndDay)}: an estimate, not a deadline.` : ""
-        }`;
+        return fillWords(c.notReceived, { estimate: window.estimatedEndDay ? fillWords(c.estimate, { day: day(window.estimatedEndDay) }) : "" });
       }
-      return `The customer can withdraw until ${day(window.statutoryEndDay)}${window.daysLeft !== null ? ` (${window.daysLeft} ${window.daysLeft === 1 ? "day" : "days"} left)` : ""}.`;
+      return fillWords(c.until, { day: day(window.statutoryEndDay), left: window.daysLeft !== null ? countWords(window.daysLeft, c.daysLeft) : "" });
     case "voluntary":
-      return `The 14 days of the right of withdrawal are over. Your own return window runs to ${day(window.voluntaryEndDay)}, and a request inside it is yours to approve or decline.`;
+      return fillWords(c.voluntary, { day: day(window.voluntaryEndDay) });
     default:
-      return "The return period is over.";
+      return c.over;
   }
 }
 
@@ -62,6 +53,7 @@ export function OrderReturnsCard({
   today,
   partlySent = false,
   exchanges = {},
+  words: w = returnsEn,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -81,19 +73,23 @@ export function OrderReturnsCard({
   partlySent?: boolean;
   /** The orders this order's returns were exchanged for (D239), by return id: "Exchanged: order {M}". */
   exchanges?: Record<string, { orderId: string; orderNumber: string; settled: boolean }>;
+  /** The reader's words (D312 A4); English unless given. */
+  words?: ReturnsMessages;
 }) {
+  const c = w.orderCard;
   const open = !overview.copied && overview.window !== null;
+  const refusal = (code: string) => (Object.hasOwn(c.refusal, code) ? c.refusal[code as keyof typeof c.refusal] : undefined);
   return (
-    <Card id="returns" title="Returns and withdrawals">
-      <p className="mb-3 text-sm text-muted">{windowSentence(overview, locale)}</p>
+    <AdminTextScope texts={{ returns: w }}>
+    <Card id="returns" title={c.title}>
+      <p className="mb-3 text-sm text-muted">{windowSentence(overview, locale, w)}</p>
       {overview.heldBack.length > 0 && (
         <p role="note" className="mb-3 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          Withdrawn before sending: {overview.heldBack.map((line) => `${line.quantity} × ${line.title}`).join(", ")}. Leave {overview.heldBack.length === 1 ? "it" : "them"} out of
-          the parcel; the refund is due without waiting for any goods.
+          {fillWords(c.heldBack, { lines: overview.heldBack.map((line) => `${line.quantity} × ${line.title}`).join(", "), them: overview.heldBack.length === 1 ? c.it : c.them })}
         </p>
       )}
       {overview.returns.length === 0 ? (
-        <p className="text-sm">No withdrawal or return has been made on this order.</p>
+        <p className="text-sm">{c.none}</p>
       ) : (
         <ul className="flex flex-col gap-2 text-sm">
           {overview.returns.map((row) => (
@@ -101,13 +97,13 @@ export function OrderReturnsCard({
               <Link href={`${base}/returns/${row.id}`} className="font-medium underline">
                 {row.number}
               </Link>
-              <StatusBadge status={row.status} />
+              <StatusBadge status={row.status} words={w} />
               <span className="text-muted">
-                {KIND_LABELS[row.kind]} · <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
+                {w.labels.kind[row.kind]} · <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone, locale)}</time>
               </span>
               {exchanges[row.id] && (
                 <span>
-                  {exchanges[row.id].settled ? "Exchanged: order " : "Exchange being processed: order "}
+                  {exchanges[row.id].settled ? c.exchanged : c.exchanging}
                   <Link href={`${base}/orders/${exchanges[row.id].orderId}`} className="underline">
                     #{exchanges[row.id].orderNumber}
                   </Link>
@@ -119,52 +115,46 @@ export function OrderReturnsCard({
       )}
       {!overview.copied && overview.window && overview.unitsLeft > 0 && (
         <p className="mt-3 text-sm text-muted">
-          {overview.unitsLeft} of {overview.unitsBought} {overview.unitsBought === 1 ? "unit" : "units"} can still be withdrawn or returned. The
-          customer does it on the store&apos;s{" "}
+          {countWords(overview.unitsBought, c.canStill, { left: overview.unitsLeft })}{" "}
           <a href={withdrawalPage} target="_blank" rel="noreferrer" className="underline">
-            withdrawal page
+            {c.withdrawalPage}
           </a>
-          ; the order emails link to it with the order filled in.
+          {c.emailsLink}
         </p>
       )}
       {open && actions && today && overview.sent && !overview.business && partlySent && (
-        <p className="mt-4 text-sm text-muted">Record the receipt when the last parcel has arrived: part of this order is still to send.</p>
+        <p className="mt-4 text-sm text-muted">{c.partlySent}</p>
       )}
       {open && actions && today && overview.sent && !overview.business && !partlySent && (
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm underline">{overview.deliveredOn ? "Change the day the goods were received" : "Mark the goods as received by the customer"}</summary>
+          <summary className="cursor-pointer text-sm underline">{overview.deliveredOn ? c.changeReceived : c.markReceived}</summary>
           <div className="mt-3">
             <p className="mb-2 text-sm text-muted">
-              {overview.deliveredOn
-                ? `Recorded as received on ${formatStoreDay(overview.deliveredOn, locale)}.`
-                : "The customer's 14 days start the day they received the goods, the last of them if they came in parts. Mark it from the carrier's tracking or what the customer says; never from the day you sent it."}
+              {overview.deliveredOn ? fillWords(c.receivedOn, { day: formatStoreDay(overview.deliveredOn, locale) }) : c.receiptRule}
             </p>
-            <DayStepForm action={actions.markDelivered} button="Save the day" help="the day the goods arrived; today if left empty" today={today} successMessage="Saved." />
+            <DayStepForm action={actions.markDelivered} button={c.saveDay} help={c.arrivedHelp} today={today} successMessage={c.saved} />
           </div>
         </details>
       )}
       {open && actions && today && !overview.business && overview.lines.some((line) => line.remaining > 0) && (
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm underline">Register a withdrawal the customer made outside the form</summary>
+          <summary className="cursor-pointer text-sm underline">{c.register}</summary>
           <div className="mt-3">
-            <p className="mb-2 text-sm text-muted">
-              An email, a letter or a call counts as a withdrawal if it says clearly that the customer withdraws, and so does a statement the form could not match
-              to this order. Register it here: it is recorded as the form would, with the day you were told starting the 14 days for the refund, and the customer
-              is sent the acknowledgement.
-            </p>
+            <p className="mb-2 text-sm text-muted">{c.registerRule}</p>
             <RegisterWithdrawalForm
               action={actions.registerWithdrawal}
               today={today}
-              lines={overview.lines.map((line) => ({ ...line, refused: line.refusal ? REFUSAL_WORDS[line.refusal] : null }))}
+              lines={overview.lines.map((line) => ({ ...line, refused: line.refusal ? (refusal(line.refusal) ?? null) : null }))}
             />
           </div>
         </details>
       )}
       <p className="mt-3 text-sm">
         <Link href={`${base}/returns`} className="underline">
-          All returns
+          {c.all}
         </Link>
       </p>
     </Card>
+    </AdminTextScope>
   );
 }

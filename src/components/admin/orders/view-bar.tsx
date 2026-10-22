@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { builtInHref, viewHref } from "@/lib/order-list-admin";
 import { BUILT_IN_VIEWS, type OrderListParams } from "@/lib/order-list";
 
@@ -12,13 +13,26 @@ const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-ink aria-[curr
  * views in their order. Links, so they work without a script and a view can be bookmarked. A built-in view is the current one when it is the only thing chosen: a state that adds
  * filters to it is no longer that view.
  */
-export function ViewBar({ base, params, views, openViewId }: { base: string; params: OrderListParams; views: ViewLink[]; openViewId: string | null }) {
+export function ViewBar({
+  base,
+  params,
+  views,
+  openViewId,
+  words: w = ordersEn.views,
+}: {
+  base: string;
+  params: OrderListParams;
+  views: ViewLink[];
+  openViewId: string | null;
+  /** The `orders` catalogue's `views` words in the account's language (D312 A4). */
+  words?: OrdersMessages["views"];
+}) {
   const onlyShow = (show: OrderListParams["show"]) => openViewId === null && params.show === show && noFilters(params);
   return (
-    <nav aria-label="Order views" className="flex flex-wrap items-center gap-1 border-b border-line pb-2">
+    <nav aria-label={w.label} className="flex flex-wrap items-center gap-1 border-b border-line pb-2">
       {BUILT_IN_VIEWS.map((view) => (
         <Link key={view.label} href={builtInHref(base, params, view.show)} aria-current={onlyShow(view.show) ? "page" : undefined} className={tab}>
-          {view.label}
+          {w.builtIn[view.show ?? "all"]}
         </Link>
       ))}
       {views.length > 0 && <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />}

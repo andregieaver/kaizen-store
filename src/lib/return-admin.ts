@@ -3,134 +3,61 @@ import type { Refund, WorkingRow } from "./return-refund";
 import type { ReturnAction, ReturnKind, ReturnOutcome, ReturnStatus } from "./return-status";
 import type { ReturnCondition, ReturnQueueFilter } from "./return-input";
 import type { RefundDue, ReturnReason } from "./withdrawal";
+import { countWords, fillWords } from "./admin-fill";
+import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
 
 /**
  * The words of the returns screens in the admin (D153, `docs/returns.md`): labels, the "refund due" and "overdue" marks,
- * the timeline's sentences and the queue's addresses. Pure and English only (the admin is English only); the shopper's
- * texts are in `i18n.ts` and `email-text.ts`.
+ * the timeline's sentences and the queue's addresses. Pure; the words are the `returns` catalogue (D312 A4), English
+ * unless another language's is passed. The shopper's texts are in `i18n.ts` and `email-text.ts`.
  */
 
-export const STATUS_LABELS: Record<ReturnStatus, string> = {
-  requested: "Requested",
-  approved: "Approved",
-  in_transit: "On its way back",
-  received: "Received",
-  inspected: "Inspected",
-  closed: "Closed",
-  declined: "Declined",
-  cancelled: "Cancelled",
-};
+/** The English words; another language's are its catalogue (`returnsNb`), passed where a function takes `w`. */
+const EN = returnsEn;
+
+export const STATUS_LABELS: Record<ReturnStatus, string> = EN.labels.status;
 
 /** What each status means for the person who works the return, a line under the status. */
-export const STATUS_HINTS: Record<ReturnStatus, string> = {
-  requested: "The customer asks to return goods the law does not require you to take back. Approve or decline.",
-  approved: "Waiting for the goods. Tell the customer where to send them.",
-  in_transit: "The customer says the goods are on their way, or has shown proof of sending.",
-  received: "The goods are back. Inspect them, then refund.",
-  inspected: "The goods are checked. Refund, then close.",
-  closed: "Done.",
-  declined: "Not accepted. The customer was told why.",
-  cancelled: "The return did not go ahead.",
-};
+export const STATUS_HINTS: Record<ReturnStatus, string> = EN.labels.statusHints;
 
-export const KIND_LABELS: Record<ReturnKind, string> = { withdrawal: "Withdrawal", return: "Return request" };
+export const KIND_LABELS: Record<ReturnKind, string> = EN.labels.kind;
 
-export const KIND_HINTS: Record<ReturnKind, string> = {
-  withdrawal: "The customer withdrew from the contract inside the legal period. You cannot refuse it.",
-  return: "The customer asks to return goods inside your own longer window. You may approve or decline.",
-};
+export const KIND_HINTS: Record<ReturnKind, string> = EN.labels.kindHints;
 
-export const OUTCOME_LABELS: Record<ReturnOutcome, string> = {
-  refunded: "Refunded",
-  declined: "Declined",
-  no_refund: "Closed with no refund",
-  cancelled: "Cancelled",
-};
+export const OUTCOME_LABELS: Record<ReturnOutcome, string> = EN.labels.outcome;
 
-export const REASON_LABELS: Record<ReturnReason, string> = {
-  changed_mind: "Changed their mind",
-  too_big: "Too big",
-  too_small: "Too small",
-  defective: "Defective",
-  not_as_described: "Not as described",
-  damaged_in_transit: "Damaged in transit",
-  wrong_item: "Wrong item",
-  arrived_late: "Arrived late",
-  other: "Other",
-};
+export const REASON_LABELS: Record<ReturnReason, string> = EN.labels.reason;
 
-export const CONDITION_LABELS: Record<ReturnCondition, string> = {
-  as_new: "As new",
-  opened: "Opened, not used",
-  used: "Used",
-  damaged: "Damaged",
-};
+export const CONDITION_LABELS: Record<ReturnCondition, string> = EN.labels.condition;
 
-export const ACTION_LABELS: Record<ReturnAction, string> = {
-  approve: "Approve",
-  decline: "Decline",
-  set_instructions: "Return instructions",
-  mark_in_transit: "Mark in transit",
-  mark_received: "Mark received",
-  inspect: "Inspect the goods",
-  refund: "Refund",
-  close: "Close",
-  cancel: "Cancel the return",
-  send_acknowledgement: "Send the acknowledgement again",
-  process_exchange: "Process the exchange",
-  cancel_exchange: "Cancel the exchange and refund instead",
-};
+export const ACTION_LABELS: Record<ReturnAction, string> = EN.labels.action;
 
 /** The reason a line the law excludes gives, as words (`order_lines.withdrawal_exclusion`). */
-export const EXCLUSION_LABELS: Record<string, string> = {
-  none: "The right of withdrawal applies",
-  custom_made: "Made to the customer's order or personalised",
-  perishable: "Goes off or expires quickly",
-  sealed_hygiene: "Sealed for health or hygiene, and unsealed",
-  sealed_media: "Sealed audio, video or software, and unsealed",
-  mixed_inseparably: "Mixed with other items after delivery",
-  price_fluctuation: "Price depends on financial markets",
-  alcohol_future_delivery: "Alcohol priced at sale, delivered after 30 days",
-  periodicals: "A newspaper, periodical or magazine",
-  digital_content: "Digital content delivered with the customer's consent",
-  dated_service: "A service for a set date or period",
-};
+export const EXCLUSION_LABELS: Record<string, string> = EN.labels.exclusion;
 
 /** Why a line was declined: a code the system wrote (`excluded_by_law`, the withdrawal function's) or the words of the person who declined it. */
-export const DECLINE_REASON_LABELS: Record<string, string> = {
-  excluded_by_law: "The law excludes this line from the right of withdrawal",
-  order_not_paid: "The order was not paid",
-  copied_order: "The order is history copied from another store",
-  already_returned: "Already returned",
-  digital_content: "Digital content delivered with the customer's consent",
-  booking: "A booking, which is cancelled from the booking itself",
-  business_order: "Companies have no statutory right of withdrawal",
-  period_over: "The period is over",
-  gift_card_spent: "Gift card partly used",
-};
+export const DECLINE_REASON_LABELS: Record<string, string> = EN.labels.declineReason;
 
-export const declineReasonText = (reason: string | null): string => (reason ? (DECLINE_REASON_LABELS[reason] ?? reason) : "Declined");
+const lookup = (table: Record<string, string>, key: string): string | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
 
-export const exclusionLabel = (value: string): string => EXCLUSION_LABELS[value] ?? value.replaceAll("_", " ");
+export const declineReasonText = (reason: string | null, w: ReturnsMessages = EN): string =>
+  reason ? (lookup(w.labels.declineReason, reason) ?? reason) : w.labels.declined;
 
-export const STATUS_FILTERS: { value: ReturnQueueFilter["status"]; label: string }[] = [
-  { value: "open", label: "Open" },
-  { value: "requested", label: "To approve" },
-  { value: "approved", label: "Approved" },
-  { value: "in_transit", label: "On their way" },
-  { value: "received", label: "Received" },
-  { value: "inspected", label: "Inspected" },
-  { value: "closed", label: "Closed" },
-  { value: "declined", label: "Declined" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "all", label: "All" },
-];
+export const exclusionLabel = (value: string, w: ReturnsMessages = EN): string => lookup(w.labels.exclusion, value) ?? value.replaceAll("_", " ");
 
-export const KIND_FILTERS: { value: ReturnQueueFilter["kind"]; label: string }[] = [
-  { value: "all", label: "All kinds" },
-  { value: "withdrawal", label: "Withdrawals" },
-  { value: "return", label: "Return requests" },
-];
+const STATUS_FILTER_ORDER = ["open", "requested", "approved", "in_transit", "received", "inspected", "closed", "declined", "cancelled", "all"] as const;
+
+/** The queue's status choices in a language. */
+export const statusFilters = (w: ReturnsMessages = EN): { value: ReturnQueueFilter["status"]; label: string }[] =>
+  STATUS_FILTER_ORDER.map((value) => ({ value, label: w.labels.statusFilters[value] }));
+
+export const STATUS_FILTERS = statusFilters();
+
+/** The queue's kind choices in a language. */
+export const kindFilters = (w: ReturnsMessages = EN): { value: ReturnQueueFilter["kind"]; label: string }[] =>
+  (["all", "withdrawal", "return"] as const).map((value) => ({ value, label: w.labels.kindFilters[value] }));
+
+export const KIND_FILTERS = kindFilters();
 
 /** The queue's address for a filter: only what differs from the defaults is in it. */
 export function queueHref(base: string, filter: Partial<ReturnQueueFilter> & { page?: number; /** The exchange mark filter (D239). */ exchange?: string | null } = {}): string {
@@ -156,44 +83,54 @@ export function pageNumber(value: string | string[] | undefined): number {
 // ---------------------------------------------------------------------------
 
 /** A day in the store's own time zone, as people write it: "12 Oct 2026". */
-export const dayText = (at: Date | string, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone }).format(new Date(at));
+export const dayText = (at: Date | string, timeZone: string, locale = "en-GB"): string =>
+  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone }).format(new Date(at));
 
 /** A day and time in the store's zone: "12 Oct 2026, 14:05". */
-export const timeText = (at: Date | string, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(at));
+export const timeText = (at: Date | string, timeZone: string, locale = "en-GB"): string =>
+  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(at));
 
 /** Today in the store's time zone as `YYYY-MM-DD`: the latest day a step (goods sent, goods received) can be dated. */
 export const todayIn = (timeZone: string, now: Date = new Date()): string => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(now);
 
 export type DueTone = "urgent" | "warn" | "calm";
 
-const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
-
 /**
  * The refund's mark in the queue and on the detail page: what to do about the money and by when, or null when there is
  * nothing to say (a return that has ended without a refund, or one not yet approved). `urgent` is past the legal
  * deadline, `warn` is the last days, `calm` is the rest.
  */
-export function dueMark(due: RefundDue, timeZone: string): { text: string; tone: DueTone } | null {
-  const by = due.deadline ? dayText(due.deadline, timeZone) : null;
+export function dueMark(due: RefundDue, timeZone: string, w: ReturnsMessages = EN, locale = "en-GB"): { text: string; tone: DueTone } | null {
+  const m = w.marks;
+  const by = due.deadline ? dayText(due.deadline, timeZone, locale) : null;
   const left = due.daysToDeadline;
+  const days = (n: number) => countWords(n, m.days);
   switch (due.state) {
     case "not_applicable":
       return null;
     case "done":
-      return { text: "Refunded", tone: "calm" };
+      return { text: m.refunded, tone: "calm" };
     case "overdue":
-      return { text: `Refund overdue${left !== null && left < 0 ? ` by ${days(-left)}` : ""}${by ? ` (was due ${by})` : ""}`, tone: "urgent" };
+      return {
+        text: fillWords(m.overdue, {
+          by: left !== null && left < 0 ? fillWords(m.overdueBy, { days: days(-left) }) : "",
+          was: by ? fillWords(m.wasDue, { day: by }) : "",
+        }),
+        tone: "urgent",
+      };
     case "waiting_late":
-      return { text: `Past the refund deadline${by ? ` (${by})` : ""}, still waiting for the goods`, tone: "urgent" };
+      return { text: fillWords(m.waitingLate, { by: by ? fillWords(m.waitingLateBy, { day: by }) : "" }), tone: "urgent" };
     case "due":
       return {
-        text: by ? `Refund due ${left === 0 ? "today" : `by ${by}`}${left !== null && left > 0 ? ` (${days(left)} left)` : ""}` : "Ready to refund",
+        text: by
+          ? left === 0
+            ? m.dueToday
+            : fillWords(m.dueBy, { day: by, left: left !== null && left > 0 ? fillWords(m.left, { days: days(left) }) : "" })
+          : m.ready,
         tone: left !== null && left <= 2 ? "warn" : "calm",
       };
     case "waiting":
-      return { text: `Waiting for the goods${by ? `, refund due by ${by}` : ""}`, tone: left !== null && left <= 2 ? "warn" : "calm" };
+      return { text: fillWords(m.waiting, { by: by ? fillWords(m.waitingBy, { day: by }) : "" }), tone: left !== null && left <= 2 ? "warn" : "calm" };
   }
 }
 
@@ -212,62 +149,70 @@ const text = (value: unknown): string => (typeof value === "string" ? value : ""
 const whole = (value: unknown): number | null => (typeof value === "number" && Number.isSafeInteger(value) ? value : null);
 
 /** One event of a return as a sentence. Money is written by `formatMoney` in the order's currency; unknown types are named, never hidden. */
-export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB"): string {
-  const money = (minor: number | null) => (minor === null ? "an amount" : formatMoney(minor, currency, locale));
+export function eventSentence(type: string, data: Record<string, unknown>, currency: string, locale = "en-GB", w: ReturnsMessages = EN): string {
+  const e = w.events;
+  const money = (minor: number | null) => (minor === null ? e.anAmount : formatMoney(minor, currency, locale));
+  const reasoned = (sentence: string, reason: unknown) => (text(reason) ? fillWords(e.withReason, { text: sentence, reason: text(reason) }) : sentence);
   switch (type) {
     case "return.requested":
-      return "Return requested by the customer";
+      return e.requested;
     case "return.confirmed":
-      return "Withdrawal confirmed by the customer";
+      return e.confirmed;
     case "return.approved":
-      return data.automatic === true ? "Approved automatically: the right of withdrawal is not the store's to refuse" : "Approved";
+      return data.automatic === true ? e.approvedAutomatic : e.approved;
     case "return.declined":
-      return data.scope === "line" ? `A line was declined${text(data.reason) ? `: ${text(data.reason)}` : ""}` : `Declined${text(data.reason) ? `: ${text(data.reason)}` : ""}`;
+      return reasoned(data.scope === "line" ? e.lineDeclined : e.declined, data.reason);
     case "return.in_transit":
-      return "Goods marked as on their way back";
+      return e.inTransit;
     case "return.received":
-      return "Goods received";
+      return e.received;
     case "return.inspected":
-      return "Goods inspected";
+      return e.inspected;
     case "return.refunded":
       if (typeof data.exchange === "string") {
         const back = whole(data.refundMinor) ?? 0;
-        return `Exchanged: ${money(whole(data.transferMinor))} of the credit paid the new order${back > 0 ? `, ${money(back)} refunded` : ""}`;
+        return fillWords(e.exchanged, { credit: money(whole(data.transferMinor)), back: back > 0 ? fillWords(e.exchangedBack, { amount: money(back) }) : "" });
       }
-      return `Refunded ${money(whole(data.amountMinor))}${data.outside === true ? ", outside Kaizena Flow's Stripe" : ""}`;
+      return fillWords(e.refunded, { amount: money(whole(data.amountMinor)), outside: data.outside === true ? e.refundedOutside : "" });
     case "return.refund_overridden":
-      return `The refund was changed from ${money(whole(data.computedMinor))} to ${money(whole(data.requestedMinor))}${text(data.reason) ? `: ${text(data.reason)}` : ""}`;
+      return reasoned(fillWords(e.overridden, { from: money(whole(data.computedMinor)), to: money(whole(data.requestedMinor)) }), data.reason);
     case "return.closed":
-      return data.outcome === "no_refund" ? "Closed with no refund" : "Closed";
+      return data.outcome === "no_refund" ? e.closedNoRefund : e.closed;
     case "return.cancelled":
-      return "Cancelled";
+      return e.cancelled;
     // Exchanges and return labels (D239).
     case "return.exchange_wished":
-      return "The customer asked for an exchange";
+      return e.exchangeWished;
     case "return.exchange_proposed":
-      return `Exchange proposed: credit ${money(whole(data.creditMinor))}, replacements ${money(whole(data.totalMinor))}`;
+      return fillWords(e.exchangeProposed, { credit: money(whole(data.creditMinor)), total: money(whole(data.totalMinor)) });
     case "return.exchange_confirmed":
       return data.confirmedBy === "staff"
-        ? `The customer's agreement to the exchange was recorded (${CHANNEL_LABELS[text(data.channel)] ?? "another way"}${text(data.day) ? `, ${text(data.day)}` : ""})${text(data.note) ? `: ${text(data.note)}` : ""}`
-        : "The customer confirmed the exchange";
+        ? reasoned(
+            fillWords(e.agreementRecorded, {
+              channel: lookup(w.labels.channels, text(data.channel)) ?? w.labels.channels.other,
+              day: text(data.day) ? fillWords(e.agreementDay, { day: text(data.day) }) : "",
+            }),
+            data.note,
+          )
+        : e.exchangeConfirmed;
     case "return.exchange_declined":
-      return "The customer declined the exchange: refund as usual";
+      return e.exchangeDeclined;
     case "return.exchange_cancelled":
-      return data.replaced === true ? "The proposal was replaced by a new one" : "The exchange was cancelled";
+      return data.replaced === true ? e.proposalReplaced : e.exchangeCancelled;
     case "return.exchange_expired":
-      return "The exchange ended without being confirmed or paid: refund as usual";
+      return e.exchangeExpired;
     case "return.exchange_processed":
-      return `Exchange processed: order ${text(data.order) || "made"}`;
+      return fillWords(e.exchangeProcessed, { order: text(data.order) || e.orderMade });
     case "return.label_booked":
-      return `Return label booked${data.test === true ? " (a test label)" : ""}`;
+      return fillWords(e.labelBooked, { test: data.test === true ? e.labelTest : "" });
     case "return.label_failed":
-      return "The return label could not be booked";
+      return e.labelFailed;
     case "return.label_given_up":
-      return "The return label was not booked after several tries: book it by hand or paste a label";
+      return e.labelGivenUp;
     case "exchange.refund_failed":
-      return "The exchange's refund did not go through";
+      return e.exchangeRefundFailed;
     case "exchange.payment_refunded":
-      return `A late payment for the exchange was refunded: ${money(whole(data.amount))}`;
+      return fillWords(e.latePaymentRefunded, { amount: money(whole(data.amount)) });
     default:
       return type;
   }
@@ -280,29 +225,22 @@ export const isReturnEvent = (type: string): boolean => type.startsWith("return.
 // The refund's working
 // ---------------------------------------------------------------------------
 
-export const WORKING_LABELS = {
-  goods: "What the customer paid for the returned goods",
-  deductions: "Deduction for handling beyond what was needed to inspect the goods",
-  shipping: "Original standard delivery (the whole order is withdrawn)",
-  return_shipping: "Return shipping the customer pays",
-} as const;
+export const WORKING_LABELS: Record<WorkingRow["key"], string> = EN.labels.working;
 
-export const CAPPED_WORDS = {
-  zero: "The sum is below zero, so nothing is refunded.",
-  refundable: "The sum is more than is left to refund, so the refund is held to what is left.",
-} as const;
+export const CAPPED_WORDS: Record<"zero" | "refundable", string> = EN.labels.capped;
 
 // ---------------------------------------------------------------------------
 // Counts
 // ---------------------------------------------------------------------------
 
 /** A short sentence on what the numbers say, for the queue's header; empty when there is nothing to do. */
-export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }): string {
+export function countsSentence(counts: { open: number; requested: number; overdue: number; acknowledgementPending: number }, w: ReturnsMessages = EN): string {
+  const c = w.counts;
   const parts: string[] = [];
-  if (counts.overdue > 0) parts.push(`${counts.overdue} past the refund deadline`);
-  if (counts.acknowledgementPending > 0) parts.push(`${counts.acknowledgementPending} ${counts.acknowledgementPending === 1 ? "acknowledgement was" : "acknowledgements were"} not sent`);
-  if (counts.requested > 0) parts.push(`${counts.requested} to approve`);
-  if (parts.length === 0) return counts.open > 0 ? `${counts.open} open, none waiting on you.` : "No returns are open.";
+  if (counts.overdue > 0) parts.push(fillWords(c.overdue, { n: counts.overdue }));
+  if (counts.acknowledgementPending > 0) parts.push(countWords(counts.acknowledgementPending, c.unacknowledged));
+  if (counts.requested > 0) parts.push(fillWords(c.toApprove, { n: counts.requested }));
+  if (parts.length === 0) return counts.open > 0 ? fillWords(c.openNoneWaiting, { n: counts.open }) : c.none;
   return `${parts.join(", ")}.`;
 }
 
@@ -337,35 +275,22 @@ export function previewData(preview: { refund: Refund; refundableMinor: number; 
 // ---------------------------------------------------------------------------
 
 /** A return's outcome in words, `exchanged` (D239) included. */
-export const outcomeLabel = (outcome: string): string =>
-  outcome === "exchanged" ? "Exchanged" : (OUTCOME_LABELS[outcome as ReturnOutcome] ?? outcome.replaceAll("_", " "));
+export const outcomeLabel = (outcome: string, w: ReturnsMessages = EN): string => lookup(w.labels.outcome, outcome) ?? outcome.replaceAll("_", " ");
 
 /** How a customer's agreement reached staff (`STAFF_EXCHANGE_CHANNELS`, and `web` for the customer's own press). */
-export const CHANNEL_LABELS: Record<string, string> = {
-  web: "on the exchange page",
-  email: "by email",
-  letter: "by letter",
-  phone: "by phone",
-  in_person: "in person",
-  other: "another way",
-};
+export const CHANNEL_LABELS: Record<string, string> = EN.labels.channels;
 
 /** The queue's exchange marks (`EXCHANGE_QUEUE_MARKS`). */
-export const EXCHANGE_MARK_LABELS = {
-  wished: "Exchange wished",
-  proposed: "Exchange proposed",
-  confirmed: "Exchange confirmed",
-  waiting_payment: "Exchange: payment to collect",
-} as const;
-export type ExchangeMark = keyof typeof EXCHANGE_MARK_LABELS;
+export const EXCHANGE_MARK_LABELS = EN.labels.exchangeMarks;
+export type ExchangeMark = keyof typeof returnsEn.labels.exchangeMarks;
 
-export const EXCHANGE_FILTERS: { value: ExchangeMark | ""; label: string }[] = [
-  { value: "", label: "Any" },
-  { value: "wished", label: "Exchange wished" },
-  { value: "proposed", label: "Proposed" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "waiting_payment", label: "Payment to collect" },
+/** The queue's exchange choices in a language. */
+export const exchangeFilters = (w: ReturnsMessages = EN): { value: ExchangeMark | ""; label: string }[] => [
+  { value: "", label: w.labels.exchangeFilters.any },
+  ...(["wished", "proposed", "confirmed", "waiting_payment"] as const).map((value) => ({ value, label: w.labels.exchangeFilters[value] })),
 ];
+
+export const EXCHANGE_FILTERS = exchangeFilters();
 
 /** The queue's `exchange=` value, or null for anything else. */
 export function exchangeFilterOf(value: string | string[] | undefined): ExchangeMark | null {
@@ -374,10 +299,15 @@ export function exchangeFilterOf(value: string | string[] | undefined): Exchange
 }
 
 /** The outcome of an exchange (`exchangeOutcome()`), in the order's currency, as staff read it. */
-export function outcomeSentence(outcome: { kind: "refund_due" | "even" | "to_pay"; refundMinor: number; toPayMinor: number }, currency: string, locale = "en-GB"): string {
-  if (outcome.kind === "refund_due") return `Refund due to the customer: ${formatMoney(outcome.refundMinor, currency, locale)}`;
-  if (outcome.kind === "to_pay") return `Payment to collect: ${formatMoney(outcome.toPayMinor, currency, locale)}`;
-  return "Even exchange: nothing to refund or collect";
+export function outcomeSentence(
+  outcome: { kind: "refund_due" | "even" | "to_pay"; refundMinor: number; toPayMinor: number },
+  currency: string,
+  locale = "en-GB",
+  w: ReturnsMessages = EN,
+): string {
+  if (outcome.kind === "refund_due") return fillWords(w.outcome.refundDue, { amount: formatMoney(outcome.refundMinor, currency, locale) });
+  if (outcome.kind === "to_pay") return fillWords(w.outcome.toPay, { amount: formatMoney(outcome.toPayMinor, currency, locale) });
+  return w.outcome.even;
 }
 
 /** Where an exchange stands, in one sentence for the return's page (D239 2.2). */
@@ -386,29 +316,32 @@ export function exchangeSentence(
   currency: string,
   timeZone: string,
   locale = "en-GB",
+  w: ReturnsMessages = EN,
 ): string {
-  const until = x.expiresAt ? ` until ${timeText(x.expiresAt, timeZone)}` : "";
+  const s = w.exchangeState;
+  const until = x.expiresAt ? fillWords(s.until, { time: timeText(x.expiresAt, timeZone, locale) }) : "";
+  const order = x.exchangeOrderNumber ?? "";
   switch (x.status) {
     case "draft":
-      return "A draft: the customer has not been sent it.";
+      return s.draft;
     case "proposed":
-      return `Sent to the customer. It waits for their confirmation${until}; until then the return is refunded as usual if they do not confirm.`;
+      return fillWords(s.proposed, { until });
     case "confirmed":
-      return `${x.confirmedBy === "staff" ? "The customer's agreement is recorded" : "The customer confirmed it"}. Process it where you would refund the return.`;
+      return x.confirmedBy === "staff" ? s.confirmedStaff : s.confirmedCustomer;
     case "processed":
       return x.outcome.kind === "to_pay"
-        ? `Order ${x.exchangeOrderNumber ?? ""} is made and waits for the customer to pay ${formatMoney(x.outcome.toPayMinor, currency, locale)}${until}.`
-        : `Order ${x.exchangeOrderNumber ?? ""} is made, but the exchange is not settled yet: try again, or cancel it and refund instead.`;
+        ? fillWords(s.processedToPay, { order, amount: formatMoney(x.outcome.toPayMinor, currency, locale), until })
+        : fillWords(s.processedNotSettled, { order });
     case "settled":
-      return `Exchanged: order ${x.exchangeOrderNumber ?? ""}.`;
+      return fillWords(s.settled, { order });
     case "declined_by_customer":
-      return "The customer said no thanks: refund the return as usual.";
+      return s.declined;
     case "cancelled":
-      return "The exchange was cancelled: refund the return as usual.";
+      return s.cancelled;
     case "expired":
-      return "The exchange ended without being confirmed or paid: refund the return as usual.";
+      return s.expired;
     case "superseded":
-      return "The return was refunded instead.";
+      return s.superseded;
     default:
       return x.status;
   }
@@ -421,16 +354,18 @@ export function labelSentence(
   currency: string,
   carrierName: string | null,
   locale = "en-GB",
+  w: ReturnsMessages = EN,
 ): string {
-  if (label.source === "pasted") return "A label address was pasted: the customer prints it from their status page and the email.";
+  const l = w.labelState;
+  if (label.source === "pasted") return l.pasted;
   if (label.source === "carrier") {
     const who =
       payer === "shopper"
         ? label.costMinor === null
-          ? "The carrier did not price it: nothing is taken off the refund unless you type the return shipping."
-          : `${formatMoney(label.costMinor, currency, locale)} will be taken off the refund as return shipping.`
-        : "The store pays for it: nothing is taken off the refund.";
-    return `${label.test ? "A test label was booked: it cannot be used. " : ""}Booked with ${carrierName ?? "the carrier"}. ${who}`;
+          ? l.notPriced
+          : fillWords(l.takenOff, { amount: formatMoney(label.costMinor, currency, locale) })
+        : l.storePays;
+    return fillWords(l.booked, { test: label.test ? l.testBooked : "", carrier: carrierName ?? l.theCarrier, who });
   }
-  return label.tries > 0 ? "No label: booking it did not go through." : "No label yet.";
+  return label.tries > 0 ? l.failed : l.none;
 }

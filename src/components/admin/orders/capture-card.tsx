@@ -4,6 +4,8 @@ import { useActionState } from "react";
 
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import { Card } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 const initial: OrderActionState = { ok: false, message: null };
 const field = "min-h-10 w-40 rounded-md border border-line bg-card px-3 text-sm";
@@ -46,14 +48,12 @@ export function CaptureCard({
   capture: Action | null;
   release: Action | null;
 }) {
+  const w = useAdminText("order").capture;
   return (
-    <Card title="Card held, to capture" className="text-sm">
-      <p>
-        {heldLabel} is held on the customer&apos;s card, not charged. The hold ends {deadline}; an order not captured by then is cancelled and its items
-        are no longer held.
-      </p>
+    <Card title={w.title} className="text-sm">
+      <p>{fillWords(w.held, { amount: heldLabel, deadline })}</p>
       <p className="mt-2 text-muted">
-        {whenSent ? "Recording the first parcel or handover captures it. You can also capture it now." : "Nothing is charged until you capture it."} It is not a sale in your figures and has no invoice until then.
+        {whenSent ? w.whenSent : w.byHand} {w.notSale}
       </p>
       {capture && <CaptureForm action={capture} heldTyped={heldTyped} currency={currency} heldLabel={heldLabel} />}
       {release && <ReleaseForm action={release} hasEmail={hasEmail} />}
@@ -63,24 +63,25 @@ export function CaptureCard({
 
 function CaptureForm({ action, heldTyped, currency, heldLabel }: { action: Action; heldTyped: string; currency: string; heldLabel: string }) {
   const [state, run, pending] = useActionState(action, initial);
+  const w = useAdminText("order").capture;
   return (
     <form
       action={run}
       onSubmit={(event) => {
         const typed = String(new FormData(event.currentTarget).get("amount") ?? "").trim();
-        if (!window.confirm(typed && typed !== heldTyped ? `Capture ${typed} ${currency}? The rest of the hold is released.` : `Capture ${heldLabel}?`)) event.preventDefault();
+        if (!window.confirm(typed && typed !== heldTyped ? fillWords(w.confirmPart, { amount: typed, currency }) : fillWords(w.confirmAll, { amount: heldLabel }))) event.preventDefault();
       }}
       className="mt-4 flex flex-col gap-3 border-t border-line pt-4"
     >
       <label className="flex flex-col gap-1">
         <span>
-          Amount to capture <span className="text-muted">({currency}, at most what is held)</span>
+          {w.amount} <span className="text-muted">{fillWords(w.atMost, { currency })}</span>
         </span>
         <input name="amount" inputMode="decimal" defaultValue={heldTyped} className={field} />
       </label>
       <div>
         <button type="submit" disabled={pending} className={primary}>
-          Capture
+          {w.capture}
         </button>
       </div>
       <Result state={state} />
@@ -90,23 +91,24 @@ function CaptureForm({ action, heldTyped, currency, heldLabel }: { action: Actio
 
 function ReleaseForm({ action, hasEmail }: { action: Action; hasEmail: boolean }) {
   const [state, run, pending] = useActionState(action, initial);
+  const w = useAdminText("order").capture;
   return (
     <form
       action={run}
       onSubmit={(event) => {
-        if (!window.confirm("Cancel the order and release the hold? Nothing is charged, and its items are no longer held.")) event.preventDefault();
+        if (!window.confirm(w.confirmRelease)) event.preventDefault();
       }}
       className="mt-4 flex flex-col gap-3 border-t border-line pt-4"
     >
       {hasEmail && (
         <label className="flex items-center gap-2">
           <input type="checkbox" name="notify" defaultChecked className="size-4" />
-          Tell the customer the order is cancelled
+          {w.tell}
         </label>
       )}
       <div>
         <button type="submit" disabled={pending} className={secondary}>
-          Cancel and release
+          {w.release}
         </button>
       </div>
       <Result state={state} />

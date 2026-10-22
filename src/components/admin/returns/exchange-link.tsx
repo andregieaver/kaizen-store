@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
+import { useAdminText } from "@/components/admin/admin-text";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 
 /** Hands a just-made link to the holder above, which stays mounted while the page refreshes (the builder may not: a live proposal hides it). */
@@ -27,13 +28,14 @@ export function ExchangeLinkHolder({ children }: { children: ReactNode }) {
 export function ExchangeLinkPanel({ link, onDone }: { link: string; onDone: () => void }) {
   const id = useId();
   const [copied, setCopied] = useState(false);
+  const x = useAdminText("returns").exchange;
   return (
     <section aria-labelledby={`${id}-link`} className="flex flex-col gap-2 rounded-lg border border-brand bg-sunken p-4 text-sm">
       <h3 id={`${id}-link`} className="text-body-strong text-ink">
-        The link to the exchange
+        {x.linkTitle}
       </h3>
-      <p className={hint}>It is shown only now: Kaizena Flow keeps only a fingerprint of it. Anyone who has it can open the customer&apos;s exchange page. Sending again makes a new one and this one stops working.</p>
-      <input readOnly value={link} aria-label="The link to the exchange" onFocus={(e) => e.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
+      <p className={hint}>{x.linkOnce}</p>
+      <input readOnly value={link} aria-label={x.linkTitle} onFocus={(e) => e.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
       <div className="flex gap-2">
         <button
           type="button"
@@ -47,10 +49,10 @@ export function ExchangeLinkPanel({ link, onDone }: { link: string; onDone: () =
             }
           }}
         >
-          {copied ? "Copied" : "Copy the link"}
+          {copied ? x.copied : x.copy}
         </button>
         <button type="button" className={secondary} onClick={onDone}>
-          I have copied it
+          {x.haveCopied}
         </button>
       </div>
     </section>

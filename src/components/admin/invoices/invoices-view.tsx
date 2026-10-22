@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import {
   countryName,
   countsSentence,
@@ -12,9 +14,7 @@ import {
   INVOICE_TABS,
   invoicesHref,
   sourceLabel,
-  TAB_LABELS,
   vatKindLabel,
-  WAITING_TITLES,
   type InvoiceQuery,
   type InvoiceTab,
 } from "@/lib/invoice-admin";
@@ -50,6 +50,7 @@ export function InvoicesView({
   actions,
   exportProblem = null,
   locale = "en-GB",
+  words: w = invoicesEn,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -71,7 +72,9 @@ export function InvoicesView({
   /** What the CSV route sent the person back for, as a fixed sentence. */
   exportProblem?: string | null;
   locale?: string;
+  words?: InvoicesMessages;
 }) {
+  const v = w.view;
   const here = `${base}/invoices`;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
   const waitingTotal = waiting.length + waitingNotes.length + failing.length;
@@ -79,23 +82,23 @@ export function InvoicesView({
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader
-          title="Invoices"
-          description={<>Every paid order gets an invoice in the store&apos;s own numbered series, and every refund that succeeds gets a credit note. They are made by the system when the payment or the refund is recorded and cannot be changed afterwards. This is not tax or accounting advice: have your accountant read what the documents say.</>}
+          title={v.title}
+          description={v.description}
         />
         <p role="status" className="mt-1 text-sm">
-          {countsSentence(counts)}
+          {countsSentence(counts, w)}
         </p>
       </div>
 
       {!invoicingOn && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          Invoicing is switched off for this store, so new orders get no invoice.{" "}
+          {v.off}{" "}
           {canSettings ? (
             <Link href={`${base}/settings/invoices`} className="underline">
-              Open the invoicing settings
+              {v.openSettings}
             </Link>
           ) : (
-            "An owner can switch it on in the invoicing settings."
+            v.ownerCan
           )}
         </p>
       )}
@@ -107,15 +110,15 @@ export function InvoicesView({
       )}
 
       <StatGrid>
-        <Stat label="Invoices" value={counts.invoices} href={here} />
-        <Stat label="Credit notes" value={counts.creditNotes} href={invoicesHref(here, { tab: "credit-notes", all: true })} />
-        <Stat label="Waiting for an invoice" value={counts.waiting} sub={counts.overdue > 0 ? `${counts.overdue} past the deadline` : undefined} href={invoicesHref(here, { tab: "waiting" })} />
-        <Stat label="PDF not made" value={counts.pdfFailing} sub={counts.pdfFailing > 0 ? "Try again on the Waiting tab" : undefined} href={counts.pdfFailing > 0 ? invoicesHref(here, { tab: "waiting" }) : undefined} />
+        <Stat label={v.invoices} value={counts.invoices} href={here} />
+        <Stat label={v.creditNotes} value={counts.creditNotes} href={invoicesHref(here, { tab: "credit-notes", all: true })} />
+        <Stat label={v.waitingFor} value={counts.waiting} sub={counts.overdue > 0 ? fillWords(v.pastDeadline, { n: counts.overdue }) : undefined} href={invoicesHref(here, { tab: "waiting" })} />
+        <Stat label={v.pdfNotMade} value={counts.pdfFailing} sub={counts.pdfFailing > 0 ? v.tryOnWaiting : undefined} href={counts.pdfFailing > 0 ? invoicesHref(here, { tab: "waiting" }) : undefined} />
       </StatGrid>
 
-      <nav aria-label="Documents" className="flex flex-wrap gap-1 border-b border-line">
+      <nav aria-label={v.documents} className="flex flex-wrap gap-1 border-b border-line">
         {INVOICE_TABS.map((tab) => (
-          <TabLink key={tab} here={here} tab={tab} current={query.tab} badge={tab === "waiting" && waitingTotal > 0 ? waitingTotal : null} />
+          <TabLink key={tab} here={here} tab={tab} current={query.tab} badge={tab === "waiting" && waitingTotal > 0 ? waitingTotal : null} label={w.labels.tabs[tab]} />
         ))}
       </nav>
 
@@ -129,15 +132,16 @@ export function InvoicesView({
           canWrite={canWrite}
           actions={actions}
           money={money}
+          w={w}
         />
       ) : (
-        documents && <ListTab base={base} here={here} query={query} today={today} documents={documents} canWrite={canWrite} money={money} />
+        documents && <ListTab base={base} here={here} query={query} today={today} documents={documents} canWrite={canWrite} money={money} w={w} />
       )}
     </div>
   );
 }
 
-function TabLink({ here, tab, current, badge }: { here: string; tab: InvoiceTab; current: InvoiceTab; badge: number | null }) {
+function TabLink({ here, tab, current, badge, label }: { here: string; tab: InvoiceTab; current: InvoiceTab; badge: number | null; label: string }) {
   const active = tab === current;
   return (
     <Link
@@ -145,7 +149,7 @@ function TabLink({ here, tab, current, badge }: { here: string; tab: InvoiceTab;
       aria-current={active ? "page" : undefined}
       className={`-mb-px flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm ${active ? "border-brand font-medium" : "border-transparent text-muted hover:text-ink"}`}
     >
-      {TAB_LABELS[tab]}
+      {label}
       {badge !== null && <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning-text">{badge}</span>}
     </Link>
   );
@@ -159,6 +163,7 @@ function ListTab({
   documents,
   canWrite,
   money,
+  w,
 }: {
   base: string;
   here: string;
@@ -167,9 +172,11 @@ function ListTab({
   documents: DocumentPage;
   canWrite: boolean;
   money: (minor: number, currency: string) => string;
+  w: InvoicesMessages;
 }) {
+  const v = w.view;
   const credit = query.tab === "credit-notes";
-  const noun = credit ? "credit notes" : "invoices";
+  const count = (n: number) => countWords(n, credit ? v.creditNoteCount : v.invoiceCount);
   const pages = Math.max(1, Math.ceil(documents.total / DOCUMENTS_PER_PAGE));
   const orders = `${base}/orders`;
   const filtered = query.q !== "" || query.all || query.from !== `${today.slice(0, 7)}-01` || query.to !== today;
@@ -177,64 +184,66 @@ function ListTab({
   const to = query.to ?? today;
   return (
     <div className="flex flex-col gap-6">
-      <form method="get" action={here} className="flex flex-wrap items-end gap-3" aria-label={`Filter the ${noun}`}>
+      <form method="get" action={here} className="flex flex-wrap items-end gap-3" aria-label={credit ? v.filterCreditNotes : v.filterInvoices}>
         {credit && <input type="hidden" name="tab" value="credit-notes" />}
         <label className="flex flex-col gap-1 text-sm font-medium">
-          From
+          {v.from}
           <input type="date" name="from" defaultValue={query.from ?? ""} className={control} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          To
+          {v.to}
           <input type="date" name="to" defaultValue={query.to ?? ""} className={control} />
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          Search
-          <input name="q" type="search" defaultValue={query.q} placeholder={credit ? "Credit note, invoice, order or email" : "Invoice, order or email"} maxLength={100} className={`${control} w-full`} />
+          {v.search}
+          <input name="q" type="search" defaultValue={query.q} placeholder={credit ? v.searchCreditNotes : v.searchInvoices} maxLength={100} className={`${control} w-full`} />
         </label>
         <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          Filter
+          {v.filter}
         </button>
         {!query.all && (
           <Link href={invoicesHref(here, { tab: query.tab, all: true, q: query.q })} className="flex min-h-10 items-center text-sm underline">
-            All periods
+            {v.allPeriods}
           </Link>
         )}
         {filtered && (
           <Link href={invoicesHref(here, { tab: query.tab })} className="flex min-h-10 items-center text-sm underline">
-            This month
+            {v.thisMonth}
           </Link>
         )}
       </form>
       <p className="text-sm text-muted">
-        {query.all ? "All periods" : `${dayLabel(query.from)} to ${dayLabel(query.to)}`} · {documents.total} {documents.total === 1 ? (credit ? "credit note" : "invoice") : noun}
+        {query.all ? v.allPeriods : fillWords(v.period, { from: dayLabel(query.from, w), to: dayLabel(query.to, w) })} · {count(documents.total)}
       </p>
 
       {documents.rows.length === 0 ? (
         <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
           {filtered
-            ? `No ${noun} match. Change the period or the search.`
+            ? credit
+              ? v.noCreditNotesMatch
+              : v.noInvoicesMatch
             : credit
-              ? "No credit notes this month. One is made for every refund that succeeds on an order that has an invoice."
-              : "No invoices this month. One is made when an order is paid, from the day invoicing is switched on."}
+              ? v.noCreditNotes
+              : v.noInvoices}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] rounded-panel border border-line bg-card text-left text-sm">
             <thead>
               <tr className="border-b border-line">
-                <th scope="col" className={th}>{credit ? "Credit note" : "Invoice"}</th>
-                <th scope="col" className={th}>Date</th>
-                <th scope="col" className={th}>Order</th>
-                <th scope="col" className={th}>Buyer</th>
-                <th scope="col" className={`${th} text-right`}>Net</th>
-                <th scope="col" className={`${th} text-right`}>VAT</th>
-                <th scope="col" className={`${th} text-right`}>Total</th>
-                <th scope="col" className={th}>Document</th>
+                <th scope="col" className={th}>{credit ? v.creditNote : v.invoice}</th>
+                <th scope="col" className={th}>{v.date}</th>
+                <th scope="col" className={th}>{v.order}</th>
+                <th scope="col" className={th}>{v.buyer}</th>
+                <th scope="col" className={`${th} text-right`}>{v.net}</th>
+                <th scope="col" className={`${th} text-right`}>{v.vat}</th>
+                <th scope="col" className={`${th} text-right`}>{v.total}</th>
+                <th scope="col" className={th}>{v.document}</th>
               </tr>
             </thead>
             <tbody>
               {documents.rows.map((row) => (
-                <Row key={row.id} base={base} orders={orders} row={row} credit={credit} money={money} />
+                <Row key={row.id} base={base} orders={orders} row={row} credit={credit} money={money} w={w} />
               ))}
             </tbody>
           </table>
@@ -242,57 +251,66 @@ function ListTab({
       )}
 
       {pages > 1 && (
-        <nav aria-label={`Pages of ${noun}`} className="flex items-center gap-3 text-sm">
+        <nav aria-label={credit ? v.pagesCreditNotes : v.pagesInvoices} className="flex items-center gap-3 text-sm">
           {query.page > 1 ? (
             <Link href={invoicesHref(here, { ...query, page: query.page - 1 }, today)} className="underline">
-              Previous
+              {v.previous}
             </Link>
           ) : (
-            <span className="text-muted">Previous</span>
+            <span className="text-muted">{v.previous}</span>
           )}
-          <span className="text-muted">
-            Page {query.page} of {pages} · {documents.total} {noun}
-          </span>
+          <span className="text-muted">{fillWords(v.pageOf, { page: query.page, pages, count: count(documents.total) })}</span>
           {query.page < pages ? (
             <Link href={invoicesHref(here, { ...query, page: query.page + 1 }, today)} className="underline">
-              Next
+              {v.next}
             </Link>
           ) : (
-            <span className="text-muted">Next</span>
+            <span className="text-muted">{v.next}</span>
           )}
         </nav>
       )}
 
       {canWrite ? (
-        <Card title="CSV for your accountant" compact>
-          <p className="mb-3 text-sm text-muted">
-            One row for each {credit ? "credit note" : "invoice"} issued in the period: number, dates, order, the buyer&apos;s name, country and VAT number,
-            amounts, the VAT for each rate, the VAT in the seller&apos;s currency where the document has it, and the VAT treatment. It holds personal data, so
-            keep it safe; each download is written to the activity log.
-          </p>
-          <form method="post" action={`${here}/export`} className="flex flex-wrap items-end gap-3" aria-label="Download a CSV">
+        <Card title={v.csvTitle} compact>
+          <p className="mb-3 text-sm text-muted">{credit ? v.csvCreditNotes : v.csvInvoices}</p>
+          <form method="post" action={`${here}/export`} className="flex flex-wrap items-end gap-3" aria-label={v.downloadLabel}>
             <input type="hidden" name="type" value={credit ? "credit_notes" : "invoices"} />
             <label className="flex flex-col gap-1 text-sm font-medium">
-              From
+              {v.from}
               <input type="date" name="from" required defaultValue={from || `${today.slice(0, 7)}-01`} className={control} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium">
-              To
+              {v.to}
               <input type="date" name="to" required defaultValue={to} className={control} />
             </label>
             <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
-              Download CSV
+              {v.download}
             </button>
           </form>
         </Card>
       ) : (
-        <p className="text-sm text-muted">The CSV for the accountant is for members who may change orders.</p>
+        <p className="text-sm text-muted">{v.csvNoAccess}</p>
       )}
     </div>
   );
 }
 
-function Row({ base, orders, row, credit, money }: { base: string; orders: string; row: DocumentListRow; credit: boolean; money: (minor: number, currency: string) => string }) {
+function Row({
+  base,
+  orders,
+  row,
+  credit,
+  money,
+  w,
+}: {
+  base: string;
+  orders: string;
+  row: DocumentListRow;
+  credit: boolean;
+  money: (minor: number, currency: string) => string;
+  w: InvoicesMessages;
+}) {
+  const v = w.view;
   return (
     <tr className="border-b border-line align-top last:border-0">
       <td className={td}>
@@ -300,16 +318,16 @@ function Row({ base, orders, row, credit, money }: { base: string; orders: strin
         <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
           {credit ? (
             <>
-              <span>Credits {row.invoiceNumber ?? "the invoice"}</span>
-              <span>· {sourceLabel(row.source)}</span>
+              <span>{fillWords(v.credits, { number: row.invoiceNumber ?? v.theInvoice })}</span>
+              <span>· {sourceLabel(row.source, w)}</span>
             </>
           ) : (
-            <span>{vatKindLabel(row.vatKind)}</span>
+            <span>{vatKindLabel(row.vatKind, w)}</span>
           )}
         </span>
       </td>
       <td className={td}>
-        <time dateTime={row.issuedOn}>{dayLabel(row.issuedOn)}</time>
+        <time dateTime={row.issuedOn}>{dayLabel(row.issuedOn, w)}</time>
       </td>
       <td className={td}>
         <Link href={`${orders}/${row.orderId}`} className="underline-offset-2 hover:underline">
@@ -318,11 +336,11 @@ function Row({ base, orders, row, credit, money }: { base: string; orders: strin
       </td>
       <td className={td}>
         {row.anonymised ? (
-          <span className="text-muted">Removed after the retention period</span>
+          <span className="text-muted">{v.removed}</span>
         ) : (
           <>
             <span className="block">{row.buyerName ?? "–"}</span>
-            <span className="text-xs text-muted">{countryName(row.buyerCountry)}</span>
+            <span className="text-xs text-muted">{countryName(row.buyerCountry, w.labels.countryLanguage)}</span>
           </>
         )}
       </td>
@@ -332,14 +350,14 @@ function Row({ base, orders, row, credit, money }: { base: string; orders: strin
       <td className={td}>
         <span className="flex flex-wrap gap-x-3 gap-y-1">
           <Link href={documentPrintHref(base, row.type, row.id)} className="underline" prefetch={false}>
-            View
+            {v.viewDoc}
           </Link>
           {/* A PDF route redirects to the print page when the renderer is not available; the link is always offered. */}
           <a href={documentPdfHref(base, row.type, row.id)} className="underline">
-            PDF
+            {v.pdf}
           </a>
         </span>
-        {!row.hasPdf && !row.anonymised && <span className="block text-xs text-muted">Made on first download</span>}
+        {!row.hasPdf && !row.anonymised && <span className="block text-xs text-muted">{v.firstDownload}</span>}
       </td>
     </tr>
   );
@@ -354,6 +372,7 @@ function WaitingTab({
   canWrite,
   actions,
   money,
+  w,
 }: {
   base: string;
   today: string;
@@ -363,50 +382,49 @@ function WaitingTab({
   canWrite: boolean;
   actions: { checkAgain: Action; retryPdf: Action };
   money: (minor: number, currency: string) => string;
+  w: InvoicesMessages;
 }) {
+  const v = w.view;
   const orders = `${base}/orders`;
   const nothing = waiting.length === 0 && waitingNotes.length === 0 && failing.length === 0;
   return (
     <div className="flex flex-col gap-6">
       <div className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <p className="max-w-3xl text-sm text-muted">
-          A paid order waits for its invoice when something the invoice must state is missing, for example the business details or the VAT registration. The
-          payment is never held back. Once the cause is put right the invoice is made within five minutes, dated that day, and still says the payment day as
-          the date of supply. <strong className="font-medium text-ink">Check again</strong> does it now.
+          {v.waitingIntro} <strong className="font-medium text-ink">{v.checkAgainName}</strong>
+          {v.checkAgainEnd}
         </p>
-        {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">Members who may change orders can press Check again.</p>}
+        {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">{v.checkAgainNoAccess}</p>}
       </div>
 
-      {nothing && <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
+      {nothing && <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>{v.nothingWaits}</p>}
 
       {waiting.length > 0 && (
-        <Card title="Orders waiting for an invoice" count={waiting.length} compact>
-          <List label="Orders waiting for an invoice">
-            {waiting.map((w) => (
-              <ListRow key={w.orderId}>
+        <Card title={v.ordersWaiting} count={waiting.length} compact>
+          <List label={v.ordersWaiting}>
+            {waiting.map((one) => (
+              <ListRow key={one.orderId}>
                 <RowLead
-                  title={`#${w.orderNumber}`}
-                  href={`${orders}/${w.orderId}`}
+                  title={`#${one.orderNumber}`}
+                  href={`${orders}/${one.orderId}`}
                   sub={
                     <>
-                      <span className="text-ink-2">{WAITING_TITLES[w.reason]}</span> · {w.words}
-                      {w.overdue && w.deadline && (
-                        <span className="block text-danger-text">
-                          Past the deadline: a reverse-charge invoice is due by {dayLabel(w.deadline)}. Today is {dayLabel(today)}.
-                        </span>
+                      <span className="text-ink-2">{w.labels.waiting[one.reason]}</span> · {one.words}
+                      {one.overdue && one.deadline && (
+                        <span className="block text-danger-text">{fillWords(v.overdueLine, { deadline: dayLabel(one.deadline, w), today: dayLabel(today, w) })}</span>
                       )}
-                      {w.fixAt && (
-                        <Link href={`${base}${w.fixAt}`} className="block underline">
-                          Fix it
+                      {one.fixAt && (
+                        <Link href={`${base}${one.fixAt}`} className="block underline">
+                          {v.fixIt}
                         </Link>
                       )}
                     </>
                   }
                 />
-                <RowFact className="hidden sm:block" sub={vatKindLabel(w.vatKind)}>
-                  Paid <time dateTime={w.paidOn}>{dayLabel(w.paidOn)}</time>
+                <RowFact className="hidden sm:block" sub={vatKindLabel(one.vatKind, w)}>
+                  {v.paid} <time dateTime={one.paidOn}>{dayLabel(one.paidOn, w)}</time>
                 </RowFact>
-                <RowAmount>{money(w.totalMinor, w.currency)}</RowAmount>
+                <RowAmount>{money(one.totalMinor, one.currency)}</RowAmount>
               </ListRow>
             ))}
           </List>
@@ -415,22 +433,22 @@ function WaitingTab({
 
       {waitingNotes.length > 0 && (
         <Card
-          title="Refunds with no or only a partial credit note"
+          title={v.refundsTitle}
           count={waitingNotes.length}
-          description="A credit note never goes above what its invoice has left, per VAT rate. A refund with no credit note yet is tried again every five minutes. A refund larger than what was left on the invoice, such as a fee charged after the sale, is credited in part; the rest is not an invoiced amount."
+          description={v.refundsText}
           compact
         >
-          <List label="Refunds with no or only a partial credit note">
+          <List label={v.refundsTitle}>
             {waitingNotes.map((n) => (
               <ListRow key={`${n.refundId ?? n.returnId}-${n.state}`}>
                 <RowLead
                   title={`#${n.orderNumber}`}
                   href={`${orders}/${n.orderId}`}
-                  sub={n.state === "missing" ? "No credit note yet" : "Credited in part: the invoice had less left"}
+                  sub={n.state === "missing" ? v.noCreditNoteYet : v.creditedInPart}
                 />
                 <RowAmount>
                   {money(n.amountMinor, n.currency)}
-                  <span className="block text-caption text-muted">{n.state === "missing" ? "the refund" : "left uncredited"}</span>
+                  <span className="block text-caption text-muted">{n.state === "missing" ? v.theRefund : v.leftUncredited}</span>
                 </RowAmount>
               </ListRow>
             ))}
@@ -440,12 +458,12 @@ function WaitingTab({
 
       {failing.length > 0 && (
         <Card
-          title="PDF not made"
+          title={v.pdfNotMade}
           count={failing.length}
-          description="The document exists and is correct; only its PDF file could not be made after several tries. The hosted page and the print view still work, and the browser can save a PDF from them."
+          description={v.pdfText}
           compact
         >
-          <List label="PDF not made">
+          <List label={v.pdfNotMade}>
             {failing.map((f) => (
               <ListRow key={`${f.type}-${f.id}`}>
                 <RowLead
@@ -453,20 +471,20 @@ function WaitingTab({
                   sub={
                     <>
                       <Link href={documentPrintHref(base, f.type, f.id)} className="underline" prefetch={false}>
-                        View
+                        {v.viewDoc}
                       </Link>
                       {" · "}
                       <Link href={`${orders}/${f.orderId}`} className="underline-offset-2 hover:underline">
-                        Order #{f.orderNumber}
+                        {fillWords(v.orderNumber, { number: f.orderNumber })}
                       </Link>
                       {" · "}
-                      {f.attempts === 1 ? "1 try" : `${f.attempts} tries`}
+                      {countWords(f.attempts, v.tries)}
                       {f.lastError && <span className="block [overflow-wrap:anywhere]">{f.lastError}</span>}
                     </>
                   }
                 />
                 <RowActions>
-                  {canWrite ? <RetryPdfForm action={actions.retryPdf} type={f.type} id={f.id} /> : <span className="text-body text-muted">Needs a member who may change orders</span>}
+                  {canWrite ? <RetryPdfForm action={actions.retryPdf} type={f.type} id={f.id} /> : <span className="text-body text-muted">{v.needsWriter}</span>}
                 </RowActions>
               </ListRow>
             ))}

@@ -6,6 +6,8 @@ import type { ArchiveActionState, TagsActionState } from "@/app/admin/(gated)/[s
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { TAGS_PER_ORDER, TAG_MAX_LENGTH, type Tag } from "@/lib/order-tags";
 import { Card } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /**
  * The order page's tags (wave 3, D173, `docs/wave-3-orders.md` 2.3): the tags as chips with a remove cross, and a field to add (several with commas), with the store's tags in use as
@@ -27,6 +29,7 @@ export function TagsCard({
   const [text, setText] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [working, startTransition] = useTransition();
+  const w = useAdminText("order").tags;
 
   const apply = (request: { add?: string; remove?: string }) => {
     setMessage(null);
@@ -39,16 +42,16 @@ export function TagsCard({
   };
 
   return (
-    <Card title="Tags" className="flex flex-col gap-3 text-sm" compact>
+    <Card title={w.title} className="flex flex-col gap-3 text-sm" compact>
       {tags.length === 0 ? (
-        <p className="text-muted">No tags.</p>
+        <p className="text-muted">{w.none}</p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {tags.map((tag) => (
             <li key={tag.key} className="inline-flex items-center gap-1 rounded-full border border-line bg-sunken py-0.5 pr-1 pl-3 text-xs">
               {tag.label}
               {canWrite && (
-                <button type="button" disabled={working} onClick={() => apply({ remove: tag.label })} aria-label={`Remove the tag ${tag.label}`} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-card">
+                <button type="button" disabled={working} onClick={() => apply({ remove: tag.label })} aria-label={fillWords(w.remove, { tag: tag.label })} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-card">
                   <span aria-hidden="true">×</span>
                 </button>
               )}
@@ -65,7 +68,7 @@ export function TagsCard({
           }}
         >
           <label htmlFor={`${id}-add`} className="text-xs font-medium">
-            Add tags <span className="font-normal text-muted">(separate with commas)</span>
+            {w.add} <span className="font-normal text-muted">{w.commas}</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -83,11 +86,11 @@ export function TagsCard({
               ))}
             </datalist>
             <button type="submit" disabled={working || text.trim() === ""} className={secondary}>
-              Add
+              {w.addButton}
             </button>
           </div>
           <p className={hint}>
-            Up to {TAG_MAX_LENGTH} characters each, {TAGS_PER_ORDER} on an order. Capital letters do not matter: VIP and vip are one tag. Tags are for you: the customer never sees them, so do not write about a person.
+            {fillWords(w.hint, { max: TAG_MAX_LENGTH, perOrder: TAGS_PER_ORDER })}
           </p>
         </form>
       )}
@@ -119,6 +122,7 @@ export function ArchiveButton({
   const [archived, setArchived] = useState(initial);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [working, startTransition] = useTransition();
+  const w = useAdminText("order").archive;
   const run = () =>
     startTransition(async () => {
       setMessage(null);
@@ -129,12 +133,11 @@ export function ArchiveButton({
   return (
     <div className="flex flex-col gap-1">
       <button type="button" onClick={run} disabled={working || (!archived && blocked !== null)} className={archived ? secondary : primary} aria-describedby={blocked && !archived ? "archive-blocked" : undefined}>
-        {working ? "Working …" : archived ? "Unarchive" : "Archive"}
+        {working ? w.working : archived ? w.unarchive : w.archive}
       </button>
       {blocked && !archived && (
         <p id="archive-blocked" className={hint}>
-          Cannot be archived yet: {blocked.charAt(0).toLowerCase()}
-          {blocked.slice(1)}
+          {fillWords(w.blocked, { reason: `${blocked.charAt(0).toLowerCase()}${blocked.slice(1)}` })}
         </p>
       )}
       {message && (

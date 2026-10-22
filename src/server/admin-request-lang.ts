@@ -17,3 +17,15 @@ export async function requestAdminLang(): Promise<AdminLang> {
   return browserAdminLang((await headers()).get("accept-language"));
 }
 
+/**
+ * The same for a server action's refusal before a member is known (D312 A4): English when there is no request to read (a job or a test
+ * calling the action), since an action's answer must never fail for want of a language. Pages keep `requestAdminLang()`, whose reading of the
+ * request must stay visible to the renderer.
+ */
+export async function actionAdminLang(): Promise<AdminLang> {
+  try {
+    return await requestAdminLang();
+  } catch {
+    return "en";
+  }
+}

@@ -6,7 +6,7 @@
  */
 import type { DraftTaxOutcome } from "./draft-order";
 import type { OrderEditLineKind } from "./order-edit-status";
-import type { OrderTotals, PricedEdit } from "./order-edit";
+import type { EditDocumentFacts, OrderTotals, PricedEdit } from "./order-edit";
 
 /** What the preview carries that the screen reads (`EditPreview` of `src/server/order-edits.ts`, structurally). */
 export type EditPreviewLike = {
@@ -21,6 +21,8 @@ export type EditPreviewLike = {
   outside: boolean;
   mustNotify: boolean;
   sentences: { money: string; documents: string };
+  /** What the documents sentence is made from (D312 A4); absent on a preview made before it was kept. */
+  documentFacts?: EditDocumentFacts;
   invoiceNumber: string | null;
 };
 
@@ -57,6 +59,8 @@ export type EditSummaryView = {
   mustNotify: boolean;
   outside: boolean;
   sentences: { money: string; documents: string };
+  /** What the documents sentence is made from, so the screen can say it in the person's language (D312 A4). */
+  documentFacts: EditDocumentFacts | null;
   /** Sent back with the apply: the order as previewed. */
   base: unknown;
 };
@@ -104,14 +108,18 @@ export function editSummaryView(preview: EditPreviewLike): EditSummaryView {
     mustNotify: preview.mustNotify,
     outside: preview.outside,
     sentences: preview.sentences,
+    documentFacts: preview.documentFacts ?? null,
     base: preview.base,
   };
 }
 
-/** A rate as staff read it: `0.25` → "25 %". */
-export const ratePercent = (rate: number): string => `${(Math.round(rate * 10000) / 100).toLocaleString("en", { maximumFractionDigits: 2 })} %`;
+/** A rate as staff read it: `0.25` → "25 %" (in `locale`'s numbers, English unless given). */
+export const ratePercent = (rate: number, locale = "en"): string => `${(Math.round(rate * 10000) / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`;
 
-/** The words of the main button for a change, by what happens to the money. */
-export function applyLabel(money: EditSummaryView["money"]): string {
-  return money === "charge" ? "Send the customer a pay link" : money === "refund" ? "Save the change and refund" : "Save the change";
+/** The words of the main button for a change, by what happens to the money (English unless the catalogue's words are given). */
+export function applyLabel(
+  money: EditSummaryView["money"],
+  words: { charge: string; refund: string; none: string } = { charge: "Send the customer a pay link", refund: "Save the change and refund", none: "Save the change" },
+): string {
+  return words[money];
 }

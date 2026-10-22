@@ -1,21 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { formatMoney } from "@/lib/money";
 import { formatPriceInput } from "@/lib/product-input";
-import {
-  CONDITION_LABELS,
-  declineReasonText,
-  eventSentence,
-  exclusionLabel,
-  KIND_HINTS,
-  outcomeLabel,
-  REASON_LABELS,
-  STATUS_HINTS,
-  STATUS_LABELS,
-  timeText,
-  type RefundPreviewData,
-} from "@/lib/return-admin";
+import { declineReasonText, eventSentence, exclusionLabel, outcomeLabel, timeText as timeIn, type RefundPreviewData } from "@/lib/return-admin";
 import { closeWithoutRefundNeedsConfirm, isEnded, type ReturnStatus } from "@/lib/return-status";
 import { formatStoreDay } from "@/lib/return-time";
 import { sendBackDay, type ReturnReason } from "@/lib/withdrawal";
@@ -76,6 +66,7 @@ export function ReturnDetailView({
   locale = "en-GB",
   exchangeCard = null,
   labelCard = null,
+  words: w = returnsEn,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -91,7 +82,12 @@ export function ReturnDetailView({
   exchangeCard?: ReactNode;
   /** The **Return shipping** card (D239, `LabelCard`); placed after the instructions. */
   labelCard?: ReactNode;
+  words?: ReturnsMessages;
 }) {
+  const d = w.detail;
+  const L = w.labels;
+  const timeText = (at: Date | string, zone: string) => timeIn(at, zone, locale);
+  const reasonText = (reason: string) => (Object.hasOwn(L.reason, reason) ? L.reason[reason as ReturnReason] : reason);
   const money = (minor: number) => formatMoney(minor, detail.currency, locale);
   const can = (action: ReturnDetail["actions"][number]) => detail.actions.includes(action);
   const accepted = detail.lines.filter((l) => l.decision === "accept");
@@ -114,7 +110,7 @@ export function ReturnDetailView({
     deduction: l.deductionMinor > 0 ? formatPriceInput(l.deductionMinor, detail.currency) : "",
     deductionNote: l.deductionNote ?? "",
     physical: l.delivery === "physical",
-    valueLabel: l.valueMinor === null ? "the value of the goods" : money(l.valueMinor),
+    valueLabel: l.valueMinor === null ? d.valueOfGoods : money(l.valueMinor),
   }));
   const refundLines: RefundLine[] = accepted
     .filter((l) => l.delivery === "physical")
@@ -126,119 +122,116 @@ export function ReturnDetailView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <PageHeader
-          back={{ href: `${base}/returns`, label: "Returns" }}
-          title={<>Return {detail.number}</>}
+          back={{ href: `${base}/returns`, label: d.back }}
+          title={fillWords(d.title, { number: detail.number })}
           status={
             <>
-              <StatusBadge status={detail.status} />
-              <KindBadge kind={detail.kind} />
+              <StatusBadge status={detail.status} words={w} />
+              <KindBadge kind={detail.kind} words={w} />
             </>
           }
         />
         <p className="text-sm text-muted">
           <Link href={orderHref} className="underline">
-            Order #{detail.orderNumber}
+            {d.orderLabel} #{detail.orderNumber}
           </Link>{" "}
-          · {request?.email ?? detail.orderEmail} · made <time dateTime={detail.createdAt}>{timeText(detail.createdAt, timeZone)}</time>
+          · {request?.email ?? detail.orderEmail} · {d.made} <time dateTime={detail.createdAt}>{timeText(detail.createdAt, timeZone)}</time>
         </p>
-        <p className="text-sm">{detail.nothingSent && detail.status === "approved" ? "Nothing was sent, so there are no goods to wait for. The refund is due." : STATUS_HINTS[detail.status]}</p>
-        <DueMark due={detail.due} timeZone={timeZone} />
-        <p className="text-sm text-muted">{KIND_HINTS[detail.kind]}</p>
+        <p className="text-sm">{detail.nothingSent && detail.status === "approved" ? d.nothingSentDue : L.statusHints[detail.status]}</p>
+        <DueMark due={detail.due} timeZone={timeZone} words={w} locale={locale} />
+        <p className="text-sm text-muted">{L.kindHints[detail.kind]}</p>
       </div>
 
       {request && confirmedAt && request.acknowledgement === "not_sent" && (
         <section role="alert" aria-labelledby="ack-problem" className="flex flex-col gap-3 rounded-lg border border-danger-text bg-card p-5">
           <h2 id="ack-problem" className="text-title text-ink">
-            The acknowledgement was not sent
+            {d.ackProblem}
           </h2>
-          <p className="text-sm">
-            The withdrawal stands: it counts from the moment the customer confirmed it. The law also asks you to confirm that you received it, on a
-            durable medium such as an email. The email did not go out, so send it again.
-          </p>
+          <p className="text-sm">{d.ackProblemText}</p>
           <AcknowledgementForm action={actions.acknowledge} />
         </section>
       )}
 
       {detail.order.subscription && (
         <p role="note" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          This order is part of a subscription. The withdrawal is recorded here, but it does not end the subscription: end that separately on its{" "}
+          {d.subscriptionBefore}{" "}
           <Link href={`${base}/subscriptions`} className="underline">
-            page
+            {d.subscriptionPage}
           </Link>
           .
         </p>
       )}
 
-      <ol aria-label="Where the return is" className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+      <ol aria-label={d.stepsLabel} className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
         {detail.steps.map(({ step, state }) => (
           <li key={step} aria-current={state === "current" ? "step" : undefined} className={state === "upcoming" || state === "skipped" ? "text-muted" : state === "current" ? "font-medium" : ""}>
             <span aria-hidden="true">{STEP_MARK[state]} </span>
-            {STATUS_LABELS[step as ReturnStatus]}
-            <span className="sr-only">{state === "done" ? " (done)" : state === "current" ? " (now)" : state === "skipped" ? " (not reached)" : " (to come)"}</span>
+            {L.status[step as ReturnStatus]}
+            <span className="sr-only">{state === "done" ? d.stepDone : state === "current" ? d.stepNow : state === "skipped" ? d.stepSkipped : d.stepToCome}</span>
           </li>
         ))}
-        {(detail.status === "declined" || detail.status === "cancelled") && <li className="font-medium">{STATUS_LABELS[detail.status as ReturnStatus]}</li>}
+        {(detail.status === "declined" || detail.status === "cancelled") && <li className="font-medium">{L.status[detail.status as ReturnStatus]}</li>}
       </ol>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card id="statement" title={request ? "The customer's withdrawal" : "The customer's request"}>
+          <Card id="statement" title={request ? d.statementWithdrawal : d.statementRequest}>
             <dl className="flex flex-col gap-2 text-sm">
               {request ? (
                 <>
-                  <Fact label="Name">{request.name}</Fact>
-                  <Fact label="Email">
+                  <Fact label={d.name}>{request.name}</Fact>
+                  <Fact label={d.email}>
                     <a href={`mailto:${request.email}`} className="underline">
                       {request.email}
                     </a>
                   </Fact>
-                  <Fact label="Statement made">{timeText(request.submittedAt, timeZone)}</Fact>
-                  <Fact label="Confirmed">{confirmedAt ? timeText(confirmedAt, timeZone) : "Not confirmed"}</Fact>
-                  <Fact label="Acknowledgement">
+                  <Fact label={d.statementMade}>{timeText(request.submittedAt, timeZone)}</Fact>
+                  <Fact label={d.confirmed}>{confirmedAt ? timeText(confirmedAt, timeZone) : d.notConfirmed}</Fact>
+                  <Fact label={d.acknowledgement}>
                     {request.acknowledgement === "sent" && request.acknowledgedAt ? (
                       <>
-                        Sent {timeText(request.acknowledgedAt, timeZone)}
-                        {request.acknowledgementReference && <span className="block font-mono text-xs text-muted">Reference {request.acknowledgementReference}</span>}
+                        {fillWords(d.sent, { time: timeText(request.acknowledgedAt, timeZone) })}
+                        {request.acknowledgementReference && <span className="block font-mono text-xs text-muted">{fillWords(d.reference, { reference: request.acknowledgementReference })}</span>}
                       </>
                     ) : (
-                      <span className="font-medium text-danger-text">Not sent</span>
+                      <span className="font-medium text-danger-text">{d.notSent}</span>
                     )}
                   </Fact>
-                  {confirmedAt && <Fact label="Goods to be sent back by">{formatStoreDay(sendBackDay(confirmedAt, timeZone), locale)} (14 days from the declaration)</Fact>}
-                  {detail.refundDeadline && <Fact label="Refund due by">{timeText(detail.refundDeadline, timeZone)} (14 days from the declaration)</Fact>}
+                  {confirmedAt && <Fact label={d.sendBackBy}>{fillWords(d.fromDeclaration, { day: formatStoreDay(sendBackDay(confirmedAt, timeZone), locale) })}</Fact>}
+                  {detail.refundDeadline && <Fact label={d.refundDueBy}>{fillWords(d.fromDeclaration, { day: timeText(detail.refundDeadline, timeZone) })}</Fact>}
                 </>
               ) : (
                 <>
-                  <Fact label="Requested">{timeText(detail.createdAt, timeZone)}</Fact>
-                  <Fact label="Email">{detail.orderEmail || "–"}</Fact>
+                  <Fact label={d.requested}>{timeText(detail.createdAt, timeZone)}</Fact>
+                  <Fact label={d.email}>{detail.orderEmail || "–"}</Fact>
                 </>
               )}
-              {detail.reason && <Fact label="Reason">{REASON_LABELS[detail.reason as ReturnReason] ?? detail.reason}</Fact>}
+              {detail.reason && <Fact label={d.reason}>{reasonText(detail.reason)}</Fact>}
               {detail.reasonNote && (
-                <Fact label="Their note">
+                <Fact label={d.theirNote}>
                   <span className="whitespace-pre-wrap">{detail.reasonNote}</span>
                 </Fact>
               )}
               {detail.decisionNote && (
-                <Fact label={detail.status === "declined" ? "Why it was declined" : "Your note to them"}>
+                <Fact label={detail.status === "declined" ? d.whyDeclined : d.yourNote}>
                   <span className="whitespace-pre-wrap">{detail.decisionNote}</span>
                 </Fact>
               )}
-              {detail.outcome && <Fact label="Outcome">{outcomeLabel(detail.outcome)}</Fact>}
+              {detail.outcome && <Fact label={d.outcome}>{outcomeLabel(detail.outcome, w)}</Fact>}
             </dl>
           </Card>
 
-          <Card id="lines" title="Goods">
+          <Card id="lines" title={d.goods}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[34rem] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
-                    <th scope="col" className="py-2 pr-3 font-medium">Product</th>
-                    <th scope="col" className="py-2 pr-3 text-right font-medium">Returned</th>
-                    <th scope="col" className="py-2 pr-3 font-medium">Condition</th>
-                    <th scope="col" className="py-2 pr-3 font-medium">Stock</th>
-                    <th scope="col" className="py-2 pr-3 text-right font-medium">Deduction</th>
-                    <th scope="col" className="py-2 text-right font-medium">Worth</th>
+                    <th scope="col" className="py-2 pr-3 font-medium">{d.product}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{d.returned}</th>
+                    <th scope="col" className="py-2 pr-3 font-medium">{d.condition}</th>
+                    <th scope="col" className="py-2 pr-3 font-medium">{d.stock}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{d.deduction}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{d.worth}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,13 +243,13 @@ export function ReturnDetailView({
                         <td className="py-2 pr-3">
                           {line.title}
                           <span className="block font-mono text-xs text-muted">{line.sku}</span>
-                          {line.withdrawalExclusion !== "none" && <span className="block text-xs text-muted">{exclusionLabel(line.withdrawalExclusion)}</span>}
-                          {line.reason && <span className="block text-xs text-muted">Reason: {REASON_LABELS[line.reason as ReturnReason] ?? line.reason}</span>}
-                          {declined && <span className="block text-xs font-medium">Declined: {declineReasonText(line.declineReason)}</span>}
+                          {line.withdrawalExclusion !== "none" && <span className="block text-xs text-muted">{exclusionLabel(line.withdrawalExclusion, w)}</span>}
+                          {line.reason && <span className="block text-xs text-muted">{fillWords(d.lineReason, { reason: reasonText(line.reason) })}</span>}
+                          {declined && <span className="block text-xs font-medium">{fillWords(d.lineDeclined, { reason: declineReasonText(line.declineReason, w) })}</span>}
                           {canDecline && (
                             <details className="mt-2">
                               <summary className="cursor-pointer text-xs underline">
-                                {line.withdrawalExclusion !== "none" ? "Decline: the law excludes it" : "Decline this line"}
+                                {line.withdrawalExclusion !== "none" ? d.declineExcluded : d.declineLine}
                               </summary>
                               <div className="mt-2">
                                 <DeclineLineForm action={actions.declineLine} lineId={line.lineId} />
@@ -265,10 +258,10 @@ export function ReturnDetailView({
                           )}
                         </td>
                         <td className="py-2 pr-3 text-right tabular-nums">
-                          {declined ? "–" : line.quantity} <span className="text-muted">of {line.orderedQuantity}</span>
+                          {declined ? "–" : line.quantity} <span className="text-muted">{fillWords(d.of, { n: line.orderedQuantity })}</span>
                         </td>
-                        <td className="py-2 pr-3">{line.condition ? CONDITION_LABELS[line.condition] : "–"}</td>
-                        <td className="py-2 pr-3">{declined || line.condition === null ? "–" : line.restock ? "Back in stock" : "Not restocked"}</td>
+                        <td className="py-2 pr-3">{line.condition ? L.condition[line.condition] : "–"}</td>
+                        <td className="py-2 pr-3">{declined || line.condition === null ? "–" : line.restock ? d.backInStock : d.notRestocked}</td>
                         <td className="py-2 pr-3 text-right tabular-nums">{line.deductionMinor > 0 ? `−${money(line.deductionMinor)}` : "–"}</td>
                         <td className="py-2 text-right tabular-nums">{declined || line.valueMinor === null ? "–" : money(line.valueMinor)}</td>
                       </tr>
@@ -283,7 +276,7 @@ export function ReturnDetailView({
                   .filter((l) => l.deductionNote)
                   .map((l) => (
                     <li key={l.lineId}>
-                      Deduction on {l.title}: {l.deductionNote}
+                      {fillWords(d.deductionOn, { title: l.title, note: l.deductionNote ?? "" })}
                     </li>
                   ))}
               </ul>
@@ -291,12 +284,12 @@ export function ReturnDetailView({
           </Card>
 
           {can("approve") && (
-            <Card id="approve" title="Approve or decline" hint="This is a request inside your own return window. You may approve it or decline it with a reason, and the customer is emailed either way.">
+            <Card id="approve" title={d.approveTitle} hint={d.approveHint}>
               <div className="flex flex-col gap-5">
                 <ApproveForm action={actions.approve} defaults={instructionsDefaults} />
                 {can("decline") && (
                   <details className="border-t border-line pt-4">
-                    <summary className="cursor-pointer text-sm underline">Decline instead</summary>
+                    <summary className="cursor-pointer text-sm underline">{d.declineInstead}</summary>
                     <div className="mt-3">
                       <DeclineForm action={actions.decline} />
                     </div>
@@ -307,37 +300,34 @@ export function ReturnDetailView({
           )}
 
           {detail.nothingSent && !isEnded(detail.status) && (
-            <Card id="goods" title="Nothing was sent">
-              <p className="text-sm">
-                The customer withdrew before the goods were sent, so there is nothing for them to send back and no refund to hold back for the goods. The
-                refund is due as soon as you have checked it. Do not send the parcel: if it is already packed, leave out what was withdrawn.
-              </p>
+            <Card id="goods" title={d.nothingSentTitle}>
+              <p className="text-sm">{d.nothingSentText}</p>
             </Card>
           )}
 
           {!detail.nothingSent && (can("mark_in_transit") || can("mark_received")) && (
             <Card
               id="goods"
-              title="The goods"
+              title={d.goodsTitle}
               hint={
                 detail.refund.recorded
                   ? undefined
                   : detail.settings.refundWhen === "received"
-                    ? "You may hold the refund until the goods are back or the customer shows proof of sending (Art. 13(3)), but never past the deadline."
-                    : "This store refunds without waiting for the goods."
+                    ? d.holdHint
+                    : d.noWaitHint
               }
             >
               <div className="flex flex-col gap-5">
                 {can("mark_in_transit") && (
                   <div>
-                    <h3 className="mb-2 text-body-strong text-ink">The customer has sent them</h3>
-                    <DayStepForm action={actions.markInTransit} button="Mark as on their way" help="the day they were sent; today if left empty" today={today} successMessage="Marked as on their way." />
+                    <h3 className="mb-2 text-body-strong text-ink">{d.customerSent}</h3>
+                    <DayStepForm action={actions.markInTransit} button={d.markOnWay} help={d.sentHelp} today={today} successMessage={d.markedOnWay} />
                   </div>
                 )}
                 {can("mark_received") && (
                   <div className={can("mark_in_transit") ? "border-t border-line pt-4" : ""}>
-                    <h3 className="mb-2 text-body-strong text-ink">The goods have arrived</h3>
-                    <DayStepForm action={actions.markReceived} button="Mark as received" help="the day they arrived; today if left empty" today={today} successMessage="Marked as received. The customer has been told." />
+                    <h3 className="mb-2 text-body-strong text-ink">{d.arrived}</h3>
+                    <DayStepForm action={actions.markReceived} button={d.markReceived} help={d.arrivedHelp} today={today} successMessage={d.markedReceived} />
                   </div>
                 )}
               </div>
@@ -345,7 +335,7 @@ export function ReturnDetailView({
           )}
 
           {can("set_instructions") && !can("approve") && (
-            <Card id="instructions" title="Return instructions" hint="What the customer is told about sending the goods back. You can change it until the goods arrive.">
+            <Card id="instructions" title={d.instructionsTitle} hint={d.instructionsHint}>
               <InstructionsForm action={actions.instructions} defaults={instructionsDefaults} />
             </Card>
           )}
@@ -353,7 +343,7 @@ export function ReturnDetailView({
           {labelCard}
 
           {inspecting && inspectLines.length > 0 && (
-            <Card id="inspect" title={detail.status === "inspected" ? "Change the inspection" : "Inspect the goods"} hint="Say what condition each line came back in. This sets the deduction, if any, and what goes back in stock.">
+            <Card id="inspect" title={detail.status === "inspected" ? d.changeInspection : d.inspectTitle} hint={d.inspectHint}>
               <InspectForm action={actions.inspect} lines={inspectLines} currency={detail.currency} changing={detail.status === "inspected"} />
             </Card>
           )}
@@ -363,11 +353,11 @@ export function ReturnDetailView({
           {can("refund") && preview && (
             <Card
               id="refund"
-              title="Refund"
+              title={d.refundTitle}
               hint={
                 detail.kind === "withdrawal"
-                  ? `The law gives you until ${detail.refundDeadline ? timeText(detail.refundDeadline, timeZone) : "14 days after you were told"} to refund. Nothing is refunded until you press the button.`
-                  : "Nothing is refunded until you press the button."
+                  ? fillWords(d.refundLawHint, { deadline: detail.refundDeadline ? timeText(detail.refundDeadline, timeZone) : d.fourteenDays })
+                  : d.refundHint
               }
             >
               <RefundPanel
@@ -385,20 +375,20 @@ export function ReturnDetailView({
           )}
 
           {refunded && (
-            <Card id="refunded" title={detail.outcome === "exchanged" ? "Credit" : "Refund"}>
+            <Card id="refunded" title={detail.outcome === "exchanged" ? d.credit : d.refundTitle}>
               <dl className="flex flex-col gap-2 text-sm">
-                <Fact label={detail.outcome === "exchanged" ? "Credit, used for the exchange" : "Refunded"}>
+                <Fact label={detail.outcome === "exchanged" ? d.creditUsed : d.refunded}>
                   {money(detail.refund.amountMinor ?? 0)}
-                  {detail.refund.at && <span className="text-muted"> on {timeText(detail.refund.at, timeZone)}</span>}
+                  {detail.refund.at && <span className="text-muted">{fillWords(d.on, { time: timeText(detail.refund.at, timeZone) })}</span>}
                 </Fact>
-                <Fact label="How">{detail.outcome === "exchanged" ? "It paid the new order; any rest was refunded to the customer's payment" : detail.refund.outside ? "Outside Kaizena Flow's Stripe: recorded only" : "Through Stripe, on the store's account"}</Fact>
+                <Fact label={d.how}>{detail.outcome === "exchanged" ? d.howExchange : detail.refund.outside ? d.howOutside : d.howStripe}</Fact>
                 {detail.refund.computedMinor !== null && detail.refund.computedMinor !== detail.refund.amountMinor && (
-                  <Fact label="Changed from">
+                  <Fact label={d.changedFrom}>
                     {money(detail.refund.computedMinor)}
                     {detail.refund.note && <span className="block text-muted">{detail.refund.note}</span>}
                   </Fact>
                 )}
-                {detail.refund.returnShippingMinor > 0 && <Fact label="Return shipping taken off">{money(detail.refund.returnShippingMinor)}</Fact>}
+                {detail.refund.returnShippingMinor > 0 && <Fact label={d.shippingTakenOff}>{money(detail.refund.returnShippingMinor)}</Fact>}
               </dl>
             </Card>
           )}
@@ -406,19 +396,19 @@ export function ReturnDetailView({
           {(can("close") || can("cancel")) && (
             <Card
               id="end"
-              title="End the return"
+              title={d.endTitle}
               hint={
                 can("close")
                   ? detail.kind === "withdrawal"
-                    ? "Close it when it is done: refunded, or with nothing to refund. A withdrawal is effective when the customer says so, so it is closed, never cancelled: if the goods never come back, close it without a refund and say why in the note."
-                    : "Close it when it is done: refunded, or with nothing to refund. Cancel it if the customer no longer wants to send the goods."
+                    ? d.endWithdrawal
+                    : d.endReturn
                   : undefined
               }
             >
               <div className="flex flex-col gap-4">
                 {can("close") && (
                   <details open={refunded}>
-                    <summary className="cursor-pointer text-sm underline">Close</summary>
+                    <summary className="cursor-pointer text-sm underline">{d.close}</summary>
                     <div className="mt-3">
                       <CloseForm action={actions.close} needsConfirm={closeWithoutRefundNeedsConfirm(detail.kind, refunded)} />
                     </div>
@@ -426,9 +416,9 @@ export function ReturnDetailView({
                 )}
                 {can("cancel") && (
                   <details>
-                    <summary className="cursor-pointer text-sm underline">Cancel</summary>
+                    <summary className="cursor-pointer text-sm underline">{d.cancel}</summary>
                     <div className="mt-3">
-                      <p className="mb-2 text-sm text-muted">The customer is not told.</p>
+                      <p className="mb-2 text-sm text-muted">{d.notTold}</p>
                       <CancelForm action={actions.cancel} />
                     </div>
                   </details>
@@ -437,13 +427,13 @@ export function ReturnDetailView({
             </Card>
           )}
 
-          <Card id="note" title="Note">
+          <Card id="note" title={d.note}>
             <NoteForm action={actions.note} note={detail.staffNote ?? ""} />
           </Card>
 
-          <Card id="history" title="History">
+          <Card id="history" title={d.history}>
             {detail.events.length === 0 ? (
-              <p className="text-sm text-muted">Nothing is recorded yet.</p>
+              <p className="text-sm text-muted">{d.nothingYet}</p>
             ) : (
               <ol className="flex flex-col gap-2 text-sm">
                 {detail.events.map((event, index) => (
@@ -451,7 +441,7 @@ export function ReturnDetailView({
                     <time dateTime={event.at} className="shrink-0 text-muted sm:w-40">
                       {timeText(event.at, timeZone)}
                     </time>
-                    <span className="min-w-0">{eventSentence(event.type, event.data, detail.currency, locale)}</span>
+                    <span className="min-w-0">{eventSentence(event.type, event.data, detail.currency, locale, w)}</span>
                   </li>
                 ))}
               </ol>
@@ -460,32 +450,32 @@ export function ReturnDetailView({
         </div>
 
         <div className="flex flex-col gap-6">
-          <Card id="order" title="The order">
+          <Card id="order" title={d.theOrder}>
             <dl className="flex flex-col gap-1 text-sm">
-              <Side label="Order">
+              <Side label={d.orderLabel}>
                 <Link href={orderHref} className="underline">
                   #{detail.orderNumber}
                 </Link>
               </Side>
-              <Side label="Paid">{money(detail.order.paidMinor)}</Side>
-              <Side label="Refunded so far">{money(detail.order.refundedMinor)}</Side>
-              <Side label="Left to refund">{money(detail.order.refundableMinor)}</Side>
-              {detail.order.business && <Side label="Customer">A company: no statutory right of withdrawal</Side>}
+              <Side label={d.paid}>{money(detail.order.paidMinor)}</Side>
+              <Side label={d.refundedSoFar}>{money(detail.order.refundedMinor)}</Side>
+              <Side label={d.leftToRefund}>{money(detail.order.refundableMinor)}</Side>
+              {detail.order.business && <Side label={d.customer}>{d.company}</Side>}
             </dl>
           </Card>
-          <Card id="rules" title="Store rules">
+          <Card id="rules" title={d.rules}>
             <dl className="flex flex-col gap-1 text-sm">
-              <Side label="Return shipping, as sold">{detail.whoPaysReturn === "shopper" ? "The customer pays" : "The store pays"}</Side>
-              <Side label="Refund">{detail.settings.refundWhen === "received" ? "When the goods are back" : "When asked"}</Side>
+              <Side label={d.returnShipping}>{detail.whoPaysReturn === "shopper" ? d.customerPays : d.storePays}</Side>
+              <Side label={d.refund}>{detail.settings.refundWhen === "received" ? d.whenBack : d.whenAsked}</Side>
             </dl>
             <p className="mt-2 text-sm">
               <Link href={`${base}/settings/returns`} className="underline">
-                Change the rules
+                {d.changeRules}
               </Link>
             </p>
           </Card>
           {(detail.returnAddress || detail.instructions || detail.labelUrl) && (
-            <Card id="told" title="What the customer is told">
+            <Card id="told" title={d.told}>
               {detail.instructions && <p className="mb-2 text-sm whitespace-pre-wrap">{detail.instructions}</p>}
               {detail.returnAddress && (
                 <address className="mb-2 text-sm not-italic">
@@ -501,7 +491,7 @@ export function ReturnDetailView({
               {detail.labelUrl && (
                 <p className="text-sm">
                   <a href={detail.labelUrl} target="_blank" rel="noreferrer" className="underline">
-                    Return label
+                    {d.returnLabel}
                   </a>
                 </p>
               )}

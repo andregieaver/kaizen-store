@@ -5,7 +5,10 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
 import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
-import { BULK_PRINT_MAX, BULK_REASON_TEXT, BULK_REQUEST_TEXT } from "@/lib/order-bulk";
+import { countWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { BULK_PRINT_MAX } from "@/lib/order-bulk";
 import { packingSlipData } from "@/server/packing-slips";
 import { requirePermission } from "@/server/permissions";
 
@@ -33,17 +36,19 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const words = adminText(adminLangOf(gated.account.adminLocale), "orders");
+  const w = words.slips;
   const ids = idsOf((await searchParams).ids);
   const set = await packingSlipData(store.id, ids);
   if (!set.ok) {
     return (
       <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold">Packing slips</h1>
+        <h1 className="text-2xl font-semibold">{w.title}</h1>
         <p role="alert" className="rounded-lg border border-border bg-surface p-4 text-sm">
-          {set.problem === "empty" ? "Choose the orders to print on the orders page." : BULK_REQUEST_TEXT.too_many.replace(/ \(100 to print\)/, "")}
+          {set.problem === "empty" ? w.chooseFirst : w.tooMany}
         </p>
         <Link href={`/admin/${store.slug}/orders`} className="text-sm underline underline-offset-2">
-          Back to the orders
+          {words.pick.back}
         </Link>
       </div>
     );
@@ -52,28 +57,28 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
     <PrintArea className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Packing slips</h1>
-          {set.slips.length > 0 && <PrintButton label={`Print ${set.slips.length} ${set.slips.length === 1 ? "slip" : "slips"}`} />}
+          <h1 className="text-2xl font-semibold">{w.title}</h1>
+          {set.slips.length > 0 && <PrintButton label={countWords(set.slips.length, w.print)} />}
         </div>
         <p className="text-sm text-muted">
-          {set.slips.length} {set.slips.length === 1 ? "slip" : "slips"} ready, each order on its own page and in its own language. A slip has no prices. This page prints only the slips.
+          {countWords(set.slips.length, w.ready)}
         </p>
         {set.skipped.length > 0 && (
-          <section aria-label="Orders left out" className="rounded-lg border border-border bg-surface p-4 text-sm">
+          <section aria-label={w.leftOut} className="rounded-lg border border-border bg-surface p-4 text-sm">
             <p className="font-medium">
-              {set.skipped.length} {set.skipped.length === 1 ? "order was" : "orders were"} left out:
+              {countWords(set.skipped.length, words.pick.wereLeftOut)}
             </p>
             <ul className="mt-1 flex flex-col gap-1">
               {set.skipped.map((s, i) => (
                 <li key={`${i}-${s.id}`}>
-                  {s.number ? `#${s.number}` : "An order that was not found"}: {BULK_REASON_TEXT[s.reason]}
+                  {s.number ? `#${s.number}` : words.pick.notFound}: {words.bulk.reasons[s.reason]}
                 </li>
               ))}
             </ul>
           </section>
         )}
         <Link href={`/admin/${store.slug}/orders`} className="text-sm underline underline-offset-2">
-          Back to the orders
+          {words.pick.back}
         </Link>
       </div>
       {set.slips.map((slip, index) => (

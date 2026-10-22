@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { DRAFTS_OPEN_MAX } from "@/lib/order-limits";
-import { DRAFT_STATUSES, DRAFT_STATUS_LABELS, type DraftStatus } from "@/lib/draft-status";
+import { DRAFT_STATUSES, type DraftStatus } from "@/lib/draft-status";
+import { draftsEn, type DraftsMessages } from "@/lib/admin-messages/drafts.en";
+import { countWords, fillWords } from "@/lib/drafts-words";
 import { formatMoney } from "@/lib/money";
 import type { DraftListRow } from "@/server/draft-orders";
 import { Card, Chip, List, ListRow, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
@@ -11,10 +13,10 @@ import { Card, Chip, List, ListRow, RowAmount, RowDate, RowLead } from "@/compon
 const DRAFT_SIGNAL = { open: "insight", sent: "warning", paid: "positive", expired: "neutral", cancelled: "neutral" } as const;
 
 /** What the drafts list says under a draft's status, in words. */
-function statusNote(row: DraftListRow, when: (iso: string) => string): string | null {
-  if (row.status === "sent" && row.expiresAt) return `Link valid until ${when(row.expiresAt)}`;
-  if (row.status === "expired") return "The link ran out and the order was cancelled";
-  if (row.status === "cancelled") return "Cancelled";
+function statusNote(row: DraftListRow, when: (iso: string) => string, w: DraftsMessages["list"]): string | null {
+  if (row.status === "sent" && row.expiresAt) return fillWords(w.linkUntil, { when: when(row.expiresAt) });
+  if (row.status === "expired") return w.ranOut;
+  if (row.status === "cancelled") return w.cancelled;
   return null;
 }
 
@@ -33,6 +35,8 @@ export function DraftsListView({
   canWrite,
   locale,
   timeZone,
+  words = draftsEn,
+  dateLocale = locale,
 }: {
   slug: string;
   rows: DraftListRow[];
@@ -43,9 +47,15 @@ export function DraftsListView({
   canWrite: boolean;
   locale: string;
   timeZone: string;
+  /** The `drafts` catalogue in the account's language (English unless given). */
+  words?: DraftsMessages;
+  /** The locale dates are written in (the market's unless given). */
+  dateLocale?: string;
 }) {
+  const w = words.list;
+  const labels = words.status;
   const base = `/admin/${slug}/orders/drafts`;
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
+  const when = (iso: string) => new Date(iso).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone });
   const href = (change: { status?: DraftStatus | null; after?: string | null }) => {
     const q = new URLSearchParams();
     const next = { status, after: null as string | null, ...change };
@@ -57,46 +67,44 @@ export function DraftsListView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Draft status" className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
+        <nav aria-label={w.statusNav} className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
           <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
-            All
+            {w.all}
           </Link>
           {DRAFT_STATUSES.map((s) => (
             <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
-              {DRAFT_STATUS_LABELS[s]}
+              {labels[s]}
             </Link>
           ))}
         </nav>
         {canWrite && (
           <Link href={`${base}/new`} className={primary}>
-            New draft order
+            {w.newDraft}
           </Link>
         )}
       </div>
-      <p className={hint}>
-        {openCount} of {DRAFTS_OPEN_MAX} open drafts. A draft holds no stock and takes no order number until it is sent; a sent draft holds its stock until its link ends.
-      </p>
+      <p className={hint}>{fillWords(w.openCount, { count: openCount, max: DRAFTS_OPEN_MAX })}</p>
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
-          <p>{status ? `No ${DRAFT_STATUS_LABELS[status].toLowerCase()} drafts.` : "No draft orders yet. A draft is an order you make for a customer, who pays it through a link."}</p>
+          <p>{status ? fillWords(w.noneOfStatus, { status: labels[status].toLowerCase() }) : w.none}</p>
           {status ? (
             <Link href={base} className={secondary}>
-              Show all drafts
+              {w.showAll}
             </Link>
           ) : (
             canWrite && (
               <Link href={`${base}/new`} className={primary}>
-                Make the first draft
+                {w.first}
               </Link>
             )
           )}
         </div>
       ) : (
         <Card compact>
-          <List label="Draft orders">
+          <List label={w.listLabel}>
             {rows.map((row) => {
-              const note = statusNote(row, when);
+              const note = statusNote(row, when, w);
               return (
                 <ListRow key={row.id}>
                   <RowLead
@@ -104,13 +112,13 @@ export function DraftsListView({
                     href={`${base}/${row.id}`}
                     sub={
                       <>
-                        {row.customer ?? row.email ?? "No customer yet"} · {row.lineCount} {row.lineCount === 1 ? "line" : "lines"}
+                        {row.customer ?? row.email ?? w.noCustomer} · {countWords(row.lineCount, w.lines)}
                         {note && ` · ${note}`}
                         {row.orderId && row.orderNumber && (row.status === "sent" || row.status === "paid") && (
                           <>
                             {" · "}
                             <Link href={`/admin/${slug}/orders/${row.orderId}`} className="underline underline-offset-2">
-                              Order #{row.orderNumber}
+                              {fillWords(w.order, { number: row.orderNumber })}
                             </Link>
                           </>
                         )}
@@ -121,7 +129,7 @@ export function DraftsListView({
                     <time dateTime={row.createdAt}>{when(row.createdAt)}</time>
                   </RowDate>
                   <Chip signal={DRAFT_SIGNAL[row.status]} dot>
-                    {DRAFT_STATUS_LABELS[row.status]}
+                    {labels[row.status]}
                   </Chip>
                   <RowAmount>{row.totalMinor === null ? <span className="text-muted">–</span> : formatMoney(row.totalMinor, row.currency, locale)}</RowAmount>
                 </ListRow>
@@ -132,15 +140,15 @@ export function DraftsListView({
       )}
 
       {(hasCursor || nextCursor) && (
-        <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm">
+        <nav aria-label={w.pages} className="flex flex-wrap items-center gap-4 text-sm">
           {hasCursor && (
             <Link href={href({ after: null })} className="underline underline-offset-2">
-              Back to the first page
+              {w.firstPage}
             </Link>
           )}
           {nextCursor && (
             <Link href={href({ after: nextCursor })} className="underline underline-offset-2">
-              Next 50 drafts
+              {w.nextPage}
             </Link>
           )}
         </nav>

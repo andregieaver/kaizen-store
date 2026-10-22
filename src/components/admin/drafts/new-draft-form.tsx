@@ -5,12 +5,14 @@ import { useState } from "react";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { field, hint } from "@/components/admin/data/ui";
 import { draftMarketSlug, type DraftMarketOptions } from "@/lib/draft-markets";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * Where a draft starts (wave 3, D173, `docs/wave-3-orders.md` 2.4): the market, because it decides the prices, the currency and the VAT country. A country the store sells to, shown in a language
  * and a currency the store offers; the address shown (`no-en-eur`) is what the server resolves again. The form works without a script for the country's own language and currency.
  */
 export function NewDraftForm({ options, action, defaultCountry }: { options: DraftMarketOptions; action: (state: FormState, form: FormData) => Promise<FormState>; defaultCountry: string }) {
+  const w = useAdminText("drafts").newForm;
   const first = options.countries.find((c) => c.code === defaultCountry) ?? options.countries[0];
   const [country, setCountry] = useState(first?.code ?? "");
   const current = options.countries.find((c) => c.code === country) ?? first;
@@ -20,13 +22,13 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
   const slug = current ? draftMarketSlug(options, { country, lang, currency }) : null;
 
   if (!current) {
-    return <p className="rounded-panel bg-sunken p-4 text-sm">The store has no market yet. Add one under Settings, Languages and currencies.</p>;
+    return <p className="rounded-panel bg-sunken p-4 text-sm">{w.noMarket}</p>;
   }
   return (
     <ActionForm action={action} className="flex max-w-xl flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Country
+          {w.country}
           <select
             name="country"
             value={country}
@@ -46,7 +48,7 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Language
+          {w.language}
           <select name="lang" value={lang} onChange={(event) => setLang(event.target.value)} className={field}>
             {current.languages.map((l) => (
               <option key={l.lang} value={l.lang}>
@@ -56,7 +58,7 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Currency
+          {w.currency}
           <select name="currency" value={currency} onChange={(event) => setCurrency(event.target.value)} className={field}>
             {choices.map((c) => (
               <option key={c} value={c}>
@@ -67,11 +69,10 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
         </label>
       </div>
       <p className={hint}>
-        The draft is priced in this currency, with the VAT of this country and its shipping rate; the customer&apos;s page and emails are in this language. You can change the market later, and the editor says
-        which prices moved. {slug ? <>The shop address of this view is <span className="font-mono">/{slug}</span>.</> : null}
+        {w.hint} {slug ? <>{w.address} <span className="font-mono">/{slug}</span>.</> : null}
       </p>
       <div>
-        <SubmitButton>Start the draft</SubmitButton>
+        <SubmitButton>{w.start}</SubmitButton>
       </div>
     </ActionForm>
   );

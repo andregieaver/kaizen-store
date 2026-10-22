@@ -1,5 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import { fillWords } from "@/lib/admin-fill";
 import { BRING_RETURN_DEFAULT, BRING_RETURN_SERVICES } from "@/lib/bring";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
@@ -20,6 +22,7 @@ export function ExchangeSettingsForm({
   canEdit,
   action,
   integrationsHref,
+  words = returnsEn,
 }: {
   values: ExchangeSettingsValues;
   carriers: { id: string; name: string; ready: boolean }[];
@@ -27,64 +30,60 @@ export function ExchangeSettingsForm({
   action: (state: FormState, form: FormData) => Promise<FormState>;
   /** `/admin/{store}/integrations` */
   integrationsHref: string;
+  words?: ReturnsMessages;
 }) {
+  const t = words.settings;
   return (
-    <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-6">
+    <ActionForm action={action} successMessage={t.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="exchanges" className={card}>
           <h2 id="exchanges" className="text-title text-ink">
-            Exchanges
+            {t.exchanges}
           </h2>
-          <p className="text-sm text-muted">
-            Instead of money back, a customer can get other goods: you propose the replacements on the return&apos;s page and the return&apos;s credit pays for a new order. The
-            customer confirms on a page of their own; until then they are refunded as usual. A withdrawal is only exchanged on the customer&apos;s own confirmation.
-          </p>
+          <p className="text-sm text-muted">{t.exchangesText}</p>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="exchanges" defaultChecked={values.exchanges} className="mt-0.5 size-4" />
             <span>
-              Offer exchanges <span className={hint}>(customers can ask for one on their return&apos;s page, and staff can propose one)</span>
+              {t.offer} <span className={hint}>{t.offerHint}</span>
             </span>
           </label>
         </section>
 
         <section aria-labelledby="labels" className={card}>
           <h2 id="labels" className="text-title text-ink">
-            Return labels
+            {t.labels}
           </h2>
-          <p className="text-sm text-muted">
-            Book a return label with your carrier from a return&apos;s page: the customer gets a button to print it, and when they pay return shipping its cost is taken off
-            the refund, never more than the label cost. Labels are booked on your own agreement with the carrier.
-          </p>
+          <p className="text-sm text-muted">{t.labelsText}</p>
           {carriers.length === 0 ? (
             <p className="text-sm">
-              No connected carrier books return labels yet. Connect Posten / Bring under{" "}
+              {t.noCarrier}{" "}
               <a href={integrationsHref} className="underline">
-                Integrations
+                {t.integrations}
               </a>
               .
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={label}>
-                Carrier
+                {t.carrier}
                 <select name="labelCarrier" defaultValue={values.labelCarrier ?? ""} className={input}>
-                  <option value="">None chosen</option>
+                  <option value="">{t.noneChosen}</option>
                   {carriers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
-                      {c.ready ? "" : " (not checked yet)"}
+                      {c.ready ? "" : t.notChecked}
                     </option>
                   ))}
                 </select>
               </label>
               <label className={label}>
-                Return service <span className={hint}>(one your agreement covers)</span>
+                {t.service} <span className={hint}>{t.serviceHint}</span>
                 <select name="labelService" defaultValue={values.labelService ?? ""} className={input}>
-                  <option value="">The carrier&apos;s default ({BRING_RETURN_DEFAULT})</option>
+                  <option value="">{fillWords(t.carrierDefault, { service: BRING_RETURN_DEFAULT })}</option>
                   {BRING_RETURN_SERVICES.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.id} {s.name}
-                      {s.confirmed ? "" : " (to be confirmed with Bring)"}
+                      {s.confirmed ? "" : t.toConfirm}
                     </option>
                   ))}
                 </select>
@@ -94,15 +93,14 @@ export function ExchangeSettingsForm({
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="labelAuto" defaultChecked={values.labelAuto} className="mt-0.5 size-4" />
             <span>
-              Book withdrawals&apos; return labels automatically{" "}
-              <span className={hint}>(a withdrawal is approved from the start; its label is booked within a few minutes, never while the customer confirms)</span>
+              {t.auto} <span className={hint}>{t.autoHint}</span>
             </span>
           </label>
         </section>
 
         {canEdit && (
           <div>
-            <SubmitButton>Save exchanges and labels</SubmitButton>
+            <SubmitButton>{t.saveExchanges}</SubmitButton>
           </div>
         )}
       </fieldset>

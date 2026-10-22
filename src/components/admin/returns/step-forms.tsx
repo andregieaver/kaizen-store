@@ -3,7 +3,9 @@
 import { useState, useTransition, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { CAPPED_WORDS, CONDITION_LABELS, WORKING_LABELS, type RefundPreviewData } from "@/lib/return-admin";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import type { RefundPreviewData } from "@/lib/return-admin";
 import { RETURN_CONDITIONS } from "@/lib/return-input";
 import type { ReturnAddress } from "@/lib/withdrawal";
 import { formatMoney } from "@/lib/money";
@@ -38,29 +40,30 @@ function Form({ action, children, successMessage }: { action: StepAction; childr
 export type InstructionsDefaults = { instructions: string; labelUrl: string; address: ReturnAddress | null };
 
 function AddressFields({ address }: { address: ReturnAddress | null }) {
+  const f = useAdminText("returns").forms;
   return (
     <fieldset className="grid gap-3 sm:grid-cols-2">
       <legend className="mb-1 text-sm font-medium">
-        Return address <span className={hint}>(fill in all of it, or leave it empty)</span>
+        {f.address} <span className={hint}>{f.addressHint}</span>
       </legend>
       <label className={label}>
-        Name
+        {f.name}
         <input name="addressName" defaultValue={address?.name ?? ""} autoComplete="off" className={input} />
       </label>
       <label className={label}>
-        Street
+        {f.street}
         <input name="addressStreet" defaultValue={address?.street ?? ""} autoComplete="off" className={input} />
       </label>
       <label className={label}>
-        Postal code
+        {f.postalCode}
         <input name="addressPostalCode" defaultValue={address?.postalCode ?? ""} autoComplete="off" className={input} />
       </label>
       <label className={label}>
-        City
+        {f.city}
         <input name="addressCity" defaultValue={address?.city ?? ""} autoComplete="off" className={input} />
       </label>
       <label className={label}>
-        Country <span className={hint}>(two letters, such as NO)</span>
+        {f.country} <span className={hint}>{f.countryHint}</span>
         <input name="addressCountry" defaultValue={address?.country ?? ""} maxLength={2} autoComplete="off" className={`${input} uppercase sm:w-24`} />
       </label>
     </fieldset>
@@ -68,15 +71,16 @@ function AddressFields({ address }: { address: ReturnAddress | null }) {
 }
 
 function InstructionFields({ defaults }: { defaults: InstructionsDefaults }) {
+  const f = useAdminText("returns").forms;
   return (
     <>
       <label className={label}>
-        Instructions for the customer <span className={hint}>(how to pack and send the goods back)</span>
+        {f.instructions} <span className={hint}>{f.instructionsHint}</span>
         <textarea name="instructions" defaultValue={defaults.instructions} rows={4} maxLength={2000} className={`${input} py-2`} />
       </label>
       <AddressFields address={defaults.address} />
       <label className={label}>
-        Return label <span className={hint}>(optional: a link starting with https://)</span>
+        {f.label} <span className={hint}>{f.labelHint}</span>
         <input name="labelUrl" type="url" defaultValue={defaults.labelUrl} placeholder="https://…" className={input} />
       </label>
     </>
@@ -85,11 +89,12 @@ function InstructionFields({ defaults }: { defaults: InstructionsDefaults }) {
 
 /** Approves a return request: the customer is emailed how to send the goods back. */
 export function ApproveForm({ action, defaults }: { action: StepAction; defaults: InstructionsDefaults }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Approved. The customer has been told how to send the goods back.">
+    <Form action={action} successMessage={f.approved}>
       <InstructionFields defaults={defaults} />
       <div>
-        <SubmitButton>Approve the return</SubmitButton>
+        <SubmitButton>{f.approve}</SubmitButton>
       </div>
     </Form>
   );
@@ -97,11 +102,12 @@ export function ApproveForm({ action, defaults }: { action: StepAction; defaults
 
 /** Changes the instructions, address and label of a return until the goods arrive. */
 export function InstructionsForm({ action, defaults }: { action: StepAction; defaults: InstructionsDefaults }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Saved. Customers who are told again will read the new instructions.">
+    <Form action={action} successMessage={f.instructionsSaved}>
       <InstructionFields defaults={defaults} />
       <div>
-        <SubmitButton variant="secondary">Save instructions</SubmitButton>
+        <SubmitButton variant="secondary">{f.saveInstructions}</SubmitButton>
       </div>
     </Form>
   );
@@ -109,14 +115,15 @@ export function InstructionsForm({ action, defaults }: { action: StepAction; def
 
 /** Declines a return request with the reason the customer is emailed. */
 export function DeclineForm({ action }: { action: StepAction }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Declined. The customer has been told why.">
+    <Form action={action} successMessage={f.declined}>
       <label className={label}>
-        Why is it declined? <span className={hint}>(the customer is emailed this)</span>
+        {f.whyDeclined} <span className={hint}>{f.whyDeclinedHint}</span>
         <textarea name="reason" required rows={3} maxLength={1000} className={`${input} py-2`} />
       </label>
       <div>
-        <SubmitButton variant="secondary">Decline the return</SubmitButton>
+        <SubmitButton variant="secondary">{f.decline}</SubmitButton>
       </div>
     </Form>
   );
@@ -124,15 +131,16 @@ export function DeclineForm({ action }: { action: StepAction }) {
 
 /** Declines one line of a return: a line the law excludes from the right of withdrawal, or any line of a return request. */
 export function DeclineLineForm({ action, lineId }: { action: StepAction; lineId: string }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="The line is declined.">
+    <Form action={action} successMessage={f.lineDeclined}>
       <input type="hidden" name="lineId" value={lineId} />
       <div className="flex flex-wrap items-end gap-2">
         <label className={`${label} min-w-48 flex-1`}>
-          <span className="sr-only">Why this line is declined</span>
-          <input name="reason" required maxLength={500} placeholder="Why this line is declined" className={input} />
+          <span className="sr-only">{f.whyLine}</span>
+          <input name="reason" required maxLength={500} placeholder={f.whyLine} className={input} />
         </label>
-        <SubmitButton variant="secondary">Decline this line</SubmitButton>
+        <SubmitButton variant="secondary">{f.declineLine}</SubmitButton>
       </div>
     </Form>
   );
@@ -144,10 +152,11 @@ export function DeclineLineForm({ action, lineId }: { action: StepAction; lineId
 
 /** The day the goods were sent or arrived: today unless another day is chosen (never in the future: the server holds it to now). */
 export function DayStepForm({ action, button, help, today, successMessage }: { action: StepAction; button: string; help: string; today: string; successMessage: string }) {
+  const f = useAdminText("returns").forms;
   return (
     <Form action={action} successMessage={successMessage}>
       <label className={label}>
-        Day <span className={hint}>({help})</span>
+        {f.day} <span className={hint}>({help})</span>
         <input name="on" type="date" max={today} className={`${input} sm:w-48`} />
       </label>
       <div>
@@ -174,12 +183,11 @@ export type InspectLine = {
 
 /** Inspects the goods line by line: condition, whether they go back into stock, and a deduction for diminished value. */
 export function InspectForm({ action, lines, currency, changing }: { action: StepAction; lines: InspectLine[]; currency: string; changing: boolean }) {
+  const f = useAdminText("returns").forms;
+  const conditions = useAdminText("returns").labels.condition;
   return (
-    <Form action={action} successMessage={changing ? "The inspection is changed." : "Inspected."}>
-      <p className="text-sm text-muted">
-        A deduction for diminished value is only for handling beyond what was needed to establish what the goods are and that they work, as in a
-        shop (Consumer Rights Directive Art. 14(2)). It is never more than the goods are worth, and the customer is told what it is for.
-      </p>
+    <Form action={action} successMessage={changing ? f.inspectChanged : f.inspected}>
+      <p className="text-sm text-muted">{f.deductionRule}</p>
       <ul className="flex flex-col gap-4">
         {lines.map((line) => (
           <li key={line.lineId} className="flex flex-col gap-3 rounded-md border border-line p-3">
@@ -188,14 +196,14 @@ export function InspectForm({ action, lines, currency, changing }: { action: Ste
             </p>
             <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
               <label className={label}>
-                Condition
+                {f.condition}
                 <select name={`condition:${line.lineId}`} required defaultValue={line.condition ?? ""} className={input}>
                   <option value="" disabled>
-                    Choose …
+                    {f.choose}
                   </option>
                   {RETURN_CONDITIONS.map((condition) => (
                     <option key={condition} value={condition}>
-                      {CONDITION_LABELS[condition]}
+                      {conditions[condition]}
                     </option>
                   ))}
                 </select>
@@ -203,19 +211,19 @@ export function InspectForm({ action, lines, currency, changing }: { action: Ste
               {line.physical ? (
                 <label className="flex min-h-10 items-center gap-2 self-end text-sm">
                   <input type="checkbox" name={`restock:${line.lineId}`} defaultChecked={line.restock} className="size-4" />
-                  Put back in stock
+                  {f.putBack}
                 </label>
               ) : (
-                <p className="self-end text-sm text-muted">Not put back in stock: it is not a physical product.</p>
+                <p className="self-end text-sm text-muted">{f.notPhysical}</p>
               )}
             </div>
             <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
               <label className={label}>
-                Deduction ({currency}) <span className={hint}>at most {line.valueLabel}</span>
+                {fillWords(f.deduction, { currency })} <span className={hint}>{fillWords(f.atMost, { value: line.valueLabel })}</span>
                 <input name={`deduction:${line.lineId}`} inputMode="decimal" defaultValue={line.deduction} placeholder="0" className={input} />
               </label>
               <label className={label}>
-                What the deduction is for
+                {f.deductionFor}
                 <input name={`deductionNote:${line.lineId}`} defaultValue={line.deductionNote} maxLength={500} className={input} />
               </label>
             </div>
@@ -223,7 +231,7 @@ export function InspectForm({ action, lines, currency, changing }: { action: Ste
         ))}
       </ul>
       <div>
-        <SubmitButton>Save the inspection</SubmitButton>
+        <SubmitButton>{f.saveInspection}</SubmitButton>
       </div>
     </Form>
   );
@@ -240,28 +248,29 @@ const typed = formatPriceInput;
 /** The refund's working: each row of it, and what it comes to. */
 export function RefundWorking({ preview, currency, locale }: { preview: RefundPreviewData; currency: string; locale: string }) {
   const money = (minor: number) => formatMoney(minor, currency, locale);
+  const w = useAdminText("returns");
   return (
     <div className="flex flex-col gap-2">
       <table className="w-full text-left text-sm">
-        <caption className="sr-only">How the refund is worked out</caption>
+        <caption className="sr-only">{w.forms.workingCaption}</caption>
         <tbody>
           {preview.working.map((row) => (
             <tr key={row.key} className="border-b border-line">
               <th scope="row" className="py-1.5 pr-3 font-normal">
-                {WORKING_LABELS[row.key]}
+                {w.labels.working[row.key]}
               </th>
               <td className="py-1.5 text-right tabular-nums">{row.amountMinor < 0 ? `−${money(-row.amountMinor)}` : money(row.amountMinor)}</td>
             </tr>
           ))}
           <tr>
             <th scope="row" className="pt-2 pr-3 font-medium">
-              To refund
+              {w.forms.toRefund}
             </th>
             <td className="pt-2 text-right font-medium tabular-nums">{money(preview.amountMinor)}</td>
           </tr>
         </tbody>
       </table>
-      {preview.cappedBy && <p className="text-sm text-warning-text">{CAPPED_WORDS[preview.cappedBy]}</p>}
+      {preview.cappedBy && <p className="text-sm text-warning-text">{w.labels.capped[preview.cappedBy]}</p>}
     </div>
   );
 }
@@ -298,6 +307,7 @@ export function RefundPanel({
    */
   bookedLabel?: { source: "pasted" | "carrier" | null; costMinor: number | null; test: boolean } | null;
 }) {
+  const f = useAdminText("returns").forms;
   const [preview, setPreview] = useState(initial);
   const [shipping, setShipping] = useState(initial.returnShippingMinor > 0 ? typed(initial.returnShippingMinor, currency) : "");
   const [amount, setAmount] = useState(typed(initial.amountMinor, currency));
@@ -320,36 +330,32 @@ export function RefundPanel({
       <RefundWorking preview={preview} currency={currency} locale={locale} />
       {!preview.canRefund && (
         <p role="note" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          This order was not paid through Kaizena Flow&apos;s Stripe, or there is nothing left to refund through it. Refund the customer where they paid;
-          pressing the button records the refund as made outside, and puts goods back in stock.
+          {f.notThroughStripe}
         </p>
       )}
-      <ActionForm action={action} successMessage={preview.canRefund ? "Refunded." : "Recorded as refunded outside Kaizena Flow's Stripe."} className="flex flex-col gap-3">
+      <ActionForm action={action} successMessage={preview.canRefund ? f.refunded : f.refundedOutside} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-3">
           {whoPays === "shopper" ? (
             <label className={label}>
-              Return shipping the customer pays ({currency}) <span className={hint}>if you paid for a label</span>
+              {fillWords(f.returnShipping, { currency })} <span className={hint}>{f.ifLabel}</span>
               <input name="shipping" inputMode="decimal" value={shipping} onChange={(e) => setShipping(e.target.value)} placeholder="0" className={`${input} sm:w-56`} />
             </label>
           ) : (
-            <p className="text-sm text-muted">You pay for return shipping, so nothing is taken off for it.</p>
+            <p className="text-sm text-muted">{f.storePaysShipping}</p>
           )}
           {whoPays === "shopper" && (
             <button type="button" onClick={() => again()} disabled={working} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40">
-              {working ? "Working …" : "Work it out again"}
+              {working ? f.working : f.workAgain}
             </button>
           )}
         </div>
         {whoPays === "shopper" && bookedLabel?.source === "carrier" && (
           <div className="flex flex-col gap-2 text-sm" data-label-deduction>
             {bookedLabel.test ? (
-              <p className="text-muted">The return label was a test label: it could not be used and cost nothing, so nothing is taken off for it.</p>
+              <p className="text-muted">{f.testLabel}</p>
             ) : bookedLabel.costMinor !== null && bookedLabel.costMinor > 0 ? (
               <>
-                <p className="text-muted">
-                  The booked label cost {formatMoney(bookedLabel.costMinor, currency, locale)}. Nothing was taken off when it was booked: take it off only if the parcel
-                  came back with this label (its tracking number), never if the customer sent it another way.
-                </p>
+                <p className="text-muted">{fillWords(f.labelCost, { amount: formatMoney(bookedLabel.costMinor, currency, locale) })}</p>
                 <div>
                   <button
                     type="button"
@@ -361,12 +367,12 @@ export function RefundPanel({
                     }}
                     className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40"
                   >
-                    The parcel came with the label: take off {formatMoney(bookedLabel.costMinor, currency, locale)}
+                    {fillWords(f.takeOff, { amount: formatMoney(bookedLabel.costMinor, currency, locale) })}
                   </button>
                 </div>
               </>
             ) : (
-              <p className="text-muted">The carrier did not price the booked label. Take an amount off only if the parcel came back with it, and say in the note where it comes from.</p>
+              <p className="text-muted">{f.labelNotPriced}</p>
             )}
           </div>
         )}
@@ -377,36 +383,31 @@ export function RefundPanel({
         )}
         <div className="flex flex-wrap items-end gap-3">
           <label className={label}>
-            Amount to refund ({currency})
+            {fillWords(f.amount, { currency })}
             <input name="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required className={`${input} sm:w-48`} />
           </label>
-          <p className="pb-2 text-sm text-muted">At most {formatMoney(preview.refundableMinor, currency, locale)} is left to refund.</p>
+          <p className="pb-2 text-sm text-muted">{fillWords(f.leftAtMost, { amount: formatMoney(preview.refundableMinor, currency, locale) })}</p>
         </div>
         {kind === "withdrawal" && (
-          <p className="text-sm text-muted">
-            A withdrawal is refunded in full. What is taken off is the deduction you set when you inspected the goods (with its note) and the return
-            shipping the customer pays; both are in the working. You can raise the amount here, with a reason, but not lower it.
-          </p>
+          <p className="text-sm text-muted">{f.withdrawalFull}</p>
         )}
         <label className={label}>
-          {changed ? "Why is it different from the working? (required)" : "A note, if you want one"}
-          <input name="reason" maxLength={500} required={changed} placeholder={changed ? "The reason is kept with the refund" : ""} className={input} />
+          {changed ? f.whyDifferent : f.aNote}
+          <input name="reason" maxLength={500} required={changed} placeholder={changed ? f.reasonKept : ""} className={input} />
         </label>
         {lines.some((l) => l.quantity > 0) && (
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium">Put back in stock</legend>
+            <legend className="mb-1 text-sm font-medium">{f.putBack}</legend>
             {lines.map((line) => (
               <label key={line.lineId} className="flex flex-wrap items-center gap-2 text-sm">
                 <input name={`restock:${line.lineId}`} type="number" min={0} max={line.quantity} defaultValue={line.restock} className="min-h-10 w-20 rounded-md border border-line bg-card px-3" />
-                <span>
-                  of {line.quantity} × {line.title}
-                </span>
+                <span>{fillWords(f.ofLine, { n: line.quantity, title: line.title })}</span>
               </label>
             ))}
           </fieldset>
         )}
         <div>
-          <SubmitButton>{preview.canRefund ? `Refund ${formatMoney(preview.amountMinor, currency, locale)}` : "Record as refunded outside"}</SubmitButton>
+          <SubmitButton>{preview.canRefund ? fillWords(f.refundAmount, { amount: formatMoney(preview.amountMinor, currency, locale) }) : f.recordOutside}</SubmitButton>
         </div>
       </ActionForm>
     </div>
@@ -418,34 +419,36 @@ export function RefundPanel({
 // ---------------------------------------------------------------------------
 
 export function CloseForm({ action, needsConfirm }: { action: StepAction; needsConfirm: boolean }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Closed.">
+    <Form action={action} successMessage={f.closed}>
       {needsConfirm && (
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="confirmNoRefund" required className="mt-0.5 size-4" />
-          <span>This withdrawal has not been refunded. I want to close it with no refund.</span>
+          <span>{f.closeNoRefund}</span>
         </label>
       )}
       <label className={label}>
-        A note <span className={hint}>(optional, only the store sees it)</span>
+        {f.noteOptional} <span className={hint}>{f.noteOptionalHint}</span>
         <input name="note" maxLength={1000} className={input} />
       </label>
       <div>
-        <SubmitButton variant="secondary">Close the return</SubmitButton>
+        <SubmitButton variant="secondary">{f.closeReturn}</SubmitButton>
       </div>
     </Form>
   );
 }
 
 export function CancelForm({ action }: { action: StepAction }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Cancelled.">
+    <Form action={action} successMessage={f.cancelled}>
       <label className={label}>
-        A note <span className={hint}>(optional, only the store sees it)</span>
+        {f.noteOptional} <span className={hint}>{f.noteOptionalHint}</span>
         <input name="note" maxLength={1000} className={input} />
       </label>
       <div>
-        <SubmitButton variant="secondary">Cancel the return</SubmitButton>
+        <SubmitButton variant="secondary">{f.cancelReturn}</SubmitButton>
       </div>
     </Form>
   );
@@ -453,14 +456,15 @@ export function CancelForm({ action }: { action: StepAction }) {
 
 /** The store's own note on a return: never shown to the customer, and kept after the return has ended. */
 export function NoteForm({ action, note }: { action: StepAction; note: string }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Saved.">
+    <Form action={action} successMessage={f.saved}>
       <label className={label}>
-        Note <span className={hint}>(only the store sees it)</span>
+        {f.note} <span className={hint}>{f.noteHint}</span>
         <textarea name="note" defaultValue={note} rows={3} maxLength={2000} className={`${input} py-2`} />
       </label>
       <div>
-        <SubmitButton variant="secondary">Save the note</SubmitButton>
+        <SubmitButton variant="secondary">{f.saveNote}</SubmitButton>
       </div>
     </Form>
   );
@@ -468,10 +472,11 @@ export function NoteForm({ action, note }: { action: StepAction; note: string })
 
 /** Sends the acknowledgement of a confirmed withdrawal again, to the address the customer gave. */
 export function AcknowledgementForm({ action }: { action: StepAction }) {
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="The acknowledgement was sent again.">
+    <Form action={action} successMessage={f.ackSent}>
       <div>
-        <SubmitButton>Send the acknowledgement again</SubmitButton>
+        <SubmitButton>{f.sendAck}</SubmitButton>
       </div>
     </Form>
   );
@@ -479,13 +484,7 @@ export function AcknowledgementForm({ action }: { action: StepAction }) {
 
 export type RegisterLine = { lineId: string; title: string; quantity: number; remaining: number; maxQuantity: number; refused: string | null };
 
-const CHANNEL_CHOICES: [string, string][] = [
-  ["email", "An email"],
-  ["letter", "A letter"],
-  ["phone", "A phone call"],
-  ["in_person", "In person"],
-  ["other", "Some other way"],
-];
+const CHANNEL_CHOICES = ["email", "letter", "phone", "in_person", "other"] as const;
 
 /**
  * Registers a withdrawal the customer made outside the withdrawal function (an email, a letter, a call, or a statement the
@@ -495,64 +494,63 @@ const CHANNEL_CHOICES: [string, string][] = [
  */
 export function RegisterWithdrawalForm({ action, lines, today }: { action: StepAction; lines: RegisterLine[]; today: string }) {
   const choosable = lines.filter((line) => line.remaining > 0);
+  const f = useAdminText("returns").forms;
   return (
-    <Form action={action} successMessage="Registered. The withdrawal is on record and the customer has been sent the acknowledgement.">
+    <Form action={action} successMessage={f.registered}>
       <label className={label}>
-        Customer&apos;s name
+        {f.customerName}
         <input name="name" required maxLength={120} autoComplete="off" className={`${input} sm:w-72`} />
       </label>
       <div className="flex flex-wrap gap-3">
         <label className={label}>
-          How did they tell you?
+          {f.howTold}
           <select name="channel" defaultValue="email" className={`${input} sm:w-56`}>
-            {CHANNEL_CHOICES.map(([value, text]) => (
+            {CHANNEL_CHOICES.map((value) => (
               <option key={value} value={value}>
-                {text}
+                {f.channelChoices[value]}
               </option>
             ))}
           </select>
         </label>
         <label className={label}>
-          Day you were told <span className={hint}>(today if left empty)</span>
+          {f.dayTold} <span className={hint}>{f.todayIfEmpty}</span>
           <input name="informedOn" type="date" max={today} className={`${input} sm:w-48`} />
         </label>
       </div>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">What they withdraw from</legend>
-        {choosable.length === 0 && <p className="text-sm text-muted">Everything on this order is already part of a withdrawal or return.</p>}
+        <legend className="mb-1 text-sm font-medium">{f.withdrawFrom}</legend>
+        {choosable.length === 0 && <p className="text-sm text-muted">{f.allTaken}</p>}
         {choosable.map((line) => (
           <div key={line.lineId} className="flex flex-wrap items-center gap-2 text-sm">
-            <input type="checkbox" name={`take:${line.lineId}`} defaultChecked={line.maxQuantity > 0} aria-label={`Withdraw from ${line.title}`} className="size-4" />
+            <input type="checkbox" name={`take:${line.lineId}`} defaultChecked={line.maxQuantity > 0} aria-label={fillWords(f.withdrawLine, { title: line.title })} className="size-4" />
             <input
               name={`qty:${line.lineId}`}
               type="number"
               min={1}
               max={line.remaining}
               defaultValue={Math.max(1, line.maxQuantity || line.remaining)}
-              aria-label={`Number of ${line.title}`}
+              aria-label={fillWords(f.numberOf, { title: line.title })}
               className="min-h-10 w-20 rounded-md border border-line bg-card px-3"
             />
-            <span>
-              of {line.remaining} × {line.title}
-            </span>
+            <span>{fillWords(f.ofRemaining, { n: line.remaining, title: line.title })}</span>
             {line.refused && <span className="text-muted">({line.refused})</span>}
           </div>
         ))}
       </fieldset>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="late" className="size-4" />
-        Accept as in time although the 14 days had passed by the records
+        {f.late}
       </label>
       <label className={label}>
-        Why is the period longer? <span className={hint}>(only with the box above: for example the customer was not given the information about the right of withdrawal)</span>
+        {f.whyLonger} <span className={hint}>{f.whyLongerHint}</span>
         <input name="lateReason" maxLength={500} className={input} />
       </label>
       <label className={label}>
-        A note <span className={hint}>(kept on the return, never shown to the customer)</span>
+        {f.noteOptional} <span className={hint}>{f.noteKept}</span>
         <input name="note" maxLength={500} className={input} />
       </label>
       <div>
-        <SubmitButton>Register the withdrawal</SubmitButton>
+        <SubmitButton>{f.register}</SubmitButton>
       </div>
     </Form>
   );

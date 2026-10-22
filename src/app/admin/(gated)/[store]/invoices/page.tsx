@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { InvoicesView } from "@/components/admin/invoices/invoices-view";
 import { InvoicesSkeleton } from "@/components/admin/invoices/skeletons";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { DOCUMENTS_PER_PAGE, exportProblemOf, parseInvoiceQuery } from "@/lib/invoice-admin";
 import { todayIn } from "@/lib/work-dates";
 import { getInvoiceSettings } from "@/server/invoice-settings";
@@ -28,7 +30,7 @@ export default async function InvoicesPage({ params, searchParams }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   return (
-    <Suspense fallback={<InvoicesSkeleton />}>
+    <Suspense fallback={<InvoicesSkeleton label={adminText(adminLangOf(gated.account.adminLocale), "invoices").view.loading} />}>
       <Documents storeSlug={store.slug} searchParams={searchParams} />
     </Suspense>
   );
@@ -38,6 +40,10 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
   // Every page checks for itself: a layout's check does not stop its page from streaming.
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "invoices");
+  // English keeps the store's own way of writing money; another admin language writes it its own way.
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : ADMIN_LANG_FACTS[lang].locale;
   const today = todayIn(store.timeZone);
   const raw = await searchParams;
   const query = parseInvoiceQuery(raw, today);
@@ -64,9 +70,10 @@ async function Documents({ storeSlug, searchParams }: { storeSlug: string; searc
       waiting={waiting}
       waitingNotes={waitingNotes}
       failing={failing}
-      exportProblem={exportProblemOf(typeof raw.export === "string" ? raw.export : undefined)}
+      exportProblem={exportProblemOf(typeof raw.export === "string" ? raw.export : undefined, words)}
       actions={{ checkAgain: checkAgainAction.bind(null, store.slug), retryPdf: retryPdfAction.bind(null, store.slug) }}
-      locale={store.markets[0]?.locale ?? "en-GB"}
+      locale={locale}
+      words={words}
     />
   );
 }

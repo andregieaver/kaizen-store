@@ -4,7 +4,11 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { exchangeProblemText, type ExchangeProblem } from "@/lib/exchange";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import { adminText } from "@/lib/admin-text";
+import type { ExchangeProblem } from "@/lib/exchange";
 import { searchDraftVariants, type DraftVariantChoice } from "@/server/draft-orders";
 import {
   cancelExchange,
@@ -43,19 +47,20 @@ export type ExchangeActionResponse = {
 export type ExchangePreviewResponse = { ok: true; preview: ExchangePreview } | { ok: false; message: string; problems: ExchangeProblemWords[] };
 
 const isId = (value: unknown): value is string => z.uuid().safeParse(value).success;
-const GONE = "This return no longer exists.";
-const EXCHANGE_GONE = "That exchange no longer exists.";
+/** The member's words for the returns screens (D312 A4). */
+const wordsFor = (member: { account: { adminLocale?: string | null } }): ReturnsMessages => adminText(adminLangOf(member.account.adminLocale), "returns");
 
-const wordsOf = (problems: ExchangeProblem[] | undefined): ExchangeProblemWords[] =>
-  (problems ?? []).map((p) => ({ code: p.code, key: p.key ?? null, text: exchangeProblemText(p.code) }));
+const wordsOf = (problems: ExchangeProblem[] | undefined, w: ReturnsMessages): ExchangeProblemWords[] =>
+  (problems ?? []).map((p) => ({ code: p.code, key: p.key ?? null, text: w.labels.exchangeProblems[p.code] }));
 
 /** The builder's summary: the server's pricing of what is on the screen (`previewExchange()`, the same pricing the proposal freezes). Reads only. */
 export async function previewExchangeAction(storeSlug: string, returnId: string, raw: unknown): Promise<ExchangePreviewResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
   if (!member) return { ok: false, message: NO_ACCESS, problems: [] };
-  if (!isId(returnId)) return { ok: false, message: GONE, problems: [] };
+  const w = wordsFor(member);
+  if (!isId(returnId)) return { ok: false, message: w.actions.gone, problems: [] };
   const preview = await previewExchange(member.store.id, returnId, raw);
-  if ("message" in preview) return { ok: false, message: preview.message, problems: wordsOf(preview.problems) };
+  if ("message" in preview) return { ok: false, message: preview.message, problems: wordsOf(preview.problems, w) };
   return { ok: true, preview };
 }
 
@@ -73,29 +78,25 @@ export async function searchExchangeVariantsAction(storeSlug: string, returnId: 
 export async function saveExchangeDraftAction(storeSlug: string, returnId: string, raw: unknown): Promise<ExchangeActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
   if (!member) return { ok: false, message: NO_ACCESS };
-  if (!isId(returnId)) return { ok: false, message: GONE };
+  const w = wordsFor(member);
+  if (!isId(returnId)) return { ok: false, message: w.actions.gone };
   const saved = await saveExchangeDraft(member.store.id, staffActor(member.account.id), returnId, raw);
-  if (!saved.ok) return { ok: false, message: saved.message, problems: wordsOf(saved.problems) };
+  if (!saved.ok) return { ok: false, message: saved.message, problems: wordsOf(saved.problems, w) };
   refresh();
-  return { ok: true, message: "Saved as a draft. The customer has not been sent anything." };
+  return { ok: true, message: w.actions.draftSaved };
 }
 
 /** *Send to the customer* (an email to the order's own address) or *Create a link to share* (`createLink`, shown once). */
 export async function proposeExchangeAction(storeSlug: string, returnId: string, raw: unknown, createLink: boolean): Promise<ExchangeActionResponse> {
   const member = await checkPermission(storeSlug, "orders:write");
   if (!member) return { ok: false, message: NO_ACCESS };
-  if (!isId(returnId)) return { ok: false, message: GONE };
+  const w = wordsFor(member);
+  if (!isId(returnId)) return { ok: false, message: w.actions.gone };
   const sent = await proposeExchange(member.store.id, staffActor(member.account.id), returnId, raw, { createLink: createLink === true });
-  if (!sent.ok) return { ok: false, message: sent.message, problems: wordsOf(sent.problems) };
+  if (!sent.ok) return { ok: false, message: sent.message, problems: wordsOf(sent.problems, w) };
   refresh();
-  if (sent.link) return { ok: true, message: "The proposal is ready. Copy the link and send it to the customer yourself.", link: sent.link };
-  return {
-    ok: true,
-    message:
-      sent.emailed === "failed"
-        ? "The proposal is saved, but the email could not be sent. Send it again, or create a link to share."
-        : "Sent. The customer has been emailed the proposal; until they confirm it, the return is refunded as usual.",
-  };
+  if (sent.link) return { ok: true, message: w.actions.linkReady, link: sent.link };
+  return { ok: true, message: sent.emailed === "failed" ? w.actions.proposalEmailFailed : w.actions.proposalSent };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -107,15 +108,16 @@ const failed = (message: string): FormState => ({ status: "error", messages: [me
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
 
 /** The member and this return's exchange, or the refusal's words. */
-type Found = { refused: string } | { refused?: undefined; member: NonNullable<Awaited<ReturnType<typeof checkPermission>>>; exchange: ExchangeView };
+type Found = { refused: string } | { refused?: undefined; member: NonNullable<Awaited<ReturnType<typeof checkPermission>>>; exchange: ExchangeView; w: ReturnsMessages };
 
 async function exchangeOf(storeSlug: string, returnId: string, exchangeId: string): Promise<Found> {
   const member = await checkPermission(storeSlug, "orders:write");
   if (!member) return { refused: NO_ACCESS };
-  if (!isId(returnId) || !isId(exchangeId)) return { refused: EXCHANGE_GONE };
+  const w = wordsFor(member);
+  if (!isId(returnId) || !isId(exchangeId)) return { refused: w.actions.exchangeGone };
   const exchange = await exchangeView(member.store.id, exchangeId);
-  if (!exchange || exchange.returnId !== returnId) return { refused: EXCHANGE_GONE };
-  return { member, exchange };
+  if (!exchange || exchange.returnId !== returnId) return { refused: w.actions.exchangeGone };
+  return { member, exchange, w };
 }
 
 /** *Send again* (a new email, at most five a day) or *Create a new link* (`createLink`): either way the earlier link stops working. */
@@ -126,8 +128,8 @@ export async function resendExchangeAction(storeSlug: string, returnId: string, 
   const sent = await resendExchange(found.member.store.id, staffActor(found.member.account.id), exchangeId, { createLink });
   if (!sent.ok) return failed(sent.message);
   refresh();
-  if (sent.link) return done(`A new link, shown only now (the earlier one no longer works): ${sent.link}`);
-  return sent.emailed === "failed" ? failed("The email could not be sent. Try again, or create a link to share.") : done("Sent again. The earlier link no longer works.");
+  if (sent.link) return done(fillWords(found.w.actions.newLink, { link: sent.link }));
+  return sent.emailed === "failed" ? failed(found.w.actions.resendFailed) : done(found.w.actions.sentAgain);
 }
 
 /** *Withdraw the proposal*: it ends, and the customer's page says it no longer works. */
@@ -137,7 +139,7 @@ export async function withdrawExchangeAction(storeSlug: string, returnId: string
   const ended = await withdrawProposal(found.member.store.id, staffActor(found.member.account.id), exchangeId);
   if (!ended.ok) return failed(ended.message);
   refresh();
-  return done("The proposal is withdrawn. Refund the return as usual, or propose another exchange.");
+  return done(found.w.actions.withdrawn);
 }
 
 /** *Record the customer's agreement* (a voluntary return only; the server and the database refuse it for a withdrawal). */
@@ -151,7 +153,7 @@ export async function recordAgreementAction(storeSlug: string, returnId: string,
   });
   if (!recorded.ok) return failed(recorded.message);
   refresh();
-  return done("The customer's agreement is recorded. Process the exchange where you would refund the return.");
+  return done(found.w.actions.agreementRecorded);
 }
 
 /** *Process the exchange* (and *Try again* on one whose refund did not go through). */
@@ -159,11 +161,12 @@ export async function processExchangeAction(storeSlug: string, returnId: string,
   const found = await exchangeOf(storeSlug, returnId, exchangeId);
   if (found.refused !== undefined) return failed(found.refused);
   const processed = await processExchange(found.member.store.id, staffActor(found.member.account.id), exchangeId);
-  if (!processed.ok) return failed([processed.message, ...wordsOf(processed.problems).map((p) => p.text)].join(" "));
+  const w = found.w;
+  if (!processed.ok) return failed([processed.message, ...wordsOf(processed.problems, w).map((p) => p.text)].join(" "));
   refresh();
-  if (processed.state === "settled") return done(`Exchanged: order ${processed.orderNumber} is made and paid by the credit. The customer has been emailed.`);
-  if (processed.state === "waiting") return done(`Order ${processed.orderNumber} is made and its stock held. The customer has been emailed the link to pay the difference.`);
-  return failed(processed.message ?? `Order ${processed.orderNumber} is made, but the refund did not go through. Try again, or cancel the exchange and refund instead.`);
+  if (processed.state === "settled") return done(fillWords(w.actions.exchangedSettled, { order: processed.orderNumber }));
+  if (processed.state === "waiting") return done(fillWords(w.actions.exchangeWaiting, { order: processed.orderNumber }));
+  return failed(processed.message ?? fillWords(w.actions.exchangeNotSettled, { order: processed.orderNumber }));
 }
 
 /** *Record as paid outside Kaizen*: the owner, or staff when the owner allows it (the server checks); cash above the country's ceiling is refused. */
@@ -171,11 +174,11 @@ export async function exchangePaidOutsideAction(storeSlug: string, returnId: str
   const found = await exchangeOf(storeSlug, returnId, exchangeId);
   if (found.refused !== undefined) return failed(found.refused);
   const method = text(form, "method");
-  if (method !== "cash" && method !== "bank_transfer" && method !== "other") return failed("Choose how it was paid.");
+  if (method !== "cash" && method !== "bank_transfer" && method !== "other") return failed(found.w.actions.choosePaid);
   const recorded = await recordExchangePaidOutside(found.member, exchangeId, { method, receivedOn: text(form, "receivedOn") || null, reference: text(form, "reference").slice(0, 100) || null });
   if (!recorded.ok) return failed(recorded.message);
   refresh();
-  return done(recorded.cashWarning ? "Recorded and settled. Check the cash rules of the customer's country with your accountant." : "Recorded as paid outside Kaizena Flow. The exchange is settled.");
+  return done(recorded.cashWarning ? found.w.actions.paidCashWarning : found.w.actions.paidOutside);
 }
 
 /** *Cancel the exchange and refund instead*: its order is cancelled (stock released), and the ordinary refund is offered. */
@@ -185,5 +188,5 @@ export async function cancelExchangeAction(storeSlug: string, returnId: string, 
   const cancelled = await cancelExchange(found.member.store.id, staffActor(found.member.account.id), exchangeId);
   if (!cancelled.ok) return failed(cancelled.message);
   refresh();
-  return done("The exchange is cancelled. Refund the return as usual.");
+  return done(found.w.actions.exchangeCancelled);
 }

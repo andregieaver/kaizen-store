@@ -3,9 +3,14 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { orderEn } from "@/lib/admin-messages/order.en";
 import { putBackChoice } from "@/lib/inventory-admin";
 import { parsePrice } from "@/lib/product-input";
-import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
+import { checkPermission, requirePermission } from "@/server/permissions";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { saveStaffFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
 import { getOrder } from "@/server/orders";
@@ -42,8 +47,12 @@ async function orderFor(storeSlug: string, orderId: string) {
   const member = await requirePermission(storeSlug, "orders:write");
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await getOrder(member.store.id, orderId);
-  return order ? { member, order } : null;
+  return order ? { member, order, w: wordsOf(member) } : null;
 }
+
+const wordsOf = (member: { account: { adminLocale?: string | null } }) => adminText(adminLangOf(member.account.adminLocale), "order").messages;
+/** Refused before a member is known: the session's language (D312). */
+const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
 
 /**
  * Records a parcel (D174, `docs/wave-3-fulfilment.md` 2.1): the lines and units chosen in the *Send* card (`qty:{lineId}` fields, sent with `parcel=lines`), or, without a
@@ -57,7 +66,8 @@ export async function sendOrderAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const input = z
     .object({
@@ -72,7 +82,7 @@ export async function sendOrderAction(
       trackingUrl: String(form.get("trackingUrl") ?? "").trim(),
       notify: form.get("notify") === "on",
     });
-  if (!input.success) return failed("Check the tracking link: it must start with https://.");
+  if (!input.success) return failed(w.trackingLink);
   // A weekly delivery (D102) is paid as it is sent: its card is charged first, and a refusal stops the sending.
   let charged = false;
   if (found.order.status === "pending_payment" && (await deliveryOfOrder(found.member.store.id, orderId))) {
@@ -85,7 +95,7 @@ export async function sendOrderAction(
     await sendOrderConfirmation(found.member.store.id, orderId);
   }
   const chosen = parcelLinesFromForm(form);
-  if (chosen === "invalid") return failed("A quantity in the parcel is not a whole number of 0 or more.");
+  if (chosen === "invalid") return failed(w.notWhole);
   const seen = String(form.get("seen") ?? "").slice(0, 100) || null;
   const sent = await markSent(
     found.member.store.id,
@@ -100,28 +110,29 @@ export async function sendOrderAction(
   await audit(found.member.account.id, found.member.store.id, FULFILMENT_AUDIT_ACTIONS.sentPart, { shipment: sent.shipment.id, units, left: sent.left }, { target: { type: "order", id: orderId } });
   if (input.data.notify) await sendShipped(found.member.store.id, orderId, sent.shipment);
   refresh();
-  const paid = charged ? "The card was charged, and the order is " : "";
-  const what = sent.left > 0 ? `${paid ? `${paid}partly sent` : "Parcel recorded"} (${sent.left} ${sent.left === 1 ? "unit is" : "units are"} still to send)` : paid ? `${paid}marked as sent` : "Marked as sent";
-  return done(input.data.notify ? `${what}, and the customer has been told.` : `${what}.`);
+  const paid = charged ? w.chargedAnd : "";
+  const what = sent.left > 0 ? `${paid ? `${paid}${w.partlySent}` : w.parcelRecorded}${countWords(sent.left, w.stillToSend)}` : paid ? `${paid}${w.markedSentAfter}` : w.markedSent;
+  return done(fillWords(input.data.notify ? w.told : w.plain, { what }));
 }
 
 /** Emails the customer about one parcel again (its carrier, tracking and contents), e.g. when they could not find the first email (D174 2.1). */
 export async function resendShippedAction(storeSlug: string, orderId: string, shipmentId: string): Promise<OrderActionState> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return failed(NO_ACCESS);
-  if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return failed("This parcel was not found.");
+  if (!member) return failed(await noAccess());
+  const w = wordsOf(member);
+  if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return failed(w.parcelNotFound);
   const order = await getOrderAdmin(member.store.id, orderId);
-  if (!order || order.copied) return failed("This parcel was not found.");
-  if (!order.email) return failed("The order has no email address to send to.");
+  if (!order || order.copied) return failed(w.parcelNotFound);
+  if (!order.email) return failed(w.noEmail);
   const shipment = order.shipments.find((s) => s.id === shipmentId);
-  if (!shipment) return failed("This parcel was not found.");
+  if (!shipment) return failed(w.parcelNotFound);
   // An undone parcel (D174 follow-up) was not sent: its email is never sent again.
-  if (shipment.undone) return failed("This parcel was undone, so it is not emailed.");
+  if (shipment.undone) return failed(w.undoneNotEmailed);
   const outcome = await sendShipped(member.store.id, orderId, shipment, { resend: true });
   refresh();
-  if (outcome === "sent") return done(`Sent to ${order.email}.`);
-  if (outcome === "logged") return done("Recorded, but email is not set up yet, so it was not sent.");
-  return failed("The email could not be sent.");
+  if (outcome === "sent") return done(fillWords(w.sentTo, { email: order.email }));
+  if (outcome === "logged") return done(w.logged);
+  return failed(w.emailFailed);
 }
 
 /**
@@ -138,14 +149,14 @@ export async function undoShipmentAction(
 ): Promise<FormState> {
   const refused = (message: string): FormState => ({ status: "error", messages: [message] });
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return refused(NO_ACCESS);
+  if (!member) return refused(await noAccess());
   if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return refused(undoRefusalText("not_found"));
   const reason = z.string().trim().max(200).safeParse(String(form.get("reason") ?? ""));
   if (!reason.success) return refused(undoRefusalText("reason_too_long"));
   const undone = await undoShipment(member.store.id, orderId, shipmentId, member.account.id, reason.data || null);
   if (!undone.ok) return refused(undoRefusalText(undone.reason));
   refresh();
-  return { status: "ok", messages: [undoneMessage(undone)] };
+  return { status: "ok", messages: [undoneMessage(undone, adminText(adminLangOf(member.account.adminLocale), "order").parcels)] };
 }
 
 /** Refunds an amount through Stripe and puts chosen items back in stock. */
@@ -156,11 +167,12 @@ export async function refundOrderAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const typed = String(form.get("amount") ?? "").trim();
   const amountMinor = typed === "" ? 0 : parsePrice(typed, found.order.currency);
-  if (amountMinor === null) return failed(`"${typed}" is not an amount in ${found.order.currency}.`);
+  if (amountMinor === null) return failed(fillWords(w.notAmount, { typed, currency: found.order.currency }));
   // "Put back at" (wave 3, D172): empty is where the units were taken from; a chosen place must be an active location of this store, which `refundOrder()` checks.
   const restock = found.order.lines
     .map((line) => ({ lineId: line.id, quantity: Math.floor(Number(form.get(`restock:${line.id}`) ?? 0)) || 0, locationId: putBackChoice(form.get(`restockAt:${line.id}`)) }))
@@ -178,8 +190,8 @@ export async function refundOrderAction(
     await audit(found.member.account.id, found.member.store.id, FULFILMENT_AUDIT_ACTIONS.unsentClosed, { units: closed, refund: outcome.refundId || null }, { target: { type: "order", id: orderId } });
   }
   refresh();
-  const closedWords = closed > 0 ? ` ${closed} ${closed === 1 ? "unit was" : "units were"} taken off what is still to send.` : "";
-  return done(`${amountMinor > 0 ? "Refunded." : "Put back in stock."}${closedWords}`);
+  const closedWords = closed > 0 ? countWords(closed, w.closed) : "";
+  return done(`${amountMinor > 0 ? w.refunded : w.putBack}${closedWords}`);
 }
 
 /** Cancels an order that is paid but not sent: full refund, stock back, customer told. */
@@ -190,14 +202,15 @@ export async function cancelOrderAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Cancelled by the store";
   const outcome = await cancelOrder(found.member.store.id, orderId, reason, found.member.account.id);
   if (!outcome.ok) return failed(outcome.problem);
   if (form.get("notify") === "on") await sendCancelled(found.member.store.id, orderId, outcome.amountMinor, { unpaid: outcome.unpaid });
   refresh();
-  return done("The order is cancelled.");
+  return done(w.cancelled);
 }
 
 /** Records what was left to pay at the venue as paid (D66): card terminal, cash or otherwise. */
@@ -208,14 +221,15 @@ export async function markBalancePaidAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const method = VENUE_METHODS.find((m) => m === form.get("method")) ?? "other";
   if (!(await markBalancePaid(found.member.store.id, orderId, method, found.member.account.id))) {
-    return failed("Nothing is left to pay on this order.");
+    return failed(w.nothingToPay);
   }
   refresh();
-  return done("Marked as paid.");
+  return done(w.markedPaid);
 }
 
 /** Records the invoice of an order on payment terms as paid outside Kaizena Flow (D293): the method, the day received and a reference. */
@@ -226,7 +240,8 @@ export async function recordTermsPaidAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const text = (name: string) => String(form.get(name) ?? "").trim();
   const result = await recordTermsPaidOutside(
@@ -236,20 +251,10 @@ export async function recordTermsPaidAction(
     found.member.account.id,
   );
   if (!result.ok) {
-    return failed(
-      {
-        invalid: "Choose how it was paid, and a day in the form 2026-10-20.",
-        not_allowed: "Only the owner can record money paid outside Kaizena Flow, unless the owner has allowed staff to.",
-        not_found: "This order is not waiting for its invoice to be paid.",
-        received_on: "The day it was received is not in the future and at most 90 days back.",
-        processing: "A card payment for this order is being processed: wait for it.",
-        already_paid: "The customer has just paid this order online.",
-        cash_limit: "Cash at or above the country's limit cannot be recorded.",
-      }[result.problem],
-    );
+    return failed(w.terms[result.problem]);
   }
   refresh();
-  return done(result.cashWarning ? "Recorded as paid. The cash is close to the country's limit for one sale." : "Recorded as paid.");
+  return done(result.cashWarning ? w.recordedCashWarning : w.recordedPaid);
 }
 
 /** Corrects the customer's email or delivery address. */
@@ -260,11 +265,12 @@ export async function updateContactAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const field = (name: string, max = 200) => String(form.get(name) ?? "").trim().slice(0, max);
   const email = z.email().safeParse(field("email"));
-  if (!email.success) return failed("Enter a valid email address.");
+  if (!email.success) return failed(w.validEmail);
   const ok = await updateOrderContact(found.member.store.id, orderId, {
     email: email.data,
     shippingAddress: {
@@ -277,7 +283,7 @@ export async function updateContactAction(
     },
   });
   refresh();
-  return ok ? done("Saved.") : failed("This order cannot be changed.");
+  return ok ? done(w.saved) : failed(w.cannotChange);
 }
 
 /** A note for staff only; the customer never sees it. */
@@ -288,25 +294,27 @@ export async function addNoteAction(
   form: FormData,
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const note = String(form.get("note") ?? "").trim().slice(0, 2000);
-  if (!note) return failed("Write a note first.");
+  if (!note) return failed(w.writeNote);
   await addOrderNote(found.member.store.id, orderId, note, found.member.account.email);
   refresh();
-  return done("Note added.");
+  return done(w.noteAdded);
 }
 
 /** Sends the order confirmation again, e.g. when the customer could not find it. */
 export async function resendConfirmationAction(storeSlug: string, orderId: string): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { w } = found;
   if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const outcome = await sendOrderConfirmation(found.member.store.id, orderId, { resend: true });
   refresh();
-  if (outcome === "sent") return done(`Sent to ${found.order.email}.`);
-  if (outcome === "logged") return done("Recorded, but email is not set up yet, so it was not sent.");
-  return failed("The confirmation could not be sent.");
+  if (outcome === "sent") return done(fillWords(w.sentTo, { email: found.order.email ?? "" }));
+  if (outcome === "logged") return done(w.logged);
+  return failed(w.confirmationFailed);
 }
 
 
@@ -317,8 +325,8 @@ export async function resendConfirmationAction(storeSlug: string, orderId: strin
  */
 export async function saveOrderFieldsAction(storeSlug: string, orderId: string, changes: unknown): Promise<SaveResult> {
   const member = await checkPermission(storeSlug, "orders:write");
-  if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!z.uuid().safeParse(orderId).success) return { ok: false, problems: ["Unknown order."] };
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  if (!z.uuid().safeParse(orderId).success) return { ok: false, problems: [wordsOf(member).unknownOrder] };
   const result = await saveStaffFields(member, "order", orderId, changes);
   if (result.ok) refresh();
   return result;

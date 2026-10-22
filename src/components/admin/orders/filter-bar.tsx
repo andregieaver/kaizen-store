@@ -1,62 +1,25 @@
 import Link from "next/link";
 
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { clearHref, plainState } from "@/lib/order-list-admin";
+import { filterChips } from "@/lib/order-list-words";
 import {
   COLUMN_LABELS,
   expandShow,
-  describeFilters,
   ORDER_COLUMNS,
   PAY_FILTERS,
   RANGE_FILTERS,
-  RANGE_LABELS,
   SHIP_FILTERS,
   SORT_KEYS,
   SOURCE_FILTERS,
-  SOURCE_LABELS,
   STATUS_FILTERS,
   columnsOf,
   hasFilters,
+  type OrderColumn,
   type OrderListParams,
-  type SortKey,
 } from "@/lib/order-list";
-
-const SORT_LABELS: Record<SortKey, string> = {
-  placed_desc: "Newest first",
-  placed_asc: "Oldest first",
-  total_desc: "Highest total first",
-  total_asc: "Lowest total first",
-};
-const PAY_LABELS: Record<(typeof PAY_FILTERS)[number], string> = {
-  paid: "Paid",
-  partially_refunded: "Partially refunded",
-  refunded: "Refunded",
-  balance_due: "Balance due at the venue",
-  unpaid: "Unpaid (unfinished checkouts)",
-  disputed: "Disputed",
-  elevated_risk: "Elevated risk (Stripe)",
-  authorized: "Card held, to capture",
-  terms_due: "Invoice due (payment terms)",
-  terms_overdue: "Invoice overdue (payment terms)",
-};
-const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
-  to_send: "To send",
-  partly_sent: "Partly sent",
-  edit_pending: "Change awaiting payment",
-  sent: "Sent",
-  waiting: "Waiting for stock",
-  no_shipping: "Nothing to ship",
-  pickup: "To hand over (pickup)",
-  local: "Local delivery",
-  delivery_mismatch: "Postal code differs from the address",
-  held: "On hold",
-};
-const STATUS_LABELS: Record<(typeof STATUS_FILTERS)[number], string> = {
-  paid: "Paid, not sent",
-  fulfilled: "Sent",
-  cancelled: "Cancelled",
-  closed: "Closed",
-};
 
 function Group<T extends string>({ legend, name, values, labels, checked }: { legend: string; name: string; values: readonly T[]; labels: Record<T, string>; checked: readonly string[] }) {
   return (
@@ -82,23 +45,29 @@ export function FilterBar({
   params,
   markets,
   tagSuggestions,
+  words: w = ordersEn.filters,
+  columnWords = COLUMN_LABELS,
 }: {
   base: string;
   params: OrderListParams;
   markets: { code: string; name: string }[];
   tagSuggestions: string[];
+  /** The `orders` catalogue's `filters` words in the account's language (D312 A4). */
+  words?: OrdersMessages["filters"];
+  /** The columns' names, the table's (`OrdersMessages["table"]["columns"]`). */
+  columnWords?: Record<OrderColumn, string>;
 }) {
   const state = expandShow(plainState(params));
-  const chips = describeFilters(params);
+  const chips = filterChips(params, w);
   const columns = columnsOf(params);
   const filtered = hasFilters(params);
   return (
     <div className="flex flex-col gap-3">
-      <form method="get" action={base} role="search" aria-label="Search and filter the orders" className="flex flex-col gap-3">
+      <form method="get" action={base} role="search" aria-label={w.formLabel} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex min-w-60 flex-1 flex-col gap-1">
             <label htmlFor="orders-q" className="text-sm font-medium">
-              Search
+              {w.search}
             </label>
             <input
               id="orders-q"
@@ -106,44 +75,44 @@ export function FilterBar({
               name="q"
               defaultValue={params.q}
               maxLength={100}
-              placeholder="Order number, email, name, product, SKU, tag or tracking number"
+              placeholder={w.searchPlaceholder}
               className={`${field} w-full`}
             />
           </div>
           <button type="submit" className={primary}>
-            Search
+            {w.searchButton}
           </button>
           {filtered && (
             <Link href={base} className={secondary}>
-              Clear all
+              {w.clearAll}
             </Link>
           )}
         </div>
 
         <details className="rounded-panel bg-sunken">
-          <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Filters, sorting and columns</summary>
+          <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{w.more}</summary>
           <div className="flex flex-col gap-4 border-t border-line p-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Group legend="Payment" name="pay" values={PAY_FILTERS} labels={PAY_LABELS} checked={state.pay} />
-              <Group legend="Fulfilment" name="ship" values={SHIP_FILTERS} labels={SHIP_LABELS} checked={state.ship} />
-              <Group legend="Order status" name="status" values={STATUS_FILTERS} labels={STATUS_LABELS} checked={state.status} />
+              <Group legend={w.payment} name="pay" values={PAY_FILTERS} labels={w.pay} checked={state.pay} />
+              <Group legend={w.fulfilment} name="ship" values={SHIP_FILTERS} labels={w.ship} checked={state.ship} />
+              <Group legend={w.status} name="status" values={STATUS_FILTERS} labels={w.statuses} checked={state.status} />
               <fieldset className="flex flex-col gap-1 text-sm">
-                <legend className="mb-1 font-medium">Columns</legend>
+                <legend className="mb-1 font-medium">{w.columns}</legend>
                 {ORDER_COLUMNS.map((column) => (
                   <label key={column} className="flex items-center gap-2">
                     <input type="checkbox" name="cols" value={column} defaultChecked={columns.includes(column)} className="size-4" />
-                    {COLUMN_LABELS[column]}
+                    {columnWords[column]}
                   </label>
                 ))}
-                <span className={hint}>The order number is always shown first.</span>
+                <span className={hint}>{w.orderFirst}</span>
               </fieldset>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-tag" className="text-sm font-medium">
-                  Tagged <span className="font-normal text-muted">(all of them)</span>
+                  {w.tagged} <span className="font-normal text-muted">{w.allOfThem}</span>
                 </label>
-                <input id="orders-tag" name="tag" list="orders-tag-suggestions" defaultValue={state.tag.join(", ")} placeholder="vip, wholesale" autoComplete="off" className={field} />
+                <input id="orders-tag" name="tag" list="orders-tag-suggestions" defaultValue={state.tag.join(", ")} placeholder={w.tagPlaceholder} autoComplete="off" className={field} />
                 <datalist id="orders-tag-suggestions">
                   {tagSuggestions.map((label) => (
                     <option key={label} value={label} />
@@ -152,37 +121,37 @@ export function FilterBar({
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-range" className="text-sm font-medium">
-                  Placed
+                  {w.placed}
                 </label>
                 <select id="orders-range" name="range" defaultValue={state.range ?? ""} className={field}>
-                  <option value="">Any time</option>
+                  <option value="">{w.anyTime}</option>
                   {RANGE_FILTERS.map((range) => (
                     <option key={range} value={range}>
-                      {RANGE_LABELS[range][0].toUpperCase() + RANGE_LABELS[range].slice(1)}
+                      {w.ranges[range][0].toUpperCase() + w.ranges[range].slice(1)}
                     </option>
                   ))}
                 </select>
-                <span className={hint}>Or choose days below; days win over this.</span>
+                <span className={hint}>{w.daysWin}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-from" className="text-sm font-medium">
-                  From day
+                  {w.fromDay}
                 </label>
                 <input id="orders-from" type="date" name="from" defaultValue={state.from ?? ""} className={field} />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-to" className="text-sm font-medium">
-                  To day <span className="font-normal text-muted">(inclusive)</span>
+                  {w.toDay} <span className="font-normal text-muted">{w.inclusive}</span>
                 </label>
                 <input id="orders-to" type="date" name="to" defaultValue={state.to ?? ""} className={field} />
               </div>
               {markets.length > 1 && (
                 <div className="flex flex-col gap-1">
                   <label htmlFor="orders-market" className="text-sm font-medium">
-                    Market
+                    {w.market}
                   </label>
                   <select id="orders-market" name="market" defaultValue={state.market ?? ""} className={field}>
-                    <option value="">All markets</option>
+                    <option value="">{w.allMarkets}</option>
                     {markets.map((market) => (
                       <option key={market.code} value={market.code}>
                         {market.name}
@@ -193,35 +162,35 @@ export function FilterBar({
               )}
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-source" className="text-sm font-medium">
-                  Made by
+                  {w.madeBy}
                 </label>
                 <select id="orders-source" name="source" defaultValue={state.source ?? ""} className={field}>
-                  <option value="">Anyone</option>
+                  <option value="">{w.anyone}</option>
                   {SOURCE_FILTERS.map((source) => (
                     <option key={source} value={source}>
-                      {SOURCE_LABELS[source]}
+                      {w.sources[source]}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-archived" className="text-sm font-medium">
-                  Archived
+                  {w.archived}
                 </label>
                 <select id="orders-archived" name="archived" defaultValue={state.archived} className={field}>
-                  <option value="no">Not archived</option>
-                  <option value="yes">Only archived</option>
-                  <option value="all">Both</option>
+                  <option value="no">{w.notArchived}</option>
+                  <option value="yes">{w.onlyArchived}</option>
+                  <option value="all">{w.both}</option>
                 </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-sort" className="text-sm font-medium">
-                  Sort
+                  {w.sort}
                 </label>
                 <select id="orders-sort" name="sort" defaultValue={state.sort} className={field}>
                   {SORT_KEYS.map((sort) => (
                     <option key={sort} value={sort}>
-                      {SORT_LABELS[sort]}
+                      {w.sorts[sort]}
                     </option>
                   ))}
                 </select>
@@ -229,23 +198,23 @@ export function FilterBar({
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="gift" value="1" defaultChecked={state.gift} className="size-4" />
-              Gift orders only
+              {w.giftsOnly}
             </label>
             <div className="flex flex-wrap items-center gap-2">
               <button type="submit" className={primary}>
-                Apply
+                {w.apply}
               </button>
-              <p className={hint}>Copied history never matches a payment, fulfilment or status filter: it is still in All, Archived and a search.</p>
+              <p className={hint}>{w.copiedNote}</p>
             </div>
           </div>
         </details>
       </form>
 
       {chips.length > 0 && (
-        <ul aria-label="Filters that are on" className="flex flex-wrap gap-2">
+        <ul aria-label={w.chipsLabel} className="flex flex-wrap gap-2">
           {chips.map((chip) => (
             <li key={chip.key}>
-              <Link href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line bg-sunken px-3 text-xs hover:bg-card" aria-label={`Remove filter: ${chip.label}`}>
+              <Link href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line bg-sunken px-3 text-xs hover:bg-card" aria-label={fillWords(w.removeChip, { label: chip.label })}>
                 {chip.label}
                 <span aria-hidden="true">×</span>
               </Link>

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "@/components/admin/invoices/invoice-settings-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "@/server/invoice-settings";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
@@ -22,19 +24,20 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
   if (shopOff) return shopOff;
   const { store } = gated;
   const base = `/admin/${store.slug}`;
+  const words = adminText(adminLangOf(gated.account.adminLocale), "invoices");
   const [settings, readiness, series] = await Promise.all([getInvoiceSettings(store.id), invoiceReadiness(store.id), seriesStates(store.id)]);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Invoicing"
-        description={<>Every paid order gets an invoice in the store&apos;s own numbered series, made by the system when the payment is recorded, and every refund that succeeds gets a credit note in a series of its own. The shopper finds them on the order page and in the order emails. This is not tax advice.</>}
+        title={words.settings.title}
+        description={words.settings.description}
       />
-      <InvoiceReadinessList base={base} readiness={readiness} />
-      <InvoiceSettingsForm settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} />
+      <InvoiceReadinessList base={base} readiness={readiness} words={words} />
+      <InvoiceSettingsForm settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} words={words} />
       {series.map((state) => (
-        <SeriesForm key={state.series} state={state} action={setSeriesAction.bind(null, store.slug)} />
+        <SeriesForm key={state.series} state={state} action={setSeriesAction.bind(null, store.slug)} words={words} />
       ))}
-      <InvoiceNotes />
+      <InvoiceNotes words={words} />
     </div>
   );
 }

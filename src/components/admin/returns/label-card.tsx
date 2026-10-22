@@ -1,4 +1,6 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { formatMoney } from "@/lib/money";
 import { labelSentence, timeText } from "@/lib/return-admin";
 import { labelProblemText } from "@/lib/return-label";
@@ -24,6 +26,7 @@ export function LabelCard({
   canWrite,
   timeZone,
   locale = "en-GB",
+  words: w = returnsEn,
 }: {
   detail: ReturnDetail;
   /** What booking offers (`labelOptions()`); null when the return is gone. */
@@ -34,7 +37,9 @@ export function LabelCard({
   canWrite: boolean;
   timeZone: string;
   locale?: string;
+  words?: ReturnsMessages;
 }) {
+  const c = w.labelCard;
   const label = detail.label;
   const booked = label.source === "carrier";
   const open = detail.status === "approved" || detail.status === "in_transit";
@@ -45,17 +50,17 @@ export function LabelCard({
   const money = (minor: number) => formatMoney(minor, detail.currency, locale);
 
   return (
-    <Card id="label" title="Return shipping" hint="Book a return label with the store's carrier, paste a label address in the instructions, or let the customer send the goods themselves.">
+    <Card id="label" title={c.title} hint={c.hint}>
       <div className="flex flex-col gap-4 text-sm">
-        <p>{labelSentence(label, payer, detail.currency, carrierName, locale)}</p>
+        <p>{labelSentence(label, payer, detail.currency, carrierName, locale, w)}</p>
         {booked && (
           <dl className="flex flex-col gap-2">
-            <Fact label="Carrier">
+            <Fact label={c.carrier}>
               {carrierName}
-              {label.service && <span className="text-muted"> · service {label.service}</span>}
+              {label.service && <span className="text-muted">{fillWords(c.service, { service: label.service })}</span>}
             </Fact>
             {label.trackingNumber && (
-              <Fact label="Tracking">
+              <Fact label={c.tracking}>
                 {label.trackingUrl ? (
                   <a href={label.trackingUrl} target="_blank" rel="noreferrer" className="underline">
                     {label.trackingNumber}
@@ -66,44 +71,42 @@ export function LabelCard({
               </Fact>
             )}
             {label.test && (
-              <Fact label="Test label">
-                <span className="text-warning-text">Booked in the carrier&apos;s test environment: it cannot be used to send anything.</span>
+              <Fact label={c.testLabel}>
+                <span className="text-warning-text">{c.testText}</span>
               </Fact>
             )}
-            <Fact label="Cost">
-              {label.costMinor !== null ? money(label.costMinor) : "Not priced by the carrier"}
+            <Fact label={c.cost}>
+              {label.costMinor !== null ? money(label.costMinor) : c.notPriced}
               {label.costCarrier && label.costCarrier.currency !== detail.currency && (
-                <span className="text-muted"> ({formatMoney(label.costCarrier.amountMinor, label.costCarrier.currency, locale)} as the carrier priced it)</span>
+                <span className="text-muted">{fillWords(c.carrierPriced, { amount: formatMoney(label.costCarrier.amountMinor, label.costCarrier.currency, locale) })}</span>
               )}
             </Fact>
-            {label.bookedAt && <Fact label="Booked">{timeText(label.bookedAt, timeZone)}</Fact>}
+            {label.bookedAt && <Fact label={c.booked}>{timeText(label.bookedAt, timeZone, locale)}</Fact>}
           </dl>
         )}
         {booked && (
           <p>
             <a href={printHref} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 hover:bg-sunken">
-              Print label
+              {c.print}
             </a>
           </p>
         )}
         {mayBook && options && book && (
-          <ActionForm action={book} className="flex flex-col gap-3" successMessage="Booked.">
+          <ActionForm action={book} className="flex flex-col gap-3" successMessage={c.bookedDone}>
             <label className="flex flex-col gap-1 font-medium">
-              Parcel weight in grams <span className="font-normal text-muted">(estimated from the returned goods; change it if you know better)</span>
+              {c.weight} <span className="font-normal text-muted">{c.weightHint}</span>
               <input name="weightGrams" type="number" inputMode="numeric" min={1} max={35000} defaultValue={options.weightGrams > 0 ? options.weightGrams : ""} className={`${input} sm:w-40`} />
             </label>
             <p className="text-muted">
-              {payer === "shopper"
-                ? "The customer pays return shipping for this order. Nothing is taken off when the label is booked: when you refund, you take off what the carrier charges (never more than the label cost) only if the parcel came back with this label. A test label is never taken off."
-                : "The store pays return shipping for this order: nothing is taken off the refund."}
+              {payer === "shopper" ? c.shopperPays : c.storePays}
             </p>
             <div>
-              <SubmitButton>{booked ? `Book again with ${carrierName ?? "the carrier"}` : `Book a return label with ${carrierName ?? "the carrier"}`}</SubmitButton>
+              <SubmitButton>{fillWords(booked ? c.bookAgain : c.book, { carrier: carrierName ?? c.theCarrier })}</SubmitButton>
             </div>
           </ActionForm>
         )}
-        {open && !booked && options?.block && <p className="text-muted">A label cannot be booked: {labelProblemText(options.block)}</p>}
-        {label.tries > 0 && !booked && <p className="text-warning-text">Booking did not go through ({label.tries === 1 ? "1 try" : `${label.tries} tries`}). Paste a label address in the instructions, or try again.</p>}
+        {open && !booked && options?.block && <p className="text-muted">{fillWords(c.cannot, { reason: labelProblemText(options.block) })}</p>}
+        {label.tries > 0 && !booked && <p className="text-warning-text">{countWords(label.tries, c.tries)}</p>}
       </div>
     </Card>
   );

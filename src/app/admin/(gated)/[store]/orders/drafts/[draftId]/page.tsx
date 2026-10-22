@@ -7,7 +7,6 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DraftScreen } from "@/components/admin/drafts/draft-screen";
 import { db } from "@/db/client";
 import { draftMarketOptions } from "@/lib/draft-markets";
-import { DRAFT_STATUS_LABELS } from "@/lib/draft-status";
 import { sql } from "drizzle-orm";
 import { draftProblemText } from "@/lib/draft-order";
 import { getOrderSettings, mayRecordOutsidePayment } from "@/server/order-settings";
@@ -28,6 +27,10 @@ import {
 } from "../actions";
 import { featureOn } from "@/lib/store-features";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { fillWords } from "@/lib/drafts-words";
 
 export const metadata: Metadata = { title: "Draft order" };
 
@@ -71,11 +74,13 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const canWrite = memberCan(member, "orders:write");
   const currency = preview.market?.currency ?? draft.currency;
   const locale = preview.market?.locale ?? draft.locale;
-  const problems = preview.problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code) }));
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "drafts");
+  const problems = preview.problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code, words.problems) }));
   const base = `/admin/${store.slug}/orders/drafts`;
   return (
-    <>
-      <PageHeader back={{ href: base, label: "Draft orders" }} title={`Draft ${draft.number}`} meta={[DRAFT_STATUS_LABELS[draft.status]]} />
+    <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
+      <PageHeader back={{ href: base, label: words.pages.listTitle }} title={fillWords(words.pages.draftTitle, { number: draft.number })} meta={[words.status[draft.status]]} />
       <DraftScreen
         editable={draft.status === "open" && canWrite}
         editor={{
@@ -129,6 +134,6 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           paidOutside: recordPaidOutsideAction.bind(null, store.slug, draftId),
         }}
       />
-    </>
+    </AdminTextScope>
   );
 }

@@ -7,6 +7,12 @@ import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@
 import { commonEn } from "@/lib/admin-messages/common.en";
 import { domainsEn } from "@/lib/admin-messages/domains.en";
 import { homeEn } from "@/lib/admin-messages/home.en";
+import { ordersEn } from "@/lib/admin-messages/orders.en";
+import { orderEn } from "@/lib/admin-messages/order.en";
+import { draftsEn } from "@/lib/admin-messages/drafts.en";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
+import { invoicesEn } from "@/lib/admin-messages/invoices.en";
+
 import { platformLegalEn } from "@/lib/admin-messages/platform-legal.en";
 import { setupEn } from "@/lib/admin-messages/setup.en";
 import { shellEn } from "@/lib/admin-messages/shell.en";
@@ -21,12 +27,21 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 
 export function AdminTextProvider({ lang, texts, children }: Provided & { children: ReactNode }) {
   return <AdminTextContext.Provider value={{ lang, texts }}>{children}</AdminTextContext.Provider>;
+}
+
+/**
+ * More areas for the client parts under it (D312 A4): a page hands down the slices its own parts read (`adminTexts(lang, ["orders"])`),
+ * kept beside the layout's, so the layout's provider stays small.
+ */
+export function AdminTextScope({ texts, children }: { texts: Partial<AdminAreaMessages>; children: ReactNode }) {
+  const parent = useContext(AdminTextContext);
+  return <AdminTextContext.Provider value={{ lang: parent.lang, texts: { ...parent.texts, ...texts } }}>{children}</AdminTextContext.Provider>;
 }
 
 /** An area's words in the account's language. */

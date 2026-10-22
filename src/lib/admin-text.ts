@@ -3,6 +3,16 @@ import { commonEn, type CommonMessages } from "./admin-messages/common.en";
 import { commonNb } from "./admin-messages/common.nb";
 import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
 import { domainsNb } from "./admin-messages/domains.nb";
+import { ordersEn, type OrdersMessages } from "./admin-messages/orders.en";
+import { ordersNb } from "./admin-messages/orders.nb";
+import { orderEn, type OrderMessages } from "./admin-messages/order.en";
+import { orderNb } from "./admin-messages/order.nb";
+import { draftsEn, type DraftsMessages } from "./admin-messages/drafts.en";
+import { draftsNb } from "./admin-messages/drafts.nb";
+import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
+import { returnsNb } from "./admin-messages/returns.nb";
+import { invoicesEn, type InvoicesMessages } from "./admin-messages/invoices.en";
+import { invoicesNb } from "./admin-messages/invoices.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
 import { homeNb } from "./admin-messages/home.nb";
 import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
@@ -23,6 +33,11 @@ export type AdminAreaMessages = {
   common: CommonMessages;
   domains: DomainsMessages;
   home: HomeMessages;
+  orders: OrdersMessages;
+  order: OrderMessages;
+  drafts: DraftsMessages;
+  returns: ReturnsMessages;
+  invoices: InvoicesMessages;
   platformLegal: PlatformLegalMessages;
   setup: SetupMessages;
   shell: ShellMessages;
@@ -35,6 +50,11 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
   home: { en: homeEn, nb: homeNb },
+  orders: { en: ordersEn, nb: ordersNb },
+  order: { en: orderEn, nb: orderNb },
+  drafts: { en: draftsEn, nb: draftsNb },
+  returns: { en: returnsEn, nb: returnsNb },
+  invoices: { en: invoicesEn, nb: invoicesNb },
   platformLegal: { en: platformLegalEn, nb: platformLegalNb },
   setup: { en: setupEn, nb: setupNb },
   shell: { en: shellEn, nb: shellNb },

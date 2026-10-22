@@ -3,7 +3,10 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { CAPTURE_PROBLEM_WORDS } from "@/lib/capture";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { orderEn } from "@/lib/admin-messages/order.en";
 import { parsePrice } from "@/lib/product-input";
 import { capturePayment, voidAuthorization } from "@/server/payment-capture";
 import { getOrder } from "@/server/orders";
@@ -19,7 +22,7 @@ async function orderFor(storeSlug: string, orderId: string) {
   const member = await requirePermission(storeSlug, "orders:write");
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await getOrder(member.store.id, orderId);
-  return order ? { member, order } : null;
+  return order ? { member, order, words: adminText(adminLangOf(member.account.adminLocale), "order") } : null;
 }
 
 /**
@@ -28,23 +31,25 @@ async function orderFor(storeSlug: string, orderId: string) {
  */
 export async function captureOrderAction(storeSlug: string, orderId: string, _previous: OrderActionState, form: FormData): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { words } = found;
   const typed = String(form.get("amount") ?? "").trim();
   const amountMinor = typed === "" ? null : parsePrice(typed, found.order.currency);
-  if (typed !== "" && amountMinor === null) return failed(`"${typed}" is not an amount in ${found.order.currency}.`);
+  if (typed !== "" && amountMinor === null) return failed(fillWords(words.messages.notAmount, { typed, currency: found.order.currency }));
   const outcome = await capturePayment(found.member.store.id, orderId, { amountMinor, accountId: found.member.account.id });
   refresh();
-  if (!outcome.ok) return failed(CAPTURE_PROBLEM_WORDS[outcome.problem]);
-  return done(outcome.releasedMinor > 0 ? "Captured. The rest of the hold was released." : "Captured.");
+  if (!outcome.ok) return failed(words.capture.problems[outcome.problem]);
+  return done(outcome.releasedMinor > 0 ? words.messages.capturedReleased : words.messages.captured);
 }
 
 /** Lets the held card go and cancels the order (D289): nothing is charged and its items are no longer held. The customer is told when ticked. */
 export async function releaseCardAction(storeSlug: string, orderId: string, _previous: OrderActionState, form: FormData): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
-  if (!found) return failed("This order no longer exists.");
+  if (!found) return failed(orderEn.messages.gone);
+  const { words } = found;
   const outcome = await voidAuthorization(found.member.store.id, orderId, found.member.account.id);
   refresh();
-  if (!outcome.ok) return failed(CAPTURE_PROBLEM_WORDS[outcome.problem]);
+  if (!outcome.ok) return failed(words.capture.problems[outcome.problem]);
   if (form.get("notify") === "on") await sendCancelled(found.member.store.id, orderId, 0, { unpaid: true });
-  return done("The hold is released and the order is cancelled.");
+  return done(words.messages.holdReleased);
 }

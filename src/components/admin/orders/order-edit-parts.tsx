@@ -4,8 +4,10 @@ import { useId, useState, useTransition } from "react";
 
 import type { EditActionResponse } from "@/app/admin/(gated)/[store]/orders/[orderId]/edit/actions";
 import { field, hint, secondary } from "@/components/admin/data/ui";
-import { CASH_WARNING, LinkNotice } from "@/components/admin/drafts/draft-send";
-import { MANUAL_METHOD_LABELS, MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
+import { LinkNotice, useCashWarning } from "@/components/admin/drafts/draft-send";
+import { useAdminText } from "@/components/admin/admin-text";
+import { MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
+import { fillWords } from "@/lib/drafts-words";
 import { DRAFT_REFERENCE_MAX, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 
 /** What *Record as paid outside Kaizen* sends (`editPaidOutsideInput`, D173's fields). */
@@ -35,40 +37,40 @@ export function EditOutcome({ result }: { result: EditActionResponse | null }) {
  */
 export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { allowed: boolean; disabled: boolean; amountText: string; record: (input: OutsideInput) => void }) {
   const id = useId();
+  const all = useAdminText("drafts");
+  const w = all.edit.parts;
+  const cashWarning = useCashWarning();
   const [method, setMethod] = useState<ManualPaymentMethod>("bank_transfer");
   const [receivedOn, setReceivedOn] = useState("");
   const [reference, setReference] = useState("");
   if (!allowed) {
-    return <p className={hint}>Only the owner can record a payment taken outside Kaizena Flow, unless the owner allows staff to (Settings, Orders).</p>;
+    return <p className={hint}>{w.ownerOnly}</p>;
   }
   return (
     <details className="rounded-md border border-line p-3">
-      <summary className="cursor-pointer font-medium">Record as paid outside Kaizena Flow</summary>
+      <summary className="cursor-pointer font-medium">{w.record}</summary>
       <div className="mt-3 flex flex-col gap-3">
-        <p className={hint}>
-          The customer paid you {amountText} by bank transfer, in cash or another way. The change is applied at once and the additional invoice says it was paid outside the online checkout. Kaizena Flow
-          did not touch the money and takes no sale fee on it.
-        </p>
+        <p className={hint}>{fillWords(w.hint, { amount: amountText })}</p>
         <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 font-medium">How was it paid?</legend>
+          <legend className="mb-1 font-medium">{w.how}</legend>
           {MANUAL_PAYMENT_METHODS.map((m) => (
             <label key={m} className="flex items-center gap-2">
               <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="size-4" />
-              {MANUAL_METHOD_LABELS[m]}
+              {all.methods[m]}
             </label>
           ))}
         </fieldset>
         {method === "cash" && (
           <p role="note" className="rounded-md border border-line bg-sunken p-3">
-            {CASH_WARNING}
+            {cashWarning}
           </p>
         )}
         <label className="flex flex-col gap-1 font-medium">
-          Received on <span className="font-normal text-muted">(leave empty if it was today; at most {MANUAL_RECEIVED_DAYS_MAX} days back)</span>
+          {w.receivedOn} <span className="font-normal text-muted">{fillWords(w.receivedHint, { max: MANUAL_RECEIVED_DAYS_MAX })}</span>
           <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} className={`${field} w-44`} />
         </label>
         <label className="flex flex-col gap-1 font-medium">
-          Reference <span className="font-normal text-muted">(optional, kept in the order&apos;s history)</span>
+          {w.reference} <span className="font-normal text-muted">{w.referenceHint}</span>
           <input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={DRAFT_REFERENCE_MAX} autoComplete="off" className={field} />
         </label>
         <div>
@@ -76,12 +78,12 @@ export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { 
             type="button"
             disabled={disabled}
             onClick={() => {
-              if (!window.confirm(`Record ${amountText} as paid outside Kaizena Flow and apply the change? This cannot be undone: a mistake is corrected with a refund.`)) return;
+              if (!window.confirm(fillWords(w.confirm, { amount: amountText }))) return;
               record({ method, ...(receivedOn ? { receivedOn } : {}), ...(reference.trim() ? { reference: reference.trim() } : {}) });
             }}
             className={secondary}
           >
-            Record the payment and apply the change
+            {w.apply}
           </button>
         </div>
       </div>
@@ -101,6 +103,7 @@ export type AwaitingEditActions = {
  * refunded or cancelled.
  */
 export function AwaitingEditControls({ hasEmail, mayRecordOutside, amountText, actions }: { hasEmail: boolean; mayRecordOutside: boolean; amountText: string; actions: AwaitingEditActions }) {
+  const w = useAdminText("drafts").edit.parts;
   const [result, setResult] = useState<EditActionResponse | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [working, start] = useTransition();
@@ -112,7 +115,7 @@ export function AwaitingEditControls({ hasEmail, mayRecordOutside, amountText, a
         setResult(answer);
         if (answer.ok && answer.link) setLink(answer.link);
       } catch {
-        setResult({ ok: false, message: "That could not be done. Check your connection and try again." });
+        setResult({ ok: false, message: w.failed });
       }
     });
   return (
@@ -121,22 +124,22 @@ export function AwaitingEditControls({ hasEmail, mayRecordOutside, amountText, a
       <div className="flex flex-wrap gap-2">
         {hasEmail && (
           <button type="button" disabled={working} onClick={() => run(() => actions.resend({ email: true }))} className={secondary}>
-            Send again
+            {w.sendAgain}
           </button>
         )}
         <button type="button" disabled={working} onClick={() => run(() => actions.resend({ email: false }))} className={secondary}>
-          Create a link to share
+          {w.share}
         </button>
         <button
           type="button"
           disabled={working}
           onClick={() => {
-            if (!window.confirm("Cancel this change? The link stops working, the items held for it are released and the order stays as it is.")) return;
+            if (!window.confirm(w.cancelConfirm)) return;
             run(actions.cancel);
           }}
           className={secondary}
         >
-          Cancel the change
+          {w.cancel}
         </button>
       </div>
       <OutsidePaymentForm allowed={mayRecordOutside} disabled={working} amountText={amountText} record={(input) => run(() => actions.paidOutside(input))} />

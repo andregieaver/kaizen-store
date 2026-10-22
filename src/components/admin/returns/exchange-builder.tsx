@@ -3,7 +3,9 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
 import type { ExchangeActionResponse, ExchangePreviewResponse } from "@/app/admin/(gated)/[store]/returns/[returnId]/exchange-actions";
+import { useAdminText } from "@/components/admin/admin-text";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { fillWords } from "@/lib/admin-fill";
 import { EXCHANGE_LINES_MAX, EXCHANGE_QUANTITY_MAX } from "@/lib/exchange-limits";
 import { builderInput, type BuilderAddress, type BuilderForm, type BuilderLine } from "@/lib/exchange-form";
 import { formatMoney } from "@/lib/money";
@@ -20,13 +22,13 @@ export type ExchangeBuilderActions = {
   searchVariants: (query: string) => Promise<DraftVariantChoice[]>;
 };
 
-const ADDRESS_FIELDS: { key: keyof BuilderAddress; label: string; max: number }[] = [
-  { key: "name", label: "Name", max: 200 },
-  { key: "street", label: "Street", max: 200 },
-  { key: "postalCode", label: "Postal code", max: 20 },
-  { key: "city", label: "City", max: 100 },
-  { key: "country", label: "Country (two letters)", max: 2 },
-  { key: "phone", label: "Phone (optional)", max: 40 },
+const ADDRESS_FIELDS: { key: keyof BuilderAddress; max: number }[] = [
+  { key: "name", max: 200 },
+  { key: "street", max: 200 },
+  { key: "postalCode", max: 20 },
+  { key: "city", max: 100 },
+  { key: "country", max: 2 },
+  { key: "phone", max: 40 },
 ];
 
 /**
@@ -56,6 +58,11 @@ export function ExchangeBuilder({
   actions: ExchangeBuilderActions;
 }) {
   const id = useId();
+  const w = useAdminText("returns");
+  const x = w.exchange;
+  /** A problem the server named, in the reader's language where its code is known. */
+  const problemText = (p: { code: string; text: string }) =>
+    Object.hasOwn(w.labels.exchangeProblems, p.code) ? w.labels.exchangeProblems[p.code as keyof typeof w.labels.exchangeProblems] : p.text;
   const [form, setForm] = useState<BuilderForm>(initial);
   const [preview, setPreview] = useState<ExchangePreview | null>(initialPreview);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -83,14 +90,16 @@ export function ExchangeBuilder({
         if (answer.ok) {
           setPreview(answer.preview);
           setPreviewError(null);
-        } else setPreviewError([answer.message, ...answer.problems.map((p) => p.text)].join(" "));
+        } else setPreviewError([answer.message, ...answer.problems.map(problemText)].join(" "));
       } catch {
-        if (ticket === asked.current) setPreviewError("The summary could not be worked out. Check your connection.");
+        if (ticket === asked.current) setPreviewError(x.summaryFailed);
       } finally {
         if (ticket === asked.current) setPreviewing(false);
       }
     }, 400);
     return () => clearTimeout(timer);
+    // The words only name what the server answered; a change of them asks nothing new.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawKey, input.problems.length, actions]);
 
   // The product picker.
@@ -117,7 +126,7 @@ export function ExchangeBuilder({
 
   const fresh = !previewing && input.problems.length === 0 && preview !== null && preview.lines.length > 0 && !previewError;
   const ready = fresh && preview?.ok === true;
-  const why = input.problems[0] ?? (previewing || (!fresh && !previewError) ? "Wait for the summary." : previewError ? "Fix the problems in the summary first." : preview?.ok === false ? "Fix the problems in the summary first." : null);
+  const why = input.problems[0] ?? (previewing || (!fresh && !previewError) ? x.waitSummary : previewError ? x.fixFirst : preview?.ok === false ? x.fixFirst : null);
   const run = (work: () => Promise<ExchangeActionResponse>) =>
     start(async () => {
       setResult(null);
@@ -127,7 +136,7 @@ export function ExchangeBuilder({
         // Handed to the card's holder when there is one: the refresh after a proposal may stop drawing this builder.
         if (answer.ok && answer.link) (showLink ?? setLink)(answer.link);
       } catch {
-        setResult({ ok: false, message: "The request could not be sent to the server. Check your connection and try again: nothing was changed." });
+        setResult({ ok: false, message: x.notSent });
       }
     });
 
@@ -139,15 +148,15 @@ export function ExchangeBuilder({
         <div className="flex min-w-0 flex-col gap-5 text-sm">
           <section aria-labelledby={`${id}-add`} className="flex flex-col gap-2">
             <h3 id={`${id}-add`} className="text-body-strong text-ink">
-              Add a product
+              {x.addProduct}
             </h3>
             <label className="flex flex-col gap-1 font-medium" htmlFor={`${id}-search`}>
-              Search by title or SKU <span className={hint}>(goods for sale in this order&apos;s market)</span>
+              {x.searchBy} <span className={hint}>{x.forSale}</span>
             </label>
             <input id={`${id}-search`} value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" className={field} disabled={form.lines.length >= EXCHANGE_LINES_MAX} />
             {shownChoices && (
-              <ul className="flex flex-col divide-y divide-line rounded-md border border-line" aria-label="Products found">
-                {shownChoices.length === 0 && <li className="p-2 text-muted">No product for sale in this order&apos;s market matches.</li>}
+              <ul className="flex flex-col divide-y divide-line rounded-md border border-line" aria-label={x.found}>
+                {shownChoices.length === 0 && <li className="p-2 text-muted">{x.noneFound}</li>}
                 {shownChoices.map((c) => (
                   <li key={c.variantId}>
                     <button type="button" onClick={() => add(c)} className="flex w-full items-center justify-between gap-3 rounded-pill p-2 text-left hover:bg-sunken">
@@ -155,7 +164,7 @@ export function ExchangeBuilder({
                         {c.productTitle}
                         {c.options && <span className="text-muted"> ({c.options})</span>}
                         <span className="block font-mono text-xs text-muted">
-                          {c.sku} · {c.inStock} in stock
+                          {c.sku} · {fillWords(x.inStock, { n: c.inStock })}
                         </span>
                       </span>
                       <span className="tabular-nums">{money(c.listPriceMinor)}</span>
@@ -167,19 +176,19 @@ export function ExchangeBuilder({
           </section>
 
           {form.lines.length > 0 && (
-            <ul className="flex flex-col gap-3" aria-label="Replacements">
+            <ul className="flex flex-col gap-3" aria-label={x.replacements}>
               {form.lines.map((line, index) => (
                 <li key={`${line.variantId}-${index}`} className="flex flex-col gap-2 rounded-panel border border-line p-3">
                   <p>
                     {line.title}
                     {line.options && <span className="text-muted"> ({line.options})</span>}
                     <span className="block font-mono text-xs text-muted">
-                      {line.sku} · {money(line.listPriceMinor)} in the shop
+                      {line.sku} · {fillWords(x.inShop, { amount: money(line.listPriceMinor) })}
                     </span>
                   </p>
                   <div className="flex flex-wrap items-end gap-3">
                     <label className="flex flex-col gap-1 font-medium">
-                      Quantity
+                      {x.quantity}
                       <input
                         type="number"
                         inputMode="numeric"
@@ -191,11 +200,11 @@ export function ExchangeBuilder({
                       />
                     </label>
                     <label className="flex flex-col gap-1 font-medium">
-                      Price each <span className={hint}>(empty: the shop&apos;s price; only lower)</span>
+                      {x.priceEach} <span className={hint}>{x.priceEachHint}</span>
                       <input value={line.price} onChange={(e) => setLine(index, { price: e.target.value })} inputMode="decimal" placeholder={money(line.listPriceMinor)} className={`${field} w-36 tabular-nums`} />
                     </label>
-                    <button type="button" onClick={() => patch({ lines: form.lines.filter((_, i) => i !== index) })} className={secondary} aria-label={`Remove ${line.title}`}>
-                      Remove
+                    <button type="button" onClick={() => patch({ lines: form.lines.filter((_, i) => i !== index) })} className={secondary} aria-label={fillWords(x.removeLine, { title: line.title })}>
+                      {x.remove}
                     </button>
                   </div>
                 </li>
@@ -204,31 +213,25 @@ export function ExchangeBuilder({
           )}
 
           <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 font-medium">Shipping of the new order</legend>
-            {(
-              [
-                ["free", "Free"],
-                ["standard", "The market's standard rate"],
-                ["set", "Set a price (VAT included)"],
-              ] as const
-            ).map(([value, words]) => (
+            <legend className="mb-1 font-medium">{x.shippingNew}</legend>
+            {(["free", "standard", "set"] as const).map((value) => (
               <label key={value} className="flex items-center gap-2">
                 <input type="radio" name={`${id}-shipping`} value={value} checked={form.shipping === value} onChange={() => patch({ shipping: value })} className="size-4" />
-                {words}
+                {x.shippingChoices[value]}
               </label>
             ))}
             {form.shipping === "set" && (
-              <input aria-label="Shipping price, VAT included" value={form.shippingPrice} onChange={(e) => patch({ shippingPrice: e.target.value })} inputMode="decimal" className={`${field} mt-1 w-36`} />
+              <input aria-label={x.shippingPrice} value={form.shippingPrice} onChange={(e) => patch({ shippingPrice: e.target.value })} inputMode="decimal" className={`${field} mt-1 w-36`} />
             )}
           </fieldset>
 
           <fieldset className="grid gap-3 sm:grid-cols-2">
             <legend className="mb-1 font-medium">
-              Delivery address <span className={hint}>(the order&apos;s, unless you change it; in the order&apos;s country)</span>
+              {x.delivery} <span className={hint}>{x.deliveryHint}</span>
             </legend>
             {ADDRESS_FIELDS.map((f) => (
               <label key={f.key} className="flex flex-col gap-1 font-medium">
-                {f.label}
+                {x.address[f.key]}
                 <input
                   value={form.address[f.key]}
                   maxLength={f.max}
@@ -251,27 +254,27 @@ export function ExchangeBuilder({
           {why && <p className="text-sm text-muted">{why}</p>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={primary} disabled={working || !ready || !hasEmail} onClick={() => run(() => actions.propose(input.raw, false))}>
-              {working ? "Working …" : "Send to the customer"}
+              {working ? w.forms.working : x.sendToCustomer}
             </button>
             {shareable && (
               <button type="button" className={secondary} disabled={working || !ready} onClick={() => run(() => actions.propose(input.raw, true))}>
-                Create a link to share
+                {x.shareLink}
               </button>
             )}
             <button type="button" className={secondary} disabled={working || input.problems.length > 0} onClick={() => run(() => actions.save(input.raw))}>
-              Save as draft
+              {x.saveDraft}
             </button>
           </div>
-          {!hasEmail && <p className={hint}>{shareable ? "The order has no email address: create a link to share instead." : "The order has no email address, so a withdrawal's exchange cannot be proposed: refund instead."}</p>}
-          {!shareable && <p className={hint}>A withdrawal&apos;s exchange is confirmed by the customer only, so it goes by email to the order&apos;s own address.</p>}
-          <p className={hint}>Nothing is held or charged now. The customer confirms on their own page; the new order is made when you process the exchange where you would refund the return.</p>
+          {!hasEmail && <p className={hint}>{shareable ? x.noEmailShare : x.noEmailWithdrawal}</p>}
+          {!shareable && <p className={hint}>{x.withdrawalEmail}</p>}
+          <p className={hint}>{x.nothingHeld}</p>
           {result && (
             <div role={result.ok ? "status" : "alert"} aria-live="polite" className={`flex flex-col gap-1 text-sm ${result.ok ? "" : "text-danger-text"}`}>
               <p>{result.message}</p>
               {result.problems && result.problems.length > 0 && (
                 <ul className="list-disc pl-5">
                   {result.problems.map((p, i) => (
-                    <li key={`${p.code}-${i}`}>{p.text}</li>
+                    <li key={`${p.code}-${i}`}>{problemText(p)}</li>
                   ))}
                 </ul>
               )}

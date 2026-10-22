@@ -1,10 +1,12 @@
+import { invoicesEn } from "@/lib/admin-messages/invoices.en";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The invoices page's shape while it is read: the heading, the four figures, the tabs, the filter and the table. */
-export function InvoicesSkeleton() {
+export function InvoicesSkeleton({ label = invoicesEn.view.loading }: { label?: string }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the invoices…</span>
+      <span className="sr-only">{label}</span>
       <div className="space-y-3">
         <div className={`${block} h-8 w-40`} />
         <div className={`${block} h-4 w-full max-w-xl`} />
@@ -22,10 +24,10 @@ export function InvoicesSkeleton() {
 }
 
 /** The invoicing settings' shape while they are read. */
-export function InvoiceSettingsSkeleton() {
+export function InvoiceSettingsSkeleton({ label = invoicesEn.view.loadingSettings }: { label?: string }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the invoicing settings…</span>
+      <span className="sr-only">{label}</span>
       <div className="space-y-3">
         <div className={`${block} h-8 w-40`} />
         <div className={`${block} h-4 w-full max-w-2xl`} />

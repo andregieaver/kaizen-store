@@ -4,6 +4,8 @@ import { useId, useState, useTransition } from "react";
 
 import type { ViewActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { VIEWS_MAX, VIEW_TITLE_MAX } from "@/lib/order-limits";
 
 export type ViewTool = { id: string; title: string };
@@ -20,7 +22,18 @@ export type ViewToolActions = {
  * name, shared by everyone who can read orders. The state is sent as the list's query and read again by the server's one parser. Staff who may only read see neither. A search is kept in a
  * view if there is one: the screen says not to save a search for a person's name.
  */
-export function ViewTools({ views, query, actions }: { views: ViewTool[]; query: string; actions: ViewToolActions }) {
+export function ViewTools({
+  views,
+  query,
+  actions,
+  words: w = ordersEn.saved,
+}: {
+  views: ViewTool[];
+  query: string;
+  actions: ViewToolActions;
+  /** The `orders` catalogue's `saved` words in the account's language (D312 A4). */
+  words?: OrdersMessages["saved"];
+}) {
   const id = useId();
   const [title, setTitle] = useState("");
   const [replaceId, setReplaceId] = useState("");
@@ -33,7 +46,7 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
   return (
     <div className="flex flex-col gap-3">
       <details className="rounded-panel bg-sunken">
-        <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Save this list as a view</summary>
+        <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{w.saveAs}</summary>
         <form
           className="flex flex-col gap-3 border-t border-line p-4"
           onSubmit={(event) => {
@@ -52,17 +65,17 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor={`${id}-title`} className="text-sm font-medium">
-                Name of the view <span className="font-normal text-muted">(up to {VIEW_TITLE_MAX} characters)</span>
+                {w.name} <span className="font-normal text-muted">{fillWords(w.upTo, { max: VIEW_TITLE_MAX })}</span>
               </label>
               <input id={`${id}-title`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={VIEW_TITLE_MAX} required={replaceId === ""} className={`${field} w-64`} />
             </div>
             {views.length > 0 && (
               <div className="flex flex-col gap-1">
                 <label htmlFor={`${id}-replace`} className="text-sm font-medium">
-                  Or replace a view
+                  {w.replace}
                 </label>
                 <select id={`${id}-replace`} value={replaceId} onChange={(e) => setReplaceId(e.target.value)} className={field}>
-                  <option value="">Save as a new view</option>
+                  <option value="">{w.asNew}</option>
                   {views.map((view) => (
                     <option key={view.id} value={view.id}>
                       {view.title}
@@ -72,20 +85,20 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
               </div>
             )}
             <button type="submit" disabled={working || (full && replaceId === "")} className={primary}>
-              {working ? "Saving …" : replaceId ? "Update view" : "Save view"}
+              {working ? w.saving : replaceId ? w.update : w.save}
             </button>
           </div>
           <p className={hint}>
             {full && replaceId === ""
-              ? `A store has at most ${VIEWS_MAX} saved views. Replace or delete one.`
-              : "The view keeps the search, the filters, the sort and the columns as they are now. Everyone who can read orders can open it. Do not save a search for a person’s name: a view is shared."}
+              ? fillWords(w.full, { max: VIEWS_MAX })
+              : w.shared}
           </p>
         </form>
       </details>
 
       {views.length > 0 && (
         <details className="rounded-panel bg-sunken">
-          <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Manage saved views</summary>
+          <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{w.manage}</summary>
           <ul className="flex flex-col divide-y divide-line border-t border-line">
             {views.map((view, index) => (
               <ManageRow
@@ -94,6 +107,7 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
                 first={index === 0}
                 last={index === views.length - 1}
                 working={working}
+                words={w}
                 onRename={(next) => {
                   setMessage(null);
                   startTransition(async () => done(await actions.update(view.id, { title: next })));
@@ -139,7 +153,9 @@ function ManageRow({
   onUseCurrent,
   onDelete,
   onMove,
+  words: w,
 }: {
+  words: OrdersMessages["saved"];
   view: ViewTool;
   first: boolean;
   last: boolean;
@@ -156,35 +172,35 @@ function ManageRow({
     <li className="flex flex-wrap items-end gap-2 p-3">
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-xs font-medium">
-          Name
+          {w.rowName}
         </label>
         <input id={id} value={name} onChange={(e) => setName(e.target.value)} maxLength={VIEW_TITLE_MAX} className={`${field} w-56`} />
       </div>
       <button type="button" disabled={working || name.trim() === "" || name === view.title} onClick={() => onRename(name)} className={secondary}>
-        Rename
+        {w.rename}
       </button>
       <button type="button" disabled={working} onClick={onUseCurrent} className={secondary}>
-        Use the current list
+        {w.useCurrent}
       </button>
-      <button type="button" disabled={working || first} onClick={() => onMove(-1)} className={secondary} aria-label={`Move ${view.title} earlier`}>
-        Earlier
+      <button type="button" disabled={working || first} onClick={() => onMove(-1)} className={secondary} aria-label={fillWords(w.moveEarlier, { title: view.title })}>
+        {w.earlier}
       </button>
-      <button type="button" disabled={working || last} onClick={() => onMove(1)} className={secondary} aria-label={`Move ${view.title} later`}>
-        Later
+      <button type="button" disabled={working || last} onClick={() => onMove(1)} className={secondary} aria-label={fillWords(w.moveLater, { title: view.title })}>
+        {w.later}
       </button>
       {confirm ? (
         <span className="flex items-center gap-2 text-sm">
-          Delete “{view.title}”?
+          {fillWords(w.deleteAsk, { title: view.title })}
           <button type="button" disabled={working} onClick={onDelete} className={primary}>
-            Delete
+            {w.delete}
           </button>
           <button type="button" onClick={() => setConfirm(false)} className={secondary}>
-            Keep
+            {w.keep}
           </button>
         </span>
       ) : (
         <button type="button" onClick={() => setConfirm(true)} className={secondary}>
-          Delete
+          {w.delete}
         </button>
       )}
     </li>

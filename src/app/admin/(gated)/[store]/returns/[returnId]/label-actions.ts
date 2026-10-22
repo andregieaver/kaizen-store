@@ -4,6 +4,9 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { staffActor } from "@/server/order-actor";
 import { checkPermission, NO_ACCESS } from "@/server/permissions";
 import { bookReturnLabel } from "@/server/return-labels";
@@ -17,13 +20,14 @@ import { bookReturnLabel } from "@/server/return-labels";
 export async function bookReturnLabelAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "orders:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  if (!z.uuid().safeParse(returnId).success) return { status: "error", messages: ["This return no longer exists."] };
+  const w = adminText(adminLangOf(member.account.adminLocale), "returns").actions;
+  if (!z.uuid().safeParse(returnId).success) return { status: "error", messages: [w.gone] };
   const typed = String(form.get("weightGrams") ?? "").trim();
-  if (typed !== "" && !/^\d{1,6}$/.test(typed)) return { status: "error", messages: ["The weight is a whole number of grams."] };
+  if (typed !== "" && !/^\d{1,6}$/.test(typed)) return { status: "error", messages: [w.weight] };
   const booked = await bookReturnLabel(member.store.id, returnId, { weightGrams: typed === "" ? null : Number(typed) }, staffActor(member.account.id));
   if (!booked.ok) return { status: "error", messages: [booked.message] };
   refresh();
-  const test = booked.test ? " It is a test label: the carrier's test environment cannot be used to send anything." : "";
-  const mail = booked.emailed === "failed" ? " The email to the customer could not be sent; they see the label on their status page." : " The customer has been emailed it.";
-  return { status: "ok", messages: [`Booked: tracking number ${booked.trackingNumber}.${test}${mail}`] };
+  const test = booked.test ? w.labelTest : "";
+  const mail = booked.emailed === "failed" ? w.labelMailFailed : w.labelMailed;
+  return { status: "ok", messages: [fillWords(w.labelBooked, { tracking: booked.trackingNumber, test, mail })] };
 }

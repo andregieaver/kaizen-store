@@ -12,6 +12,10 @@ import { orderEditability, previewOrderEdit } from "@/server/order-edits";
 import { mayRecordOutsidePayment } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { blockTextWords, editProblemText, fillWords } from "@/lib/drafts-words";
 
 import {
   applyOrderEditAction,
@@ -40,22 +44,22 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
   if (!order || !editability) notFound();
   const orderHref = `/admin/${store.slug}/orders/${order.id}`;
   const locale = store.markets[0]?.locale ?? order.locale;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "drafts");
+  const w = words.edit.page;
   const heading = (
     <div>
       <Link href={orderHref} className="text-sm text-muted underline underline-offset-2">
-        Order #{order.number}
+        {fillWords(w.order, { number: order.number })}
       </Link>
-      <PageHeader
-        title={<>Edit the items of order #{order.number}</>}
-        description={<>Items kept keep the price and discounts they were sold with. A lower total is refunded at once; a higher total is paid by the customer through a link before the order changes. The order keeps its number, and an invoiced order gets a credit note and an additional invoice that refer to its invoice.</>}
-      />
+      <PageHeader title={fillWords(w.title, { number: order.number })} description={w.description} />
       </div>
   );
   if (!memberCan(member, "orders:write")) {
     return (
       <div className="flex flex-col gap-6">
         {heading}
-        <p className="rounded-panel bg-sunken p-4 text-sm">You can look at orders but not change them: that needs the right to change orders.</p>
+        <p className="rounded-panel bg-sunken p-4 text-sm">{w.noWrite}</p>
       </div>
     );
   }
@@ -64,10 +68,10 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
       <div className="flex flex-col gap-6">
         {heading}
         <p role="status" className="rounded-panel bg-sunken p-4 text-sm">
-          {editability.text}
+          {editability.text === null ? null : blockTextWords(editability.text, words.edit)}
         </p>
         <Link href={orderHref} className="text-sm underline underline-offset-2">
-          Back to the order
+          {w.back}
         </Link>
       </div>
     );
@@ -85,7 +89,9 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
     editable: Boolean(l.variantId) && l.delivery === "physical" && !l.custom,
     gift: l.gift,
   }));
+  const summary = initial && "priced" in initial ? editSummaryView(initial) : null;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
     <div className="flex flex-col gap-6">
       {heading}
       <OrderEditEditor
@@ -95,7 +101,7 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
         locale={locale}
         lines={lines}
         shippingMinor={order.shippingMinor}
-        initialSummary={initial && "priced" in initial ? editSummaryView(initial) : null}
+        initialSummary={summary && { ...summary, problems: summary.problems.map((p) => ({ ...p, text: editProblemText(p.code, p.text, words.edit) })) }}
         hasEmail={Boolean(order.email)}
         mayRecordOutside={mayRecordOutside}
         actions={{
@@ -107,5 +113,6 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
         }}
       />
     </div>
+    </AdminTextScope>
   );
 }

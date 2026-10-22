@@ -70,14 +70,26 @@ export type EditFormInput = {
 
 const WHOLE = /^\d{1,4}$/;
 
-export function editInputFromForm(state: EditFormState, lines: readonly EditorOrderLine[], currency: string): EditFormInput {
+/** The form's problems in another language than English (D312 A4: the admin catalogue's `drafts.edit.form`); `{title}`, `{price}` and `{currency}` filled in. */
+export type EditFormWords = { quantity: string; addedQuantity: string; price: string; shipping: string };
+
+const EN_FORM: EditFormWords = {
+  quantity: "The quantity of {title} is not a whole number.",
+  addedQuantity: "The quantity of {title} is not a whole number from 1 to 9,999.",
+  price: '"{price}" is not a price in {currency}.',
+  shipping: '"{price}" is not a shipping price in {currency}.',
+};
+
+const fillForm = (text: string, values: Record<string, string>): string => text.replace(/\{(\w+)\}/g, (whole, key: string) => values[key] ?? whole);
+
+export function editInputFromForm(state: EditFormState, lines: readonly EditorOrderLine[], currency: string, words: EditFormWords = EN_FORM): EditFormInput {
   const problems: string[] = [];
   const quantities: Record<string, number> = {};
   for (const line of lines) {
     if (!line.editable) continue;
     const typed = (state.quantities[line.lineId] ?? String(line.quantity)).trim();
     if (!WHOLE.test(typed)) {
-      problems.push(`The quantity of ${line.title} is not a whole number.`);
+      problems.push(fillForm(words.quantity, { title: line.title }));
       continue;
     }
     const value = Number(typed);
@@ -85,12 +97,12 @@ export function editInputFromForm(state: EditFormState, lines: readonly EditorOr
   }
   const added = state.added.map((a) => {
     const typedQuantity = a.quantity.trim();
-    if (!WHOLE.test(typedQuantity) || Number(typedQuantity) < 1) problems.push(`The quantity of ${a.title} is not a whole number from 1 to 9,999.`);
+    if (!WHOLE.test(typedQuantity) || Number(typedQuantity) < 1) problems.push(fillForm(words.addedQuantity, { title: a.title }));
     const price = a.price.trim();
     let unitPriceMinor: number | undefined;
     if (price !== "") {
       const parsed = parsePrice(price, currency);
-      if (parsed === null) problems.push(`"${price}" is not a price in ${currency}.`);
+      if (parsed === null) problems.push(fillForm(words.price, { price, currency }));
       else unitPriceMinor = parsed;
     }
     return { variantId: a.variantId, quantity: Number(typedQuantity) || 0, ...(unitPriceMinor !== undefined ? { unitPriceMinor } : {}) };
@@ -98,7 +110,7 @@ export function editInputFromForm(state: EditFormState, lines: readonly EditorOr
   let shipping: EditFormInput["raw"]["shipping"] = { kind: "keep" };
   if (state.shipping.kind === "set") {
     const parsed = parsePrice(state.shipping.amount.trim() === "" ? "0" : state.shipping.amount, currency);
-    if (parsed === null) problems.push(`"${state.shipping.amount}" is not a shipping price in ${currency}.`);
+    if (parsed === null) problems.push(fillForm(words.shipping, { price: state.shipping.amount, currency }));
     else shipping = { kind: "set", amountMinor: parsed };
   }
   const note = state.note.trim();

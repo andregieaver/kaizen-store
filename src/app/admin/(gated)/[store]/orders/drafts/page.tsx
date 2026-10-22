@@ -7,6 +7,8 @@ import { isDraftStatus } from "@/lib/draft-status";
 import { listDrafts } from "@/server/draft-orders";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Draft orders" };
 
@@ -22,13 +24,10 @@ export default async function DraftsPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(member, "shop");
   if (shopOff) return shopOff;
   const { store } = member;
+  const w = adminText(adminLangOf(member.account.adminLocale), "drafts").pages;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
-        title="Draft orders"
-        description={<>A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizena Flow.</>}
-      />
+      <PageHeader back={{ href: `/admin/${store.slug}/orders`, label: w.orders }} title={w.listTitle} description={w.listDescription} />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -44,6 +43,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const status = isDraftStatus(rawStatus) ? rawStatus : null;
   const rawAfter = Array.isArray(query.after) ? query.after[0] : query.after;
   const page = await listDrafts(store.id, { status, after: rawAfter ?? null });
+  const lang = adminLangOf(member.account.adminLocale);
+  const locale = store.markets[0]?.locale ?? "en";
   return (
     <DraftsListView
       slug={store.slug}
@@ -53,8 +54,10 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       hasCursor={Boolean(rawAfter)}
       openCount={page.openCount}
       canWrite={memberCan(member, "orders:write")}
-      locale={store.markets[0]?.locale ?? "en"}
+      locale={locale}
       timeZone={store.timeZone}
+      words={adminText(lang, "drafts")}
+      dateLocale={lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale}
     />
   );
 }

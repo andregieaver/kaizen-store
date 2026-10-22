@@ -4,6 +4,10 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import type { ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import { adminText } from "@/lib/admin-text";
 import { previewData, type RefundPreviewData } from "@/lib/return-admin";
 import { parsePrice } from "@/lib/product-input";
 import type { ReturnAddress } from "@/lib/withdrawal";
@@ -52,12 +56,15 @@ function addressOf(form: FormData): ReturnAddress | null {
   return Object.values(address).every((v) => v === "") ? null : address;
 }
 
-async function member(storeSlug: string, returnId: string): Promise<{ member: Membership; valid: boolean }> {
+async function member(storeSlug: string, returnId: string): Promise<{ member: Membership; valid: boolean; words: ReturnsMessages }> {
   const found = await requirePermission(storeSlug, "orders:write");
-  return { member: found, valid: z.uuid().safeParse(returnId).success };
+  return { member: found, valid: z.uuid().safeParse(returnId).success, words: wordsOf(found) };
 }
 
-const GONE = "This return no longer exists.";
+/** The member's words for the returns screens (D312 A4): what an action answers is in the language they read the admin in. */
+const wordsOf = (found: Membership): ReturnsMessages => adminText(adminLangOf(found.account.adminLocale), "returns");
+
+const notAmount = (words: ReturnsMessages, typed: string, currency: string): string => fillWords(words.actions.notAmount, { typed, currency });
 
 /** Runs one step: checks the member and the id, calls the server, audits what was done, and refreshes the page. */
 async function step(
@@ -65,16 +72,16 @@ async function step(
   returnId: string,
   action: string,
   work: (member: Membership) => Promise<Done>,
-  message: string,
+  message: (words: ReturnsMessages) => string,
   details: Record<string, unknown> = {},
 ): Promise<FormState> {
-  const { member: found, valid } = await member(storeSlug, returnId);
-  if (!valid) return failed(GONE);
+  const { member: found, valid, words } = await member(storeSlug, returnId);
+  if (!valid) return failed(words.actions.gone);
   const result = await work(found);
   if (!result.ok) return failed(result.problem);
   await audit(found.account.id, found.store.id, action, { returnId, ...details });
   refresh();
-  return done(message);
+  return done(message(words));
 }
 
 export async function approveReturnAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {
@@ -83,7 +90,7 @@ export async function approveReturnAction(storeSlug: string, returnId: string, _
     returnId,
     "return.approved",
     (m) => approveReturn(m.store.id, { returnId, instructions: text(form, "instructions"), labelUrl: text(form, "labelUrl"), returnAddress: addressOf(form), note: null }, m.account.id),
-    "Approved. The customer has been told how to send the goods back.",
+    (w) => w.forms.approved,
   );
 }
 
@@ -93,7 +100,7 @@ export async function declineReturnAction(storeSlug: string, returnId: string, _
     returnId,
     "return.declined",
     (m) => declineReturn(m.store.id, { returnId, reason: text(form, "reason") }, m.account.id),
-    "Declined. The customer has been told why.",
+    (w) => w.forms.declined,
   );
 }
 
@@ -104,7 +111,7 @@ export async function declineReturnLineAction(storeSlug: string, returnId: strin
     returnId,
     "return.line_declined",
     (m) => declineReturnLine(m.store.id, { returnId, lineId, reason: text(form, "reason") }, m.account.id),
-    "The line is declined.",
+    (w) => w.forms.lineDeclined,
     { lineId },
   );
 }
@@ -115,7 +122,7 @@ export async function returnInstructionsAction(storeSlug: string, returnId: stri
     returnId,
     "return.instructions_changed",
     (m) => setReturnInstructions(m.store.id, { returnId, instructions: text(form, "instructions"), labelUrl: text(form, "labelUrl"), returnAddress: addressOf(form) }, m.account.id),
-    "Saved.",
+    (w) => w.actions.saved,
   );
 }
 
@@ -125,7 +132,7 @@ export async function markInTransitAction(storeSlug: string, returnId: string, _
     returnId,
     "return.in_transit",
     (m) => markInTransit(m.store.id, { returnId, on: text(form, "on") || null }, m.account.id),
-    "Marked as on their way.",
+    (w) => w.detail.markedOnWay,
   );
 }
 
@@ -135,21 +142,21 @@ export async function markReceivedAction(storeSlug: string, returnId: string, _p
     returnId,
     "return.received",
     (m) => markReceived(m.store.id, { returnId, on: text(form, "on") || null }, m.account.id),
-    "Marked as received. The customer has been told.",
+    (w) => w.detail.markedReceived,
   );
 }
 
 /** The inspection, read from the form's per-line fields; the amounts are typed in the order's currency. */
 export async function inspectReturnAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {
-  const { member: found, valid } = await member(storeSlug, returnId);
-  if (!valid) return failed(GONE);
+  const { member: found, valid, words } = await member(storeSlug, returnId);
+  if (!valid) return failed(words.actions.gone);
   const detail = await getReturn(found.store.id, returnId);
-  if (!detail) return failed(GONE);
+  if (!detail) return failed(words.actions.gone);
   const lines: unknown[] = [];
   for (const line of detail.lines.filter((l) => l.decision === "accept")) {
     const typed = text(form, `deduction:${line.lineId}`);
     const deductionMinor = typed === "" ? 0 : parsePrice(typed, detail.currency);
-    if (deductionMinor === null) return failed(`"${typed}" is not an amount in ${detail.currency}.`);
+    if (deductionMinor === null) return failed(notAmount(words, typed, detail.currency));
     lines.push({
       lineId: line.lineId,
       condition: text(form, `condition:${line.lineId}`),
@@ -163,22 +170,22 @@ export async function inspectReturnAction(storeSlug: string, returnId: string, _
     returnId,
     "return.inspected",
     (m) => inspectReturn(m.store.id, { returnId, lines }, m.account.id),
-    "Inspected.",
+    (w) => w.forms.inspected,
   );
 }
 
 /** The refund: the amount typed in the order's currency, a reason when it differs from the working, and stock to put back. */
 export async function refundReturnAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {
-  const { member: found, valid } = await member(storeSlug, returnId);
-  if (!valid) return failed(GONE);
+  const { member: found, valid, words } = await member(storeSlug, returnId);
+  if (!valid) return failed(words.actions.gone);
   const detail = await getReturn(found.store.id, returnId);
-  if (!detail) return failed(GONE);
+  if (!detail) return failed(words.actions.gone);
   const typedAmount = text(form, "amount");
   const amountMinor = parsePrice(typedAmount, detail.currency);
-  if (amountMinor === null) return failed(`"${typedAmount}" is not an amount in ${detail.currency}.`);
+  if (amountMinor === null) return failed(notAmount(words, typedAmount, detail.currency));
   const typedShipping = text(form, "shipping");
   const returnShippingMinor = typedShipping === "" ? 0 : parsePrice(typedShipping, detail.currency);
-  if (returnShippingMinor === null) return failed(`"${typedShipping}" is not an amount in ${detail.currency}.`);
+  if (returnShippingMinor === null) return failed(notAmount(words, typedShipping, detail.currency));
   const restock = detail.lines
     .map((line) => ({ lineId: line.lineId, quantity: Math.floor(Number(form.get(`restock:${line.lineId}`) ?? 0)) || 0 }))
     .filter((item) => item.quantity > 0);
@@ -192,7 +199,7 @@ export async function refundReturnAction(storeSlug: string, returnId: string, _p
     outside: result.outside,
   });
   refresh();
-  return done(result.outside ? "Recorded as refunded outside Kaizena Flow's Stripe." : "Refunded.");
+  return done(result.outside ? words.forms.refundedOutside : words.forms.refunded);
 }
 
 export async function closeReturnAction(storeSlug: string, returnId: string, _previous: FormState, form: FormData): Promise<FormState> {
@@ -201,7 +208,7 @@ export async function closeReturnAction(storeSlug: string, returnId: string, _pr
     returnId,
     "return.closed",
     (m) => closeReturn(m.store.id, { returnId, note: text(form, "note") }, m.account.id, { confirmNoRefund: form.get("confirmNoRefund") === "on" }),
-    "Closed.",
+    (w) => w.forms.closed,
   );
 }
 
@@ -211,7 +218,7 @@ export async function cancelReturnAction(storeSlug: string, returnId: string, _p
     returnId,
     "return.cancelled",
     (m) => cancelReturn(m.store.id, { returnId, note: text(form, "note") }, m.account.id),
-    "Cancelled.",
+    (w) => w.forms.cancelled,
   );
 }
 
@@ -221,36 +228,36 @@ export async function returnNoteAction(storeSlug: string, returnId: string, _pre
     returnId,
     "return.note_changed",
     (m) => setReturnNote(m.store.id, { returnId, note: text(form, "note") }),
-    "Saved.",
+    (w) => w.actions.saved,
   );
 }
 
 /** Sends a confirmed withdrawal's acknowledgement again, to the address the customer gave. */
 export async function sendAcknowledgementAction(storeSlug: string, returnId: string): Promise<FormState> {
-  const { member: found, valid } = await member(storeSlug, returnId);
-  if (!valid) return failed(GONE);
+  const { member: found, valid, words } = await member(storeSlug, returnId);
+  if (!valid) return failed(words.actions.gone);
   const detail = await getReturn(found.store.id, returnId);
-  if (!detail?.request || !detail.request.confirmedAt) return failed("This return has no confirmed withdrawal to acknowledge.");
+  if (!detail?.request || !detail.request.confirmedAt) return failed(words.actions.noConfirmed);
   const result = await resendAcknowledgement(found.store.id, detail.request.id);
   if (!result.ok) return failed(result.problem);
   await audit(found.account.id, found.store.id, "return.acknowledgement_resent", { returnId, sent: result.sent });
   refresh();
-  return result.sent ? done("The acknowledgement was sent again.") : failed("The email could not be sent. It is kept, and the system tries again every few minutes.");
+  return result.sent ? done(words.forms.ackSent) : failed(words.actions.emailFailed);
 }
 
 export type RecalculateResult = { ok: true; preview: RefundPreviewData } | { ok: false; problem: string };
 
 /** The refund's working for a return shipping cost the screen typed; the same sum the refund itself works out. */
 export async function recalculateRefundAction(storeSlug: string, returnId: string, shipping: string): Promise<RecalculateResult> {
-  const { member: found, valid } = await member(storeSlug, returnId);
-  if (!valid) return { ok: false, problem: GONE };
+  const { member: found, valid, words } = await member(storeSlug, returnId);
+  if (!valid) return { ok: false, problem: words.actions.gone };
   const detail = await getReturn(found.store.id, returnId);
-  if (!detail) return { ok: false, problem: GONE };
+  if (!detail) return { ok: false, problem: words.actions.gone };
   const typed = String(shipping ?? "").trim().slice(0, 40);
   const minor = typed === "" ? 0 : parsePrice(typed, detail.currency);
-  if (minor === null) return { ok: false, problem: `"${typed}" is not an amount in ${detail.currency}.` };
+  if (minor === null) return { ok: false, problem: notAmount(words, typed, detail.currency) };
   const preview = await previewRefund(found.store.id, returnId, minor);
-  return preview ? { ok: true, preview: previewData(preview) } : { ok: false, problem: GONE };
+  return preview ? { ok: true, preview: previewData(preview) } : { ok: false, problem: words.actions.gone };
 }
 
 /**
@@ -260,12 +267,13 @@ export async function recalculateRefundAction(storeSlug: string, returnId: strin
 export async function markDeliveredAction(storeSlug: string, orderId: string, _previous: FormState, form: FormData): Promise<FormState> {
   const found = await checkPermission(storeSlug, "orders:write");
   if (!found) return { status: "error", messages: [NO_ACCESS] };
-  if (!z.uuid().safeParse(orderId).success) return failed("This order no longer exists.");
+  const words = wordsOf(found);
+  if (!z.uuid().safeParse(orderId).success) return failed(words.actions.orderGone);
   const result = await markDelivered(found.store.id, { orderId, on: text(form, "on") || null }, found.account.id);
   if (!result.ok) return failed(result.problem);
   await audit(found.account.id, found.store.id, "order.delivered", { orderId, deliveredAt: result.deliveredAt });
   refresh();
-  return done("Saved. The customer's 14 days count from that day.");
+  return done(words.actions.deliveredSaved);
 }
 
 /** The lines ticked in the register form: `take:{lineId}` with `qty:{lineId}` beside it. */
@@ -284,9 +292,10 @@ function ticked(form: FormData): { lineId: string; quantity: number }[] {
 export async function registerWithdrawalAction(storeSlug: string, orderId: string, _previous: FormState, form: FormData): Promise<FormState> {
   const found = await checkPermission(storeSlug, "orders:write");
   if (!found) return { status: "error", messages: [NO_ACCESS] };
-  if (!z.uuid().safeParse(orderId).success) return failed("This order no longer exists.");
+  const words = wordsOf(found);
+  if (!z.uuid().safeParse(orderId).success) return failed(words.actions.orderGone);
   const order = await getOrder(found.store.id, orderId);
-  if (!order) return failed("This order no longer exists.");
+  if (!order) return failed(words.actions.orderGone);
   const result = await registerWithdrawal(
     found.store.id,
     {
@@ -305,6 +314,6 @@ export async function registerWithdrawalAction(storeSlug: string, orderId: strin
   await audit(found.account.id, found.store.id, "return.withdrawal_registered", { orderId, returnId: result.returnId, channel: text(form, "channel") });
   refresh();
   return result.acknowledged
-    ? done(`Registered as ${result.number}. The customer has been sent the acknowledgement.`)
-    : done(`Registered as ${result.number}. The acknowledgement could not be sent yet: it is kept, and the system tries again every few minutes.`);
+    ? done(fillWords(words.actions.registered, { number: result.number }))
+    : done(fillWords(words.actions.registeredNotSent, { number: result.number }));
 }

@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { formatMoney } from "@/lib/money";
-import { countsSentence, dayText, EXCHANGE_FILTERS, EXCHANGE_MARK_LABELS, KIND_FILTERS, queueHref, STATUS_FILTERS, type ExchangeMark } from "@/lib/return-admin";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
+import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, statusFilters, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
 import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
@@ -23,6 +25,7 @@ export function ReturnsQueueView({
   timeZone,
   locale = "en-GB",
   exchange = null,
+  words: w = returnsEn,
 }: {
   /** `/admin/{store}/returns` */
   base: string;
@@ -33,7 +36,9 @@ export function ReturnsQueueView({
   counts: ReturnCounts;
   timeZone: string;
   locale?: string;
+  words?: ReturnsMessages;
 }) {
+  const q = w.queue;
   const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;
   const pages = Math.max(1, Math.ceil(queue.total / queue.pageSize));
   const orders = base.replace(/\/returns$/, "/orders");
@@ -41,30 +46,27 @@ export function ReturnsQueueView({
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader
-          title="Returns"
-          description={<>Withdrawals are the customer&apos;s legal right to change their mind: you cannot refuse them, and the refund is due within 14 days of being told. Return requests are inside your own longer window, and you may approve or decline them.</>}
+          title={q.title}
+          description={q.description}
         />
-        <p className="mt-1 text-sm text-muted">
-          A customer who withdrew by email, letter or phone, or whose statement the form could not match to an order, has still withdrawn: open the order
-          from Orders and register it under Returns and withdrawals.
-        </p>
+        <p className="mt-1 text-sm text-muted">{q.outside}</p>
         <p role="status" className="mt-1 text-sm">
-          {countsSentence(counts)}
+          {countsSentence(counts, w)}
         </p>
       </div>
 
       <StatGrid>
-        <Stat label="Open" value={counts.open} href={base} />
-        <Stat label="To approve" value={counts.requested} href={queueHref(base, { status: "requested" })} />
-        <Stat label="Past the refund deadline" value={counts.overdue} sub={counts.overdue > 0 ? "The law gives 14 days" : undefined} href={queueHref(base, { overdue: true })} />
-        <Stat label="Acknowledgement not sent" value={counts.acknowledgementPending} sub={counts.acknowledgementPending > 0 ? "Open it and send it again" : undefined} />
+        <Stat label={q.open} value={counts.open} href={base} />
+        <Stat label={q.toApprove} value={counts.requested} href={queueHref(base, { status: "requested" })} />
+        <Stat label={q.pastDeadline} value={counts.overdue} sub={counts.overdue > 0 ? q.lawGives : undefined} href={queueHref(base, { overdue: true })} />
+        <Stat label={q.notSent} value={counts.acknowledgementPending} sub={counts.acknowledgementPending > 0 ? q.sendAgainHint : undefined} />
       </StatGrid>
 
-      <form method="get" action={base} className="flex flex-wrap items-end gap-3" aria-label="Filter the returns">
+      <form method="get" action={base} className="flex flex-wrap items-end gap-3" aria-label={q.filterLabel}>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Status
+          {q.status}
           <select name="status" defaultValue={filter.status} className={control}>
-            {STATUS_FILTERS.map((option) => (
+            {statusFilters(w).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -72,9 +74,9 @@ export function ReturnsQueueView({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Kind
+          {q.kind}
           <select name="kind" defaultValue={filter.kind} className={control}>
-            {KIND_FILTERS.map((option) => (
+            {kindFilters(w).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -82,9 +84,9 @@ export function ReturnsQueueView({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Exchange
+          {q.exchange}
           <select name="exchange" defaultValue={exchange ?? ""} className={control}>
-            {EXCHANGE_FILTERS.map((option) => (
+            {exchangeFilters(w).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -92,32 +94,30 @@ export function ReturnsQueueView({
           </select>
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          Search
-          <input name="q" type="search" defaultValue={filter.q} placeholder="Return, order, name or email" maxLength={100} className={`${control} w-full`} />
+          {q.search}
+          <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className={`${control} w-full`} />
         </label>
         <label className="flex min-h-10 items-center gap-2 text-sm">
           <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
-          Past the refund deadline
+          {q.pastDeadline}
         </label>
         <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          Filter
+          {q.filter}
         </button>
         {filtered && (
           <Link href={base} className="flex min-h-10 items-center text-sm underline">
-            Clear
+            {q.clear}
           </Link>
         )}
       </form>
 
       {queue.rows.length === 0 ? (
         <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
-          {filtered
-            ? "No returns match. Change the filter or clear it."
-            : "No returns are open. Withdrawals and return requests appear here as customers make them: they use the Withdraw from the contract link in the order emails and the store's withdrawal page."}
+          {filtered ? q.noMatch : q.empty}
         </p>
       ) : (
         <Card compact>
-          <List label="Returns">
+          <List label={q.list}>
             {queue.rows.map((row) => (
               <ListRow key={row.id}>
                 <RowLead
@@ -127,25 +127,25 @@ export function ReturnsQueueView({
                     <>
                       {row.name || row.email || "–"} ·{" "}
                       <Link href={`${orders}/${row.orderId}`} className="underline-offset-2 hover:underline">
-                        Order #{row.orderNumber}
+                        {fillWords(q.order, { number: row.orderNumber })}
                       </Link>
                       {" · "}
-                      {row.units === 1 ? "1 unit" : `${row.units} units`} · made <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
-                      {row.acknowledgementPending && <span className="block text-danger-text">Acknowledgement not sent</span>}
-                      {row.labelFailed && <span className="block text-warning-text">Label not booked</span>}
+                      {countWords(row.units, q.units)} · {q.made} <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone, locale)}</time>
+                      {row.acknowledgementPending && <span className="block text-danger-text">{q.notSent}</span>}
+                      {row.labelFailed && <span className="block text-warning-text">{q.labelNotBooked}</span>}
                     </>
                   }
                 />
-                {row.exchange && <Chip signal={row.exchange === "waiting_payment" ? "warning" : row.exchange === "confirmed" ? "positive" : "insight"}>{EXCHANGE_MARK_LABELS[row.exchange]}</Chip>}
-                <KindBadge kind={row.kind} />
-                <StatusBadge status={row.status} />
+                {row.exchange && <Chip signal={row.exchange === "waiting_payment" ? "warning" : row.exchange === "confirmed" ? "positive" : "insight"}>{w.labels.exchangeMarks[row.exchange]}</Chip>}
+                <KindBadge kind={row.kind} words={w} />
+                <StatusBadge status={row.status} words={w} />
                 <RowAmount>
                   {row.refundMinor !== null ? (
                     formatMoney(row.refundMinor, row.currency, locale)
                   ) : (
                     <>
-                      <DueMark due={row.due} timeZone={timeZone} />
-                      {row.status === "requested" && <span className="block text-body text-muted">Waiting for your answer</span>}
+                      <DueMark due={row.due} timeZone={timeZone} words={w} locale={locale} />
+                      {row.status === "requested" && <span className="block text-body text-muted">{q.waitingAnswer}</span>}
                     </>
                   )}
                 </RowAmount>
@@ -156,23 +156,23 @@ export function ReturnsQueueView({
       )}
 
       {pages > 1 && (
-        <nav aria-label="Pages of returns" className="flex items-center gap-3 text-sm">
+        <nav aria-label={q.pages} className="flex items-center gap-3 text-sm">
           {queue.page > 1 ? (
             <Link href={queueHref(base, { ...filter, exchange, page: queue.page - 1 })} className="underline">
-              Previous
+              {q.previous}
             </Link>
           ) : (
-            <span className="text-muted">Previous</span>
+            <span className="text-muted">{q.previous}</span>
           )}
           <span className="text-muted">
-            Page {queue.page} of {pages} · {queue.total} returns
+            {fillWords(q.pageOf, { page: queue.page, pages, total: queue.total })}
           </span>
           {queue.page < pages ? (
             <Link href={queueHref(base, { ...filter, exchange, page: queue.page + 1 })} className="underline">
-              Next
+              {q.next}
             </Link>
           ) : (
-            <span className="text-muted">Next</span>
+            <span className="text-muted">{q.next}</span>
           )}
         </nav>
       )}

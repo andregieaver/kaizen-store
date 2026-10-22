@@ -1,4 +1,6 @@
 import { Card, Chip } from "@/components/admin/ui";
+import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import { fillWords } from "@/lib/admin-fill";
 import {
   DISPUTE_STATUS_WORDS,
   disputeDashboardUrl,
@@ -6,7 +8,6 @@ import {
   disputeReasonWords,
   methodWords,
   riskShown,
-  riskWords,
   type DisputeStatus,
 } from "@/lib/payment-facts";
 
@@ -48,7 +49,10 @@ export function PaymentCard({
   disputes,
   money,
   due,
+  words: w = orderEn.payment,
 }: {
+  /** The `order` catalogue's `payment` words in the account's language (D312 A4). */
+  words?: OrderMessages["payment"];
   payments: readonly PaymentCardPayment[];
   disputes: readonly PaymentCardDispute[];
   money: (minor: number, currency: string) => string;
@@ -57,19 +61,19 @@ export function PaymentCard({
 }) {
   if (payments.length === 0 && disputes.length === 0) return null;
   return (
-    <Card title="Payment" className="text-sm" compact>
+    <Card title={w.title} className="text-sm" compact>
       <ul className="flex flex-col gap-2">
         {payments.map((p) => (
           <li key={p.id} className="flex flex-col gap-1">
             <span className="flex flex-wrap items-baseline justify-between gap-2">
-              <span>{p.provider === "stripe" && !p.read ? "Unknown (not read from Stripe yet)" : methodWords(p)}</span>
+              <span>{p.provider === "stripe" && !p.read ? w.unknown : methodWords(p)}</span>
               <span className="tabular-nums">{money(p.amountMinor, p.currency)}</span>
             </span>
             {riskShown(p.riskLevel) && (
               <span>
                 <Chip signal={p.riskLevel === "highest" ? "danger" : "warning"} dot>
-                  {riskWords(p.riskLevel)}
-                  {p.riskScore !== null && ` (${p.riskScore} of 100)`}
+                  {p.riskLevel === "highest" ? w.riskHighest : w.riskElevated}
+                  {p.riskScore !== null && fillWords(w.score, { score: p.riskScore })}
                 </Chip>
               </span>
             )}
@@ -80,35 +84,35 @@ export function PaymentCard({
         <div key={d.id} className="mt-3 flex flex-col gap-1 border-t border-line pt-3">
           <span className="flex flex-wrap items-center gap-2">
             <Chip signal={d.outcome === "won" ? "positive" : d.outcome === "lost" || disputeNeedsResponse(d.status) ? "danger" : "warning"} dot>
-              {d.outcome === "lost" ? "Dispute lost" : d.outcome === "won" ? "Dispute closed" : "Disputed"}
+              {d.outcome === "lost" ? w.disputeLost : d.outcome === "won" ? w.disputeClosed : w.disputed}
             </Chip>
             <span className="tabular-nums">{money(d.amountMinor, d.currency)}</span>
           </span>
           <dl className="flex flex-col gap-1">
             <div className="flex gap-2">
-              <dt className="w-20 shrink-0 text-muted">Reason</dt>
+              <dt className="w-20 shrink-0 text-muted">{w.reason}</dt>
               <dd className="min-w-0">{disputeReasonWords(d.reason)}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-20 shrink-0 text-muted">Status</dt>
-              <dd className="min-w-0">{DISPUTE_STATUS_WORDS[d.status]}</dd>
+              <dt className="w-20 shrink-0 text-muted">{w.status}</dt>
+              <dd className="min-w-0">{w.statuses[d.status] ?? DISPUTE_STATUS_WORDS[d.status]}</dd>
             </div>
             {d.evidenceDueBy && !d.outcome && (
               <div className="flex gap-2">
-                <dt className="w-20 shrink-0 text-muted">Evidence due</dt>
+                <dt className="w-20 shrink-0 text-muted">{w.evidenceDue}</dt>
                 <dd className="min-w-0">{due(d.evidenceDueBy)}</dd>
               </div>
             )}
             {d.outcome === "lost" && d.feeMinor !== null && d.feeMinor > 0 && (
               <div className="flex gap-2">
-                <dt className="w-20 shrink-0 text-muted">Stripe&apos;s fee</dt>
+                <dt className="w-20 shrink-0 text-muted">{w.stripeFee}</dt>
                 <dd className="min-w-0 tabular-nums">{money(d.feeMinor, d.currency)}</dd>
               </div>
             )}
           </dl>
-          {!d.outcome && <p className="text-xs text-muted">Evidence is sent in your Stripe Dashboard. Without it the dispute is lost.</p>}
+          {!d.outcome && <p className="text-xs text-muted">{w.evidenceNote}</p>}
           <a href={disputeDashboardUrl(d.reference, d.testMode)} target="_blank" rel="noreferrer" className="mt-1 inline-flex min-h-10 items-center self-start rounded-pill border border-edge px-4">
-            Open in Stripe
+            {w.openInStripe}
           </a>
         </div>
       ))}

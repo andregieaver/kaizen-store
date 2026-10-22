@@ -5,6 +5,9 @@ import { useActionState, useState } from "react";
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import { field, hint, primary } from "@/components/admin/data/ui";
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
 
 /** A physical line as the *Send* card shows it (D174 2.1): what was ordered, sent, withdrawn before sending and what is left. */
 export type ParcelRow = {
@@ -25,11 +28,11 @@ export type ParcelRow = {
 const initial: OrderActionState = { ok: false, message: null };
 
 /** Why a line has nothing in this parcel, in words. */
-function nothingLeft(row: ParcelRow): string {
-  if ((row.closed ?? 0) > 0) return row.sent === 0 ? "Will not be sent" : "The rest will not be sent";
-  if (row.withdrawn > 0 && row.sent === 0) return "Withdrawn before sending";
-  if (row.withdrawn > 0) return "The rest was withdrawn";
-  return "All sent";
+function nothingLeft(row: ParcelRow, w: OrderMessages["send"] = orderEn.send): string {
+  if ((row.closed ?? 0) > 0) return row.sent === 0 ? w.willNotBeSent : w.restWillNotBeSent;
+  if (row.withdrawn > 0 && row.sent === 0) return w.withdrawnBefore;
+  if (row.withdrawn > 0) return w.restWithdrawn;
+  return w.allSent;
 }
 
 /**
@@ -45,7 +48,7 @@ export function SendParcelForm({
   carriers,
   hasEmail,
   whole = false,
-  submitLabel = "Send this parcel",
+  submitLabel,
   send,
   notifyOff = null,
 }: {
@@ -61,6 +64,8 @@ export function SendParcelForm({
   send: (previous: OrderActionState, form: FormData) => Promise<OrderActionState>;
 }) {
   const [state, action, pending] = useActionState(send, initial);
+  const words = useAdminText("order");
+  const w = words.send;
   const [carrier, setCarrier] = useState(carriers[0]?.id ?? "other");
   const left = rows.reduce((sum, r) => sum + r.toSend, 0);
   return (
@@ -70,15 +75,15 @@ export function SendParcelForm({
       {rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[34rem] text-left text-sm">
-            <caption className="sr-only">The items to send</caption>
+            <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr className="border-b border-line">
-                <th scope="col" className="py-2 font-medium">Item</th>
-                <th scope="col" className="py-2 text-right font-medium">Ordered</th>
-                <th scope="col" className="py-2 text-right font-medium">Sent</th>
-                <th scope="col" className="py-2 text-right font-medium">Withdrawn</th>
-                <th scope="col" className="py-2 text-right font-medium">To send</th>
-                <th scope="col" className="py-2 pl-3 text-right font-medium">{whole ? "Sent now" : "In this parcel"}</th>
+                <th scope="col" className="py-2 font-medium">{w.item}</th>
+                <th scope="col" className="py-2 text-right font-medium">{w.ordered}</th>
+                <th scope="col" className="py-2 text-right font-medium">{w.sent}</th>
+                <th scope="col" className="py-2 text-right font-medium">{w.withdrawn}</th>
+                <th scope="col" className="py-2 text-right font-medium">{w.toSend}</th>
+                <th scope="col" className="py-2 pl-3 text-right font-medium">{whole ? w.sentNow : w.inThisParcel}</th>
               </tr>
             </thead>
             <tbody>
@@ -87,10 +92,10 @@ export function SendParcelForm({
                   <td className="py-2">
                     {row.title}
                     {row.sku && <span className="block font-mono text-xs text-muted">{row.sku}</span>}
-                    {(row.closed ?? 0) > 0 && <span className="block text-xs text-muted">{row.closed} will not be sent</span>}
+                    {(row.closed ?? 0) > 0 && <span className="block text-xs text-muted">{fillWords(w.closedUnits, { n: row.closed ?? 0 })}</span>}
                     {row.backordered > 0 && row.toSend > 0 && (
                       <span className="block text-xs font-medium">
-                        {row.backordered} on backorder{row.backorderDays ? ` (within ${row.backorderDays} ${row.backorderDays === 1 ? "day" : "days"})` : ""}: check you have them
+                        {fillWords(w.onBackorder, { n: row.backordered, days: row.backorderDays ? countWords(row.backorderDays, w.within) : "" })}
                       </span>
                     )}
                   </td>
@@ -100,7 +105,7 @@ export function SendParcelForm({
                   <td className="py-2 text-right tabular-nums">{row.toSend}</td>
                   <td className="py-2 pl-3 text-right">
                     {row.toSend === 0 ? (
-                      <span className="text-xs">{nothingLeft(row)}</span>
+                      <span className="text-xs">{nothingLeft(row, w)}</span>
                     ) : whole ? (
                       <span className="tabular-nums">{row.toSend}</span>
                     ) : (
@@ -112,7 +117,7 @@ export function SendParcelForm({
                         max={row.toSend}
                         step={1}
                         defaultValue={row.toSend}
-                        aria-label={`In this parcel: ${row.title}`}
+                        aria-label={fillWords(w.inThisParcelOf, { title: row.title })}
                         className={`${field} w-20 text-right tabular-nums`}
                       />
                     )}
@@ -124,16 +129,13 @@ export function SendParcelForm({
         </div>
       )}
       {whole ? (
-        <p className={hint}>A subscription box delivery is sent whole, not in parts.</p>
+        <p className={hint}>{w.whole}</p>
       ) : (
-        <p className={hint}>
-          {left} {left === 1 ? "unit is" : "units are"} still to send. Lower a number to send the rest later in another parcel; 0 leaves the item out of this one. Units withdrawn before
-          sending are never sent.
-        </p>
+        <p className={hint}>{countWords(left, w.leftHint)}</p>
       )}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Carrier
+          {w.carrier}
           <select name="carrier" value={carrier} onChange={(e) => setCarrier(e.target.value)} className={field}>
             {carriers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -144,7 +146,7 @@ export function SendParcelForm({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           <span>
-            Tracking number <span className="font-normal text-muted">(optional)</span>
+            {w.trackingNumber} <span className="font-normal text-muted">{w.optional}</span>
           </span>
           <input name="trackingNumber" autoComplete="off" spellCheck={false} className={`${field} font-mono`} />
         </label>
@@ -152,21 +154,21 @@ export function SendParcelForm({
       {carrier === "other" && (
         <label className="flex flex-col gap-1 text-sm font-medium">
           <span>
-            Tracking link <span className="font-normal text-muted">(optional)</span>
+            {w.trackingLink} <span className="font-normal text-muted">{w.optional}</span>
           </span>
           <input name="trackingUrl" type="url" placeholder="https://…" className={field} />
         </label>
       )}
-      {hasEmail && notifyOff && <NotifySwitchedOff href={notifyOff}>Tell the customer: email them what is in this parcel and how to follow it</NotifySwitchedOff>}
+      {hasEmail && notifyOff && <NotifySwitchedOff href={notifyOff}>{w.tell}</NotifySwitchedOff>}
       {hasEmail && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="notify" defaultChecked className="size-4" />
-          Tell the customer: email them what is in this parcel and how to follow it
+          {w.tell}
         </label>
       )}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || left === 0} className={primary}>
-          {pending ? "Saving …" : submitLabel}
+          {pending ? w.saving : (submitLabel ?? words.page.sendThis)}
         </button>
         <p role="status" aria-live="polite" className={`text-sm empty:hidden ${state.ok ? "" : "text-danger-text "}`}>
           {state.message}

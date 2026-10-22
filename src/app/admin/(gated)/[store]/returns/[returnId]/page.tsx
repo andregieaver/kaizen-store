@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { ReturnDetailView, type ReturnDetailActions } from "@/components/admin/returns/detail-view";
 import { ExchangeCard } from "@/components/admin/returns/exchange-card";
 import { LabelCard } from "@/components/admin/returns/label-card";
 import type { BuilderForm } from "@/lib/exchange-form";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { previewData, todayIn } from "@/lib/return-admin";
 import { orderDeliveryAddress } from "@/server/exchange-admin";
@@ -63,6 +66,9 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
   const at = [store.slug, returnId] as const;
   const canWrite = memberCan(gated, "orders:write");
   const today = todayIn(store.timeZone);
+  const lang = adminLangOf(gated.account.adminLocale);
+  const words = adminText(lang, "returns");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
 
   // The exchange (D239): the return's live exchange, else its newest; why it cannot be exchanged; the builder's start (the order's address, a draft's lines).
   const [exchanges, block, label, mayRecordOutside] = await Promise.all([
@@ -116,6 +122,7 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
     recalculate: recalculateRefundAction.bind(null, ...at),
   };
   return (
+    <AdminTextScope texts={{ returns: words }}>
     <ReturnDetailView
       base={`/admin/${store.slug}`}
       detail={detail}
@@ -123,6 +130,8 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
       actions={actions}
       timeZone={store.timeZone}
       today={today}
+      locale={locale}
+      words={words}
       exchangeCard={
         <ExchangeCard
           base={`/admin/${store.slug}`}
@@ -156,6 +165,8 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
           }
           timeZone={store.timeZone}
           today={today}
+          locale={locale}
+          words={words}
         />
       }
       labelCard={
@@ -166,8 +177,11 @@ export default async function ReturnPage({ params }: PageProps<"/admin/[store]/r
           book={canWrite ? bookReturnLabelAction.bind(null, ...at) : null}
           canWrite={canWrite}
           timeZone={store.timeZone}
+          locale={locale}
+          words={words}
         />
       }
     />
+    </AdminTextScope>
   );
 }

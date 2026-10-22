@@ -41,11 +41,8 @@ import { putBackWords, takenFromWords } from "@/lib/inventory-admin";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
-import { ARCHIVE_REASON_TEXT, archiveBlock } from "@/lib/order-archive";
-import { MANUAL_METHOD_LABELS } from "@/lib/draft-input";
-import { FULFILMENT_STATE_LABELS } from "@/lib/fulfilment";
+import { archiveBlock } from "@/lib/order-archive";
 import { fulfilmentEventText } from "@/lib/fulfilment-events-text";
-import { FULFILMENT_EVENT_LABELS, ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops-events";
 import { opsEventText } from "@/lib/order-ops-events-text";
 import { disputeEventText, dueWords } from "@/lib/payment-facts";
 import { PaymentCard } from "@/components/admin/orders/payment-card";
@@ -54,7 +51,6 @@ import { captureEventText } from "@/lib/capture";
 import { orderPaymentFacts } from "@/server/payment-disputes";
 import { orderCapture } from "@/server/payment-capture";
 import { captureOrderAction, releaseCardAction } from "../capture-actions";
-import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
 import { formatDeliveryDate } from "@/lib/standing-orders";
@@ -76,7 +72,7 @@ import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
 import { CARRIERS, getOrderAdmin, liveShipments } from "@/server/order-admin";
-import { dayWords, TERMS_LABELS, TERMS_STATE_LABELS } from "@/lib/payment-terms";
+import { dayWords } from "@/lib/payment-terms";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { exchangeOrdersOfReturns } from "@/server/exchange-admin";
 import { orderPrivacy } from "@/server/privacy-pages";
@@ -98,30 +94,13 @@ import { markDeliveredAction, registerWithdrawalAction } from "../../returns/act
 import { collectedAction, outForDeliveryAction, readyForPickupAction } from "../handover-actions";
 import { todayIn } from "@/lib/work-dates";
 import { PageHeader } from "@/components/admin/ui";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 export const metadata: Metadata = { title: "Order" };
-
-const EVENT_LABELS: Record<string, string> = {
-  "order.placed": "Checkout started",
-  "order.paid": "Paid",
-  "order.cancelled": "Checkout not completed",
-  "stock.short": "Not enough stock for everything paid for",
-  "stock.backordered": "Some items were sold on backorder",
-  "payment.started": "Payment opened",
-  "order.sent": "Sent",
-  "order.refunded": "Refunded",
-  "order.restocked": "Put back in stock",
-  "order.cancelled_by_staff": "Cancelled and refunded",
-  "order.edited": "Customer details changed",
-  "order.delivery_reopened": "Receipt date cleared",
-  "note.added": "Note",
-  "subscription.renewed": "Subscription renewed",
-  "subscription.cancel": "Subscription set to end with the period",
-  "subscription.resume": "Subscription kept after all",
-  "subscription.cancel_now": "Subscription cancelled",
-  ...ORDER_OPS_EVENT_LABELS,
-  ...FULFILMENT_EVENT_LABELS,
-};
 
 const card = "rounded-lg border border-line bg-card p-5";
 
@@ -138,6 +117,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const shopOff = await requireShopOrAfterSale(member);
   if (shopOff) return shopOff;
   const { store } = member;
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = adminText(lang, "order");
+  const w = words.page;
+  const statuses = adminText(lang, "common").orderStatus;
+  // The admin's own locale for the dates the page wrote in English (D312); money and times keep the store's.
+  const adminLocale = ADMIN_LANG_FACTS[lang].locale;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices] = await Promise.all([
     getOrderAdmin(store.id, orderId),
@@ -234,17 +219,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
   // History: the order's events and its emails, newest first.
   const history: { at: string; node: ReactNode }[] = [
-    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} currency={order.currency} base={`/admin/${store.slug}`} locationNames={locationNames} /> })),
+    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} currency={order.currency} base={`/admin/${store.slug}`} locationNames={locationNames} words={words} /> })),
     ...emails.map((email) => ({
       at: email.createdAt,
       node: (
         <>
-          Email:{" "}
+          {w.email}{" "}
           <Link href={`/admin/${store.slug}/emails/${email.id}`} className="underline">
             {email.subject}
           </Link>
           {email.status !== "sent" && (
-            <span className="text-muted"> ({email.status === "logged" ? "not sent: email is not set up" : email.status})</span>
+            <span className="text-muted"> ({email.status === "logged" ? w.notSentNoEmail : email.status})</span>
           )}
         </>
       ),
@@ -252,19 +237,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["order", "drafts"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
-          back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
-          title={<>Order #{order.number}</>}
-          description={<>{cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : order.awaitingBank ? "Waiting for the bank: paid by bank debit, the money arrives in a few days" : STATUS_LABELS[order.status]}{fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}{awaitingEdit && " · change awaiting payment"}{order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}{when(order.placedAt)} ·{" "}{order.marketCode}{order.archivedAt && " · archived"}{order.copied && " · copied history"}{order.source === "draft" && (<>{" · "}staff-made{order.draft?.number && (<>{" from draft "}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && ` by ${order.madeBy.email}`}</>)}{order.exchange && (<>{" · "}exchange for return{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{" of order "}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">part of a subscription</Link></>)}</>}
+          back={{ href: `/admin/${store.slug}/orders`, label: w.back }}
+          title={<>{fillWords(w.title, { number: order.number })}</>}
+          description={<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
         />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
             {canWrite && (
               <ArchiveButton
                 archived={Boolean(order.archivedAt)}
-                blocked={archiveBlocked ? ARCHIVE_REASON_TEXT[archiveBlocked] : null}
+                blocked={archiveBlocked ? words.archiveReasons[archiveBlocked] : null}
                 archive={archiveOrderAction.bind(null, store.slug, order.id)}
                 unarchive={unarchiveOrderAction.bind(null, store.slug, order.id)}
               />
@@ -275,7 +261,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 href={`/admin/${store.slug}/orders/export?numbers=${encodeURIComponent(order.number)}`}
                 className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm"
               >
-                Export this order
+                {w.exportOrder}
               </Link>
             )}
             {paid && order.ships && !order.copied && (
@@ -284,7 +270,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 target="_blank"
                 className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm"
               >
-                {order.gift ? "Print gift slip" : "Packing slip"}
+                {order.gift ? w.printGiftSlip : w.packingSlip}
               </Link>
             )}
             {paid && order.email && <ResendButton {...ids} />}
@@ -298,6 +284,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           hold={hold}
           base={`/admin/${store.slug}`}
           when={when}
+          words={words.hold}
           release={canWrite && hold ? releaseHoldAction.bind(null, store.slug, order.id) : null}
           holdAction={canWrite && !hold && order.status === "paid" && order.ships ? holdOrderAction.bind(null, store.slug, order.id) : null}
         />
@@ -305,32 +292,31 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
       {owedUnits > 0 && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          <span className="font-medium">Waiting for stock.</span> {owedUnits} {owedUnits === 1 ? "unit" : "units"} on this order {owedUnits === 1 ? "was" : "were"} sold on backorder and {owedUnits === 1 ? "has" : "have"} not been received yet. The customer was told when to expect
-          them; send the order when the stock is in. Receive stock on the{" "}
+          <span className="font-medium">{w.waitingForStock}</span> {countWords(owedUnits, w.owedText)}{" "}
           <Link href={`/admin/${store.slug}/inventory`} className="underline underline-offset-2">
-            Inventory page
+            {w.inventoryPage}
           </Link>
           .
         </p>
       )}
       {events.some((e) => e.type === "stock.short") && (
         <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
-          Some items were paid for after their stock ran out. Contact the customer before sending.
+          {w.stockShort}
         </p>
       )}
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <section aria-labelledby="items" className={card}>
-            <h2 id="items" className="mb-3 text-title text-ink">Items</h2>
+            <h2 id="items" className="mb-3 text-title text-ink">{w.items}</h2>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
-                    <th scope="col" className="py-2 font-medium">Product</th>
-                    <th scope="col" className="py-2 font-medium">SKU</th>
-                    <th scope="col" className="py-2 text-right font-medium">Qty</th>
-                    <th scope="col" className="py-2 text-right font-medium">Total</th>
+                    <th scope="col" className="py-2 font-medium">{w.product}</th>
+                    <th scope="col" className="py-2 font-medium">{w.sku}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{w.qty}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{w.total}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,30 +324,30 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     <tr key={line.id} className="border-b border-line">
                       <td className="py-2">
                         {line.title}
-                        {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
-                        {line.custom && <span className="block text-xs text-muted">Custom item</span>}
+                        {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">{w.digital}</span>}
+                        {line.custom && <span className="block text-xs text-muted">{w.customItem}</span>}
                         {!line.custom && line.listPriceMinor !== null && line.listPriceMinor !== line.unitPriceMinor && (
-                          <span className="block text-xs text-muted">Custom price {money(line.unitPriceMinor)} (list price {money(line.listPriceMinor)})</span>
+                          <span className="block text-xs text-muted">{fillWords(w.customPrice, { price: money(line.unitPriceMinor), list: money(line.listPriceMinor) })}</span>
                         )}
                         {line.booking && (
                           <span className="block text-xs">
                             {bookingWhen(line.booking, "en-GB", t("en"))}
-                            {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? "held until paid" : "not booked"}`}
+                            {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? w.heldUntilPaid : w.notBooked}`}
                           </span>
                         )}
                         {line.backorder && (
                           <span className="block text-xs font-medium">
-                            Backordered: {line.backorder.units} of {line.quantity}, to ship within {line.backorder.days} {line.backorder.days === 1 ? "day" : "days"}
+                            {countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
                           </span>
                         )}
-                        {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">Taken from {takenFrom(line.variantId, stockByVariant, stockLocations)}</span>}
-                        {line.restocked > 0 && <span className="block text-xs text-muted">{line.restocked} put back in stock</span>}
+                        {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">{fillWords(w.takenFrom, { places: takenFrom(line.variantId, stockByVariant, stockLocations) })}</span>}
+                        {line.restocked > 0 && <span className="block text-xs text-muted">{fillWords(w.restocked, { n: line.restocked })}</span>}
                         {fromWishlists
                           .filter((add) => line.variantId && add.variantId === line.variantId)
                           .slice(0, 1)
                           .map((add) => (
                             <span key={add.id} className="block text-xs text-muted">
-                              From the wishlist{" "}
+                              {w.fromWishlist}{" "}
                               {add.wishlist.id ? (
                                 <Link href={`/admin/${store.slug}/wishlists/${add.wishlist.id}`} className="underline">
                                   {add.wishlist.name}
@@ -374,19 +360,19 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       </td>
                       <td className="py-2 font-mono text-xs">{line.sku}</td>
                       <td className="py-2 text-right">{line.quantity}</td>
-                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">Free gift</span>}</td>
+                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">{w.freeGift}</span>}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <dl className="mt-3 flex flex-col gap-1 text-sm">
-              <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(order.subtotalMinor)}</dd></div>
-              {order.ships && <div className="flex justify-between"><dt>Shipping{order.delivery && <span className="text-muted"> ({order.delivery.label})</span>}</dt><dd>{money(order.shippingMinor)}</dd></div>}
+              <div className="flex justify-between"><dt>{w.subtotal}</dt><dd>{money(order.subtotalMinor)}</dd></div>
+              {order.ships && <div className="flex justify-between"><dt>{w.shipping}{order.delivery && <span className="text-muted"> ({order.delivery.label})</span>}</dt><dd>{money(order.shippingMinor)}</dd></div>}
               {order.discountMinor > 0 && (
                 <div className="flex justify-between">
                   <dt>
-                    Discount
+                    {w.discount}
                     {order.campaignDiscountMinor > 0 && order.campaignLabel && (
                       <span className="text-xs text-muted">
                         {" "}
@@ -415,34 +401,33 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               {order.staffDiscountMinor > 0 && (
                 <div className="flex justify-between">
                   <dt>
-                    {order.staffDiscountLabel ?? "Discount"} <span className="text-xs text-muted">(staff discount)</span>
+                    {order.staffDiscountLabel ?? w.discount} <span className="text-xs text-muted">{w.staffDiscount}</span>
                   </dt>
                   <dd>−{money(order.staffDiscountMinor)}</dd>
                 </div>
               )}
-              <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} />
-              <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
+              <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} words={words.referral} />
+              <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
               <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} />
-              <div className="flex justify-between font-medium"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
-              <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? "VAT charged (reverse charge)" : "VAT included (standard rate)"}</dt><dd>{money(order.taxMinor)}</dd></div>
+              <div className="flex justify-between font-medium"><dt>{w.total}</dt><dd>{money(order.totalMinor)}</dd></div>
+              <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? w.vatReverse : w.vatIncluded}</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.balanceMinor > 0 && (
-                <div className="flex justify-between"><dt>To pay at the appointment</dt><dd>{money(order.balanceMinor)}</dd></div>
+                <div className="flex justify-between"><dt>{w.payAtAppointment}</dt><dd>{money(order.balanceMinor)}</dd></div>
               )}
-              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
+              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
               {order.company && (
-                <div className="flex justify-between text-muted"><dt>Total excl. VAT</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
+                <div className="flex justify-between text-muted"><dt>{w.totalExVat}</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
               )}
               {order.refundedMinor > 0 && (
                 <>
-                  <div className="flex justify-between border-t border-line pt-1"><dt>Refunded</dt><dd>−{money(order.refundedMinor)}</dd></div>
-                  <div className="flex justify-between font-medium"><dt>Kept</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
+                  <div className="flex justify-between border-t border-line pt-1"><dt>{w.refunded}</dt><dd>−{money(order.refundedMinor)}</dd></div>
+                  <div className="flex justify-between font-medium"><dt>{w.kept}</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
                 </>
               )}
             </dl>
             {order.paidOutside && (
               <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
-                Paid outside Kaizena Flow by {MANUAL_METHOD_LABELS[order.paidOutside.method].toLowerCase()}, recorded {when(order.paidOutside.recordedAt)}. Kaizena Flow did not take the money and took no sale fee on it. The invoice says it was
-                paid outside the online checkout.
+                {fillWords(w.paidOutside, { method: words.manualMethods[order.paidOutside.method].toLowerCase(), when: when(order.paidOutside.recordedAt) })}
               </p>
             )}
           </section>
@@ -450,6 +435,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           {editability && (
             <OrderEditCard
               editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
+              words={adminText(lang, "drafts")}
               canWrite={canWrite}
               blockText={editability.text}
               edits={order.edits}
@@ -494,20 +480,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             />
           )}
 
-          {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} />}
+          {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} words={words.referral} />}
 
           {order.paymentTerms && (
             // Bought on payment terms (D293): what is owed and by when; money that arrived outside Kaizena Flow is recorded here.
             <section aria-labelledby="payment-terms" className={card} data-payment-terms={order.paymentTerms.state}>
               <h2 id="payment-terms" className="mb-1 text-title text-ink">
-                Pay by invoice · {TERMS_LABELS[order.paymentTerms.terms]}
+                {fillWords(w.termsTitle, { terms: words.termsLengths[order.paymentTerms.terms] })}
               </h2>
               <p className="mb-3 text-sm text-muted">
                 {order.paymentTerms.state === "paid"
-                  ? `Paid ${when(order.paymentTerms.paidAt!)}. It is a sale from then on.`
+                  ? fillWords(w.termsPaid, { when: when(order.paymentTerms.paidAt!) })
                   : order.paymentTerms.state === "cancelled"
-                    ? "Cancelled before it was paid: the invoice has a credit note."
-                    : `${TERMS_STATE_LABELS[order.paymentTerms.state]}: ${money(order.balanceMinor)} on ${dayWords(order.paymentTerms.dueOn, "en-GB")}. Not a sale until it is paid; the customer can pay from the order page, and is reminded three days before and the day after.`}
+                    ? w.termsCancelled
+                    : fillWords(w.termsDue, { state: words.termsStates[order.paymentTerms.state], amount: money(order.balanceMinor), day: dayWords(order.paymentTerms.dueOn, adminLocale) })}
               </p>
               {order.balanceMinor > 0 && order.paymentTerms.state !== "cancelled" && !order.paymentTerms.paidAt && mayRecordOutside && (
                 <TermsPaidForm {...ids} amountLabel={money(order.balanceMinor)} today={todayIn(store.timeZone)} />
@@ -517,11 +503,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {order.balanceMinor > 0 && order.status !== "cancelled" && !order.paymentTerms && (
             <section aria-labelledby="balance" className={card}>
-              <h2 id="balance" className="mb-1 text-title text-ink">To pay at the appointment</h2>
-              <p className="mb-3 text-sm text-muted">
-                {money(order.balanceMinor)} is paid at the appointment, not online. Mark it paid when the customer has
-                paid you.
-              </p>
+              <h2 id="balance" className="mb-1 text-title text-ink">{w.payAtAppointment}</h2>
+              <p className="mb-3 text-sm text-muted">{fillWords(w.balanceText, { amount: money(order.balanceMinor) })}</p>
               <BalanceForm {...ids} amountLabel={money(order.balanceMinor)} />
             </section>
           )}
@@ -529,13 +512,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           {/* Collected at the store's place, or delivered by its own driver (D237): handed over, never sent as a parcel here. */}
           {sendable && order.ships && order.deliveryMethod !== "ship" && (
             <section aria-labelledby="handover" className={card}>
-              <h2 id="handover" className="mb-3 text-title text-ink">{order.deliveryMethod === "pickup" ? "Pickup" : "Local delivery"}</h2>
+              <h2 id="handover" className="mb-3 text-title text-ink">{order.deliveryMethod === "pickup" ? w.pickup : w.localDelivery}</h2>
               {order.shipments.length > 0 && (
                 <ShipmentList
                   shipments={order.shipments}
                   base={`/admin/${store.slug}/orders/${order.id}`}
                   when={when}
                   emailAgain={null}
+                  words={words.parcels}
                   undo={canWrite && !order.copied && (order.status === "paid" || order.status === "fulfilled") ? (shipmentId) => undoShipmentAction.bind(null, store.slug, order.id, shipmentId) : null}
                   receiptRecorded={Boolean(returns?.deliveredOn)}
                 />
@@ -550,6 +534,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   when={when}
                   ready={readyForPickupAction.bind(null, store.slug, order.id)}
                   collected={collectedAction.bind(null, store.slug, order.id)}
+                  words={words.handover}
                 />
               ) : (
                 <LocalDeliveryPanel
@@ -563,6 +548,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   when={when}
                   out={outForDeliveryAction.bind(null, store.slug, order.id)}
                   delivered={markDeliveredAction.bind(null, store.slug, order.id)}
+                  words={words.handover}
                 />
               )}
             </section>
@@ -571,16 +557,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           {(sendable || toCharge) && order.ships && order.deliveryMethod === "ship" && (
             <section aria-labelledby="sending" className={card}>
               <h2 id="sending" className="mb-3 text-title text-ink">
-                {fulfilment.state === "partly_sent" ? "Partly sent" : sentParcels > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
+                {fulfilment.state === "partly_sent" ? w.partlySentTitle : sentParcels > 0 ? w.sentTitle : toCharge ? w.sendAndCharge : w.sendTheOrder}
               </h2>
               {weekly && toCharge && (
                 <div className="mb-4 flex flex-col gap-1 text-sm">
-                  <p>
-                    Subscription box delivery for {formatDeliveryDate(weekly.date, locale)}. Marking it sent charges {money(order.totalMinor)} to the
-                    customer&apos;s card{weekly.cardLabel ? ` (${weekly.cardLabel})` : ""} first; if the card is refused, it is not marked sent and
-                    the customer is emailed a link to pay.
-                  </p>
-                  {weekly.lastFailure && <p role="alert" className="text-danger-text">Last try: {weekly.lastFailure}</p>}
+                  <p>{fillWords(w.boxDelivery, { date: formatDeliveryDate(weekly.date, locale), amount: money(order.totalMinor), card: weekly.cardLabel ? ` (${weekly.cardLabel})` : "" })}</p>
+                  {weekly.lastFailure && <p role="alert" className="text-danger-text">{fillWords(w.lastTry, { problem: weekly.lastFailure })}</p>}
                 </div>
               )}
               <ShipmentList
@@ -590,12 +572,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 emailAgain={canWrite && order.email ? (shipmentId) => resendShippedAction.bind(null, store.slug, order.id, shipmentId) : null}
                 undo={canWrite && !order.copied && (order.status === "paid" || order.status === "fulfilled") ? (shipmentId) => undoShipmentAction.bind(null, store.slug, order.id, shipmentId) : null}
                 receiptRecorded={Boolean(returns?.deliveredOn)}
+                words={words.parcels}
                 status={(s) =>
                   s.trackingNumber && !s.undone && (trackedCarrier(s) || trackingOf.has(s.id)) ? (
                     <ParcelStatus
                       tracking={trackingOf.get(s.id)}
-                      carrierName={s.carrier || "the carrier"}
+                      carrierName={s.carrier || w.theCarrier}
                       when={when}
+                      words={words.tracking}
                       checkNow={trackingOf.get(s.id)?.followed ? checkParcelNowAction.bind(null, store.slug, order.id, s.id) : null}
                     />
                   ) : null
@@ -604,15 +588,15 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               {receipt && (
                 <p className="mb-4 text-sm text-muted">
                   {receipt.source === "carrier"
-                    ? `Receipt recorded from the carrier's delivered event: ${when(receipt.at)}. Mark delivered on the returns card corrects it.`
+                    ? fillWords(w.receiptCarrier, { when: when(receipt.at) })
                     : receipt.source === "handover"
-                      ? `Handed over: ${when(receipt.at)}.`
-                      : `Delivered (marked by staff): ${when(receipt.at)}.`}
+                      ? fillWords(w.receiptHandover, { when: when(receipt.at) })
+                      : fillWords(w.receiptStaff, { when: when(receipt.at) })}
                 </p>
               )}
               {bring?.complete && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
-                  <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
+                  <summary className="cursor-pointer text-sm font-medium">{fillWords(w.bookWith, { carrier: "Posten / Bring" })}</summary>
                   <div className="mt-3">
                     <BringBooking
                       storeSlug={store.slug}
@@ -629,11 +613,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
-                  <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
+                  <summary className="cursor-pointer text-sm font-medium">{fillWords(w.bookWith, { carrier: "Porterbuddy" })}</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
                       carrierName="Porterbuddy"
-                      chosenText={`delivery ${formatWindow(order.delivery.window, "en-GB", store.timeZone)}`}
+                      chosenText={fillWords(w.deliveryWindow, { window: formatWindow(order.delivery.window, adminLocale, store.timeZone) })}
                       estimatedGrams={estimatedGrams}
                       test={porterbuddy.environment === "test"}
                       hasEmail={Boolean(order.email)}
@@ -646,11 +630,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
-                  <summary className="cursor-pointer text-sm font-medium">Book with Helthjem</summary>
+                  <summary className="cursor-pointer text-sm font-medium">{fillWords(w.bookWith, { carrier: "Helthjem" })}</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
                       carrierName="Helthjem"
-                      chosenText={`${order.delivery.label}${order.delivery.pickupPoint ? ` at ${pickupPointLine(order.delivery.pickupPoint)}` : ""}`}
+                      chosenText={`${order.delivery.label}${order.delivery.pickupPoint ? fillWords(w.at, { point: pickupPointLine(order.delivery.pickupPoint) }) : ""}`}
                       estimatedGrams={estimatedGrams}
                       test={helthjem.environment === "test"}
                       hasEmail={Boolean(order.email)}
@@ -662,14 +646,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </details>
               )}
               {!canWrite ? null : awaitingEdit ? (
-                <p className="text-sm text-muted">A change to this order waits for the customer&apos;s payment. Nothing is sent until it is paid, cancelled or expired.</p>
+                <p className="text-sm text-muted">{w.changeWaitsSend}</p>
               ) : fulfilment.unitsToSend === 0 && !toCharge ? (
                 <p className="text-sm text-muted">
                   {fulfilment.state === "withdrawn"
-                    ? "Every item was withdrawn before it was sent, so there is nothing to send."
+                    ? w.allWithdrawn
                     : fulfilment.state === "closed"
-                      ? "What was left was taken off what is still to send (refunded or put back as not sent), so there is nothing to send."
-                      : "Nothing of this order is left to send."}
+                      ? w.restClosed
+                      : w.nothingLeft}
                 </p>
               ) : (
                 <SendParcelForm
@@ -678,7 +662,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   carriers={CARRIERS.map(({ id, name }) => ({ id, name }))}
                   hasEmail={Boolean(order.email)}
                   whole={weekly !== null}
-                  submitLabel={toCharge ? "Charge and send" : held ? "Capture and send" : sentParcels > 0 ? "Send another parcel" : "Send this parcel"}
+                  submitLabel={toCharge ? w.chargeAndSend : held ? w.captureAndSend : sentParcels > 0 ? w.sendAnother : w.sendThis}
                   send={sendOrderAction.bind(null, store.slug, order.id)}
                   notifyOff={notifyOff("order.sent")}
                 />
@@ -688,20 +672,18 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {(paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0) && (
             <section aria-labelledby="refund" className={card}>
-              <h2 id="refund" className="mb-1 text-title text-ink">Refund</h2>
+              <h2 id="refund" className="mb-1 text-title text-ink">{w.refund}</h2>
               <p className="mb-3 text-sm text-muted">
-                Paid {money(order.paidMinor)}
-                {order.refundedMinor > 0 && `, refunded ${money(order.refundedMinor)}`}.{" "}
-                {order.paidOutside
-                  ? "The money was taken outside Kaizena Flow, so Kaizena Flow sends nothing: you pay the customer back yourself and record it here."
-                  : "Refunds go back to the customer's card or payment method through Stripe; Kaizena Flow's fee on the refunded amount is returned to you."}
+                {fillWords(w.paidSoFar, { amount: money(order.paidMinor) })}
+                {order.refundedMinor > 0 && fillWords(w.refundedSoFar, { amount: money(order.refundedMinor) })}.{" "}
+                {order.paidOutside ? w.refundOutside : w.refundStripe}
               </p>
               {awaitingEdit && (
                 <p role="note" className="mb-3 rounded-md border border-line bg-sunken p-3 text-sm">
-                  A change to this order waits for the customer&apos;s payment: cancel the change, or wait for it, before refunding.
+                  {w.changeWaitsRefund}
                 </p>
               )}
-              <BonusRefundNote bonus={bonus} currency={bonusCurrency} locale={locale} refund={{ refundedMinor: order.refundedMinor, totalMinor: order.totalMinor }} />
+              <BonusRefundNote bonus={bonus} currency={bonusCurrency} locale={locale} refund={{ refundedMinor: order.refundedMinor, totalMinor: order.totalMinor }} words={words.bonus} />
               <RefundForm
                 {...ids}
                 refundable={typedAmount(order.refundableMinor)}
@@ -730,17 +712,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {((order.status === "paid" && sentParcels === 0) || toCharge) && (
             <section aria-labelledby="cancel" className={card}>
-              <h2 id="cancel" className="mb-1 text-title text-ink">Cancel the order</h2>
+              <h2 id="cancel" className="mb-1 text-title text-ink">{w.cancelTitle}</h2>
               {order.subscriptionId && (
-                <p className="mb-2 text-sm text-muted">
-                  This cancels this order only. The subscription goes on unless you also cancel it on its page.
-                </p>
+                <p className="mb-2 text-sm text-muted">{w.cancelSubscription}</p>
               )}
               <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} outside={Boolean(order.paidOutside)} notifyOff={notifyOff("order.cancelled")} />
             </section>
           )}
 
           <DocumentsCard
+            words={adminText(lang, "invoices")}
             base={`/admin/${store.slug}`}
             documents={documents}
             canWrite={memberCan(member, "orders:write")}
@@ -750,6 +731,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {returns && !order.copied && (
             <OrderReturnsCard
+              words={adminText(lang, "returns")}
               base={`/admin/${store.slug}`}
               overview={returns}
               withdrawalPage={storeHref(store.slug, marketPath(store.slug, order.marketCode, "/withdraw"))}
@@ -765,7 +747,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           )}
 
           <section aria-labelledby="history" className={card}>
-            <h2 id="history" className="mb-3 text-title text-ink">History</h2>
+            <h2 id="history" className="mb-3 text-title text-ink">{w.history}</h2>
             {order.status !== "pending_payment" && (
               <div className="mb-4">
                 <NoteForm {...ids} />
@@ -783,7 +765,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {/* What the shopper was shown about the terms when they ordered (wave 1, 1e): the record, and each text as it was. */}
           <Suspense fallback={null}>
-            <OrderTermsCard store={store} orderId={orderId} zone="Europe/Oslo" />
+            <OrderTermsCard store={store} orderId={orderId} zone="Europe/Oslo" locale={adminLocale} words={words.terms} />
           </Suspense>
 
           <StaffFieldsSection store={store} entity="order" id={orderId} save={saveOrderFieldsAction.bind(null, store.slug, orderId)} />
@@ -795,60 +777,61 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             disputes={paymentFacts.disputes}
             money={(minor, currency) => formatMoney(minor, currency, locale)}
             due={(iso) => dueWords(new Date(iso), store.timeZone)}
+            words={words.payment}
           />
           <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
-          {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} />}
+          {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} words={words.gift} />}
           <section aria-labelledby="customer" className={`${card} text-sm`}>
             <h2 id="customer" className="mb-2 text-title text-ink">
               {customer ? (
                 <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
-                  {customer.name || "Customer"}
+                  {customer.name || w.customer}
                 </Link>
               ) : (
-                "Customer"
+                w.customer
               )}
             </h2>
             {order.email ? (
               <a href={`mailto:${order.email}`} className="break-all underline">{order.email}</a>
             ) : (
-              <p className="text-muted">Not known until payment.</p>
+              <p className="text-muted">{w.notKnownYet}</p>
             )}
             {(address.phone || order.billingAddress.phone) && <p>{address.phone || order.billingAddress.phone}</p>}
             {order.company && (
               <p className="mt-2">
                 {order.company.name}
-                <span className="block text-muted">Organisation number {order.company.number}</span>
+                <span className="block text-muted">{fillWords(w.organisationNumber, { number: order.company.number })}</span>
               </p>
             )}
             {order.ships && order.deliveryMethod === "pickup" && (
               <>
-                <h3 className="mt-3 mb-1 text-body-strong text-ink">Collects at</h3>
-                <p>{order.deliveryKept?.kind === "pickup" ? order.deliveryKept.name : "One of your places"}</p>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">{w.collectsAt}</h3>
+                <p>{order.deliveryKept?.kind === "pickup" ? order.deliveryKept.name : w.oneOfYourPlaces}</p>
               </>
             )}
             {order.ships && order.deliveryMethod !== "pickup" && (
               <>
-                <h3 className="mt-3 mb-1 text-body-strong text-ink">{order.deliveryMethod === "local" ? "Deliver to" : "Ship to"}</h3>
-                <AddressBlock address={address} />
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">{order.deliveryMethod === "local" ? w.deliverTo : w.shipTo}</h3>
+                <AddressBlock address={address} unknown={w.notKnownYet} />
                 {(order.deliveryKept?.kind === "method" || order.deliveryKept?.kind === "flat") && (
                   <p className="mt-2">
-                    <span className="text-muted">Chosen delivery:</span> {order.deliveryKept.label}
+                    <span className="text-muted">{w.chosenDelivery}</span> {order.deliveryKept.label}
                     {order.deliveryKept.kind === "method" && order.deliveryKept.zone && <span className="text-muted"> ({order.deliveryKept.zone.name})</span>}
                   </p>
                 )}
                 {order.deliveryMismatchAt && order.deliveryKept?.kind !== "carrier" && (
                   <p role="note" className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-warning-text">
-                    Priced for postal code {order.deliveryKept && "postalCode" in order.deliveryKept && order.deliveryKept.postalCode ? order.deliveryKept.postalCode : "another code"}, but the address is {address.postalCode || "another"}: check the delivery before sending.
+                    {fillWords(w.mismatchKept, { priced: order.deliveryKept && "postalCode" in order.deliveryKept && order.deliveryKept.postalCode ? order.deliveryKept.postalCode : w.anotherCode, address: address.postalCode || w.another })}
                   </p>
                 )}
                 {order.delivery && (
                   <p className="mt-2">
-                    <span className="text-muted">Chosen delivery:</span> {order.delivery.label}
-                    {order.delivery.pickupPoint && <span className="block">Pickup at {pickupPointLine(order.delivery.pickupPoint)}</span>}
-                    {order.delivery.window && <span className="block">Delivery window {formatWindow(order.delivery.window, "en-GB", store.timeZone)}</span>}
+                    <span className="text-muted">{w.chosenDelivery}</span> {order.delivery.label}
+                    {order.delivery.pickupPoint && <span className="block">{fillWords(w.pickupAt, { point: pickupPointLine(order.delivery.pickupPoint) })}</span>}
+                    {order.delivery.window && <span className="block">{fillWords(w.windowLine, { window: formatWindow(order.delivery.window, adminLocale, store.timeZone) })}</span>}
                     {address.postalCode && order.delivery.postalCode && address.postalCode.replace(/\s/g, "") !== order.delivery.postalCode && (
                       <span role="note" className="mt-1 block rounded-md bg-warning-soft px-3 py-2 text-warning-text">
-                        The price was quoted for postal code {order.delivery.postalCode}, but the delivery address has {address.postalCode}. Check the price and the service before booking.
+                        {fillWords(w.mismatchQuote, { quoted: order.delivery.postalCode, address: address.postalCode })}
                       </span>
                     )}
                   </p>
@@ -857,7 +840,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
             {order.status !== "pending_payment" && (
               <details className="mt-3">
-                <summary className="cursor-pointer underline">Change email or address</summary>
+                <summary className="cursor-pointer underline">{w.changeContact}</summary>
                 <div className="mt-3">
                   <ContactForm
                     {...ids}
@@ -877,22 +860,19 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </section>
           {order.digitalConsentAt && (
             <section aria-labelledby="downloads" className={`${card} text-sm`}>
-              <h2 id="downloads" className="mb-2 text-title text-ink">Downloads</h2>
-              <p className="mb-2 text-muted">
-                The customer agreed to immediate delivery and the loss of the right of withdrawal on{" "}
-                {when(order.digitalConsentAt)}.
-              </p>
+              <h2 id="downloads" className="mb-2 text-title text-ink">{w.downloads}</h2>
+              <p className="mb-2 text-muted">{fillWords(w.consent, { when: when(order.digitalConsentAt) })}</p>
               {downloads.length === 0 ? (
-                <p className="text-muted">Download links are made when the order is paid.</p>
+                <p className="text-muted">{w.linksLater}</p>
               ) : (
                 <ul className="flex flex-col gap-1">
                   {downloads.map((file) => (
                     <li key={file.token}>
                       {file.name}:{" "}
                       <span className="text-muted">
-                        {file.used === 0 ? "not downloaded yet" : `downloaded ${file.used}×`}
-                        {file.left !== null && `, ${file.left} left`}
-                        {file.gone && " (link no longer works)"}
+                        {file.used === 0 ? w.notDownloaded : fillWords(w.downloaded, { n: file.used })}
+                        {file.left !== null && fillWords(w.left, { n: file.left })}
+                        {file.gone && w.linkGone}
                       </span>
                     </li>
                   ))}
@@ -903,6 +883,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </div>
       </div>
     </div>
+    </AdminTextScope>
   );
 }
 
@@ -912,8 +893,9 @@ function takenFrom(variantId: string | null, byVariant: Map<string, { taken: { l
   return history ? takenFromWords(history.taken, locations) : "";
 }
 
-function EventLine({ event, money, currency, base, locationNames }: { event: OrderEvent; money: (minor: number) => string; currency: string; base: string; locationNames: Record<string, string> }) {
-  const label = EVENT_LABELS[event.type] ?? event.type;
+function EventLine({ event, money, currency, base, locationNames, words }: { event: OrderEvent; money: (minor: number) => string; currency: string; base: string; locationNames: Record<string, string>; words: OrderMessages }) {
+  const w = words.page;
+  const label = words.events[event.type] ?? event.type;
   const data = event.data as Record<string, unknown>;
   // A withdrawal or return's own steps (D153), in words, with a link to the return.
   if (isReturnEvent(event.type)) {
@@ -946,7 +928,8 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
   if (event.type === "note.added") {
     return (
       <>
-        <span className="font-medium">Note</span> by {String(data.by ?? "staff")}:{" "}
+        <span className="font-medium">{w.note}</span>
+        {fillWords(w.noteBy, { by: String(data.by ?? w.staff) })}{" "}
         <span className="whitespace-pre-wrap">{String(data.note ?? "")}</span>
       </>
     );
@@ -958,7 +941,7 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
         {label}
         {Number(data.amount) > 0 && ` ${money(Number(data.amount))}`}
         {data.reason ? ` · ${String(data.reason)}` : ""}
-        {restocked.length > 0 && ` · back in stock: ${restocked.map((r) => `${r.quantity} × ${r.sku}${r.locationId && locationNames[r.locationId] ? ` at ${locationNames[r.locationId]}` : ""}`).join(", ")}`}
+        {restocked.length > 0 && fillWords(w.backInStock, { lines: restocked.map((r) => `${r.quantity} × ${r.sku}${r.locationId && locationNames[r.locationId] ? fillWords(w.atPlace, { place: locationNames[r.locationId] }) : ""}`).join(", ") })}
       </>
     );
   }
@@ -974,10 +957,10 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
   return <>{label}</>;
 }
 
-function AddressBlock({ address }: { address: Address }) {
+function AddressBlock({ address, unknown }: { address: Address; unknown: string }) {
   const parts = [address.name, address.line1, address.line2, `${address.postalCode ?? ""} ${address.city ?? ""}`.trim(), address.country];
   const lines = parts.filter((p): p is string => Boolean(p && p.trim()));
-  if (lines.length === 0) return <p className="text-muted">Not known until payment.</p>;
+  if (lines.length === 0) return <p className="text-muted">{unknown}</p>;
   return (
     <address className="not-italic">
       {lines.map((line) => (

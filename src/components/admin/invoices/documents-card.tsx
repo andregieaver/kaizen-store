@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import type { FormState } from "@/components/admin/action-form";
-import { dayLabel, documentPdfHref, documentPrintHref, invoicesHref, WAITING_TITLES } from "@/lib/invoice-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
+import { dayLabel, documentPdfHref, documentPrintHref, invoicesHref } from "@/lib/invoice-admin";
 import { WAITING_WORDS } from "@/lib/invoice-readiness";
 import { formatMoney } from "@/lib/money";
 import type { DocumentLink, OrderDocuments } from "@/server/invoices";
@@ -22,6 +24,7 @@ export function DocumentsCard({
   canWrite,
   sendAgain,
   locale = "en-GB",
+  words: w = invoicesEn,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -31,38 +34,41 @@ export function DocumentsCard({
   /** A bound action for a document: `(type, id) => action`, made where the card is drawn. */
   sendAgain: (type: "invoice" | "credit_note", id: string) => Action;
   locale?: string;
+  /** The reader's words (D312 A4); English unless given. */
+  words?: InvoicesMessages;
 }) {
+  const c = w.card;
   const { invoice, creditNotes } = documents;
   // An unpaid order has nothing to say yet.
   if (!invoice && creditNotes.length === 0 && documents.eligibility === "not_paid") return null;
   return (
-    <Card title="Invoice and credit notes" compact>
+    <Card title={c.title} compact>
       {invoice ? (
         <ul className="flex flex-col gap-3 text-sm">
-          <DocumentRow base={base} link={invoice} label="Invoice" canWrite={canWrite} sendAgain={sendAgain} locale={locale} />
+          <DocumentRow base={base} link={invoice} label={c.invoice} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} />
           {creditNotes.map((note) => (
-            <DocumentRow key={note.id} base={base} link={note} label="Credit note" canWrite={canWrite} sendAgain={sendAgain} locale={locale} />
+            <DocumentRow key={note.id} base={base} link={note} label={c.creditNote} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} />
           ))}
         </ul>
       ) : (
         <div className="flex flex-col gap-2 text-sm">
           {documents.waiting ? (
             <>
-              <p className="font-medium">Waiting for an invoice: {WAITING_TITLES[documents.waiting].toLowerCase()}</p>
+              <p className="font-medium">{fillWords(c.waiting, { reason: w.labels.waiting[documents.waiting].toLocaleLowerCase(w.labels.countryLanguage) })}</p>
               <p className="text-muted">{documents.staffNote}</p>
               <p className="flex flex-wrap gap-x-4 gap-y-1">
                 {WAITING_WORDS[documents.waiting].fixAt && (
                   <Link href={`${base}${WAITING_WORDS[documents.waiting].fixAt}`} className="underline">
-                    Fix it
+                    {c.fixIt}
                   </Link>
                 )}
                 <Link href={invoicesHref(`${base}/invoices`, { tab: "waiting" })} className="underline">
-                  See everything that waits
+                  {c.seeWaiting}
                 </Link>
               </p>
             </>
           ) : (
-            <p className="text-muted">{documents.staffNote ?? "This order has no invoice."}</p>
+            <p className="text-muted">{documents.staffNote ?? c.none}</p>
           )}
         </div>
       )}
@@ -77,6 +83,7 @@ function DocumentRow({
   canWrite,
   sendAgain,
   locale,
+  w,
 }: {
   base: string;
   link: DocumentLink;
@@ -84,6 +91,7 @@ function DocumentRow({
   canWrite: boolean;
   sendAgain: (type: "invoice" | "credit_note", id: string) => Action;
   locale: string;
+  w: InvoicesMessages;
 }) {
   return (
     <li className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
@@ -92,18 +100,18 @@ function DocumentRow({
           {label} {link.documentNumber}
         </p>
         <p className="text-muted">
-          <time dateTime={link.issuedOn}>{dayLabel(link.issuedOn)}</time> · {formatMoney(link.totalMinor, link.currency, locale)}
+          <time dateTime={link.issuedOn}>{dayLabel(link.issuedOn, w)}</time> · {formatMoney(link.totalMinor, link.currency, locale)}
         </p>
         <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           <Link href={documentPrintHref(base, link.type, link.id)} className="underline" prefetch={false}>
-            View
+            {w.card.view}
           </Link>
           <a href={documentPdfHref(base, link.type, link.id)} className="underline">
-            PDF
+            {w.card.pdf}
           </a>
         </p>
       </div>
-      {canWrite && <SendAgainForm action={sendAgain(link.type, link.id)} label="Send to the customer again" />}
+      {canWrite && <SendAgainForm action={sendAgain(link.type, link.id)} label={w.card.sendAgain} />}
     </li>
   );
 }

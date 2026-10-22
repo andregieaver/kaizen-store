@@ -184,7 +184,8 @@ export type DraftProblem = { code: DraftProblemCode; key?: string; blocking: boo
 const NOTES: readonly DraftProblemCode[] = ["backorder", "price_changed"];
 export const isDraftNote = (code: DraftProblemCode): boolean => NOTES.includes(code);
 export const problemOf = (code: DraftProblemCode, key?: string): DraftProblem => ({ code, ...(key === undefined ? {} : { key }), blocking: !isDraftNote(code) });
-export const draftProblemText = (code: DraftProblemCode): string => DRAFT_PROBLEMS[code];
+/** A problem in words: English unless the admin catalogue's `drafts.problems` is given (D312 A4). */
+export const draftProblemText = (code: DraftProblemCode, words: Record<DraftProblemCode, string> = DRAFT_PROBLEMS): string => words[code];
 export const blockingProblems = (problems: readonly DraftProblem[]): DraftProblem[] => problems.filter((p) => p.blocking);
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -11,6 +11,9 @@ import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { requireOwnerRole } from "@/server/permissions";
 import { todayIn } from "@/lib/work-dates";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Export orders" };
 
@@ -29,15 +32,17 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
   const shopOff = requireFeature(gated, "shop");
   if (shopOff) return shopOff;
   const { store } = gated;
+  const lang = adminLangOf(gated.account.adminLocale);
+  const w = adminText(lang, "orders").export;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
         backHref={`/admin/${store.slug}/orders`}
-        backLabel="Orders"
-        title="Export orders"
-        intro={`A spreadsheet of orders for your bookkeeping or your own analysis: one row for each order line, with the VAT of each line and of the shipping, the discounts, the refunds and the payment. More than ${DIRECT_EXPORT_MAX_ROWS.toLocaleString("en-GB")} rows are made as a job.`}
+        backLabel={w.back}
+        title={w.title}
+        intro={fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale) })}
       />
-      <Notice title="Personal data" tone="warning">
+      <Notice title={w.personalData} tone="warning">
         <p>{PERSONAL_DATA_WARNING}</p>
         <p className="mt-1">{NEVER_EMAILED_NOTE}</p>
       </Notice>
@@ -50,6 +55,7 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
 
 async function Body({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requireOwnerRole(storeSlug);
+  const w = adminText(adminLangOf(member.account.adminLocale), "orders").export;
   const query = await searchParams;
   const code = first(query.problem);
   const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
@@ -59,12 +65,12 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <ProblemAlert text={problem} />
       <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} />
-      <Notice title="Amounts and VAT">
+      <Notice title={w.amounts}>
         <p>{MAIN_CURRENCY_NOTE}</p>
         <p className="mt-1">{TEST_PAYMENT_NOTE}</p>
         <p className="mt-1">
-          {NOT_A_STATEMENT_NOTE} See <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/invoices`}>Invoices</Link> and{" "}
-          <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/analytics/tax`}>VAT, OSS and IOSS reports</Link>.
+          {NOT_A_STATEMENT_NOTE} {w.see} <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/invoices`}>{w.invoices}</Link> {w.and}{" "}
+          <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/analytics/tax`}>{w.reports}</Link>.
         </p>
       </Notice>
       <ExportSection member={member} kind="order_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/orders/export`} now={new Date()} />

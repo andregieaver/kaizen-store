@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import type { FormState } from "@/components/admin/action-form";
 import { bookedCarrierName, undoneLine, undoWarnings } from "@/lib/shipment-undo";
+import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import { fillWords } from "@/lib/admin-fill";
 
 import { EmailAgainButton, UndoParcel } from "./parcel-buttons";
 
@@ -39,7 +41,10 @@ export function ShipmentList({
   status,
   undo = null,
   receiptRecorded = false,
+  words = orderEn.parcels,
 }: {
+  /** The `order` catalogue's `parcels` words in the account's language (D312 A4). */
+  words?: OrderMessages["parcels"];
   shipments: ShipmentItem[];
   /** The order's admin address (`/admin/{store}/orders/{orderId}`). */
   base: string;
@@ -53,21 +58,22 @@ export function ShipmentList({
   receiptRecorded?: boolean;
 }) {
   if (shipments.length === 0) return null;
+  const w = words;
   return (
-    <ol className="mb-4 flex flex-col gap-3 text-sm" aria-label="Parcels">
+    <ol className="mb-4 flex flex-col gap-3 text-sm" aria-label={w.label}>
       {shipments.map((s, index) =>
         s.undone ? (
           <li key={s.id} className="rounded-md border border-dashed border-line p-3 text-muted" data-undone="">
             <p className="font-medium">
-              <s>Parcel {index + 1}</s> <span className="font-normal">· {when(s.createdAt)} · not sent after all</span>
+              <s>{fillWords(w.parcel, { n: index + 1 })}</s> <span className="font-normal">{fillWords(w.notSentAfterAll, { when: when(s.createdAt) })}</span>
             </p>
             <p>
               <s>
-                {s.carrier || "Parcel"} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}
+                {s.carrier || w.parcelWord} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}
               </s>
             </p>
             {s.lines.length > 0 && !s.legacy && (
-              <ul className="mt-1 flex flex-col gap-0.5" aria-label={`Was in parcel ${index + 1}`}>
+              <ul className="mt-1 flex flex-col gap-0.5" aria-label={fillWords(w.wasIn, { n: index + 1 })}>
                 {s.lines.map((line) => (
                   <li key={line.lineId}>
                     <s>
@@ -77,31 +83,31 @@ export function ShipmentList({
                 ))}
               </ul>
             )}
-            <p className="mt-1 text-xs">{undoneLine(s.undone, when)}</p>
+            <p className="mt-1 text-xs">{undoneLine(s.undone, when, w)}</p>
           </li>
         ) : (
           <li key={s.id} className="rounded-md border border-line p-3">
             <p className="font-medium">
-              Parcel {index + 1} <span className="font-normal text-muted">· {when(s.createdAt)}</span>
+              {fillWords(w.parcel, { n: index + 1 })} <span className="font-normal text-muted">· {when(s.createdAt)}</span>
             </p>
             {s.method === "pickup" || s.method === "local" ? (
-              <p>{s.method === "pickup" ? "Collected by the customer" : "Taken out by your own driver"}</p>
+              <p>{s.method === "pickup" ? w.collected : w.driver}</p>
             ) : (
             <p>
-              {s.carrier || "Parcel"} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}{" "}
+              {s.carrier || w.parcelWord} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}{" "}
               {s.trackingUrl && (
                 <a href={s.trackingUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                  Track
+                  {w.track}
                 </a>
               )}
             </p>
             )}
             {status?.(s)}
             {s.legacy ? (
-              <p className="text-xs text-muted">Recorded before parcels listed their items: counts as everything sent.</p>
+              <p className="text-xs text-muted">{w.legacy}</p>
             ) : (
               s.lines.length > 0 && (
-                <ul className="mt-1 flex flex-col gap-0.5" aria-label={`In parcel ${index + 1}`}>
+                <ul className="mt-1 flex flex-col gap-0.5" aria-label={fillWords(w.in, { n: index + 1 })}>
                   {s.lines.map((line) => (
                     <li key={line.lineId}>
                       <span className="tabular-nums">{line.quantity}</span> × {line.title}
@@ -114,12 +120,12 @@ export function ShipmentList({
             <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               {(!s.legacy || s.lines.length > 0) && (
                 <a href={`${base}/packing-slip?shipment=${s.id}`} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                  Packing slip
+                  {w.packingSlip}
                 </a>
               )}
               {s.hasLabel && (
                 <a href={`${base}/label/${s.id}`} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                  Print label
+                  {w.printLabel}
                 </a>
               )}
               {emailAgain && s.method !== "pickup" && s.method !== "local" && <EmailAgainButton send={emailAgain(s.id)} />}
@@ -129,7 +135,7 @@ export function ShipmentList({
                 <UndoParcel
                   undo={undo(s.id)}
                   index={index + 1}
-                  warnings={undoWarnings({ bookedWith: bookedCarrierName(s.carrierId), units: s.lines.reduce((sum, l) => sum + l.quantity, 0), receiptRecorded })}
+                  warnings={undoWarnings({ bookedWith: bookedCarrierName(s.carrierId), units: s.lines.reduce((sum, l) => sum + l.quantity, 0), receiptRecorded }, w)}
                 />
               </div>
             )}

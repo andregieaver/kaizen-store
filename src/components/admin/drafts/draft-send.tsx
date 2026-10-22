@@ -5,15 +5,25 @@ import { useId, useState, useTransition } from "react";
 import type { DraftActionResponse } from "@/app/admin/(gated)/[store]/orders/drafts/actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { cashRuleWords } from "@/lib/cash-limits";
-import { MANUAL_METHOD_LABELS, MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
+import { MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
 import { DRAFT_REFERENCE_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { cashWarningText, fillWords } from "@/lib/drafts-words";
 
 /**
  * The cash warning beside the Cash method (wave 3, D173, `docs/wave-3-orders.md` section 8, items 6 and 7). English admin text, flagged for review. It names the cash register rules and the ceilings on cash
  * payments held as data (`src/lib/cash-limits.ts`: some are refused when recorded).
  */
 export const CASH_WARNING = `Cash taken when goods are handed over is a cash sale under the cash register rules in many countries. Record it here only if your accountant says this is allowed. Recording a payment here does not replace a cash register. Some countries also forbid a business to receive cash above a ceiling. ${cashRuleWords()} Other countries may have a rule Kaizena Flow does not know of: ask your accountant.`;
+
+/** The cash warning in the account's language (`CASH_WARNING` in English, the same words). */
+export function useCashWarning(): string {
+  const lang = useAdminLang();
+  const w = useAdminText("drafts");
+  return lang === "en" ? CASH_WARNING : cashWarningText(w.cash, ADMIN_LANG_FACTS[lang].locale);
+}
 
 /** A result line of an action: green-neutral when it worked, red when it did not, with the problems of the draft listed when there are any. */
 export function ActionMessage({ result }: { result: DraftActionResponse | null }) {
@@ -38,14 +48,15 @@ export function ActionMessage({ result }: { result: DraftActionResponse | null }
  */
 export function LinkNotice({ link, onClose }: { link: string; onClose: () => void }) {
   const id = useId();
+  const w = useAdminText("drafts").link;
   const [copied, setCopied] = useState(false);
   return (
     <section aria-labelledby={id} className="flex flex-col gap-2 rounded-lg border border-brand bg-sunken p-4 text-sm">
       <h2 id={id} className="text-title text-ink">
-        The pay link
+        {w.title}
       </h2>
-      <p className={hint}>It is shown only now: Kaizena Flow keeps nothing it could show again. Anyone who has it can open the page to pay this order. If you lose it, make a new one: the old one stops working.</p>
-      <input readOnly value={link} aria-label="The pay link" onFocus={(event) => event.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
+      <p className={hint}>{w.hint}</p>
+      <input readOnly value={link} aria-label={w.title} onFocus={(event) => event.currentTarget.select()} className={`${field} w-full font-mono text-xs`} />
       <div className="flex gap-2">
         <button
           type="button"
@@ -59,10 +70,10 @@ export function LinkNotice({ link, onClose }: { link: string; onClose: () => voi
           }}
           className={primary}
         >
-          {copied ? "Copied" : "Copy the link"}
+          {copied ? w.copied : w.copy}
         </button>
         <button type="button" onClick={onClose} className={secondary}>
-          I have copied it
+          {w.done}
         </button>
       </div>
     </section>
@@ -88,6 +99,7 @@ export function SendBox({
   onResult: (result: DraftActionResponse) => void;
 }) {
   const id = useId();
+  const w = useAdminText("drafts").send;
   const [days, setDays] = useState(String(defaultDays));
   const [result, setResult] = useState<DraftActionResponse | null>(null);
   const [working, startTransition] = useTransition();
@@ -97,7 +109,7 @@ export function SendBox({
       setResult(null);
       const version = await ensureSaved();
       if (version === null) {
-        setResult({ ok: false, message: "The draft has problems that stop it being saved. Fix them first." });
+        setResult({ ok: false, message: w.notSaved });
         return;
       }
       const answer = await send({ version, validDays: Number(days), createLink });
@@ -107,23 +119,20 @@ export function SendBox({
   return (
     <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
-        Send it
+        {w.title}
       </h2>
-      <p className={hint}>
-        The customer gets an email with a link to a page that shows this order and a button to pay on Stripe&apos;s page. Sending makes the order and takes its number, and holds the stock until the link ends. A sent draft cannot be
-        edited: reopen it first, which cancels this order and makes a new one when you send again.
-      </p>
+      <p className={hint}>{w.hint}</p>
       <label className="flex flex-col gap-1 font-medium">
-        The link is valid for (days) <span className="font-normal text-muted">{DRAFT_VALID_DAYS_MIN} to {DRAFT_VALID_DAYS_MAX}</span>
+        {w.days} <span className="font-normal text-muted">{fillWords(w.daysRange, { min: DRAFT_VALID_DAYS_MIN, max: DRAFT_VALID_DAYS_MAX })}</span>
         <input type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} value={days} onChange={(e) => setDays(e.target.value)} className={`${field} w-28`} />
       </label>
       {blockedReason && <p className="text-muted">{blockedReason}</p>}
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={working || !valid || blockedReason !== null} onClick={() => run(false)} className={primary}>
-          {working ? "Working …" : "Send to the customer"}
+          {working ? w.working : w.send}
         </button>
         <button type="button" disabled={working || !valid || blockedReason !== null} onClick={() => run(true)} className={secondary}>
-          Create a link to share
+          {w.share}
         </button>
       </div>
       <ActionMessage result={result} />
@@ -151,6 +160,9 @@ export function PaidOutsideBox({
   onResult: (result: DraftActionResponse) => void;
 }) {
   const id = useId();
+  const all = useAdminText("drafts");
+  const w = all.outside;
+  const cashWarning = useCashWarning();
   const [method, setMethod] = useState<ManualPaymentMethod>("bank_transfer");
   const [reference, setReference] = useState("");
   const [receivedOn, setReceivedOn] = useState("");
@@ -159,58 +171,53 @@ export function PaidOutsideBox({
   if (!allowed) {
     return (
       <section className={`p-4 text-sm ${CARD_CLASS}`}>
-        <h2 className="mb-1 text-title text-ink">Paid outside Kaizena Flow</h2>
-        <p className="text-muted">Only the owner can record a payment taken outside Kaizena Flow, unless the owner allows staff to (Settings, Orders).</p>
+        <h2 className="mb-1 text-title text-ink">{w.title}</h2>
+        <p className="text-muted">{w.ownerOnly}</p>
       </section>
     );
   }
   return (
     <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
-        Mark as paid outside Kaizena Flow
+        {w.mark}
       </h2>
-      <p className={hint}>
-        The customer paid you by bank transfer, in cash or another way. The order is made and marked paid, the invoice is issued saying it was paid outside the online checkout, and the confirmation (which states the right of
-        withdrawal) is emailed to the customer. Kaizena Flow did not touch the money and takes no sale fee on it. A refund of it is only recorded: you pay the customer back yourself.
-      </p>
+      <p className={hint}>{w.hint}</p>
       <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 font-medium">How was it paid?</legend>
+        <legend className="mb-1 font-medium">{w.how}</legend>
         {MANUAL_PAYMENT_METHODS.map((m) => (
           <label key={m} className="flex items-center gap-2">
             <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="size-4" />
-            {MANUAL_METHOD_LABELS[m]}
+            {all.methods[m]}
           </label>
         ))}
       </fieldset>
       {method === "cash" && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3">
-          {CASH_WARNING}
+          {cashWarning}
         </p>
       )}
       <label className="flex flex-col gap-1 font-medium">
-        Received on <span className="font-normal text-muted">(leave empty if it was today)</span>
+        {w.receivedOn} <span className="font-normal text-muted">{w.receivedHint}</span>
         <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} max={new Date().toISOString().slice(0, 10)} className={`${field} w-44`} />
-        <span className={`${hint} font-normal`}>
-          The invoice&apos;s supply date, and so the VAT and OSS period the sale is reported in, is this day, not the day you record it. At most {MANUAL_RECEIVED_DAYS_MAX} days back. A transfer received on the 30th and recorded on the 2nd belongs to the 30th.
-        </span>
+        <span className={`${hint} font-normal`}>{fillWords(w.receivedRule, { max: MANUAL_RECEIVED_DAYS_MAX })}</span>
       </label>
       <label className="flex flex-col gap-1 font-medium">
-        Reference <span className="font-normal text-muted">(optional, kept in the order&apos;s history)</span>
+        {w.reference} <span className="font-normal text-muted">{w.referenceHint}</span>
         <input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={DRAFT_REFERENCE_MAX} autoComplete="off" className={field} />
       </label>
-      {!hasEmail && <p className="text-muted">Add the customer&apos;s email address first: the confirmation goes to it and is not optional.</p>}
+      {!hasEmail && <p className="text-muted">{w.emailFirst}</p>}
       {blockedReason && <p className="text-muted">{blockedReason}</p>}
       <div>
         <button
           type="button"
           disabled={working || !hasEmail || blockedReason !== null}
           onClick={() => {
-            if (!window.confirm("Record this draft as paid outside Kaizena Flow? The order is made and paid, the invoice is issued and the customer is emailed. This cannot be undone: a mistake is corrected with a refund.")) return;
+            if (!window.confirm(w.confirm)) return;
             startTransition(async () => {
               setResult(null);
               const version = await ensureSaved();
               if (version === null) {
-                setResult({ ok: false, message: "The draft has problems that stop it being saved. Fix them first." });
+                setResult({ ok: false, message: all.send.notSaved });
                 return;
               }
               const answer = await record({ version, method, ...(reference.trim() ? { reference: reference.trim() } : {}), ...(receivedOn ? { receivedOn } : {}) });
@@ -220,7 +227,7 @@ export function PaidOutsideBox({
           }}
           className={secondary}
         >
-          {working ? "Working …" : "Record the payment"}
+          {working ? all.send.working : w.record}
         </button>
       </div>
       <ActionMessage result={result} />

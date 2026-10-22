@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
-import { matchingText, pageHref, stateQuery } from "@/lib/order-list-admin";
+import { fillWords } from "@/lib/admin-fill";
+import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import { pageHref, stateQuery } from "@/lib/order-list-admin";
+import { matchingWords } from "@/lib/order-list-words";
 import { columnsOf, hasFilters, type OrderListParams } from "@/lib/order-list";
 
 import { FilterBar } from "./filter-bar";
@@ -32,6 +35,9 @@ export function OrderListView({
   canWrite,
   bulk,
   viewActions,
+  words = ordersEn,
+  statusWords,
+  locale = "en",
 }: {
   slug: string;
   params: OrderListParams;
@@ -51,50 +57,58 @@ export function OrderListView({
   canWrite: boolean;
   bulk: OrderTableProps["bulk"];
   viewActions: ViewToolActions | null;
+  /** The `orders` catalogue in the account's language (D312 A4), and its number format. */
+  words?: OrdersMessages;
+  statusWords?: OrderTableProps["statusWords"];
+  locale?: string;
 }) {
+  const w = words.list;
   const base = `/admin/${slug}/orders`;
   const filtered = hasFilters(params);
   return (
     <div className="flex flex-col gap-4">
-      <ViewBar base={base} params={params} views={views} openViewId={openView?.id ?? null} />
+      <ViewBar base={base} params={params} views={views} openViewId={openView?.id ?? null} words={words.views} />
       {openView && ignoredInView && (
         <p role="status" className="rounded-panel bg-sunken p-3 text-sm">
-          Some of the view “{openView.title}” settings no longer apply, so the list shows the rest.
+          {fillWords(words.views.ignored, { title: openView.title })}
         </p>
       )}
-      <FilterBar base={base} params={params} markets={markets} tagSuggestions={tagSuggestions} />
-      {truncatedSearch && <p className={hint}>Only the first 5 words of the search are used.</p>}
-      {canWrite && viewActions && <ViewTools views={views} query={stateQuery(params)} actions={viewActions} />}
+      <FilterBar base={base} params={params} markets={markets} tagSuggestions={tagSuggestions} words={words.filters} columnWords={words.table.columns} />
+      {truncatedSearch && <p className={hint}>{w.truncated}</p>}
+      {canWrite && viewActions && <ViewTools views={views} query={stateQuery(params)} actions={viewActions} words={words.saved} />}
 
       <p className="text-sm text-muted" aria-live="polite">
-        {matchingText(count, capped)}
-        {params.archived === "all" ? " including archived" : ""}
+        {matchingWords(count, capped, w, locale)}
+        {params.archived === "all" ? w.includingArchived : ""}
       </p>
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
           <p>
             {params.q !== ""
-              ? `No order matches “${params.q}”${filtered && params.q !== "" && (params.pay.length || params.ship.length || params.tag.length || params.status.length || params.range || params.from || params.to) ? " with these filters" : ""}.`
+              ? fillWords(w.noMatch, {
+                  q: params.q,
+                  filters: filtered && params.q !== "" && (params.pay.length || params.ship.length || params.tag.length || params.status.length || params.range || params.from || params.to) ? w.withFilters : "",
+                })
               : params.show === "unpaid" || params.pay.includes("unpaid")
-                ? "No unfinished checkouts."
+                ? w.noUnfinished
                 : params.show === "waiting"
-                  ? "No order is waiting for stock: nothing paid and not sent was sold on backorder."
+                  ? w.noWaiting
                   : params.show === "to-send"
-                    ? "Nothing to send: every paid order with something to ship has been sent."
+                    ? w.noToSend
                     : params.show === "archived"
-                      ? "No archived orders."
+                      ? w.noArchived
                       : filtered
-                        ? "No order matches these filters."
-                        : "No orders yet. They appear here as soon as they are paid."}
+                        ? w.noFilterMatch
+                        : w.none}
           </p>
           {filtered ? (
             <Link href={base} className={secondary}>
-              Clear the search and filters
+              {w.clear}
             </Link>
           ) : (
             <Link href={`/admin/${slug}/orders/drafts/new`} className={primary}>
-              Make a draft order
+              {words.page.makeDraft}
             </Link>
           )}
         </div>
@@ -109,19 +123,22 @@ export function OrderListView({
           canWrite={canWrite}
           suggestions={tagSuggestions}
           bulk={bulk}
+          words={words}
+          statusWords={statusWords}
+          locale={locale}
         />
       )}
 
       {(hasPrevious || nextCursor) && (
-        <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm">
+        <nav aria-label={w.pages} className="flex flex-wrap items-center gap-4 text-sm">
           {hasPrevious && (
             <Link href={pageHref(base, params, previousCursor)} rel="prev" className="underline underline-offset-2">
-              {previousCursor ? "Previous 50 orders" : "Back to the first page"}
+              {previousCursor ? w.previous : w.first}
             </Link>
           )}
           {nextCursor && (
             <Link href={pageHref(base, params, nextCursor)} rel="next" className="underline underline-offset-2">
-              Next 50 orders
+              {w.next}
             </Link>
           )}
         </nav>

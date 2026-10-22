@@ -1,6 +1,8 @@
 "use client";
 
 import { field, hint } from "@/components/admin/data/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { parcelLinesFromChoice, unitsInChoice } from "@/lib/parcel-form";
 
 import type { ParcelRow } from "./send-parcel";
@@ -12,20 +14,21 @@ import type { ParcelRow } from "./send-parcel";
  * by the form is guessed from the whole order, so a parcel holding part of it says to weigh it. English: the admin.
  */
 export function ParcelChoice({ rows, typed, onChange }: { rows: ParcelRow[]; typed: Record<string, string>; onChange: (next: Record<string, string>) => void }) {
+  const w = useAdminText("order").send;
   const open = rows.filter((r) => r.toSend > 0);
   if (open.length === 0) return null;
   const chosen = parcelLinesFromChoice(open, typed);
   const left = unitsInChoice(open, null);
   return (
     <fieldset className="flex flex-col gap-2 text-sm">
-      <legend className="mb-1 font-medium">In this parcel</legend>
+      <legend className="mb-1 font-medium">{w.inThisParcel}</legend>
       <ul className="flex flex-col gap-1">
         {open.map((row) => (
           <li key={row.lineId} className="flex items-center justify-between gap-3">
             <span className="min-w-0">
               {row.title}
               {row.sku && <span className="font-mono text-xs text-muted"> {row.sku}</span>}
-              <span className="text-xs text-muted"> · {row.toSend} to send</span>
+              <span className="text-xs text-muted">{fillWords(w.choiceToSend, { n: row.toSend })}</span>
             </span>
             <input
               type="number"
@@ -35,7 +38,7 @@ export function ParcelChoice({ rows, typed, onChange }: { rows: ParcelRow[]; typ
               step={1}
               value={typed[row.lineId] ?? String(row.toSend)}
               onChange={(e) => onChange({ ...typed, [row.lineId]: e.target.value })}
-              aria-label={`In this parcel: ${row.title}`}
+              aria-label={fillWords(w.inThisParcelOf, { title: row.title })}
               className={`${field} w-20 text-right tabular-nums`}
             />
           </li>
@@ -43,16 +46,12 @@ export function ParcelChoice({ rows, typed, onChange }: { rows: ParcelRow[]; typ
       </ul>
       {chosen === "invalid" ? (
         <p role="alert" className="text-danger-text">
-          A number is not a whole number from 0 to what is left of its item.
+          {w.notWhole}
         </p>
       ) : chosen === null ? (
-        <p className={hint}>
-          Everything still to send ({left} {left === 1 ? "unit" : "units"}). Lower a number to book part of it now.
-        </p>
+        <p className={hint}>{countWords(left, w.everything)}</p>
       ) : (
-        <p className={hint}>
-          {unitsInChoice(open, chosen)} of {left} units in this parcel; the rest stays to send. The weight is guessed from the whole order: weigh this parcel.
-        </p>
+        <p className={hint}>{fillWords(w.partOf, { chosen: unitsInChoice(open, chosen), left })}</p>
       )}
     </fieldset>
   );

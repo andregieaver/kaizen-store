@@ -4,6 +4,8 @@ import { Suspense } from "react";
 
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { OrderListView } from "@/components/admin/orders/order-list-view";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { tableRowsOf } from "@/lib/order-list-admin";
 import { listOrdersPage, resolveOrderList } from "@/server/order-list";
 import { listOrderViews } from "@/server/order-views";
@@ -28,26 +30,27 @@ export default async function OrdersPage({ params, searchParams }: Props) {
   const shopOff = await requireShopOrAfterSale(member);
   if (shopOff) return shopOff;
   const { store } = member;
+  const w = adminText(adminLangOf(member.account.adminLocale), "orders").page;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title="Orders" />
-        <nav aria-label="Order tools" className="flex flex-wrap gap-2 text-sm">
+        <PageHeader title={w.title} />
+        <nav aria-label={w.tools} className="flex flex-wrap gap-2 text-sm">
           {memberCan(member, "orders:write") && (
             <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">
-              Make a draft order
+              {w.makeDraft}
             </Link>
           )}
           <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-            Draft orders
+            {w.drafts}
           </Link>
           <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-            Emails to customers
+            {w.emails}
           </Link>
           {/* The order file (D165) holds personal data, so only the owner is offered it. */}
           {memberCan(member, "owner") && (
             <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-              Export
+              {w.export}
             </Link>
           )}
         </nav>
@@ -68,7 +71,9 @@ async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; s
     listOrderViews(store.id),
     tagSuggestions(store.id),
   ]);
-  const locale = store.markets[0]?.locale ?? "en";
+  const lang = adminLangOf(member.account.adminLocale);
+  // Dates and totals in the store's own format for English, as before; another admin language writes them its own way.
+  const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;
   const canWrite = memberCan(member, "orders:write");
   // Every country the store had, so past orders in a country no longer offered (D178) can still be found by it.
   const markets = [...new Map(store.allMarkets.map((m) => [m.code, { code: m.code, name: m.name }])).values()];
@@ -89,6 +94,9 @@ async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; s
       markets={markets}
       tagSuggestions={suggestions.map((s) => s.label)}
       canWrite={canWrite}
+      words={adminText(lang, "orders")}
+      statusWords={adminText(lang, "common").orderStatus}
+      locale={lang === "en" ? "en" : ADMIN_LANG_FACTS[lang].locale}
       bulk={bulkOrdersAction.bind(null, store.slug)}
       viewActions={
         canWrite

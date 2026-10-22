@@ -25,6 +25,7 @@ import {
   sameBase,
   type EditAddInput,
   type EditBlockReason,
+  type EditDocumentFacts,
   type EditOrderFacts,
   type EditTaxBasket,
   type OrderEditProblem,
@@ -376,6 +377,8 @@ export type EditPreview = {
   mustNotify: boolean;
   /** The summary's sentences (English: the admin). */
   sentences: { money: string; documents: string };
+  /** What the documents sentence is made from, for a screen that says it in another language (D312 A4). */
+  documentFacts: EditDocumentFacts;
   invoiceNumber: string | null;
 };
 
@@ -485,6 +488,7 @@ async function compute(runner: Runner, storeId: string, orderId: string, input: 
         money: moneySentence(money, amount, outside),
         documents: documentsSentence({ invoiced: order.invoiced, creditMinor, invoiceMinor, invoiceNumber: order.invoiceNumber }),
       },
+      documentFacts: { invoiced: order.invoiced, creditMinor, invoiceMinor, invoiceNumber: order.invoiceNumber },
       invoiceNumber: order.invoiceNumber,
     },
   };

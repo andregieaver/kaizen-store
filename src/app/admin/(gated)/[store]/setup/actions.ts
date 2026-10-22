@@ -7,7 +7,7 @@ import { after } from "next/server";
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { requestAdminLang } from "@/server/admin-request-lang";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { readAnswers } from "@/lib/onboarding";
 import { nextSetupStep } from "@/lib/setup-steps";
 import { storeDetailsInput } from "@/lib/store-details";
@@ -29,7 +29,7 @@ import { chargeDueThemePurchases } from "@/server/theme-prices";
 
 // Setup is the owner's job; every action re-checks that on the server.
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [adminText(await requestAdminLang(), "setup").actions.ownerOnly] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [adminText(await actionAdminLang(), "setup").actions.ownerOnly] };
 }
 
 /** The setup words in the owner's admin language. */
