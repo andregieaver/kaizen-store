@@ -370,7 +370,7 @@ type ClaimedJob = { id: string; storeId: string | null; kind: PageJobKind; pageI
  */
 async function claimJob(): Promise<ClaimedJob | null> {
   await db().execute(sql`
-    update commerce.page_ai_jobs set status = 'failed', problem = coalesce(problem, 'It stopped before it was done, three times.'), claimed_until = null
+    update commerce.page_ai_jobs set status = 'failed', problem = coalesce(problem, 'It stopped before it was done, three times.'), claimed_until = null, updated_at = now()
     where status = 'waiting' and tries >= ${PAGE_JOB_TRIES} and (claimed_until is null or claimed_until < now())
   `);
   const [row] = await db().execute<Row>(sql`
@@ -444,7 +444,7 @@ async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
     await db().transaction(async (tx) => {
       await tx.execute(sql`
         update commerce.page_ai_jobs
-        set status = 'done', problem = null, claimed_until = null, page_id = coalesce(${outcome.pageId ?? null}::uuid, page_id),
+        set status = 'done', problem = null, claimed_until = null, updated_at = now(), page_id = coalesce(${outcome.pageId ?? null}::uuid, page_id),
           result = ${outcome.result === undefined ? null : JSON.stringify(outcome.result)}::jsonb
         where id = ${job.id}::uuid
       `);
@@ -462,7 +462,7 @@ async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
   // A try that failed is held a little, so the next waits out what may pass (a busy model) instead of following at once.
   await db().execute(sql`
     update commerce.page_ai_jobs
-    set status = ${status}, problem = ${outcome.problem.slice(0, 500)},
+    set status = ${status}, problem = ${outcome.problem.slice(0, 500)}, updated_at = now(),
       claimed_until = case when ${status} = 'waiting' then now() + interval '2 minutes' else null end
     where id = ${job.id}::uuid
   `);

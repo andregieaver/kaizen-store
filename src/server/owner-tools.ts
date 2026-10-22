@@ -125,6 +125,7 @@ import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
+import { runningTestOf } from "./experiment-admin";
 import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
@@ -789,6 +790,9 @@ async function archiveProductTool(ctx: OwnerToolContext, input: OwnerToolInput<"
 }
 
 async function unpublishPageTool(ctx: OwnerToolContext, input: OwnerToolInput<"unpublish_page">) {
+  // As the Pages screen refuses it (D148): a page in a running A/B test stays on the site until the test stops.
+  const test = input.type === "page" ? await runningTestOf(ctx.store.id, input.page) : null;
+  if (test) return fail(`This page is in the running A/B test "${test.name}". Stop the test before unpublishing it.`);
   if (!(await unpublishPage(ctx.account, ctx.store.id, input.page, input.type))) return fail("That page is not one of this store's published pages.");
   ctx.invalidate(pagesTag(ctx.store.id));
   return { done: "The page is taken off the site; its draft is kept." };
