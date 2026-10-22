@@ -9,6 +9,8 @@ import { newBlock } from "@/lib/page-rows";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { gridData } from "@/server/content-grid";
 import { siteTerms } from "@/server/taxonomy";
+import { platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { languageMeta } from "@/server/platform-lang-meta";
 
 /**
  * Kaizen's published pages in one category (with its subcategories) or
@@ -34,10 +36,10 @@ async function load(kind: TermKind, params: Params, type: PageType) {
   return term ? { terms, term } : null;
 }
 
-export async function termMetadata(kind: TermKind, params: Params, type: PageType = "page"): Promise<Metadata> {
+export async function termMetadata(kind: TermKind, params: Params, type: PageType = "page", lang: PlatformLang = "en"): Promise<Metadata> {
   const loaded = await load(kind, params, type);
   if (!loaded) return {};
-  return { title: loaded.term.name, alternates: { canonical: `${base(type)}/${kind}/${loaded.term.slug}` } };
+  return { title: loaded.term.name, alternates: await languageMeta(lang, `${base(type)}/${kind}/${loaded.term.slug}`) };
 }
 
 /** A grid of Kaizen's pages or articles; articles newest first, one or three to a row. */
@@ -55,7 +57,7 @@ function listing(type: PageType, key: string, filter: { categories?: string[]; t
 }
 
 /** Links to categories: a category's subcategories, or the blog's top ones. */
-function CategoryLinks({ label, terms, type }: { label: string; terms: Term[]; type: PageType }) {
+function CategoryLinks({ label, terms, type, lang }: { label: string; terms: Term[]; type: PageType; lang: PlatformLang }) {
   if (terms.length === 0) return null;
   return (
     <nav aria-label={label}>
@@ -63,7 +65,7 @@ function CategoryLinks({ label, terms, type }: { label: string; terms: Term[]; t
         {terms.map((term) => (
           <li key={term.id}>
             <Link
-              href={`${base(type)}/category/${term.slug}`}
+              href={platformPath(lang, `${base(type)}/category/${term.slug}`)}
               className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-surface"
             >
               {term.name}
@@ -75,23 +77,23 @@ function CategoryLinks({ label, terms, type }: { label: string; terms: Term[]; t
   );
 }
 
-export async function TermPages({ kind, params, type = "page" }: { kind: TermKind; params: Params; type?: PageType }) {
+export async function TermPages({ kind, params, type = "page", lang = "en" }: { kind: TermKind; params: Params; type?: PageType; lang?: PlatformLang }) {
   const loaded = await load(kind, params, type);
   if (!loaded) notFound();
   const { terms, term } = loaded;
   const grid = listing(type, term.id, kind === "category" ? { categories: [term.id] } : { tags: [term.id] });
-  const data = await gridData(grid, { pageId: null, owner: null });
+  const data = await gridData(grid, { pageId: null, owner: null, lang });
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
 
   return (
     <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
       {type === "article" && (
-        <Link href="/blog" className="w-fit text-sm underline">
+        <Link href={platformPath(lang, "/blog")} className="w-fit text-sm underline">
           Blog
         </Link>
       )}
       <h1 className="text-3xl font-semibold tracking-tight">{term.name}</h1>
-      <CategoryLinks label={term.name} terms={subcategories} type={type} />
+      <CategoryLinks label={term.name} terms={subcategories} type={type} lang={lang} />
       <PartStyles blocks={[grid]} owner={null} />
       <ContentGridView block={grid} data={data} />
     </main>
@@ -99,14 +101,14 @@ export async function TermPages({ kind, params, type = "page" }: { kind: TermKin
 }
 
 /** Kaizen's blog (D57): every published article, newest first, with its top categories. */
-export async function BlogIndex() {
+export async function BlogIndex({ lang = "en" }: { lang?: PlatformLang }) {
   const grid = listing("article", "blog");
-  const [data, terms] = await Promise.all([gridData(grid, { pageId: null, owner: null }), siteTerms(null, "article")]);
+  const [data, terms] = await Promise.all([gridData(grid, { pageId: null, owner: null, lang }), siteTerms(null, "article")]);
   const top = terms.filter((t) => t.kind === "category" && t.parentId === null).sort(byName);
   return (
     <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Blog</h1>
-      <CategoryLinks label="Categories" terms={top} type="article" />
+      <CategoryLinks label="Categories" terms={top} type="article" lang={lang} />
       <PartStyles blocks={[grid]} owner={null} />
       <ContentGridView block={{ ...grid, emptyText: "No articles yet." }} data={data} />
     </main>

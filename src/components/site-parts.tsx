@@ -24,6 +24,7 @@ import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
 import { MotionSupport } from "./motion-support";
 import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
+import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { HidingHeader } from "./store-chrome";
 import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink, hasViewChoices } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
@@ -40,7 +41,7 @@ import { WishlistCount } from "./wishlist-heart";
 export type SiteContext =
   /** `withdrawal`: whether the withdrawal link is drawn (D178 step 5: with the online shop off, only while after-sale is open); drawn unless false. */
   | { kind: "store"; store: Store; market: Market; place: "header" | "footer"; withdrawal?: boolean }
-  | { kind: "kaizen"; chrome: PlatformChrome; place: "header" | "footer" };
+  | { kind: "kaizen"; chrome: PlatformChrome; place: "header" | "footer"; lang?: PlatformLang };
 
 const ICON_LINK = "flex size-11 items-center justify-center rounded-full hover:bg-current/5";
 const COLUMN_LINK = "inline-flex min-h-10 items-center hover:underline";
@@ -190,10 +191,11 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
 
 function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext, { kind: "kaizen" }> }) {
   const { chrome, place } = ctx;
+  const lang = ctx.lang ?? "en";
   const m = t("en");
   switch (block.part) {
     case "logo":
-      return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} />;
+      return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} lang={lang} />;
     case "menuButton":
       return <MenuButton label={m.openMenu} />;
     case "account":
@@ -205,7 +207,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       );
     case "signUp":
       return (
-        <Link href="/sign-up" className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
+        <Link href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
           {BUILT_IN.signUp}
         </Link>
       );
@@ -216,7 +218,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
     }
     case "cookies":
       return (
-        <Link href="/cookies" className="w-fit text-muted underline">
+        <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
           {m.cookies}
         </Link>
       );
@@ -333,22 +335,22 @@ export async function StoreSiteFooter({ store, market, layout, withdrawal = true
 /** `theme`: the layers to draw it in when they are not Kaizena Flow's live theme's (an installed theme's preview, D252). */
 type KaizenLayers = GridPlace["theme"];
 
-export function KaizenSiteHeader({ chrome, layout, theme }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers }) {
+export function KaizenSiteHeader({ chrome, layout, theme, lang = "en" }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers; lang?: PlatformLang }) {
   const overlay = layout.content.overlay;
   return (
     <HidingHeader overlay={overlay && { textColor: overlay.textColor }}>
       <header className="site-header border-b border-border bg-background/95 backdrop-blur">
-        <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "header" }} place={{ pageId: layout.id, owner: null, theme }} />
+        <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "header", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
       </header>
     </HidingHeader>
   );
 }
 
 /** Kaizen's own footer (D80). */
-export function KaizenSiteFooter({ chrome, layout, theme }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers }) {
+export function KaizenSiteFooter({ chrome, layout, theme, lang = "en" }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers; lang?: PlatformLang }) {
   return (
     <footer data-reveal={layout.content.footerReveal ? "" : undefined} className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(layout.content)}`}>
-      <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer" }} place={{ pageId: layout.id, owner: null, theme }} />
+      <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
     </footer>
   );
 }

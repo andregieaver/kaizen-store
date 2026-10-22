@@ -1,5 +1,6 @@
 import "server-only";
 
+import { langOfLocale, languageNotReady, localesFor, type PlatformLang } from "@/lib/platform-lang";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -95,5 +96,24 @@ export async function setLanguageLocales(accountId: string, lang: string, locale
   `);
   if (rows.length === 0) return { ok: false, problem: "Unknown language." };
   await audit(accountId, null, "language.locales", { lang, locales: clean });
+  return { ok: true };
+}
+
+/**
+ * Offers Kaizena Flow's own site in one of its languages, or stops (D312): turning one on only once `languageNotReady()` says nothing is
+ * missing, so the site is never shown half translated; English always stays. Callers refresh `PLATFORM_NAVIGATION_TAG`.
+ */
+export async function setPlatformSiteLanguage(accountId: string, lang: PlatformLang, on: boolean): Promise<LanguageResult> {
+  if (lang === "en") return { ok: false, problem: "English stays: it is the site's own language and what every other falls back to." };
+  if (on) {
+    const missing = languageNotReady(lang);
+    if (missing.length > 0) return { ok: false, problem: missing.join(" ") };
+  }
+  const [row] = await db().execute<Row>(sql`select locales from commerce.platform_settings`);
+  const current = Array.isArray(row?.locales) ? row.locales.map((l) => langOfLocale(String(l))).filter((l): l is PlatformLang => l !== null) : ["en" as const];
+  const next = on ? [...new Set([...current, lang])] : current.filter((l) => l !== lang);
+  const locales = localesFor(next);
+  await db().execute(sql`update commerce.platform_settings set locales = ${sql`array[${sql.join(locales.map((l) => sql`${l}`), sql`, `)}]::text[]`}`);
+  await audit(accountId, null, on ? "language.site_on" : "language.site_off", { lang });
   return { ok: true };
 }

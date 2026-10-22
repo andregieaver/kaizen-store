@@ -1,5 +1,6 @@
 import "server-only";
 
+import { langOfLocale, PLATFORM_LANGS, type PlatformLang } from "@/lib/platform-lang";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -56,6 +57,8 @@ export type PlatformChrome = {
   customCss: string;
   /** Kaizen's own theme (D235): Minimal until the page builder's Theme tab or saved colours change it; its fonts are `fonts`. */
   theme: StoreTheme;
+  /** The languages the site is offered in (D312), English first: `platform_settings.locales` read as the site's languages. */
+  langs: PlatformLang[];
 };
 
 async function loadSettings(): Promise<{
@@ -68,12 +71,13 @@ async function loadSettings(): Promise<{
   fonts: SiteFonts;
   customCss: string;
   theme: StoreTheme;
+  langs: PlatformLang[];
 }> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
   const [[row], menus] = await Promise.all([
-    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, custom_css, theme, header_menu_id, footer_menu_id from commerce.platform_settings`),
+    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, custom_css, theme, locales, header_menu_id, footer_menu_id from commerce.platform_settings`),
     readDb().execute<Row>(sql`select id, name, items from commerce.menus where store_id is null order by name`),
   ]);
   return {
@@ -86,7 +90,19 @@ async function loadSettings(): Promise<{
     fonts: parseSiteFonts(row?.fonts),
     customCss: String(row?.custom_css ?? ""),
     theme: platformTheme(row?.theme, parseSiteFonts(row?.fonts)),
+    langs: offeredLangs(row?.locales),
   };
+}
+
+/** The site's languages from `platform_settings.locales`: English always, first, and any other the site has. */
+function offeredLangs(locales: unknown): PlatformLang[] {
+  const listed = Array.isArray(locales) ? locales.map((l) => langOfLocale(String(l))).filter((l): l is PlatformLang => l !== null) : [];
+  return ["en", ...PLATFORM_LANGS.filter((lang) => lang !== "en" && listed.includes(lang))];
+}
+
+/** The languages Kaizena Flow's own site is offered in (D312), English first. */
+export async function getPlatformLangs(): Promise<PlatformLang[]> {
+  return (await loadSettings()).langs;
 }
 
 /** Kaizen's theme as stored, completed from Minimal, with Kaizen's own fonts (D235). */

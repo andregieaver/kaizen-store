@@ -1808,7 +1808,7 @@ describe("pages", () => {
     for (const slug of ["About", "a--b", "-a", "a b", "x".repeat(81)]) {
       await expect(page(slug)).rejects.toThrow(/pages_slug_format/);
     }
-    for (const slug of ["admin", "s", "sign-up", "api", "unsubscribe"]) {
+    for (const slug of ["admin", "s", "sign-up", "api", "unsubscribe", "themes", "nb", "en", "sv", "da", "no", "nn", "nb/om-oss"]) {
       await expect(page(slug)).rejects.toThrow(/pages_slug_not_reserved/);
     }
     await expect(page("admin", store)).resolves.toBeDefined();
@@ -2160,6 +2160,17 @@ describe("owners' own CSS (D100)", () => {
     await expect(db.query("update commerce.platform_settings set custom_css = $1", ["x".repeat(50_001)])).rejects.toThrow(
       /platform_settings_custom_css/,
     );
+  });
+});
+
+describe("the languages of Kaizena Flow's own site (D312)", () => {
+  it("is English alone until another is offered, English always first, and only the site's languages", async () => {
+    expect((await one<{ locales: string[] }>("select locales from commerce.platform_settings")).locales).toEqual(["en-GB"]);
+    await db.query("update commerce.platform_settings set locales = '{en-GB,nb-NO}'");
+    for (const locales of ["{nb-NO,en-GB}", "{nb-NO}", "{en-GB,sv-SE}", "{}"]) {
+      await expect(db.query("update commerce.platform_settings set locales = $1", [locales])).rejects.toThrow(/platform_settings_locales/);
+    }
+    await db.query("update commerce.platform_settings set locales = '{en-GB}'");
   });
 });
 

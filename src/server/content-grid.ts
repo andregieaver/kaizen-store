@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { PlatformLang } from "@/lib/platform-lang";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -66,6 +67,8 @@ export type GridPlace = {
    * inside a part's display hole (D179 phase 4), so the page around stays prerendered.
    */
   query?: Promise<Record<string, string | string[] | undefined>>;
+  /** On Kaizena Flow's own pages (D312): the language the page is drawn in, so the site's own links in it stay in that language. English unless said. */
+  lang?: PlatformLang;
   /** On the page chosen for a theme's page in the theme store (D285): the theme its address names, which the theme store's parts draw. */
   themeSlug?: string;
   /** With it, the parts that have something for that theme (`themePartsWith()`): the others and rows of nothing else are left out. */

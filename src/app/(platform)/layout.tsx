@@ -1,91 +1,14 @@
-import { FooterRevealGuard } from "@/components/footer-reveal";
 import type { Metadata } from "next";
-import { Suspense } from "react";
 
-import { SiteConsent } from "@/components/consent/site-consent";
-import { CustomCss } from "@/components/custom-css";
-import { StoreThemeStyles } from "@/components/store-theme";
-import { themeAttributes } from "@/lib/theme";
-import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
-import { OffPayRoutes } from "@/components/off-pay-routes";
-import { KaizenChat } from "@/components/site-chat";
-import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
-import { t } from "@/lib/i18n";
-import { siteUrl } from "@/lib/site";
-import { siteIcons } from "@/lib/site-icons";
-import { siteFontStyle } from "@/server/fonts";
-import { getPlatformChrome, getPlatformFavicon } from "@/server/platform-navigation";
-import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
-import { siteLayoutFor } from "@/server/site-layouts";
+import { PlatformRoot, platformRootMetadata } from "@/components/platform-root";
 
 import "../globals.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const [seo, favicon] = await Promise.all([getPlatformSeo(), getPlatformFavicon()]);
-  const title = seo.title.en || PLATFORM_DEFAULTS.title;
-  const description = seo.description.en || PLATFORM_DEFAULTS.description;
-  const image = seo.image
-    ? { url: seo.image.url, alt: seo.image.alt.en || title }
-    : { url: "/og.png", alt: title, width: 1200, height: 630 };
-  return {
-    metadataBase: new URL(siteUrl()),
-    title: { default: title, template: `%s · ${title}` },
-    description,
-    openGraph: { type: "website", siteName: title, locale: "en_GB", title, description, images: [image] },
-    twitter: { card: "summary_large_image", title, description, images: [image] },
-    verification: verificationTags(seo),
-    icons: siteIcons(favicon),
-  };
+export function generateMetadata(): Promise<Metadata> {
+  return platformRootMetadata("en");
 }
 
-/** Kaizen's own pages, with its header and footer (D42), built like a store's. */
-export default async function PlatformLayout({ children }: LayoutProps<"/">) {
-  // Kaizen's own header and footer built in the page builder (D80), else the standard ones.
-  const [chrome, headerLayout, footerLayout] = await Promise.all([getPlatformChrome(), siteLayoutFor(null, "header"), siteLayoutFor(null, "footer")]);
-  return (
-    // Kaizen's own theme (D235): its choices as attributes, its colours and sizes as variables, as a store's (D60).
-    <html lang="en" className="h-full antialiased" {...themeAttributes(chrome.theme.settings)} suppressHydrationWarning={chrome.theme.settings.visitorSwitch}>
-      {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
-      <body
-        className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
-        style={siteFontStyle(chrome.fonts)}
-      >
-        {/* Kaizen's own fonts, from its copies (D59), its theme (D235) and its screen sizes' breakpoint classes (D179). */}
-        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} />
-        {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
-        <CustomCss css={chrome.customCss} name="kaizen" />
-        <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
-        <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
-        >
-          {t("en").skipToContent}
-        </a>
-        {headerLayout ? <KaizenSiteHeader chrome={chrome} layout={headerLayout} /> : <PlatformHeader chrome={chrome} />}
-        {/* A footer revealed on scroll (D184) lies under the page, which covers it. */}
-        {footerLayout?.content.footerReveal ? <div className="over-footer relative z-10 bg-background">{children}</div> : children}
-        {footerLayout?.content.footerReveal && <FooterRevealGuard />}
-        {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} /> : <PlatformFooter chrome={chrome} />}
-        {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
-        <Suspense fallback={null}>
-          <PlatformBottomBar />
-        </Suspense>
-        <Suspense fallback={null}>
-          <PlatformMenu chrome={chrome} />
-        </Suspense>
-        {/* Kaizen's chat (D81, D216) and the consent banner (D58), never on a support conversation's email link, whose address holds its token. */}
-        <Suspense fallback={null}>
-          <OffPayRoutes>
-            <Suspense fallback={null}>
-              <KaizenChat />
-            </Suspense>
-            <Suspense fallback={null}>
-              <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
-            </Suspense>
-          </OffPayRoutes>
-        </Suspense>
-      </body>
-    </html>
-  );
+/** Kaizena Flow's own site in English, at the addresses it always had (D42, D312). */
+export default function PlatformLayout({ children }: LayoutProps<"/">) {
+  return <PlatformRoot lang="en">{children}</PlatformRoot>;
 }

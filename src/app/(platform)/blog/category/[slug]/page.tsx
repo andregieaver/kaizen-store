@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { termMetadata, termStaticParams, TermPages } from "../../../term-listing";
+import { termMetadata, termStaticParams, TermPages } from "@/components/platform-routes/terms";
 
 type Props = PageProps<"/blog/category/[slug]">;
 

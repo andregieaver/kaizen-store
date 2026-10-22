@@ -6,7 +6,7 @@
  * returns short pieces and joined; `proofread` stays false until a person has compared the passage with Lovdata letter by letter.
  * A passage the read garbled is left out (named in `note`), never guessed. Prescribed texts (`prescribed: true`) are copied word for
  * word into the pages that use them; the standard withdrawal form is not here: its regulation only points to the directive's
- * annex, which Lovdata does not hold, and its source is the owner's decision.
+ * annex, which Lovdata does not hold, so it is copied from the state form Q-0319B (the owner's choice, D312) when a page uses it.
  */
 
 export type LegalPassage = {
@@ -179,7 +179,7 @@ export const LEGAL_WORDING_NB: readonly LegalPassage[] = [
       "Forbrukeren skal ved avtaler der forbrukeren har angrerett i medhold av angrerettloven motta standardisert skjema for bruk av angrerett " +
       "(angreskjema). Ved avtaler om varer og tjenester som ikke er finansielle tjenester, skal angreskjemaet tilsvare malen inntatt i " +
       "forbrukerrettighetsdirektivet (Europaparlaments- og Rådsdirektiv 2011/83/EU) vedlegg 1 B.",
-    note: "The form itself is the directive's Annex I B, which Lovdata does not hold; its Norwegian source waits for the owner.",
+    note: "The form itself is the directive's Annex I B, which Lovdata does not hold; its Norwegian text is copied from the state form Q-0319B (D312).",
   }),
   passage({
     key: "forskrift_2",

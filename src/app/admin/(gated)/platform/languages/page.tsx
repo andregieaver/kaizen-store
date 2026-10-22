@@ -8,9 +8,11 @@ import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listLanguages, storesUsing } from "@/server/languages";
 import { uiCoverage } from "@/server/ui-text";
+import { getPlatformLangs } from "@/server/platform-navigation";
+import { languageNotReady, PLATFORM_LANG_FACTS, PLATFORM_LANGS, platformPath } from "@/lib/platform-lang";
 import { Card, PageHeader } from "@/components/admin/ui";
 
-import { addLanguageAction, saveLocalesAction, setEnabledAction } from "./actions";
+import { addLanguageAction, saveLocalesAction, setEnabledAction, setSiteLanguageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Languages" };
 
@@ -25,7 +27,7 @@ export default async function LanguagesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const [languages, coverage] = await Promise.all([listLanguages(), uiCoverage()]);
+  const [languages, coverage, siteLangs] = await Promise.all([listLanguages(), uiCoverage(), getPlatformLangs()]);
   const uses = new Map(await Promise.all(languages.map(async (l) => [l.lang, await storesUsing(l.lang)] as const)));
   const have = new Set(languages.map((l) => l.lang));
   const addable = worldLanguages().filter((l) => !have.has(l.lang));
@@ -37,6 +39,37 @@ export default async function LanguagesPage() {
         title="Languages"
         description={<>The languages store owners can offer under Languages and currencies. Products, pages and menus can be written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get) is written by hand in Norwegian, Swedish, Danish and English, and translated by AI and reviewed here for the others. A language without interface text shows English there.</>}
       />
+
+      <Card
+        title="Kaizena Flow's own site"
+        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (/nb). A language is offered only once its texts are written and its legal pages reviewed."
+        className="flex flex-col gap-3"
+        compact
+      >
+        <ul className="flex flex-col divide-y divide-line text-sm">
+          {PLATFORM_LANGS.map((lang) => {
+            const on = siteLangs.includes(lang);
+            const missing = languageNotReady(lang);
+            return (
+              <li key={lang} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-body-strong text-ink">
+                    {PLATFORM_LANG_FACTS[lang].name} <span className="text-muted">· {platformPath(lang, "/")}</span>
+                  </span>
+                  <span className="text-muted">
+                    {lang === "en" ? "Always offered." : on ? "Offered." : missing.length > 0 ? `Not ready: ${missing.join(" ")}` : "Ready, not offered."}
+                  </span>
+                </div>
+                {lang !== "en" && (on || missing.length === 0) && (
+                  <ActionForm action={setSiteLanguageAction.bind(null, lang, !on)}>
+                    <SubmitButton variant={on ? "secondary" : "primary"}>{on ? "Stop offering" : "Offer the site in it"}</SubmitButton>
+                  </ActionForm>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
 
       <Card title="Add a language" className="flex flex-col gap-3" compact>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">

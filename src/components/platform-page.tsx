@@ -6,6 +6,7 @@ import { PageEditLink } from "@/components/page-edit-link";
 import { HeaderOverlayMark } from "@/components/store-chrome";
 import { pageExcerpt } from "@/lib/page-content";
 import { headerOverlays } from "@/lib/site-layout";
+import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
@@ -19,8 +20,11 @@ import { siteLayoutFor } from "@/server/site-layouts";
  * place's address.
  */
 
-/** The page's own search and sharing texts, over Kaizen's; `url` is the address it is shown at. */
-export function platformPageMetadata(page: PublishedPage, url: string): Metadata {
+/**
+ * The page's own search and sharing texts, over Kaizen's; `url` is its English address (D312: the address in `lang` is the canonical one,
+ * and `languages` its addresses in the site's languages, from `languageMeta()`).
+ */
+export function platformPageMetadata(page: PublishedPage, url: string, { lang = "en", languages }: { lang?: PlatformLang; languages?: Record<string, string> } = {}): Metadata {
   const c = page.content;
   const title = c.seo.title || c.title;
   const description = c.seo.description || pageExcerpt(c) || PLATFORM_DEFAULTS.description;
@@ -31,9 +35,9 @@ export function platformPageMetadata(page: PublishedPage, url: string): Metadata
     // The page's own search title is used as written; otherwise "Title · Kaizen".
     title: c.seo.title ? { absolute: c.seo.title } : c.title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: platformPath(lang, url), ...(languages && { languages }) },
     ...(!c.searchEngines && { robots: { index: false } }),
-    openGraph: { type: "article", siteName: "Kaizena Flow", locale: "en_GB", url, title, description, images },
+    openGraph: { type: "article", siteName: "Kaizena Flow", locale: PLATFORM_LANG_FACTS[lang].ogLocale, url: platformPath(lang, url), title, description, images },
     twitter: { card: "summary_large_image", title, description, images },
   };
 }
@@ -46,8 +50,11 @@ export async function PlatformPageView({
   themeSlug,
   themeParts,
   jsonLd = true,
+  lang = "en",
 }: {
   page: PublishedPage;
+  /** The language the site is drawn in (D312); `url` stays the English address. */
+  lang?: PlatformLang;
   url: string;
   front?: boolean;
   /** The address's parameters, read only by a part shown by conditions (D179 phase 4). */
@@ -71,7 +78,7 @@ export async function PlatformPageView({
         <JsonLdScript
           data={pageJsonLd({
             origin,
-            url: `${origin}${url}`,
+            url: `${origin}${platformPath(lang, url)}`,
             title: c.title,
             description: c.seo.description || pageExcerpt(c),
             image: c.thumbnail?.url ?? null,
@@ -79,7 +86,7 @@ export async function PlatformPageView({
           })}
         />
       )}
-      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, ...(themeSlug && { themeSlug, themeParts }) }} editable />
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }) }} editable />
       <PageEditLink pageId={page.id} />
     </main>
   );

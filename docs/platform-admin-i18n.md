@@ -1,6 +1,6 @@
 # Kaizena Flow and the admin in more than one language (D312)
 
-Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 under way. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
+Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/nb` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
 source and the fallback.
 
 The owner's ask: every string of Kaizena Flow's own site (the platform store: front page, Kaizena Flow's pages, sign-up, the theme store,
@@ -174,7 +174,7 @@ compares each with Lovdata before a page uses it. Two reads came back garbled an
 letters; a stray sentence in forbrukerkjøpsloven § 26). Its test checks the record, lists passages older than a year
 (`staleWording()`), refuses the repealed ekomloven § 2-7b and holds any prescribed passage a Norwegian legal text cites to its words.
 Open: the standard withdrawal form is not on Lovdata (the regulation points to the directive's Annex I B, and Forbrukertilsynet names
-the state form Q-0319B), so its source is the owner's choice; LOV-2026-06-19-34 (a withdrawal function, § 20 a) and inkassoloven 2026
+the state form Q-0319B), which the owner chose as the source (2026-10-22); LOV-2026-06-19-34 (a withdrawal function, § 20 a) and inkassoloven 2026
 are passed but not in force, to read again when they are.
 
 ### 5.3 The glossary

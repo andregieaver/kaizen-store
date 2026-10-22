@@ -117,6 +117,8 @@ export type KnownCookie = {
   modals?: boolean;
   /** Set only on Kaizen's site while its referral program is on (D131). */
   referrals?: boolean;
+  /** Set only on Kaizena Flow's own site while it is offered in more than one language (D312). */
+  languages?: boolean;
   /** Set only in stores whose referral program (the affiliate program, D131) is on. */
   affiliate?: boolean;
   /** Set only in stores whose product recommendations are on (D139). */
@@ -280,6 +282,23 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker at du lukket et popup-vindu, slik at det ikke åpnes igjen med en gang; lagres til du lukker fanen, eller i så mange dager nettstedet har valgt.",
       sv: "Kommer ihåg att du stängde ett popup-fönster, så att det inte öppnas igen direkt; sparas tills du stänger fliken eller så många dagar som webbplatsen har valt.",
       da: "Husker, at du lukkede et popup-vindue, så det ikke åbner igen med det samme; gemmes, til du lukker fanen, eller i det antal dage, webstedet har valgt.",
+    },
+  },
+  {
+    // In local storage, not a cookie: only once a visitor who allowed preferences closes the bar suggesting the site in their browser's
+    // language (D312, `LanguageHint`); without that choice the bar is closed for the page view only.
+    name: "kaizen_lang_hint",
+    pattern: /^kaizen_lang_hint$/,
+    provider: "Kaizena Flow",
+    category: "preferences",
+    days: null,
+    on: "platform",
+    languages: true,
+    purpose: {
+      en: "Remembers that you closed the suggestion to read Kaizena Flow's site in another language, so it is not shown again; kept in your browser until you clear it.",
+      nb: "Husker at du lukket forslaget om å lese Kaizena Flows nettsted på et annet språk, slik at det ikke vises igjen; lagres i nettleseren til du sletter det.",
+      sv: "Kommer ihåg att du stängde förslaget att läsa Kaizena Flows webbplats på ett annat språk, så att det inte visas igen; sparas i webbläsaren tills du rensar det.",
+      da: "Husker, at du lukkede forslaget om at læse Kaizena Flows websted på et andet sprog, så det ikke vises igen; gemmes i browseren, til du sletter det.",
     },
   },
   {
@@ -581,7 +600,8 @@ export function declaredCookies(
     affiliate = false,
     recommendations = false,
     experiments = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean } = {},
+    languages = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -595,6 +615,7 @@ export function declaredCookies(
       (!cookie.experiments || experiments) &&
       !cookie.staff &&
       (!cookie.referrals || referrals) &&
+      (!cookie.languages || languages) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getPlatformLangs } from "./platform-navigation";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -103,7 +104,9 @@ export async function siteCookies(
   const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
   // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
   const experiments = storeId === null ? false : await storeHasExperiments(storeId);
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments })
+  // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312).
+  const languages = storeId === null && (await getPlatformLangs()).length > 1;
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
     .forEach(list);

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { languageAlternates, platformPath } from "@/lib/platform-lang";
+import { getPlatformLangs } from "./platform-navigation";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
@@ -494,20 +496,33 @@ export async function platformSitemap(): Promise<string> {
     ...pages.filter((page) => page.content.searchEngines).map((page) => ({ page, path: `/${page.slug}` })),
     ...articles.filter((a) => a.content.searchEngines).map((page) => ({ page, path: `/blog/${page.slug}` })),
   ];
+  // Each page in every language the site offers (D312), each entry naming the others (`hreflang`); the theme store is English until P3.
+  const langs = await getPlatformLangs();
+  const inEvery = (path: string, extra = "") => {
+    const alternates = languageAlternates(path, langs);
+    const links = alternates
+      ? Object.entries(alternates)
+          .map(([tag, href]) => `<xhtml:link rel="alternate" hreflang="${tag}" href="${xml(`${origin}${href}`)}"/>`)
+          .join("")
+      : "";
+    return langs.map((lang) => `<url><loc>${xml(`${origin}${platformPath(lang, path)}`)}</loc>${extra}${links}</url>`);
+  };
   const urls = [
-    ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
+    ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].flatMap((path) => inEvery(path)),
     // The theme store (`docs/theme-phase-3.md`): its list and each theme's page, here until it has a host of its own (step 3), whose
     // sitemap lists them then (`themeStoreSitemap()`), as a sitemap lists only its own host's addresses.
     ...(themes.length > 0 && !themesHost() ? ["/themes", ...themes.map((theme) => `/themes/${theme.slug}`)] : []).map((path) => `<url><loc>${xml(`${origin}${path}`)}</loc></url>`),
-    ...listed.map(
-      ({ page, path }) =>
-        `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)
+    ...listed.flatMap(({ page, path }) =>
+      inEvery(
+        path,
+        `<lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)
           .slice(0, 10)
           .map((url) => `<image:image><image:loc>${xml(absoluteUrl(url, origin))}</image:loc></image:image>`)
-          .join("")}</url>`,
+          .join("")}`,
+      ),
     ),
   ];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
 /**

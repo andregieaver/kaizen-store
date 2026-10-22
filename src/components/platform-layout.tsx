@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { t } from "@/lib/i18n";
 import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
+import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
@@ -17,7 +18,8 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
  * nothing here is per visitor.
  */
 
-type Props = { chrome: PlatformChrome };
+/** `lang` is the language the page is drawn in (D312): the site's own links stay in it (`platformPath()`). */
+type Props = { chrome: PlatformChrome; lang?: PlatformLang };
 
 const m = t("en");
 export const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
@@ -35,6 +37,7 @@ export function MenuLinks({
   linkClassName,
   justify,
   hover,
+  lang = "en",
 }: Props & { items: PlatformMenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string; hover?: MenuHover }) {
   const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog)]));
   const toNode = ({ item, children }: MenuNode<PlatformMenuEntry>, index: number): MenuLinkNode => {
@@ -42,6 +45,7 @@ export function MenuLinks({
     return {
       key: `${index}-${link.href}`,
       ...link,
+      href: platformPath(lang, link.href),
       newTab: Boolean(item.newTab),
       ...(item.depth === 0 && item.mega && { mega: item.mega }),
       ...(item.image && { image: item.image }),
@@ -53,10 +57,10 @@ export function MenuLinks({
 }
 
 /** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */
-export function Brand({ chrome, size, height }: Props & { size: "header" | "footer"; height?: number }) {
+export function Brand({ chrome, size, height, lang = "en" }: Props & { size: "header" | "footer"; height?: number }) {
   const logo = chrome.navigation.logo;
   return (
-    <Link href="/" className="flex min-w-0 items-center">
+    <Link href={platformPath(lang, "/")} className="flex min-w-0 items-center">
       {logo ? (
         // Kaizen's pages follow the device's light or dark mode, so its dark-background logo does too (D60).
         <LogoPicture
@@ -75,7 +79,7 @@ export function Brand({ chrome, size, height }: Props & { size: "header" | "foot
   );
 }
 
-export function PlatformHeader({ chrome }: Props) {
+export function PlatformHeader({ chrome, lang = "en" }: Props) {
   const header = platformMenu(chrome, chrome.headerMenuId);
   return (
     <HidingHeader>
@@ -92,13 +96,14 @@ export function PlatformHeader({ chrome }: Props) {
             <span className="sr-only">{m.openMenu}</span>
           </button>
 
-          <Brand chrome={chrome} size="header" />
+          <Brand chrome={chrome} size="header" lang={lang} />
 
           {header.length > 0 && (
             <nav aria-label={m.mainMenu} className="hidden min-w-0 flex-1 md:block">
               <MenuLinks
                 items={header}
                 chrome={chrome}
+              lang={lang}
                 layout="row"
                 linkClassName="flex min-h-11 items-center rounded-full px-3 text-sm font-medium hover:bg-surface"
               />
@@ -111,7 +116,7 @@ export function PlatformHeader({ chrome }: Props) {
               <span className="sr-only">{BUILT_IN.signIn}</span>
             </Link>
             <Link
-              href="/sign-up"
+              href={platformPath(lang, "/sign-up")}
               className="hidden min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background sm:flex"
             >
               {BUILT_IN.signUp}
@@ -124,14 +129,15 @@ export function PlatformHeader({ chrome }: Props) {
 }
 
 /** The phone's slide-out menu, placed after the page's content (see `MobileMenu`). */
-export function PlatformMenu({ chrome }: Props) {
+export function PlatformMenu({ chrome, lang = "en" }: Props) {
   return (
-    <MobileMenu title={<Brand chrome={chrome} size="header" />} labels={{ close: m.closeMenu, menu: m.menu }}>
+    <MobileMenu title={<Brand chrome={chrome} size="header" lang={lang} />} labels={{ close: m.closeMenu, menu: m.menu }}>
       {platformMenu(chrome, chrome.headerMenuId).length > 0 && (
         <nav aria-label={m.mainMenu}>
           <MenuLinks
             items={platformMenu(chrome, chrome.headerMenuId)}
             chrome={chrome}
+            lang={lang}
             layout="drawer"
             linkClassName="flex min-h-12 items-center border-b border-border text-lg"
           />
@@ -139,7 +145,7 @@ export function PlatformMenu({ chrome }: Props) {
       )}
       <ul className="flex flex-col">
         <li>
-          <Link href="/sign-up" className="flex min-h-12 items-center gap-3">
+          <Link href={platformPath(lang, "/sign-up")} className="flex min-h-12 items-center gap-3">
             <Icon name="home" /> {BUILT_IN.signUp}
           </Link>
         </li>
@@ -154,7 +160,7 @@ export function PlatformMenu({ chrome }: Props) {
 }
 
 /** Who runs Kaizen (required on every page of a web service) and the footer menu. */
-export function PlatformFooter({ chrome }: Props) {
+export function PlatformFooter({ chrome, lang = "en" }: Props) {
   const b = chrome.business;
   const legal = [b.legalName || "Kaizena Flow", b.organisationNumber && `Org. ${b.organisationNumber}`]
     .filter(Boolean)
@@ -163,7 +169,7 @@ export function PlatformFooter({ chrome }: Props) {
     <footer className="mt-auto border-t border-border bg-surface/40">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 md:grid-cols-4">
         <div className="flex flex-col gap-3 sm:col-span-2">
-          <Brand chrome={chrome} size="footer" />
+          <Brand chrome={chrome} size="footer" lang={lang} />
           <address className="flex flex-col gap-1 not-italic text-muted">
             <span>{legal}</span>
             {b.postalAddress && <span>{b.postalAddress.replace(/\s*\n\s*/g, ", ")}</span>}
@@ -174,7 +180,7 @@ export function PlatformFooter({ chrome }: Props) {
             )}
           </address>
           {/* What the site stores in the browser, and the choice about it (D58). */}
-          <Link href="/cookies" className="w-fit text-muted underline">
+          <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
         </div>
@@ -183,6 +189,7 @@ export function PlatformFooter({ chrome }: Props) {
             <MenuLinks
               items={platformMenu(chrome, chrome.footerMenuId)}
               chrome={chrome}
+              lang={lang}
               layout="column"
               linkClassName="inline-flex min-h-10 items-center hover:underline"
             />
@@ -194,12 +201,12 @@ export function PlatformFooter({ chrome }: Props) {
 }
 
 /** Phones: the way round the site, at the thumb. */
-export function PlatformBottomBar() {
+export function PlatformBottomBar({ lang = "en" }: { lang?: PlatformLang }) {
   const item = "flex flex-1 flex-col items-center gap-0.5 py-2 text-xs";
   return (
     <HidingBottomBar>
       <nav aria-label={m.shortcuts} className="flex">
-        <Link href="/" className={item}>
+        <Link href={platformPath(lang, "/")} className={item}>
           <Icon name="home" />
           {BUILT_IN.home}
         </Link>

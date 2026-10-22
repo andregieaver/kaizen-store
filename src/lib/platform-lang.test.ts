@@ -1,0 +1,70 @@
+import { describe, expect, it } from "vitest";
+
+import { RESERVED_PAGE_SLUGS } from "./page-content";
+import { englishPath, LANGUAGE_PREFIXES, langOfLocale, langOfPath, languageAlternates, platformPath, suggestedLang } from "./platform-lang";
+
+describe("the site's languages (D312 P1)", () => {
+  it("puts a language's prefix before the site's own addresses and leaves English as it is", () => {
+    expect(platformPath("en", "/themes")).toBe("/themes");
+    expect(platformPath("nb", "/")).toBe("/nb");
+    expect(platformPath("nb", "/themes")).toBe("/nb/themes");
+    expect(platformPath("nb", "/sign-up?theme=orbit#form")).toBe("/nb/sign-up?theme=orbit#form");
+    expect(platformPath("nb", "/?x=1")).toBe("/nb?x=1");
+    expect(platformPath("nb", "/nb/themes")).toBe("/nb/themes");
+  });
+
+  it("leaves what is not one of the site's pages as written", () => {
+    for (const path of ["/s/demo", "/admin", "/admin/sign-in", "/api/consent", "/auth/callback", "/r/abc", "/robots.txt", "/og.png", "https://example.com/", "mailto:a@b.no", "#main", "//cdn.example/x"]) {
+      expect([path, platformPath("nb", path)]).toEqual([path, path]);
+    }
+  });
+
+  it("reads the language of an address and its English address", () => {
+    expect(langOfPath("/nb")).toBe("nb");
+    expect(langOfPath("/nb/themes/orbit")).toBe("nb");
+    expect(langOfPath("/themes")).toBeNull();
+    expect(langOfPath("/en/themes")).toBeNull();
+    expect(englishPath("/nb")).toBe("/");
+    expect(englishPath("/nb/themes/orbit")).toBe("/themes/orbit");
+    expect(englishPath("/themes")).toBe("/themes");
+    expect(langOfLocale("nb-NO")).toBe("nb");
+    expect(langOfLocale("en-GB")).toBe("en");
+    expect(langOfLocale("sv-SE")).toBeNull();
+  });
+
+  it("names each language's address of a page, and nothing while English is the only one", () => {
+    expect(languageAlternates("/themes", [])).toBeUndefined();
+    expect(languageAlternates("/themes", ["en"])).toBeUndefined();
+    expect(languageAlternates("/themes", ["en", "nb"])).toEqual({ en: "/themes", nb: "/nb/themes", "x-default": "/themes" });
+    expect(languageAlternates("/", ["nb"])).toEqual({ en: "/", nb: "/nb", "x-default": "/" });
+  });
+
+  it("suggests the browser's first language the site offers, never the page's own", () => {
+    expect(suggestedLang(["nb-NO", "en"], "en", ["nb"])).toBe("nb");
+    expect(suggestedLang(["no"], "en", ["nb"])).toBe("nb");
+    expect(suggestedLang(["nn-NO"], "en", ["nb"])).toBe("nb");
+    expect(suggestedLang(["en-GB", "nb"], "en", ["nb"])).toBeNull();
+    expect(suggestedLang(["de-DE", "nb"], "en", ["nb"])).toBe("nb");
+    expect(suggestedLang(["nb-NO"], "en", [])).toBeNull();
+    expect(suggestedLang(["en-US"], "nb", ["nb"])).toBe("en");
+    expect(suggestedLang(["fr"], "en", ["nb"])).toBeNull();
+  });
+
+  it("keeps every language prefix from being a page's address", () => {
+    for (const prefix of LANGUAGE_PREFIXES) expect(RESERVED_PAGE_SLUGS).toContain(prefix);
+  });
+});
+
+describe("offering the site in a language (D312)", () => {
+  it("offers English always and Norwegian only once its texts and legal pages are ready", async () => {
+    const { languageNotReady, localesFor, platformLanguageReady } = await import("./platform-lang");
+    expect(languageNotReady("en")).toEqual([]);
+    expect(platformLanguageReady("nb")).toBe(false);
+    expect(languageNotReady("nb")).toEqual([
+      "The site's own texts are not all written in Norwegian yet.",
+      "The legal pages in Norwegian have not been read by the reviewing lawyer yet.",
+    ]);
+    expect(localesFor([])).toEqual(["en-GB"]);
+    expect(localesFor(["nb", "en"])).toEqual(["en-GB", "nb-NO"]);
+  });
+});

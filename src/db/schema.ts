@@ -1499,6 +1499,11 @@ export const platformSettings = commerce.table(
      */
     theme: jsonb("theme"),
     /**
+     * The languages Kaizena Flow's own site is offered in (D312, docs/platform-admin-i18n.md 3.1), English first; a language is
+     * turned on only when `platformLanguageReady()` says its texts and legal pages are, so the site is never shown half translated.
+     */
+    locales: text("locales").array().notNull().default(sql`'{en-GB}'::text[]`),
+    /**
      * When stores' domains last asked for a new deployment (P8): routing to
      * custom domains is built into each deployment, so a change needs one.
      */
@@ -1517,6 +1522,8 @@ export const platformSettings = commerce.table(
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
     check("platform_settings_custom_css", sql`length(${t.customCss}) <= 50000`),
+    // English always, first; the other languages the site has (`PLATFORM_LANGS`).
+    check("platform_settings_locales", sql`coalesce(${t.locales}[1] = 'en-GB', false) and ${t.locales} <@ array['en-GB', 'nb-NO']::text[]`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
     index("platform_settings_header_menu_idx").on(t.headerMenuId),
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),
@@ -6347,7 +6354,7 @@ export const pages = commerce.table(
     // The platform's own routes at the root of the site (category and tag listings: D50).
     check(
       "pages_slug_not_reserved",
-      sql`${t.storeId} is not null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'cookies', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
+      sql`${t.storeId} is not null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'cookies', 'da', 'en', 'forgot-password', 'help', 'mail', 'nb', 'nn', 'no', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'sv', 'tag', 'themes', 'unsubscribe', 'www')`,
     ),
     // A store's own routes inside each of its markets (D53).
     check(

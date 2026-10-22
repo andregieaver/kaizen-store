@@ -1065,6 +1065,15 @@ stand-in is the only fake, and only it is told it is one.
   with whatever it needs to be bought, such as staff), called by the
   migration for production's template and by `supabase/seed.sql`, a picture
   in `public/demo/`, and `clone_store()` copying its new tables and columns.
+- **Kaizena Flow's own site in more than one language (D312, `docs/platform-admin-i18n.md`, `src/lib/platform-lang.ts`)**: English
+  at its addresses as ever, Norwegian under `/nb` in the route group `(platform-nb)` (a root layout of its own, `PlatformRoot` with
+  `lang`); a platform route is a thin page over its shared view in `src/components/platform-routes/` taking `lang`, so a new platform
+  page gets a Norwegian twin there too. Build the site's own links with `platformPath(lang, path)` (header, footer, menus, `GridPlace.lang`),
+  metadata with `languageMeta()` (canonical and `hreflang`); never redirect by the browser's language (`LanguageHint` only suggests). A
+  language is offered only while `platform_settings.locales` names it (`getPlatformLangs()`, `/nb` a 404 otherwise) and is turned on only
+  once `languageNotReady()` is empty (`LANGUAGE_READINESS`, raised by the step that finishes it). Norwegian legal and financial words come
+  from the glossary (`src/lib/i18n-glossary.ts`; its test holds every Norwegian catalogue to it) and legal pages state rights in the law's
+  own words (`LEGAL_WORDING_NB`, proofread by a person; the withdrawal form from the state form Q-0319B).
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

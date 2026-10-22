@@ -6,7 +6,9 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { requireAccount, type Account } from "@/server/auth";
-import { addLanguage, LANGUAGES_TAG, listLanguages, setLanguageEnabled, setLanguageLocales } from "@/server/languages";
+import { addLanguage, LANGUAGES_TAG, listLanguages, setLanguageEnabled, setLanguageLocales, setPlatformSiteLanguage } from "@/server/languages";
+import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
+import { isPlatformLang } from "@/lib/platform-lang";
 import { clearUiTexts, generateChunk, markUiReviewed, planGeneration, saveUiEdits, uiConnection, type ChunkResult, type GenerateMode } from "@/server/ui-text";
 import { isBuiltIn } from "@/lib/ui-catalog-all";
 
@@ -108,4 +110,15 @@ export async function clearAction(lang: string): Promise<FormState> {
   const count = await clearUiTexts(account.id, lang);
   refresh();
   return { status: "ok", messages: [`${count} texts removed.`] };
+}
+
+/** Offers Kaizena Flow's own site in a language, or stops (D312): refused while the language is not ready. */
+export async function setSiteLanguageAction(lang: string, on: boolean): Promise<FormState> {
+  const account = await platformAdmin();
+  if (!isPlatformLang(lang)) return { status: "error", messages: ["Unknown language."] };
+  const result = await setPlatformSiteLanguage(account.id, lang, on);
+  if (!result.ok) return { status: "error", messages: [result.problem] };
+  updateTag(PLATFORM_NAVIGATION_TAG);
+  refresh();
+  return { status: "ok", messages: [on ? "The site is offered in it." : "The site is no longer offered in it."] };
 }
