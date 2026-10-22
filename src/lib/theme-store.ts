@@ -5,6 +5,7 @@ import { slugify } from "./slug";
 import { whatsNew } from "./theme-update";
 import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
+import { LANGUAGE_PREFIXES, PLATFORM_LANGS, platformPath, type PlatformLang } from "./platform-lang";
 import { themeStorePath } from "./theme-host";
 import { readHighlightWords, type HighlightWords, type ThemeHighlight } from "./theme-highlights";
 import type { LookShots } from "./theme-shots";
@@ -64,7 +65,66 @@ export type ThemeListing = {
   highlights?: HighlightWords;
   /** The platform admin's own pictures in place of made ones (step 3), by slot, only when some are set. */
   own?: OwnPictures;
+  /** Its own words in the site's other languages (D312 P3), only where some are written: English is the theme's details. */
+  words?: ListingLanguages;
 };
+
+/** A theme's own words in another language than English (D312 P3): its summary, description and highlights' words, each optional. */
+export type ListingWords = { summary?: string; description?: string; highlights?: HighlightWords };
+export type ListingLanguages = Partial<Record<Exclude<PlatformLang, "en">, ListingWords>>;
+
+/** As long as a theme's own summary and description may be (`DESIGN_LIMITS`). */
+export const LISTING_WORDS_MAX = { summary: 200, description: 2000 } as const;
+
+const cleanWords = (value: unknown, max: number, lines = false): string =>
+  typeof value === "string" ? (lines ? value.replace(/\r\n?/g, "\n").replace(/[^\S\n]+/g, " ") : value.replace(/\s+/g, " ")).trim().slice(0, max) : "";
+
+/** A listing's words by language, read safely: the site's other languages only, empty words left out. */
+export function readListingWords(value: unknown): ListingLanguages {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: ListingLanguages = {};
+  for (const lang of PLATFORM_LANGS) {
+    if (lang === "en") continue;
+    const raw = (value as Record<string, unknown>)[lang];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const entry = raw as Record<string, unknown>;
+    const summary = cleanWords(entry.summary, LISTING_WORDS_MAX.summary);
+    const description = cleanWords(entry.description, LISTING_WORDS_MAX.description, true);
+    const highlights = readHighlightWords(entry.highlights);
+    const words: ListingWords = {
+      ...(summary ? { summary } : {}),
+      ...(description ? { description } : {}),
+      ...(Object.keys(highlights).length > 0 ? { highlights } : {}),
+    };
+    if (Object.keys(words).length > 0) out[lang] = words;
+  }
+  return out;
+}
+
+/**
+ * A theme as a page in `lang` shows it (D312 P3): its summary, description and highlights' words in that language where it has them, the
+ * English ones where not, which `english` names so the page marks them `lang="en"`. English is the theme as it is.
+ */
+export function inLanguage<T extends ThemeStoreCard & { description?: string }>(theme: T, lang: PlatformLang): T {
+  if (lang === "en") return theme;
+  const words = theme.listing.words?.[lang] ?? {};
+  const highlights = (theme.highlights ?? []).map((highlight) => {
+    const line = words.highlights?.[highlight.kind];
+    return line ? { ...highlight, title: line.title, text: line.text || null } : highlight;
+  });
+  const englishHighlights = (theme.highlights ?? []).some((highlight) => highlight.title !== null && !words.highlights?.[highlight.kind]);
+  return {
+    ...theme,
+    summary: words.summary ?? theme.summary,
+    ...(theme.description !== undefined ? { description: words.description ?? theme.description } : {}),
+    highlights,
+    english: {
+      summary: !words.summary && theme.summary !== "",
+      description: !words.description && Boolean(theme.description),
+      highlights: englishHighlights,
+    },
+  };
+}
 
 /**
  * The made pictures a platform admin may replace with their own (`docs/theme-showcase-phase-2.md` step 3): the share image and each
@@ -113,12 +173,14 @@ export function readListing(value: unknown): ThemeListing {
   const pictures = [...new Set(listOf(raw.pictures).filter(isThemePicture))].slice(0, THEME_PICTURES_MAX);
   const highlights = readHighlightWords(raw.highlights);
   const own = readOwnPictures(raw.own);
+  const words = readListingWords(raw.words);
   return {
     kinds: (Object.keys(STORE_KINDS) as StoreKind[]).filter((k) => kinds.has(k)),
     styles: (Object.keys(THEME_STYLES) as ThemeStyle[]).filter((s) => styles.has(s)),
     pictures,
     ...(Object.keys(highlights).length > 0 ? { highlights } : {}),
     ...(Object.keys(own).length > 0 ? { own } : {}),
+    ...(Object.keys(words).length > 0 ? { words } : {}),
   };
 }
 
@@ -132,17 +194,21 @@ export function parseListing(form: {
   highlights?: unknown;
   /** The own pictures the listing already has, kept as they are. */
   own?: unknown;
+  /** Its words in the site's other languages, by language (`readListingWords()`). */
+  words?: unknown;
 }): { ok: true; slug: string; listing: ThemeListing } | { ok: false; problems: string[] } {
   const slug = typeof form.slug === "string" ? form.slug.trim().toLowerCase() : "";
   const problems: string[] = [];
   if (!slug) problems.push("Give the theme an address in the theme store.");
   else if (!THEME_SLUG.test(slug)) problems.push("The address is lowercase letters, digits and hyphens, at most 60, not starting or ending with a hyphen.");
+  // A language's prefix is its theme store's address on the theme store's own host (D312 P3).
+  else if (LANGUAGE_PREFIXES.includes(slug)) problems.push("That address is kept for a language of the theme store. Choose another.");
   const pictures = listOf(form.pictures).filter((value) => !(typeof value === "string" && value.trim() === ""));
   if (pictures.some((value) => !isThemePicture(value))) problems.push("A picture's address is one on this site (/…) or an https:// address.");
   if (pictures.length > THEME_PICTURES_MAX) problems.push(`A theme has at most ${THEME_PICTURES_MAX} pictures beside its main one.`);
   if (problems.length > 0) return { ok: false, problems };
   // The admin's own pictures in place of made ones are saved on their own (`saveThemeOwnPicture()`), so the listing form keeps them.
-  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, highlights: form.highlights, own: form.own }) };
+  return { ok: true, slug, listing: readListing({ kinds: form.kinds, styles: form.styles, pictures, highlights: form.highlights, own: form.own, words: form.words }) };
 }
 
 /** The address suggested for a theme that has none: its title, as an address. */
@@ -233,6 +299,11 @@ export type ThemeStoreCard = {
   swatch: ThemeSwatch;
   /** What a store pays for it once, without VAT, per currency in the plans' order (D286); empty or absent: free. */
   prices?: ThemePrice[];
+  /**
+   * On a page in another language (D312 P3, `inLanguage()`): which of its own words it has only in English, so the page marks them
+   * `lang="en"`. Absent in English.
+   */
+  english?: { summary?: boolean; description?: boolean; highlights?: boolean };
 };
 
 /**
@@ -279,15 +350,15 @@ export function parseThemeFilter(query: Record<string, string | string[] | undef
   };
 }
 
-/** The list's address with a filter changed (null: that filter off). */
-export function themeFilterHref(filter: ThemeFilter, change: Partial<ThemeFilter>): string {
+/** The list's address with a filter changed (null: that filter off), in the list's language. */
+export function themeFilterHref(filter: ThemeFilter, change: Partial<ThemeFilter>, lang: PlatformLang = "en"): string {
   const next = { ...filter, ...change };
   const query = new URLSearchParams();
   if (next.kind) query.set("kind", next.kind);
   if (next.style) query.set("style", next.style);
   if (next.feature) query.set("feature", next.feature);
   const text = query.toString();
-  return themeStorePath(text ? `?${text}` : "");
+  return themeStorePath(text ? `?${text}` : "", lang);
 }
 
 /** The cards a filter keeps, in the platform's order. A theme listed for no kind of store suits any. */
@@ -349,8 +420,8 @@ export const themeTryPath = (slug: string, preset: string | null = null) =>
   `/admin/account/themes/try/${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;
 
 /** *Start with this theme*: sign-up with the theme, or one of its presets, chosen (`ThemeFromAddress`, `docs/theme-showcase-phase-1.md` step 4). */
-export const themeStartLink = (id: string, preset: string | null = null) =>
-  `/sign-up?theme=${encodeURIComponent(id)}${preset ? `&preset=${encodeURIComponent(preset)}` : ""}`;
+export const themeStartLink = (id: string, preset: string | null = null, lang: PlatformLang = "en") =>
+  platformPath(lang, `/sign-up?theme=${encodeURIComponent(id)}${preset ? `&preset=${encodeURIComponent(preset)}` : ""}`);
 
 /** A look's key from the address (`?preset=`): one of the theme's presets, else null (its own look). */
 export const lookChoice = (looks: readonly Pick<ThemeLook, "key">[], value: unknown): string | null =>
@@ -368,13 +439,13 @@ export const previewView = (query: Record<string, string | string[] | undefined>
  * A theme's full-screen preview in the theme store (D275, `docs/themes-content-and-demo-stores.md` section 6): `/themes/{slug}/preview`,
  * or `/{slug}/preview` on its own host, with the look and the view in the address so a shared link opens on them.
  */
-export function themePreviewPath(slug: string, preset: string | null = null, view: Partial<PreviewView> = {}): string {
+export function themePreviewPath(slug: string, preset: string | null = null, view: Partial<PreviewView> = {}, lang: PlatformLang = "en"): string {
   const query = new URLSearchParams();
   if (preset) query.set("preset", preset);
   if (view.show === "product") query.set("show", "product");
   if (view.device === "phone") query.set("device", "phone");
   const search = query.toString();
-  return themeStorePath(`${slug}/preview${search ? `?${search}` : ""}`);
+  return themeStorePath(`${slug}/preview${search ? `?${search}` : ""}`, lang);
 }
 
 /**
@@ -392,8 +463,8 @@ export function previewNeighbours<T extends { slug: string; looks: readonly Pick
 }
 
 /** A theme's page with one of its looks chosen (`?preset=`), as a shared link opens it. */
-export const themePagePath = (slug: string, preset: string | null = null): string =>
-  themeStorePath(`${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`);
+export const themePagePath = (slug: string, preset: string | null = null, lang: PlatformLang = "en"): string =>
+  themeStorePath(`${slug}${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`, lang);
 
 /** What *Try it in your store* links to: a route that sends the person there, or to sign in and back (the theme's page is cached). */
 export const themeTryLink = (slug: string, preset: string | null = null) => `/themes/${slug}/try${preset ? `?preset=${encodeURIComponent(preset)}` : ""}`;

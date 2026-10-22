@@ -1,6 +1,6 @@
 import "server-only";
 
-import { languageAlternates, platformPath } from "@/lib/platform-lang";
+import { languageAlternates, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { getPlatformLangs } from "./platform-navigation";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
@@ -34,7 +34,7 @@ import {
   type StoreSeo,
 } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
-import { themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";
+import { themeStoreAlternates, themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
 import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
@@ -496,7 +496,7 @@ export async function platformSitemap(): Promise<string> {
     ...pages.filter((page) => page.content.searchEngines).map((page) => ({ page, path: `/${page.slug}` })),
     ...articles.filter((a) => a.content.searchEngines).map((page) => ({ page, path: `/blog/${page.slug}` })),
   ];
-  // Each page in every language the site offers (D312), each entry naming the others (`hreflang`); the theme store is English until P3.
+  // Each page in every language the site offers (D312), each entry naming the others (`hreflang`); the theme store too (P3).
   const langs = await getPlatformLangs();
   const inEvery = (path: string, extra = "") => {
     const alternates = languageAlternates(path, langs);
@@ -511,7 +511,7 @@ export async function platformSitemap(): Promise<string> {
     ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].flatMap((path) => inEvery(path)),
     // The theme store (`docs/theme-phase-3.md`): its list and each theme's page, here until it has a host of its own (step 3), whose
     // sitemap lists them then (`themeStoreSitemap()`), as a sitemap lists only its own host's addresses.
-    ...(themes.length > 0 && !themesHost() ? ["/themes", ...themes.map((theme) => `/themes/${theme.slug}`)] : []).map((path) => `<url><loc>${xml(`${origin}${path}`)}</loc></url>`),
+    ...(themes.length > 0 && !themesHost() ? themeStoreEntries(themes, langs) : []),
     ...listed.flatMap(({ page, path }) =>
       inEvery(
         path,
@@ -784,12 +784,27 @@ export async function storeLlms(slug: string): Promise<string | null> {
   });
 }
 
+/**
+ * The theme store's list and each theme's page in every language the site offers (D312 P3), each entry naming the others (`hreflang`), at
+ * the addresses `themeStoreUrl()` gives: the theme store's own host's where it has one.
+ */
+function themeStoreEntries(themes: readonly { slug: string }[], langs: readonly PlatformLang[]): string[] {
+  return ["", ...themes.map((theme) => theme.slug)].flatMap((sub) => {
+    const alternates = themeStoreAlternates(sub, langs);
+    const links = alternates
+      ? Object.entries(alternates)
+          .map(([tag, href]) => `<xhtml:link rel="alternate" hreflang="${tag}" href="${xml(href)}"/>`)
+          .join("")
+      : "";
+    return langs.map((lang) => `<url><loc>${xml(themeStoreUrl(sub, lang))}</loc>${links}</url>`);
+  });
+}
+
 /** The theme store's own host's sitemap (`docs/theme-phase-3.md` step 3): its list and each theme's page; null while it has no host. */
 export async function themeStoreSitemap(): Promise<string | null> {
   if (!themesHost()) return null;
-  const themes = await themeStoreCards();
-  const urls = [themeStoreUrl(), ...themes.map((theme) => themeStoreUrl(theme.slug))].map((url) => `<url><loc>${xml(url)}</loc></url>`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+  const [themes, langs] = await Promise.all([themeStoreCards(), getPlatformLangs()]);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${themeStoreEntries(themes, langs).join("\n")}\n</urlset>\n`;
 }
 
 /** The theme store's own host's rules for crawlers: everything open, and its sitemap; null while it has no host. */

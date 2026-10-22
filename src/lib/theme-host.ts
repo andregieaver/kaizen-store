@@ -12,8 +12,12 @@
  *
  * Links in the theme store are built with `themeStorePath()` (a path on whichever host serves it), `themeStoreUrl()` (a full address:
  * canonical, sitemap, structured data) and `platformHref()` (a link to Kaizena Flow's own site, full on the host).
+ *
+ * In another language than English (D312 P3) the theme store is under the language's prefix: `/no/themes` and `/no/themes/{slug}` on Kaizena
+ * Flow's host, `/no` and `/no/{slug}` on its own; `lang` says which.
  */
 
+import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, type PlatformLang } from "./platform-lang";
 import { siteUrl } from "./site";
 
 const HOST = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?::\d{2,5})?$/;
@@ -40,18 +44,32 @@ export function isThemesHost(host: string | null | undefined, themes = themesHos
 
 /**
  * A path in the theme store, as the page serving it links: `""` is the list, `"calm"` a theme, `"?kind=food"` the list filtered. On its own
- * host the theme store is the root; without one it is under `/themes`.
+ * host the theme store is the root; without one it is under `/themes`. Another language puts its prefix first (`/no/themes`, `/no` on the host).
  */
-export function themeStorePath(sub = ""): string {
-  const base = themesHost() ? "" : "/themes";
+export function themeStorePath(sub = "", lang: PlatformLang = "en"): string {
+  const prefix = lang === "en" ? "" : `/${PLATFORM_LANG_FACTS[lang].prefix}`;
+  const base = themesHost() ? prefix : `${prefix}/themes`;
   if (sub === "" || sub.startsWith("?")) return `${base || "/"}${sub}`;
   return `${base}/${sub}`;
 }
 
 /** A full address in the theme store: canonical addresses, the sitemap and structured data. */
-export function themeStoreUrl(sub = ""): string {
+export function themeStoreUrl(sub = "", lang: PlatformLang = "en"): string {
   const origin = themesOrigin();
-  return origin ? `${origin}${themeStorePath(sub)}` : `${siteUrl()}${themeStorePath(sub)}`;
+  return origin ? `${origin}${themeStorePath(sub, lang)}` : `${siteUrl()}${themeStorePath(sub, lang)}`;
+}
+
+/**
+ * A theme store page's address in each language the site offers, for `hreflang` (D312 P3): English's is `x-default`. Nothing while English is
+ * the only one.
+ */
+export function themeStoreAlternates(sub: string, offered: readonly PlatformLang[]): Record<string, string> | undefined {
+  const langs = PLATFORM_LANGS.filter((lang) => lang === "en" || offered.includes(lang));
+  if (langs.length < 2) return undefined;
+  return {
+    ...Object.fromEntries(langs.map((lang) => [PLATFORM_LANG_FACTS[lang].tag, themeStoreUrl(sub, lang)])),
+    "x-default": themeStoreUrl(sub),
+  };
 }
 
 /** A link from the theme store to Kaizena Flow's own site (sign-up, the try route, the preview): full while the store has its own host. */
@@ -74,22 +92,39 @@ const ON_HOST = "[a-z0-9][a-z0-9-]*|sitemap\\.xml|robots\\.txt";
 /** A theme's full-screen preview (D275), the one address of two parts the host serves itself. */
 const PREVIEW = "[a-z0-9][a-z0-9-]*";
 
+/** The prefixes of the site's languages besides English (D312), each a theme store of its own under it: `no`. */
+const LANG_PREFIXES = PLATFORM_LANGS.filter((lang) => lang !== "en").map((lang) => PLATFORM_LANG_FACTS[lang].prefix);
+
 export function themeHostRoutes(host: string | null, platformUrl: string): { redirects: ThemeHostRedirect[]; rewrites: ThemeHostRewrite[] } {
   if (!host) return { redirects: [], rewrites: [] };
   const origin = themesOrigin(host) as string;
   const onHost: Match = { type: "host", value: escape(host.replace(/:\d+$/, "")) };
   const onPlatform: Match = { type: "host", value: escape(new URL(platformUrl).hostname) };
+  // A language's theme store on the host (`/no`, `/no/{slug}`, `/no/{slug}/preview`) is the host's own, not Kaizena Flow's.
+  const ownInLanguage = LANG_PREFIXES.map((prefix) => `|${prefix}/${PREVIEW}(?:/preview)?$`).join("");
   return {
     redirects: [
       // Kaizena Flow's own addresses of the theme store move to its host, for good; only on Kaizena Flow's host (a store's `/themes` is its own).
       { source: "/themes", has: [onPlatform], destination: `${origin}/`, permanent: true },
       { source: `/themes/:slug(${ON_HOST})`, has: [onPlatform], destination: `${origin}/:slug`, permanent: true },
       { source: `/themes/:slug(${PREVIEW})/preview`, has: [onPlatform], destination: `${origin}/:slug/preview`, permanent: true },
-      // On the host, an address of more than one part is Kaizena Flow's own (the admin, the blog, the try route), but a theme's preview.
-      { source: `/:path((?!${SHARED}|${PREVIEW}/preview$)[^/]+/.+)`, has: [onHost], destination: `${platformUrl}/:path`, permanent: false },
+      ...LANG_PREFIXES.flatMap((prefix): ThemeHostRedirect[] => [
+        { source: `/${prefix}/themes`, has: [onPlatform], destination: `${origin}/${prefix}`, permanent: true },
+        { source: `/${prefix}/themes/:slug(${PREVIEW})`, has: [onPlatform], destination: `${origin}/${prefix}/:slug`, permanent: true },
+        { source: `/${prefix}/themes/:slug(${PREVIEW})/preview`, has: [onPlatform], destination: `${origin}/${prefix}/:slug/preview`, permanent: true },
+      ]),
+      // On the host, an address of more than one part is Kaizena Flow's own (the admin, the blog, the try route), but a theme's preview and a
+      // language's theme store.
+      { source: `/:path((?!${SHARED}|${PREVIEW}/preview$${ownInLanguage})[^/]+/.+)`, has: [onHost], destination: `${platformUrl}/:path`, permanent: false },
     ],
-    // Rewrites before files apply in turn, each to the path the one before left: the root comes last, so `/themes` is not rewritten again.
+    // Rewrites before files apply in turn, each to the path the one before left: a language's root comes after its themes (so `/no/themes`
+    // is not taken for a theme), and the root comes last, so `/themes` is not rewritten again.
     rewrites: [
+      ...LANG_PREFIXES.flatMap((prefix): ThemeHostRewrite[] => [
+        { source: `/${prefix}/:slug(${PREVIEW})/preview`, has: [onHost], destination: `/${prefix}/themes/:slug/preview` },
+        { source: `/${prefix}/:slug(${PREVIEW})`, has: [onHost], destination: `/${prefix}/themes/:slug` },
+        { source: `/${prefix}`, has: [onHost], destination: `/${prefix}/themes` },
+      ]),
       { source: `/:slug(${PREVIEW})/preview`, has: [onHost], destination: "/themes/:slug/preview" },
       { source: `/:slug(${ON_HOST})`, has: [onHost], destination: "/themes/:slug" },
       { source: "/", has: [onHost], destination: "/themes" },

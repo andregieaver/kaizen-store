@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 
 import type { ThemeSwatch } from "@/lib/theme-store";
+import type { PlatformMessages } from "@/lib/platform-text";
 
 import { SwatchDot } from "./theme-swatch";
 
@@ -24,6 +25,11 @@ export type StageLook = {
   computerPoster?: string | null;
   phonePoster?: string | null;
 };
+
+/** The stage's words in the page's language (D312 P3): plain texts, `{name}` the look's name, as a client part takes them. */
+export type StageWords = PlatformMessages["themeStore"]["stage"];
+
+const named = (text: string, name: string) => text.replaceAll("{name}", name);
 
 /** The width a frame draws the store at, scaled down to the frame's own: a computer's and a phone's (`theme-shoot.ts`'s widths). */
 const COMPUTER = { width: 1280, height: 800 };
@@ -82,7 +88,9 @@ function ColourPanel({ swatch }: { swatch: ThemeSwatch | null }) {
   );
 }
 
-function Stage({ title, heading, looks, initial }: { title: string; heading: ReactNode; looks: StageLook[]; initial: string | null }) {
+type StageProps = { title: string; heading: ReactNode; looks: StageLook[]; words: StageWords };
+
+function Stage({ title, heading, looks, words: w, initial }: StageProps & { initial: string | null }) {
   const [chosen, setChosen] = useState<string | null>(initial);
   const look = looks.find((l) => l.key === chosen) ?? looks[0];
   const name = look.key ? `${title} · ${look.name}` : title;
@@ -102,17 +110,19 @@ function Stage({ title, heading, looks, initial }: { title: string; heading: Rea
         <div className="flex flex-col gap-2 md:items-end">
           <div className="flex flex-wrap gap-3">
             <a href={look.startHref} className="button-primary inline-flex min-h-11 items-center rounded-button px-6 font-medium">
-              Use this theme<span className="sr-only">{look.key ? `: ${name}` : ""}</span>
+              {w.use}
+              <span className="sr-only">{look.key ? `: ${name}` : ""}</span>
             </a>
             {look.previewHref && (
               <a href={look.previewHref} className="inline-flex min-h-11 items-center rounded-button border border-border px-6 font-medium">
-                Preview<span className="sr-only"> {name} full screen</span>
+                {w.preview}
+                <span className="sr-only"> {named(w.fullScreen, name)}</span>
               </a>
             )}
           </div>
           {/* A route that knows who is signed in, then the admin (another root layout): a plain link (`docs/theme-phase-3.md` step 2). */}
           <a href={look.tryHref} className="text-sm text-muted underline underline-offset-2">
-            Already have a store? Add it to your store
+            {w.addToStore}
           </a>
         </div>
       </div>
@@ -120,10 +130,10 @@ function Stage({ title, heading, looks, initial }: { title: string; heading: Rea
       {look.frameHref ? (
         <div className="flex items-start gap-6">
           <div className="hidden min-w-0 flex-1 overflow-hidden rounded-lg border border-border shadow-sm lg:block">
-            <ScaledFrame src={look.frameHref} title={`${name} on a computer`} device={COMPUTER} poster={look.computerPoster} />
+            <ScaledFrame src={look.frameHref} title={named(w.onComputer, name)} device={COMPUTER} poster={look.computerPoster} />
           </div>
           <div className="mx-auto w-full max-w-[320px] shrink-0 overflow-hidden rounded-[2rem] border-8 border-foreground shadow-sm lg:w-[260px]">
-            <ScaledFrame src={look.frameHref} title={`${name} on a phone`} device={PHONE} poster={look.phonePoster} />
+            <ScaledFrame src={look.frameHref} title={named(w.onPhone, name)} device={PHONE} poster={look.phonePoster} />
           </div>
         </div>
       ) : (
@@ -133,7 +143,7 @@ function Stage({ title, heading, looks, initial }: { title: string; heading: Rea
       {looks.length > 1 && (
         <div className="flex flex-col gap-2">
           {/* Each look a dot in its colours; without JavaScript each is a link to that look's full-screen preview. */}
-          <ul aria-label="Presets" className="flex flex-wrap gap-2">
+          <ul aria-label={w.presets} className="flex flex-wrap gap-2">
             {looks.map((choice) => {
               const current = choice.key === look.key ? "true" : undefined;
               const className =
@@ -171,13 +181,13 @@ function Stage({ title, heading, looks, initial }: { title: string; heading: Rea
           </ul>
         </div>
       )}
-      {look.frameHref && <p className="text-sm text-muted">Sample content: your own words, pictures and products take its place.</p>}
+      {look.frameHref && <p className="text-sm text-muted">{w.sample}</p>}
     </section>
   );
 }
 
 /** Reads the chosen look from the address (`?preset=`) once in the browser; the prerendered page starts on the theme's own look. */
-function FromAddress(props: { title: string; heading: ReactNode; looks: StageLook[] }) {
+function FromAddress(props: StageProps) {
   const value = useSearchParams().get("preset");
   const initial = value && props.looks.some((look) => look.key === value) ? value : null;
   return <Stage {...props} initial={initial} />;
@@ -189,7 +199,7 @@ function FromAddress(props: { title: string; heading: ReactNode; looks: StageLoo
  * as swatches under the frames, and the two buttons for the chosen look: *Use this theme* and *Preview* (full screen), with a quiet way to
  * add it to a store one already has. The address keeps the chosen look (`?preset=`).
  */
-export function ThemePreviewStage(props: { title: string; heading: ReactNode; looks: StageLook[] }) {
+export function ThemePreviewStage(props: StageProps) {
   return (
     <Suspense fallback={<Stage {...props} initial={null} />}>
       <FromAddress {...props} />

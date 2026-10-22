@@ -112,6 +112,8 @@ async function loadCards(): Promise<ThemeStoreCard[]> {
 export type ThemeStorePage = ThemeStoreCard & {
   description: string;
   sectionStyles: string[];
+  /** Its section styles by their own names, for a page in another language to name the core ones in it (D312 P3). */
+  sectionStyleNames: string[];
   changelog: ChangelogEntry[];
   /** The latest version's number and date, for the page and the sitemap. */
   version: number | null;
@@ -141,6 +143,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
     ...cardOf(row, snapshot, await publishedContents(), await themeShotsFor([String(row.id)]), await themePrices([String(row.id)])),
     description: String(row.description ?? ""),
     sectionStyles: themeSectionStyles(snapshot),
+    sectionStyleNames: Object.keys(snapshot.theme.settings.sectionStyles ?? {}),
     changelog: themeChangelog(versions),
     version: latest?.number ?? null,
     updatedAt: latest?.publishedAt ?? (row.published_at ? new Date(String(row.published_at)).toISOString() : null),

@@ -1076,7 +1076,12 @@ stand-in is the only fake, and only it is told it is one.
   own words (`LEGAL_WORDING_NB`, proofread by a person; the withdrawal form from the state form Q-0319B). The chrome's words (header,
   footer, the routes' own words, sign-up and its errors, cookies, not found, unsubscribe, the theme cards) are `platformText(lang)`
   (`src/lib/platform-text.ts`, `src/lib/messages/platform-{en,nb}.ts`, Norwegian by hand), never written into a component
-  (`platform-chrome.scan.test.ts`); a new word of the chrome goes in both catalogues.
+  (`platform-chrome.scan.test.ts`); a new word of the chrome goes in both catalogues. The theme store too (P3): `/no/themes`,
+  `/no/themes/{slug}` and the preview `/no/themes/{slug}/preview` (its own root, `(theme-preview-nb)`), `/no`, `/no/{slug}` on the theme
+  store's host (`themeHostRoutes()`), every link through `themeStorePath(sub, lang)` and the helpers that take `lang`; its words are
+  `platformText(lang).themeStore` (a client part's as plain texts with `{name}`), and a theme's own summary, description and highlights in
+  a language are `listing.words` (`readListingWords()`, the listing form's *In Norwegian*, launch themes' `LAUNCH_WORDS_NB`), laid over the
+  English by `inLanguage()`, which names what stays English (`english`) for `lang="en"`; a language's prefix is never a theme's address.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

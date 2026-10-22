@@ -26,11 +26,11 @@ export function orderPrices(prices: readonly ThemePrice[], currencies: readonly 
   return [...prices].sort((a, b) => rank(a.currency) - rank(b.currency) || a.currency.localeCompare(b.currency));
 }
 
-/** One price as people read it, without decimals when it is whole: "NOK 3,490", "€299.50". */
-export function priceText(price: ThemePrice): string {
+/** One price as people read it, without decimals when it is whole: "NOK 3,490", "€299.50"; in Norwegian `locale` "3 490 kr". */
+export function priceText(price: ThemePrice, locale = "en"): string {
   const digits = minorUnitDigits(price.currency);
   const whole = price.amountMinor % 10 ** digits === 0;
-  return new Intl.NumberFormat("en", { style: "currency", currency: price.currency, minimumFractionDigits: whole ? 0 : digits, maximumFractionDigits: digits }).format(
+  return new Intl.NumberFormat(locale, { style: "currency", currency: price.currency, minimumFractionDigits: whole ? 0 : digits, maximumFractionDigits: digits }).format(
     price.amountMinor / 10 ** digits,
   );
 }
@@ -46,8 +46,8 @@ export function priceLine(prices: readonly ThemePrice[] | undefined): string {
 }
 
 /** Every price of a theme, e.g. "NOK 3,490.00 · SEK 3,490.00 · EUR 299.00"; "Free" for none. */
-export function pricesText(prices: readonly ThemePrice[], currencies: readonly string[] = []): string {
-  return isPremium(prices) ? orderPrices(prices, currencies).map(priceText).join(" · ") : "Free";
+export function pricesText(prices: readonly ThemePrice[], currencies: readonly string[] = [], locale = "en"): string {
+  return isPremium(prices) ? orderPrices(prices, currencies).map((price) => priceText(price, locale)).join(" · ") : "Free";
 }
 
 /**

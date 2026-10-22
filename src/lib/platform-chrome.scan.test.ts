@@ -17,6 +17,12 @@ const CHROME = [
   "platform-layout.tsx",
   "platform-root.tsx",
   "language-switch.tsx",
+  // The theme store (P3).
+  "theme-store-view.tsx",
+  "theme-page-parts.tsx",
+  "theme-preview-stage.tsx",
+  "theme-preview-root.tsx",
+  "see-it-live.tsx",
   ...readdirSync(join(ROOT, "platform-routes")).filter((f) => f.endsWith(".tsx")).map((f) => `platform-routes/${f}`),
 ];
 

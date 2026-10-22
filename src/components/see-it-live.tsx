@@ -12,6 +12,7 @@ export function SeeItLive({
   looks,
   heading = "See it live",
   text,
+  wears = (look) => `Wears ${look}`,
 }: {
   /** The theme's name: what a demo store wearing its own look is said to wear. */
   title: string;
@@ -21,6 +22,8 @@ export function SeeItLive({
   /** Its heading and the line under it: a page built in the page builder writes its own (D285); empty draws none. */
   heading?: string;
   text?: string;
+  /** What a card says of the look its store wears, in the page's language (D312 P3). */
+  wears?: (look: string) => string;
 }) {
   if (demos.length === 0) return null;
   const own = looks.find((look) => look.key === null);
@@ -61,7 +64,7 @@ export function SeeItLive({
                 <span className="flex flex-col gap-0.5">
                   <span className="font-medium group-hover:underline">{demo.name}</span>
                   {demo.trade && <span className="text-sm text-muted">{demo.trade}</span>}
-                  <span className="text-sm text-muted">Wears {lookName}</span>
+                  <span className="text-sm text-muted">{wears(lookName)}</span>
                 </span>
               </a>
             </li>

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { marketPath, storeBase, storeDomain, storeHome, storeHref, storeOrigin, storeSiteUrl } from "./paths";
 import { storeOfHost } from "./ab-routing";
 import { storeHostRoutes, type HostRedirect, type HostRewrite } from "./store-hosts";
-import { platformHref, themeHostRoutes, themeStorePath, themeStoreUrl, themesHost } from "./theme-host";
+import { platformHref, themeHostRoutes, themeStoreAlternates, themeStorePath, themeStoreUrl, themesHost } from "./theme-host";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -155,6 +155,29 @@ describe("the theme store on its own host (docs/theme-phase-3.md step 3)", () =>
     expect(themeStorePath("?kind=food")).toBe("/themes?kind=food");
     expect(themeStoreUrl("calm")).toBe("http://localhost:3000/themes/calm");
     expect(platformHref("/sign-up")).toBe("/sign-up");
+    // In Norwegian (D312 P3) under its prefix; the alternates name each language's address, and nothing while English is alone.
+    expect(themeStorePath("", "nb")).toBe("/no/themes");
+    expect(themeStorePath("calm", "nb")).toBe("/no/themes/calm");
+    expect(themeStorePath("?kind=food", "nb")).toBe("/no/themes?kind=food");
+    expect(themeStoreAlternates("calm", [])).toBeUndefined();
+    expect(themeStoreAlternates("calm", ["nb"])).toEqual({
+      en: "http://localhost:3000/themes/calm",
+      nb: "http://localhost:3000/no/themes/calm",
+      "x-default": "http://localhost:3000/themes/calm",
+    });
+  });
+
+  it("serves each language's theme store under its prefix on the host, and moves Kaizena Flow's addresses of it there", () => {
+    const routes = both("kaizenstore.site", "themes.kaizenaflow.com");
+    expect(route(routes, "themes.kaizenaflow.com", "/no")).toEqual({ rewrite: "/no/themes" });
+    expect(route(routes, "themes.kaizenaflow.com", "/no/calm")).toEqual({ rewrite: "/no/themes/calm" });
+    expect(route(routes, "themes.kaizenaflow.com", "/no/calm/preview")).toEqual({ rewrite: "/no/themes/calm/preview" });
+    // Kaizena Flow's own Norwegian pages are Kaizena Flow's.
+    expect(route(routes, "themes.kaizenaflow.com", "/no/calm/try")).toEqual({ redirect: "https://kaizenaflow.com/no/calm/try" });
+    expect(route(routes, "kaizenaflow.com", "/no/themes")).toEqual({ redirect: "https://themes.kaizenaflow.com/no" });
+    expect(route(routes, "kaizenaflow.com", "/no/themes/calm")).toEqual({ redirect: "https://themes.kaizenaflow.com/no/calm" });
+    expect(route(routes, "kaizenaflow.com", "/no/themes/calm/preview")).toEqual({ redirect: "https://themes.kaizenaflow.com/no/calm/preview" });
+    expect(route(routes, "kaizenaflow.com", "/no/sign-up")).toEqual({});
   });
 
   it("serves the list and each theme at the host's root, its own files, and Kaizena Flow's other addresses on Kaizena Flow", () => {
@@ -203,6 +226,9 @@ describe("the theme store on its own host (docs/theme-phase-3.md step 3)", () =>
     expect(themeStorePath("?kind=food")).toBe("/?kind=food");
     expect(themeStoreUrl()).toBe("https://themes.kaizenaflow.com/");
     expect(themeStoreUrl("calm")).toBe("https://themes.kaizenaflow.com/calm");
+    expect(themeStorePath("", "nb")).toBe("/no");
+    expect(themeStorePath("calm", "nb")).toBe("/no/calm");
+    expect(themeStoreUrl("?kind=food", "nb")).toBe("https://themes.kaizenaflow.com/no?kind=food");
     expect(platformHref("/sign-up?theme=x")).toBe("https://kaizenaflow.com/sign-up?theme=x");
     vi.stubEnv("NEXT_PUBLIC_THEMES_HOST", "themes kaizenaflow.com");
     expect(() => themesHost()).toThrow(/NEXT_PUBLIC_THEMES_HOST/);

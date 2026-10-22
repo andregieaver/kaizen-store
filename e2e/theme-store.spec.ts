@@ -161,9 +161,13 @@ test("an address that is no theme is not found, and the list's filters are links
   await expect(page.getByRole("heading", { level: 1, name: "Themes" })).toBeVisible();
   const filters = page.getByRole("navigation", { name: "Filter themes" });
   // One bar of small menus: open Style, choose Bold; the menu closes and names it, and the bar can clear it.
-  await filters.getByText("Style", { exact: true }).click();
-  await filters.getByRole("link", { name: "Bold" }).click();
-  await expect(page).toHaveURL(/\/themes\?style=bold$/);
+  // The filtered list streams in over the prerendered one, which closes a menu opened before it: open it again until the choice is made.
+  await expect(async () => {
+    const bold = filters.getByRole("link", { name: "Bold" });
+    if (!(await bold.isVisible())) await filters.getByText("Style", { exact: true }).click();
+    await bold.click({ timeout: 2000 });
+    await expect(page).toHaveURL(/\/themes\?style=bold$/, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
   await expect(filters.locator("summary").filter({ hasText: "Style" })).toContainText("Bold");
   await expect(filters.getByRole("link", { name: "Bold" })).toBeHidden();
   await filters.getByText("Style", { exact: true }).click();

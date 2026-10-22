@@ -210,9 +210,17 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
   const admin = await requirePlatformAdmin();
   // The highlights' words (`docs/theme-showcase-phase-2.md` step 2): `highlight:{kind}:title` and `highlight:{kind}:text`.
   const highlights: Record<string, Record<string, unknown>> = {};
+  // Its words in the site's other languages (D312 P3): `words:{lang}:summary`, `…:description` and `…:highlight:{kind}:title|text`.
+  const words: Record<string, { summary?: unknown; description?: unknown; highlights: Record<string, Record<string, unknown>> }> = {};
   for (const [name, value] of formData.entries()) {
     const [prefix, kind, field] = name.split(":");
     if (prefix === "highlight" && kind && (field === "title" || field === "text")) (highlights[kind] ??= {})[field] = value;
+    if (prefix === "words" && kind) {
+      const [, , part, highlight, line] = name.split(":");
+      const entry = (words[kind] ??= { highlights: {} });
+      if (part === "summary" || part === "description") entry[part] = value;
+      else if (part === "highlight" && highlight && (line === "title" || line === "text")) (entry.highlights[highlight] ??= {})[line] = value;
+    }
   }
   const parsed = parseListing({
     slug: formData.get("slug"),
@@ -220,6 +228,7 @@ export async function saveThemeListingAction(presetId: string, _state: FormState
     styles: formData.getAll("styles"),
     pictures: formData.getAll("pictures"),
     highlights,
+    words,
   });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
   const result = await saveThemeListing(admin, presetId, parsed.slug, parsed.listing);

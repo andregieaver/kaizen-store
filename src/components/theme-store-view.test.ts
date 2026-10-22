@@ -100,3 +100,24 @@ describe("the theme store's list", () => {
     expect(html).toContain("2 presets");
   });
 });
+
+describe("the theme store's list in Norwegian (D312 P3)", () => {
+  it("draws its words, filters and links in Norwegian, and marks a theme's words it has only in English", async () => {
+    const { inLanguage } = await import("@/lib/theme-store");
+    const calm = card("calm", {
+      listing: { kinds: [], styles: ["minimal"], pictures: [], words: { nb: { summary: "Rolig og nøytral." } } },
+      prices: [{ currency: "NOK", amountMinor: 349000 }],
+    });
+    const cards = [inLanguage(calm, "nb"), inLanguage(card("fjord"), "nb")];
+    const html = renderToStaticMarkup(createElement(ThemeStoreList, { cards, filter: none, lang: "nb" })).replaceAll("<!-- -->", "");
+    expect(html).toContain('href="/no/themes/calm"');
+    expect(html).toContain('aria-label="Filtrer temaer"');
+    expect(html).toContain("2 temaer");
+    expect(html).not.toContain("alle gratis");
+    expect(html).toContain("Minimalistisk");
+    expect(html).toContain("Rolig og nøytral.");
+    expect(html).toContain("3 490 kr");
+    expect(html).toContain('lang="en">About fjord.');
+    expect(html).toContain('href="/no/themes?kind=fashion"');
+  });
+});

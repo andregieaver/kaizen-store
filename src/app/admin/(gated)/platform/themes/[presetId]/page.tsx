@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { ListingWordsFields } from "@/components/admin/listing-words-fields";
 import { HighlightWordsFields } from "@/components/admin/highlight-words-fields";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { ThemePicturesField } from "@/components/admin/theme-pictures-field";
@@ -188,6 +189,7 @@ export default async function ThemePage({ params, searchParams }: PageProps<"/ad
           </fieldset>
           <ThemePicturesField initial={design.listing.pictures} upload={uploadPlatformImageAction} max={THEME_PICTURES_MAX} />
           <HighlightWordsFields initial={design.listing.highlights} suggest={suggestHighlightWordsAction.bind(null, design.id)} />
+          <ListingWordsFields initial={design.listing.words} />
           <div>
             <SubmitButton variant="secondary">Save the listing</SubmitButton>
           </div>

@@ -27,6 +27,7 @@ const theme = (extra: Partial<ThemeStorePage> = {}): ThemeStorePage => ({
   swatch: { background: "#ffffff", surface: "#eeeeee", text: "#111111", accent: "#222222", accentText: "#ffffff", heading: null },
   description: "A quiet theme.",
   sectionStyles: ["Plain"],
+  sectionStyleNames: ["plain"],
   changelog: [],
   version: 1,
   updatedAt: "2026-10-19T08:00:00Z",

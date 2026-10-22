@@ -280,3 +280,49 @@ describe("the previous and next theme in the full-screen preview (D285)", () => 
     expect(previewNeighbours([card("a"), card("b")], "a")).toMatchObject({ previous: { slug: "b" }, next: { slug: "b" } });
   });
 });
+
+describe("a theme's words in other languages (D312 P3)", () => {
+  it("reads only the site's other languages and keeps words within their limits", async () => {
+    const { readListing, readListingWords } = await import("./theme-store");
+    expect(readListingWords({ nb: { summary: "  Rolig  og nøytral ", description: "Linje én\r\nLinje to", highlights: { devices: { title: "Rolig", text: "" } } }, sv: { summary: "x" }, en: { summary: "y" } })).toEqual({
+      nb: { summary: "Rolig og nøytral", description: "Linje én\nLinje to", highlights: { devices: { title: "Rolig", text: "" } } },
+    });
+    expect(readListingWords({ nb: { summary: "" } })).toEqual({});
+    expect(readListingWords("nb")).toEqual({});
+    expect(readListing({ words: { nb: { summary: "x".repeat(400) } } }).words?.nb?.summary).toHaveLength(200);
+  });
+
+  it("shows a theme's own words in the language where it has them, and names the ones that stay English", async () => {
+    const { inLanguage } = await import("./theme-store");
+    const theme: import("./theme-store").ThemeStoreCard & { description: string } = {
+      id: "t",
+      slug: "calm",
+      title: "Calm",
+      summary: "Quiet.",
+      description: "A quiet theme.",
+      pictureUrl: null,
+      madeCard: null,
+      madeShare: null,
+      presets: [],
+      looks: [],
+      features: [],
+      swatch: { background: "#fff", surface: "#eee", text: "#111", accent: "#222", accentText: "#fff", heading: null },
+      highlights: [
+        { kind: "devices" as const, url: "u", width: 1, height: 1, alt: "", title: "On every screen", text: null },
+        { kind: "collage" as const, url: "v", width: 1, height: 1, alt: "", title: "Room", text: "Space." },
+      ],
+      listing: { kinds: [], styles: [], pictures: [], words: { nb: { summary: "Rolig.", highlights: { devices: { title: "På alle skjermer", text: "" } } } } },
+    };
+    expect(inLanguage(theme, "en")).toBe(theme);
+    const nb = inLanguage(theme, "nb");
+    expect(nb.summary).toBe("Rolig.");
+    expect(nb.description).toBe("A quiet theme.");
+    expect(nb.highlights?.map((h) => h.title)).toEqual(["På alle skjermer", "Room"]);
+    expect(nb.english).toEqual({ summary: false, description: true, highlights: true });
+  });
+
+  it("keeps a language's prefix from being a theme's address", async () => {
+    const { parseListing } = await import("./theme-store");
+    expect(parseListing({ slug: "no" })).toEqual({ ok: false, problems: ["That address is kept for a language of the theme store. Choose another."] });
+  });
+});

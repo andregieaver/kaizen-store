@@ -48,3 +48,24 @@ test.describe("a Norwegian browser on an English page", () => {
     await expect(bar).toHaveCount(0);
   });
 });
+
+test("the theme store reads in Norwegian under /no/themes (D312 P3)", async ({ page, request }) => {
+  test.skip((await request.get("/no")).status() === 404, "Norwegian is not offered in this build");
+  await page.goto("/no/themes");
+  await expect(page.locator("html")).toHaveAttribute("lang", "nb");
+  await expect(page.getByRole("heading", { level: 1, name: "Temaer" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Filtrer temaer" })).toBeVisible();
+  await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute("href", /\/themes$/);
+  const first = page.locator('main a[href^="/no/themes/"]').first();
+  if ((await first.count()) === 0) return;
+  await first.click();
+  await expect(page).toHaveURL(/\/no\/themes\/[a-z0-9-]+$/);
+  await expect(page.getByRole("link", { name: /^Bruk dette temaet/ })).toHaveAttribute("href", /^\/no\/sign-up\?theme=/);
+  await expect(page.getByRole("link", { name: "Temaer", exact: true })).toHaveAttribute("href", "/no/themes");
+  const preview = page.getByRole("link", { name: /^Forhåndsvis/ });
+  if ((await preview.count()) === 0) return;
+  await preview.click();
+  await expect(page).toHaveURL(/\/no\/themes\/[a-z0-9-]+\/preview/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "nb");
+  await expect(page.getByRole("navigation", { name: "Side" }).getByRole("link", { name: "Forside" })).toBeVisible();
+});

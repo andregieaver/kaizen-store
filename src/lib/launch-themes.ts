@@ -1,4 +1,5 @@
 import type { PackKey } from "./content-packs";
+import { LAUNCH_WORDS_NB } from "./launch-themes-nb";
 import { DESIGN_SNAPSHOT_VERSION, type DesignSnapshot, type DesignVariation } from "./design-presets";
 import type { SectionStyles } from "./section-styles";
 import { ARCADE } from "./signature/arcade";
@@ -73,7 +74,11 @@ export const launchVariation = (theme: LaunchTheme, preset: LaunchPreset): Desig
 });
 
 /** The listing written for a launch theme: the code's kinds, styles and highlight words. */
-export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"> => ({ ...theme.listing });
+/** A launch theme's listing as the sync writes it: the code's, with its words in the site's other languages (D312 P3) where written. */
+export const launchListing = (theme: LaunchTheme): Omit<ThemeListing, "pictures"> => ({
+  ...theme.listing,
+  ...(LAUNCH_WORDS_NB[theme.key] ? { words: { nb: LAUNCH_WORDS_NB[theme.key] } } : {}),
+});
 
 /**
  * The core section styles a theme made from a store, or from scratch, starts with where it has none (D246): neutral, legible in light and

@@ -2274,8 +2274,14 @@ export async function markLaunchTheme(presetId: string, key: string, version: nu
   // A launch theme's address in the theme store is its key, and its kinds and styles the code's (`docs/theme-phase-3.md`); the pictures
   // beside its main one are the platform admin's and kept. Its highlights' words (`docs/theme-showcase-phase-2.md` step 2) are the code's
   // where it has them, else the admin's, kept. What its looks are shown on is its own content (D275, `linkLaunchContent()`), never the listing.
+  // Its words in other languages (D312 P3) are the code's where it has them, else the admin's, kept, as its highlights' are.
   const given = listing
-    ? JSON.stringify({ kinds: listing.kinds, styles: listing.styles, ...(listing.highlights ? { highlights: listing.highlights } : {}) })
+    ? JSON.stringify({
+        kinds: listing.kinds,
+        styles: listing.styles,
+        ...(listing.highlights ? { highlights: listing.highlights } : {}),
+        ...(listing.words ? { words: listing.words } : {}),
+      })
     : null;
   await db().execute(sql`
     update commerce.design_presets set launch_key = ${key}, launch_version = coalesce(${version}::int, launch_version),
@@ -2284,6 +2290,8 @@ export async function markLaunchTheme(presetId: string, key: string, version: nu
         else ${given}::jsonb || jsonb_build_object('pictures', coalesce(listing -> 'pictures', '[]'::jsonb))
           || case when ${given}::jsonb ? 'highlights' or listing -> 'highlights' is null then '{}'::jsonb
                else jsonb_build_object('highlights', listing -> 'highlights') end
+          || case when ${given}::jsonb ? 'words' or listing -> 'words' is null then '{}'::jsonb
+               else jsonb_build_object('words', listing -> 'words') end
           -- The admin's own pictures in place of made ones (\`docs/theme-showcase-phase-2.md\` step 3) are theirs, kept.
           || case when listing -> 'own' is null then '{}'::jsonb else jsonb_build_object('own', listing -> 'own') end end
     where id = ${presetId}::uuid
