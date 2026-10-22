@@ -1070,8 +1070,8 @@ stand-in is the only fake, and only it is told it is one.
   `lang`); a platform route is a thin page over its shared view in `src/components/platform-routes/` taking `lang`, so a new platform
   page gets a Norwegian twin there too. Build the site's own links with `platformPath(lang, path)` (header, footer, menus, `GridPlace.lang`),
   metadata with `languageMeta()` (canonical and `hreflang`); never redirect by the browser's language (`LanguageHint` only suggests). A
-  language is offered only while `platform_settings.locales` names it (`getPlatformLangs()`, `/no` a 404 otherwise) and is turned on only
-  once `languageNotReady()` is empty (`LANGUAGE_READINESS`, raised by the step that finishes it). Norwegian legal and financial words come
+  language is offered only while `platform_settings.locales` names it (`getPlatformLangs()`, `/no` a 404 otherwise) and is turned on at once
+  from Platform → Languages, with no review first (the owner). Norwegian legal and financial words come
   from the glossary (`src/lib/i18n-glossary.ts`; its test holds every Norwegian catalogue to it) and legal pages state rights in the law's
   own words (`LEGAL_WORDING_NB`, proofread by a person; the withdrawal form from the state form Q-0319B). The chrome's words (header,
   footer, the routes' own words, sign-up and its errors, cookies, not found, unsubscribe, the theme cards) are `platformText(lang)`

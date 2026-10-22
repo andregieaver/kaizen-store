@@ -113,29 +113,6 @@ export function suggestedLang(browser: readonly string[], page: PlatformLang, of
   return null;
 }
 
-/**
- * Where each language besides English stands (D312, docs/platform-admin-i18n.md 4): its site texts written by hand (P2 to P4) and its legal
- * pages read by the reviewing lawyer (P5). Raised in the change that finishes the step, never before.
- */
-export const LANGUAGE_READINESS: Record<Exclude<PlatformLang, "en">, { texts: boolean; legalReviewed: boolean }> = {
-  nb: { texts: false, legalReviewed: false },
-};
-
-/** Why the site may not be offered in `lang` yet; empty when it may (`platformLanguageReady()`). English always may. */
-export function languageNotReady(lang: PlatformLang): string[] {
-  if (lang === "en") return [];
-  const state = LANGUAGE_READINESS[lang];
-  const name = PLATFORM_LANG_FACTS[lang].english;
-  return [
-    ...(state.texts ? [] : [`The site's own texts are not all written in ${name} yet.`]),
-    ...(state.legalReviewed ? [] : [`The legal pages in ${name} have not been read by the reviewing lawyer yet.`]),
-  ];
-}
-
-export function platformLanguageReady(lang: PlatformLang): boolean {
-  return languageNotReady(lang).length === 0;
-}
-
 /** `platform_settings.locales` for a set of the site's languages: English first, the others in `PLATFORM_LANGS`' order. */
 export function localesFor(langs: readonly PlatformLang[]): string[] {
   return PLATFORM_LANGS.filter((lang) => lang === "en" || langs.includes(lang)).map((lang) => PLATFORM_LANG_FACTS[lang].locale);

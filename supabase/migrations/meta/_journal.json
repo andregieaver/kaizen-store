@@ -2892,6 +2892,13 @@
       "when": 1792659747693,
       "tag": "20261022090227_platform_languages",
       "breakpoints": true
+    },
+    {
+      "idx": 413,
+      "version": "7",
+      "when": 1792669867787,
+      "tag": "20261022115107_platform_norwegian_on",
+      "breakpoints": true
     }
   ]
 }

@@ -1500,7 +1500,7 @@ export const platformSettings = commerce.table(
     theme: jsonb("theme"),
     /**
      * The languages Kaizena Flow's own site is offered in (D312, docs/platform-admin-i18n.md 3.1), English first; a language is
-     * turned on only when `platformLanguageReady()` says its texts and legal pages are, so the site is never shown half translated.
+     * turned on at once from Platform → Languages (D312).
      */
     locales: text("locales").array().notNull().default(sql`'{en-GB}'::text[]`),
     /**

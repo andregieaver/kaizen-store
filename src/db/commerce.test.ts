@@ -2164,13 +2164,14 @@ describe("owners' own CSS (D100)", () => {
 });
 
 describe("the languages of Kaizena Flow's own site (D312)", () => {
-  it("is English alone until another is offered, English always first, and only the site's languages", async () => {
-    expect((await one<{ locales: string[] }>("select locales from commerce.platform_settings")).locales).toEqual(["en-GB"]);
-    await db.query("update commerce.platform_settings set locales = '{en-GB,nb-NO}'");
+  it("is offered in Norwegian once the migrations have run, English always first, and only the site's languages", async () => {
+    // Norwegian goes live at once (migration `platform_norwegian_on`, the owner, 2026-10-22).
+    expect((await one<{ locales: string[] }>("select locales from commerce.platform_settings")).locales).toEqual(["en-GB", "nb-NO"]);
+    await db.query("update commerce.platform_settings set locales = '{en-GB}'");
     for (const locales of ["{nb-NO,en-GB}", "{nb-NO}", "{en-GB,sv-SE}", "{}"]) {
       await expect(db.query("update commerce.platform_settings set locales = $1", [locales])).rejects.toThrow(/platform_settings_locales/);
     }
-    await db.query("update commerce.platform_settings set locales = '{en-GB}'");
+    await db.query("update commerce.platform_settings set locales = '{en-GB,nb-NO}'");
   });
 });
 

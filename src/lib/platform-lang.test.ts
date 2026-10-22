@@ -58,14 +58,8 @@ describe("the site's languages (D312 P1)", () => {
 });
 
 describe("offering the site in a language (D312)", () => {
-  it("offers English always and Norwegian only once its texts and legal pages are ready", async () => {
-    const { languageNotReady, localesFor, platformLanguageReady } = await import("./platform-lang");
-    expect(languageNotReady("en")).toEqual([]);
-    expect(platformLanguageReady("nb")).toBe(false);
-    expect(languageNotReady("nb")).toEqual([
-      "The site's own texts are not all written in Norwegian yet.",
-      "The legal pages in Norwegian have not been read by the reviewing lawyer yet.",
-    ]);
+  it("keeps English first in the settings and the others in the site's order", async () => {
+    const { localesFor } = await import("./platform-lang");
     expect(localesFor([])).toEqual(["en-GB"]);
     expect(localesFor(["nb", "en"])).toEqual(["en-GB", "nb-NO"]);
   });

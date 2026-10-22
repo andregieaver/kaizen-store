@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { LAUNCH_THEMES } from "@/lib/launch-themes";
+import { LAUNCH_WORDS_NB } from "@/lib/launch-themes-nb";
 import { sharePicture } from "@/lib/theme-store";
 
 import type { Account } from "./auth";
@@ -47,6 +48,8 @@ describe("the theme store's data", () => {
       pictures: [],
       // Its highlights' words are the code's (`docs/theme-showcase-phase-2.md` step 2).
       highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
+      // Its words in Norwegian are the code's too (D312 P3).
+      words: { nb: LAUNCH_WORDS_NB.hearth },
     });
     expect(calm?.features).toContain("dark");
   });
@@ -70,6 +73,8 @@ describe("the theme store's data", () => {
       styles: ["warm", "classic"],
       pictures: ["/media/hearth-1.webp"],
       highlights: LAUNCH_THEMES.find((t) => t.key === "hearth")!.listing.highlights,
+      // Its words in Norwegian are the code's too (D312 P3).
+      words: { nb: LAUNCH_WORDS_NB.hearth },
     });
   });
 

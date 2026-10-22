@@ -9,7 +9,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { listLanguages, storesUsing } from "@/server/languages";
 import { uiCoverage } from "@/server/ui-text";
 import { getPlatformLangs } from "@/server/platform-navigation";
-import { languageNotReady, PLATFORM_LANG_FACTS, PLATFORM_LANGS, platformPath } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, platformPath } from "@/lib/platform-lang";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import { addLanguageAction, saveLocalesAction, setEnabledAction, setSiteLanguageAction } from "./actions";
@@ -42,14 +42,13 @@ export default async function LanguagesPage() {
 
       <Card
         title="Kaizena Flow's own site"
-        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (Norwegian at /no). A language is offered only once its texts are written and its legal pages reviewed."
+        description="The languages the site itself is offered in, English at its usual addresses and each other one under its own (Norwegian at /no).."
         className="flex flex-col gap-3"
         compact
       >
         <ul className="flex flex-col divide-y divide-line text-sm">
           {PLATFORM_LANGS.map((lang) => {
             const on = siteLangs.includes(lang);
-            const missing = languageNotReady(lang);
             return (
               <li key={lang} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="flex flex-col gap-1">
@@ -57,10 +56,10 @@ export default async function LanguagesPage() {
                     {PLATFORM_LANG_FACTS[lang].name} <span className="text-muted">· {platformPath(lang, "/")}</span>
                   </span>
                   <span className="text-muted">
-                    {lang === "en" ? "Always offered." : on ? "Offered." : missing.length > 0 ? `Not ready: ${missing.join(" ")}` : "Ready, not offered."}
+                    {lang === "en" ? "Always offered." : on ? "Offered." : "Not offered."}
                   </span>
                 </div>
-                {lang !== "en" && (on || missing.length === 0) && (
+                {lang !== "en" && (
                   <ActionForm action={setSiteLanguageAction.bind(null, lang, !on)}>
                     <SubmitButton variant={on ? "secondary" : "primary"}>{on ? "Stop offering" : "Offer the site in it"}</SubmitButton>
                   </ActionForm>

@@ -1,6 +1,6 @@
 # Kaizena Flow and the admin in more than one language (D312)
 
-Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); decision 4's lawyer is still to be named. P0 done; P1 built (2026-10-22): the `/no` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered only once ready. P2 built (2026-10-22): the chrome's words in English and Norwegian catalogues (`platformText(lang)`), held by `platform-chrome.scan.test.ts`. P3 built (2026-10-22): the theme store in Norwegian (`/no/themes`, theme pages, the full-screen preview, the theme store's host), its words and each theme's own words per language (`listing.words`, `inLanguage()`). Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
+Status: plan, 2026-10-22. Decisions 1 to 3 of section 2 taken as recommended (the owner, 2026-10-22); no lawyer reviews the legal pages (the owner, 2026-10-22: no gating, Norwegian live at once). P0 done; P1 built (2026-10-22): the `/no` routes, the switch and suggestion bar, `hreflang` and the sitemap, offered while turned on. P2 built (2026-10-22): the chrome's words in English and Norwegian catalogues (`platformText(lang)`), held by `platform-chrome.scan.test.ts`. P3 built (2026-10-22): the theme store in Norwegian (`/no/themes`, theme pages, the full-screen preview, the theme store's host), its words and each theme's own words per language (`listing.words`, `inLanguage()`). Norwegian (bokmål, `nb-NO`) first, then the other hand-written languages (Swedish, Danish). English stays the
 source and the fallback.
 
 The owner's ask: every string of Kaizena Flow's own site (the platform store: front page, Kaizena Flow's pages, sign-up, the theme store,
@@ -43,16 +43,16 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
    scan test's allowlist with its reason.
 5. **Who writes Norwegian.** Written into the catalogues by hand in code review (as nb, sv, da and en are for shoppers today), never
    translated at run time. Legal and financial terms come only from the glossary (section 5), each with its source. Legal texts (Kaizena
-   Flow's terms, privacy, data processing agreement) are translated in full, marked for review, and published only after a Norwegian
-   lawyer has read them; until then the English text stays the binding one and the Norwegian page says so.
+   Flow's terms, privacy, data processing agreement) are translated in full in the law's own wording and published as they are: no lawyer
+   reviews them first (the owner, 2026-10-22: "Do not apply gating. We need Norwegian and any other language to go live immediately.").
 
 ## 3. How it is built
 
 ### 3.1 Languages of the platform
 
 - `platform_settings.locales` (`{en, nb-NO}`, the main first), edited on a Languages page under Kaizena Flow's Settings, as a store's are;
-  the platform's hand-written languages are the ones `src/lib/messages` holds. A language is offered on the site only once its catalogue
-  covers every key and its legal pages are reviewed (`platformLanguageReady()`), so turning Norwegian on cannot show half a site.
+  the platform's hand-written languages are the ones `src/lib/messages` holds. A language is offered on the site as soon as it is turned on
+  there (no readiness check; the owner, 2026-10-22); Norwegian is on in production from migration `platform_norwegian_on`.
 - One reader, `platformLang(request or params)`, gives the language a page is drawn in; every platform route and layout takes it, and
   `<html lang>`, `og:locale`, `SiteConsent`, `hreflang` alternates, the sitemap (one entry per language with alternates) and `llms.txt`
   follow it.
@@ -106,7 +106,7 @@ signed-in browser tests (`e2e/signed-in/`, an owner with `admin_locale = nb-NO`)
 | P2 | The site's chrome catalogue in English and Norwegian: header, footer, sign-up and its errors, cookies, unsubscribe, support, not found | the scan finds no English in the platform's chrome |
 | P3 | The theme store in Norwegian: its parts, cards, filters, prices (without VAT, in the store's words), preview bar, listing words per language | `/no/themes` and every theme page read in Norwegian |
 | P4 | Kaizena Flow's builder translates (3.2): the front page, the plans page, the theme store's pages and the other content pages in Norwegian | every published Kaizena Flow page has Norwegian texts |
-| P5 | Kaizena Flow's legal pages in Norwegian in the law's own wording (5.2), marked for review; published after the lawyer's read. The stores' Norwegian legal starters (`src/lib/legal-starters/nb.ts`) are checked against the same wording | reviewed and published; until then the English one is binding and says so; every statement of a right cites its section |
+| P5 | Kaizena Flow's legal pages in Norwegian in the law's own wording (5.2), published as written (no lawyer's review, the owner). The stores' Norwegian legal starters (`src/lib/legal-starters/nb.ts`) are checked against the same wording | published; every statement of a right cites its section |
 | P6 | Emails from the platform store in the requester's language | the access request emails in Norwegian for a Norwegian request |
 
 **Then the admin**, in the order an owner meets it
@@ -165,7 +165,7 @@ paraphrase of the English page.
   from the record.
 - **When the law changes**, the passage is read again on Lovdata; the record's date says how old each one is, and a passage older than a
   year is listed for checking.
-- The lawyer's review (decision 5) still decides; Lovdata's wording is what the page starts from, not a replacement for it.
+- No lawyer reviews the pages (the owner, 2026-10-22); Lovdata's wording is what keeps them right.
 
 **As built in P0 (2026-10-22).** `src/lib/legal-wording-nb.ts` holds 23 passages (angrerettloven §§ 8, 20, 21, 24; forbrukerkjøpsloven
 §§ 26, 27; ekomloven § 3-15; ehandelsloven § 8; forskrift om opplysningsplikt og angrerett mv. §§ 1–2; the titles of personvernforordningen
@@ -228,6 +228,6 @@ kampanje, rabattkode); numbers, dates and money as `nb-NO` writes them (`1 249,5
   done from sliding back.
 - **Half-translated screens.** A page converted shows English only where its server sentences are not yet keys; the step that converts a
   page converts the savers it calls.
-- **Legal liability.** A Norwegian legal page that is wrong binds Kaizena Flow; hence the lawyer's review and the English text binding until
-  then.
+- **Legal liability.** A Norwegian legal page that is wrong binds Kaizena Flow; the owner has chosen to publish without a lawyer's review (2026-10-22),
+  so the law's own wording from Lovdata is the safeguard.
 - **Imports.** Translated CSV headers would break imports; they stay English (section 2, decision 4).
