@@ -32,7 +32,7 @@ beforeAll(async () => {
   storeId = String(store.id);
   const [account] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`ins-erased-${run}@example.com`}`);
   member = { account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false }, store: (await stores.getStore(`ins-erased-${run}`))!, role: "owner" };
-  const [v] = await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid limit 1`);
+  const [v] = await db().execute<Row>(sql`select v.id, v.sku from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id where v.store_id = ${storeId}::uuid and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`);
   let n = 0;
   const order = async (email: string, name: string, daysAgo: number, total: number) => {
     n += 1;

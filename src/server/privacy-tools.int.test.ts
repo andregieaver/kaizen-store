@@ -195,7 +195,7 @@ describe("explain_privacy_request", () => {
 
 describe("the order tools after an erasure (D162)", () => {
   it("shows a restricted order as a sale and an anonymised one likewise, never the person, and finds neither by the person's email", async () => {
-    const [v] = await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${member.store.id}::uuid limit 1`);
+    const [v] = await db().execute<Row>(sql`select v.id, v.sku from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id where v.store_id = ${member.store.id}::uuid and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`);
     const place = async (n: number, email: string) => {
       const [o] = await db().execute<Row>(sql`
         insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, tax_minor, total_minor,

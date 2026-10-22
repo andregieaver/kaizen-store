@@ -26,7 +26,7 @@ const kept = async () => ((await db().execute<Row>(sql`select features, modules 
 const owner = () => membershipOf(store.slug, store.account, "owner");
 
 async function variantOf(storeId: string): Promise<string> {
-  const [row] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid limit 1`);
+  const [row] = await db().execute<Row>(sql`select v.id from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id where v.store_id = ${storeId}::uuid and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`);
   return String(row.id);
 }
 

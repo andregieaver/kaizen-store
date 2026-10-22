@@ -133,7 +133,7 @@ beforeAll(async () => {
   empty = await makeStore("cust-empty");
   nocost = await makeStore("cust-nocost");
   for (const s of [store, other, nocost]) {
-    const [v] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${s.id}::uuid limit 1`);
+    const [v] = await db().execute<Row>(sql`select v.id from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id where v.store_id = ${s.id}::uuid and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`);
     variants.set(s.id, String(v.id));
   }
 
