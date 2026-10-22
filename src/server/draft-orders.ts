@@ -27,7 +27,7 @@ import { conversionFor } from "@/lib/localization";
 import { findMarket, shown, type Market } from "@/lib/markets";
 import { cashRuleOf, checkCash } from "@/lib/cash-limits";
 import { DRAFTS_OPEN_MAX, DRAFT_LINE_TITLE_COLUMN_MAX, DRAFT_PAID_OUTSIDE_VALID_DAYS, DRAFT_SENDS_PER_DAY, DRAFT_SENDS_PER_HOUR_STORE, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { ORDER_AUDIT_ACTIONS, ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
 import { tagsOf } from "@/lib/order-tags";
 import { GENERAL_TAX_CODE, formatPriceInput, parsePrice, variantLabel } from "@/lib/product-input";
@@ -977,7 +977,7 @@ export type SendDraftResult =
 
 /** The link a buyer opens: `/s/{store}/{market}/account/pay/{token}`, on the store's own address. */
 export function payLinkFor(store: Pick<EmailStore, "slug">, marketSlug: string, token: string): string {
-  return `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug, `/account/pay/${token}`)}`;
+  return `${marketUrl(store.slug, marketSlug, `/account/pay/${token}`)}`;
 }
 
 /** The store's sends of a pay link in an hour (the abuse brake of a staff-typed address, `DRAFT_SENDS_PER_HOUR_STORE`): one atomic counter, `chat_usage` bucket `draft:send`. */

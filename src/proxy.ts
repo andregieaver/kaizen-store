@@ -46,7 +46,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // Only a request that asks for a page is moved (spec 4.1 rule 8): a 308 makes a client replay a POST's body at the new address, and a POST is no
     // page request to count as missing. A server action's POST to a short address is still served from the long one.
     const page = request.method === "GET" || request.method === "HEAD";
-    const answer = await storeRequestAnswer(request.nextUrl.pathname, request.nextUrl.search, hostStore, page);
+    const answer = await storeRequestAnswer(request.nextUrl.pathname, request.nextUrl.search, hostStore, page, host);
     if (answer && "location" in answer) return NextResponse.redirect(new URL(answer.location, request.url), 308);
     if (answer && "rewrite" in answer) served = answer.rewrite;
     if (answer && "miss" in answer) {

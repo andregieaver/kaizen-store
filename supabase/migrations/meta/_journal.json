@@ -2906,6 +2906,13 @@
       "when": 1792677214108,
       "tag": "20261022135334_account_admin_locale",
       "breakpoints": true
+    },
+    {
+      "idx": 415,
+      "version": "7",
+      "when": 1792678531218,
+      "tag": "20261022141531_store_domain_language",
+      "breakpoints": true
     }
   ]
 }

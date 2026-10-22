@@ -58,7 +58,10 @@ export function ViewMenu({
         // The page the shopper is on, in the choice made, with what is asked of it kept.
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
         event.preventDefault();
-        router.push(`${hrefFor(item.base)}${window.location.search}${window.location.hash}`);
+        const to = `${hrefFor(item.base)}${window.location.search}${window.location.hash}`;
+        // A language on a domain of its own (D313) is another site: a full page load.
+        if (/^https?:\/\//.test(item.base)) window.location.assign(to);
+        else router.push(to);
       }}
     >
       {item.label}

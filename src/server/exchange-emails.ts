@@ -7,7 +7,7 @@ import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { lastDayOf } from "@/lib/exchange";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { formatStoreDay } from "@/lib/return-time";
 import { siteUrl } from "@/lib/site";
 import type { PlaceholderValues } from "@/lib/email-template";
@@ -270,4 +270,4 @@ export async function sendLabelReady(storeId: string, returnId: string): Promise
 }
 
 /** The status page of a return, where the customer finds the label (and the exchange). */
-export const returnStatusUrl = (store: { slug: string }, marketSlug: string, token: string) => `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug, `/returns/${token}`)}`;
+export const returnStatusUrl = (store: { slug: string }, marketSlug: string, token: string) => `${marketUrl(store.slug, marketSlug, `/returns/${token}`)}`;

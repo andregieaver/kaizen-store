@@ -2633,6 +2633,22 @@ describe("stores' own domains (P8)", () => {
     await expect(add(kari, "example")).rejects.toThrow(/store_domains_hostname/);
     await add(kari, "xn--blbr-roah.no");
   });
+
+  it("give a language at most one domain of its own, never the store's address (D313)", async () => {
+    const store = await createStore("domains-lang", ["NO"]);
+    const add = (hostname: string, language: string | null, primary = false) =>
+      db.query(
+        "insert into commerce.store_domains (store_id, hostname, token, status, is_primary, language) values ($1, $2, 'token', 'active', $3, $4)",
+        [store, hostname, primary, language],
+      );
+    await add("nordic.example", null, true);
+    await add("nordic-en.example", "en");
+    await expect(add("english.example", "en")).rejects.toThrow(/store_domains_language_idx/);
+    await expect(add("eng.example", "EN")).rejects.toThrow(/store_domains_language/);
+    await expect(
+      db.query("update commerce.store_domains set language = 'de' where store_id = $1 and is_primary", [store]),
+    ).rejects.toThrow(/store_domains_primary_language/);
+  });
 });
 
 describe("VAT per product (D65)", () => {

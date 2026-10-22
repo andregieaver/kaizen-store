@@ -18,6 +18,7 @@ test.skip(!domain, "needs a build with NEXT_PUBLIC_STORE_DOMAIN set");
 /** The store `e2e/hosts-seed.mjs` puts on a domain of its own: kept in step with it. */
 const CUSTOM_STORE = "kari-domene";
 const CUSTOM_HOST = "butikk.kari.localhost";
+const ENGLISH_HOST = "english.kari.localhost";
 
 const storeUrl = (slug: string, path = "") => `http://${slug}.${domain}${path}`;
 
@@ -119,6 +120,31 @@ test("a store on a domain of its own is served there, and its other addresses le
   await expect(page).toHaveURL(`${own}/cart`);
   await page.goto(`/s/${CUSTOM_STORE}/no`);
   await expect(page).toHaveURL(`${own}/`);
+});
+
+test("a language on a domain of its own shows the store in it, without the language in its addresses (D313)", async ({ page }) => {
+  test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
+  const port = new URL(storeUrl("x")).port;
+  const own = `http://${CUSTOM_HOST}:${port}`;
+  const english = `http://${ENGLISH_HOST}:${port}`;
+  expect((await page.goto(`${english}/`))?.status()).toBe(200);
+  expect(await page.locator("html").getAttribute("lang")).toBe("en");
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(english);
+  await expect(page.getByRole("link", { name: /Cart/ }).first()).toHaveAttribute("href", "/cart");
+  expect((await page.goto(`${english}/om-oss`))?.status()).toBe(200);
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${english}/om-oss`);
+
+  // English on the store's address moves to its own domain, and the language is never in the addresses there.
+  await page.goto(`${own}/en/om-oss`);
+  await expect(page).toHaveURL(`${english}/om-oss`);
+  await page.goto(`${english}/en/om-oss`);
+  await expect(page).toHaveURL(`${english}/om-oss`);
+
+  // The store's address says where English is, and English where the store's own language is.
+  await page.goto(`${own}/`);
+  expect(await page.locator('link[rel=alternate][hreflang="en-NO"]').getAttribute("href")).toBe(english);
+  await page.goto(`${english}/`);
+  expect(await page.locator('link[rel=alternate][hreflang="nb-NO"]').getAttribute("href")).toBe(own);
 });
 
 test("staff who came from the admin get their way back, and the page's editor, on the store's own host", async ({ page }) => {

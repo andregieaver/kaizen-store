@@ -37,7 +37,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { browserText } from "@/lib/browser-text";
 import type { PageContent, ProductBlock } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import type { VariantStock } from "@/lib/stock-availability";
 import { canOffer, stockNote } from "@/lib/stock-words";
 import { productJsonLd } from "@/lib/structured-data";
@@ -953,11 +953,11 @@ export async function ProductJsonLd({
             ),
           })),
         },
-        url: `${origin}${marketPath(store.slug, market.slug, `/p/${product.handle}`)}`,
+        url: marketUrl(store.slug, market.slug, `/p/${product.handle}`),
         origin,
         store: storeFacts(store),
         market,
-        marketHome: `${origin}${marketPath(store.slug, market.slug)}`,
+        marketHome: marketUrl(store.slug, market.slug),
         // A variant that keeps selling at zero is `BackOrder`, never `InStock` (D172); a download or a booking is always in stock.
         availability: (variantId) => {
           const stock = availability.get(variantId);

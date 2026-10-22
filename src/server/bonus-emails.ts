@@ -7,7 +7,7 @@ import type { BonusExpiryReminder } from "@/lib/bonus";
 import { renderEmail } from "@/lib/email-layout";
 import { bonusExpiryText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { emailContext, emailFooter } from "./shopper-emails";
@@ -44,7 +44,7 @@ export async function sendBonusExpiryEmail(reminder: BonusExpiryReminder): Promi
     customerName: String(customer.name ?? ""),
     amount: formatMoney(reminder.amountMinor, reminder.currency, market.locale),
     expiresOn: expiresOn.toLocaleDateString(market.locale, { dateStyle: "long" }),
-    url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/account/bonus")}`,
+    url: `${marketUrl(store.slug, market.slug, "/account/bonus")}`,
   });
   const email = renderEmail({
     subject: words.subject,

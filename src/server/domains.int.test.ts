@@ -8,7 +8,7 @@ import type { DomainServices } from "./vercel";
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
 
-const { addStoreDomain, checkStoreDomain, deployIfBehind, listStoreDomains, removeStoreDomain, routedAsSaved, setPrimaryDomain } =
+const { addStoreDomain, checkStoreDomain, deployIfBehind, listStoreDomains, removeStoreDomain, routedAsSaved, setDomainLanguage, setPrimaryDomain } =
   await import("./domains");
 
 type Row = Record<string, unknown>;
@@ -128,5 +128,41 @@ describe("stores' own domains (P8)", () => {
     expect(await removeStoreDomain(owner, ola.id, pending.id, services)).toEqual({ ok: true });
     expect(calls.at(-1)).toBe(`remove ${domain.hostname}`);
     expect(await removeStoreDomain(owner, ola.id, pending.id, services)).toMatchObject({ ok: false });
+  });
+
+  it("makes an active domain one language's own address, never the store's address, and routes it as saved (D313)", async () => {
+    const { services, txt, pointed, calls } = fakeServices();
+    const add = async (hostname: string) => {
+      const added = await addStoreDomain(owner, ola.id, { hostname }, services, true);
+      if (!added.ok) throw new Error(added.problems.join(" "));
+      txt.set(`_kaizen.${hostname}`, [`kaizen-verify=${added.domain.token}`]);
+      pointed.add(hostname);
+      return (await checkStoreDomain(ola.id, added.domain.id, services)).ok ? added.domain.id : "";
+    };
+    const main = await add(`ola-${run}.example.no`);
+    const english = await add(`ola-en-${run}.example.com`);
+    const domains = await listStoreDomains(ola.id);
+    expect(domains.find((d) => d.id === main)?.isPrimary).toBe(true);
+
+    expect(await setDomainLanguage(owner, ola.id, english, "de", ["en"], services)).toMatchObject({ ok: false });
+    expect(await setDomainLanguage(owner, ola.id, main, "en", ["en"], services)).toMatchObject({ ok: false });
+    calls.length = 0;
+    expect(await setDomainLanguage(owner, ola.id, english, "en", ["en"], services)).toEqual({ ok: true });
+    expect(calls).toEqual(["deploy"]);
+    expect(await setDomainLanguage(owner, ola.id, main, null, ["en"], services)).toEqual({ ok: true });
+    const saved = await listStoreDomains(ola.id);
+    expect(saved.find((d) => d.id === english)?.language).toBe("en");
+    // A language's own domain is never the store's address.
+    expect(await setPrimaryDomain(owner, ola.id, english, services)).toMatchObject({ ok: false });
+
+    // Routed as saved only with the language in the deployment's hosts.
+    const hosts = saved.filter((d) => d.status === "active").map((d) => d.hostname);
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify({ [ola.slug]: { primary: `ola-${run}.example.no`, hosts } }));
+    expect(routedAsSaved(ola.slug, saved)).toBe(false);
+    vi.stubEnv(
+      "NEXT_PUBLIC_STORE_HOSTS",
+      JSON.stringify({ [ola.slug]: { primary: `ola-${run}.example.no`, hosts, languages: { en: `ola-en-${run}.example.com` } } }),
+    );
+    expect(routedAsSaved(ola.slug, saved)).toBe(true);
   });
 });

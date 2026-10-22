@@ -8,7 +8,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
 import { bindForPlace } from "@/server/field-binding";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = c.seo.title || c.title;
   const description =
     c.seo.description || pageExcerpt(c) || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
-  const path = (m: Market) => marketPath(store.slug, m.slug, `/blog/${page.slug}`);
+  const path = (m: Market) => marketUrl(store.slug, m.slug, `/blog/${page.slug}`);
   const share = storeShareTags(store, market, {
     title,
     description,
@@ -110,7 +110,7 @@ export default async function StoreArticlePage({ params }: Props) {
           modifiedAt: page.publishedAt,
           author: c.author || null,
           locale: market.locale,
-          store: { homeUrl: `${origin}${marketPath(store.slug, market.slug)}`, storeUrl: storeFacts(store).url },
+          store: { homeUrl: marketUrl(store.slug, market.slug), storeUrl: storeFacts(store).url },
         })}
       />
       <ArticleView

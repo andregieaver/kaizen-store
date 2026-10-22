@@ -7,7 +7,7 @@ import type { DocumentKind } from "@/lib/document-token";
 import type { EmailBlock } from "@/lib/email-layout";
 import { invoiceFileName } from "@/lib/invoice-eligibility";
 import { documentEmailText } from "@/lib/invoice-text";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 import type { OutgoingEmail } from "./email";
 import { readPdf } from "./invoice-storage";
@@ -32,7 +32,7 @@ export const MAX_ATTACHED_BYTES = 1_000_000;
 
 /** The hosted page of a document: the token is the whole access. */
 export const documentUrl = (storeSlug: string, marketSlug: string, token: string): string =>
-  `${storeSiteUrl(storeSlug)}${marketPath(storeSlug, marketSlug, `/account/documents/${token}`)}`;
+  `${marketUrl(storeSlug, marketSlug, `/account/documents/${token}`)}`;
 
 export type DocumentWant = {
   /** The order's invoice. */

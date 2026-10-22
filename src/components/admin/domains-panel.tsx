@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 import { dnsRecords, MAX_DOMAINS } from "@/lib/custom-domains";
 import type { StoreDomain } from "@/server/domains";
 
@@ -19,6 +20,50 @@ function DomainButton({ action, id, label }: { action: Action; id: string; label
   );
 }
 
+/**
+ * Which language a domain is for (D313): every language by default, which leads to the store's address; one of the store's other
+ * languages makes the domain that language's own address, with the language left out of its addresses.
+ */
+function LanguageChoice({
+  action,
+  domain,
+  languages,
+  nameOf,
+  words,
+}: {
+  action: Action;
+  domain: StoreDomain;
+  languages: { lang: string; name: string }[];
+  nameOf: (lang: string) => string;
+  words: DomainsMessages;
+}) {
+  const options = domain.language && !languages.some((l) => l.lang === domain.language) ? [...languages, { lang: domain.language, name: nameOf(domain.language) }] : languages;
+  return (
+    <details className="text-sm" open={domain.language !== null}>
+      <summary className="cursor-pointer text-muted">{words.forOneLanguage}</summary>
+      <ActionForm action={action} className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+        <input type="hidden" name="id" value={domain.id} />
+        <label className="flex flex-1 flex-col gap-1 font-medium">
+          {words.language}
+          <select name="language" defaultValue={domain.language ?? ""} className={input}>
+            <option value="">{words.everyLanguage}</option>
+            {options.map((l) => (
+              <option key={l.lang} value={l.lang}>
+                {named(words.languageOption, l.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <SubmitButton variant="secondary">{words.save}</SubmitButton>
+      </ActionForm>
+      <p className="mt-2 text-xs text-muted">{words.explain}</p>
+    </details>
+  );
+}
+
+/** A catalogue text with a language's name in it. */
+const named = (text: string, name: string) => text.replaceAll("{name}", name);
+
 /** A record's name as providers that add the domain themselves want it: `_kaizen.butikk` for `_kaizen.butikk.example.no`. */
 const relativeName = (name: string, apex: string | undefined) =>
   apex && name.endsWith(`.${apex}`) ? name.slice(0, -apex.length - 1) : apex === name ? "@" : name;
@@ -34,6 +79,8 @@ export function DomainsPanel({
   deploying,
   owner,
   configured,
+  languages,
+  words,
   actions,
 }: {
   /** The store's address in this deployment. */
@@ -46,9 +93,14 @@ export function DomainsPanel({
   owner: boolean;
   /** Kaizen's Vercel settings are there, so domains can be added. */
   configured: boolean;
-  actions: { add: Action; check: Action; primary: Action; remove: Action };
+  /** The languages a domain may be the address of (D313, `domainLanguages()`); none for a store in one language. */
+  languages: { lang: string; name: string }[];
+  /** The page's words in the admin's language (D312: what is converted). */
+  words: DomainsMessages;
+  actions: { add: Action; check: Action; primary: Action; remove: Action; language: Action };
 }) {
   const primary = domains.find((d) => d.isPrimary);
+  const nameOf = (lang: string) => languages.find((l) => l.lang === lang)?.name ?? lang;
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="address-heading" className={card}>
@@ -120,8 +172,17 @@ export function DomainsPanel({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{domain.hostname}</span>
                   <span className="rounded-full border border-line px-2 py-0.5 text-xs">
-                    {domain.isPrimary ? "Your address" : domain.status === "active" ? "Active: leads to your address" : "Waiting for DNS"}
+                    {domain.isPrimary
+                      ? "Your address"
+                      : domain.status === "active"
+                        ? domain.language
+                          ? named(words.activeInLanguage, nameOf(domain.language))
+                          : "Active: leads to your address"
+                        : "Waiting for DNS"}
                   </span>
+                  {domain.language && domain.status === "pending" && (
+                    <span className="rounded-full border border-line px-2 py-0.5 text-xs">{named(words.forLanguage, nameOf(domain.language))}</span>
+                  )}
                 </div>
                 {domain.status === "pending" && (
                   <>
@@ -175,6 +236,9 @@ export function DomainsPanel({
                   )}
                   {owner && <DomainButton action={actions.remove} id={domain.id} label="Remove" />}
                 </div>
+                {owner && !domain.isPrimary && (languages.length > 0 || domain.language) && (
+                  <LanguageChoice action={actions.language} domain={domain} languages={languages} nameOf={nameOf} words={words} />
+                )}
               </li>
             ))}
           </ul>

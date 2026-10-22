@@ -23,6 +23,6 @@ export const commonEn = {
   },
 };
 
-type Widen<T> = T extends (...args: infer A) => infer R ? (...args: A) => R : T extends object ? { [K in keyof T]: Widen<T[K]> } : string;
+export type Widen<T> = T extends (...args: infer A) => infer R ? (...args: A) => R : T extends object ? { [K in keyof T]: Widen<T[K]> } : string;
 
 export type CommonMessages = Widen<typeof commonEn>;

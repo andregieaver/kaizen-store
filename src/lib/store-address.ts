@@ -27,6 +27,8 @@ export type StoreAddress = {
   keptCurrencies: string[];
   /** Every country the store has had, lower case, its own first: an old address in one is moved by the route (`marketMoved()`). */
   countries: string[];
+  /** Each offered country's own language, two letters (`{ no: "nb", se: "sv" }`): which language domain (D313) a market without one is on. */
+  owns?: Record<string, string>;
 };
 
 const langOf = (locale: string) => locale.split("-")[0].toLowerCase();
@@ -59,6 +61,7 @@ export function storeAddressOf(store: { markets: readonly Market[]; keptMarkets?
     keptLanguages,
     keptCurrencies: unique(keptCurrencies),
     countries: unique([home, ...(store.keptMarkets ?? []).map((m) => m.code.toLowerCase()), ...store.allMarkets.map((m) => m.code.toLowerCase())]),
+    owns: Object.fromEntries(store.markets.map((m) => [m.code.toLowerCase(), langOf(m.ownLocale)])),
   };
 }
 
@@ -215,6 +218,65 @@ export function addressDecision(request: StorePathRequest, address: StoreAddress
   if (shortChoiceOf(address, lower) !== null) return { redirect: joinStorePath(request, longMarketSlug(address, lower), rest) };
   if (NOT_STORE_PAGES.includes(lower)) return null;
   return { marketless: { path: `/${request.parts.join("/")}`, first: lower } };
+}
+
+/** Where a store's languages with domains of their own are (D313): `here` the language of the host asked (null for the store's address). */
+export type LanguageHostFacts = {
+  here: string | null;
+  /** Each language with a domain of its own, two letters, to its origin. */
+  origins: Record<string, string>;
+  /** The store's own origin, where every other language is. */
+  primary: string;
+};
+
+/** A market's long slug from its parts, the language left out where it is the country's own. */
+const slugFrom = (country: string, lang: string | null, currency: string | null, own: string | null): string =>
+  [country, ...(lang && lang !== own ? [lang] : []), ...(currency ? [currency] : [])].join("-");
+
+/** A long slug as it is written on a language's own domain, where the language goes without saying (`no-en-eur` → `no-eur` for `en`). */
+const writtenOn = (address: StoreAddress, slug: string, lang: string | null): string => {
+  const parsed = parseMarketSlug(slug);
+  const bare = lang && parsed?.lang === lang ? slugFrom(parsed.country.toLowerCase(), null, parsed.currency?.toLowerCase() ?? null, null) : slug;
+  return addressSegment(address, bare);
+};
+
+/**
+ * Where a request goes for a store with languages on domains of their own (D313, `docs/language-domains.md`), pure; undefined where the
+ * usual rules (`addressDecision()`) decide. On a language's domain a market without a language is in that language (`/` is the store's own
+ * country in it, `/eur/x` in it and euro, `/se/x` Sweden in it), so its addresses never name it: one that does moves to the short one. A
+ * request for a market whose language is on another origin (a language with a domain on the store's address, another language or the
+ * store's main one on a language's domain) moves there (308), with the rest of its path.
+ */
+export function languageHostDecision(request: StorePathRequest, address: StoreAddress | null, hosts: LanguageHostFacts): AddressDecision | undefined {
+  if (!address || !request.hostBased || Object.keys(hosts.origins).length === 0) return undefined;
+  const [first = "", ...rest] = request.parts;
+  const lower = first.toLowerCase();
+  const market = parseMarketSlug(lower);
+  let explicit: { country: string; lang: string | null; currency: string | null } | null = null;
+  if (market && viewOf(address, lower, market.country.toLowerCase()) !== null) {
+    explicit = { country: market.country.toLowerCase(), lang: market.lang, currency: market.currency?.toLowerCase() ?? null };
+  } else if (address.marketless && shortChoiceOf(address, lower) !== null) {
+    const match = SHORT.exec(lower);
+    explicit = match ? { country: address.home, lang: match[1] ?? match[3] ?? null, currency: match[2] ?? match[4] ?? null } : null;
+  }
+  const here = hosts.here;
+  if (!explicit) {
+    // A page of the store's own country (or its front page), in the language of the domain asked.
+    if (here === null || !address.marketless) return undefined;
+    return { rewrite: joinStorePath(request, slugFrom(address.home, here, null, address.owns?.[address.home] ?? null), request.parts) };
+  }
+  const own = address.owns?.[explicit.country] ?? null;
+  const lang = explicit.lang ?? here ?? own;
+  const full = slugFrom(explicit.country, lang, explicit.currency, own);
+  const target = lang && hosts.origins[lang] ? lang : null;
+  if (target === here) {
+    if (here === null) return undefined;
+    const written = writtenOn(address, full, here);
+    if (written === lower) return { rewrite: joinStorePath(request, full, rest) };
+    return { redirect: joinStorePath(request, written, rest) };
+  }
+  const origin = target ? hosts.origins[target] : hosts.primary;
+  return { redirect: `${origin}${joinStorePath(request, writtenOn(address, full, target), rest)}` };
 }
 
 /**

@@ -13,7 +13,7 @@ import {
 } from "@/lib/a11y-statement";
 import { pageIssues, blockingIssues, themeSetsOf } from "@/lib/page-a11y";
 import { parsePageContent } from "@/lib/page-content";
-import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
+import { marketUrl, storeBase, storeSiteUrl } from "@/lib/paths";
 import { parseStoreTheme, themeWarnings } from "@/lib/theme";
 
 import { audit, type Membership } from "./auth";
@@ -128,7 +128,7 @@ export async function a11yFacts(store: Store): Promise<A11yFacts> {
   }
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const origin = storeSiteUrl(store.slug);
-  const addresses = [...new Set(store.markets.map((m) => `${origin}${marketPath(store.slug, m.slug)}`))];
+  const addresses = [...new Set(store.markets.map((m) => marketUrl(store.slug, m.slug)))];
   return {
     storeName: store.name,
     siteAddresses: addresses.length > 0 ? addresses : [`${origin}${storeBase(store.slug)}`],

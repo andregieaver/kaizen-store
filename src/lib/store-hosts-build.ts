@@ -13,8 +13,8 @@ export async function readStoreHosts(): Promise<StoreHosts> {
   if (!url) throw new Error("DATABASE_URL is needed to build the stores' domains.");
   const sql = postgres(url, { max: 1, onnotice: () => {}, prepare: false });
   try {
-    const rows = await sql<{ slug: string; hostname: string; is_primary: boolean }[]>`
-      select s.slug, d.hostname, d.is_primary
+    const rows = await sql<{ slug: string; hostname: string; is_primary: boolean; language: string | null }[]>`
+      select s.slug, d.hostname, d.is_primary, d.language
       from commerce.store_domains d
       join commerce.stores s on s.id = d.store_id
       where d.status = 'active'
@@ -25,6 +25,8 @@ export async function readStoreHosts(): Promise<StoreHosts> {
       const store = (hosts[row.slug] ??= { primary: null, hosts: [] });
       store.hosts.push(row.hostname);
       if (row.is_primary) store.primary = row.hostname;
+      // A language's own domain (D313).
+      if (row.language) store.languages = { ...store.languages, [row.language]: row.hostname };
     }
     return hosts;
   } finally {

@@ -8,9 +8,9 @@ import { db, readDb } from "@/db/client";
 import { REDIRECT_HOPS_MAX } from "@/lib/data-limits";
 import { legacyPathOf, parseLegacyRequest } from "@/lib/legacy-path";
 import type { Market } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { hostOrigin, languageHosts, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { encodeAddress, firstSegment, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
-import { MARKET_ROUTES, addressDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
+import { MARKET_ROUTES, addressDecision, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
 import { localized } from "@/lib/store-localized";
 import { redirectsTag } from "@/lib/redirects";
 
@@ -151,7 +151,9 @@ const isPlaceholder = (path: string): boolean => path.split("/").some((part) => 
  */
 export function locationIn(storeSlug: string, marketSlug: string, target: string): string {
   const tail = target === "/" ? "" : target.startsWith("/?") || target.startsWith("/#") ? target.slice(1) : target;
-  return encodeAddress(marketPath(storeSlug, marketSlug, tail));
+  // With languages on domains of their own (D313) the request may be on another origin than the market's: a full address then.
+  const address = Object.keys(languageHosts(storeSlug)).length > 0 ? marketUrl(storeSlug, marketSlug, tail) : marketPath(storeSlug, marketSlug, tail);
+  return encodeAddress(address);
 }
 
 /**
@@ -223,7 +225,8 @@ export async function mainMarketOf(storeSlug: string): Promise<string | null> {
 /** The address to go to in a market, shaped as the proxy's facts say (not as this process last read the store: the two may differ for a few seconds). */
 const locationBy = (facts: NonNullable<StoreFacts>, target: string): string => {
   const tail = target === "/" ? "" : target.startsWith("/?") || target.startsWith("/#") ? target.slice(1) : target;
-  return encodeAddress(marketPath(facts.slug, facts.mainMarket, tail, facts.address));
+  const address = Object.keys(languageHosts(facts.slug)).length > 0 ? marketUrl(facts.slug, facts.mainMarket, tail, facts.address) : marketPath(facts.slug, facts.mainMarket, tail, facts.address);
+  return encodeAddress(address);
 };
 
 export type LegacyAnswer = { location: string } | { miss: { storeId: string; path: string } } | null;
@@ -239,12 +242,20 @@ export type StoreRequestAnswer = { location: string } | { rewrite: string } | { 
  * product, a category or tag, a page or article), else left to the routes (the 404 it was) and returned as a `miss` for the caller to count.
  * A move is only made for a request that asks for a page (`page`: GET or HEAD): a 308 makes a client replay a POST's body.
  */
-export async function storeRequestAnswer(pathname: string, search: string, hostStore: string | null, page: boolean): Promise<StoreRequestAnswer> {
+export async function storeRequestAnswer(pathname: string, search: string, hostStore: string | null, page: boolean, host = ""): Promise<StoreRequestAnswer> {
   const request = storePathOf(pathname, hostStore);
   if (!request) return null;
   const facts = await storeFactsOf(request.store);
   if (!facts) return null;
-  const decision = addressDecision(request, facts.address);
+  // A store with languages on domains of their own (D313): the domain asked decides the language.
+  const languages = languageHosts(request.store);
+  const bare = host.toLowerCase().replace(/:\d+$/, "");
+  const decision =
+    languageHostDecision(request, facts.address, {
+      here: Object.entries(languages).find(([, name]) => name === bare)?.[0] ?? null,
+      origins: Object.fromEntries(Object.entries(languages).map(([lang, name]) => [lang, hostOrigin(name)])),
+      primary: storeSiteUrl(request.store),
+    }) ?? addressDecision(request, facts.address);
   if (!decision) return null;
   if ("rewrite" in decision) return decision;
   if (!page) return null;

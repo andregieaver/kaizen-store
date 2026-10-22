@@ -20,7 +20,7 @@ import { t } from "@/lib/i18n";
 import { languageChoices } from "@/lib/localization";
 import { inView } from "@/lib/markets";
 import { looksLikeMarket } from "@/lib/redirect-path";
-import { adminOrigin, marketHome, storeHome, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketHome, marketOrigin, marketUrl, storeHome } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
 import { featureOn, showsWithdrawalLink } from "@/lib/store-features";
@@ -58,9 +58,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const home = marketHome(store.slug, market.slug);
   // The same page in another currency is the same page: its address is the one in the country's own (D109).
-  const canonical = marketHome(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
+  const canonical = marketUrl(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
   return {
-    metadataBase: new URL(storeSiteUrl(store.slug)),
+    // A language with a domain of its own (D313) is on its own origin.
+    metadataBase: new URL(marketOrigin(store.slug, market.slug)),
     title: { default: title, template: `%s · ${store.name}` },
     description,
     // A store is not for search engines until its owner opens it, or while they hide it; a store template (D175) never is.
@@ -74,7 +75,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           store.markets.flatMap((m) =>
             languageChoices(store.localization, m).map((locale) => [
               `${locale.split("-")[0]}-${m.code}`,
-              marketHome(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
+              marketUrl(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
             ]),
           ),
         ),

@@ -8,6 +8,8 @@ import postgres from "postgres";
 // Kept in step with e2e/store-hosts.spec.ts.
 const CUSTOM_STORE = "kari-domene";
 const CUSTOM_HOST = "butikk.kari.localhost";
+// English's own domain (D313).
+const ENGLISH_HOST = "english.kari.localhost";
 
 {
   const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
@@ -19,7 +21,14 @@ const CUSTOM_HOST = "butikk.kari.localhost";
     await sql`
       insert into commerce.store_domains (store_id, hostname, token, status, is_primary, activated_at)
       select id, ${CUSTOM_HOST}, 'e2e', 'active', true, now() from commerce.stores where slug = ${CUSTOM_STORE}`;
-    console.log(`${CUSTOM_STORE} is at ${CUSTOM_HOST}`);
+    // It offers English too, on English's own domain.
+    await sql`
+      update commerce.stores set features = array_append(features, 'languages'), locales = '{nb-NO,en-GB}'
+      where slug = ${CUSTOM_STORE}`;
+    await sql`
+      insert into commerce.store_domains (store_id, hostname, token, status, is_primary, language, activated_at)
+      select id, ${ENGLISH_HOST}, 'e2e-en', 'active', false, 'en', now() from commerce.stores where slug = ${CUSTOM_STORE}`;
+    console.log(`${CUSTOM_STORE} is at ${CUSTOM_HOST}, in English at ${ENGLISH_HOST}`);
   } finally {
     await sql.end();
   }

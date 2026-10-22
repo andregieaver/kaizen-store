@@ -90,7 +90,12 @@ stand-in is the only fake, and only it is told it is one.
   `storeSiteUrl()` for full addresses (emails, Stripe, search engines).
   A store's primary domain of its own (P8, `src/server/domains.ts`) is read
   from the database when building, so routing and `storeOrigin()` follow
-  it; a change to domains deploys again. A store that sells in one country
+  it; a change to domains deploys again. A language may have a domain of its
+  own, as an option (D313, `docs/language-domains.md`: `store_domains.language`,
+  `setDomainLanguage()`), where its addresses leave the language out and the
+  proxy reads it from the host (`languageHostDecision()`); so a full address is
+  always `marketUrl()` (`marketOrigin()`), a link to another market
+  `marketLink()`, never `storeSiteUrl() + marketPath()`. A store that sells in one country
   has no country in its addresses (D181, `docs/marketless-addresses.md`,
   `src/lib/store-address.ts`): `/s/{store}/home`, `/en/home`; the proxy
   rewrites them to the unchanged `[market]` routes and moves the long ones

@@ -36,7 +36,7 @@ import {
 import { shownOptions, t } from "@/lib/i18n";
 import { shown, type Market } from "@/lib/markets";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { GENERAL_TAX_CODE, variantLabel } from "@/lib/product-input";
 import { splitRefund } from "@/lib/refund-split";
 import type { WorkingRow } from "@/lib/return-refund";
@@ -165,7 +165,7 @@ export const EXCHANGE_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 /** The page a customer opens: `/s/{store}/{market}/account/exchange/{token}`, on the store's own address. */
 export function exchangeLinkFor(store: Pick<EmailStore, "slug">, marketSlug: string, token: string): string {
-  return `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug, `/account/exchange/${token}`)}`;
+  return `${marketUrl(store.slug, marketSlug, `/account/exchange/${token}`)}`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

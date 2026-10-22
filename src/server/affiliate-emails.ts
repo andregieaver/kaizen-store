@@ -7,7 +7,7 @@ import { convertCredits } from "@/lib/bonus";
 import { renderEmail } from "@/lib/email-layout";
 import { affiliateRewardText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 import { bonusProgram } from "./bonus";
 import { sendEmail, type SendOutcome } from "./email";
@@ -59,7 +59,7 @@ export async function sendReferrerRewardEmail(storeId: string, orderId: string):
     customerName: String(row.name ?? ""),
     amount,
     usableFrom: at && at.getTime() > Date.now() ? at.toLocaleDateString(market.locale, { dateStyle: "long" }) : null,
-    url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/account/referrals")}`,
+    url: `${marketUrl(store.slug, market.slug, "/account/referrals")}`,
   });
   const email = renderEmail({
     subject: words.subject,

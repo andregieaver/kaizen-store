@@ -13,7 +13,7 @@ import { languageChoices, localizationOf } from "@/lib/localization";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { inView, offeredMarkets, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
+import { marketOrigin, marketPath, marketUrl, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
 import { pageImageUrls } from "@/lib/page-images";
 import { localizePage } from "@/lib/page-translation";
@@ -570,7 +570,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       languageChoices(store, m).map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
     );
   const versionsOf = (markets: readonly Market[], path: string) =>
-    views(markets).map((v) => ({ locale: v.locale, href: `${origin}${marketPath(store.slug, v.slug, path, address) || "/"}` }));
+    views(markets).map((v) => ({ locale: v.locale, href: `${marketOrigin(store.slug, v.slug, address)}${marketPath(store.slug, v.slug, path, address) || "/"}` }));
   const homes = versionsOf(store.markets, "");
   const urls = [
     ...homes.map((home) =>
@@ -691,7 +691,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
   if (!store || !listed || !market) return null;
   const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
-  const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
+  const home = (code: string) => marketUrl(store.slug, code.toLowerCase());
   // A website (D178 step 5: the online shop off) sells nothing: who it is, its pages and blog, and no products, prices or terms of sale.
   const selling = featureOn(store, "shop");
   const [products, indexed, shipping, pages, articles] = await Promise.all([

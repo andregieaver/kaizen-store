@@ -12,6 +12,22 @@ import { siteUrl } from "./site";
 /** Each store can have this many, its primary among them. */
 export const MAX_DOMAINS = 5;
 
+/**
+ * The languages a domain may be the address of (D313, `docs/language-domains.md`): every language the store keeps (`keptLocales`, two letters)
+ * but its own country's own, which is the store's address. Each with its name in `shownIn` (the admin's language, a BCP 47 locale).
+ */
+export function domainLanguages(
+  store: { markets: readonly { ownLocale: string }[]; localization: { keptLocales: readonly string[] } },
+  shownIn = "en",
+): { lang: string; name: string }[] {
+  const lang = (locale: string) => locale.split("-")[0].toLowerCase();
+  const own = store.markets[0] ? lang(store.markets[0].ownLocale) : null;
+  const names = new Intl.DisplayNames([shownIn, "en"], { type: "language" });
+  return [...new Set(store.localization.keptLocales.map(lang))]
+    .filter((l) => l !== own && /^[a-z]{2}$/.test(l))
+    .map((l) => ({ lang: l, name: names.of(l) ?? l }));
+}
+
 /** The TXT record that proves a domain is the store's: its name, with the claim's token as value. */
 export const verifyName = (hostname: string) => `_kaizen.${hostname}`;
 export const verifyValue = (token: string) => `kaizen-verify=${token}`;

@@ -10,7 +10,7 @@ import { t } from "@/lib/i18n";
 import { languageChoices } from "@/lib/localization";
 import type { Market } from "@/lib/markets";
 import { inView } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketUrl } from "@/lib/paths";
 import { termMetaDescription, termMetaTitle, termShare } from "@/lib/term-seo";
 import type { StoreQuery } from "@/lib/store-parts";
 import { featureOn } from "@/lib/store-features";
@@ -60,7 +60,7 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
   const loaded = await load(kind, params);
   if (!loaded) return {};
   const { store, market, term } = loaded;
-  const path = (m: Market) => marketPath(store.slug, m.slug, `/${kind}/${term.slug}`);
+  const path = (m: Market) => marketUrl(store.slug, m.slug, `/${kind}/${term.slug}`);
   const fallback = store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const description = termMetaDescription(term, market.locale, fallback);
   const share = termShare(term, market.locale, fallback);

@@ -17,7 +17,7 @@ import {
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import type { Market } from "@/lib/markets";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
@@ -404,7 +404,7 @@ async function withPictures(storeId: string, storeSlug: string, lines: ReminderL
 
 /** The links in a reminder: back to the cart (with the step's code), and to stop reminders. */
 export function reminderLinks(storeSlug: string, marketSlug: string, token: string, code: string | null) {
-  const base = `${storeSiteUrl(storeSlug)}${marketPath(storeSlug, marketSlug)}`;
+  const base = `${marketUrl(storeSlug, marketSlug)}`;
   return {
     restoreUrl: `${base}/cart/restore/${token}${code ? `?code=${encodeURIComponent(code)}` : ""}`,
     unsubscribeUrl: `${base}/unsubscribe/${token}`,

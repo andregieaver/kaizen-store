@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { EmailBlock } from "@/lib/email-layout";
 import type { EmailText } from "@/lib/email-text";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 type Row = Record<string, unknown>;
 
@@ -25,7 +25,7 @@ export async function withdrawUrl(
   market: { slug: string },
   order: { id: string; number: string },
 ): Promise<string> {
-  const base = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/withdraw")}`;
+  const base = `${marketUrl(store.slug, market.slug, "/withdraw")}`;
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
     where store_id = ${storeId}::uuid and order_id = ${order.id}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'terms', 'gift_card')

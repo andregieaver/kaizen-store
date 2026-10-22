@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { priceView, type PriceView } from "@/lib/pricing";
 import { shown, type Market } from "@/lib/markets";
 import { backorderNote, type VariantStock } from "@/lib/stock-availability";
@@ -257,7 +257,7 @@ export async function handoffCart(store: Store, marketRef: string | null, lines:
   if (!made.ok) return { ok: false, reason: "nothing_to_buy" };
   return {
     ok: true,
-    url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/cart/resume")}?t=${encodeURIComponent(made.token)}`,
+    url: `${marketUrl(store.slug, market.slug, "/cart/resume")}?t=${encodeURIComponent(made.token)}`,
     lines: made.lines.map((line) => ({ variant_id: line.variantId, quantity: line.quantity, outcome: line.outcome })),
   };
 }

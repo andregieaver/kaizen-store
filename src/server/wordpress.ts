@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { featureOn } from "@/lib/store-features";
 import { t } from "@/lib/i18n";
-import { storeSiteUrl, marketPath } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { categoryTree } from "@/lib/taxonomy";
 import { summarize } from "@/lib/seo";
@@ -193,7 +193,7 @@ export async function storesOf(accountId: string): Promise<WpStore[]> {
       name: store.name,
       role: String(row.role),
       open: store.status === "active",
-      url: storeSiteUrl(store.slug) + (marketPath(store.slug, store.markets[0]?.slug ?? "") || "/"),
+      url: (marketUrl(store.slug, store.markets[0]?.slug ?? "") || "/"),
       markets: store.markets.map((m) => ({ slug: m.slug, country: m.code, name: m.name, currency: m.currency, language: m.lang })),
     });
   }
@@ -251,7 +251,7 @@ export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | nu
   const market = offeredMarketIn(store, view.market || null);
   if (!market) return null;
   const marketOut: WpMarket = { slug: market.slug, country: market.code, name: market.name, currency: market.currency, language: market.lang };
-  const base = { store: { slug: store.slug, name: store.name }, market: marketOut, shop_url: storeSiteUrl(store.slug) + (marketPath(store.slug, market.slug) || "/") };
+  const base = { store: { slug: store.slug, name: store.name }, market: marketOut, shop_url: marketUrl(store.slug, market.slug) };
   if (store.status !== "active" || !viewIsComplete(view)) return { ...base, open: store.status === "active", products: [] };
   const scope = await gridScope(store.id, { categories: view.categories, tags: view.tags });
   if (!scope) return { ...base, open: true, products: [] };
@@ -267,7 +267,7 @@ export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | nu
       handle: p.handle,
       title: p.title,
       excerpt: summarize(p.description, 200),
-      url: storeSiteUrl(store.slug) + marketPath(store.slug, market.slug, `/p/${p.handle}`),
+      url: marketUrl(store.slug, market.slug, `/p/${p.handle}`),
       image: p.image ? { url: absolute(p.image.url), alt: p.image.alt } : null,
       price: wordpressPrice(p.price, p.priceVaries, market.locale, words),
       cart: carts.get(p.id) ?? { cartable: false, reason: "service", variant_id: null, variant_count: 0, sold_out: false },

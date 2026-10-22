@@ -10,7 +10,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketUrl } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { headerOverlays } from "@/lib/site-layout";
 import { featureOn } from "@/lib/store-features";
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const loaded = await load(params);
   if (!loaded) return {};
   const { store, market, product } = loaded;
-  const path = (m: Market) => marketPath(store.slug, m.slug, `/p/${product.handle}`);
+  const path = (m: Market) => marketUrl(store.slug, m.slug, `/p/${product.handle}`);
   const title = product.seoTitle || product.title;
   const description =
     product.seoDescription ||

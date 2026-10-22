@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { formatDeclaration, formatStoreDay } from "@/lib/return-time";
 import type { WorkingRow } from "@/lib/return-refund";
 import { siteUrl } from "@/lib/site";
@@ -123,7 +123,7 @@ async function loadMail(storeId: string, returnId: string): Promise<Mail | null>
 }
 
 const statusUrl = (store: EmailStore, marketSlug: string, token: string) =>
-  `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug, `/returns/${token}`)}`;
+  `${marketUrl(store.slug, marketSlug, `/returns/${token}`)}`;
 
 /** The return address to show: the one kept on the return, else the store's postal address. */
 function addressLines(mail: Mail): string | null {

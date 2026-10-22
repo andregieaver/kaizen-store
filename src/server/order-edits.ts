@@ -36,7 +36,7 @@ import { editPaidOutsideInput, orderEditInput, type OrderEditInput } from "@/lib
 import { editLabel, type OrderEditReason, type OrderEditStatus } from "@/lib/order-edit-status";
 import { FULFILMENT_AUDIT_ACTIONS, FULFILMENT_EVENTS } from "@/lib/order-ops-events";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { GENERAL_TAX_CODE, variantLabel } from "@/lib/product-input";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 
@@ -820,7 +820,7 @@ export const hashEditToken = (token: string): string => createHash("sha256").upd
 
 /** The change pay page's address in the order's own market view. */
 export function editPayLink(store: Pick<EmailStore, "slug">, marketSlugValue: string, token: string): string {
-  return `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlugValue, `/account/change/${token}`)}`;
+  return `${marketUrl(store.slug, marketSlugValue, `/account/change/${token}`)}`;
 }
 
 export type SendEditResult =

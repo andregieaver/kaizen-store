@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { commonEn } from "@/lib/admin-messages/common.en";
+import { domainsEn } from "@/lib/admin-messages/domains.en";
 import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 /**
@@ -15,7 +16,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

@@ -16,7 +16,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { optionLabel, t } from "@/lib/i18n";
 import { TOKEN_PATTERN } from "@/lib/marketing-consent";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { isRequestAddress } from "@/lib/stock-request-check";
 
 import { sendEmail, type SendOutcome } from "./email";
@@ -178,7 +178,7 @@ async function sendConfirmation(ask: StockAsk, to: string, requestId: string, to
   const lang = ask.locale.slice(0, 2);
   const m = t(lang);
   const slug = marketSlugFor(store, ask.marketCode);
-  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, slug, `/account/stock/${token}`)}`;
+  const link = `${marketUrl(store.slug, slug, `/account/stock/${token}`)}`;
   const email = renderEmail({
     subject: m.stockNotice.confirmSubject(store.name),
     preview: m.stockNotice.confirmHeading,
@@ -289,7 +289,7 @@ async function sendBack(store: EmailStore, row: Row): Promise<SendOutcome> {
   const lang = locale.slice(0, 2);
   const m = t(lang);
   const slug = marketSlugFor(store, row.market_code ? String(row.market_code) : null);
-  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, slug, `/p/${names.handle}`)}`;
+  const link = `${marketUrl(store.slug, slug, `/p/${names.handle}`)}`;
   const asked = new Date(String(row.created_at)).toLocaleDateString(locale, { dateStyle: "long", timeZone: row.time_zone ? String(row.time_zone) : "UTC" });
   const email = renderEmail({
     subject: m.stockNotice.backSubject(names.product, store.name),

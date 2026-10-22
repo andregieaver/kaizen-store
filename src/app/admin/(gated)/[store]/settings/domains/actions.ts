@@ -4,7 +4,8 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
-import { addStoreDomain, checkStoreDomain, removeStoreDomain, setPrimaryDomain } from "@/server/domains";
+import { domainLanguages } from "@/lib/custom-domains";
+import { addStoreDomain, checkStoreDomain, removeStoreDomain, setDomainLanguage, setPrimaryDomain } from "@/server/domains";
 
 /** A store's own domains (P8) are the owner's: they decide where the store lives. */
 const asOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
@@ -51,4 +52,15 @@ export async function removeDomainAction(storeSlug: string, _state: FormState, f
   const result = await removeStoreDomain(member.account, member.store.id, String(form.get("id") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   return done(["Removed."]);
+}
+
+/** Makes a domain one language's own address (D313), or every language's again. */
+export async function languageDomainAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await asOwner(storeSlug);
+  if (!member) return notOwner;
+  const language = String(form.get("language") ?? "") || null;
+  const allowed = domainLanguages(member.store).map((l) => l.lang);
+  const result = await setDomainLanguage(member.account, member.store.id, String(form.get("id") ?? ""), language, allowed);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([language ? "Saved. The domain shows that language within a few minutes once it is active." : "Saved. The domain leads to your address."]);
 }

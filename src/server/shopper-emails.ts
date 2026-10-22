@@ -18,7 +18,7 @@ import { conversionFor, localizationOf } from "@/lib/localization";
 import { marketSlug } from "@/lib/market-slug";
 import { findMarket, toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
 import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { siteUrl } from "@/lib/site";
@@ -130,7 +130,7 @@ async function orderUrl(storeId: string, store: EmailStore, market: Market, orde
     order by (provider = 'exchange'), (provider = 'gift_card'), created_at limit 1
   `);
   if (!payment) return null;
-  return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
+  return `${marketUrl(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
 }
 
 function orderLines(
@@ -346,7 +346,7 @@ export async function sendOrderConfirmation(
           {
             type: "button" as const,
             text: text.manageSubscription,
-            url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
+            url: `${marketUrl(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
           },
         ]
       : []),
@@ -825,7 +825,7 @@ export async function sendWelcome(
     blocks: [
       { type: "heading", text: text.welcomeHeading },
       { type: "paragraph", text: text.welcomeIntro(to) },
-      { type: "button", text: text.welcomeButton, url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/account")}` },
+      { type: "button", text: text.welcomeButton, url: `${marketUrl(store.slug, market.slug, "/account")}` },
       { type: "paragraph", text: text.welcomeIgnore },
     ],
   });
@@ -857,7 +857,7 @@ export async function sendCompanyInvite(
   if (!ctx) return null;
   const { store, market, text } = ctx;
   const c = text.company;
-  const url = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/account/company/invite/${invite.token}`)}`;
+  const url = `${marketUrl(store.slug, market.slug, `/account/company/invite/${invite.token}`)}`;
   const email = renderEmail({
     subject: c.inviteSubject(invite.company, store.name),
     preview: c.inviteHeading(invite.company),
@@ -896,7 +896,7 @@ export async function sendCompanyJoined(
   if (!ctx) return null;
   const { store, market, text } = ctx;
   const c = text.company;
-  const url = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/account/sign-in/${joined.token}`)}`;
+  const url = `${marketUrl(store.slug, market.slug, `/account/sign-in/${joined.token}`)}`;
   const email = renderEmail({
     subject: c.joinedSubject(store.name),
     preview: c.joinedHeading(joined.company),
@@ -988,7 +988,7 @@ function subscriptionBlocks(
     {
       type: "button",
       text: text.manageSubscription,
-      url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
+      url: `${marketUrl(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
     },
   ];
 }
@@ -1387,7 +1387,7 @@ async function listContext(storeId: string, listId: string) {
   const locale = String(row.default_locale);
   const ctx = await context(storeId, String(row.market_code), locale);
   if (!ctx) return null;
-  const listUrl = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, "/deliveries")}`;
+  const listUrl = `${marketUrl(ctx.store.slug, ctx.market.slug, "/deliveries")}`;
   const schedule = { deliveryWeekday: Number(row.delivery_weekday), cutoffDays: Number(row.cutoff_days) };
   return { ...ctx, email: String(row.email), locale, listUrl, schedule, cutoffTime: String(row.cutoff_time) };
 }

@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
-import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { campaignNotices } from "@/server/campaign-notices";
@@ -73,7 +73,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
       data={storeHomeJsonLd({
         store: storeFacts(store),
         origin,
-        homeUrl: `${origin}${marketPath(store.slug, market.slug)}`,
+        homeUrl: marketUrl(store.slug, market.slug),
         market,
         description: store.seo.description[market.locale] || m.storeSummary(store.name, market.name),
         productUrls: products.map((product) => `${origin}${productUrl(product.handle)}`),

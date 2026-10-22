@@ -11,7 +11,7 @@ import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/p
 import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
 import { featureOn } from "@/lib/store-features";
 import { localizePage } from "@/lib/page-translation";
-import { adminOrigin, marketHome, marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketHome, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
 import { findPublishedPage, type PublishedPage } from "@/server/pages";
@@ -63,7 +63,7 @@ export async function storePageMetadata(params: StorePageParams, variant: string
   const title = c.seo.title || c.title;
   const description =
     c.seo.description || pageExcerpt(c) || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
-  const path = (m: Market) => marketPath(store.slug, m.slug, `/${page.slug}`);
+  const path = (m: Market) => marketUrl(store.slug, m.slug, `/${page.slug}`);
   return {
     // The page's own search title is used as written; otherwise "Title · Store".
     title: c.seo.title ? { absolute: c.seo.title } : c.title,

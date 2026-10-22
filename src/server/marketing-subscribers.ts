@@ -20,7 +20,7 @@ import {
   type SubscriberStatus,
   type UnsubscribeSource,
 } from "@/lib/marketing-consent";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
@@ -124,7 +124,7 @@ async function sendConfirmation(request: JoinRequest, to: string, token: string,
   const lang = request.locale.slice(0, 2);
   const m = t(lang);
   const market = store.markets.find((mk) => mk.code === request.marketCode) ?? store.markets[0];
-  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, (market?.code ?? "").toLowerCase(), `/account/news/${token}`)}`;
+  const link = `${marketUrl(store.slug, (market?.code ?? "").toLowerCase(), `/account/news/${token}`)}`;
   const email = renderEmail({
     subject: m.news.confirmSubject(store.name),
     preview: m.news.confirmHeading,

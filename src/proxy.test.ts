@@ -21,7 +21,7 @@ describe("the proxy's answer for a store's page", () => {
   it.each(["GET", "HEAD"])("sends a %s request that moved there for good", async (method) => {
     storeRequestAnswer.mockResolvedValue({ location: "/s/demo/dk/category/hjem" });
     const response = await call(method);
-    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, true);
+    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, true, expect.any(String));
     expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe("http://localhost/s/demo/dk/category/hjem");
   });
@@ -29,7 +29,7 @@ describe("the proxy's answer for a store's page", () => {
   it.each(["POST", "PUT", "PATCH", "DELETE"])("asks without moving a %s request: no redirect, no count of a missing page", async (method) => {
     storeRequestAnswer.mockResolvedValue(null);
     const response = await call(method);
-    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, false);
+    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, false, expect.any(String));
     expect(recordNotFound).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();

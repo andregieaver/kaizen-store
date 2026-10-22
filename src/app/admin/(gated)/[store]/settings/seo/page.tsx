@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
 import { t } from "@/lib/i18n";
-import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
+import { marketUrl, storeBase, storeSiteUrl } from "@/lib/paths";
 import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/seo";
 import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
@@ -108,7 +108,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
                 locale={market.locale}
                 initial={{ title: seo.title[market.locale] ?? "", description: seo.description[market.locale] ?? "" }}
                 fallback={{ title: store.name, description: t(market.lang).storeSummary(store.name, market.name) }}
-                url={`${origin}${marketPath(store.slug, market.slug)}`}
+                url={marketUrl(store.slug, market.slug)}
               />
             </fieldset>
           ))}

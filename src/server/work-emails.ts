@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import type { RenderedEmail } from "@/lib/email-layout";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import {
   chooseAddress,
   cleanMessage,
@@ -93,7 +93,7 @@ async function hostedFrame(
   const home =
     store.markets.find((m) => m.code.toLowerCase() === (sellerCountry ?? "").toLowerCase()) ?? store.markets[0];
   const ctx = home ? await emailContext(storeId, home.code, language) : null;
-  const url = ctx ? `${storeSiteUrl(store.slug)}${marketPath(store.slug, ctx.market.slug, path)}` : null;
+  const url = ctx ? `${marketUrl(store.slug, ctx.market.slug, path)}` : null;
   return {
     frame: { storeName: store.name, url, footer: emailFooter(store, text) },
     storeName: store.name,

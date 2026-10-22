@@ -12,6 +12,8 @@
  * - A store's primary custom domain (P8) serves its pages as its host does;
  *   its `{store}.{domain}` host and its other domains move there. The
  *   domains come from the database when the deployment is built.
+ * - A language's own domain (D313) serves the store's pages as the primary
+ *   does (never moved there); the proxy reads its language from the host.
  */
 
 import type { StoreHosts } from "./paths";
@@ -47,12 +49,17 @@ export function storeHostRoutes(
   const exactly = (name: string): Match => ({ type: "host", value: escape(name) });
 
   // Stores with a primary domain of their own: every other address of theirs leads there.
-  const custom = Object.entries(customHosts).map(([slug, { primary, hosts }]) => ({
-    slug,
-    primary,
-    canonical: origin(primary ?? `${slug}.${hostname}`),
-    others: [...(primary ? [`${slug}.${hostname}`] : []), ...hosts.filter((name) => name !== primary)],
-  }));
+  // A language's own domain (D313) serves the store's pages as its primary does; the proxy reads the language from the host.
+  const custom = Object.entries(customHosts).map(([slug, { primary, hosts, languages = {} }]) => {
+    const own = Object.values(languages);
+    return {
+      slug,
+      primary,
+      served: [...(primary ? [primary] : []), ...own.filter((name) => name !== primary && hosts.includes(name))],
+      canonical: origin(primary ?? `${slug}.${hostname}`),
+      others: [...(primary ? [`${slug}.${hostname}`] : []), ...hosts.filter((name) => name !== primary && !own.includes(name))],
+    };
+  });
   const everywhere = (destination: string) => `${destination}/:path*`;
   return {
     redirects: [
@@ -82,11 +89,11 @@ export function storeHostRoutes(
     // comes last, so its `/s/{store}` is not rewritten again.
     rewrites: [
       { source: `/:path((?!${SHARED}).+)`, has: [storeHost], destination: "/s/:store/:path" },
-      ...custom.flatMap(({ slug, primary }) =>
-        primary ? [{ source: `/:path((?!${SHARED}).+)`, has: [exactly(primary)], destination: `/s/${slug}/:path` }] : [],
+      ...custom.flatMap(({ slug, served }) =>
+        served.map((name) => ({ source: `/:path((?!${SHARED}).+)`, has: [exactly(name)], destination: `/s/${slug}/:path` })),
       ),
       { source: "/", has: [storeHost], destination: "/s/:store" },
-      ...custom.flatMap(({ slug, primary }) => (primary ? [{ source: "/", has: [exactly(primary)], destination: `/s/${slug}` }] : [])),
+      ...custom.flatMap(({ slug, served }) => served.map((name) => ({ source: "/", has: [exactly(name)], destination: `/s/${slug}` }))),
     ],
   };
 }

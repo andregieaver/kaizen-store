@@ -8,7 +8,7 @@ import { emailText } from "@/lib/email-text";
 import { formatGiftCode } from "@/lib/gift-cards";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { newGiftCode } from "./gift-card-codes";
@@ -84,7 +84,7 @@ function cardEmail(
 ) {
   const m = t(card.lang);
   const slug = marketSlugFor(store, card.marketCode);
-  const link = `${storeSiteUrl(store.slug)}${marketPath(store.slug, slug, "/")}`;
+  const link = `${marketUrl(store.slug, slug, "/")}`;
   const until = card.expiresAt ? new Date(card.expiresAt).toLocaleDateString(card.locale, { dateStyle: "long", timeZone: card.timeZone }) : null;
   const blocks: EmailBlock[] = [
     { type: "heading", text: m.giftCardEmail.heading(card.amount, store.name) },

@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { can } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
 import { t } from "@/lib/i18n";
@@ -126,7 +126,7 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     const ctx = await emailContext(storeId, market.slice(0, 2).toUpperCase(), locale);
     if (!ctx) return null;
     deskName = ctx.store.name;
-    url = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
+    url = `${marketUrl(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
     footer = emailFooter(ctx.store, ctx.text);
     replyTo = ctx.store.details.contactEmail;
   } else {
@@ -284,7 +284,7 @@ export async function sendRequestDecisionEmail(conversationId: string, actionId:
     const words = supportEmailText(locale);
     const said = t(locale.split("-")[0] || "en").chat.actions;
     const token = await newEmailToken(systemDesk(storeId), conversationId);
-    const url = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
+    const url = `${marketUrl(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
     const summary = String(row.summary);
     const blocks: EmailBlock[] = [
       { type: "heading", text: words.decisionHeading },

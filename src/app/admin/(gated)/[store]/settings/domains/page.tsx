@@ -7,7 +7,11 @@ import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } 
 import { domainsConfigured } from "@/server/vercel";
 import { PageHeader } from "@/components/admin/ui";
 
-import { addDomainAction, checkDomainAction, primaryDomainAction, removeDomainAction } from "./actions";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { domainLanguages } from "@/lib/custom-domains";
+
+import { addDomainAction, checkDomainAction, languageDomainAction, primaryDomainAction, removeDomainAction } from "./actions";
 
 export const metadata: Metadata = { title: "Domains" };
 
@@ -15,6 +19,7 @@ export const metadata: Metadata = { title: "Domains" };
 export default async function DomainsPage({ params }: PageProps<"/admin/[store]/settings/domains">) {
   const current = await requirePermission((await params).store, "settings:read");
   const { store } = current;
+  const lang = adminLangOf(current.account.adminLocale);
   const domain = storeDomain();
   if (!domain) {
     return (
@@ -39,11 +44,14 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
         deploying={deploying}
         owner={memberCan(current, "owner")}
         configured={domainsConfigured()}
+        languages={domainLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
+        words={adminText(lang, "domains")}
         actions={{
           add: addDomainAction.bind(null, store.slug),
           check: checkDomainAction.bind(null, store.slug),
           primary: primaryDomainAction.bind(null, store.slug),
           remove: removeDomainAction.bind(null, store.slug),
+          language: languageDomainAction.bind(null, store.slug),
         }}
       />
     </div>

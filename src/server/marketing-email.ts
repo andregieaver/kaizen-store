@@ -7,7 +7,7 @@ import { buildBroadcastEmail, languageFor, type BroadcastContent } from "@/lib/b
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { t } from "@/lib/i18n";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { marketUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { emailFooter, type EmailStore } from "./shopper-emails";
@@ -28,8 +28,7 @@ export function marketSlugFor(store: EmailStore, code: string | null): string {
 
 /** A store path made full under a market; a full address as written. */
 export function resolverFor(store: EmailStore, marketSlug: string) {
-  const origin = storeSiteUrl(store.slug);
-  return (url: string) => (url.startsWith("/") ? `${origin}${marketPath(store.slug, marketSlug, url)}` : url);
+  return (url: string) => (url.startsWith("/") ? marketUrl(store.slug, marketSlug, url) : url);
 }
 
 export function marketingEmail(input: {
@@ -50,7 +49,7 @@ export function marketingEmail(input: {
   const lang = language.slice(0, 2);
   const m = t(lang);
   const marketSlug = marketSlugFor(store, input.marketCode);
-  const base = `${storeSiteUrl(store.slug)}${marketPath(store.slug, marketSlug)}`;
+  const base = `${marketUrl(store.slug, marketSlug)}`;
   const email = renderEmail(
     buildBroadcastEmail({
       content,

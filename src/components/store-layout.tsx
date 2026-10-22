@@ -6,7 +6,7 @@ import { currencyChoices, currencyName, languageChoices, languageName } from "@/
 import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
-import { marketHome, marketPath } from "@/lib/paths";
+import { marketHome, marketLink, marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
@@ -137,12 +137,13 @@ function viewChoices(store: Store, market: Market): { languages: ViewItem[]; cur
       slug: marketSlug(market.code, { lang, currency: market.currency }, own),
       current: lang === market.lang,
     };
-  }).map((item) => ({ ...item, base: marketPath(store.slug, item.slug) }));
+  // Another language may be on a domain of its own (D313): the link is then a full address.
+  }).map((item) => ({ ...item, base: marketLink(store.slug, market.slug, item.slug) }));
   const currencies = currencyChoices(store.localization, market.nativeCurrency).map((currency) => ({
     key: currency,
     label: currencyName(currency, market.locale),
     slug: marketSlug(market.code, { lang: market.lang, currency }, own),
-    base: marketPath(store.slug, marketSlug(market.code, { lang: market.lang, currency }, own)),
+    base: marketLink(store.slug, market.slug, marketSlug(market.code, { lang: market.lang, currency }, own)),
     current: currency === market.currency,
   }));
   return { languages: languages.length > 1 ? languages : [], currencies: currencies.length > 1 ? currencies : [] };
