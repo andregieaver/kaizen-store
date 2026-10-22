@@ -39,11 +39,11 @@ export function AdminTrail({ storeSlug, storeOrigins }: { storeSlug: string; sto
 }
 
 /** The sign-out form; it also forgets the admin pages, so the storefront stops offering a way back. */
-export function SignOutForm({ action }: { action: () => Promise<void> }) {
+export function SignOutForm({ action, label = "Sign out" }: { action: () => Promise<void>; /** In the account's language (D312 A0). */ label?: string }) {
   return (
     <form action={action} onSubmit={forgetAdminPages}>
       <button type="submit" className="underline">
-        Sign out
+        {label}
       </button>
     </form>
   );

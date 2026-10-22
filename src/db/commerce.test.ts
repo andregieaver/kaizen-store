@@ -1120,6 +1120,13 @@ describe("accounts and members", () => {
     await expect(db.query("update commerce.accounts set admin_scheme = 'sepia' where id = $1", [id])).rejects.toThrow(/accounts_admin_scheme/);
   });
 
+  it("keeps an account's language for the admin, none until chosen, and only one the admin has (D312 A0)", async () => {
+    const id = await createAccount("language@example.com");
+    expect((await one<{ admin_locale: string | null }>("select admin_locale from commerce.accounts where id = $1", [id])).admin_locale).toBeNull();
+    await db.query("update commerce.accounts set admin_locale = 'nb-NO' where id = $1", [id]);
+    await expect(db.query("update commerce.accounts set admin_locale = 'sv-SE' where id = $1", [id])).rejects.toThrow(/accounts_admin_locale/);
+  });
+
   it("always keeps at least one active owner per store", async () => {
     const shop = await createStore("owner-test", ["NO"]);
     const owner = await createAccount("owner@example.com");

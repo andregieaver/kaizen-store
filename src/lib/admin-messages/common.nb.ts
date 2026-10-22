@@ -1,0 +1,21 @@
+import type { CommonMessages } from "./common.en";
+
+/** Administrasjonens felles ord på norsk bokmål (D312 A0), skrevet for hånd mot ordlisten (`src/lib/i18n-glossary.ts`). */
+export const commonNb: CommonMessages = {
+  accountMenu: {
+    yourAccount: "Din konto",
+    contactSupport: "Kontakt kundestøtten i Kaizena Flow",
+    colours: "Farger",
+    toDark: "Bytt til mørke farger",
+    toLight: "Bytt til lyse farger",
+    language: "Språk",
+    signOut: "Logg ut",
+  },
+  language: {
+    title: "Språk",
+    description: "Språket administrasjonen vises på for deg. Kundene i butikkene dine ser språkene som er valgt for hver butikk.",
+    saving: "Lagrer …",
+    kept: "Lagres med kontoen din, så administrasjonen har samme språk på alle enheter du logger inn på.",
+    partly: "Deler av administrasjonen som ennå ikke er skrevet på ditt språk, vises på engelsk.",
+  },
+};

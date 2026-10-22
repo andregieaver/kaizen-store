@@ -3,6 +3,9 @@ import { Suspense } from "react";
 
 import { AdminColorSync } from "@/components/admin/admin-colors";
 import { AdminSchemeSync } from "@/components/admin/admin-scheme";
+import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 
@@ -32,12 +35,17 @@ async function Gate({ children }: { children: React.ReactNode }) {
     if (destination) redirect(destination);
     return <SessionRecovery />;
   }
+  // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
+  const lang = adminLangOf(account.adminLocale);
   return (
-    <div className="flex min-h-screen flex-col">
-      <SessionKeeper />
-      <AdminColorSync saved={account.colorMode ?? "system"} />
-      <AdminSchemeSync saved={account.adminScheme ?? "meadow"} />
-      {children}
-    </div>
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common"])}>
+      <div className="flex min-h-screen flex-col">
+        <SessionKeeper />
+        <AdminColorSync saved={account.colorMode ?? "system"} />
+        <AdminSchemeSync saved={account.adminScheme ?? "meadow"} />
+        <AdminLangSync lang={lang} />
+        {children}
+      </div>
+    </AdminTextProvider>
   );
 }

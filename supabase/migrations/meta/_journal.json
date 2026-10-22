@@ -2899,6 +2899,13 @@
       "when": 1792669867787,
       "tag": "20261022115107_platform_norwegian_on",
       "breakpoints": true
+    },
+    {
+      "idx": 414,
+      "version": "7",
+      "when": 1792677214108,
+      "tag": "20261022135334_account_admin_locale",
+      "breakpoints": true
     }
   ]
 }

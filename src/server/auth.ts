@@ -8,6 +8,7 @@ import { cache } from "react";
 import { db } from "@/db/client";
 import { areaOfAction, type AuditChanges } from "@/lib/audit";
 import { isColorChoice, type ColorChoice } from "@/lib/color-mode";
+import { browserAdminLang, storedAdminLocale, type AdminLang } from "@/lib/admin-lang";
 import { adminScheme, isOfferedScheme } from "@/lib/admin-schemes";
 import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
@@ -33,6 +34,8 @@ export type Account = {
   colorMode?: ColorChoice;
   /** The admin's colour scheme for them (D221): a registered scheme's id, the default when theirs is no longer offered. */
   adminScheme?: string;
+  /** The admin's language for them (D312 A0): what `accounts.admin_locale` keeps (`en`, `nb-NO`), null until their first sign-in sets it. */
+  adminLocale?: string | null;
   /** Where the session stands on two-step sign-in (wave 1, 1f): set by `getAccount()` and `getSessionAccount()`, absent on a hand-made account in a test. */
   assurance?: AccountAssurance;
 };
@@ -92,6 +95,7 @@ const toAccount = (row: Row): Account => ({
   avatarPath: row.avatar_path ? String(row.avatar_path) : null,
   colorMode: isColorChoice(row.color_mode) ? row.color_mode : "system",
   adminScheme: adminScheme(typeof row.admin_scheme === "string" ? row.admin_scheme : null).id,
+  adminLocale: typeof row.admin_locale === "string" ? row.admin_locale : null,
 });
 
 /** The kill switch (`ADMIN_TWO_STEP=off`) is read per call, so a test or a redeploy changes it at once. */
@@ -118,7 +122,7 @@ export const readSession = cache(async (): Promise<SessionFacts | null> => {
   const level = (data?.claims as { aal?: unknown } | undefined)?.aal === "aal2" ? "aal2" : "aal1";
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, two_step_since, two_step_reenrol_at from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, two_step_since, two_step_reenrol_at from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   if (!row) return null;
@@ -334,7 +338,7 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
  */
 export async function activeAccount(accountId: string): Promise<Account | null> {
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   return person ? toAccount(person) : null;
@@ -351,7 +355,7 @@ export async function passMembership(storeSlug: string, accountId: string): Prom
   const store = await getStore(storeSlug);
   if (!store) return null;
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   if (!person) return null;
@@ -421,7 +425,7 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme
+    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale
   `);
   return row ? toAccount(row) : null;
 }
@@ -429,6 +433,20 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
 /** Keeps the account's light or dark for the admin (D99), so it follows them to any device. */
 export async function saveColorMode(accountId: string, choice: ColorChoice): Promise<void> {
   await db().execute(sql`update commerce.accounts set color_mode = ${choice} where id = ${accountId}::uuid`);
+}
+
+/** Keeps the account's language for the admin (D312 A0); only a language the admin has. */
+export async function saveAdminLang(accountId: string, lang: AdminLang): Promise<void> {
+  await db().execute(sql`update commerce.accounts set admin_locale = ${storedAdminLocale(lang)} where id = ${accountId}::uuid`);
+}
+
+/**
+ * The account's first language for the admin, from the browser it first signs in with (D312 A0, `docs/platform-admin-i18n.md` 2
+ * decision 2): only while it has none, so a choice made since is never undone.
+ */
+export async function setFirstAdminLang(accountId: string, acceptLanguage: string | null): Promise<void> {
+  const lang = browserAdminLang(acceptLanguage);
+  await db().execute(sql`update commerce.accounts set admin_locale = ${storedAdminLocale(lang)} where id = ${accountId}::uuid and admin_locale is null`);
 }
 
 /** Keeps the account's colour scheme for the admin (D221); only a scheme that is offered. */

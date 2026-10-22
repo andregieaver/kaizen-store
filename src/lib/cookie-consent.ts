@@ -185,6 +185,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // In local storage, not a cookie: set in Kaizen's admin for someone signed in, the language their account shows the admin in (D312 A0).
+    name: "kaizen_admin_lang",
+    pattern: /^kaizen_admin_lang$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    staff: true,
+    purpose: {
+      en: "In Kaizena Flow's admin: remembers the language your account shows the admin in, so pages open marked in it.",
+      nb: "I Kaizena Flows administrasjon: husker språket kontoen din viser administrasjonen på, så sidene åpnes merket med det.",
+      sv: "I Kaizena Flows administration: kommer ihåg språket ditt konto visar administrationen på, så att sidorna öppnas märkta med det.",
+      da: "I Kaizena Flows administration: husker det sprog, din konto viser administrationen på, så siderne åbner mærket med det.",
+    },
+  },
+  {
     // In local storage, not a cookie: set in Kaizen's admin by someone signed in who shows the rail's names (D262).
     name: "kaizen_admin_rail",
     pattern: /^kaizen_admin_rail$/,

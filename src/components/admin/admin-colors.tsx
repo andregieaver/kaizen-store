@@ -40,12 +40,21 @@ export function AdminColorSync({ saved }: { saved: ColorChoice }) {
 }
 
 /** The header's switch to the other colours, kept on the account. */
-export function AdminColorSwitch({ save, className }: { save: SaveColorMode; className?: string }) {
+export function AdminColorSwitch({
+  save,
+  className,
+  labels = { toDark: "Switch to dark colours", toLight: "Switch to light colours" },
+}: {
+  save: SaveColorMode;
+  className?: string;
+  /** In the account's language (D312 A0). */
+  labels?: { toDark: string; toLight: string };
+}) {
   const [, start] = useTransition();
   return (
     <ColorModeSwitch
       storageKey={ADMIN_COLOR_KEY}
-      labels={{ toDark: "Switch to dark colours", toLight: "Switch to light colours" }}
+      labels={labels}
       className={className ?? "flex size-9 items-center justify-center rounded-md text-muted hover:bg-sunken hover:text-ink"}
       onChoice={(choice) => start(() => save(choice))}
     />

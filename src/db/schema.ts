@@ -417,6 +417,11 @@ export const accounts = commerce.table(
     colorMode: text("color_mode").notNull().default("system"),
     /** The admin's colour scheme for them (D221, `ADMIN_SCHEMES` in `src/lib/admin-schemes.ts`); a new scheme widens the check. */
     adminScheme: text("admin_scheme").notNull().default("meadow"),
+    /**
+     * The language the admin is shown in for them (D312 A0, `ADMIN_LANGS` in `src/lib/admin-lang.ts`): `en` or `nb-NO`, set from their
+     * browser at their first sign-in, then their own choice; a new language widens the check. Never per store.
+     */
+    adminLocale: text("admin_locale"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** The AI manager learns their preferences from conversations (D103); off, it only keeps what they tell it to. */
@@ -442,6 +447,7 @@ export const accounts = commerce.table(
     uniqueIndex("accounts_email_idx").on(sql`lower(${t.email})`),
     check("accounts_color_mode", sql`${t.colorMode} in ('system', 'light', 'dark')`),
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
+    check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
   ],
 );
 

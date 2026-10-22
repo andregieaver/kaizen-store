@@ -9,9 +9,10 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
+import { isAdminLang } from "@/lib/admin-lang";
 import { isOfferedScheme } from "@/lib/admin-schemes";
 import { isColorChoice } from "@/lib/color-mode";
-import { audit, requireAccount, saveAdminScheme, saveColorMode } from "@/server/auth";
+import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
@@ -84,6 +85,12 @@ export async function colorModeAction(choice: unknown): Promise<void> {
 export async function adminSchemeAction(scheme: unknown): Promise<void> {
   const account = await requireAccount();
   if (isOfferedScheme(scheme) && scheme !== account.adminScheme) await saveAdminScheme(account.id, scheme);
+}
+
+/** Keeps the account's language for the admin (D312 A0); the admin is drawn again in it. */
+export async function adminLangAction(lang: unknown): Promise<void> {
+  const account = await requireAccount();
+  if (isAdminLang(lang)) await saveAdminLang(account.id, lang);
 }
 
 /** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */

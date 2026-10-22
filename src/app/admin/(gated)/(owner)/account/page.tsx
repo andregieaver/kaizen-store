@@ -5,6 +5,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
+import { AdminLanguageField } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
@@ -18,6 +21,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import {
   accountAvatarAction,
+  adminLangAction,
   adminSchemeAction,
   colorModeAction,
   connectKaizenLifeAction,
@@ -36,6 +40,9 @@ const smallButton = "min-h-10 rounded-pill border border-edge bg-card px-4 text-
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
   const account = await requireAccount();
+  // The admin's language for this account (D312 A0): the Language section's words are already in it.
+  const lang = adminLangOf(account.adminLocale);
+  const words = adminText(lang, "common").language;
   const query = await searchParams;
   const status = query["kaizen-life"];
   const assistantStatus = query["life-assistant"];
@@ -68,6 +75,15 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
             unreadable: "That file could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
           }}
         />
+      </section>
+
+      <section aria-labelledby="language-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="language-heading" className="text-title text-ink">
+          {words.title}
+        </h2>
+        <p className="text-sm text-muted">{words.description}</p>
+        <AdminLanguageField save={adminLangAction} />
+        {lang !== "en" && <p className="text-xs text-muted">{words.partly}</p>}
       </section>
 
       <section aria-labelledby="appearance-heading" className="flex max-w-md flex-col gap-3">

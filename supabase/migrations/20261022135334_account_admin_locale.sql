@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "admin_locale" text;--> statement-breakpoint
+ALTER TABLE "commerce"."accounts" ADD CONSTRAINT "accounts_admin_locale" CHECK ("commerce"."accounts"."admin_locale" in ('en', 'nb-NO'));

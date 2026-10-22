@@ -1088,6 +1088,12 @@ stand-in is the only fake, and only it is told it is one.
   footer, page grids by `place.lang`); words are edited on the site in English only (`editable`, `textEditable`), and menu links have a
   label per language (`platformMenuLink(…, locale)`, page titles from `MenuPage.titles`). A new place that draws a Kaizena Flow page in a
   language goes through `inPlatformLang()`.
+  The admin's language (A0, `src/lib/admin-lang.ts`): per account (`accounts.admin_locale`, `en` or `nb-NO`, set from the browser's
+  `Accept-Language` at the first sign-in by `setFirstAdminLang()`, chosen on Your account and in the account menu), never per store. Its
+  words are catalogues per area (`src/lib/admin-messages/{area}.{en,nb}.ts`, English the type), read by `adminText(lang, area)` on the
+  server and `useAdminText(area)` under the signed-in layout's `AdminTextProvider`; `admin-strings.scan.test.ts` counts English written
+  into admin files against `admin-strings.baseline.json`, which only shrinks (rewrite it with `UPDATE_ADMIN_STRINGS=1` after a
+  conversion), so a new admin word goes in a catalogue.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and
