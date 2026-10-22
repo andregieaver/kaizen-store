@@ -38,7 +38,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
   // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
   const lang = adminLangOf(account.adminLocale);
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell"])}>
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "setup", "shell"])}>
       <div className="flex min-h-screen flex-col">
         <SessionKeeper />
         <AdminColorSync saved={account.colorMode ?? "system"} />

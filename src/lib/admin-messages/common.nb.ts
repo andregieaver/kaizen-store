@@ -2,6 +2,14 @@ import type { CommonMessages } from "./common.en";
 
 /** Administrasjonens felles ord på norsk bokmål (D312 A0), skrevet for hånd mot ordlisten (`src/lib/i18n-glossary.ts`). */
 export const commonNb: CommonMessages = {
+  orderStatus: {
+    pending_payment: "Venter på betaling",
+    authorized: "Beløpet er reservert, skal belastes",
+    paid: "Betalt, skal sendes",
+    fulfilled: "Sendt",
+    cancelled: "Ikke fullført",
+    closed: "Avsluttet",
+  },
   accountMenu: {
     yourAccount: "Din konto",
     contactSupport: "Kontakt kundestøtten i Kaizena Flow",

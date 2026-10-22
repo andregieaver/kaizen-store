@@ -5,6 +5,9 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { readAnswers } from "@/lib/onboarding";
 import { nextSetupStep } from "@/lib/setup-steps";
 import { storeDetailsInput } from "@/lib/store-details";
@@ -26,8 +29,11 @@ import { chargeDueThemePurchases } from "@/server/theme-prices";
 
 // Setup is the owner's job; every action re-checks that on the server.
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: ["Only an owner can set up the store."] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: [adminText(await requestAdminLang(), "setup").actions.ownerOnly] };
 }
+
+/** The setup words in the owner's admin language. */
+const words = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "setup");
 
 function refreshStore(member: Membership) {
   updateTag(storeTag(member.store.slug));
@@ -54,7 +60,7 @@ export async function chooseFeaturesAction(storeSlug: string, _state: FormState,
   if (!result.ok) {
     return {
       status: "error",
-      messages: result.needsConfirmation ? [...(result.warnings ?? []), "Tick “Switch off what I left out” below to go on, or choose what you need."] : result.problems,
+      messages: result.needsConfirmation ? [...(result.warnings ?? []), words(owner).features.tickToGoOn] : result.problems,
     };
   }
   refreshStore(owner);
@@ -112,5 +118,5 @@ export async function openStoreAction(
   // A premium theme live at opening is due now (D286): invoiced through Kaizena Flow's billing after the answer.
   after(() => chargeDueThemePurchases({ storeId: owner.store.id }));
   refreshStore(owner);
-  return { status: "ok", messages: ["Your store is open."] };
+  return { status: "ok", messages: [words(owner).actions.opened] };
 }

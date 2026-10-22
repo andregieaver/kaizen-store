@@ -3,6 +3,8 @@
 import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { removalWords } from "@/lib/demo-content";
 import { redirectsTag } from "@/lib/redirects";
 import { catalogTag } from "@/server/catalog";
@@ -18,19 +20,20 @@ import { termsTag } from "@/server/taxonomy";
  */
 export async function removeDemoContentAction(storeSlug: string): Promise<FormState> {
   const owner = await checkOwnerRole(storeSlug);
-  if (!owner) return { status: "error", messages: ["Only an owner can remove the demo content."] };
+  if (!owner) return { status: "error", messages: [adminText("en", "home").demo.onlyOwner] };
   const { account, store } = owner;
+  const w = adminText(adminLangOf(account.adminLocale), "home").demo;
   let result;
   try {
     result = await removeDemoContent(account.id, store.id, store.localization.locales[0] ?? "en");
   } catch (error) {
     console.error("[demo content] removal failed", error);
-    return { status: "error", messages: ["The demo content could not be removed. Nothing was changed; try again."] };
+    return { status: "error", messages: [w.failed] };
   }
   updateTag(storeTag(store.slug));
   updateTag(catalogTag(store.id));
   updateTag(pagesTag(store.id));
   for (const contentType of ["product", "page", "article"] as const) updateTag(termsTag({ storeId: store.id, contentType }));
   updateTag(redirectsTag(store.id));
-  return { status: "ok", messages: removalWords(result.removed, result.kept) };
+  return { status: "ok", messages: removalWords(result.removed, result.kept, w) };
 }

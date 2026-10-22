@@ -5,6 +5,9 @@
  * its tests share.
  */
 
+import { countWords, fillWords } from "./admin-fill";
+import { homeEn, type HomeMessages } from "./admin-messages/home.en";
+
 export const DEMO_KINDS = ["product", "page", "term"] as const;
 export type DemoKind = (typeof DEMO_KINDS)[number];
 
@@ -15,24 +18,22 @@ export const NO_DEMO: DemoCounts = { products: 0, pages: 0, articles: 0, categor
 
 export const demoTotal = (counts: DemoCounts): number => counts.products + counts.pages + counts.articles + counts.categories + counts.tags;
 
-const NOUNS: Record<keyof DemoCounts, [string, string]> = {
-  products: ["product", "products"],
-  pages: ["page", "pages"],
-  articles: ["article", "articles"],
-  categories: ["category", "categories"],
-  tags: ["tag", "tags"],
-};
+/** The words the demo content is told in (D312 A3): the `home` catalogue's `demo`, English unless given. */
+export type DemoWords = HomeMessages["demo"];
+
+const COUNT_KEYS: (keyof DemoCounts)[] = ["products", "pages", "articles", "categories", "tags"];
 
 /** "a, b and c". */
-export function andWords(words: readonly string[]): string {
+export function andWords(words: readonly string[], and = homeEn.demo.and): string {
   if (words.length <= 1) return words[0] ?? "";
-  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+  return `${words.slice(0, -1).join(", ")} ${and} ${words[words.length - 1]}`;
 }
 
 /** "6 products, 2 pages and 3 categories": only what there is, in a fixed order; empty when there is nothing. */
-export function demoWords(counts: DemoCounts): string {
+export function demoWords(counts: DemoCounts, w: DemoWords = homeEn.demo): string {
   return andWords(
-    (Object.keys(NOUNS) as (keyof DemoCounts)[]).filter((key) => counts[key] > 0).map((key) => `${counts[key]} ${NOUNS[key][counts[key] === 1 ? 0 : 1]}`),
+    COUNT_KEYS.filter((key) => counts[key] > 0).map((key) => countWords(counts[key], w.counts[key])),
+    w.and,
   );
 }
 
@@ -41,24 +42,20 @@ export type KeptReason = "changed" | "in_use" | "in_test";
 
 export type KeptItem = { kind: DemoKind; title: string; reason: KeptReason };
 
-const KEPT_WORDS: Record<KeptReason, (n: number) => string> = {
-  changed: (n) => (n === 1 ? "1 you changed" : `${n} you changed`),
-  in_use: (n) => (n === 1 ? "1 that your own products or pages use" : `${n} that your own products or pages use`),
-  in_test: (n) => (n === 1 ? "1 in an A/B test" : `${n} in an A/B test`),
-};
+const KEPT_REASONS: KeptReason[] = ["changed", "in_use", "in_test"];
 
 /** What stays, named, one sentence per reason: "Kept 2 you changed: Linen shirt and About us." */
-export function keptWords(kept: readonly KeptItem[]): string[] {
-  return (Object.keys(KEPT_WORDS) as KeptReason[]).flatMap((reason) => {
+export function keptWords(kept: readonly KeptItem[], w: DemoWords = homeEn.demo): string[] {
+  return KEPT_REASONS.flatMap((reason) => {
     const titles = kept.filter((k) => k.reason === reason).map((k) => k.title);
-    return titles.length > 0 ? [`Kept ${KEPT_WORDS[reason](titles.length)}: ${andWords(titles)}.`] : [];
+    return titles.length > 0 ? [countWords(titles.length, w.kept[reason], { titles: andWords(titles, w.and) })] : [];
   });
 }
 
 /** What the removal says when it is done: what went, then what stayed and why. */
-export function removalWords(removed: DemoCounts, kept: readonly KeptItem[]): string[] {
-  const went = demoWords(removed);
-  return [went ? `Removed ${went}. Products are archived, so past orders keep them.` : "Nothing was removed.", ...keptWords(kept)];
+export function removalWords(removed: DemoCounts, kept: readonly KeptItem[], w: DemoWords = homeEn.demo): string[] {
+  const went = demoWords(removed, w);
+  return [went ? fillWords(w.removed, { words: went }) : w.nothingRemoved, ...keptWords(kept, w)];
 }
 
 /** The addresses of what went, by the kind of menu link that names it. */

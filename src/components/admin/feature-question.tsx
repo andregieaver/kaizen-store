@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { EXTRA_ANSWER_WORDS, EXTRA_ANSWERS, SELL_ANSWER_WORDS, SELL_ANSWERS, type OnboardingAnswers } from "@/lib/onboarding";
+import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import { EXTRA_ANSWERS, SELL_ANSWERS, type OnboardingAnswers } from "@/lib/onboarding";
 
 /** What switching off one of the features on now would mean (`featureWarnings()`), shown over the form's confirmation tick. */
 export type QuestionWarning = { label: string; lines: string[] };
@@ -15,42 +16,45 @@ export function FeatureQuestion({
   answers,
   warnings,
   note,
+  w = setupEn,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   answers: OnboardingAnswers;
   warnings: QuestionWarning[];
   note: string | null;
+  /** The setup words in the account's language (`adminText(lang, "setup")`): the answers by id, the question's own words. */
+  w?: SetupMessages;
 }) {
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
       {note && <p className="rounded-md border border-line p-3 text-sm">{note}</p>}
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">I will sell</legend>
+        <legend className="mb-1 text-sm font-medium">{w.features.sell}</legend>
         {SELL_ANSWERS.map((answer) => (
           <label key={answer} className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="sells" value={answer} defaultChecked={answers.sells.includes(answer)} className="mt-1" />
             <span className="flex flex-col">
-              <span className="font-medium">{SELL_ANSWER_WORDS[answer].label}</span>
-              <span className="text-muted">{SELL_ANSWER_WORDS[answer].words}</span>
+              <span className="font-medium">{w.answers[answer].label}</span>
+              <span className="text-muted">{w.answers[answer].words}</span>
             </span>
           </label>
         ))}
       </fieldset>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">And I want to</legend>
+        <legend className="mb-1 text-sm font-medium">{w.features.extras}</legend>
         {EXTRA_ANSWERS.map((answer) => (
           <label key={answer} className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="extras" value={answer} defaultChecked={answers.extras.includes(answer)} className="mt-1" />
             <span className="flex flex-col">
-              <span className="font-medium">{EXTRA_ANSWER_WORDS[answer].label}</span>
-              <span className="text-muted">{EXTRA_ANSWER_WORDS[answer].words}</span>
+              <span className="font-medium">{w.answers[answer].label}</span>
+              <span className="text-muted">{w.answers[answer].words}</span>
             </span>
           </label>
         ))}
       </fieldset>
       {warnings.length > 0 && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
-          <p className="font-medium">If you leave out something that is on now:</p>
+          <p className="font-medium">{w.features.ifLeftOut}</p>
           <ul className="list-disc pl-5">
             {warnings.map((warning) => (
               <li key={warning.label}>
@@ -60,13 +64,13 @@ export function FeatureQuestion({
           </ul>
           <label className="flex items-start gap-2">
             <input type="checkbox" name="confirm" className="mt-1" />
-            <span>Switch off what I left out. Nothing is deleted: switch it on again under Settings, Features.</span>
+            <span>{w.features.confirm}</span>
           </label>
         </div>
       )}
-      <p className="text-sm text-muted">The bonus and referral programs, and everything here, are switched on and off later under Settings, Features.</p>
+      <p className="text-sm text-muted">{w.features.later}</p>
       <div>
-        <SubmitButton>Save and continue</SubmitButton>
+        <SubmitButton>{w.saveAndContinue}</SubmitButton>
       </div>
     </ActionForm>
   );

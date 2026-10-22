@@ -1101,7 +1101,7 @@ stand-in is the only fake, and only it is told it is one.
   conversion), so a new admin word goes in a catalogue. The shell (A2): `AdminFrame` takes `lang` (the `shell` catalogue); the
   navigation stays English in `store-nav.ts`, `owner-nav.ts` and `platform-nav.ts` and is shown through `navWord()` (`NAV_NB`), so a new
   section, heading, page label or card line gets its Norwegian in `nav.nb.ts` (`admin-nav-words.test.ts`), and a new `ADMIN_PAGES` entry its
-  Norwegian title and words in `pages.nb.ts` (`PAGES_NB`, matched by `findPages()`; the title the navigation's word, `admin-pages-nb.test.ts`).
+  Norwegian title and words in `pages.nb.ts` (`PAGES_NB`, matched by `findPages()`; the title the navigation's word, `admin-pages-nb.test.ts`). The overviews (A3): the setup wizard is the `setup` catalogue, Home, the control center and Your stores the `home` one; `attentionFor()`, `changeText()` and the demo content's words take the catalogue's words (English unless given), so a new attention item is a `{ one, many }` pair in both `home` catalogues read through `countWords()`, and an order's status in a list is `common.orderStatus`.
   A request to open a store keeps its language (P6, `access_requests.locale`): its emails are `accessEmail()` (`src/lib/access-emails.ts`,
   `platformText(lang).accessEmails`, kinds `platform.access_*`), sent once each by `sendAccessEmail()` in `src/server/platform.ts`, and
   the new owner's admin starts in it. The stores' Norwegian legal starters state every right from `LEGAL_WORDING_NB` and cite its section

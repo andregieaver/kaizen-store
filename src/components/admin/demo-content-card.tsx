@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
+
 import { idle, type FormState } from "./action-form";
 import { Button, Card } from "./ui";
 
@@ -16,14 +19,12 @@ export type DemoCardSummary = {
   changed: DemoCardItem[];
 };
 
-const NOUN: Record<string, string> = { product: "Product", page: "Page", article: "Article", category: "Category", tag: "Tag" };
-
-function Items({ items }: { items: DemoCardItem[] }) {
+function Items({ items, nouns }: { items: DemoCardItem[]; nouns: Record<string, string> }) {
   return (
     <ul className="flex flex-col gap-1">
       {items.map((item, index) => (
         <li key={`${item.noun}-${index}`} className="flex gap-2">
-          <span className="w-20 shrink-0 text-muted">{NOUN[item.noun] ?? item.noun}</span>
+          <span className="w-20 shrink-0 text-muted">{nouns[item.noun] ?? item.noun}</span>
           <span>{item.title}</span>
         </li>
       ))}
@@ -39,14 +40,17 @@ function Items({ items }: { items: DemoCardItem[] }) {
 export function DemoContentCard({
   summary,
   action,
+  words: w = homeEn.demo,
 }: {
   summary: DemoCardSummary | null;
   action: (state: FormState, data: FormData) => Promise<FormState>;
+  /** The `home` catalogue's `demo` words in the account's language (D312 A3). */
+  words?: HomeMessages["demo"];
 }) {
   const [state, formAction, pending] = useActionState(action, idle);
   if (state.status === "ok") {
     return (
-      <Card title="Demo content removed">
+      <Card title={w.removedTitle}>
         <div role="status" className="flex flex-col gap-1 text-body">
           {state.messages.map((message) => (
             <p key={message}>{message}</p>
@@ -58,24 +62,24 @@ export function DemoContentCard({
   if (!summary) return null;
   return (
     <Card
-      title="Demo content"
-      description={`Your store came with demo content to show how it looks: ${summary.words}. Remove it when your own is in. Anything you changed stays.`}
+      title={w.title}
+      description={fillWords(w.description, { words: summary.words })}
     >
       <form action={formAction} aria-busy={pending} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button kind="strong" type="submit" disabled={pending}>
-            Remove demo content
+            {w.remove}
           </Button>
         </div>
         <details className="text-body">
-          <summary className="cursor-pointer text-ink-2">What it removes</summary>
+          <summary className="cursor-pointer text-ink-2">{w.whatItRemoves}</summary>
           <div className="mt-3 flex flex-col gap-3">
-            <Items items={summary.items} />
-            <p className="text-muted">Products are archived, so past orders keep them. Pages, categories and tags are deleted, and their links leave your menus.</p>
+            <Items items={summary.items} nouns={w.nouns} />
+            <p className="text-muted">{w.howRemoved}</p>
             {summary.changed.length > 0 && (
               <>
-                <p>You changed these, so they stay:</p>
-                <Items items={summary.changed} />
+                <p>{w.changedStay}</p>
+                <Items items={summary.changed} nouns={w.nouns} />
               </>
             )}
           </div>

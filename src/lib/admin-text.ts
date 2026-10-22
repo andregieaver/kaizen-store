@@ -3,10 +3,14 @@ import { commonEn, type CommonMessages } from "./admin-messages/common.en";
 import { commonNb } from "./admin-messages/common.nb";
 import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
 import { domainsNb } from "./admin-messages/domains.nb";
+import { homeEn, type HomeMessages } from "./admin-messages/home.en";
+import { homeNb } from "./admin-messages/home.nb";
 import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
 import { platformLegalNb } from "./admin-messages/platform-legal.nb";
 import { shellEn, type ShellMessages } from "./admin-messages/shell.en";
 import { shellNb } from "./admin-messages/shell.nb";
+import { setupEn, type SetupMessages } from "./admin-messages/setup.en";
+import { setupNb } from "./admin-messages/setup.nb";
 import { signInEn, type SignInMessages } from "./admin-messages/sign-in.en";
 import { signInNb } from "./admin-messages/sign-in.nb";
 
@@ -18,7 +22,9 @@ import { signInNb } from "./admin-messages/sign-in.nb";
 export type AdminAreaMessages = {
   common: CommonMessages;
   domains: DomainsMessages;
+  home: HomeMessages;
   platformLegal: PlatformLegalMessages;
+  setup: SetupMessages;
   shell: ShellMessages;
   signIn: SignInMessages;
 };
@@ -28,7 +34,9 @@ export type AdminArea = keyof AdminAreaMessages;
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
+  home: { en: homeEn, nb: homeNb },
   platformLegal: { en: platformLegalEn, nb: platformLegalNb },
+  setup: { en: setupEn, nb: setupNb },
   shell: { en: shellEn, nb: shellNb },
   signIn: { en: signInEn, nb: signInNb },
 };

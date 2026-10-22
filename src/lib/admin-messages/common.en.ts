@@ -4,7 +4,11 @@
  * and in a client part with `useAdminText("common")`; a slice that reaches the browser holds strings only (a choice by number goes through
  * `src/lib/icu-lite.ts`). Legal and financial words come only from the glossary (`src/lib/i18n-glossary.ts`).
  */
+import { ORDER_STATUS_LABELS } from "../order-status";
+
 export const commonEn = {
+  /** An order's status as the admin's lists show it (D312 A3): `ORDER_STATUS_LABELS`, in each language. */
+  orderStatus: { ...ORDER_STATUS_LABELS },
   accountMenu: {
     yourAccount: "Your account",
     contactSupport: "Contact Kaizena Flow support",

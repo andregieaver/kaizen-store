@@ -1,11 +1,12 @@
 import Link from "next/link";
 
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
 import { changeText, hidden, money, type StoreFigures } from "@/lib/control-center";
 import { storeBase, storeHref } from "@/lib/paths";
 
 import { CARD_CLASS, Chip } from "./ui";
 
-const PAYMENTS = { off: "Payments off", test: "Test payments", live: "Live payments", setup: "Payments need setup" } as const;
 
 function Figure({ label, value, sub, href }: { label: string; value: string; sub?: string | null; href?: string }) {
   const body = (
@@ -28,7 +29,18 @@ function Figure({ label, value, sub, href }: { label: string; value: string; sub
  * One store on the control center (D107): its state and figures for the last
  * 7 days, each figure leading to the page that acts on it, and the ways in.
  */
-export function StoreCard({ store }: { store: StoreFigures }) {
+export function StoreCard({
+  store,
+  words = homeEn,
+  locale = "en",
+}: {
+  store: StoreFigures;
+  /** The `home` catalogue in the account's language (D312 A3), and its number format. */
+  words?: HomeMessages;
+  locale?: string;
+}) {
+  const w = words.card;
+  const payments = { off: w.paymentsOff, test: w.paymentsTest, live: w.paymentsLive, setup: w.paymentsSetup }[store.payments];
   const base = `/admin/${store.slug}`;
   const sales = store.sales[0];
   const orders = store.sales.reduce((sum, f) => sum + f.orders, 0);
@@ -44,25 +56,25 @@ export function StoreCard({ store }: { store: StoreFigures }) {
             {store.name}
           </Link>
         </h3>
-        {store.role === "admin" && <Chip>Staff</Chip>}
+        {store.role === "admin" && <Chip>{w.staff}</Chip>}
         {store.suspended && (
           <Chip signal="warning" dot>
-            Suspended
+            {w.suspended}
           </Chip>
         )}
         {!store.open && (
           <Chip signal="warning" dot>
-            Not open yet
+            {w.notOpenYet}
           </Chip>
         )}
         <span className="ml-auto flex flex-wrap gap-2">
           {!noPlan && (
             <Chip signal={store.plan && ["past_due", "unpaid"].includes(store.plan.status) ? "warning" : "neutral"}>
-              {store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}
+              {store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? w.overdue : ""}` : w.noPlan}
             </Chip>
           )}
           <Chip signal={store.payments === "setup" && !store.website ? "warning" : store.payments === "live" && !store.website ? "positive" : "neutral"}>
-            {store.website ? "Website" : PAYMENTS[store.payments]}
+            {store.website ? w.website : payments}
           </Chip>
         </span>
       </div>
@@ -70,28 +82,28 @@ export function StoreCard({ store }: { store: StoreFigures }) {
       <div className="grid grid-cols-2 gap-1 sm:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
         {!noSales && (<>
         <Figure
-          label="Sales, 7 days"
-          value={sales ? money(sales.week, sales.currency) : "–"}
-          sub={sales ? (store.sales.length > 1 ? `+ ${store.sales.length - 1} more ${store.sales.length === 2 ? "currency" : "currencies"}` : changeText(sales.week, sales.prior)) : "No sales yet"}
+          label={w.sales}
+          value={sales ? money(sales.week, sales.currency, locale) : "–"}
+          sub={sales ? (store.sales.length > 1 ? countWords(store.sales.length - 1, w.moreCurrencies) : changeText(sales.week, sales.prior, words.common)) : words.common.noSales}
           href={`${base}/orders`}
         />
-        <Figure label="Orders, 7 days" value={String(orders)} href={`${base}/orders`} />
-        <Figure label="To send" value={String(store.toSend)} href={`${base}/orders?show=to-send`} />
+        <Figure label={w.orders} value={String(orders)} href={`${base}/orders`} />
+        <Figure label={w.toSend} value={String(store.toSend)} href={`${base}/orders?show=to-send`} />
         </>)}
-        {!noStock && <Figure label="Running low" value={String(store.lowStock + store.belowLevel)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : store.owedUnits > 0 ? `${store.owedUnits} owed on backorder` : null} href={store.belowLevel > 0 ? `${base}/inventory?status=low` : `${base}/products`} />}
+        {!noStock && <Figure label={w.runningLow} value={String(store.lowStock + store.belowLevel)} sub={store.outOfStock > 0 ? fillWords(w.outOfStock, { n: store.outOfStock }) : store.owedUnits > 0 ? fillWords(w.owed, { n: store.owedUnits }) : null} href={store.belowLevel > 0 ? `${base}/inventory?status=low` : `${base}/products`} />}
       </div>
       )}
-      <nav aria-label={`${store.name} shortcuts`} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-body">
+      <nav aria-label={fillWords(w.shortcuts, { name: store.name })} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-body">
         <Link href={base} className="font-medium underline">
-          Open admin
+          {w.openAdmin}
         </Link>
         {!store.website && (
           <>
             <Link href={`${base}/orders`} className="underline">
-              Orders
+              {w.orderLinks}
             </Link>
             <Link href={`${base}/products`} className="underline">
-              Products
+              {w.products}
             </Link>
           </>
         )}
@@ -101,7 +113,7 @@ export function StoreCard({ store }: { store: StoreFigures }) {
           </Link>
         )}
         <Link href={storeHref(store.slug, storeBase(store.slug))} className="ml-auto underline">
-          View store
+          {w.viewStore}
         </Link>
       </nav>
     </article>

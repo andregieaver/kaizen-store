@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { commonEn } from "@/lib/admin-messages/common.en";
 import { domainsEn } from "@/lib/admin-messages/domains.en";
+import { homeEn } from "@/lib/admin-messages/home.en";
 import { platformLegalEn } from "@/lib/admin-messages/platform-legal.en";
+import { setupEn } from "@/lib/admin-messages/setup.en";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
@@ -19,7 +21,7 @@ import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 type Provided = { lang: AdminLang; texts: Partial<AdminAreaMessages> };
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, platformLegal: platformLegalEn, shell: shellEn, signIn: signInEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn };
 
 const AdminTextContext = createContext<Provided>({ lang: "en", texts: {} });
 

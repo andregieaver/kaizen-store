@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { homeEn } from "./admin-messages/home.en";
+import { homeNb } from "./admin-messages/home.nb";
 import { attentionFor, changeText, totalSales, type StoreFigures } from "./control-center";
+import { demoWords, NO_DEMO, removalWords } from "./demo-content";
 import { workOverview } from "./work-overview";
 import { workBase } from "@/lib/work-paths";
 
@@ -310,5 +313,56 @@ describe("the control center and invoices on payment terms (D293)", () => {
     expect(attentionFor([store({ termsOverdue: 1 })])[0].urgent).toBe(true);
     expect(texts({ termsOverdue: 0 })).toEqual([]);
     expect(texts({ termsOverdue: 3, hides: ["sales"] })).toEqual([]);
+  });
+});
+
+describe("the control center in Norwegian (D312 A3)", () => {
+  const nb = homeNb.attention;
+  const now = Date.parse("2026-10-22T12:00:00Z");
+
+  it("writes every item in the account's language, with its count and its action", () => {
+    const items = attentionFor(
+      [
+        store({
+          toSend: 1,
+          oldestToSend: "2026-10-18T12:00:00Z",
+          outOfStock: 3,
+          drafts: { waiting: 2, oldestSentAt: null, expiringSoon: 1 },
+          invoices: { waiting: 4, overdue: 1 },
+        }),
+      ],
+      now,
+      nb,
+    );
+    expect(items.map((i) => `${i.text} [${i.action}]`)).toEqual([
+      "Kaffe: 1 bestilling venter på å bli sendt, den eldste i 4 dager. [Send]",
+      "Kaffe: 4 betalte bestillinger venter på faktura, 1 av dem over fristen for en faktura med omvendt avgiftsplikt. [Åpne fakturaer]",
+      "Kaffe: 2 utkast til bestillinger venter på betaling. [Åpne utkast]",
+      "Kaffe: betalingslenken til 1 utkast til bestilling utløper innen 2 dager, og bestillingen blir da kansellert. [Åpne utkast]",
+      "Kaffe: 3 produkter er utsolgt. [Åpne produkter]",
+    ]);
+  });
+
+  it("keeps the English as it was when no words are given", () => {
+    expect(attentionFor([store({ outOfStock: 1 })], now).map((i) => i.text)).toEqual(["Kaffe: 1 product is out of stock."]);
+  });
+
+  it("says the change on the week before and the demo content in Norwegian", () => {
+    expect(changeText(150, 100, homeNb.common)).toBe("+50 % fra uken før");
+    expect(changeText(1, 0, homeNb.common)).toBe("Nytt denne uken");
+    expect(demoWords({ products: 6, pages: 1, articles: 0, categories: 2, tags: 0 }, homeNb.demo)).toBe("6 produkter, 1 side og 2 kategorier");
+    expect(removalWords(NO_DEMO, [{ kind: "page", title: "Om oss", reason: "changed" }], homeNb.demo)).toEqual([
+      "Ingenting ble fjernet.",
+      "Beholdt 1 du har endret: Om oss.",
+    ]);
+  });
+
+  it("has a Norwegian word for every English one of the area, none left empty", () => {
+    const leaves = (value: unknown, path = ""): [string, string][] =>
+      typeof value === "string" ? [[path, value]] : Object.entries(value as object).flatMap(([k, v]) => leaves(v, `${path}.${k}`));
+    const en = new Map(leaves(homeEn));
+    const nbLeaves = leaves(homeNb);
+    expect(nbLeaves.map(([p]) => p).sort()).toEqual([...en.keys()].sort());
+    expect(nbLeaves.filter(([, v]) => v.trim() === "")).toEqual([]);
   });
 });

@@ -27,6 +27,10 @@ import { storeThemePurchases } from "@/server/theme-prices";
 import { answersForFeatures, QUESTION_FEATURES } from "@/lib/onboarding";
 import { nextSetupStep, stepApplies } from "@/lib/setup-steps";
 import { FEATURES_BY_ID, featureOn, featureWarnings, kindFeature, kindOffered } from "@/lib/store-features";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
+import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { priceText } from "@/lib/theme-prices";
 import {
@@ -39,7 +43,8 @@ import {
 
 type Props = PageProps<"/admin/[store]/setup/[step]">;
 
-export const metadata: Metadata = { title: "Set up your store" };
+// A fixed tab title: one read from the account would stream the metadata into the body (see the sign-in pages, D312 A1).
+export const metadata: Metadata = { title: setupEn.title };
 
 
 export default async function SetupStepPage({ params }: Props) {
@@ -51,95 +56,88 @@ export default async function SetupStepPage({ params }: Props) {
   if (!memberCan(member, "owner")) {
     return (
       <p className="mx-auto max-w-2xl text-sm">
-        Only an owner can set up {member.store.name}. Ask an owner to finish the setup.
+        {fillWords(adminText(adminLangOf(member.account.adminLocale), "setup").ownerOnly, { name: member.store.name })}
       </p>
     );
   }
 
   // The wizard follows the store's features (D178 step 6): a step the store does not have resumes the wizard where it is.
   if (!stepApplies(step, member.store)) redirect(`/admin/${member.store.slug}/setup`);
-  const steps = setupStepsFor(member.store);
-  const frame = { storeSlug: member.store.slug, storeName: member.store.name, steps, step, progress };
   const selling = featureOn(member.store, "shop");
+  const w = adminText(adminLangOf(member.account.adminLocale), "setup");
+  // The steps named in the account's language: the countries step is "Your country" for a website, as `setupStepsFor()` names it.
+  const steps = setupStepsFor(member.store).map((s) => ({ ...s, title: s.id === "countries" && !selling ? w.steps.countriesWebsite : w.steps[s.id] }));
+  const frame = { storeSlug: member.store.slug, storeName: member.store.name, steps, step, progress, w: w.frame };
 
   switch (step) {
     case "features":
       return (
         <SetupFrame
           {...frame}
-          title="What will you sell?"
-          intro="Kaizena Flow switches on what your store needs and keeps the rest out of your way. You can change all of it later under Settings, Features."
+          title={w.features.title}
+          intro={w.features.intro}
         >
-          <FeaturesStep member={member} answered={progress.features} />
+          <FeaturesStep member={member} answered={progress.features} w={w} />
         </SetupFrame>
       );
     case "details":
       return (
         <SetupFrame
           {...frame}
-          title="Your business"
-          intro="Shoppers see these details in the footer, the terms of sale and every order confirmation. The law requires them, so fill in the business that sells, not the platform."
+          title={w.details.title}
+          intro={w.details.intro}
         >
-          <DetailsStep member={member} />
+          <DetailsStep member={member} w={w} />
         </SetupFrame>
       );
     case "countries":
       return (
         <SetupFrame
           {...frame}
-          title={selling ? "Where you sell" : "Your country"}
-          intro={
-            selling
-              ? "Each country gets its own storefront in its own language and currency. You can change this at any time."
-              : "Your website is shown in your country's language. You can change this at any time."
-          }
+          title={selling ? w.countries.title : w.countries.titleWebsite}
+          intro={selling ? w.countries.intro : w.countries.introWebsite}
         >
-          <CountriesStep member={member} />
+          <CountriesStep member={member} w={w} />
         </SetupFrame>
       );
     case "bookings":
       return (
         <SetupFrame
           {...frame}
-          title="Bookings"
-          intro="Shoppers book times with the staff, and stays and rentals in the rooms and items, you set up here. Each has its own opening hours or calendar."
+          title={w.bookings.title}
+          intro={w.bookings.intro}
         >
-          <BookingsStep member={member} progress={progress} />
+          <BookingsStep member={member} progress={progress} w={w} />
         </SetupFrame>
       );
     case "payments":
       return (
         <SetupFrame
           {...frame}
-          title="Payments"
-          intro={
-            <>
-              You can test your whole checkout right away. Real payments need your own Stripe
-              account, which you set up when you are ready to open.
-            </>
-          }
+          title={w.payments.title}
+          intro={w.payments.intro}
         >
-          <PaymentsStep member={member} />
+          <PaymentsStep member={member} w={w} />
         </SetupFrame>
       );
     case "products":
       return (
         <SetupFrame
           {...frame}
-          title="Products"
-          intro="Your store starts with demo products so you can see how it looks and works. Keep them while you try things out, or remove them now."
+          title={w.products.title}
+          intro={w.products.intro}
         >
-          <ProductsStep member={member} progress={progress} />
+          <ProductsStep member={member} progress={progress} w={w} />
         </SetupFrame>
       );
     case "launch":
       return (
         <SetupFrame
           {...frame}
-          title="Open your store"
-          intro="Check what is done. Anything you skipped can be finished later from the overview."
+          title={w.launch.title}
+          intro={w.launch.intro}
         >
-          <LaunchStep member={member} progress={progress} />
+          <LaunchStep member={member} progress={progress} w={w} />
         </SetupFrame>
       );
   }
@@ -147,7 +145,7 @@ export default async function SetupStepPage({ params }: Props) {
 
 const moneyIn = (locale: string) => (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
-async function FeaturesStep({ member, answered }: { member: Membership; answered: boolean }) {
+async function FeaturesStep({ member, answered, w }: { member: Membership; answered: boolean; w: SetupMessages }) {
   const { store } = member;
   const [facts, starter] = await Promise.all([featureFacts(store.id), starterTitleOf(store)]);
   // What switching off a feature that is on now would mean, for the form's tick (the Features page's confirmation, D178).
@@ -161,32 +159,27 @@ async function FeaturesStep({ member, answered }: { member: Membership; answered
       action={chooseFeaturesAction.bind(null, store.slug)}
       answers={answersForFeatures(store)}
       warnings={warnings}
-      note={
-        starter && !answered
-          ? `Your store was made from the demo store ${starter}, so what it switches on is chosen. Change what you need.`
-          : answered
-            ? "This is what is switched on now."
-            : null
-      }
+      w={w}
+      note={starter && !answered ? fillWords(w.features.fromStarter, { name: starter }) : answered ? w.features.answered : null}
     />
   );
 }
 
-async function DetailsStep({ member }: { member: Membership }) {
+async function DetailsStep({ member, w }: { member: Membership; w: SetupMessages }) {
   const { store } = member;
   const countries = await listCountries();
   const d = store.details;
   return (
     <ActionForm action={saveDetailsAction.bind(null, store.slug)} className="flex flex-col gap-4">
-      <BusinessDetailsFields name={store.name} details={d} countries={countries} fallbackEmail={member.account.email} />
+      <BusinessDetailsFields name={store.name} details={d} countries={countries} fallbackEmail={member.account.email} w={w.businessFields} />
       <div>
-        <SubmitButton>Save and continue</SubmitButton>
+        <SubmitButton>{w.saveAndContinue}</SubmitButton>
       </div>
     </ActionForm>
   );
 }
 
-async function CountriesStep({ member }: { member: Membership }) {
+async function CountriesStep({ member, w }: { member: Membership; w: SetupMessages }) {
   const { store } = member;
   const countries = await listCountries();
   const several = featureOn(store, "countries");
@@ -196,30 +189,30 @@ async function CountriesStep({ member }: { member: Membership }) {
       countries={countries}
       chosen={store.keptMarkets.map((m) => m.code)}
       several={several}
-      submitLabel="Save and continue"
+      submitLabel={w.saveAndContinue}
+      w={w.countriesForm}
       note={
         <p className="text-sm text-muted">
-          {featureOn(store, "shop") && "A product shows in a country once it has a price there. The demo products have prices for Norway, Sweden and Denmark."}
-          {!several && " To sell in more than one country, switch on Several countries under Settings, Features."}
+          {featureOn(store, "shop") && w.countries.priceNote}
+          {!several && ` ${w.countries.severalNote}`}
         </p>
       }
     />
   );
 }
 
-async function PaymentsStep({ member }: { member: Membership }) {
+async function PaymentsStep({ member, w }: { member: Membership; w: SetupMessages }) {
   const { store } = member;
   const settings = await getPaymentSettings(store);
   return (
     <div className="flex flex-col gap-4">
       {settings.modes.includes("test") ? (
         <p role="status" className="rounded-md border border-line p-3 text-sm">
-          Test payments are on, with nothing to set up: Kaizena Flow creates a test Stripe account for your
-          store. Try your checkout with the card 4242 4242 4242 4242.
+          {w.payments.testOn}
         </p>
       ) : (
         <p role="status" className="rounded-md border border-line p-3 text-sm">
-          Payments are not available on Kaizena Flow yet. You can continue; your store is ready for them.
+          {w.payments.notYet}
         </p>
       )}
       {settings.modes.includes("live") && (
@@ -228,13 +221,13 @@ async function PaymentsStep({ member }: { member: Membership }) {
           mode="live"
           account={settings.accounts.live}
           isOwner={memberCan(member, "owner")}
-          title="Real payments (when you are ready)"
+          title={w.payments.realTitle}
         />
       )}
       <p className="text-sm text-muted">
-        Invoices and payment methods are in{" "}
+        {w.payments.settingsBefore}{" "}
         <Link href={`/admin/${store.slug}/settings/payments`} className="underline">
-          payment settings
+          {w.payments.settingsLink}
         </Link>
         .
       </p>
@@ -243,22 +236,22 @@ async function PaymentsStep({ member }: { member: Membership }) {
           href={`/admin/${store.slug}/setup/products`}
           className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
-          Continue
+          {w.continue}
         </Link>
       </div>
     </div>
   );
 }
 
-function BookingsStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+function BookingsStep({ member, progress, w }: { member: Membership; progress: SetupProgress; w: SetupMessages }) {
   const { store } = member;
   const base = `/admin/${store.slug}`;
   const rows = [
     ...(featureOn(store, "appointments")
-      ? [{ done: progress.counts.staff > 0, label: `Staff who take appointments (${progress.counts.staff})`, href: `${base}/bookings/staff` }]
+      ? [{ done: progress.counts.staff > 0, label: fillWords(w.bookings.staff, { count: progress.counts.staff }), href: `${base}/bookings/staff` }]
       : []),
     ...(featureOn(store, "bookings")
-      ? [{ done: progress.counts.units > 0, label: `Rooms and items to book (${progress.counts.units})`, href: `${base}/bookings/units` }]
+      ? [{ done: progress.counts.units > 0, label: fillWords(w.bookings.units, { count: progress.counts.units }), href: `${base}/bookings/units` }]
       : []),
   ];
   return (
@@ -268,19 +261,19 @@ function BookingsStep({ member, progress }: { member: Membership; progress: Setu
           <li key={row.href} className="flex items-baseline gap-2">
             <span aria-hidden="true">{row.done ? "✓" : "○"}</span>
             <span className="flex-1">
-              <span className="sr-only">{row.done ? "Done: " : "Not done: "}</span>
+              <span className="sr-only">{row.done ? w.done : w.notDone}</span>
               {row.label}
             </span>
             <Link href={row.href} className="underline">
-              {row.done ? "Change" : "Set up"}
+              {row.done ? w.bookings.change : w.bookings.setUp}
             </Link>
           </li>
         ))}
       </ul>
       <p className="text-sm text-muted">
-        Times are shown in the store&apos;s time zone ({store.timeZone}), which you change under{" "}
+        {fillWords(w.bookings.timeZone, { zone: store.timeZone })}{" "}
         <Link href={`${base}/settings/features`} className="underline">
-          Settings, Features
+          {w.bookings.features}
         </Link>
         .
       </p>
@@ -289,20 +282,20 @@ function BookingsStep({ member, progress }: { member: Membership; progress: Setu
           href={`${base}/setup/${nextSetupStep("bookings", store)}`}
           className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
-          Continue
+          {w.continue}
         </Link>
       </div>
     </div>
   );
 }
 
-async function ProductsStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+async function ProductsStep({ member, progress, w }: { member: Membership; progress: SetupProgress; w: SetupMessages }) {
   const { store } = member;
   const products = await listStoreProducts(store);
   return (
     <div className="flex flex-col gap-4">
       {products.length === 0 ? (
-        <p className="text-sm">Your store has no products.</p>
+        <p className="text-sm">{w.products.none}</p>
       ) : (
         <ul className="divide-y divide-line rounded-md border border-line text-sm">
           {products.map((product) => (
@@ -310,10 +303,10 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
               <span>{product.title}</span>
               <span className="text-muted">
                 {product.status !== "active"
-                  ? "Draft"
+                  ? w.products.draft
                   : kindOffered(store, product.kind)
-                    ? "Published"
-                    : `Not shown: ${FEATURES_BY_ID[kindFeature(product.kind)!].label} is off`}
+                    ? w.products.published
+                    : fillWords(w.products.notShown, { feature: FEATURES_BY_ID[kindFeature(product.kind)!].label })}
               </span>
             </li>
           ))}
@@ -321,21 +314,21 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
       )}
       <p className="text-sm">
         <Link href={`/admin/${store.slug}/products/new`} className="underline">
-          Add your own product
+          {w.products.addOwn}
         </Link>{" "}
-        now, or later from Products in the menu.
+        {w.products.addOwnAfter}
       </p>
       <div className="flex flex-wrap gap-3">
         <Link
           href={`/admin/${store.slug}/setup/launch`}
           className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
-          {progress.counts.demoProducts > 0 ? "Keep them for now" : "Continue"}
+          {progress.counts.demoProducts > 0 ? w.products.keep : w.continue}
         </Link>
         {progress.counts.demoProducts > 0 && (
           <ActionForm action={removeDemoProductsAction.bind(null, store.slug)}>
             <SubmitButton variant="secondary">
-              Remove the {progress.counts.demoProducts} demo products
+              {countWords(progress.counts.demoProducts, w.products.remove)}
             </SubmitButton>
           </ActionForm>
         )}
@@ -344,23 +337,23 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
   );
 }
 
-async function LaunchStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+async function LaunchStep({ member, progress, w }: { member: Membership; progress: SetupProgress; w: SetupMessages }) {
   // A premium theme live before opening is paid when the store opens (D286): said before the button that opens it.
   const owed = (await storeThemePurchases(member.store.id)).filter((purchase) => purchase.status === "owed");
   const { store } = member;
   // A website (the online shop off, D178) has no checkout or products to set up: it opens with its details and country.
   const selling = featureOn(store, "shop");
   const items = [
-    { done: progress.features, label: "What you sell", href: "features", required: false },
-    { done: progress.details, label: "Business details", href: "details", required: true },
-    { done: progress.countries, label: selling ? "At least one country" : "Your country", href: "countries", required: true },
-    ...(stepApplies("bookings", store) ? [{ done: progress.bookings, label: "Staff, rooms or items to book", href: "bookings", required: false }] : []),
+    { done: progress.features, label: w.launch.whatYouSell, href: "features", required: false },
+    { done: progress.details, label: w.launch.details, href: "details", required: true },
+    { done: progress.countries, label: selling ? w.launch.oneCountry : w.launch.yourCountry, href: "countries", required: true },
+    ...(stepApplies("bookings", store) ? [{ done: progress.bookings, label: w.launch.bookings, href: "bookings", required: false }] : []),
     ...(selling
       ? [
-          { done: progress.paymentsOn, label: "Checkout switched on", href: "payments", required: false },
+          { done: progress.paymentsOn, label: w.launch.checkout, href: "payments", required: false },
           {
             done: progress.products,
-            label: progress.counts.demoProducts > 0 ? "Demo products replaced" : "Products",
+            label: progress.counts.demoProducts > 0 ? w.launch.demoReplaced : w.launch.products,
             href: "products",
             required: false,
           },
@@ -374,13 +367,13 @@ async function LaunchStep({ member, progress }: { member: Membership; progress: 
           <li key={item.href} className="flex items-baseline gap-2">
             <span aria-hidden="true">{item.done ? "✓" : "○"}</span>
             <span className="flex-1">
-              <span className="sr-only">{item.done ? "Done: " : "Not done: "}</span>
+              <span className="sr-only">{item.done ? w.done : w.notDone}</span>
               {item.label}
-              {!item.required && !item.done && <span className="text-muted"> (can wait)</span>}
+              {!item.required && !item.done && <span className="text-muted">{w.launch.canWait}</span>}
             </span>
             {!item.done && (
               <Link href={`/admin/${store.slug}/setup/${item.href}`} className="underline">
-                Finish
+                {w.launch.finish}
               </Link>
             )}
           </li>
@@ -389,32 +382,31 @@ async function LaunchStep({ member, progress }: { member: Membership; progress: 
       {store.setupCompletedAt ? (
         <div role="status" className="flex flex-col gap-3 rounded-md border border-brand p-4 text-sm">
           <p className="font-medium">
-            {selling ? "Your store is open. Share its address with your first customers." : "Your website is open. Share its address with your visitors."}
+            {selling ? w.launch.openStore : w.launch.openWebsite}
           </p>
           <div className="flex flex-wrap gap-4">
             <Link href={storeHref(store.slug, storeBase(store.slug))} className="underline">
-              View your store
+              {w.launch.viewStore}
             </Link>
             <Link href={`/admin/${store.slug}`} className="underline">
-              Go to the overview
+              {w.launch.overview}
             </Link>
           </div>
         </div>
       ) : (
         <ActionForm action={openStoreAction.bind(null, store.slug)} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <SubmitButton disabled={!progress.readyToOpen}>{selling ? "Open my store" : "Open my website"}</SubmitButton>
+            <SubmitButton disabled={!progress.readyToOpen}>{selling ? w.launch.openMyStore : w.launch.openMyWebsite}</SubmitButton>
             <Link href={storeHref(store.slug, storeBase(store.slug))} className="text-sm underline" target="_blank">
-              {selling ? "Preview the storefront" : "Preview the website"}
+              {selling ? w.launch.previewStore : w.launch.previewWebsite}
             </Link>
           </div>
           {!progress.readyToOpen && (
-            <p className="text-sm text-muted">Add your business details and a country to open {selling ? "the store" : "the website"}.</p>
+            <p className="text-sm text-muted">{selling ? w.launch.notReadyStore : w.launch.notReadyWebsite}</p>
           )}
           {owed.map((purchase) => (
             <p key={purchase.id} className="text-sm" data-theme-price="">
-              Opening charges your premium theme {purchase.title}: {priceText(purchase.price)} excl. VAT, once, by Kaizena Flow (by your
-              plan&apos;s card, otherwise an invoice due in 14 days). Switch to a free theme on Design settings first if you would rather not.
+              {fillWords(w.launch.themeCharge, { theme: purchase.title, price: priceText(purchase.price) })}
             </p>
           ))}
         </ActionForm>

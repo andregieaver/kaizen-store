@@ -5,7 +5,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignCards } from "@/components/admin/design-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
-import { COPY_PHASE_LABELS } from "@/lib/store-copy";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
@@ -22,6 +24,10 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 /** All the account's stores, and a way to create another. */
 export default async function AllStoresPage() {
   const account = await requireAccount();
+  const lang = adminLangOf(account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const words = adminText(lang, "home");
+  const { stores: w, common: c } = words;
   const [stores, hostings, copies, closed] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account), listClosedStores(account)]);
   const owned = stores.filter((store) => store.role === "owner").length;
   const canCreate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
@@ -34,23 +40,23 @@ export default async function AllStoresPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Your stores" description={<>Each store has its own products, Stripe account and plan.</>} />
-      <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} />
+      <PageHeader title={w.title} description={w.description} />
+      <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} words={w} />
       {full && (
         <p role="note" className="max-w-xl text-sm text-muted">
-          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more. Creating or duplicating a store is switched off until then.
+          {fillWords(w.max, { max: MAX_STORES_PER_OWNER })}
         </p>
       )}
 
       {canCreate && (
-        <Card title="Create a store" description="Choose a theme: the store starts with its look and its demo store, with you as owner, ready to change. You then add your business details, set up payments and choose its plan." className="flex max-w-3xl flex-col gap-3" compact>
+        <Card title={w.createTitle} description={w.createDescription} className="flex max-w-3xl flex-col gap-3" compact>
           <ActionForm action={createStoreAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Store name
+              {w.name}
               <input name="name" required maxLength={80} className={control} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Store address
+              {w.address}
               <span className="flex items-center gap-1">
                 <span className="text-muted">/s/</span>
                 <input
@@ -61,17 +67,17 @@ export default async function AllStoresPage() {
                 />
               </span>
               <span id="slug-hint" className="font-normal text-muted">
-                Lowercase letters, numbers and hyphens. Leave empty to make one from the name.
+                {w.addressHint}
               </span>
             </label>
             {designs.cards.length > 1 && (
               <DesignCards
                 cards={designs.cards}
-                hint="The store starts with the theme's look and its demo store's products and pages, which you remove in one press when yours are in. Preview opens it in a new window."
+                hint={w.designHint}
               />
             )}
             <div>
-              <SubmitButton>Create store</SubmitButton>
+              <SubmitButton>{w.create}</SubmitButton>
             </div>
           </ActionForm>
         </Card>
@@ -79,7 +85,7 @@ export default async function AllStoresPage() {
       {closed.length > 0 && (
         <section aria-labelledby="closed-heading" className="flex flex-col gap-2">
           <h2 id="closed-heading" className="text-title text-ink">
-            Closed stores
+            {w.closed}
           </h2>
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {closed.map((c) => (
@@ -88,8 +94,10 @@ export default async function AllStoresPage() {
                   {c.name}
                 </Link>
                 <span className="block text-muted">
-                  Closed{c.closedAt ? ` ${c.closedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}` : ""}. Open it to see its orders and invoices
-                  {c.role === "owner" ? ", or to reopen it." : "."}
+                  {c.closedAt
+                    ? fillWords(w.closedOn, { date: c.closedAt.toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) })
+                    : w.closedPlain}{" "}
+                  {c.role === "owner" ? w.closedOwner : w.closedStaff}
                 </span>
               </li>
             ))}
@@ -99,7 +107,7 @@ export default async function AllStoresPage() {
       {copies.length > 0 && (
         <section aria-labelledby="copies-heading" className="flex flex-col gap-2">
           <h2 id="copies-heading" className="text-title text-ink">
-            Recent copies
+            {w.copies}
           </h2>
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {copies.map((copy) => (
@@ -108,8 +116,8 @@ export default async function AllStoresPage() {
                   {copy.newName}
                 </Link>
                 <span className="block text-muted">
-                  Copy of {copy.sourceName} ·{" "}
-                  {copy.status === "failed" ? "Failed" : copy.status === "done" ? "Done" : COPY_PHASE_LABELS[copy.phase]}
+                  {fillWords(w.copyOf, { name: copy.sourceName })} ·{" "}
+                  {copy.status === "failed" ? w.copyFailed : copy.status === "done" ? w.copyDone : w.phases[copy.phase]}
                 </span>
               </li>
             ))}
@@ -119,7 +127,7 @@ export default async function AllStoresPage() {
       {hostings.length > 0 && (
         <section aria-labelledby="hosting-heading" className="flex flex-col gap-2">
           <h2 id="hosting-heading" className="text-title text-ink">
-            Hosting
+            {c.hosting}
           </h2>
           <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {hostings.map((h) => (
@@ -127,7 +135,7 @@ export default async function AllStoresPage() {
                 <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">
                   {h.name}
                 </Link>
-                <span className="block text-muted">As {h.hostName}</span>
+                <span className="block text-muted">{fillWords(c.asHost, { name: h.hostName })}</span>
               </li>
             ))}
           </ul>

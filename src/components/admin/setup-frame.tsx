@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import type { SetupStep, SetupStepId } from "@/lib/setup-steps";
 import type { SetupProgress } from "@/server/setup";
 import { ButtonLink, CARD_CLASS } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
 
 /**
  * The frame around every setup step: where you are, what is done, and a way
@@ -19,6 +21,7 @@ export function SetupFrame({
   title,
   intro,
   children,
+  w = setupEn.frame,
 }: {
   storeSlug: string;
   /** Named in the top bar of the `focus` layout ("Setting up …"), so not repeated here. */
@@ -29,6 +32,8 @@ export function SetupFrame({
   title: string;
   intro: ReactNode;
   children: ReactNode;
+  /** The frame's words in the account's language (`adminText(lang, "setup").frame`); the steps come named in it. */
+  w?: SetupMessages["frame"];
 }) {
   const index = steps.findIndex((s) => s.id === step);
   const previous = steps[index - 1];
@@ -38,9 +43,9 @@ export function SetupFrame({
 
   return (
     <div className="flex flex-col gap-6">
-      <nav aria-label="Setup steps">
+      <nav aria-label={w.steps}>
         <p className="mb-3 text-eyebrow text-muted uppercase">
-          Step {index + 1} of {steps.length}
+          {fillWords(w.stepOf, { n: index + 1, count: steps.length })}
         </p>
         <ol className="flex gap-2 text-caption sm:text-body">
           {steps.map((s, i) => (
@@ -53,7 +58,7 @@ export function SetupFrame({
                 <span aria-hidden="true" className={`h-1.5 rounded-pill ${s.id === step ? "bg-brand" : done(s.id) ? "bg-brand/50" : "bg-line"}`} />
                 <span className="truncate">
                   <span className="sr-only">
-                    Step {i + 1}: {done(s.id) ? "done, " : ""}
+                    {fillWords(done(s.id) ? w.stepDone : w.stepNumber, { n: i + 1 })}
                   </span>
                   {s.title}
                 </span>
@@ -74,14 +79,14 @@ export function SetupFrame({
       <div className="flex items-center justify-between gap-3">
         {previous ? (
           <ButtonLink href={`${base}/${previous.id}`} kind="quiet" icon={<ChevronLeft />}>
-            Back
+            {w.back}
           </ButtonLink>
         ) : (
           <span />
         )}
         {next && (
           <ButtonLink href={`${base}/${next.id}`} kind="secondary">
-            Skip for now
+            {w.skip}
           </ButtonLink>
         )}
       </div>

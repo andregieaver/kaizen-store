@@ -8,9 +8,11 @@ import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/a
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
 import { demoTotal, demoWords } from "@/lib/demo-content";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { controlCenter } from "@/server/control-center";
@@ -30,6 +32,11 @@ export default async function AdminOverview({ params }: Props) {
   if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
 
   const owner = memberCan(current, "owner");
+  const lang = adminLangOf(account.adminLocale);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const words = adminText(lang, "home");
+  const { common: c, store: h } = words;
+  const statuses = adminText(lang, "common").orderStatus;
   const [progress, center, demo] = await Promise.all([
     getSetupProgress(store),
     controlCenter(account, store.slug),
@@ -38,10 +45,10 @@ export default async function AdminOverview({ params }: Props) {
   ]);
   const demoSummary =
     demo && demoTotal(demo.counts) > 0
-      ? { words: demoWords(demo.counts), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }
+      ? { words: demoWords(demo.counts, words.demo), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }
       : null;
   const figures = center.stores[0];
-  const attention = figures ? attentionFor([figures]) : [];
+  const attention = figures ? attentionFor([figures], undefined, words.attention) : [];
   const sales = figures ? totalSales([figures]) : [];
   const orders = sales.reduce((sum, f) => sum + f.orders, 0);
   const priorOrders = sales.reduce((sum, f) => sum + f.priorOrders, 0);
@@ -51,24 +58,24 @@ export default async function AdminOverview({ params }: Props) {
   // A website (D178 step 5: the online shop off) sells nothing: no sales figures, latest orders or selling steps to set up.
   const selling = featureOn(store, "shop");
   const steps = [
-    { done: progress.details, label: "Business details", step: "details" },
-    { done: progress.countries, label: selling ? "Countries you sell to" : "Countries", step: "countries" },
+    { done: progress.details, label: h.steps.details, step: "details" },
+    { done: progress.countries, label: selling ? h.steps.countriesSold : h.steps.countries, step: "countries" },
     ...(selling
       ? [
-          { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
-          { done: progress.paymentsOn, label: "Checkout switched on, so shoppers can pay", href: "settings/payments" },
+          { done: progress.shipping, label: h.steps.shipping, href: "settings/shipping" },
+          { done: progress.paymentsOn, label: h.steps.checkout, href: "settings/payments" },
           // Real payments only once Kaizen itself is live; test payments need no setup.
           ...(platformModes().includes("live")
-            ? [{ done: progress.payments, label: "Stripe set up for real payments", href: "settings/payments" }]
+            ? [{ done: progress.payments, label: h.steps.stripe, href: "settings/payments" }]
             : []),
         ]
       : []),
-    { done: progress.plan, label: "Choose a plan", href: "billing" },
+    { done: progress.plan, label: h.steps.plan, href: "billing" },
     ...(selling
       ? [
           {
             done: progress.products,
-            label: progress.counts.demoProducts > 0 ? "Replace the demo products" : "Products",
+            label: progress.counts.demoProducts > 0 ? h.steps.replaceDemo : h.steps.products,
             step: "products",
           },
         ]
@@ -79,20 +86,20 @@ export default async function AdminOverview({ params }: Props) {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        eyebrow="Home"
-        status={store.setupCompletedAt ? undefined : <Chip signal="warning" dot>Not open yet</Chip>}
+        eyebrow={c.eyebrow}
+        status={store.setupCompletedAt ? undefined : <Chip signal="warning" dot>{h.notOpenYet}</Chip>}
         title={store.name}
-        meta={[selling ? "Online shop" : "Website", `Overview of ${now.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`]}
+        meta={[selling ? h.onlineShop : h.website, fillWords(h.overviewOf, { date: now.toLocaleDateString(locale, { day: "numeric", month: "long" }) })]}
       />
       {!store.setupCompletedAt && (
         <p role="status" className="text-body text-muted">
-          This store is not open yet. An owner can finish the setup.
+          {h.notOpenText}
         </p>
       )}
       {/* Setup has its own checklist below; what else needs someone is listed here. */}
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />
-      {store.setupCompletedAt && <Attention items={attention} empty={selling ? "Nothing needs you right now. Every order is sent and stock is fine." : "Nothing needs you right now."} />}
+      {store.setupCompletedAt && <Attention items={attention} empty={selling ? h.nothingShop : h.nothing} words={words.attention} />}
       {/* Staff alerts that gave up after their tries (D238): the owner's to look at, read after the page is shown. */}
       {store.setupCompletedAt && selling && memberCan(current, "owner") && (
         <Suspense fallback={null}>
@@ -106,43 +113,43 @@ export default async function AdminOverview({ params }: Props) {
         </Suspense>
       )}
       {store.setupCompletedAt && selling && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (
-        <Section id="week-heading" title="The last 7 days">
+        <Section id="week-heading" title={c.week}>
           <StatGrid>
-            {figures && hidden(figures, "sales") ? null : sales.length === 0 ? <Stat label="Sales" value="–" sub="No sales yet" href={`${base}/orders`} /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={`Sales (${f.currency})`} value={money(f.week, f.currency)} sub={changeText(f.week, f.prior)} href={`${base}/orders`} />)}
-            {!(figures && hidden(figures, "sales")) && <Stat label="Orders" value={orders} sub={changeText(orders, priorOrders)} href={`${base}/orders`} />}
-            {!(figures && hidden(figures, "sales")) && <Stat label="Waiting to be sent" value={figures?.toSend ?? 0} href={`${base}/orders?show=to-send`} />}
-            {!(figures && hidden(figures, "stock")) && <Stat label="Products running low" value={figures?.lowStock ?? 0} sub={figures && figures.outOfStock > 0 ? `${figures.outOfStock} out of stock` : undefined} href={`${base}/products`} />}
-            {!(figures && hidden(figures, "stock")) && figures && figures.belowLevel > 0 && <Stat label="At or below your level" value={figures.belowLevel} sub="Warning level set per variant" href={`${base}/inventory?status=low`} />}
-            {!(figures && hidden(figures, "stock")) && figures && figures.owedUnits > 0 && <Stat label="Owed on backorder" value={figures.owedUnits} sub="Units on paid orders, not sent" href={`${base}/inventory?status=backorder`} />}
+            {figures && hidden(figures, "sales") ? null : sales.length === 0 ? <Stat label={c.sales} value="–" sub={c.noSales} href={`${base}/orders`} /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={fillWords(c.salesIn, { currency: f.currency })} value={money(f.week, f.currency, locale)} sub={changeText(f.week, f.prior, c)} href={`${base}/orders`} />)}
+            {!(figures && hidden(figures, "sales")) && <Stat label={c.orders} value={orders} sub={changeText(orders, priorOrders, c)} href={`${base}/orders`} />}
+            {!(figures && hidden(figures, "sales")) && <Stat label={c.waitingToBeSent} value={figures?.toSend ?? 0} href={`${base}/orders?show=to-send`} />}
+            {!(figures && hidden(figures, "stock")) && <Stat label={c.runningLow} value={figures?.lowStock ?? 0} sub={figures && figures.outOfStock > 0 ? fillWords(h.outOfStock, { n: figures.outOfStock }) : undefined} href={`${base}/products`} />}
+            {!(figures && hidden(figures, "stock")) && figures && figures.belowLevel > 0 && <Stat label={h.atOrBelow} value={figures.belowLevel} sub={h.atOrBelowSub} href={`${base}/inventory?status=low`} />}
+            {!(figures && hidden(figures, "stock")) && figures && figures.owedUnits > 0 && <Stat label={h.owed} value={figures.owedUnits} sub={h.owedSub} href={`${base}/inventory?status=backorder`} />}
           </StatGrid>
         </Section>
       )}
       {store.setupCompletedAt && selling && center.latest.length > 0 && (
-        <Card title="Latest orders" aside={<ButtonLink kind="link" href={`${base}/orders`}>All orders</ButtonLink>}>
-          <List label="Latest orders">
+        <Card title={c.latestOrders} aside={<ButtonLink kind="link" href={`${base}/orders`}>{h.allOrders}</ButtonLink>}>
+          <List label={c.latestOrders}>
             {center.latest.map((order) => (
               <ListRow key={order.id} href={`${base}/orders/${order.id}`}>
                 <RowId>#{order.number}</RowId>
                 <RowText>{order.name ?? ""}</RowText>
-                <Chip>{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}</Chip>
+                <Chip>{statuses[order.status as keyof typeof statuses] ?? order.status}</Chip>
                 <RowDate>
                   <time dateTime={order.placedAt}>{order.placedAt.slice(0, 10)}</time>
                 </RowDate>
-                <RowAmount>{money(order.totalMinor, order.currency)}</RowAmount>
+                <RowAmount>{money(order.totalMinor, order.currency, locale)}</RowAmount>
               </ListRow>
             ))}
           </List>
         </Card>
       )}
-      {owner && <DemoContentCard summary={demoSummary} action={removeDemoContentAction.bind(null, store.slug)} />}
+      {owner && <DemoContentCard summary={demoSummary} action={removeDemoContentAction.bind(null, store.slug)} words={words.demo} />}
       {remaining > 0 && (
-        <Card title="Finish setting up" aside={`${steps.length - remaining} of ${steps.length} done`}>
+        <Card title={h.finish} aside={fillWords(h.doneOf, { done: steps.length - remaining, total: steps.length })}>
           <ol className="flex flex-col gap-2 text-body">
             {steps.map((step) => (
               <li key={step.label} className="flex items-baseline gap-2">
                 <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
                 <span className="flex-1">
-                  <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
+                  <span className="sr-only">{step.done ? h.done : h.toDo}</span>
                   {step.label}
                 </span>
                 {!step.done && memberCan(current, "owner") && (
@@ -150,7 +157,7 @@ export default async function AdminOverview({ params }: Props) {
                     href={`/admin/${store.slug}/${"href" in step ? step.href : `setup/${step.step}`}`}
                     className="underline"
                   >
-                    Do it now
+                    {h.doItNow}
                   </Link>
                 )}
               </li>

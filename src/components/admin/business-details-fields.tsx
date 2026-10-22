@@ -1,3 +1,4 @@
+import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
 import type { Country, StoreDetails } from "@/server/stores";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -14,23 +15,26 @@ export function BusinessDetailsFields({
   details,
   countries,
   fallbackEmail,
+  w = setupEn.businessFields,
 }: {
   name: string;
   details: StoreDetails;
   countries: Country[];
   fallbackEmail: string;
+  /** The fields' words in the account's language (`adminText(lang, "setup").businessFields`). */
+  w?: SetupMessages["businessFields"];
 }) {
   return (
     <>
       <div className={field}>
-        <label htmlFor="store-name">Store name</label>
+        <label htmlFor="store-name">{w.storeName}</label>
         <input id="store-name" name="name" required maxLength={80} aria-describedby="store-name-hint" defaultValue={name} className={control} />
         <p id="store-name-hint" className="font-normal text-muted">
-          Shown at the top of every page.
+          {w.storeNameHint}
         </p>
       </div>
       <label className={field}>
-        Legal name of the business
+        {w.legalName}
         <input
           name="legalName"
           required
@@ -42,12 +46,12 @@ export function BusinessDetailsFields({
       </label>
       <label className={field}>
         <span>
-          Organisation number <span className="font-normal text-muted">(optional)</span>
+          {w.organisationNumber} <span className="font-normal text-muted">{w.optional}</span>
         </span>
         <input name="organisationNumber" defaultValue={details.organisationNumber ?? ""} placeholder="123 456 789" className={control} />
       </label>
       <label className={field}>
-        Contact email for shoppers
+        {w.contactEmail}
         <input
           type="email"
           name="contactEmail"
@@ -58,7 +62,7 @@ export function BusinessDetailsFields({
         />
       </label>
       <label className={field}>
-        Registered business address
+        {w.address}
         <textarea
           name="postalAddress"
           required
@@ -70,7 +74,7 @@ export function BusinessDetailsFields({
         />
       </label>
       <label className={field}>
-        Country the business is registered in
+        {w.country}
         <select name="country" defaultValue={details.country ?? "NO"} className={control}>
           {countries.map((country) => (
             <option key={country.code} value={country.code}>

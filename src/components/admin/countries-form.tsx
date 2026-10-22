@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { setupEn, type SetupMessages } from "@/lib/admin-messages/setup.en";
 
 type CountryOption = { code: string; name: string; currency: string };
 
@@ -16,6 +17,7 @@ export function CountriesForm({
   submitLabel,
   disabled = false,
   note,
+  w = setupEn.countriesForm,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   countries: readonly CountryOption[];
@@ -27,12 +29,14 @@ export function CountriesForm({
   /** Read-only, for a member who may not change it. */
   disabled?: boolean;
   note?: ReactNode;
+  /** The form's words in the account's language (`adminText(lang, "setup").countriesForm`). */
+  w?: SetupMessages["countriesForm"];
 }) {
   const on = new Set(several ? chosen : chosen.slice(0, 1));
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <fieldset disabled={disabled}>
-        <legend className="mb-3 text-sm font-medium">{several ? "Countries you sell to" : "The country you sell in"}</legend>
+        <legend className="mb-3 text-sm font-medium">{several ? w.several : w.one}</legend>
         <ul className="grid gap-2 sm:grid-cols-2">
           {countries.map((country) => (
             <li key={country.code}>

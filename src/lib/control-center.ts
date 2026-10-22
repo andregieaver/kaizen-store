@@ -1,3 +1,5 @@
+import { countWords, fillWords } from "./admin-fill";
+import { homeEn, type HomeMessages } from "./admin-messages/home.en";
 import { formatMoney } from "./money";
 
 /**
@@ -121,32 +123,39 @@ export type AttentionItem = { text: string; href: string; action: string; urgent
 /** Whether a figure of the store is withheld from this member. */
 export const hidden = (store: Pick<StoreFigures, "hides">, what: "sales" | "stock" | "plan"): boolean => Boolean(store.hides?.includes(what));
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const daysSince = (iso: string, now: number) => Math.floor((now - new Date(iso).getTime()) / 86_400_000);
 
+/** The words `attentionFor()` writes in (D312 A3): the `home` catalogue's `attention`, English unless given. */
+export type AttentionWords = HomeMessages["attention"];
+
 /** What needs the owner, across their stores, most urgent first. Staff see only what they can act on. */
-export function attentionFor(stores: StoreFigures[], now = Date.now()): AttentionItem[] {
+export function attentionFor(stores: StoreFigures[], now = Date.now(), w: AttentionWords = homeEn.attention): AttentionItem[] {
   const items: AttentionItem[] = [];
+  const a = w.actions;
   for (const s of stores) {
     const base = `/admin/${s.slug}`;
     const owner = s.role === "owner";
-    if (s.suspended) items.push({ text: `${s.name} is suspended, so shoppers cannot use it.`, href: base, action: "Open", urgent: true });
-    if (owner && !s.open) items.push({ text: `${s.name} is not open yet.`, href: `${base}/setup`, action: "Finish setup" });
+    const store = s.name;
+    const say = (template: string, values: Record<string, string | number> = {}) => fillWords(template, { store, ...values });
+    const count = (n: number, words: { one: string; many: string }, values: Record<string, string | number> = {}) => countWords(n, words, { store, ...values });
+    const days = (n: number) => countWords(n, w.days);
+    if (s.suspended) items.push({ text: say(w.suspended), href: base, action: a.open, urgent: true });
+    if (owner && !s.open) items.push({ text: say(w.notOpen), href: `${base}/setup`, action: a.finishSetup });
     if (owner && s.open && s.plan?.status && ["past_due", "unpaid"].includes(s.plan.status)) {
-      items.push({ text: `${s.name}: the plan payment is overdue.`, href: `${base}/billing`, action: "Open billing", urgent: true });
+      items.push({ text: say(w.planOverdue), href: `${base}/billing`, action: a.openBilling, urgent: true });
     } else if (owner && s.open && !s.plan) {
-      items.push({ text: `${s.name} has no plan yet.`, href: `${base}/billing`, action: "Choose a plan" });
+      items.push({ text: say(w.noPlan), href: `${base}/billing`, action: a.choosePlan });
     } else if (owner && s.plan?.cancelling) {
-      items.push({ text: `${s.name}: the plan ends${s.plan.endsAt ? ` on ${s.plan.endsAt.slice(0, 10)}` : " at the end of the period"}.`, href: `${base}/billing`, action: "Open billing" });
+      items.push({ text: s.plan.endsAt ? say(w.planEndsOn, { date: s.plan.endsAt.slice(0, 10) }) : say(w.planEnds), href: `${base}/billing`, action: a.openBilling });
     }
-    if (owner && s.open && s.payments === "setup") items.push({ text: `${s.name} cannot take real payments until Stripe is set up.`, href: `${base}/settings/payments`, action: "Set up payments", urgent: true });
-    else if (owner && s.open && s.payments === "off") items.push({ text: `Payments are switched off in ${s.name}.`, href: `${base}/settings/payments`, action: "Open payments" });
+    if (owner && s.open && s.payments === "setup") items.push({ text: say(w.stripeSetup), href: `${base}/settings/payments`, action: a.setUpPayments, urgent: true });
+    else if (owner && s.open && s.payments === "off") items.push({ text: say(w.paymentsOff), href: `${base}/settings/payments`, action: a.openPayments });
     if (s.toSend > 0 && !hidden(s, "sales")) {
       const late = s.oldestToSend ? daysSince(s.oldestToSend, now) : 0;
       items.push({
-        text: `${s.name}: ${plural(s.toSend, "order is", "orders are")} waiting to be sent${late >= 1 ? `, the oldest for ${plural(late, "day", "days")}` : ""}.`,
+        text: count(s.toSend, w.toSend, { late: late >= 1 ? countWords(late, w.toSendLate) : "" }),
         href: `${base}/orders?show=to-send`,
-        action: "Send",
+        action: a.send,
         urgent: late >= LATE_TO_SEND_DAYS,
       });
     }
@@ -155,75 +164,47 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     if (hand && hand.pickup > 0 && !hidden(s, "sales")) {
       const age = hand.oldestPickupAt ? daysSince(hand.oldestPickupAt, now) : 0;
       items.push({
-        text: `${s.name}: ${plural(hand.pickup, "order is", "orders are")} waiting to be collected${age >= 1 ? `, the oldest placed ${plural(age, "day", "days")} ago` : ""}.`,
+        text: count(hand.pickup, w.pickup, { late: age >= 1 ? countWords(age, w.pickupLate) : "" }),
         href: `${base}/orders?show=to-hand-over`,
-        action: "Hand over",
+        action: a.handOver,
       });
     }
     if (hand && hand.local > 0 && !hidden(s, "sales")) {
-      items.push({
-        text: `${s.name}: ${plural(hand.local, "local delivery is", "local deliveries are")} not delivered yet.`,
-        href: `${base}/orders?show=local`,
-        action: "Deliver",
-      });
+      items.push({ text: count(hand.local, w.local), href: `${base}/orders?show=local`, action: a.deliver });
     }
     // Withdrawals are a legal duty (D153): the deadline and the acknowledgement come before everything else of the store's own.
     const returns = s.returns;
     if (returns && returns.overdue > 0) {
-      items.push({
-        text: `${s.name}: ${plural(returns.overdue, "withdrawal is", "withdrawals are")} past the legal deadline for the refund.`,
-        href: `${base}/returns?overdue=1`,
-        action: "Refund",
-        urgent: true,
-      });
+      items.push({ text: count(returns.overdue, w.withdrawalsOverdue), href: `${base}/returns?overdue=1`, action: a.refund, urgent: true });
     }
     if (returns && returns.unacknowledged > 0) {
-      items.push({
-        text: `${s.name}: the acknowledgement of ${plural(returns.unacknowledged, "withdrawal was", "withdrawals were")} not sent.`,
-        href: `${base}/returns`,
-        action: "Send again",
-        urgent: true,
-      });
+      items.push({ text: count(returns.unacknowledged, w.unacknowledged), href: `${base}/returns`, action: a.sendAgain, urgent: true });
     }
     // Customers waiting in the support chat for a person (D216): urgent, since they are waiting now.
     if (s.supportWaiting && s.supportWaiting > 0) {
-      items.push({
-        text: `${s.name}: Support: ${s.supportWaiting} waiting for a person.`,
-        href: `${base}/support`,
-        action: "Answer",
-        urgent: true,
-      });
+      items.push({ text: say(w.supportWaiting, { n: s.supportWaiting }), href: `${base}/support`, action: a.answer, urgent: true });
     }
     if (returns && returns.requested > 0) {
-      items.push({
-        text: `${s.name}: ${plural(returns.requested, "return request is", "return requests are")} waiting for an answer.`,
-        href: `${base}/returns?status=requested`,
-        action: "Answer",
-      });
+      items.push({ text: count(returns.requested, w.returnRequests), href: `${base}/returns?status=requested`, action: a.answer });
     }
     // Invoices on payment terms not paid by their due day (D293): the customer was sent a notice; money that came outside Kaizena Flow is recorded on the order.
     if (s.termsOverdue && s.termsOverdue > 0 && !hidden(s, "sales")) {
-      items.push({
-        text: `${s.name}: ${plural(s.termsOverdue, "invoice on payment terms is", "invoices on payment terms are")} overdue.`,
-        href: `${base}/orders?pay=terms_overdue`,
-        action: "See orders",
-        urgent: true,
-      });
+      items.push({ text: count(s.termsOverdue, w.termsOverdue), href: `${base}/orders?pay=terms_overdue`, action: a.seeOrders, urgent: true });
     }
     // Draft orders sent to a customer and not yet paid (D173): the stock they hold is released when the link ends, so the ones about to end are said apart.
     const drafts = s.drafts;
     if (drafts && drafts.waiting > 0 && !hidden(s, "sales")) {
       const age = drafts.oldestSentAt ? daysSince(drafts.oldestSentAt, now) : 0;
       items.push({
-        text: `${s.name}: ${plural(drafts.waiting, "draft order is", "draft orders are")} waiting for payment${age >= 1 ? `, the oldest sent ${plural(age, "day", "days")} ago` : ""}.`,
+        text: count(drafts.waiting, w.drafts, { late: age >= 1 ? countWords(age, w.draftsLate) : "" }),
         href: `${base}/orders/drafts?status=sent`,
-        action: "Open drafts",
+        action: a.openDrafts,
       });
       if (drafts.expiringSoon > 0) {
         items.push({
-          text: `${s.name}: the pay ${drafts.expiringSoon === 1 ? "link" : "links"} of ${plural(drafts.expiringSoon, "draft order ends", "draft orders end")} within ${plural(DRAFT_EXPIRING_DAYS, "day", "days")}, and the order is then cancelled.`,
+          text: count(drafts.expiringSoon, w.draftsEnding, { days: days(DRAFT_EXPIRING_DAYS) }),
           href: `${base}/orders/drafts?status=sent`,
-          action: "Open drafts",
+          action: a.openDrafts,
         });
       }
     }
@@ -232,68 +213,57 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     if (partly && partly.orders > 0 && !hidden(s, "sales")) {
       const age = partly.oldestFirstParcelAt ? daysSince(partly.oldestFirstParcelAt, now) : 0;
       items.push({
-        text: `${s.name}: ${plural(partly.orders, "order is", "orders are")} partly sent, with items still to send${age >= 1 ? `; the oldest one's first parcel left ${plural(age, "day", "days")} ago` : ""}.`,
+        text: count(partly.orders, w.partlySent, { late: age >= 1 ? countWords(age, w.partlySentLate) : "" }),
         href: `${base}/orders?ship=partly_sent`,
-        action: "Send the rest",
+        action: a.sendTheRest,
       });
     }
     // Order changes waiting for the customer's payment (D174): the order stays as it was until they pay; when the link ends the held items are released.
     const changes = s.orderChanges;
     if (changes && changes.waiting > 0 && !hidden(s, "sales")) {
       items.push({
-        text: `${s.name}: ${plural(changes.waiting, "order change is", "order changes are")} waiting for the customer's payment${
-          changes.expiringSoon > 0 ? `; ${changes.expiringSoon === 1 ? "the pay link of 1 ends" : `the pay links of ${changes.expiringSoon} end`} within ${plural(EDIT_EXPIRING_DAYS, "day", "days")}, and the order then stays as it was` : ""
-        }.`,
+        text: count(changes.waiting, w.changes, {
+          ending: changes.expiringSoon > 0 ? countWords(changes.expiringSoon, w.changesEnding, { days: days(EDIT_EXPIRING_DAYS) }) : "",
+        }),
         href: `${base}/orders?ship=edit_pending`,
-        action: "Open orders",
+        action: a.openOrders,
       });
     }
     // A privacy request has a legal clock of one month (GDPR Art. 12(3)): overdue is urgent, due this week is a heads-up.
     const privacy = s.privacy;
     if (privacy && privacy.overdue > 0) {
-      items.push({
-        text: `${s.name}: ${plural(privacy.overdue, "privacy request is", "privacy requests are")} past the one-month deadline for an answer.`,
-        href: `${base}/privacy`,
-        action: "Answer",
-        urgent: true,
-      });
+      items.push({ text: count(privacy.overdue, w.privacyOverdue), href: `${base}/privacy`, action: a.answer, urgent: true });
     }
     if (privacy && privacy.dueSoon > 0) {
-      items.push({
-        text: `${s.name}: ${plural(privacy.dueSoon, "privacy request is", "privacy requests are")} due within the week.`,
-        href: `${base}/privacy`,
-        action: "Open requests",
-      });
+      items.push({ text: count(privacy.dueSoon, w.privacyDueSoon), href: `${base}/privacy`, action: a.openRequests });
     }
     // A VAT number nobody has checked, or an IOSS or OSS registration left half done (D157): only an owner can change them.
     if (owner && s.tax && s.tax.length > 0) {
-      items.push({ text: `${s.name}: the tax settings need a look. ${s.tax.join(" ")}`, href: `${base}/settings/tax`, action: "Open tax settings" });
+      items.push({ text: say(w.tax, { findings: s.tax.join(" ") }), href: `${base}/settings/tax`, action: a.openTax });
     }
     // Paid orders still waiting for an invoice (D159): the owner can fix what holds them (details, tax profile). Not urgent, unless a
     // reverse-charge invoice is past its legal deadline.
     if (owner && s.invoices && s.invoices.waiting > 0) {
       const overdue = s.invoices.overdue;
       items.push({
-        text: `${s.name}: ${plural(s.invoices.waiting, "paid order is", "paid orders are")} waiting for an invoice${overdue > 0 ? `, ${overdue} of them past the deadline for a reverse-charge invoice` : ""}.`,
+        text: count(s.invoices.waiting, w.invoices, { overdue: overdue > 0 ? fillWords(w.invoicesOverdue, { n: overdue }) : "" }),
         href: `${base}/invoices?tab=waiting`,
-        action: "Open invoices",
+        action: a.openInvoices,
         urgent: overdue > 0,
       });
     }
     // OSS and IOSS data not yet exported, near its due date or just past it (D161): not urgent, and never a claim that a return is late.
     if (owner) {
-      for (const r of s.taxReturns ?? []) items.push({ text: `${s.name}: ${r.text}`, href: `${base}${r.path}`, action: "Open VAT report" });
+      for (const r of s.taxReturns ?? []) items.push({ text: say(w.taxReturn, { text: r.text }), href: `${base}${r.path}`, action: a.openVatReport });
     }
     // Nothing of the stock is shown to a member who may not open Products.
-    if (hidden(s, "stock")) {
-      // (no stock item)
-    } else {
-      if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
-      if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });
+    if (!hidden(s, "stock")) {
+      if (s.outOfStock > 0) items.push({ text: count(s.outOfStock, w.outOfStock), href: `${base}/products`, action: a.openProducts });
+      if (s.lowStock > 0) items.push({ text: count(s.lowStock, w.lowStock), href: `${base}/products`, action: a.openProducts });
       // The owner's own levels (D172): said apart, since the owner asked to be told, and they open the Inventory page filtered to them.
-      if (s.belowLevel > 0) items.push({ text: `${s.name}: ${plural(s.belowLevel, "variant is", "variants are")} at or below the warning level you set.`, href: `${base}/inventory?status=low`, action: "Open inventory" });
+      if (s.belowLevel > 0) items.push({ text: count(s.belowLevel, w.belowLevel), href: `${base}/inventory?status=low`, action: a.openInventory });
       // Units sold that the store has not received yet: never a 0 that hides them, and not urgent by itself (the delivery time was stated at the sale).
-      if (s.owedUnits > 0) items.push({ text: `${s.name}: ${plural(s.owedUnits, "unit is", "units are")} owed on backorder, on orders that are paid and not sent.`, href: `${base}/inventory?status=backorder`, action: "Open inventory" });
+      if (s.owedUnits > 0) items.push({ text: count(s.owedUnits, w.owed), href: `${base}/inventory?status=backorder`, action: a.openInventory });
     }
     // Every member can open Work's pages, so staff are shown these too.
     items.push(...(s.work ?? []));
@@ -318,11 +288,12 @@ export function totalSales(stores: Pick<StoreFigures, "sales">[]): SalesFigure[]
 }
 
 /** The change on the week before, in words: "+12 %", "−5 %", "New" when there was nothing before, or null when both are nothing. */
-export function changeText(current: number, prior: number): string | null {
-  if (prior <= 0) return current > 0 ? "New this week" : null;
+export function changeText(current: number, prior: number, w: HomeMessages["common"] = homeEn.common): string | null {
+  if (prior <= 0) return current > 0 ? w.newThisWeek : null;
   const change = Math.round(((current - prior) / prior) * 100);
-  if (change === 0) return "Same as the week before";
-  return `${change > 0 ? "+" : "−"}${Math.abs(change)} % on the week before`;
+  if (change === 0) return w.sameAsBefore;
+  return fillWords(w.change, { sign: change > 0 ? "+" : "−", n: Math.abs(change) });
 }
 
-export const money = (minor: number, currency: string) => formatMoney(minor, currency, "en");
+/** An amount as the admin shows it, in a language's own number format (`ADMIN_LANG_FACTS[lang].locale`), English unless given. */
+export const money = (minor: number, currency: string, locale = "en") => formatMoney(minor, currency, locale);
