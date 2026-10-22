@@ -179,6 +179,15 @@ describe("the second step at sign-in", () => {
     expect(await t.passSecondStep(account(), "000000")).toMatchObject({ ok: false, problem: expect.stringContaining("One try left") });
   });
 
+  it("answers in the account's own language (D312 A1)", async () => {
+    await enrol();
+    state.factors = serverFactors.get(authUser)!;
+    state.aal = "aal1";
+    const norwegian = { ...account(), adminLocale: "nb-NO" };
+    expect(await t.passSecondStep(norwegian, "12")).toMatchObject({ ok: false, problem: "Skriv inn de seks sifrene fra autentiseringsappen din." });
+    expect(await t.passSecondStep(norwegian, "000000")).toMatchObject({ ok: false, problem: expect.stringContaining("Koden virket ikke") });
+  });
+
   it("pauses for fifteen minutes after the fifth wrong code and lets the account try again after them (a fixed clock)", async () => {
     await enrol();
     state.factors = serverFactors.get(authUser)!;

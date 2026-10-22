@@ -2,6 +2,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 
+import { useAdminText } from "./admin-text";
+
 /**
  * A labelled password input with a Show/Hide button, so a long password can
  * be checked before it is sent.
@@ -26,6 +28,7 @@ export function PasswordField({
 }) {
   const id = useId();
   const [shown, setShown] = useState(false);
+  const words = useAdminText("common").form;
   return (
     <div className="flex flex-col gap-1 text-sm">
       <div className="flex items-baseline justify-between gap-2">
@@ -54,7 +57,7 @@ export function PasswordField({
           aria-controls={id}
           className="min-h-10 rounded-pill border border-edge bg-card px-3"
         >
-          {shown ? "Hide" : "Show"}
+          {shown ? words.hide : words.show}
         </button>
       </div>
       {hint && (

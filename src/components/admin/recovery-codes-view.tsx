@@ -2,8 +2,11 @@
 
 import { useId, useState } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { formatCodes } from "@/lib/recovery-codes";
 import { CARD_CLASS } from "@/components/admin/ui";
+
+import { useAdminText } from "./admin-text";
 
 /**
  * A set of recovery codes, shown once (wave 1, 1f, `docs/wave-1-trust.md` 2.6): to copy, download or print, and the person must say they
@@ -14,7 +17,7 @@ export function RecoveryCodesView({
   codes,
   account,
   madeOn,
-  continueLabel = "Continue",
+  continueLabel,
   onContinue,
 }: {
   codes: readonly string[];
@@ -25,16 +28,17 @@ export function RecoveryCodesView({
   onContinue: () => void;
 }) {
   const id = useId();
+  const w = useAdminText("signIn").codes;
   const [saved, setSaved] = useState(false);
   const [note, setNote] = useState("");
-  const text = formatCodes(codes, { account, madeOn });
+  const text = formatCodes(codes, { account, madeOn }, w);
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setNote("Copied. Paste it somewhere safe.");
+      setNote(w.copied);
     } catch {
-      setNote("Your browser would not copy. Select the codes and copy them by hand.");
+      setNote(w.copyFailed);
     }
   };
   const download = () => {
@@ -44,7 +48,7 @@ export function RecoveryCodesView({
     link.download = "kaizen-recovery-codes.txt";
     link.click();
     URL.revokeObjectURL(url);
-    setNote("Downloaded. Keep the file apart from the device with your authenticator app.");
+    setNote(w.downloaded);
   };
 
   const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
@@ -53,15 +57,14 @@ export function RecoveryCodesView({
       <style>{`@media print { body * { visibility: hidden; } [data-print-area], [data-print-area] * { visibility: visible; } [data-print-area] { position: absolute; left: 0; top: 0; } }`}</style>
       <div>
         <h2 id={`${id}-heading`} className="text-title text-ink">
-          Your recovery codes
+          {w.heading}
         </h2>
         <p className="text-sm text-muted">
-          If you lose your phone, one of these signs you in once and takes your two-step sign-in away, so you can set it up again. Each code works once.
-          <strong className="font-medium text-ink"> This is the only time they are shown.</strong>
+          {w.intro} <strong className="font-medium text-ink">{w.onlyTime}</strong>
         </p>
       </div>
       <div data-print-area="" className={`p-4 ${CARD_CLASS}`}>
-        <p className="mb-3 text-sm">Kaizena Flow recovery codes for {account}. Made {madeOn}.</p>
+        <p className="mb-3 text-sm">{fillWords(w.printed, { account, date: madeOn })}</p>
         <ol className="grid grid-cols-1 gap-x-8 gap-y-2 font-mono text-base sm:grid-cols-2">
           {codes.map((code) => (
             <li key={code} className="tabular-nums">
@@ -72,13 +75,13 @@ export function RecoveryCodesView({
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={copy} className={button}>
-          Copy codes
+          {w.copy}
         </button>
         <button type="button" onClick={download} className={button}>
-          Download as a file
+          {w.download}
         </button>
         <button type="button" onClick={() => window.print()} className={button}>
-          Print
+          {w.print}
         </button>
       </div>
       <p role="status" aria-live="polite" className="min-h-5 text-sm text-muted">
@@ -86,7 +89,7 @@ export function RecoveryCodesView({
       </p>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} className="mt-1 size-4" />
-        <span>I have saved these codes somewhere safe.</span>
+        <span>{w.saved}</span>
       </label>
       <div>
         <button
@@ -95,7 +98,7 @@ export function RecoveryCodesView({
           disabled={!saved}
           className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
         >
-          {continueLabel}
+          {continueLabel ?? w.continue}
         </button>
       </div>
     </section>

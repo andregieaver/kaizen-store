@@ -50,12 +50,23 @@ export function generateRecoveryCodes(random: RandomBytes, count: number = RECOV
   return [...codes].map(formatRecoveryCode);
 }
 
+const FILE_WORDS = {
+  fileTitle: "Kaizena Flow recovery codes for {account}",
+  fileMade: "Made {date}. Each code works once, and only until you make a new set.",
+  fileKeep: "Keep them somewhere safe, apart from the device with your authenticator app.",
+};
+
 /** The text of a set to copy or print: a heading that says what they are, one numbered code to a line. */
-export function formatCodes(codes: readonly string[], context: { account: string; madeOn: string }): string {
+export function formatCodes(
+  codes: readonly string[],
+  context: { account: string; madeOn: string },
+  /** The file's lines in the admin's language (D312 A1, `signIn.codes`), `{account}` and `{date}` filled; English unless given. */
+  words: { fileTitle: string; fileMade: string; fileKeep: string } = FILE_WORDS,
+): string {
   return [
-    `Kaizena Flow recovery codes for ${context.account}`,
-    `Made ${context.madeOn}. Each code works once, and only until you make a new set.`,
-    "Keep them somewhere safe, apart from the device with your authenticator app.",
+    words.fileTitle.replace("{account}", context.account),
+    words.fileMade.replace("{date}", context.madeOn),
+    words.fileKeep,
     "",
     ...codes.map((code, i) => `${String(i + 1).padStart(2, " ")}. ${code}`),
     "",

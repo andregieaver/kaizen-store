@@ -3,6 +3,7 @@ import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LEGAL_KINDS, PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { platformText } from "@/lib/platform-text";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
@@ -169,6 +170,16 @@ export function PlatformMenu({ chrome, lang = "en" }: Props) {
   );
 }
 
+/** Kaizena Flow's published terms, privacy notice and data processing agreement, in that order, each titled in `lang`. */
+function legalPages(chrome: PlatformChrome, lang: PlatformLang): { slug: string; title: string }[] {
+  const locale = pageLocaleOf(lang);
+  const bySlug = new Map([...chrome.pages.values()].map((page) => [page.slug, page]));
+  return PLATFORM_LEGAL_KINDS.flatMap((kind) => {
+    const page = bySlug.get(PLATFORM_LEGAL_SLUGS[kind]);
+    return page ? [{ slug: page.slug, title: (locale && page.titles?.[locale]) || page.title }] : [];
+  });
+}
+
 /** Who runs Kaizen (required on every page of a web service) and the footer menu. */
 export function PlatformFooter({ chrome, lang = "en" }: Props) {
   const { m } = words(lang);
@@ -194,6 +205,12 @@ export function PlatformFooter({ chrome, lang = "en" }: Props) {
           <Link href={platformPath(lang, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
+          {/* Kaizena Flow's own legal pages (D312 P5), once published, by their titles in the page's language. */}
+          {legalPages(chrome, lang).map((page) => (
+            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="w-fit text-muted underline">
+              {page.title}
+            </Link>
+          ))}
         </div>
         {platformMenu(chrome, chrome.footerMenuId).length > 0 && (
           <nav aria-label={m.footerMenu} className="sm:col-span-2">

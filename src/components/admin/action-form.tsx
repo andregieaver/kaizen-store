@@ -10,6 +10,8 @@ import {
 } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useAdminText } from "./admin-text";
+
 export type FormState = { status: "idle" | "ok" | "error"; messages: string[] };
 
 export const idle: FormState = { status: "idle", messages: [] };
@@ -89,6 +91,7 @@ export function SubmitButton({
 }) {
   const { pending: posting } = useFormStatus();
   const pending = useContext(PendingContext) || posting;
+  const { working } = useAdminText("common").form;
   return (
     <button
       type="submit"
@@ -102,7 +105,7 @@ export function SubmitButton({
           : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40"
       }
     >
-      {pending ? "Working …" : children}
+      {pending ? working : children}
     </button>
   );
 }

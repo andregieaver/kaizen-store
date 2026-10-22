@@ -3,8 +3,11 @@
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { getSessionAccount } from "@/server/auth";
 import { finishEnrolment, passSecondStep, startEnrolment, useRecoveryCode as spendRecoveryCode, type EnrolFinish, type EnrolStart } from "@/server/two-step";
 
@@ -14,12 +17,15 @@ import { finishEnrolment, passSecondStep, startEnrolment, useRecoveryCode as spe
  * does only what its own page is for, and the server functions underneath decide everything that matters (limits, single use, audit).
  */
 
-const SIGN_IN_AGAIN = "Sign in again to continue.";
+/** Said where the session has gone, in the request's language (D312 A1). */
+async function signInAgain(): Promise<string> {
+  return adminText(await requestAdminLang(), "signIn").problems.signInAgain;
+}
 
 /** The six digits from the authenticator app. A right code goes on to where the person was going. */
 export async function verifyTwoStepAction(next: string, _state: FormState, formData: FormData): Promise<FormState> {
   const account = await getSessionAccount();
-  if (!account) return { status: "error", messages: [SIGN_IN_AGAIN] };
+  if (!account) return { status: "error", messages: [await signInAgain()] };
   const result = await passSecondStep(account, String(formData.get("code") ?? ""));
   if (!result.ok) return { status: "error", messages: [result.problem] };
   // A full navigation (redirect) so the session that was just promoted is the one the next page reads.
@@ -32,7 +38,7 @@ export async function verifyTwoStepAction(next: string, _state: FormState, formD
  */
 export async function recoveryCodeAction(_state: FormState, formData: FormData): Promise<FormState> {
   const account = await getSessionAccount();
-  if (!account) return { status: "error", messages: [SIGN_IN_AGAIN] };
+  if (!account) return { status: "error", messages: [await signInAgain()] };
   const result = await spendRecoveryCode(account, String(formData.get("code") ?? ""));
   if (!result.ok) return { status: "error", messages: [result.problem] };
   redirect("/admin/sign-in?notice=recovered");
@@ -41,14 +47,14 @@ export async function recoveryCodeAction(_state: FormState, formData: FormData):
 /** Starts setting up an authenticator app: nothing is made until the person presses the button. */
 export async function startEnrolmentAction(): Promise<EnrolStart> {
   const account = await getSessionAccount();
-  if (!account) return { ok: false, problem: SIGN_IN_AGAIN };
-  return startEnrolment();
+  if (!account) return { ok: false, problem: await signInAgain() };
+  return startEnrolment(new Date(), adminLangOf(account.adminLocale));
 }
 
 /** The first code from the app turns two-step sign-in on and returns the ten recovery codes, to be shown once. */
 export async function finishEnrolmentAction(factorId: string, code: string): Promise<EnrolFinish> {
   const account = await getSessionAccount();
-  if (!account) return { ok: false, problem: SIGN_IN_AGAIN };
+  if (!account) return { ok: false, problem: await signInAgain() };
   return finishEnrolment(account, String(factorId), String(code));
 }
 

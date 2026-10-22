@@ -26,6 +26,9 @@ import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { PlatformLegalCard } from "@/components/admin/platform-legal-card";
+import { adminLangOf } from "@/lib/admin-lang";
+import { platformLegalOverview } from "@/server/platform-legal";
 
 import {
   choosePlatformSiteLayoutAction,
@@ -38,6 +41,7 @@ import {
 } from "./actions";
 import { platformPageContext } from "./context";
 import { duplicatePageAction } from "./duplicate-action";
+import { writeLegalPagesAction } from "./legal-action";
 
 /**
  * Kaizen's pages (D42) and blog articles (D57): the same list, editor,
@@ -65,10 +69,15 @@ const INTRO: Record<PageType, string> = {
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
-  const [all, query, roles] = await Promise.all([listPages(null, type), searchParams, type === "page" ? getPlatformPageRoles() : []]);
+  const [all, query, roles, legal] = await Promise.all([
+    listPages(null, type),
+    searchParams,
+    type === "page" ? getPlatformPageRoles() : [],
+    type === "page" ? platformLegalOverview() : null,
+  ]);
   // The theme store's own pages (D285) are edited from Themes, so they are not mixed with these.
   const themeStorePages = new Set(roles.flatMap(([role, id]) => (isThemeStoreRole(role) ? [id] : [])));
   const pages = all.filter((p) => !themeStorePages.has(p.id));
@@ -118,6 +127,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
+      {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">

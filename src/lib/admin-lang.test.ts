@@ -37,3 +37,21 @@ describe("the admin's language (D312 A0)", () => {
     expect(Object.keys(adminTexts("nb", ["common"]))).toEqual(["common"]);
   });
 });
+
+describe("the catalogues' placeholders (D312 A1)", () => {
+  const leaves = (value: unknown, path = ""): [string, string][] =>
+    typeof value === "string" ? [[path, value]] : Object.entries(value as object).flatMap(([key, inner]) => leaves(inner, `${path}.${key}`));
+  const names = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+
+  it("names the same placeholders in Norwegian as in English, so fillWords() fills them all", () => {
+    for (const area of ["common", "domains", "signIn"] as const) {
+      const nb = new Map(leaves(adminText("nb", area)));
+      for (const [path, en] of leaves(adminText("en", area))) expect(names(nb.get(path) ?? ""), `${area}${path}`).toEqual(names(en));
+    }
+  });
+
+  it("fills them and leaves an unknown one as written", async () => {
+    const { fillWords } = await import("./admin-fill");
+    expect(fillWords("{app} as {email} {other}", { app: "Kaizen Life", email: "a@b.no" })).toBe("Kaizen Life as a@b.no {other}");
+  });
+});

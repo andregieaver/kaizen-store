@@ -1102,7 +1102,11 @@ stand-in is the only fake, and only it is told it is one.
   A request to open a store keeps its language (P6, `access_requests.locale`): its emails are `accessEmail()` (`src/lib/access-emails.ts`,
   `platformText(lang).accessEmails`, kinds `platform.access_*`), sent once each by `sendAccessEmail()` in `src/server/platform.ts`, and
   the new owner's admin starts in it. The stores' Norwegian legal starters state every right from `LEGAL_WORDING_NB` and cite its section
-  (P5, `RIGHT_STATEMENTS` in `legal-wording-nb.test.ts`): a new statement of a right goes there with its passages.
+  (P5, `RIGHT_STATEMENTS` in `legal-wording-nb.test.ts`): a new statement of a right goes there with its passages. Kaizena Flow's own terms, privacy notice and
+  data processing agreement (P5, `src/lib/platform-legal.ts`, texts by hand in `platform-legal/{en,nb}.ts`, the same sections in both) are
+  made and published only by `writePlatformLegalPages()` from Platform → Pages (English the page, Norwegian its `nb-NO` texts; facts from
+  the business details, a missing one a placeholder, never invented); a new sub-processor is named in both languages' privacy notice and
+  data processing agreement.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "./admin-text";
 import { RecoveryCodesView } from "./recovery-codes-view";
 import { CARD_CLASS } from "@/components/admin/ui";
 
@@ -44,6 +47,7 @@ export function EnrolPanel({
   why?: string;
 }) {
   const id = useId();
+  const w = useAdminText("signIn").enrol;
   const [pending, run] = useTransition();
   const [started, setStarted] = useState<Extract<EnrolStarted, { ok: true }> | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -53,26 +57,23 @@ export function EnrolPanel({
   if (!codes && !started && alreadyOn) {
     return (
       <div className="flex flex-col gap-3 text-sm">
-        <p>Two-step sign-in is already on for your account.</p>
+        <p>{w.alreadyOn}</p>
         <div>
           <Link href={nextHref} className={`${primary} inline-flex items-center`}>
-            Continue
+            {w.continue}
           </Link>
         </div>
       </div>
     );
   }
-  if (codes) return <RecoveryCodesView codes={codes} account={account} madeOn={madeOn} continueLabel="Continue" onContinue={() => window.location.assign(nextHref)} />;
+  if (codes) return <RecoveryCodesView codes={codes} account={account} madeOn={madeOn} continueLabel={w.continue} onContinue={() => window.location.assign(nextHref)} />;
 
   return (
     <div className="flex flex-col gap-4">
       {why && <p className={`p-3 text-sm ${CARD_CLASS}`}>{why}</p>}
       {!started ? (
         <div className="flex flex-col gap-3 text-sm">
-          <p className="text-muted">
-            Two-step sign-in asks for a six-digit code from an authenticator app (such as 1Password, Google Authenticator or Authy) as well as your
-            password or sign-in link. You will also get ten recovery codes for the day you lose your phone.
-          </p>
+          <p className="text-muted">{w.intro}</p>
           <div>
             <button
               type="button"
@@ -87,7 +88,7 @@ export function EnrolPanel({
                 })
               }
             >
-              {pending ? "Working …" : "Set up an authenticator app"}
+              {pending ? w.working : w.start}
             </button>
           </div>
         </div>
@@ -106,18 +107,18 @@ export function EnrolPanel({
         >
           <ol className="flex list-decimal flex-col gap-3 pl-5">
             <li>
-              Open your authenticator app and scan this code
+              {w.scan}
               {/* The QR code is an SVG from the Auth server, drawn as a picture so nothing in it runs. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={started.qrCode} alt="QR code to scan with your authenticator app" width={176} height={176} className="mt-2 rounded-md border border-line bg-white p-2" />
+              <img src={started.qrCode} alt={w.qrAlt} width={176} height={176} className="mt-2 rounded-md border border-line bg-white p-2" />
             </li>
             <li>
-              Or type this key into the app by hand:
+              {w.byHand}
               <code className="mt-1 block w-fit rounded-md border border-line bg-card px-2 py-1 font-mono break-all">{groupedSecret(started.secret)}</code>
             </li>
             <li>
               <label htmlFor={`${id}-code`} className="font-medium">
-                Type the six digits the app shows now
+                {w.typeCode}
               </label>
               <input
                 id={`${id}-code`}
@@ -135,7 +136,7 @@ export function EnrolPanel({
           </ol>
           <div>
             <button type="submit" disabled={pending || code.replace(/\s/g, "").length < 6} className={primary}>
-              {pending ? "Checking …" : "Turn on two-step sign-in"}
+              {pending ? w.checking : w.turnOn}
             </button>
           </div>
         </form>
@@ -173,6 +174,7 @@ export function ManageTwoStep({
   remove: () => Promise<{ ok: true } | { ok: false; problem: string }>;
 }) {
   const router = useRouter();
+  const w = useAdminText("signIn").manage;
   const [pending, run] = useTransition();
   const [codes, setCodes] = useState<string[] | null>(null);
   const [problem, setProblem] = useState("");
@@ -185,7 +187,7 @@ export function ManageTwoStep({
         codes={codes}
         account={account}
         madeOn={madeOn}
-        continueLabel="Done"
+        continueLabel={w.done}
         onContinue={() => {
           setCodes(null);
           router.refresh();
@@ -198,12 +200,11 @@ export function ManageTwoStep({
     return (
       <div className="flex flex-col gap-3 text-sm">
         <p className="text-muted">
-          Off. Two-step sign-in asks for a code from an authenticator app as well as your password or sign-in link.
-          {platformAdmin ? " Platform admins must use it." : " A store's owner can require it of everyone who works in the store."}
+          {w.off} {platformAdmin ? w.offPlatform : w.offStore}
         </p>
         <div>
           <Link href={setUpHref} className={`${primary} inline-flex items-center`}>
-            Set up two-step sign-in
+            {w.setUp}
           </Link>
         </div>
       </div>
@@ -212,10 +213,10 @@ export function ManageTwoStep({
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p>
-        <strong className="font-medium">On.</strong> You are asked for a code from your authenticator app when you sign in.{" "}
-        {codesLeft > 0 ? `${codesLeft} recovery ${codesLeft === 1 ? "code is" : "codes are"} left.` : "You have no recovery codes left: make a new set."}
+        <strong className="font-medium">{w.on}</strong> {w.onText}{" "}
+        {codesLeft === 0 ? w.noCodesLeft : codesLeft === 1 ? w.oneCodeLeft : fillWords(w.codesLeft, { count: codesLeft })}
       </p>
-      {!recoveryAvailable && <p className="text-muted">Recovery codes cannot be made on this server right now.</p>}
+      {!recoveryAvailable && <p className="text-muted">{w.noRecovery}</p>}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -230,20 +231,21 @@ export function ManageTwoStep({
             })
           }
         >
-          Make new recovery codes
+          {w.newCodes}
         </button>
         {!platformAdmin && !confirming && (
           <button type="button" className={button} onClick={() => setConfirming(true)}>
-            Switch off two-step sign-in
+            {w.switchOff}
           </button>
         )}
       </div>
-      <p className="text-muted">Making new codes ends the old ones.{platformAdmin ? " Platform admins cannot switch two-step sign-in off." : ""}</p>
+      <p className="text-muted">
+        {w.endsOld}
+        {platformAdmin ? ` ${w.platformCannot}` : ""}
+      </p>
       {confirming && (
         <div className={`flex flex-col gap-2 p-3 ${CARD_CLASS}`}>
-          <p>
-            Switch it off? Your account will be protected by your password or sign-in link alone. A store that requires two-step sign-in will ask you to set it up again.
-          </p>
+          <p>{w.confirm}</p>
           <div className="flex gap-2">
             <button
               type="button"
@@ -254,17 +256,17 @@ export function ManageTwoStep({
                   setProblem("");
                   const result = await remove();
                   if (result.ok) {
-                    setDone("Two-step sign-in is off. Your recovery codes no longer work.");
+                    setDone(w.switchedOff);
                     router.refresh();
                   } else setProblem(result.problem);
                   setConfirming(false);
                 })
               }
             >
-              {pending ? "Working …" : "Yes, switch it off"}
+              {pending ? w.working : w.yesOff}
             </button>
             <button type="button" className={button} onClick={() => setConfirming(false)}>
-              Keep it on
+              {w.keepOn}
             </button>
           </div>
         </div>

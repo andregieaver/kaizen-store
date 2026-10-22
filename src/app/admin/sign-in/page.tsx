@@ -4,110 +4,124 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
+import { AdminTextProvider } from "@/components/admin/admin-text";
+import type { AdminLang } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { buttonClass, FocusFrame } from "@/components/admin/ui";
 
 import { signIn, signInWithKaizenLife } from "./actions";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: adminText(await requestAdminLang(), "signIn").titles.signIn };
+}
 
+/** Drawn in the request's language (D312 A1, `requestAdminLang()`), so the whole page waits for the request; an empty frame until then. */
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {
   return (
-    <FocusFrame
-      title="Sign in to Kaizena Flow"
-      aside={
-        <Link href="/sign-up" className="underline-offset-2 hover:underline">
-          Ask for a store
-        </Link>
-      }
-    >
-      <Suspense fallback={null}>
-        <Notice searchParams={searchParams} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <KaizenLifeButton searchParams={searchParams} />
-      </Suspense>
-      <ActionForm action={signIn} className="flex flex-col gap-4">
-        <Suspense fallback={null}>
-          <NextField searchParams={searchParams} />
-        </Suspense>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Email
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="username"
-            className="min-h-10 rounded-md border border-line bg-card px-3 font-normal"
-          />
-        </label>
-        <PasswordField
-          label="Password"
-          autoComplete="current-password"
-          aside={
-            <Link href="/admin/forgot-password" className="underline">
-              Forgot password?
-            </Link>
-          }
-        />
-        <SubmitButton name="method" value="password">
-          Sign in
-        </SubmitButton>
-        <div className="flex items-center gap-3 text-sm text-muted" aria-hidden>
-          <span className="h-px flex-1 bg-line" />
-          or
-          <span className="h-px flex-1 bg-line" />
-        </div>
-        <SubmitButton name="method" value="link" variant="secondary" skipValidation>
-          Email me a sign-in link instead
-        </SubmitButton>
-      </ActionForm>
-      <p className="text-body text-muted">
-        Kaizena Flow is in a private beta: only invited accounts can sign in.{" "}
-        <Link href="/sign-up" className="underline">
-          Ask for a store
-        </Link>
-        , or ask a store&apos;s owner to invite you.
-      </p>
-    </FocusFrame>
+    <Suspense fallback={<FocusFrame />}>
+      <SignIn searchParams={searchParams} />
+    </Suspense>
   );
 }
 
-async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
+async function SignIn({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
+  const lang = await requestAdminLang();
+  const w = adminText(lang, "signIn").signIn;
+  return (
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+      <FocusFrame
+        lang={lang}
+        title={w.heading}
+        aside={
+          <Link href="/sign-up" className="underline-offset-2 hover:underline">
+            {w.askForStore}
+          </Link>
+        }
+      >
+        <Notice searchParams={searchParams} lang={lang} />
+        <KaizenLifeButton searchParams={searchParams} lang={lang} />
+        <ActionForm action={signIn} className="flex flex-col gap-4">
+          <NextField searchParams={searchParams} />
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {w.email}
+            <input
+              type="email"
+              name="email"
+              required
+              autoComplete="username"
+              className="min-h-10 rounded-md border border-line bg-card px-3 font-normal"
+            />
+          </label>
+          <PasswordField
+            label={w.password}
+            autoComplete="current-password"
+            aside={
+              <Link href="/admin/forgot-password" className="underline">
+                {w.forgot}
+              </Link>
+            }
+          />
+          <SubmitButton name="method" value="password">
+            {w.submit}
+          </SubmitButton>
+          <div className="flex items-center gap-3 text-sm text-muted" aria-hidden>
+            <span className="h-px flex-1 bg-line" />
+            {w.or}
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <SubmitButton name="method" value="link" variant="secondary" skipValidation>
+            {w.emailLink}
+          </SubmitButton>
+        </ActionForm>
+        <p className="text-body text-muted">
+          {w.beta}{" "}
+          <Link href="/sign-up" className="underline">
+            {w.betaAsk}
+          </Link>
+          {w.betaInvite}
+        </p>
+      </FocusFrame>
+    </AdminTextProvider>
+  );
+}
+
+async function Notice({ searchParams, lang }: { searchParams: PageProps<"/admin/sign-in">["searchParams"]; lang: AdminLang }) {
   const { error, notice } = await searchParams;
+  const w = adminText(lang, "signIn").signIn;
   const account = await getAccount();
   if (account) {
     return (
       <p className="text-sm">
-        You are signed in as {account.email}.{" "}
+        {fillWords(w.signedInAs, { email: account.email })}{" "}
         <Link href="/admin" className="underline">
-          Go to the admin
+          {w.goToAdmin}
         </Link>
       </p>
     );
   }
+  const alert = {
+    "no-access": w.noAccess,
+    "owners-only": w.ownersOnly,
+    "kaizen-life": w.kaizenLifeFailed,
+    link: w.linkExpired,
+  }[String(error)];
   if (notice === "recovered") {
     return (
       <p role="status" className="text-sm">
-        Your recovery code worked, and your two-step sign-in was taken away. Sign in again: you will be asked to set it up once more.
+        {w.recovered}
       </p>
     );
   }
-  if (error === "no-access") {
-    return <p role="alert" className="text-sm">That account does not have access yet.</p>;
-  }
-  if (error === "owners-only") {
-    return <p role="alert" className="text-sm">Signing in with Kaizen Life is for store owners. Sign in with your email instead.</p>;
-  }
-  if (error === "kaizen-life") {
-    return <p role="alert" className="text-sm">Kaizen Life did not sign you in. Try again, or sign in with your email.</p>;
-  }
-  if (error === "link") {
-    return <p role="alert" className="text-sm">That link has expired or was already used. Request a new one.</p>;
-  }
-  return null;
+  return alert ? (
+    <p role="alert" className="text-sm">
+      {alert}
+    </p>
+  ) : null;
 }
 
 /** Where to go once signed in, such as back to a consent page (D95). */
@@ -117,16 +131,17 @@ async function NextField({ searchParams }: { searchParams: PageProps<"/admin/sig
 }
 
 /** Store owners can sign in with their Kaizen Life account (D95), once it is set up. */
-async function KaizenLifeButton({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
+async function KaizenLifeButton({ searchParams, lang }: { searchParams: PageProps<"/admin/sign-in">["searchParams"]; lang: AdminLang }) {
   const { next } = await searchParams;
   if (!kaizenLifeSignInOn()) return null;
+  const w = adminText(lang, "signIn").signIn;
   return (
     <form action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
       <button type="submit" className={buttonClass("secondary", "card", true)}>
-        Sign in with Kaizen Life
+        {w.withKaizenLife}
       </button>
-      <p className="text-xs text-muted">For store owners with a Kaizen Life account.</p>
+      <p className="text-xs text-muted">{w.kaizenLifeFor}</p>
     </form>
   );
 }

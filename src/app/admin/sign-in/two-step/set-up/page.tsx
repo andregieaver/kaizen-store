@@ -2,29 +2,33 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminTextProvider } from "@/components/admin/admin-text";
 import { EnrolPanel } from "@/components/admin/two-step-panel";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS, enrolReasonText } from "@/lib/two-step";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 import { getStore } from "@/server/stores";
 
 import { finishEnrolmentAction, leaveTwoStepAction, startEnrolmentAction } from "../actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
-export const metadata: Metadata = { title: "Set up two-step sign-in" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: adminText(await requestAdminLang(), "signIn").titles.setUp };
+}
 
 /**
  * Setting up two-step sign-in (wave 1, 1f, docs/wave-1-trust.md 2.6.2): for someone a store or the platform requires it of, who is held
  * here before any admin page; and for anyone who chooses it from Your account. Outside the gated area, so there is no loop. Opening the
- * page makes nothing: the first button does.
+ * page makes nothing: the first button does. In the account's language (D312 A1).
  */
 export default function SetUpPage({ searchParams }: PageProps<"/admin/sign-in/two-step/set-up">) {
   return (
-    <FocusFrame width="wide">
-      <Suspense fallback={<p className="text-sm text-muted">Loading …</p>}>
-        <SetUp searchParams={searchParams} />
-      </Suspense>
-    </FocusFrame>
+    <Suspense fallback={<FocusFrame width="wide" />}>
+      <SetUp searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -45,31 +49,35 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
   // again when the action that did it sets the session's cookies, so a redirect would take the recovery codes away before they were saved.
   const alreadyOn = session.level === "aal2";
 
+  const lang = await requestAdminLang();
+  const w = adminText(lang, "signIn");
   let why: string | undefined;
   if (assurance.state === "enrol") {
     const slug = assurance.reason === "store" ? storeSlugOf(next) : null;
     const store = slug ? await getStore(slug) : null;
-    why = enrolReasonText(assurance.reason, store?.name);
+    why = enrolReasonText(assurance.reason, store?.name, lang);
   }
   return (
-    <>
-      <FocusHeading title="Set up two-step sign-in" description={<>Signed in as {account.email}.</>} />
-      <EnrolPanel
-        start={startEnrolmentAction}
-        finish={finishEnrolmentAction}
-        account={account.email}
-        madeOn={new Date().toISOString().slice(0, 10)}
-        nextHref={next}
-        why={why}
-        alreadyOn={alreadyOn}
-      />
-      {assurance.state === "enrol" && (
-        <form action={leaveTwoStepAction}>
-          <button type="submit" className="text-sm underline">
-            Sign out
-          </button>
-        </form>
-      )}
-    </>
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+      <FocusFrame width="wide" lang={lang}>
+        <FocusHeading title={w.setUp.heading} description={fillWords(w.setUp.signedInAs, { email: account.email })} />
+        <EnrolPanel
+          start={startEnrolmentAction}
+          finish={finishEnrolmentAction}
+          account={account.email}
+          madeOn={new Date().toISOString().slice(0, 10)}
+          nextHref={next}
+          why={why}
+          alreadyOn={alreadyOn}
+        />
+        {assurance.state === "enrol" && (
+          <form action={leaveTwoStepAction}>
+            <button type="submit" className="text-sm underline">
+              {w.twoStep.signOut}
+            </button>
+          </form>
+        )}
+      </FocusFrame>
+    </AdminTextProvider>
   );
 }

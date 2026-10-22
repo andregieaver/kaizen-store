@@ -114,6 +114,9 @@ describe("where a held person is sent", () => {
     expect(enrolReasonText("store", "Demo Shop")).toBe("Demo Shop requires two-step sign-in.");
     expect(enrolReasonText("store", "  ")).toBe("This store requires two-step sign-in.");
     expect(enrolReasonText("reset")).toMatch(/reset/);
+    // In the admin's language (D312 A1).
+    expect(enrolReasonText("store", "Demo Shop", "nb")).toBe("Demo Shop krever totrinnsinnlogging.");
+    expect(enrolReasonText("store", null, "nb")).toBe("Denne butikken krever totrinnsinnlogging.");
   });
 
   it("reads the kill switch strictly", () => {
@@ -172,6 +175,8 @@ describe("the limit on wrong codes", () => {
   it("words the pause", () => {
     expect(lockedText(15)).toBe("Too many attempts. Wait 15 minutes.");
     expect(lockedText(1)).toBe("Too many attempts. Wait a minute.");
+    expect(lockedText(15, "nb")).toBe("For mange forsøk. Vent 15 minutter.");
+    expect(lockedText(1, "nb")).toBe("For mange forsøk. Vent et minutt.");
   });
 });
 

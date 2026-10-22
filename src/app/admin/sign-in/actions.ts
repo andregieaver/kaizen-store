@@ -7,21 +7,20 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
+import { adminText } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { afterFirstStep } from "@/lib/sign-in-redirect";
 import { canSignIn, signInAccount } from "@/server/auth";
 import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { admit } from "@/server/sign-in";
 
-const LINK_SENT =
-  "If that email has access, a sign-in link is on its way. Open it in this browser; it works once and expires within the hour.";
-const WRONG = "Wrong email or password.";
-const RESET_SENT =
-  "If that email has access, we have sent it a link to choose a new password. Open it in this browser; it works once and expires within the hour.";
-const NOT_CONFIGURED: FormState = {
-  status: "error",
-  messages: ["Sign-in is not configured on this server."],
-};
+/** The forms' answers in the request's language (D312 A1), never the typed email's account's: the same words whatever the email. */
+async function answers() {
+  return adminText(await requestAdminLang(), "signIn").answers;
+}
+
+const fail = (message: string): FormState => ({ status: "error", messages: [message] });
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -54,29 +53,27 @@ export async function signIn(_state: FormState, formData: FormData): Promise<For
  * password, so the form cannot be used to find out who has access.
  */
 async function signInWithPassword(formData: FormData): Promise<FormState> {
+  const w = await answers();
   const email = emailOf(formData);
   const password = String(formData.get("password") ?? "");
-  if (!email.success) return { status: "error", messages: ["Enter a valid email address."] };
-  if (!password) return { status: "error", messages: ["Enter your password."] };
-  if (!(await canSignIn(email.data))) return { status: "error", messages: [WRONG] };
+  if (!email.success) return fail(w.invalidEmail);
+  if (!password) return fail(w.noPassword);
+  if (!(await canSignIn(email.data))) return fail(w.wrong);
 
   const supabase = await supabaseOrNull();
-  if (!supabase) return NOT_CONFIGURED;
+  if (!supabase) return fail(w.notConfigured);
   const { data, error } = await supabase.auth.signInWithPassword({ email: email.data, password });
   if (error || !data.user) {
-    return {
-      status: "error",
-      messages: [
-        error?.status === 429
-          ? "Too many attempts. Wait a few minutes and try again, or use a sign-in link."
-          : error?.code === "invalid_credentials" || error?.status === 400
-            ? WRONG
-            : "Could not sign in just now. Try again shortly.",
-      ],
-    };
+    return fail(
+      error?.status === 429
+        ? w.tooManyAttempts
+        : error?.code === "invalid_credentials" || error?.status === 400
+          ? w.wrong
+          : w.couldNotSignIn,
+    );
   }
   if ((await admit(supabase, data.user)) !== "admitted") {
-    return { status: "error", messages: ["That account does not have access yet."] };
+    return fail(adminText(await requestAdminLang(), "signIn").signIn.noAccess);
   }
   // A person with a second step goes to it first; the gate holds them there whichever way they arrive.
   redirect(afterFirstStep(data.user, String(formData.get("next") ?? "")));
@@ -108,12 +105,13 @@ export async function signInWithKaizenLife(formData: FormData): Promise<void> {
  * platform. The reply is the same either way.
  */
 async function requestSignInLink(formData: FormData): Promise<FormState> {
+  const w = await answers();
   const email = emailOf(formData);
-  if (!email.success) return { status: "error", messages: ["Enter a valid email address."] };
-  if (!(await canSignIn(email.data))) return { status: "ok", messages: [LINK_SENT] };
+  if (!email.success) return fail(w.invalidEmail);
+  if (!(await canSignIn(email.data))) return { status: "ok", messages: [w.linkSent] };
 
   const supabase = await supabaseOrNull();
-  if (!supabase) return NOT_CONFIGURED;
+  if (!supabase) return fail(w.notConfigured);
   const { error } = await supabase.auth.signInWithOtp({
     email: email.data,
     options: {
@@ -121,8 +119,8 @@ async function requestSignInLink(formData: FormData): Promise<FormState> {
       shouldCreateUser: true,
     },
   });
-  if (error) return emailError(error.status);
-  return { status: "ok", messages: [LINK_SENT] };
+  if (error) return emailError(error.status, w);
+  return { status: "ok", messages: [w.linkSent] };
 }
 
 /**
@@ -135,13 +133,14 @@ export async function requestPasswordReset(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const w = await answers();
   const email = emailOf(formData);
-  if (!email.success) return { status: "error", messages: ["Enter a valid email address."] };
+  if (!email.success) return fail(w.invalidEmail);
   const account = await signInAccount(email.data);
-  if (!account) return { status: "ok", messages: [RESET_SENT] };
+  if (!account) return { status: "ok", messages: [w.resetSent] };
 
   const supabase = await supabaseOrNull();
-  if (!supabase) return NOT_CONFIGURED;
+  if (!supabase) return fail(w.notConfigured);
   const redirectTo = `${await origin()}/auth/callback?next=/admin/account`;
   const { error } = account.linked
     ? await supabase.auth.resetPasswordForEmail(email.data, { redirectTo })
@@ -149,17 +148,10 @@ export async function requestPasswordReset(
         email: email.data,
         options: { emailRedirectTo: redirectTo, shouldCreateUser: true },
       });
-  if (error) return emailError(error.status);
-  return { status: "ok", messages: [RESET_SENT] };
+  if (error) return emailError(error.status, w);
+  return { status: "ok", messages: [w.resetSent] };
 }
 
-function emailError(status: number | undefined): FormState {
-  return {
-    status: "error",
-    messages: [
-      status === 429
-        ? "Too many emails. Wait a minute and try again."
-        : "The email could not be sent. Try again shortly.",
-    ],
-  };
+function emailError(status: number | undefined, w: Awaited<ReturnType<typeof answers>>): FormState {
+  return fail(status === 429 ? w.tooManyEmails : w.emailFailed);
 }

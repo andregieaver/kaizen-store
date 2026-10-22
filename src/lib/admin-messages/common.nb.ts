@@ -11,6 +11,11 @@ export const commonNb: CommonMessages = {
     language: "Språk",
     signOut: "Logg ut",
   },
+  form: {
+    working: "Arbeider …",
+    show: "Vis",
+    hide: "Skjul",
+  },
   language: {
     title: "Språk",
     description: "Språket administrasjonen vises på for deg. Kundene i butikkene dine ser språkene som er valgt for hver butikk.",

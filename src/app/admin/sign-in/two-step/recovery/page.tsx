@@ -4,27 +4,33 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AdminTextProvider } from "@/components/admin/admin-text";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { safeNext } from "@/lib/password";
 import { TWO_STEP_PATHS } from "@/lib/two-step";
+import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAssurance } from "@/server/auth";
 import { recoveryAvailable } from "@/server/recovery-codes";
 
 import { recoveryCodeAction } from "../actions";
-import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
-export const metadata: Metadata = { title: "Use a recovery code" };
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: adminText(await requestAdminLang(), "signIn").titles.recovery,
+  };
+}
 
 /**
  * A recovery code in place of the authenticator app (wave 1, 1f). It works once, takes the second step away, ends every session and emails
- * the account; the person then signs in again and sets it up anew. Said plainly here, before the code is spent.
+ * the account; the person then signs in again and sets it up anew. Said plainly here, before the code is spent. In the account's language
+ * (D312 A1).
  */
 export default function RecoveryPage({ searchParams }: PageProps<"/admin/sign-in/two-step/recovery">) {
   return (
-    <FocusFrame>
-      <Suspense fallback={<p className="text-sm text-muted">Loading …</p>}>
-        <Recovery searchParams={searchParams} />
-      </Suspense>
-    </FocusFrame>
+    <Suspense fallback={<FocusFrame />}>
+      <Recovery searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -35,36 +41,40 @@ async function Recovery({ searchParams }: { searchParams: PageProps<"/admin/sign
   if (!held) redirect("/admin/sign-in");
   if (held.assurance.state !== "challenge") redirect(`${TWO_STEP_PATHS.challenge}?next=${encodeURIComponent(next)}`);
   const available = recoveryAvailable();
+  const lang = await requestAdminLang();
+  const w = adminText(lang, "signIn").recovery;
   return (
-    <>
-      <FocusHeading title="Use a recovery code" description="Type one of the ten recovery codes you saved when you set up two-step sign-in, like K7QM2-9WXDB. Each works once. Using one takes your two-step sign-in away and signs you out everywhere, and we email you to say so. You then sign in again and set it up anew." />
-      {available ? (
-        <ActionForm action={recoveryCodeAction} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Recovery code
-            <input
-              name="code"
-              required
-              autoFocus
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              maxLength={16}
-              className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-lg font-normal tracking-wider uppercase"
-            />
-          </label>
-          <SubmitButton>Use this code</SubmitButton>
-        </ActionForm>
-      ) : (
-        <p role="alert" className="text-sm">
-          Recovery is not available on this server. Ask a platform admin to reset your two-step sign-in.
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+      <FocusFrame lang={lang}>
+        <FocusHeading title={w.heading} description={w.description} />
+        {available ? (
+          <ActionForm action={recoveryCodeAction} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {w.code}
+              <input
+                name="code"
+                required
+                autoFocus
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                maxLength={16}
+                className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-lg font-normal tracking-wider uppercase"
+              />
+            </label>
+            <SubmitButton>{w.submit}</SubmitButton>
+          </ActionForm>
+        ) : (
+          <p role="alert" className="text-sm">
+            {w.unavailable}
+          </p>
+        )}
+        <p className="text-sm">
+          <Link href={`${TWO_STEP_PATHS.challenge}?next=${encodeURIComponent(next)}`} className="underline">
+            {w.back}
+          </Link>
         </p>
-      )}
-      <p className="text-sm">
-        <Link href={`${TWO_STEP_PATHS.challenge}?next=${encodeURIComponent(next)}`} className="underline">
-          Back to the code from my app
-        </Link>
-      </p>
-    </>
+      </FocusFrame>
+    </AdminTextProvider>
   );
 }

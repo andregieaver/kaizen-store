@@ -5,6 +5,9 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { normaliseRecoveryCode, type RandomBytes } from "@/lib/recovery-codes";
 import { createClient } from "@/lib/supabase/server";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import { attemptState, lockedText, normaliseTotp, TWO_STEP_LIMIT } from "@/lib/two-step";
 
 import { auditAccount, auditChange } from "./audit";
@@ -30,9 +33,9 @@ type Row = Record<string, unknown>;
 
 export type StepResult = { ok: true } | { ok: false; problem: string; locked?: boolean };
 
-const WRONG = "That code did not work. Check the time on your phone and try the next code.";
-const SIGNED_OUT = "Sign in again to continue.";
-const UNAVAILABLE = "We could not check your two-step status. Try again.";
+/** The words of the answers in a language (D312 A1): the account's own, which its first sign-in set from the browser. */
+const wordsFor = (lang: AdminLang) => adminText(lang, "signIn").problems;
+const langOf = (account: Pick<Account, "adminLocale">): AdminLang => adminLangOf(account.adminLocale);
 
 type Factor = { id: string; status?: string; factor_type?: string };
 
@@ -79,7 +82,7 @@ type Reservation = { ok: true; key: string } | { ok: false; problem: string; loc
  * until it passes (the success entry names it with `attempt`) or is cleared (`clearAttempt()`, when the Auth server could not be
  * asked), so a wrong code needs no entry of its own to count. Only the platform's row is written (`perStore: false`).
  */
-async function reserveAttempt(accountId: string, via: "totp" | "recovery" | "enrol", clock?: Date): Promise<Reservation> {
+async function reserveAttempt(accountId: string, via: "totp" | "recovery" | "enrol", lang: AdminLang, clock?: Date): Promise<Reservation> {
   const key = crypto.randomUUID();
   const state = await db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`two_step:${accountId}`}, 0))`);
@@ -94,7 +97,7 @@ async function reserveAttempt(accountId: string, via: "totp" | "recovery" | "enr
     `);
     return current;
   });
-  return state.locked ? { ok: false, problem: lockedText(state.minutes), locked: true } : { ok: true, key };
+  return state.locked ? { ok: false, problem: lockedText(state.minutes, lang), locked: true } : { ok: true, key };
 }
 
 /** Gives the try back: the Auth server could not be asked, which is no fault of the person's. */
@@ -108,8 +111,10 @@ async function recordFailure(accountId: string, via: "totp" | "recovery" | "enro
 }
 
 /** The words for a wrong code, with how many tries are left once it is down to the last ones. */
-function wrongText(remaining: number): string {
-  return remaining <= 2 ? `${WRONG} ${remaining === 1 ? "One try" : `${remaining} tries`} left before a pause.` : WRONG;
+function wrongText(remaining: number, lang: AdminLang): string {
+  const w = wordsFor(lang);
+  if (remaining > 2) return w.wrongCode;
+  return `${w.wrongCode} ${remaining === 1 ? w.oneTryLeft : fillWords(w.triesLeft, { count: remaining })}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,19 +128,20 @@ export type EnrolStart = { ok: true; factorId: string; qrCode: string; secret: s
  * factor and returns what the page shows: the QR code (an SVG), the secret to type by hand and the `otpauth://` address. Refused
  * where the person already has a factor, and where recovery codes could not be made (a person must never be left without a way back).
  */
-export async function startEnrolment(now: Date = new Date()): Promise<EnrolStart> {
-  if (!recoveryAvailable()) return { ok: false, problem: "Two-step sign-in cannot be set up on this server: it has no key for recovery codes." };
+export async function startEnrolment(now: Date = new Date(), lang: AdminLang = "en"): Promise<EnrolStart> {
+  const w = wordsFor(lang);
+  if (!recoveryAvailable()) return { ok: false, problem: w.noRecoveryKey };
   const known = await factorsOf();
-  if (!known) return { ok: false, problem: UNAVAILABLE };
-  if (known.factors.some((factor) => factor.status === "verified")) return { ok: false, problem: "Two-step sign-in is already on for your account." };
+  if (!known) return { ok: false, problem: w.unavailable };
+  if (known.factors.some((factor) => factor.status === "verified")) return { ok: false, problem: w.alreadyOn };
   try {
     const supabase = await createClient();
     for (const stale of known.factors.filter((factor) => factor.status !== "verified")) await supabase.auth.mfa.unenroll({ factorId: stale.id });
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "Kaizena Flow", friendlyName: `Authenticator ${now.toISOString()}` });
-    if (error || !data || data.type !== "totp") return { ok: false, problem: "Two-step sign-in could not be started. Try again." };
+    if (error || !data || data.type !== "totp") return { ok: false, problem: w.couldNotStart };
     return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
   } catch {
-    return { ok: false, problem: "Two-step sign-in could not be started. Try again." };
+    return { ok: false, problem: w.couldNotStart };
   }
 }
 
@@ -149,30 +155,32 @@ export type EnrolFinish = { ok: true; codes: string[] } | { ok: false; problem: 
 export async function finishEnrolment(account: Account, factorId: string, typed: string, options: { now?: Date; random?: RandomBytes } = {}): Promise<EnrolFinish> {
   const clock = options.now;
   const now = clock ?? new Date();
+  const lang = langOf(account);
+  const w = wordsFor(lang);
   const code = normaliseTotp(typed);
-  if (!code) return { ok: false, problem: "Type the six digits from your authenticator app." };
+  if (!code) return { ok: false, problem: w.typeSix };
   const known = await factorsOf();
-  if (!known) return { ok: false, problem: UNAVAILABLE };
+  if (!known) return { ok: false, problem: w.unavailable };
   const factor = known.factors.find((f) => f.id === factorId);
-  if (!factor || factor.status === "verified") return { ok: false, problem: "That set-up has expired. Start again." };
-  const attempt = await reserveAttempt(account.id, "enrol", clock);
+  if (!factor || factor.status === "verified") return { ok: false, problem: w.setUpExpired };
+  const attempt = await reserveAttempt(account.id, "enrol", lang, clock);
   if (!attempt.ok) return attempt;
   try {
     const supabase = await createClient();
     const challenge = await supabase.auth.mfa.challenge({ factorId });
     if (challenge.error || !challenge.data) {
       await clearAttempt(account.id, attempt.key);
-      return { ok: false, problem: UNAVAILABLE };
+      return { ok: false, problem: w.unavailable };
     }
     const verified = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.data.id, code });
     if (verified.error) {
       await recordFailure(account.id, "enrol", attempt.key);
       const after = await attemptsOf(account.id, clock ? now : new Date());
-      return { ok: false, problem: after.locked ? lockedText(after.minutes) : wrongText(after.remaining), locked: after.locked };
+      return { ok: false, problem: after.locked ? lockedText(after.minutes, lang) : wrongText(after.remaining, lang), locked: after.locked };
     }
   } catch {
     await clearAttempt(account.id, attempt.key);
-    return { ok: false, problem: UNAVAILABLE };
+    return { ok: false, problem: w.unavailable };
   }
 
   const set = await makeRecoveryCodes(account.id, options.random);
@@ -190,33 +198,35 @@ export async function finishEnrolment(account: Account, factorId: string, typed:
 /** The sign-in's second step: the six digits from the app. Five wrong in 15 minutes pause the account for 15 minutes (`TWO_STEP_LIMIT`). */
 export async function passSecondStep(account: Account, typed: string, clock?: Date): Promise<StepResult> {
   const now = clock ?? new Date();
+  const lang = langOf(account);
+  const w = wordsFor(lang);
   const state = await attemptsOf(account.id, now);
-  if (state.locked) return { ok: false, problem: lockedText(state.minutes), locked: true };
+  if (state.locked) return { ok: false, problem: lockedText(state.minutes, lang), locked: true };
   const code = normaliseTotp(typed);
-  if (!code) return { ok: false, problem: "Type the six digits from your authenticator app." };
+  if (!code) return { ok: false, problem: w.typeSix };
   const known = await factorsOf();
-  if (!known) return { ok: false, problem: UNAVAILABLE };
+  if (!known) return { ok: false, problem: w.unavailable };
   const factor = known.factors.find((f) => f.status === "verified" && (f.factor_type ?? "totp") === "totp");
-  if (!factor) return { ok: false, problem: SIGNED_OUT };
+  if (!factor) return { ok: false, problem: w.signInAgain };
   // The try is taken here, before the code is checked, under the account's lock: the early read above only spares the lock for a person already paused.
-  const attempt = await reserveAttempt(account.id, "totp", clock);
+  const attempt = await reserveAttempt(account.id, "totp", lang, clock);
   if (!attempt.ok) return attempt;
   try {
     const supabase = await createClient();
     const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id });
     if (challenge.error || !challenge.data) {
       await clearAttempt(account.id, attempt.key);
-      return { ok: false, problem: UNAVAILABLE };
+      return { ok: false, problem: w.unavailable };
     }
     const verified = await supabase.auth.mfa.verify({ factorId: factor.id, challengeId: challenge.data.id, code });
     if (verified.error) {
       await recordFailure(account.id, "totp", attempt.key);
       const after = await attemptsOf(account.id, clock ? now : new Date());
-      return { ok: false, problem: after.locked ? lockedText(after.minutes) : wrongText(after.remaining), locked: after.locked };
+      return { ok: false, problem: after.locked ? lockedText(after.minutes, lang) : wrongText(after.remaining, lang), locked: after.locked };
     }
   } catch {
     await clearAttempt(account.id, attempt.key);
-    return { ok: false, problem: UNAVAILABLE };
+    return { ok: false, problem: w.unavailable };
   }
   await auditAccount(account.id, "account.two_step_passed", { attempt: attempt.key }, { perStore: false });
   return { ok: true };
@@ -231,18 +241,20 @@ export async function passSecondStep(account: Account, typed: string, clock?: Da
  */
 export async function useRecoveryCode(account: Account, typed: string, clock?: Date): Promise<StepResult> {
   const now = clock ?? new Date();
+  const lang = langOf(account);
+  const w = wordsFor(lang);
   const state = await attemptsOf(account.id, now);
-  if (state.locked) return { ok: false, problem: lockedText(state.minutes), locked: true };
-  if (!normaliseRecoveryCode(typed)) return { ok: false, problem: "Type a recovery code: ten letters and digits, like K7QM2-9WXDB." };
+  if (state.locked) return { ok: false, problem: lockedText(state.minutes, lang), locked: true };
+  if (!normaliseRecoveryCode(typed)) return { ok: false, problem: w.typeRecovery };
   const admin = adminAuth();
-  if (!admin.ok || !recoveryAvailable()) return { ok: false, problem: admin.ok ? "Recovery is not available on this server. Ask a platform admin to reset your two-step." : admin.problem };
+  if (!admin.ok || !recoveryAvailable()) return { ok: false, problem: admin.ok ? w.recoveryUnavailable : admin.problem };
 
-  const attempt = await reserveAttempt(account.id, "recovery", clock);
+  const attempt = await reserveAttempt(account.id, "recovery", lang, clock);
   if (!attempt.ok) return attempt;
   if (!(await claimRecoveryCode(account.id, typed))) {
     await recordFailure(account.id, "recovery", attempt.key);
     const after = await attemptsOf(account.id, clock ? now : new Date());
-    return { ok: false, problem: after.locked ? lockedText(after.minutes) : "That recovery code did not work. Each code works once.", locked: after.locked };
+    return { ok: false, problem: after.locked ? lockedText(after.minutes, lang) : w.recoveryWrong, locked: after.locked };
   }
 
   // From here the code is spent: the account is marked for re-enrolment first, so even a failed removal leaves it re-enrolling.
@@ -251,7 +263,7 @@ export async function useRecoveryCode(account: Account, typed: string, clock?: D
   const left = await revokeRecoveryCodes(account.id);
   await auditAccount(account.id, "account.recovery_code_used", { attempt: attempt.key, factorsRemoved: removed.removed, ...(removed.ok ? {} : { removalFailed: true }), codesRevoked: left });
   await sendSecurityEmail(account.id, "recovery_code_used", { at: now, codesLeft: 0 });
-  if (!removed.ok) return { ok: false, problem: "Your recovery code was accepted, but your two-step could not be removed. Ask a platform admin to reset it." };
+  if (!removed.ok) return { ok: false, problem: w.recoveryNotRemoved };
   return { ok: true };
 }
 
@@ -293,8 +305,6 @@ export async function twoStepStatus(account: Pick<Account, "id">): Promise<{ enr
   };
 }
 
-const CONFIRM = "Confirm your second step first: sign out and in again, and type the code from your authenticator app.";
-
 /** Whether this session has passed its second step (Supabase's rule for changing a verified factor, and ours for changing the codes). */
 async function onSecondStep(): Promise<boolean> {
   const session = await readSession();
@@ -303,7 +313,7 @@ async function onSecondStep(): Promise<boolean> {
 
 /** Makes a new set of recovery codes, revoking the old; needs a session that has passed the second step. Returns the codes to show once. */
 export async function regenerateRecoveryCodes(account: Account, random?: RandomBytes): Promise<EnrolFinish> {
-  if (!(await onSecondStep())) return { ok: false, problem: CONFIRM };
+  if (!(await onSecondStep())) return { ok: false, problem: wordsFor(langOf(account)).confirmFirst };
   const set = await makeRecoveryCodes(account.id, random);
   if (!set.ok) return { ok: false, problem: set.problem };
   await auditAccount(account.id, "account.recovery_codes_generated", {}, { perStore: false });
@@ -312,17 +322,18 @@ export async function regenerateRecoveryCodes(account: Account, random?: RandomB
 
 /** Switches two-step off for the person: the factor is removed (Supabase needs a session at `aal2` for that), the codes revoked, an email sent. */
 export async function removeSecondStep(account: Account): Promise<StepResult> {
-  if (!(await onSecondStep())) return { ok: false, problem: CONFIRM };
+  const w = wordsFor(langOf(account));
+  if (!(await onSecondStep())) return { ok: false, problem: w.confirmFirst };
   const known = await factorsOf();
-  if (!known) return { ok: false, problem: UNAVAILABLE };
+  if (!known) return { ok: false, problem: w.unavailable };
   try {
     const supabase = await createClient();
     for (const factor of known.factors) {
       const gone = await supabase.auth.mfa.unenroll({ factorId: factor.id });
-      if (gone.error) return { ok: false, problem: "Two-step sign-in could not be switched off. Try again." };
+      if (gone.error) return { ok: false, problem: w.couldNotSwitchOff };
     }
   } catch {
-    return { ok: false, problem: "Two-step sign-in could not be switched off. Try again." };
+    return { ok: false, problem: w.couldNotSwitchOff };
   }
   await db().execute(sql`update commerce.accounts set two_step_since = null where id = ${account.id}::uuid`);
   await revokeRecoveryCodes(account.id);

@@ -14,6 +14,12 @@ export const commonEn = {
     language: "Language",
     signOut: "Sign out",
   },
+  /** What forms say on their own (`SubmitButton`, `PasswordField`). */
+  form: {
+    working: "Working …",
+    show: "Show",
+    hide: "Hide",
+  },
   language: {
     title: "Language",
     description: "The language the admin is shown in for you. Your stores' shoppers see the languages chosen for each store.",

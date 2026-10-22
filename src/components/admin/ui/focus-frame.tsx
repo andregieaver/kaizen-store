@@ -2,6 +2,8 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+
 import { CARD_CLASS } from "./card";
 
 /**
@@ -22,12 +24,14 @@ export type FocusFrameProps = {
   /** On the top bar's right: a link out ("Ask for a store"). */
   aside?: ReactNode;
   width?: keyof typeof WIDTH;
+  /** The language the page is written in (D312 A1), on the frame: the admin's root `<html lang>` is the account's, and nobody is signed in yet. */
+  lang?: AdminLang;
   children?: ReactNode;
 };
 
-export function FocusFrame({ title, description, back, aside, width = "narrow", children }: FocusFrameProps) {
+export function FocusFrame({ title, description, back, aside, width = "narrow", lang, children }: FocusFrameProps) {
   return (
-    <div data-admin-layout="focus" className="flex min-h-dvh flex-col bg-canvas">
+    <div data-admin-layout="focus" lang={lang ? ADMIN_LANG_FACTS[lang].tag : undefined} className="flex min-h-dvh flex-col bg-canvas">
       <header className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3 text-body-strong text-ink">
           <span aria-hidden className="flex size-9 items-center justify-center rounded-tile bg-brand text-title text-brand-ink">

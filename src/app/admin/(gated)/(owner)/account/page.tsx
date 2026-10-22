@@ -5,9 +5,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
-import { AdminLanguageField } from "@/components/admin/admin-text";
+import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
@@ -152,17 +152,20 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           Two-step sign-in
         </h2>
         {twoStep ? (
-          <ManageTwoStep
-            enrolled={twoStep.enrolled}
-            codesLeft={twoStep.codesLeft}
-            platformAdmin={account.platformAdmin}
-            recoveryAvailable={twoStep.recoveryAvailable}
-            setUpHref="/admin/sign-in/two-step/set-up?next=/admin/account"
-            account={account.email}
-            madeOn={new Date().toISOString().slice(0, 10)}
-            regenerate={regenerateRecoveryCodesAction}
-            remove={removeTwoStepAction}
-          />
+          // Its words are the sign-in area's (D312 A1), handed down here only.
+          <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "signIn"])}>
+            <ManageTwoStep
+              enrolled={twoStep.enrolled}
+              codesLeft={twoStep.codesLeft}
+              platformAdmin={account.platformAdmin}
+              recoveryAvailable={twoStep.recoveryAvailable}
+              setUpHref="/admin/sign-in/two-step/set-up?next=/admin/account"
+              account={account.email}
+              madeOn={new Date().toISOString().slice(0, 10)}
+              regenerate={regenerateRecoveryCodesAction}
+              remove={removeTwoStepAction}
+            />
+          </AdminTextProvider>
         ) : (
           <p className="text-sm text-muted">Sign in again to see your two-step sign-in.</p>
         )}

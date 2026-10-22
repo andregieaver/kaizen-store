@@ -8,6 +8,10 @@
  * person's to edit and is never read for this. `accounts.two_step_since` is a mirror for display and decides nothing.
  */
 
+import { fillWords } from "./admin-fill";
+import type { AdminLang } from "./admin-lang";
+import { adminText } from "./admin-text";
+
 /** What the gate knows about a session; `enrolled` is null when it could not be found out (Supabase Auth unreachable). */
 export type AssuranceInput = {
   /** The `aal` claim: `aal2` means a conventional sign-in plus a second factor. */
@@ -50,11 +54,12 @@ export function assuranceOf(input: AssuranceInput): Assurance {
   return { state: "ok" };
 }
 
-/** Why a person is held at enrolment, in a sentence for the page. */
-export function enrolReasonText(reason: EnrolReason, storeName?: string | null): string {
-  if (reason === "platform") return "Platform admins must use two-step sign-in.";
-  if (reason === "store") return `${storeName?.trim() || "This store"} requires two-step sign-in.`;
-  return "Your two-step sign-in was reset, so you need to set it up again.";
+/** Why a person is held at enrolment, in a sentence for the page, in the admin's language (D312 A1). */
+export function enrolReasonText(reason: EnrolReason, storeName?: string | null, lang: AdminLang = "en"): string {
+  const w = adminText(lang, "signIn").setUp;
+  if (reason === "platform") return w.platformRequires;
+  if (reason === "store") return fillWords(w.storeRequires, { store: storeName?.trim() || w.thisStore });
+  return w.reset;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +88,10 @@ export function attemptState(failures: readonly Date[], now: Date): AttemptState
 }
 
 /** The refusal's words while paused. */
-export const lockedText = (minutes: number): string => `Too many attempts. Wait ${minutes <= 1 ? "a minute" : `${minutes} minutes`}.`;
+export function lockedText(minutes: number, lang: AdminLang = "en"): string {
+  const w = adminText(lang, "signIn").problems;
+  return minutes <= 1 ? w.lockedMinute : fillWords(w.lockedMinutes, { minutes });
+}
 
 // ---------------------------------------------------------------------------
 // What is typed

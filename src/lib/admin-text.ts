@@ -3,6 +3,10 @@ import { commonEn, type CommonMessages } from "./admin-messages/common.en";
 import { commonNb } from "./admin-messages/common.nb";
 import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
 import { domainsNb } from "./admin-messages/domains.nb";
+import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
+import { platformLegalNb } from "./admin-messages/platform-legal.nb";
+import { signInEn, type SignInMessages } from "./admin-messages/sign-in.en";
+import { signInNb } from "./admin-messages/sign-in.nb";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -12,6 +16,8 @@ import { domainsNb } from "./admin-messages/domains.nb";
 export type AdminAreaMessages = {
   common: CommonMessages;
   domains: DomainsMessages;
+  platformLegal: PlatformLegalMessages;
+  signIn: SignInMessages;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -19,6 +25,8 @@ export type AdminArea = keyof AdminAreaMessages;
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
+  platformLegal: { en: platformLegalEn, nb: platformLegalNb },
+  signIn: { en: signInEn, nb: signInNb },
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */
@@ -30,3 +38,4 @@ export function adminText<A extends AdminArea>(lang: AdminLang, area: A): AdminA
 export function adminTexts<A extends AdminArea>(lang: AdminLang, areas: readonly A[]): Pick<AdminAreaMessages, A> {
   return Object.fromEntries(areas.map((area) => [area, adminText(lang, area)])) as Pick<AdminAreaMessages, A>;
 }
+
