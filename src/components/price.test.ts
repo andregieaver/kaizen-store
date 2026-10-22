@@ -178,7 +178,7 @@ describe("the purchase option's price (D25)", () => {
             currency: "NOK",
             locale: "nb-NO",
             vat: WITH_VAT,
-            labels: { vatIncluded: "inkl. mva.", vatExcluded: "eks. mva." },
+            labels: { vatIncluded: "inkl. mva.", vatExcluded: "ekskl. mva." },
             measure: props.measure,
             unitLabels: unitLabelsOf(nb),
           } as ComponentProps<typeof PlanPrice>,

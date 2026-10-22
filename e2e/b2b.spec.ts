@@ -41,7 +41,7 @@ test("a store selling to both asks, and shows each kind of shopper their prices 
   await expect(question).toBeHidden();
   const mug = page.locator(".product-card").filter({ hasText: "Demo: Keramikkopp" });
   await expect(mug).toContainText("199,20");
-  await expect(mug).toContainText("eks. mva.");
+  await expect(mug).toContainText("ekskl. mva.");
   await expect(page.locator(".product-card").filter({ hasText: "Demo: Handlenett" })).toBeVisible();
 
   // The choice is kept: no question on the next page, and the switch shows it.
@@ -79,6 +79,6 @@ test("a store selling only to businesses shows every price without VAT", async (
   await expect(page.getByRole("group", { name: "Jeg handler som" })).toHaveCount(0);
   const mug = page.locator(".product-card").filter({ hasText: "Demo: Keramikkopp" });
   await expect(mug).toContainText("199,20");
-  await expect(mug).toContainText("eks. mva.");
+  await expect(mug).toContainText("ekskl. mva.");
   await expect(mug).not.toContainText("249,00");
 });

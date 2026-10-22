@@ -547,7 +547,7 @@ export const nb: Messages = {
   continueShopping: "Fortsett å handle",
   products: "Produkter",
   vatIncluded: "inkl. mva.",
-  vatExcluded: "eks. mva.",
+  vatExcluded: "ekskl. mva.",
   /**
    * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
    * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
@@ -743,7 +743,7 @@ export const nb: Messages = {
     optional: "Står på bestillingen og fakturaen.",
   },
   vatLine: "Mva.",
-  totalExclVat: "Totalt eks. mva.",
+  totalExclVat: "Totalt ekskl. mva.",
   toPay: "Å betale",
   digitalConsent:
     "Jeg samtykker i at nedlastingen blir tilgjengelig straks etter betaling, og forstår at angreretten da faller bort.",
@@ -849,7 +849,7 @@ export const nb: Messages = {
   plans: {
     perMonth: "per måned",
     perYear: "per år",
-    exVat: "eks. mva.",
+    exVat: "ekskl. mva.",
     saveYearly: (percent: string): string => `Spar ${percent} % med årlig betaling`,
     fee: (percent: string): string => `${percent} gebyr per salg`,
     popular: "Mest populær",

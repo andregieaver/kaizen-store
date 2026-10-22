@@ -83,7 +83,7 @@ describe("the plans component (D142)", () => {
   });
 
   it("speaks the page's language, and draws nothing when no plan can be bought", () => {
-    expect(html(block(), data, "nb")).toContain("eks. mva.");
+    expect(html(block(), data, "nb")).toContain("ekskl. mva.");
     expect(html(block(), { ...data, plans: [] })).toBe("");
     expect(html(block({ currency: "SEK" }), { ...data, plans: [{ ...data.plans[0], prices: [] }] })).toBe("");
   });
