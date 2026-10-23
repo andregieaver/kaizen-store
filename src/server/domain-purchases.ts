@@ -164,12 +164,15 @@ export type BuyInput = {
  * Whether buying is open: for a store, to every store once moving away is built (decision 9), until then where a platform admin opened it;
  * for an account without a store, while the platform sells domains to the public (D317, `platform_settings.domains_public`).
  */
+/** Whether Kaizena Flow sells domains to people without a store (D317, Platform → Domains). */
+export async function domainsPublic(): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`select coalesce((select domains_public from commerce.platform_settings limit 1), false) as open`);
+  return row?.open === true;
+}
+
 export async function buyingOpen(holder: HolderRef): Promise<boolean> {
   const storeId = storeOf(holder);
-  if (!storeId) {
-    const [row] = await db().execute<Row>(sql`select coalesce((select domains_public from commerce.platform_settings limit 1), false) as open`);
-    return row?.open === true;
-  }
+  if (!storeId) return domainsPublic();
   const [row] = await db().execute<Row>(sql`
     select coalesce((select domains_open from commerce.platform_settings limit 1), false) or s.domain_buying as open
       from commerce.stores s where s.id = ${storeId}::uuid

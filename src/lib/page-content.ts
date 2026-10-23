@@ -76,6 +76,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "da",
   "en",
   "forgot-password",
+  "get-domain",
   "help",
   "mail",
   "nb",

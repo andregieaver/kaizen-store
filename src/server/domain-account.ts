@@ -8,6 +8,7 @@ import { limitRefusal } from "@/lib/usage-format";
 import { audit, type Account } from "./auth";
 import { accountHolder } from "./domain-holder";
 import { connectOwnedDomain } from "./domains";
+import { take as takeSlot } from "./domain-search";
 import { checkLimit } from "./limits";
 
 type Row = Record<string, unknown>;
@@ -59,7 +60,8 @@ export async function holdsDomains(accountId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
     select exists (select 1 from commerce.domain_registrations where account_id = ${accountId}::uuid and status <> 'transferred_out')
         or exists (select 1 from commerce.dns_zones where account_id = ${accountId}::uuid and status <> 'left')
-        or exists (select 1 from commerce.domain_purchases where account_id = ${accountId}::uuid and status in ('quoted', 'invoiced', 'paid', 'registering')) as holds
+        or exists (select 1 from commerce.domain_purchases where account_id = ${accountId}::uuid and status in ('quoted', 'invoiced', 'paid', 'registering'))
+        or exists (select 1 from commerce.accounts where id = ${accountId}::uuid and origin = 'domain') as holds
   `);
   return row?.holds === true;
 }
@@ -143,3 +145,25 @@ export async function unlinkDomain(account: Account, apex: string): Promise<Resu
 
 /** The holder an account's domain pages act as. */
 export const accountDomains = (account: Account) => accountHolder(account.id);
+
+/** Accounts a visitor may start in an hour, per address and in all: an account is only a row, but each start emails a link. */
+export const DOMAIN_STARTS_PER_VISITOR_PER_HOUR = 5;
+export const DOMAIN_STARTS_PER_HOUR = 200;
+
+/**
+ * Starting to buy a domain without a store (D317 4): the account for the email, made with `origin = 'domain'` when there is none (an
+ * existing account is used as it is, never changed). The caller emails a sign-in link to it and answers the same whatever the email
+ * was, so the form never tells who has an account. False when over the limits.
+ */
+export async function startDomainAccount(email: string, visitor: string, deps: { take?: (bucket: string) => Promise<number> } = {}): Promise<boolean> {
+  const take = deps.take ?? ((bucket: string) => takeSlot(null, bucket));
+  if ((await take(`domains:start:${visitor}`)) > DOMAIN_STARTS_PER_VISITOR_PER_HOUR) return false;
+  if ((await take("domains:start:all")) > DOMAIN_STARTS_PER_HOUR) return false;
+  const address = email.trim().toLowerCase();
+  await db().execute(sql`
+    insert into commerce.accounts (email, origin)
+    select ${address}, 'domain' where not exists (select 1 from commerce.accounts where lower(email) = ${address})
+    on conflict do nothing
+  `);
+  return true;
+}

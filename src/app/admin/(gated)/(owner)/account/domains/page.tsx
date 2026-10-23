@@ -14,7 +14,7 @@ import { requireAccount, type Account } from "@/server/auth";
 import { heldDomains, linkableStores } from "@/server/domain-account";
 import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dns";
 import { accountHolder } from "@/server/domain-holder";
-import { registrationHolder, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
+import { domainsPublic, registrationHolder, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
 import { storeRegistrations } from "@/server/domain-registrations";
 
 import {
@@ -43,7 +43,11 @@ export default async function YourDomainsPage() {
   const [held, stores] = await Promise.all([heldDomains(account.id), linkableStores(account.id)]);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={words.account.title} description={words.account.intro} />
+      <PageHeader
+        title={words.account.title}
+        description={words.account.intro}
+        actions={(await domainsPublic()) ? <ButtonLink kind="strong" href="/admin/account/domains/buy">{words.checkout.open}</ButtonLink> : undefined}
+      />
       <Card title={words.account.title}>
         {held.length === 0 ? (
           <p className="text-body text-muted">{words.account.none}</p>

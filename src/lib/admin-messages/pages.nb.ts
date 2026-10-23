@@ -536,6 +536,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Domenene dine",
     keywords: ["domener", "domene", "dns", "forny", "fornyelse", "registrering", "mine domener", "flytt domene", "navnetjenere"],
   },
+  "account:account.domains.buy": {
+    title: "Kjøp et domene",
+    keywords: ["kjøp domene", "registrer domene", "nytt domene"],
+  },
   "account:account.domains.move": {
     title: "Flytt et domene",
     keywords: ["flytt domene", "overfør domene", "overføringskode", "autorisasjonskode", "navnetjenere"],

@@ -810,6 +810,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["domains", "domain", "dns", "renew", "renewal", "registration", "my domains", "move domain", "nameservers"],
     tasks: ["See every domain you hold", "Use a domain with another of your stores", "Turn a domain's renewal on or off", "Change a domain's DNS records"],
   }),
+  account("account.domains.buy", "/account/domains/buy", "Buy a domain", "Buying a domain without a store, once Kaizena Flow sells them on their own: search, who buys (a private person in Norway or a business with its VAT number), the price with VAT, and paying on Stripe's page. ?domain= searches a name at once.", {
+    keywords: ["buy domain", "register domain", "new domain", "purchase domain"],
+  }),
   account("account.domains.move", "/account/domains/move/[domain]", "Move a domain", "Moving one of your domains away from Kaizena Flow: its DNS to another provider (checked first, with a way back for 30 days), the registration to another registrar with its transfer code, or both.", {
     keywords: ["move domain", "transfer domain", "transfer code", "auth code", "nameservers", "leave"],
   }),

@@ -435,3 +435,31 @@ describe("domains held by an account (D317)", () => {
     expect(await linkDomain(stranger, domain, storeId)).toMatchObject({ ok: false });
   });
 });
+
+describe("people without a store (D317 phase 2)", () => {
+  it("starts an account for a new email only, signs a domain account in, and answers a review", async () => {
+    const { startDomainAccount } = await import("./domain-account");
+    const { canSignIn } = await import("./auth");
+    const { decideReview } = await import("./domain-admin");
+    const email = `Holder-${run}@Example.com`;
+    expect(await canSignIn(email)).toBe(false);
+    expect(await startDomainAccount(email, `v-${run}`)).toBe(true);
+    expect(await startDomainAccount(email, `v-${run}`)).toBe(true);
+    const rows = await db().execute<Row>(sql`select origin from commerce.accounts where lower(email) = lower(${email})`);
+    expect(rows).toEqual([{ origin: "domain" }]);
+    expect(await canSignIn(email)).toBe(true);
+    // An existing account is never changed.
+    await startDomainAccount(owner.email, `v-${run}`);
+    const [kept] = await db().execute<Row>(sql`select origin from commerce.accounts where id = ${owner.id}::uuid`);
+    expect(kept.origin).toBe("store");
+    // The limit per visitor.
+    let last = true;
+    for (let i = 0; i < 6; i++) last = await startDomainAccount(`spam-${i}-${run}@example.com`, `spammer-${run}`);
+    expect(last).toBe(false);
+
+    const [p] = await db().execute<Row>(sql`select id from commerce.domain_purchases where apex = ${`munich-${run}.shop`}`);
+    expect(await decideReview(owner, String(p.id), false)).toEqual({ ok: true });
+    expect(await statusOf(`munich-${run}.shop`)).toBe("void");
+    expect(await decideReview(owner, String(p.id), true)).toMatchObject({ ok: false });
+  });
+});

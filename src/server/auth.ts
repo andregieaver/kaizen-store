@@ -409,6 +409,9 @@ export async function signInAccount(email: string): Promise<{ linked: boolean } 
         -- Outside hosts (D71) sign in to their own area.
         select 1 from commerce.hosts h
         where h.account_id = a.id and h.disabled_at is null
+      ) or a.origin = 'domain' or exists (
+        -- A domain's holder (D317) signs in to Your domains, with or without a store.
+        select 1 from commerce.domain_registrations r where r.account_id = a.id and r.status <> 'transferred_out'
       ))
   `);
   return row ? { linked: Boolean(row.linked) } : null;

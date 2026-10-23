@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { holdsDomains } from "@/server/domain-account";
+
 import { storesOf } from "@/components/admin/admin-shell-parts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { StoreCard } from "@/components/admin/store-card";
@@ -35,6 +37,8 @@ export default async function ControlCenterPage() {
     if (stores.length > 0) redirect("/admin/stores");
     if (hostings.length > 0) redirect("/admin/hosting");
     if (account.platformAdmin) redirect("/admin/platform");
+    // Someone who holds domains and no store (D317) lands on their domains.
+    if (await holdsDomains(account.id)) redirect("/admin/account/domains");
     return (
       <PageHeader title={w.title} meta={[w.noAccess]} />
     );

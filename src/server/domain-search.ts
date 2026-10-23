@@ -24,7 +24,7 @@ export const SEARCHES_PER_STORE_PER_HOUR = 60;
 export const SEARCHES_PER_VISITOR_PER_HOUR = 20;
 export const SEARCHES_ALL_PER_HOUR = 1_000;
 
-async function take(store: string | null, bucket: string): Promise<number> {
+export async function take(store: string | null, bucket: string): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     insert into commerce.chat_usage (store_id, bucket, "window", count)
     values (${store}::uuid, ${bucket}, date_trunc('hour', now()), 1)

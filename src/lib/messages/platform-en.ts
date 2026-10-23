@@ -173,6 +173,19 @@ export const platformEn = {
     },
   },
   // The domain search component on Kaizena Flow's own pages (D315, docs/domains.md 16). `{price}`.
+  domainStart: {
+    title: "Get your domain",
+    description: "Buy a domain from Kaizena Flow, with or without a store.",
+    intro: "Type your email. We send you a link that signs you in, and you finish buying {domain} there: no password needed.",
+    introNoDomain: "Type your email. We send you a link that signs you in, and you choose your domain there: no password needed.",
+    email: "Email",
+    submit: "Send me the link",
+    sent: "If that address can receive email, a sign-in link is on its way. Open it to finish buying your domain.",
+    invalidEmail: "Type a whole email address.",
+    tooMany: "That's a lot of tries. Try again in a little while.",
+    notConfigured: "Signing in isn't set up here yet.",
+    terms: "Buying a domain follows Kaizena Flow's terms and privacy notice.",
+  },
   domainSearch: {
     placeholder: "your store's name",
     search: "Search",

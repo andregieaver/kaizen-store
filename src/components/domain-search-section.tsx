@@ -10,7 +10,7 @@ import { DomainSearchBox } from "./lazy/blocks";
 /**
  * The domain search component on Kaizena Flow's own pages (D315, `docs/domains.md` 16): the page's own words, else the language's
  * (`platformText(lang).domainSearch`), prices in the block's currency, else NOK in Norwegian and EUR otherwise, and each free name's button
- * to sign-up with the name kept.
+ * to the email step of buying it (`/get-domain`, which leads to sign-up while domains aren't sold on their own, D317) with the name kept.
  */
 export function DomainSearchSection({ block, place }: { block: DomainSearchBlock; place: GridPlace }) {
   const lang = place.lang ?? "en";
@@ -34,7 +34,7 @@ export function DomainSearchSection({ block, place }: { block: DomainSearchBlock
       tlds={block.tlds && block.tlds.length > 0 ? block.tlds : SUGGESTED_TLDS}
       currency={block.currency ?? (lang === "nb" ? "NOK" : "EUR")}
       locale={lang === "nb" ? "nb-NO" : "en-GB"}
-      ctaHref={block.ctaHref || platformPath(lang, "/sign-up")}
+      ctaHref={block.ctaHref || platformPath(lang, "/get-domain")}
       button={{ className: look.className, style: look.style }}
     />
   );

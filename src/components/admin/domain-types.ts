@@ -46,3 +46,10 @@ export type MoveInActions = {
   start: (domain: string, zoneText: string, keys: string[], pointHere: boolean) => Promise<MoveInStartShape>;
   stop: (domain: string) => Promise<FormState>;
 };
+
+/** A price for a buyer without a store (D317 6): what the button names (`agreed`, without VAT) and what they pay with VAT. */
+export type CheckoutQuote =
+  | { ok: true; domain: string; currency: string; amountMinor: number; vatKind: "mva" | "reverse_charge" | "outside_scope"; ratePercent: number; vatMinor: number; totalMinor: number }
+  | { ok: false; problems: string[] };
+export type CheckoutBuyer = { kind: "consumer" | "business"; country: string; vatNumber: string };
+export type CheckoutActions = { search: DomainSearch; quote: (domain: string, buyer: CheckoutBuyer) => Promise<CheckoutQuote>; buy: DomainAction };

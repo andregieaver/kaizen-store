@@ -264,3 +264,13 @@ its words, `nameNeedsReview()`), is invoiced to the account's own customer on Ka
 waits after payment for a platform admin's yes when it is in review (`claim()` skips it). Renewals of an account's domain carry the VAT
 terms of its last purchase.
 
+**Phase 2 (2026-10-23).** A domain search's *Get started* leads to `/get-domain` (and `/no/get-domain`), which sends a sign-in link
+to the email (`startDomainCheckout()`): the account is made with `origin = 'domain'` when there is none (`startDomainAccount()`, at most
+five starts a visitor and 200 in all an hour, an existing account never changed), and the answer is the same for every address. While
+Kaizena Flow doesn't sell domains on their own the page goes to sign-up with the name, as before. Such accounts and anyone holding a domain
+may sign in (`signInAccount()`), land on *Your domains*, and buy at `/admin/account/domains/buy` (`DomainCheckout`): who buys and where,
+the price with the VAT worked out on the server (`checkoutQuoteAction()`), a consumer's consent, then the invoice is made at once and the
+buyer pays on Stripe's page. Platform → Domains has the switch (*Sell domains on their own*) and the purchases waiting for a look, approved
+or refused (`decideReview()`: a refused paid purchase is refunded in full, an unpaid one voided). Not built: the *Domain terms* page, which
+needs the lawyer (S3); until then the checkout points to Kaizena Flow's terms and the switch stays off.
+

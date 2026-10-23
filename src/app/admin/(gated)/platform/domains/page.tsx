@@ -8,10 +8,10 @@ import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
 import { formatMoney } from "@/lib/money";
 import { requirePlatformAdmin } from "@/server/auth";
-import { allRegistrations, domainsOpenToAll, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
+import { allRegistrations, domainsOpenToAll, domainsPublic, purchasesInReview, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
 import { domainPricingRows, latestEurRates } from "@/server/domain-prices";
 
-import { domainsOpenAction, saveDomainPricingAction, storeDomainBuyingAction } from "./actions";
+import { domainsOpenAction, domainsPublicAction, reviewDomainAction, saveDomainPricingAction, storeDomainBuyingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Domains" };
 
@@ -27,13 +27,15 @@ export default async function PlatformDomainsPage() {
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "domains").platform;
-  const [pricing, { rates, day }, openToAll, stores, registrations, purchases] = await Promise.all([
+  const [pricing, { rates, day }, openToAll, stores, registrations, purchases, sellsPublic, inReview] = await Promise.all([
     domainPricingRows(),
     latestEurRates(),
     domainsOpenToAll(),
     storesBuyingDomains(),
     allRegistrations(),
     purchasesNeedingALook(),
+    domainsPublic(),
+    purchasesInReview(),
   ]);
   const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }).format(new Date(iso));
 
@@ -110,6 +112,39 @@ export default async function PlatformDomainsPage() {
           )}
         </div>
       </Card>
+
+      <Card title={w.publicTitle} description={sellsPublic ? w.publicOn : w.publicOff}>
+        <ActionForm action={domainsPublicAction}>
+          {!sellsPublic && <input type="hidden" name="on" value="on" />}
+          <SubmitButton variant="secondary">{sellsPublic ? w.publicStop : w.publicStart}</SubmitButton>
+        </ActionForm>
+      </Card>
+
+      {inReview.length > 0 && (
+        <Card title={w.reviewTitle} description={w.reviewIntro} count={inReview.length}>
+          <ul className="flex flex-col divide-y divide-line">
+            {inReview.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
+                <span className="text-body-strong text-ink">{p.apex}</span>
+                <Chip signal="warning">{w.reviewWhy[p.review]}</Chip>
+                <span className="min-w-0 flex-1 text-caption text-muted">
+                  {p.holder} · {p.status}
+                  {p.vatNumber ? ` · ${p.vatNumber}` : ""} · {date(p.createdAt)}
+                </span>
+                <ActionForm action={reviewDomainAction} className="flex gap-2">
+                  <input type="hidden" name="purchase" value={p.id} />
+                  <SubmitButton name="answer" value="approve">
+                    {w.approve}
+                  </SubmitButton>
+                  <SubmitButton name="answer" value="refuse" variant="secondary">
+                    {w.refuse}
+                  </SubmitButton>
+                </ActionForm>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title={w.purchases}>
         {purchases.length === 0 ? (

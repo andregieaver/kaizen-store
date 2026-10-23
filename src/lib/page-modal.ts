@@ -268,6 +268,7 @@ const WORKING_PATHS = new Set([
   "sign-in",
   "sign-up",
   "forgot-password",
+  "get-domain",
 ]);
 
 export const isWorkingPath = (pathname: string): boolean =>
