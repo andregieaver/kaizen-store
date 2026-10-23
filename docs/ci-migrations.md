@@ -58,7 +58,9 @@ From then on, a migration file committed to `main` reaches production after the 
 ### Deploying
 
 Vercel's own build of `main` is switched off in `vercel.json` (`git.deploymentEnabled.main: false`;
-pull-request previews are unaffected). Production gets new code from the `pending` and `release` jobs in
+pull-request previews are unaffected), and so is its build of the agents' working branches (`claude/**`): the
+build prerenders from the database, and the preview environment has no `DATABASE_URL`, so every such build
+failed (2026-10-23). Production gets new code from the `pending` and `release` jobs in
 `ci.yml`, which call a Vercel deploy hook (paths above). The jobs are off until the repository variable
 `DEPLOY_VIA_CI` is `true`; the secret `VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings →
 Git → Deploy Hooks, branch `main`). `AUTO_MIGRATE` and `DEPLOY_VIA_CI` are repository *variables*, not secrets
