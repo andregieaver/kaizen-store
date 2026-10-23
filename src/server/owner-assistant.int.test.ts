@@ -121,6 +121,9 @@ describe("the owner assistant (D94)", () => {
       get_page: { page: "nowhere" },
       // A domain (D315) is asked for by name; one the store doesn't have is said so.
       check_domain: { domain: "nowhere.example" },
+      // Searching names it; listing DNS records names a domain whose DNS the store doesn't keep, which the tool says.
+      search_domains: { query: "nordisk butikk" },
+      list_dns_records: { domain: "nowhere.example" },
     };
     // A draft A/B test (D148) is a write that needs no yes: its own test makes one. So are tagging and archiving orders and writing a draft order (D173): they need arguments, and
     // `order-ops-tools.int.test.ts` runs each of them. Making a draft product and writing a draft's texts (D308) are too: `product-tools.int.test.ts` runs them. Building and changing a page's draft (D308) as well: `site-tools.int.test.ts` runs them.
@@ -128,7 +131,7 @@ describe("the owner assistant (D94)", () => {
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");
-      else if (tool.name === "get_customer" || tool.name === "explain_results" || tool.name === "explain_return" || tool.name === "explain_privacy_request" || tool.name === "get_page" || tool.name === "check_domain") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
+      else if (tool.name === "get_customer" || tool.name === "explain_results" || tool.name === "explain_return" || tool.name === "explain_privacy_request" || tool.name === "get_page" || tool.name === "check_domain" || tool.name === "list_dns_records") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
       else await expect(result, tool.name).resolves.toBeTruthy();
     }
     expect(await ownerTools.runOwnerTool(ctx, "get_product", { product: productHandle })).toMatchObject({

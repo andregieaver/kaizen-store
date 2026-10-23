@@ -26,6 +26,11 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   buy_domain: "owner",
   renew_domain: "owner",
   set_domain_renewal: "owner",
+  list_dns_records: "settings:read",
+  change_dns: "owner",
+  set_up_email: "owner",
+  verify_domain_for: "owner",
+  undo_dns_change: "owner",
   // Looking (the page's `read`)
   store_overview: "owner",
   sales_summary: "analytics:read",

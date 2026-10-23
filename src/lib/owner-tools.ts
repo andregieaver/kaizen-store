@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
+import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
 import { GOALS } from "./experiments";
@@ -1002,6 +1003,56 @@ export const OWNER_TOOLS = [
     "Renews one of the store's domains registered through Kaizena Flow for a year now (D315), at today's renewal price, paid on Kaizena Flow's invoice first. A domain that renews by itself needs nothing: say when it renews instead. Needs the owner's approval with the price.",
     z.object({ domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it.") }),
     "spend",
+  ),
+  tool(
+    "list_dns_records",
+    "The DNS records of one of the store's domains whose DNS Kaizena Flow keeps (D315), read live: each record's type, name and value, which are kept for the store (never changed by you), and the latest changes with their ids for undo_dns_change. Read-only.",
+    z.object({ domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it.") }),
+  ),
+  tool(
+    "change_dns",
+    "Adds and removes DNS records of a domain whose DNS Kaizena Flow keeps (D315). Use only values the owner gave you or a finding named: never invent a record. It is planned first: a record kept for the store, a CNAME beside other records, a second SPF record (merged instead) and a malformed value are refused with the reason. Needs the owner's yes unless they set DNS changes to automatic; a change that stops or moves email always asks. Every change can be undone with undo_dns_change.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      add: z.array(toolRecord).max(20).default([]).describe("Records to add."),
+      remove: z.array(toolRecord).max(20).default([]).describe("Records to remove, as list_dns_records gives them."),
+    }),
+    "domain",
+  ),
+  tool(
+    "set_up_email",
+    "Sets up email for a domain whose DNS Kaizena Flow keeps (D315), from Kaizena Flow's recipes: google_workspace (Google's MX and SPF; the owner's verification and DKIM values optional), microsoft_365 (the mail server and autodiscover values the owner copies from their Microsoft 365 admin, and the MS=ms… verification), other (the records any other provider shows, pasted by the owner as lines like MX @ mx.example.com 10; replace_email to replace the email records there), or dmarc (a starting DMARC policy, none unless the owner says). Values only from the owner. Moving email always asks the owner first.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      provider: z.enum(EMAIL_PROVIDERS).describe("What to set up."),
+      mx: z.string().trim().max(253).optional().describe("Microsoft 365: the mail server value it shows."),
+      autodiscover: z.string().trim().max(253).optional().describe("Microsoft 365: the autodiscover target it shows."),
+      verification: z.string().trim().max(500).optional().describe("The provider's verification value, if the owner has it."),
+      dkim: z.string().trim().max(4000).optional().describe("Google Workspace: the DKIM value it shows."),
+      records: z.string().trim().max(8000).optional().describe("Other providers: the records they show, one a line."),
+      replace_email: z.boolean().optional().describe("Other providers: replace the email records there."),
+      policy: z.enum(["none", "quarantine", "reject"]).optional().describe("DMARC: the policy (none unless the owner says)."),
+    }),
+    "domain",
+  ),
+  tool(
+    "verify_domain_for",
+    "Adds the TXT record a service gave the owner to prove the domain is theirs (Google Search Console, Meta, Pinterest, a mail provider) to a domain whose DNS Kaizena Flow keeps (D315). The value exactly as the owner pasted it. Needs the owner's yes unless DNS changes are automatic.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      value: z.string().trim().min(3).max(500).describe("The value the service gave, such as google-site-verification=…"),
+      name: z.string().trim().max(200).optional().describe("The record's name if the service named one; empty for the domain itself."),
+    }),
+    "domain",
+  ),
+  tool(
+    "undo_dns_change",
+    "Puts a DNS change back (D315), while the records are still as that change left them; otherwise says so. The change's id comes from list_dns_records. Needs the owner's yes unless DNS changes are automatic.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      change: z.string().uuid().describe("The change's id, from list_dns_records."),
+    }),
+    "domain",
   ),
   tool(
     "set_domain_renewal",

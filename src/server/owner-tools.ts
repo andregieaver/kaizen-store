@@ -64,7 +64,23 @@ import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
 import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
-import { buyDomainTool, checkDomainTool, listDomainsTool, preflightDomainTool, renewDomainTool, searchDomainsTool, setDomainRenewalTool } from "./domain-tools";
+import {
+  buyDomainTool,
+  changeDnsTool,
+  checkDomainTool,
+  dnsGateNeeded,
+  listDnsRecordsTool,
+  listDomainsTool,
+  preflightDnsTool,
+  preflightDomainTool,
+  renewDomainTool,
+  searchDomainsTool,
+  setDomainRenewalTool,
+  setUpEmailTool,
+  undoDnsChangeTool,
+  verifyDomainForTool,
+} from "./domain-tools";
+import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
@@ -1900,6 +1916,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightReturnTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A DNS change that couldn't be made is refused now, with the plan's reasons, never kept for a yes (D315).
+  if (DNS_RECORD_TOOLS.has(name)) {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightDnsTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A domain that can't be bought, renewed or changed is refused now, never kept for a yes (D315).
   if (name === "buy_domain" || name === "renew_domain" || name === "set_domain_renewal") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2117,6 +2140,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   buy_domain: buyDomainTool,
   renew_domain: renewDomainTool,
   set_domain_renewal: setDomainRenewalTool,
+  list_dns_records: listDnsRecordsTool,
+  change_dns: changeDnsTool,
+  set_up_email: setUpEmailTool,
+  verify_domain_for: verifyDomainForTool,
+  undo_dns_change: undoDnsChangeTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,
@@ -2183,6 +2211,8 @@ export async function gateNeeded(store: Store, name: string, raw: unknown): Prom
   const args = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   // A menu waits for a yes only while it is on the site, a setup change only once the store is open (D308).
   if (name === "save_menu") return menuGateNeeded({ store }, args);
+  // A DNS change waits for a yes unless the store set DNS changes to automatic and it leaves email alone (D315 decision 5).
+  if (DNS_RECORD_TOOLS.has(name)) return dnsGateNeeded({ account: { id: "", email: "", name: null, platformAdmin: false }, store }, name, args);
   if (SETUP_TOOLS.has(name)) return setupGateNeeded(store, name);
   if (!GATED_WHEN_LIVE.has(name)) return true;
   return productGateNeeded(store, args);

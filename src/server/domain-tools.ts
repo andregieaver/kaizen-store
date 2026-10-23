@@ -1,7 +1,11 @@
 import "server-only";
 
 import { domainsEn } from "@/lib/admin-messages/domains.en";
+import { effectText, isProtected, type DnsChange, type DnsPlan } from "@/lib/dns-plan";
+import { describeRecord } from "@/lib/dns-records";
+import { recipeChanges } from "@/lib/dns-recipes";
 import { registrantInput } from "@/lib/domain-registrant";
+import { changesOf, emailRecipe } from "@/lib/domain-tools";
 import { findingText, worstSeverity, type Finding } from "@/lib/domain-health";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -9,6 +13,7 @@ import type { OwnerToolInput } from "@/lib/owner-tools";
 import type { Account } from "./auth";
 import { storeDomainHealth, type DomainHealth, type HealthDeps } from "./domain-health";
 import { afterAnswer } from "./after-answer";
+import { applyDnsChange, dnsAuto, dnsHistory, previewDnsChange, storeZone, undoDnsChange, zoneRecords } from "./domain-dns";
 import { listStoreDomains } from "./domains";
 import { domainPricingRows, storeDomainCurrency } from "./domain-prices";
 import { buyingOpen, chargeDomainPurchases, quoteDomain, renewalOffer, renewDomainNow, setDomainRenewal, startDomainPurchase } from "./domain-purchases";
@@ -193,4 +198,119 @@ export async function setDomainRenewalTool(ctx: Ctx, { domain, renew }: OwnerToo
     done: renew ? `${result.registration.apex} renews by itself: it's invoiced 30 days before ${expires}.` : `${result.registration.apex} won't renew: it stops working on ${expires}.`,
     page: page(ctx.store),
   };
+}
+
+// ---------------------------------------------------------------------------
+// DNS (D315 phase 3)
+// ---------------------------------------------------------------------------
+
+/** The changes a DNS tool's call stands for, planned on the live records; the reason when it can't be planned. */
+async function dnsChangesFor(ctx: Ctx, name: string, input: Record<string, unknown>): Promise<{ apex: string; changes: DnsChange[]; undoOf?: string } | { problem: string }> {
+  const domain = normal(String(input.domain ?? ""));
+  const zone = await storeZone(ctx.store.id, domain);
+  if (!zone) return { problem: `Kaizena Flow doesn't keep the DNS of ${domain}: its records are changed where it is hosted. check_domain says which records it needs.` };
+  if (name === "change_dns") {
+    const args = input as OwnerToolInput<"change_dns">;
+    return { apex: zone.apex, changes: changesOf(args.add ?? [], args.remove ?? []) };
+  }
+  if (name === "verify_domain_for") {
+    const made = recipeChanges("verification", { value: String(input.value ?? ""), name: String(input.name ?? "") }, []);
+    return made.ok ? { apex: zone.apex, changes: made.changes } : { problem: made.problems.join(" ") };
+  }
+  if (name === "set_up_email") {
+    const read = await zoneRecords(ctx.store.id, zone.apex);
+    if (!read.ok) return { problem: read.problems.join(" ") };
+    const { recipe, values } = emailRecipe(input as OwnerToolInput<"set_up_email">);
+    const made = recipeChanges(recipe, values, read.records);
+    return made.ok ? { apex: zone.apex, changes: made.changes } : { problem: made.problems.join(" ") };
+  }
+  return { problem: "Not a DNS change." };
+}
+
+/** A DNS tool's call, planned now: refused with the plan's reasons, never kept for a yes when it can't be made. */
+export async function preflightDnsTool(ctx: Ctx, name: string, input: Record<string, unknown>): Promise<void> {
+  if (name === "undo_dns_change") {
+    const history = await dnsHistory(ctx.store.id, normal(String(input.domain ?? "")));
+    const entry = history.find((h) => h.id === String(input.change ?? ""));
+    if (!entry) return fail("That change isn't one of this domain's. list_dns_records gives their ids.");
+    if (entry.undoneAt) return fail("That change was undone already.");
+    return;
+  }
+  const made = await dnsChangesFor(ctx, name, input);
+  if ("problem" in made) return fail(made.problem);
+  const preview = await previewDnsChange(ctx.store.id, made.apex, made.changes);
+  if (!preview.ok) return fail(preview.problems.join(" "));
+  if (!preview.plan.ok) return fail(preview.plan.problems.join(" ") || "Nothing would change: those records are there already.");
+}
+
+/** What a DNS call does, in words for the owner's yes, with the fingerprint of the records it was planned on kept with the call. */
+export async function dnsApprovalDetails(ctx: Ctx, name: string, args: Record<string, unknown>): Promise<{ summary: string; args: Record<string, unknown>; touchesEmail: boolean } | null> {
+  if (name === "undo_dns_change") return { summary: `Undo the DNS change ${String(args.change ?? "")} on ${normal(String(args.domain ?? ""))}.`, args, touchesEmail: false };
+  const made = await dnsChangesFor(ctx, name, args);
+  if ("problem" in made) return null;
+  const preview = await previewDnsChange(ctx.store.id, made.apex, made.changes);
+  if (!preview.ok || !preview.plan.ok) return null;
+  const words = preview.plan.effects.map((e) => effectText(e, domainsEn.dns.effects));
+  const lines = [...preview.plan.removes.map((r) => `− ${describeRecord(r, made.apex)}`), ...preview.plan.adds.map((r) => `+ ${describeRecord(r, made.apex)}`)];
+  return { summary: [`Change the DNS of ${made.apex}: ${words.join(" ")}`, ...lines].join("\n").slice(0, 1800), args: { ...args, rev: preview.plan.rev }, touchesEmail: preview.plan.touchesEmail };
+}
+
+/**
+ * Whether a DNS call waits for the owner's yes (D315 decision 5): always, unless the store set DNS changes to automatic; then only a change
+ * that stops or moves email (decision 5a) waits.
+ */
+export async function dnsGateNeeded(ctx: Ctx, name: string, args: Record<string, unknown>): Promise<boolean> {
+  if (!(await dnsAuto(ctx.store.id))) return true;
+  if (name === "undo_dns_change") return false;
+  const details = await dnsApprovalDetails(ctx, name, args);
+  return details ? details.touchesEmail : true;
+}
+
+const applied = (apex: string, plan: DnsPlan, store: Store) => ({
+  done: `Changed the DNS of ${apex}. ${plan.effects.map((e) => effectText(e, domainsEn.dns.effects)).join(" ")} It's live at Kaizena Flow's nameservers now; some networks may show the old answer for up to an hour.`,
+  page: page(store),
+});
+
+async function runDnsTool(ctx: Ctx, name: string, input: Record<string, unknown>) {
+  const made = await dnsChangesFor(ctx, name, input);
+  if ("problem" in made) return fail(made.problem);
+  const automatic = !input.rev && (await dnsAuto(ctx.store.id));
+  const result = await applyDnsChange(ctx.account, ctx.store.id, made.apex, made.changes, {
+    source: name === "change_dns" || name === "verify_domain_for" ? "ai_manager" : "recipe",
+    rev: input.rev ? String(input.rev) : undefined,
+    automatic,
+  });
+  if (!result.ok) return fail(result.problems.join(" "));
+  return applied(made.apex, result.plan, ctx.store);
+}
+
+/** `list_dns_records`: the live records, which are the store's own, and the latest changes. */
+export async function listDnsRecordsTool(ctx: Ctx, { domain }: OwnerToolInput<"list_dns_records">) {
+  const read = await zoneRecords(ctx.store.id, normal(domain));
+  if (!read.ok) return fail(read.problems.join(" "));
+  const history = await dnsHistory(ctx.store.id, read.zone.apex, 10);
+  return {
+    domain: read.zone.apex,
+    records: read.records.map((r) => ({
+      type: r.type,
+      name: r.name || "@",
+      value: r.type === "SRV" && r.srv ? `${r.srv.priority} ${r.srv.weight} ${r.srv.port} ${r.srv.target}` : r.value,
+      ...(r.type === "MX" ? { priority: r.mxPriority } : {}),
+      ...(isProtected(r, read.connected) ? { kept_for_the_store: true } : {}),
+    })),
+    changes: history.map((h) => ({ id: h.id, what: h.summary, when: h.createdAt.slice(0, 16).replace("T", " "), by: h.source === "ai_manager" || h.source === "recipe" ? "the AI manager" : (h.actor ?? "Kaizena Flow"), undone: h.undoneAt !== null })),
+    automatic: await dnsAuto(ctx.store.id),
+    page: page(ctx.store),
+  };
+}
+
+export const changeDnsTool = (ctx: Ctx, input: OwnerToolInput<"change_dns">) => runDnsTool(ctx, "change_dns", input as unknown as Record<string, unknown>);
+export const setUpEmailTool = (ctx: Ctx, input: OwnerToolInput<"set_up_email">) => runDnsTool(ctx, "set_up_email", input as unknown as Record<string, unknown>);
+export const verifyDomainForTool = (ctx: Ctx, input: OwnerToolInput<"verify_domain_for">) => runDnsTool(ctx, "verify_domain_for", input as unknown as Record<string, unknown>);
+
+/** `undo_dns_change`. */
+export async function undoDnsChangeTool(ctx: Ctx, { change }: OwnerToolInput<"undo_dns_change">) {
+  const result = await undoDnsChange(ctx.account, ctx.store.id, change);
+  if (!result.ok) return fail(result.problems.join(" "));
+  return { done: "Put the change back. It's live at Kaizena Flow's nameservers now.", page: page(ctx.store) };
 }

@@ -4,6 +4,9 @@ import { Suspense } from "react";
 import { DomainBuyer } from "@/components/admin/domain-buyer";
 import { DomainHealthCard } from "@/components/admin/domain-health-card";
 import { DomainRegistrationsCard } from "@/components/admin/domain-registrations-card";
+import { DnsZoneCard } from "@/components/admin/dns-zone-card";
+import { isProtected } from "@/lib/dns-plan";
+import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dns";
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -22,7 +25,11 @@ import { domainLanguages } from "@/lib/custom-domains";
 
 import {
   addDomainAction,
+  applyDnsAction,
   buyDomainAction,
+  checkDnsAction,
+  dnsAutoAction,
+  undoDnsAction,
   checkDomainAction,
   domainRenewalAction,
   languageDomainAction,
@@ -58,6 +65,9 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
       <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <DomainHealth storeId={store.id} lang={lang} />
+      </Suspense>
+      <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
+        <KeptDns member={current} lang={lang} />
       </Suspense>
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <GetADomain member={current} lang={lang} />
@@ -140,6 +150,65 @@ async function GetADomain({ member, lang }: { member: Membership; lang: ReturnTy
         closedWhy={!owner ? words.get.ownerOnly : !open ? words.get.notOpen : null}
         registrant={suggestedRegistrant(member)}
       />
+    </>
+  );
+}
+
+/** The DNS Kaizena Flow keeps for the store's domains (D315 phase 3): records, set-ups and history, read live. */
+async function KeptDns({ member, lang }: { member: Membership; lang: ReturnType<typeof adminLangOf> }) {
+  const { store } = member;
+  const zones = await storeZones(store.id);
+  if (zones.length === 0) return null;
+  const words = adminText(lang, "domains").dns;
+  const owner = memberCan(member, "owner");
+  const auto = await dnsAuto(store.id);
+  const cards = await Promise.all(
+    zones.map(async (zone) => {
+      const [read, history] = await Promise.all([zoneRecords(store.id, zone.apex), dnsHistory(store.id, zone.apex, 20)]);
+      return { zone, read, history };
+    }),
+  );
+  return (
+    <>
+      {cards.map(({ zone, read, history }) =>
+        read.ok ? (
+          <DnsZoneCard
+            key={zone.id}
+            apex={zone.apex}
+            records={read.records.map((r) => ({
+              id: r.id,
+              type: r.type,
+              name: r.name,
+              value: r.type === "SRV" && r.srv ? `${r.srv.priority} ${r.srv.weight} ${r.srv.port} ${r.srv.target}` : r.value,
+              priority: r.type === "MX" ? (r.mxPriority ?? 0) : null,
+              kept: isProtected(r, read.connected),
+            }))}
+            history={history.map((h) => ({
+              id: h.id,
+              summary: h.summary,
+              by: h.source === "ai_manager" || h.source === "recipe" && h.automatic ? words.byAi : (h.actor ?? "Kaizena Flow"),
+              when: h.createdAt,
+              automatic: h.automatic,
+              undone: h.undoneAt !== null,
+              isUndo: h.source === "undo",
+            }))}
+            words={words}
+            owner={owner}
+            auto={auto}
+            locale={ADMIN_LANG_FACTS[lang].locale}
+            actions={{
+              check: checkDnsAction.bind(null, store.slug),
+              apply: applyDnsAction.bind(null, store.slug),
+              undo: undoDnsAction.bind(null, store.slug),
+              auto: dnsAutoAction.bind(null, store.slug),
+            }}
+          />
+        ) : (
+          <p key={zone.id} className="text-body text-muted">
+            {zone.apex}: {read.problems.join(" ")}
+          </p>
+        ),
+      )}
     </>
   );
 }

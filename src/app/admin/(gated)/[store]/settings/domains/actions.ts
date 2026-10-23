@@ -13,6 +13,10 @@ import { domainPricingRows, storeDomainCurrency } from "@/server/domain-prices";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal, startDomainPurchase } from "@/server/domain-purchases";
 import { storeRegistrations } from "@/server/domain-registrations";
 import { searchDomains, type SearchAnswer } from "@/server/domain-search";
+import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange, zoneRecords } from "@/server/domain-dns";
+import { effectText, type DnsChange } from "@/lib/dns-plan";
+import { describeRecord } from "@/lib/dns-records";
+import { parseRecordLines, recipeChanges, RECIPE_IDS, type RecipeId } from "@/lib/dns-recipes";
 
 /** A store's own domains (P8) are the owner's: they decide where the store lives. */
 const asOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
@@ -133,4 +137,77 @@ export async function renewDomainAction(storeSlug: string, _state: FormState, fo
   if (!result.ok) return { status: "error", messages: result.problems };
   after(() => chargeDomainPurchases({ storeId: member.store.id }).then(() => undefined));
   return done([adminText(adminLangOf(member.account.adminLocale), "domains").registrations.renewing.replaceAll("{domain}", domain)]);
+}
+
+// ---------------------------------------------------------------------------
+// DNS kept by Kaizena Flow (D315 phase 3): owners only, every change checked first.
+// ---------------------------------------------------------------------------
+
+export type DnsDraft =
+  | { kind: "records"; add: string; remove: string[] }
+  | { kind: "recipe"; recipe: RecipeId; values: Record<string, string> };
+
+export type DnsCheck = { ok: true; effects: string[]; lines: string[]; rev: string; touchesEmail: boolean } | { ok: false; problems: string[] };
+
+/** The changes a draft stands for, on the zone's live records. */
+async function draftChanges(storeId: string, apex: string, draft: DnsDraft): Promise<{ ok: true; changes: DnsChange[] } | { ok: false; problems: string[] }> {
+  const read = await zoneRecords(storeId, apex);
+  if (!read.ok) return read;
+  if (draft.kind === "recipe") {
+    if (!(RECIPE_IDS as string[]).includes(draft.recipe)) return { ok: false, problems: ["Choose what to set up."] };
+    return recipeChanges(draft.recipe, draft.values ?? {}, read.records);
+  }
+  const parsed = parseRecordLines(String(draft.add ?? "").slice(0, 8000));
+  if (parsed.problems.length > 0) return { ok: false, problems: parsed.problems };
+  const removes = read.records.filter((r) => (draft.remove ?? []).includes(r.id));
+  return { ok: true, changes: [...removes.map((r): DnsChange => ({ op: "remove", record: r })), ...parsed.records.map((r): DnsChange => ({ op: "add", record: r }))] };
+}
+
+/** Checks a DNS change and says what it does, in the owner's language; nothing is changed. */
+export async function checkDnsAction(storeSlug: string, apex: string, draft: DnsDraft): Promise<DnsCheck> {
+  const member = await asOwner(storeSlug);
+  if (!member) return { ok: false, problems: notOwner.messages };
+  const words = adminText(adminLangOf(member.account.adminLocale), "domains").dns;
+  const made = await draftChanges(member.store.id, apex, draft);
+  if (!made.ok) return made;
+  const preview = await previewDnsChange(member.store.id, apex, made.changes);
+  if (!preview.ok) return preview;
+  const { plan } = preview;
+  if (!plan.ok) return { ok: false, problems: plan.problems.length > 0 ? plan.problems : [words.nothing] };
+  return {
+    ok: true,
+    effects: plan.effects.map((e) => effectText(e, words.effects)),
+    lines: [...plan.removes.map((r) => `− ${describeRecord(r, apex)}`), ...plan.adds.map((r) => `+ ${describeRecord(r, apex)}`)],
+    rev: plan.rev,
+    touchesEmail: plan.touchesEmail,
+  };
+}
+
+/** Makes a checked DNS change: refused when the records moved since the check (`rev`). */
+export async function applyDnsAction(storeSlug: string, apex: string, draft: DnsDraft, rev: string): Promise<FormState> {
+  const member = await asOwner(storeSlug);
+  if (!member) return notOwner;
+  const words = adminText(adminLangOf(member.account.adminLocale), "domains").dns;
+  const made = await draftChanges(member.store.id, apex, draft);
+  if (!made.ok) return { status: "error", messages: made.problems };
+  const result = await applyDnsChange(member.account, member.store.id, apex, made.changes, { source: draft.kind === "recipe" ? "recipe" : "editor", rev });
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([words.done]);
+}
+
+/** Undoes a DNS change while the records are as it left them. */
+export async function undoDnsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await asOwner(storeSlug);
+  if (!member) return notOwner;
+  const result = await undoDnsChange(member.account, member.store.id, String(form.get("change") ?? ""));
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([adminText(adminLangOf(member.account.adminLocale), "domains").dns.done]);
+}
+
+/** The owner's switch: the AI manager changes DNS records without asking (D315 decision 5). */
+export async function dnsAutoAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await asOwner(storeSlug);
+  if (!member) return notOwner;
+  await setDnsAuto(member.account, member.store.id, form.get("on") === "on");
+  return done([adminText(adminLangOf(member.account.adminLocale), "domains").registrations.saved]);
 }

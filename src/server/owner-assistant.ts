@@ -21,7 +21,9 @@ import { draftApprovalDetails } from "./order-ops-tools";
 import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
-import { domainApprovalDetails } from "./domain-tools";
+import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
+
+import { dnsApprovalDetails, domainApprovalDetails } from "./domain-tools";
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { setupApprovalWords } from "./setup-tools";
@@ -654,6 +656,14 @@ export async function keepForApproval(
   }
   // A domain's purchase or renewal is described with today's price, which is kept with the call (a value the model passed is replaced): the
   // owner's yes is for that price only, and a different price later is refused (D315).
+  // A DNS change is described by its plan, with the fingerprint of the records it was planned on kept with the call (D315).
+  if (store && DNS_RECORD_TOOLS.has(tool)) {
+    const details = await dnsApprovalDetails({ account: ctx.account, store }, tool, args);
+    if (details) {
+      summary = details.summary;
+      args = details.args;
+    }
+  }
   if (store && (tool === "buy_domain" || tool === "renew_domain")) {
     const details = await domainApprovalDetails({ account: ctx.account, store }, tool, args);
     if (details) {
