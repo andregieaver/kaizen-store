@@ -1,4 +1,4 @@
-# Domains: buying, DNS by the AI manager, and moving away (D314, proposed)
+# Domains: buying, DNS by the AI manager, and moving away (D315, proposed)
 
 The owner (22 October 2026): "If we wanted to implement a new domain search, and the ability purchase domain directly on our platform.
 How could we offer such a service?" and then: "One big headache i want to release along the way is handling dns settings and other domain
