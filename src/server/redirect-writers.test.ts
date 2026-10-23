@@ -122,7 +122,8 @@ describe("the proxy", () => {
   it("imports only what it is allowed to", () => {
     const imports = [...source.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]).sort();
     expect(imports).toEqual(
-      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/paths", "@/server/experiments", "@/server/not-found", "@/server/redirect-resolve", "next/server"].sort(),
+      // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's.
+      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/paths", "@/lib/site", "@/server/experiments", "@/server/holding", "@/server/not-found", "@/server/redirect-resolve", "next/server"].sort(),
     );
   });
 

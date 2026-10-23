@@ -135,6 +135,13 @@ export const domainsEn = {
     priceChanged: "Look at the price again.",
   },
   account: {
+    holdingTitle: "While no store uses it",
+    holdingParked: "Show a “coming soon” page",
+    holdingRedirect: "Send visitors to another address",
+    holdingOff: "Show nothing",
+    holdingTo: "Address",
+    holdingSave: "Save",
+    holdingSaved: "Saved. It shows within a minute.",
     title: "Your domains",
     intro: "Every domain you hold through Kaizena Flow, whichever store uses it. A domain is yours: a store uses it only while you let it.",
     none: "You don't hold a domain through Kaizena Flow yet. Buy one, or move one here, from a store's Domains page.",

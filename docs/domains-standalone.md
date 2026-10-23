@@ -274,3 +274,10 @@ buyer pays on Stripe's page. Platform → Domains has the switch (*Sell domains 
 or refused (`decideReview()`: a refused paid purchase is refunded in full, an unpaid one voided). Not built: the *Domain terms* page, which
 needs the lawyer (S3); until then the checkout points to Kaizena Flow's terms and the switch stays off.
 
+**Phase 3 (2026-10-23).** A domain whose DNS is kept here and that no store uses answers by itself: the proxy asks `holdingFor()` for a host
+that is no store's and not Kaizena Flow's own (`mayBeHeld()`, read at most every 30 seconds a host, no deployment) and rewrites to the
+holding page (`/holding/{domain}`, its own root: the name, *Coming soon* in the registrant's language, *Made with Kaizena Flow*, `noindex`,
+no cookies) or sends the holder's redirect (308, `cleanHoldingRedirect()`, never back to the domain). The holder chooses on *Your domains*
+(`setHolding()`); a registration no store uses, and a domain a store stops using, is put on Kaizena Flow's Vercel project for it
+(`serveHolding()`). **Not built: email forwarding (S4),** which needs an EU provider first.
+

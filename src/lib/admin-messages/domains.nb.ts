@@ -130,6 +130,13 @@ export const domainsNb: DomainsMessages = {
     priceChanged: "Se på prisen igjen.",
   },
   account: {
+    holdingTitle: "Mens ingen butikk bruker det",
+    holdingParked: "Vis en «kommer snart»-side",
+    holdingRedirect: "Send besøkende til en annen adresse",
+    holdingOff: "Vis ingenting",
+    holdingTo: "Adresse",
+    holdingSave: "Lagre",
+    holdingSaved: "Lagret. Det vises innen et minutt.",
     title: "Domenene dine",
     intro: "Alle domener du har gjennom Kaizena Flow, uansett hvilken butikk som bruker dem. Et domene er ditt: en butikk bruker det bare så lenge du lar den.",
     none: "Du har ikke noe domene gjennom Kaizena Flow ennå. Kjøp et, eller flytt et hit, fra Domener-siden i en butikk.",

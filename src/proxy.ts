@@ -3,7 +3,10 @@ import { NextResponse, userAgent, type NextFetchEvent, type NextRequest } from "
 import { ROLE_SEGMENT } from "@/lib/ab-site";
 import { parseStoreRequest, storeOfHost, variantPath } from "@/lib/ab-routing";
 import { dataCookieName } from "@/lib/experiments";
+import { mayBeHeld } from "@/lib/holding";
 import { storeDomain, storeHosts } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
+import { holdingFor } from "@/server/holding";
 import { recordNotFound } from "@/server/not-found";
 import { storeRequestAnswer } from "@/server/redirect-resolve";
 import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
@@ -24,6 +27,9 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has; the tests are read only then. What it does
  *    is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
  *
+ * 4. Held domains (D317 8): a host that is no store's and not Kaizena Flow's own may be a domain someone holds here with no store using it; it
+ *    answers with its holding page or the holder's redirect (`holdingFor()`, read at most every 30 seconds a host), never a deployment.
+ *
  * Anything unexpected leaves the request alone.
  */
 // The cookie's name and the store matcher are written out: a matcher is read at build time and cannot use a constant (`MARKER_COOKIE` and `STORE_MATCHER`, tested to agree).
@@ -40,6 +46,20 @@ export const config = {
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const host = request.headers.get("host") ?? "";
   const hostStore = storeOfHost(host, storeDomain(), storeHosts());
+  if (!hostStore && mayBeHeld(host, { site: new URL(siteUrl()).hostname, storeDomain: storeDomain() })) {
+    try {
+      const held = await holdingFor(host);
+      if (held?.kind === "redirect") return NextResponse.redirect(held.to, 308);
+      if (held?.kind === "page") {
+        const url = request.nextUrl.clone();
+        url.pathname = `/holding/${held.apex}`;
+        url.search = `?lang=${held.lang}`;
+        return NextResponse.rewrite(url);
+      }
+    } catch (error) {
+      console.error("[holding] proxy", error);
+    }
+  }
   // The path the request is served from: as asked, or the long form of a short address (D181).
   let served = request.nextUrl.pathname;
   try {

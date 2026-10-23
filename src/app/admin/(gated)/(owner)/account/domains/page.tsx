@@ -24,6 +24,7 @@ import {
   accountRenewAction,
   accountRenewalAction,
   accountUndoDnsAction,
+  holdingAction,
   linkDomainAction,
   unlinkDomainAction,
 } from "./actions";
@@ -91,6 +92,24 @@ export default async function YourDomainsPage() {
                         </select>
                       </label>
                       <SubmitButton variant="secondary">{d.store ? words.account.moveTo : words.account.useWith}</SubmitButton>
+                    </ActionForm>
+                  )}
+                  {!d.store && d.holding && (
+                    <ActionForm action={holdingAction} className="flex w-full flex-wrap items-end gap-2">
+                      <input type="hidden" name="domain" value={d.apex} />
+                      <label className="flex flex-col gap-1 text-caption text-muted">
+                        {words.account.holdingTitle}
+                        <select name="mode" defaultValue={d.holding.mode} className="min-h-10 rounded-lg border border-edge bg-card px-3 text-body text-ink">
+                          <option value="parked">{words.account.holdingParked}</option>
+                          <option value="redirect">{words.account.holdingRedirect}</option>
+                          <option value="off">{words.account.holdingOff}</option>
+                        </select>
+                      </label>
+                      <label className="flex min-w-56 flex-1 flex-col gap-1 text-caption text-muted">
+                        {words.account.holdingTo}
+                        <input name="to" type="url" defaultValue={d.holding.redirect ?? ""} className="min-h-10 rounded-lg border border-edge bg-card px-3 text-body text-ink" />
+                      </label>
+                      <SubmitButton variant="secondary">{words.account.holdingSave}</SubmitButton>
                     </ActionForm>
                   )}
                   {d.store && d.billable && (

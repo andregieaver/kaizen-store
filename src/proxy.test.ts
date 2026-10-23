@@ -5,6 +5,7 @@ const storeRequestAnswer = vi.fn();
 const recordNotFound = vi.fn();
 vi.mock("@/server/redirect-resolve", () => ({ storeRequestAnswer: (...args: unknown[]) => storeRequestAnswer(...args) }));
 vi.mock("@/server/not-found", () => ({ recordNotFound: (...args: unknown[]) => recordNotFound(...args) }));
+vi.mock("@/server/holding", () => ({ holdingFor: async () => null }));
 vi.mock("@/server/experiments", () => ({ runningExperiments: async () => [], storeIdOfSlug: async () => null }));
 
 import { proxy } from "./proxy";

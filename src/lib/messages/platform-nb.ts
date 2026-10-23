@@ -172,6 +172,10 @@ export const platformNb: PlatformMessages = {
       phone: "Mobil",
     },
   },
+  holding: {
+    soon: "Kommer snart.",
+    madeWith: "Laget med Kaizena Flow",
+  },
   domainStart: {
     title: "Skaff deg domenet ditt",
     description: "Kjøp et domene fra Kaizena Flow, med eller uten nettbutikk.",

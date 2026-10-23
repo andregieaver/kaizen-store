@@ -8,6 +8,7 @@ import { limitRefusal } from "@/lib/usage-format";
 import { audit, type Account } from "./auth";
 import { accountHolder } from "./domain-holder";
 import { connectOwnedDomain } from "./domains";
+import { serveHolding } from "./holding";
 import { take as takeSlot } from "./domain-search";
 import { checkLimit } from "./limits";
 
@@ -23,6 +24,8 @@ type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] }
 
 export type HeldDomain = {
   apex: string;
+  /** What the domain shows while no store uses it (D317 8), when its DNS is kept here. */
+  holding: { mode: string; redirect: string | null } | null;
   registrationId: string | null;
   zoneId: string | null;
   store: { id: string; slug: string; name: string } | null;
@@ -41,6 +44,8 @@ export async function heldDomains(accountId: string): Promise<HeldDomain[]> {
     )
     select n.apex, max(n.registration_id::text) as registration_id, max(n.zone_id::text) as zone_id, max(n.store_id::text) as store_id,
            max(s.slug) as slug, max(s.name) as name,
+           (select z.holding from commerce.dns_zones z where z.account_id = ${accountId}::uuid and z.apex = n.apex and z.status <> 'left' limit 1) as holding,
+           (select z.holding_redirect from commerce.dns_zones z where z.account_id = ${accountId}::uuid and z.apex = n.apex and z.status <> 'left' limit 1) as holding_redirect,
            exists (select 1 from commerce.domain_purchases p where p.account_id = ${accountId}::uuid and p.apex = n.apex and p.vat_kind is not null
                     and p.status = 'done') as billable
       from names n left join commerce.stores s on s.id = n.store_id
@@ -51,6 +56,7 @@ export async function heldDomains(accountId: string): Promise<HeldDomain[]> {
     registrationId: r.registration_id ? String(r.registration_id) : null,
     zoneId: r.zone_id ? String(r.zone_id) : null,
     store: r.store_id ? { id: String(r.store_id), slug: String(r.slug), name: String(r.name) } : null,
+    holding: r.zone_id ? { mode: String(r.holding ?? "parked"), redirect: r.holding_redirect ? String(r.holding_redirect) : null } : null,
     billable: r.billable === true,
   }));
 }
@@ -140,6 +146,7 @@ export async function unlinkDomain(account: Account, apex: string): Promise<Resu
     await tx.execute(sql`update commerce.dns_zones set store_id = null, updated_at = now() where account_id = ${account.id}::uuid and apex = ${name} and status <> 'left'`);
   });
   await audit(account.id, held.store.id, "store.domain_unlinked", { domain: name });
+  if (held.zoneId) await serveHolding(name);
   return { ok: true };
 }
 

@@ -11,6 +11,7 @@ import { effectText } from "@/lib/dns-plan";
 import { describeRecord } from "@/lib/dns-records";
 import { requireAccount } from "@/server/auth";
 import { linkableStores, linkDomain, unlinkDomain } from "@/server/domain-account";
+import { setHolding } from "@/server/holding";
 import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/server/domain-dns";
 import { accountHolder } from "@/server/domain-holder";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal } from "@/server/domain-purchases";
@@ -103,4 +104,12 @@ export async function accountDnsAutoAction(_state: FormState, form: FormData): P
   const { account, holder, words } = await holderNow();
   await setDnsAuto(account, holder, form.get("on") === "on");
   return done([words.registrations.saved]);
+}
+
+/** What a domain no store uses shows (D317 8). */
+export async function holdingAction(_state: FormState, form: FormData): Promise<FormState> {
+  const { account, words } = await holderNow();
+  const result = await setHolding(account, String(form.get("domain") ?? ""), String(form.get("mode") ?? ""), String(form.get("to") ?? ""));
+  if (!result.ok) return { status: "error", messages: result.problems };
+  return done([words.account.holdingSaved]);
 }

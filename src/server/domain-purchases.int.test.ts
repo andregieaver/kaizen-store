@@ -327,6 +327,7 @@ describe("domains held by an account (D317)", () => {
     ...deps(fake),
     taxRates: async (country: string | null) => (country === "NO" ? ["txr_mva"] : []),
     customer: async () => "cus_holder",
+    serveHolding: async () => true,
   });
   const person = { ...registrant, kind: "person", companyName: undefined };
   const holder = () => ({ kind: "account" as const, accountId: owner.id });
@@ -461,5 +462,19 @@ describe("people without a store (D317 phase 2)", () => {
     expect(await decideReview(owner, String(p.id), false)).toEqual({ ok: true });
     expect(await statusOf(`munich-${run}.shop`)).toBe("void");
     expect(await decideReview(owner, String(p.id), true)).toMatchObject({ ok: false });
+  });
+
+  it("answers a held domain no store uses with its holding page or the holder's redirect (D317 8)", async () => {
+    const { holdingFor, setHolding } = await import("./holding");
+    const domain = `alone-${run}.shop`;
+    expect(await holdingFor(`www.${domain}`)).toEqual({ kind: "page", apex: domain, lang: "nb" });
+    expect(await setHolding(owner, domain, "redirect", "https://example.com/")).toEqual({ ok: true });
+    expect(await holdingFor(domain)).toEqual({ kind: "redirect", to: "https://example.com/" });
+    expect(await setHolding(owner, domain, "redirect", `https://${domain}/`)).toMatchObject({ ok: false });
+    expect(await setHolding(owner, `nordisk-${run}.shop`, "off", "")).toEqual({ ok: true });
+    // A domain a store uses answers as the store's, never as held.
+    expect(await holdingFor(`nordisk-${run}.shop`)).toBeNull();
+    const stranger = await account(`holding-stranger-${run}@example.com`);
+    expect(await setHolding(stranger, domain, "off", "")).toMatchObject({ ok: false });
   });
 });

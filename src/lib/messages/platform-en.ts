@@ -173,6 +173,10 @@ export const platformEn = {
     },
   },
   // The domain search component on Kaizena Flow's own pages (D315, docs/domains.md 16). `{price}`.
+  holding: {
+    soon: "Coming soon.",
+    madeWith: "Made with Kaizena Flow",
+  },
   domainStart: {
     title: "Get your domain",
     description: "Buy a domain from Kaizena Flow, with or without a store.",
