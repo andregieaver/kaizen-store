@@ -1,19 +1,62 @@
 # Capacity: usage, limits, scaling and hosting levels
 
-Status: **planned, nothing built** (D314). This file is the contract, and every phase below is written so that it can
-be built step by step by someone who has not seen the conversation it came from. Read sections 0 to 2 before you
+Status: **phases 1 and 2 built; 3 and 4 built where no owner decision was needed; 5 is a proposal** (D314). This file is the
+contract, and every phase below is written so that it can be built step by step by someone who has not seen the conversation it came
+from. Read sections 0 to 2 before you
 start any step, and read the step in full before you write code for it.
 
 | Phase | What it gives | Status |
 |---|---|---|
-| 1 | Measuring what each store uses (storage, traffic, emails, AI, catalogue size), shown read-only | planned |
-| 2 | Limits per plan, owner and store; enforcement of the costly actions; alerts | planned |
-| 3 | Protection inside the shared setup: timeouts, per-store budgets, firewall, read replica | planned |
-| 4 | Peaks and reliability: peak calendar, checkout queue, load tests, SLOs, restore drills | planned |
-| 5 | Hosting levels: cells, moving a store, the first Dedicated store | planned (spike first) |
+| 1 | Measuring what each store uses (storage, traffic, emails, AI, catalogue size), shown read-only | built; the drain waits on the owner |
+| 2 | Limits per plan, owner and store; enforcement of the costly actions; alerts | built; no limits set yet |
+| 3 | Protection inside the shared setup: timeouts, per-store budgets, firewall, read replica | 3.2, 3.4 (off) and 3.5 built; 3.1 and 3.3 wait on the owner |
+| 4 | Peaks and reliability: peak calendar, checkout queue, load tests, SLOs, restore drills | 4.1, 4.3 and 4.5 built; 4.2 and 4.4 wait on the owner |
+| 5 | Hosting levels: cells, moving a store, the first Dedicated store | spike written (`docs/cells.md`), waiting on the owner |
 | 6 | Private cloud for one customer | planned (only on a signed customer) |
 
 Update this table, and the step's own *Status* line, in the same commit that finishes a step.
+
+### What the build changed from the plan
+
+These are decisions made while building. Where this file and the code disagree below, the code and this list win.
+
+- **Bandwidth is not measured.** Vercel's documented log-drain schema (vercel.com/docs/drains/reference/logs, read 2026-10-23) carries
+  the request's host, path, status and time, but no response size. The drain gives `requests` and `server_errors`; `egress_bytes` stays
+  a metric and a soft limit, and shows *Not measured yet* (never zero) until a source for it exists, such as Vercel's usage API per
+  project, or per host once the cells exist.
+- **One request is counted once** per drain batch, by its `requestId` (a function logs several lines per request).
+- **Metric and limit lists in checks** are written by `sqlList()` from the TypeScript lists, as the schema does elsewhere, so
+  `pnpm db:check` holds them together; no separate test was needed.
+- **The storage sum is a plain SQL function**, not `SECURITY DEFINER`: no migration in this repository uses one, and the app's role
+  already reads `storage.objects` as the media migration did.
+- **Limits are read through a one-minute per-instance memo** (`storeLimits()`, `forgetLimits()`), not `'use cache'`: they are read in
+  actions, routes, jobs and `aiFor()`, where a cache scope is not always there. The instance that changes a limit forgets it at once.
+- **The words are a new admin catalogue `capacity`** (`src/lib/admin-messages/capacity.{en,nb}.ts`), not `billing`, because the
+  owner's page, the platform's page and the Billing page all read them. Refusals written by server modules are English (the convention
+  for a module's own words), from the same catalogue.
+- **Owners' warning emails are English**, in `src/lib/usage-emails.ts`, as the store-closure emails to owners are; their kinds
+  (`usage.near`, `usage.reached`, `capacity.upcoming`) are in `EMAIL_KINDS`. No change to `email-text.ts` was needed.
+- **The plans' limits have a page of their own**, Plans → Limits (`/admin/platform/plans/limits`), so the plans editor stays simple.
+- **The public plan cards** show the limits with words in `m.plans.limitNames` and `m.plans.unlimited` (nb, sv, da and en by hand).
+- **The control center's item** reads the stores where the member may read billing (`billing:read`), not the owner role, as the
+  permissions scan requires; the item itself is the owner's.
+- **AI on Kaizena Flow's key** is checked in `aiFor()` only when the store's plan sets an AI limit, so nothing changes until one is set.
+- **The broadcast check** counts the marketing emails written this month and refuses a send larger than what is left. Recipients of a
+  send still under way are not yet emails, so two sends started in the same minute could together pass the limit by one batch.
+- **Automations** at the limit are claimed with the outcome `suppressed` and never sent later.
+- **Budgets (3.2)**: recommendations, forms and visit counting already had their own; only search type-ahead had none, and now has
+  `takeBudget()`. A failure to count allows the request.
+- **The read replica (3.4)** is used by the analytics pages' data modules through `setBasedReplica()`; `replica-readers.scan.test.ts`
+  lists them. Tax reports, inventory and `setBasedSnapshot()` stay on the primary.
+
+### Waiting on the owner
+
+1. The numbers per plan (section 9, question 1). Until they are set on Plans → Limits, every store is unlimited and nothing is refused.
+2. Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
+   sampling) in Vercel's production environment.
+3. Statement timeouts (3.1), the firewall (3.3), a read replica and `READ_DATABASE_URL` (3.4), the checkout queue (4.2), service levels
+   and the status page (4.4), and confirming point-in-time recovery (4.5).
+4. Accepting, changing or rejecting `docs/cells.md` (5.0).
 
 ---
 
@@ -180,7 +223,7 @@ Billing page. Nothing is refused. Phase 1 can be built and shipped in five steps
 
 ### Step 1.1: the metrics catalogue (pure)
 
-Status: planned.
+Status: built.
 
 *New* `src/lib/usage-metrics.ts`, no imports from server code, no zod:
 
@@ -223,7 +266,7 @@ Test `src/lib/usage-metrics.test.ts`:
 
 ### Step 1.2: the usage table
 
-Status: planned.
+Status: built (migrations `20261023104648_capacity`, `20261023104720_capacity_rules`).
 
 *New* table in `src/db/schema.ts`, beside `chatUsage`:
 
@@ -263,7 +306,7 @@ export const storeUsageDaily = commerce.table(
 
 ### Step 1.3: measuring what the database knows
 
-Status: planned.
+Status: built.
 
 *New* `src/server/usage-meter.ts` (`import "server-only";`):
 
@@ -314,8 +357,31 @@ Tests:
 
 ### Step 1.4: traffic from Vercel's log drain
 
-Status: planned. **Owner gate before you start**: a Vercel log drain has a cost per GB and needs the team's plan to
+Status: built; the drain itself is not created yet. **Owner gate**: a Vercel log drain has a cost per GB and needs the team's plan to
 allow it (section 9, question 3).
+
+**What the spike found (2026-10-23, vercel.com/docs/drains/reference/logs and vercel.com/docs/drains/security):**
+
+| Field | Where | Read as |
+|---|---|---|
+| `proxy.host` | each request's log | the host, lower-cased, without a port |
+| `proxy.path` | the same | only to find `/s/{slug}/` on Kaizena Flow's own host; never kept |
+| `proxy.statusCode` (else `statusCode`) | the same | a 5xx is a server error |
+| `proxy.timestamp` (else `timestamp`) | the same | its UTC day |
+| `requestId` (else `id`) | every line a request logs | one request counted once per batch |
+| `environment` | the same | only `production` is counted |
+
+The body is a JSON array or NDJSON. The signature is the header `x-vercel-signature`, the body's HMAC-SHA1 in hex with the drain's
+secret. **No response size is documented**, so bandwidth is not read from the drain (see *What the build changed*).
+
+**The drain to create (the owner's action):**
+- the project: the production Vercel project;
+- environments: production only;
+- sources: `static`, `lambda`, `edge` and `external` (pictures and scripts are requests too);
+- the delivery: JSON to `https://kaizenaflow.com/api/usage/drain`;
+- the secret: a long random string, also set as `USAGE_DRAIN_SECRET` in Vercel's production environment;
+- the sampling: 100 % to start. If it is lowered, set `USAGE_DRAIN_SAMPLE_RATE` to the same share (for example `0.25`); the figures are
+  then marked estimated.
 
 **Spike first (write down what you find in this section before you write code):**
 1. Read Vercel's documentation on log drains (the Vercel MCP `search_vercel_documentation` tool, or vercel.com/docs).
@@ -376,7 +442,7 @@ Tests:
 
 ### Step 1.5: reading usage
 
-Status: planned.
+Status: built.
 
 *New* `src/server/usage.ts`:
 - `storeUsage(storeId, month)` returns `{ metric, value, estimated }[]` for the month, through `monthFigure()`;
@@ -389,7 +455,7 @@ Status: planned.
 
 ### Step 1.6: showing usage (read-only)
 
-Status: planned.
+Status: built.
 
 Three places. The words go in the `billing` catalogue (en and nb), and units are formatted with the existing
 `formatBytes()` and number formatting.
@@ -427,7 +493,7 @@ actions are refused over a hard limit, owners are warned at 80 % and 100 %, and 
 
 ### Step 2.1: the limits catalogue (pure)
 
-Status: planned.
+Status: built.
 
 *New* `src/lib/limits.ts`:
 
@@ -466,7 +532,7 @@ and its period agrees with the metric's kind (gauges are `now`, counters `month`
 
 ### Step 2.2: the limits tables
 
-Status: planned.
+Status: built.
 
 ```ts
 /** A plan's limits (D314). `plan_id` null is the platform default. A row whose value is null means unlimited. */
@@ -514,7 +580,7 @@ export const limitOverrides = commerce.table("limit_overrides", {
 
 ### Step 2.3: resolving a limit
 
-Status: planned.
+Status: built.
 
 *New* `src/server/limits.ts`:
 
@@ -553,7 +619,7 @@ Test `src/server/limits.int.test.ts`:
 
 ### Step 2.4: enforcing the hard limits
 
-Status: planned. One commit per kind is fine. Each refusal is a plain sentence from the `billing` catalogue, through
+Status: built. Each refusal is a plain sentence from the `capacity` catalogue, through
 the caller's usual error shape, with a link to the store's Billing page:
 
 > This store has used its 10 GB of storage. Delete files you no longer need, or choose a plan with more.
@@ -579,7 +645,7 @@ answers already pass the error text on; check one (`create_product`) in a test.
 
 ### Step 2.5: showing limits and warning
 
-Status: planned.
+Status: built.
 
 - **Bars.** Step 1.6's three places show `used of limit` with `ScoreBar` (or `ShareBar`), coloured by
   `limitState()`: warning from `near`, danger at `reached`/`over`. Unlimited shows "No limit". Soft limits over 100 %
@@ -604,7 +670,7 @@ Status: planned.
 
 ### Step 2.6: the platform admin edits limits
 
-Status: planned.
+Status: built.
 
 - **Plans page** (`src/app/admin/(gated)/platform/plans/page.tsx`): a *Limits* `Card` with one row per `LIMITS` key
   and one column per plan, plus a *Default* column (the `plan_id` null rows):
@@ -629,7 +695,7 @@ Status: planned.
 
 ### Step 2.7: the AI manager reads usage
 
-Status: planned (optional, after 2.6).
+Status: built.
 
 - Owner tool `usage_and_limits`: read-only and ungated. It has zod arguments `{ store }` (for MCP) and a description,
   a line in `TOOL_WORDS`, and a row in `TOOL_PERMISSIONS` (`billing:read`). Its answer comes from `storeUsage()` and
@@ -646,7 +712,7 @@ Goal: one busy or misbehaving store cannot slow down the others, and heavy reads
 
 ### Step 3.1: statement timeouts
 
-Status: planned. **Spike first:**
+Status: waiting on the owner (it reads production). **Spike first:**
 1. Find which database role `DATABASE_URL` connects as, read-only:
    - run `select current_user, current_setting('statement_timeout')` with the Supabase MCP `execute_sql` on the
      production project; ask the owner first, as this reads production;
@@ -666,7 +732,7 @@ as transient (it does today). Make sure no caller retries a write after it (`ret
 
 ### Step 3.2: per-store budgets on costly public endpoints
 
-Status: planned.
+Status: built.
 
 - *New* `src/server/request-budget.ts`: `takeBudget(storeId: string | null, bucket: string, limit: number, window:
   "minute" | "hour"): Promise<boolean>` generalises `takeEcbSlot()` over `chat_usage`. The same table and the same
@@ -693,7 +759,7 @@ next minute is allowed (pass the clock in, as other jobs do).
 
 ### Step 3.3: the edge (firewall and bots)
 
-Status: planned. **Owner gate**: firewall changes are made on the owner's Vercel team.
+Status: waiting on the owner. **Owner gate**: firewall changes are made on the owner's Vercel team.
 
 - Read the current configuration with the Vercel MCP `get_firewall_config` and write it here.
 - Propose, for the owner's yes:
@@ -707,7 +773,7 @@ Status: planned. **Owner gate**: firewall changes are made on the owner's Vercel
 
 ### Step 3.4: a read replica for heavy reads
 
-Status: planned. **Owner gate**: a Supabase read replica costs money.
+Status: built, off until `READ_DATABASE_URL` is set. **Owner gate**: a Supabase read replica costs money.
 
 - `READ_DATABASE_URL` (optional) in `env.ts`. *New* `replicaDb()` in `src/db/client.ts` returns a second pool to it,
   or `db()` when it is not set. It is read-only by construction: the pool runs `SET default_transaction_read_only =
@@ -727,7 +793,21 @@ Status: planned. **Owner gate**: a Supabase read replica costs money.
 
 ### Step 3.5: connections and compute
 
-Status: planned. Documentation only.
+Status: built.
+
+**Capacity runbook.**
+- **Connections.** Each function instance keeps at most 5 connections (`max: 5` in `src/db/client.ts`) through Supabase's transaction
+  pooler, which shares a fixed pool of real connections set by the project's compute size (*verify* the figure for the current size in
+  Supabase's documentation). The platform's *Usage and limits* page shows the active connections now; when they stay near the pool's
+  size at busy times, raise the compute size.
+- **Before a very busy time** (the platform admins are emailed 7 days and 1 day before one, step 4.1):
+  1. Look at the database's CPU and connections in Supabase's reports for the same weekday a week before.
+  2. If either was above about 60 %, raise the compute size a day before (Supabase dashboard → Settings → Compute). It restarts the
+     database for a moment, so do it at night.
+  3. Check that Vercel's spend limit leaves room for the extra traffic.
+  4. Lower the compute size again after the event.
+- **When the database is slow now:** look at Supabase's query performance report for the slowest statements, and at the platform's
+  *Usage and limits* page for the store with the most visits and server errors this month.
 
 - Write a section *Capacity runbook* here:
   - the pool arithmetic (5 connections per function instance; Supavisor's pool size for the project's compute size;
@@ -743,7 +823,7 @@ Status: planned. Documentation only.
 
 ### Step 4.1: the peak calendar
 
-Status: planned.
+Status: built.
 
 - *New* table `commerce.capacity_events`:
   - columns `id`, `store_id`, `starts_at`, `ends_at` (at most 14 days after), `expected` (`normal`, `busy`,
@@ -760,7 +840,7 @@ Status: planned.
 
 ### Step 4.2: a checkout queue under pressure
 
-Status: planned. **Owner gate** for the switch and its thresholds.
+Status: waiting on the owner. **Owner gate** for the switch and its thresholds.
 
 - `platform_settings.checkout_queue` takes `off` (default), `auto` or `on`, and is edited on the platform's *Usage
   and limits* page.
@@ -781,7 +861,7 @@ Status: planned. **Owner gate** for the switch and its thresholds.
 
 ### Step 4.3: load tests
 
-Status: planned.
+Status: built (`scripts/load/`); targets and first results wait on the owner.
 
 - *New* `scripts/load/` with k6 scripts (a developer tool; k6 is installed by the developer, and nothing is added to
   `package.json`'s dependencies):
@@ -796,7 +876,7 @@ Status: planned.
 
 ### Step 4.4: service levels and alerts
 
-Status: planned.
+Status: waiting on the owner (targets and the status page vendor).
 
 - Define here, as owner gates:
   - storefront availability: the share of requests without a 5xx, from the drain's counters;
@@ -812,7 +892,7 @@ Status: planned.
 
 ### Step 4.5: backups and restore drills
 
-Status: planned. Documentation and a quarterly habit.
+Status: built (`docs/runbooks/restore.md`); PITR to be confirmed by the owner.
 
 - Confirm with the owner that point-in-time recovery is on (Supabase dashboard). Write the retention here.
 - *New* `docs/runbooks/restore.md`: how to restore to a Supabase branch at a point in time, check it (order counts,

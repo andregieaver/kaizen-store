@@ -467,6 +467,24 @@ stand-in is the only fake, and only it is told it is one.
   (`choosePlan()`: Stripe Checkout for the first plan, an instant prorated
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
+- **Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)**: what each store used per UTC
+  day and metric (`USAGE_METRICS` in `src/lib/usage-metrics.ts`) is `commerce.store_usage_daily`, written only by `measureDay()`
+  (`src/server/usage-meter.ts`, the daily `/api/cron/usage`) and, for requests and server errors, by Vercel's log drain
+  (`/api/usage/drain`, `src/lib/usage-drain.ts`, `src/server/usage-traffic.ts`), which keeps no IP address, user agent, path or query;
+  a metric no source wrote is *not measured*, never zero (bandwidth today). The counts behind gauges and checks are written once in
+  `src/server/usage-sql.ts`. A limit (`LIMITS` in `src/lib/limits.ts`; numbers are only rows of `plan_limits` and `limit_overrides`,
+  written only by `src/server/limits-admin.ts`) is the store's override, else its plan's while on it (`ON_PLAN_STATUSES`), else the
+  platform default (`plan_id` null), else unlimited, read only through `storeLimits()`/`limitFor()`/`ownerLimitFor()` (a one-minute
+  memo; a writer calls `forgetLimits()`); templates and demo stores are never limited. Hard limits refuse only a person's costly action
+  through `checkLimit()`/`checkOwnerStores()`/`storageRefusal()` with `limitRefusal()`'s words: uploads, a new product, an invitation,
+  a domain, another store, a broadcast or automation past the month's marketing emails, and AI on Kaizena Flow's key (`aiFor()` gives
+  no AI); the platform's own copies (templates, themes, demo content, store copies, Compress) are never refused, transactional and
+  legal emails are never limited, and traffic is a soft limit that only warns: never take a storefront offline for it. A new costly
+  action that a plan should limit is a key in `LIMITS` (and the checks of both tables, by `sqlList()`), its count in `usage-sql.ts`, a
+  check at its writer with a test in `limits-enforce.int.test.ts`, and words in the `capacity` catalogue. The read replica
+  (`replicaDb()`, `setBasedReplica()`, off without `READ_DATABASE_URL`) is only for the modules `replica-readers.scan.test.ts` lists:
+  never a read after a write, a cache refill, checkout, stock, payments or tax reports. Budgets on costly public endpoints are
+  `takeBudget()` (`src/server/request-budget.ts`), never on a page load, the cart, checkout, payment or a webhook.
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a
   store; decisions D42, D53): one `PageEditor` and `PageBuilder` serve both.
   The route passes a `PageOwnerContext` (`src/components/admin/page-context.ts`:

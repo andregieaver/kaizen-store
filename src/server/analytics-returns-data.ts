@@ -22,7 +22,7 @@ import { DEFAULT_RETURN_SETTINGS } from "@/lib/withdrawal";
 
 import { productNames } from "./analytics-refunds-data";
 import { PAID, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import { OVERDUE_SQL } from "./return-sql";
 import { getReturnSettings } from "./return-settings";
 import type { Store } from "./stores";

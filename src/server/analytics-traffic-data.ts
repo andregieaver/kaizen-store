@@ -26,7 +26,7 @@ import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings } from "./analytics-settings";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, EXCHANGE_ORDER, FROM_CHECKOUT, HAS_CUSTOMER, inMain, inPeriod, num, PAID, STAFF_MADE, toMainOne, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**

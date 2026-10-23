@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { capacityEn } from "@/lib/admin-messages/capacity.en";
+import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
 import { FULFILMENT_STATE_LABELS } from "@/lib/fulfilment";
@@ -17,6 +19,7 @@ import { auditProblems } from "@/lib/order-numbers";
 import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
 
+import { storeUsageLines } from "./usage";
 import { audit, type Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
 import {
@@ -203,6 +206,24 @@ async function giftCardOverviewTool(ctx: OwnerToolContext) {
     held_by_customers: outstanding.map((o) => ({ currency: o.currency, amount: money(ctx.store, o.amountMinor, o.currency), cards_with_money: o.cards })),
     note: "Gift cards sold are money the store owes until they are spent; they are not sales. What customers hold counts the cards of the store's payment mode now (test cards while it takes test payments).",
     link: `/admin/${ctx.store.slug}/gift-cards`,
+  };
+}
+
+/** `usage_and_limits` (D314): the Billing page's lines, written in code; a figure not measured yet is said so, never zero. */
+async function usageAndLimitsTool(ctx: OwnerToolContext) {
+  const lines = await storeUsageLines(ctx.store.id);
+  return {
+    month: "this calendar month (UTC)",
+    lines: lines.map((l) => ({
+      what: capacityEn.metrics[l.metric],
+      used: l.measured ? formatUsage(l.metric, l.used) : "not measured yet",
+      limit: l.limit === null ? "no limit" : formatLimit(l.key, l.limit),
+      from: { override: "set by Kaizena Flow for this store", plan: "the plan", platform: "Kaizena Flow's default", none: "nothing set" }[l.origin],
+      state: !l.measured ? "not measured" : { ok: "fine", near: "close to the limit", reached: "used up", over: "over the limit" }[l.state],
+      ...(l.enforce === "soft" ? { note: "only warns: the shop stays open" } : {}),
+      ...(l.estimated ? { estimated: true } : {}),
+    })),
+    link: `/admin/${ctx.store.slug}/billing`,
   };
 }
 
@@ -2081,6 +2102,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
   gift_card_overview: giftCardOverviewTool,
+  usage_and_limits: usageAndLimitsTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,

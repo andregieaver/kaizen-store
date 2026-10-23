@@ -20,7 +20,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
 import { dayOf, num, OWED_LINE, OWED_UNITS, PAID, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**

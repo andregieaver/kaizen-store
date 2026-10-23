@@ -2,7 +2,7 @@ import "server-only";
 
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-import { db } from "@/db/client";
+import { db, replicaDb } from "@/db/client";
 import { paymentFees, shippingCostsFor } from "@/lib/analytics-finance";
 import {
   coverageText,
@@ -58,6 +58,20 @@ import type { Store } from "./stores";
  */
 export function setBased<TRow extends Record<string, unknown> = Record<string, unknown>>(query: SQLWrapper): Promise<TRow[]> {
   return db().transaction(
+    async (tx) => {
+      await tx.execute(sql`select set_config('enable_nestloop', 'off', true), set_config('jit', 'off', true)`);
+      return tx.execute<TRow>(query);
+    },
+    { accessMode: "read only" },
+  );
+}
+
+/**
+ * `setBased()` on the read replica when there is one (D314, step 3.4): for the analytics pages' own reads only, which may lag a moment.
+ * Tax reports, stock and anything that must see the latest write keep `setBased()` on the primary.
+ */
+export function setBasedReplica<TRow extends Record<string, unknown> = Record<string, unknown>>(query: SQLWrapper): Promise<TRow[]> {
+  return replicaDb().transaction(
     async (tx) => {
       await tx.execute(sql`select set_config('enable_nestloop', 'off', true), set_config('jit', 'off', true)`);
       return tx.execute<TRow>(query);

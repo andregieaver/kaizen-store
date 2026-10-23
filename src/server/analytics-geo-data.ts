@@ -9,7 +9,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**

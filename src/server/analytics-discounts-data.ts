@@ -18,7 +18,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { PAID, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**

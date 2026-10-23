@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { capacityEn } from "@/lib/admin-messages/capacity.en";
+import { formatLimit, formatUsage } from "@/lib/usage-format";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
@@ -21,6 +23,7 @@ import type { PermissionHolder } from "@/lib/permissions";
 import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
 
+import { platformUsage, storeUsageLines } from "./usage";
 import type { AiConnection } from "./ai";
 import { platformSupportOverviewTool } from "./support-manager-tools";
 import { countStoresWithOwnAi } from "./ai";
@@ -400,6 +403,33 @@ async function listPlatformEmails(_ctx: ManagerContext, { failed_only, limit }: 
     .map((e) => ({ what: e.kind, to: e.to, subject: e.subject, store: e.storeName ?? "Kaizena Flow", status: e.status, error: e.error, sent: e.createdAt }));
 }
 
+/** `store_usage` (D314): one store's lines against its limits, or the month's top stores by a metric, figures written in code. */
+async function storeUsageTool(_ctx: ManagerContext, { store, top, limit }: PlatformToolInput<"store_usage">) {
+  if (store) {
+    const found = await getStore(store);
+    if (!found) return fail("No store has that address.");
+    const lines = await storeUsageLines(found.id);
+    return {
+      store: found.name,
+      lines: lines.map((l) => ({
+        what: capacityEn.metrics[l.metric],
+        used: l.measured ? formatUsage(l.metric, l.used) : "not measured yet",
+        limit: l.limit === null ? "no limit" : formatLimit(l.key, l.limit),
+        state: !l.measured ? "not measured" : { ok: "fine", near: "close to the limit", reached: "used up", over: "over the limit" }[l.state],
+      })),
+      link: `/admin/platform/stores/${found.slug}`,
+    };
+  }
+  const rows = (await platformUsage(new Date().toISOString().slice(0, 7))).filter((r) => r.storeId);
+  const ranked = rows.sort((a, b) => (b.values[top] ?? 0) - (a.values[top] ?? 0)).slice(0, limit);
+  return {
+    month: "this calendar month (UTC)",
+    by: capacityEn.metrics[top],
+    stores: ranked.map((r) => ({ store: r.name, address: r.slug, plan: r.plan ?? "no plan", used: r.values[top] === undefined ? "not measured" : formatUsage(top, r.values[top] ?? 0) })),
+    link: "/admin/platform/capacity",
+  };
+}
+
 async function platformAiUsage(_ctx: ManagerContext, { days, store, owner }: PlatformToolInput<"platform_ai_usage">) {
   let storeId: string | null = null;
   let ownedBy: string | null = null;
@@ -493,6 +523,7 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   plan_reminder_stats: planReminders,
   list_platform_emails: listPlatformEmails,
   platform_ai_usage: platformAiUsage,
+  store_usage: storeUsageTool,
 };
 
 /** Runs a platform tool for a platform admin; gated ones only once approved. */
