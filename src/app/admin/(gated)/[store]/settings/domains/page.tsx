@@ -10,14 +10,17 @@ import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dn
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
 import { checkPermission, memberCan, requireOwnerRole } from "@/server/permissions";
-import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } from "@/server/domains";
+import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved, type StoreDomain } from "@/server/domains";
 import { storeDomainHealth } from "@/server/domain-health";
 import { buyingOpen, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
 import { suggestedRegistrant } from "@/server/domain-registrant";
 import { registrationFacts, storeRegistrations } from "@/server/domain-registrations";
 import type { Membership } from "@/server/auth";
 import { domainsConfigured } from "@/server/vercel";
-import { ButtonLink, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { domainConnectKey } from "@/lib/env";
+import { siteUrl } from "@/lib/site";
+import { domainConnectFor, signedApplyUrl } from "@/server/domain-connect";
 import { fillWords } from "@/lib/admin-fill";
 import { apexOf } from "@/lib/domain-health";
 
@@ -44,7 +47,7 @@ import {
 export const metadata: Metadata = { title: "Domains" };
 
 /** The store's addresses and its own domains (P7, P8). */
-export default async function DomainsPage({ params }: PageProps<"/admin/[store]/settings/domains">) {
+export default async function DomainsPage({ params, searchParams }: PageProps<"/admin/[store]/settings/domains">) {
   // A closed store's owner still reaches its domains (D315 9.3): the owner's key is allowed there, settings are not.
   const slug = (await params).store;
   const current = (await checkPermission(slug, "settings:read")) ?? (await requireOwnerRole(slug));
@@ -67,6 +70,12 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
+      {(await searchParams).dc === "back" && <p role="status" className="text-body text-ink-2">{adminText(lang, "domains").connectAuto.back}</p>}
+      {memberCan(current, "owner") && (
+        <Suspense fallback={null}>
+          <ConnectAutomatically slug={store.slug} domains={domains.filter((d) => d.status === "pending")} lang={lang} />
+        </Suspense>
+      )}
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <DomainHealth storeId={store.id} lang={lang} />
       </Suspense>
@@ -224,15 +233,46 @@ async function MoveLinks({ storeId, slug, hosts, lang }: { storeId: string; slug
   const apexes = [
     ...new Set([...registrations.filter((r) => r.status !== "transferred_out").map((r) => r.apex), ...zones.map((z) => z.apex), ...hosts.map(apexOf)]),
   ].sort();
-  if (apexes.length === 0) return null;
   const words = adminText(lang, "domains").move;
   return (
     <nav className="flex flex-wrap gap-2" aria-label={words.open}>
+      <ButtonLink kind="secondary" href={`/admin/${slug}/settings/domains/move-in`}>
+        {adminText(lang, "domains").moveIn.open}
+      </ButtonLink>
       {apexes.map((apex) => (
         <ButtonLink key={apex} kind="quiet" href={`/admin/${slug}/settings/domains/move/${encodeURIComponent(apex)}`}>
           {fillWords(words.title, { domain: apex })}
         </ButtonLink>
       ))}
     </nav>
+  );
+}
+
+/**
+ * *Connect automatically* (D315 6, Domain Connect) for each waiting domain whose DNS provider took Kaizena Flow's template in: a signed
+ * address to the provider, who asks the owner to approve. Nothing shows where no provider supports it or the signing key isn't set.
+ */
+async function ConnectAutomatically({ slug, domains, lang }: { slug: string; domains: StoreDomain[]; lang: ReturnType<typeof adminLangOf> }) {
+  const key = domainConnectKey();
+  if (!key || domains.length === 0) return null;
+  const found = await Promise.all(domains.map(async (d) => ({ d, connect: await domainConnectFor(d.hostname, { key }) })));
+  const offers = found.filter((f) => f.connect !== null);
+  if (offers.length === 0) return null;
+  const words = adminText(lang, "domains").connectAuto;
+  const back = `${siteUrl()}/admin/${slug}/settings/domains?dc=back`;
+  return (
+    <Card title={words.title} description={words.intro}>
+      <div className="flex flex-wrap gap-2">
+        {offers.map(({ d, connect }) => (
+          <ButtonLink
+            key={d.id}
+            kind="strong"
+            href={signedApplyUrl(connect!.settings, connect!.kind, { hostname: d.hostname, token: d.token, ip: d.checks.aValues?.[0], redirectUri: back, state: d.id }, key)}
+          >
+            {fillWords(words.button, { domain: d.hostname, provider: connect!.settings.providerDisplayName ?? connect!.settings.providerName })}
+          </ButtonLink>
+        ))}
+      </div>
+    </Card>
   );
 }

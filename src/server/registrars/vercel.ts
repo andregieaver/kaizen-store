@@ -2,7 +2,7 @@ import "server-only";
 
 import { VercelError, vercelCall, type VercelCall } from "../vercel";
 
-import { RegistrarError, type DomainRegistrar, type Order, type OrderStatus, type SearchResult } from "./types";
+import { RegistrarError, type DomainRegistrar, type Order, type OrderStatus, type SearchResult, type TransferState } from "./types";
 
 /**
  * Vercel's Registrar API (D315, `docs/domains.md` 1, read 22 and 23 October 2026) as a `DomainRegistrar`: generic TLDs, in US dollars, in
@@ -25,6 +25,14 @@ const iso = (v: unknown): string | null => {
 };
 
 const ORDER_STATUSES: readonly OrderStatus[] = ["draft", "purchasing", "completed", "failed"];
+
+/** Vercel's transfer statuses (read from its OpenAPI description, 23 October 2026) in the four states the purchase follows. */
+export function transferState(status: string): TransferState {
+  if (status === "completed") return "done";
+  if (status === "pending_new_auth_code") return "new_code";
+  if (["canceled", "canceled_pending_refund", "failed", "rejected"].includes(status)) return "ended";
+  return "waiting";
+}
 
 export function vercelRegistrar(call: VercelCall = vercelCall): DomainRegistrar {
   const ask = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -110,6 +118,21 @@ export function vercelRegistrar(call: VercelCall = vercelCall): DomainRegistrar 
 
     async setNameservers(domain, nameservers) {
       await ask(`/v1/registrar/domains/${enc(domain)}/nameservers`, json("PATCH", { nameservers }));
+    },
+
+    async transferIn(domain, { authCode, years, expectedPrice, autoRenew, contact }) {
+      const body = await ask<{ orderId?: unknown }>(
+        `/v1/registrar/domains/${enc(domain)}/transfer`,
+        json("POST", { authCode, years, expectedPrice, autoRenew, contactInformation: contact }),
+      );
+      if (typeof body.orderId !== "string" || !body.orderId) throw new RegistrarError("The registrar took the transfer but gave no order number.");
+      return { orderId: body.orderId };
+    },
+
+    async transferStatus(domain) {
+      const body = await ask<{ status?: unknown }>(`/v1/registrar/domains/${enc(domain)}/transfer`);
+      const status = typeof body.status === "string" ? body.status : "pending";
+      return { state: transferState(status), status };
     },
 
     async authCode(domain) {

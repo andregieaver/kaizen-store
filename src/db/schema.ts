@@ -7163,6 +7163,11 @@ export const domainPurchases = commerce.table(
     invoiceUrl: text("invoice_url"),
     collection: text("collection"),
     registrarOrderId: text("registrar_order_id"),
+    /**
+     * A transfer's code from the losing registrar (D315 8.5), encrypted with `SETTINGS_ENCRYPTION_KEY` while the purchase waits for its
+     * payment, and cleared the moment it is handed to the registrar, or when the purchase fails or is voided. Never shown or logged.
+     */
+    authCodeBox: text("auth_code_box"),
     problem: text("problem"),
     tries: integer("tries").notNull().default(0),
     nextTryAt: timestamp("next_try_at", { withTimezone: true }),
@@ -7175,7 +7180,7 @@ export const domainPurchases = commerce.table(
     updatedAt: updatedAt(),
   },
   (t) => [
-    check("domain_purchases_kind", sql`${t.kind} in ('register', 'renew')`),
+    check("domain_purchases_kind", sql`${t.kind} in ('register', 'renew', 'transfer')`),
     check("domain_purchases_status", sql`${t.status} in ('quoted', 'invoiced', 'paid', 'registering', 'done', 'failed', 'refunded', 'void')`),
     check("domain_purchases_years", sql`${t.years} between 1 and 10`),
     check("domain_purchases_amount", sql`${t.amountMinor} > 0`),
@@ -7234,6 +7239,11 @@ export const dnsZones = commerce.table(
     apex: text("apex").notNull(),
     host: text("host").notNull().default("vercel"),
     status: text("status").notNull().default("active"),
+    /**
+     * When public DNS first showed Vercel's nameservers for it (D315 5.4): until then a zone moving here is filled and checked, but the
+     * internet still asks the old provider. Bought here, it arrives at once.
+     */
+    arrivedAt: timestamp("arrived_at", { withTimezone: true }),
     /** When the nameservers moved away (D315 8.2): the zone is kept read-only, with *Switch back*, for 30 days from then. */
     leavingAt: timestamp("leaving_at", { withTimezone: true }),
     /** The nameservers it moved to, as the owner gave them. */

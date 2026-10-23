@@ -235,6 +235,8 @@ export const TOOL_WORDS: Record<string, string> = {
   undo_dns_change: "Planning the undo",
   plan_domain_move: "Planning the move",
   switch_nameservers: "Checking the new nameservers",
+  start_dns_move_here: "Looking at the domain's records",
+  connect_domain: "Connecting the domain",
   store_overview: "Looking at the store",
   sales_summary: "Adding up sales",
   list_orders: "Looking at orders",

@@ -733,6 +733,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Close the store", "See what stops me closing the store", "Reopen a closed store"],
   }),
   store("domains", "/settings/domains", "Domains", "Store", "The store's addresses and its own domain.", { keywords: ["url", "custom domain"] }),
+  store("domain.move-in", "/settings/domains/move-in", "Bring a domain here", "Store", "Bringing a domain the store has elsewhere to Kaizena Flow: its DNS (the records found and copied, checked, then the nameservers changed, with the move followed until it arrives) and its registration (a transfer with the code from the current registrar, paid first and refunded if it fails).", {
+    keywords: ["transfer in", "move domain here", "auth code", "epp code", "nameservers", "zone file", "import dns"],
+    needs: "owner",
+  }),
   store("domain.move", "/settings/domains/move/[domain]", "Move a domain", "Store", "Moving one of the store's domains away, step by step: download its DNS records, check a new DNS provider and switch to it (with a way back for 30 days), get the transfer code for another registrar, or stop using it in the store.", {
     keywords: ["transfer domain", "auth code", "epp code", "transfer code", "nameservers", "zone file", "export dns", "leave"],
     needs: "owner",

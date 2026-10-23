@@ -20,7 +20,14 @@ type Result<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] }
  * records before and after so it can be undone while the zone is still as it left it.
  */
 
-export type Zone = { id: string; storeId: string; apex: string; status: "active" | "leaving" | "left" };
+export type Zone = {
+  id: string;
+  storeId: string;
+  apex: string;
+  status: "active" | "leaving" | "left";
+  /** When public DNS first showed Vercel's nameservers for it; null while a zone moving here waits for the owner's change (5.4). */
+  arrivedAt: string | null;
+};
 
 export type ChangeSource = "editor" | "ai_manager" | "recipe" | "kaizena" | "undo" | "import";
 
@@ -35,7 +42,13 @@ export type DnsHistoryEntry = {
   undoOf: string | null;
 };
 
-const toZone = (r: Row): Zone => ({ id: String(r.id), storeId: String(r.store_id), apex: String(r.apex), status: String(r.status) as Zone["status"] });
+const toZone = (r: Row): Zone => ({
+  id: String(r.id),
+  storeId: String(r.store_id),
+  apex: String(r.apex),
+  status: String(r.status) as Zone["status"],
+  arrivedAt: r.arrived_at ? new Date(String(r.arrived_at)).toISOString() : null,
+});
 
 /** The zones a store keeps here (not left), oldest first. */
 export async function storeZones(storeId: string): Promise<Zone[]> {
@@ -273,4 +286,57 @@ export async function leaveZones(days: number, deps: { host?: DnsHostApi } = {})
     }
   }
   return { left, failed };
+}
+
+/**
+ * A zone moving here (D315 5.4): the domain is added to Kaizena Flow's Vercel team, so Vercel's nameservers answer for it, and the zone is
+ * kept with `arrived_at` empty until public DNS shows those nameservers. Returns the nameservers the owner sets at their registrar.
+ */
+export async function openArrivingZone(actor: Account, storeId: string, apex: string, deps: { host?: DnsHostApi } = {}): Promise<Result<{ zone: Zone; nameservers: string[] }>> {
+  const api = host(deps);
+  if (!api) return { ok: false, problems: ["Kaizena Flow's DNS isn't set up yet."] };
+  let info;
+  try {
+    info = (await api.zone(apex)) ?? (await api.addZone(apex));
+  } catch {
+    return { ok: false, problems: [`${apex} couldn't be added to Kaizena Flow's DNS. If it is used elsewhere on Vercel, remove it there first.`] };
+  }
+  try {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.dns_zones (store_id, apex, created_by) values (${storeId}::uuid, ${apex}, ${actor.id}::uuid) returning *
+    `);
+    await audit(actor.id, storeId, "store.domain_dns_moving_in", { domain: apex });
+    const nameservers = info.intendedNameservers.length > 0 ? info.intendedNameservers : ["ns1.vercel-dns.com", "ns2.vercel-dns.com"]; // Vercel's documented pair
+    return { ok: true, zone: toZone(row), nameservers };
+  } catch {
+    return { ok: false, problems: [`Kaizena Flow already keeps the DNS of ${apex}.`] };
+  }
+}
+
+/** Public DNS shows Vercel's nameservers for a zone moving here: it has arrived. Once. */
+export async function markArrived(storeId: string, apex: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.dns_zones set arrived_at = now(), updated_at = now()
+     where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status = 'active' and arrived_at is null
+    returning id
+  `);
+  if (row) await audit(null, storeId, "store.domain_dns_arrived", { domain: apex.toLowerCase() });
+  return Boolean(row);
+}
+
+/**
+ * The owner stops a move here before it arrived: the zone is left and taken out of the team (never one still registered here). Its records
+ * answered nobody, since the nameservers never pointed here.
+ */
+export async function abandonArrivingZone(actor: Account, storeId: string, apex: string, deps: { host?: DnsHostApi } = {}): Promise<Result> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.dns_zones z set status = 'left', left_at = now(), updated_at = now()
+     where z.store_id = ${storeId}::uuid and z.apex = ${apex.toLowerCase()} and z.status = 'active' and z.arrived_at is null
+    returning z.apex, exists (select 1 from commerce.domain_registrations r where r.apex = z.apex and r.status <> 'transferred_out') as registered
+  `);
+  if (!row) return { ok: false, problems: [`${apex}'s DNS isn't on its way here.`] };
+  const api = host(deps);
+  if (api && !row.registered) await api.removeZone(String(row.apex)).catch(() => {});
+  await audit(actor.id, storeId, "store.domain_dns_move_in_stopped", { domain: String(row.apex) });
+  return { ok: true };
 }

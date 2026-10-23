@@ -38,7 +38,14 @@ const fakeRegistrar: DomainRegistrar = {
   authCode: async () => "SECRET-CODE",
   contactVerified: async () => true,
   domain: async () => ({ expiresAt: "2027-10-23T00:00:00.000Z", boughtAt: null, renews: true, nameservers: ["ns1.vercel-dns.com"] }),
+  transferIn: async (domain, { authCode }) => {
+    calls.push(`transfer ${domain} ${authCode}`);
+    return { orderId: `tr_${domain}` };
+  },
+  transferStatus: async () => transfer,
 };
+/** Where the stand-in registrar's transfers stand. */
+let transfer: { state: "done" | "waiting" | "new_code" | "ended"; status: string } = { state: "waiting", status: "pending_transfer" };
 
 vi.mock("./registrars", () => ({
   REGISTRARS: { vercel: () => fakeRegistrar },
@@ -49,6 +56,7 @@ vi.mock("./registrars", () => ({
   forgetSupportedTlds: () => {},
 }));
 
+process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 const purchases = await import("./domain-purchases");
 
 let owner: Account;
@@ -255,5 +263,61 @@ describe("renewal (D315 9.1)", () => {
     expect(calls).toContain(`renew ${domain}`);
     const [row] = await db().execute<Row>(sql`select status from commerce.domain_purchases where apex = ${domain} and kind = 'renew'`);
     expect(row).toMatchObject({ status: "done" });
+  });
+});
+
+describe("moving a registration here (D315 8.5)", () => {
+  it("is quoted at the transfer price, keeps the code only until it is handed over, and is followed until done", async () => {
+    const domain = `elsewhere-${run}.com`;
+    taken.add(domain);
+    const quoted = await purchases.quoteTransfer(storeId, domain);
+    if (!quoted.ok) throw new Error(quoted.problems.join());
+    expect(await purchases.quoteTransfer(storeId, `free-${run}.com`)).toMatchObject({ ok: false });
+    const code = `CODE-${run}-xyz`;
+    const base = { domain, agreed: `${quoted.quote.currency}:${quoted.quote.amountMinor}`, connect: false, registrant };
+    expect(await purchases.startDomainTransfer(owner, storeId, { ...base, authCode: "a b" })).toMatchObject({ ok: false });
+    const started = await purchases.startDomainTransfer(owner, storeId, { ...base, authCode: code });
+    expect(started).toMatchObject({ ok: true, purchase: { kind: "transfer", status: "quoted" } });
+    // Kept encrypted: the code itself is in no column.
+    const [row] = await db().execute<Row>(sql`select p::text as t, auth_code_box from commerce.domain_purchases p where apex = ${domain}`);
+    expect(String(row.t)).not.toContain(code);
+    expect(row.auth_code_box).not.toBeNull();
+
+    const fake = fakeStripe();
+    await purchases.chargeDomainPurchases({ storeId }, deps(fake));
+    await paid(domain, fake);
+    await purchases.registerPaidDomains({ storeId }, deps(fake));
+    expect(calls).toContain(`transfer ${domain} ${code}`);
+    const [after] = await db().execute<Row>(sql`select status, auth_code_box from commerce.domain_purchases where apex = ${domain}`);
+    expect(after).toMatchObject({ status: "registering", auth_code_box: null });
+    await dueNow(domain);
+    await purchases.registerPaidDomains({ storeId }, deps(fake));
+    expect(await statusOf(domain)).toBe("registering");
+    transfer = { state: "done", status: "completed" };
+    await dueNow(domain);
+    await purchases.registerPaidDomains({ storeId }, deps(fake));
+    expect(await statusOf(domain)).toBe("done");
+    const [reg] = await db().execute<Row>(sql`select status from commerce.domain_registrations where apex = ${domain}`);
+    expect(reg).toMatchObject({ status: "active" });
+    // Its DNS stays where it is: moving it here is its own step.
+    const zones = await db().execute<Row>(sql`select 1 from commerce.dns_zones where apex = ${domain}`);
+    expect(zones).toHaveLength(0);
+  });
+
+  it("refunds a transfer the current registrar refuses", async () => {
+    const domain = `refused-${run}.com`;
+    taken.add(domain);
+    const quoted = await purchases.quoteTransfer(storeId, domain);
+    if (!quoted.ok) throw new Error(quoted.problems.join());
+    await purchases.startDomainTransfer(owner, storeId, { domain, agreed: `${quoted.quote.currency}:${quoted.quote.amountMinor}`, connect: false, registrant, authCode: "OLD-CODE-1" });
+    const fake = fakeStripe();
+    await purchases.chargeDomainPurchases({ storeId }, deps(fake));
+    await paid(domain, fake);
+    transfer = { state: "new_code", status: "pending_new_auth_code" };
+    await purchases.registerPaidDomains({ storeId }, deps(fake));
+    await dueNow(domain);
+    await purchases.registerPaidDomains({ storeId }, deps(fake));
+    expect(["failed", "refunded"]).toContain(await statusOf(domain));
+    expect(fake.notes).toHaveLength(1);
   });
 });

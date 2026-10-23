@@ -20,7 +20,7 @@ export type RegistrationRow = {
 export type PurchaseRow = {
   id: string;
   apex: string;
-  kind: "register" | "renew";
+  kind: "register" | "renew" | "transfer";
   years: number;
   status: "quoted" | "invoiced" | "paid" | "registering" | "done" | "failed" | "refunded" | "void";
   currency: string;
@@ -108,7 +108,7 @@ export function DomainRegistrationsCard({
               <li key={p.id} className="flex flex-col gap-1 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-body text-ink">
-                    {(p.kind === "renew" ? words.purchases.renew : words.purchases.register).replace("{domain}", p.apex).replace("{n}", years(p.years))}
+                    {(p.kind === "renew" ? words.purchases.renew : p.kind === "transfer" ? words.purchases.transfer : words.purchases.register).replace("{domain}", p.apex).replace("{n}", years(p.years))}
                   </span>
                   <Chip signal={PURCHASE_SIGNAL[p.status]} dot>
                     {words.purchases.status[p.status]}

@@ -43,6 +43,12 @@ export type ContactInformation = {
 export type OrderStatus = "draft" | "purchasing" | "completed" | "failed";
 export type Order = { orderId: string; status: OrderStatus; error: string | null };
 
+/**
+ * Where a transfer in stands (D315 8.5), as the registrar says: `done`, `waiting` (on the losing registrar, the registry or the holder's
+ * approval), `new_code` (the code was refused: the holder brings a new one) or `ended` (refused, cancelled or failed).
+ */
+export type TransferState = "done" | "waiting" | "new_code" | "ended";
+
 export type RegistrarDomain = {
   /** When the registration runs out, ISO. */
   expiresAt: string | null;
@@ -69,6 +75,10 @@ export interface DomainRegistrar {
   setAutoRenew(domain: string, autoRenew: boolean): Promise<void>;
   /** An empty list means the registrar's own (Vercel's) nameservers. */
   setNameservers(domain: string, nameservers: readonly string[]): Promise<void>;
+  /** Moves a domain here from another registrar with its code; refused when its price is above `expectedPrice`. The code is used, never kept. */
+  transferIn(domain: string, input: { authCode: string; years: number; expectedPrice: number; autoRenew: boolean; contact: ContactInformation }): Promise<{ orderId: string }>;
+  /** Where a transfer in stands, with the registrar's own word for it. */
+  transferStatus(domain: string): Promise<{ state: TransferState; status: string }>;
   /** The code a holder gives another registrar to move the domain there. Read live, never stored (`docs/domains.md` 8.1). */
   authCode(domain: string): Promise<string>;
   /** Whether the registrant's email is confirmed (null: too soon after buying to say). */

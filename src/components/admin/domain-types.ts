@@ -31,3 +31,18 @@ export type MoveActions = {
   disconnect: () => Promise<FormState>;
   signInAgain: () => Promise<void>;
 };
+
+/** Bringing a domain here (D315 phase 6): the price of a transfer, and what moving the DNS here would copy. */
+export type TransferQuoteShape = { ok: true; domain: string; currency: string; amountMinor: number } | { ok: false; problems: string[] };
+export type MoveInRecordShape = { key: string; line: string; from: "file" | "probe"; live: boolean | null };
+export type MoveInLookShape =
+  | { ok: true; domain: string; nameservers: string[]; registrar: string | null; found: MoveInRecordShape[]; kept: string[]; problems: string[]; skipped: string[]; registeredHere: boolean }
+  | { ok: false; problems: string[] };
+export type MoveInStartShape = { ok: true; domain: string; nameservers: string[]; missing: string[]; unanswered: string[]; pointed: boolean } | { ok: false; problems: string[] };
+export type MoveInActions = {
+  quote: (domain: string) => Promise<TransferQuoteShape>;
+  transfer: DomainAction;
+  look: (domain: string, zoneText: string) => Promise<MoveInLookShape>;
+  start: (domain: string, zoneText: string, keys: string[], pointHere: boolean) => Promise<MoveInStartShape>;
+  stop: (domain: string) => Promise<FormState>;
+};

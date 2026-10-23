@@ -1073,6 +1073,23 @@ export const OWNER_TOOLS = [
     "domain",
   ),
   tool(
+    "start_dns_move_here",
+    "Looks at what moving a domain's DNS to Kaizena Flow would bring (D315), for one of the store's connected domains whose DNS is elsewhere: the records its current provider answers for the usual names (and those of a zone file the owner pasted), where its DNS is now and its registrar. Changes nothing: the owner copies them and changes the nameservers on the page it returns. Say plainly that a name nobody asked about isn't found.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      zone_file: z.string().max(200_000).optional().describe("A zone file the owner pasted from their current provider, as it is."),
+    }),
+  ),
+  tool(
+    "connect_domain",
+    "Connects a domain to the store (D315, P8), or makes a connected one the store's address. A domain registered here or whose DNS Kaizena Flow keeps connects at once; any other gets the records the owner creates at their DNS provider, which this answers with. Counts against the plan's domains. Needs the owner's approval.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain or subdomain, as the owner gave it."),
+      primary: z.boolean().default(false).describe("Make it the store's address once it works."),
+    }),
+    "public",
+  ),
+  tool(
     "set_domain_renewal",
     "Turns a registered domain's renewal on or off (D315). Off: it is not renewed, and stops on its expiry date (say the date). On: it renews by itself, invoiced 30 days ahead. Needs the owner's approval.",
     z.object({

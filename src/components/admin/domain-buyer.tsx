@@ -71,43 +71,7 @@ export function DomainBuyer({
             <input type="checkbox" name="connect" defaultChecked />
             {words.connect}
           </label>
-          <details className="rounded-panel border border-line p-4">
-            <summary className="cursor-pointer text-body">
-              {words.registrant}: {registrant.kind === "company" && registrant.companyName ? registrant.companyName : `${registrant.firstName} ${registrant.lastName}`.trim()}
-              {registrant.email ? `, ${registrant.email}` : ""}
-            </summary>
-            <p className="mt-2 text-caption text-muted">{words.registrantNote}</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm">
-                {words.registrant}
-                <select name="kind" defaultValue={registrant.kind} className={input}>
-                  <option value="person">{words.person}</option>
-                  <option value="company">{words.company}</option>
-                </select>
-              </label>
-              {(
-                [
-                  ["companyName", words.companyName, registrant.companyName, false],
-                  ["orgNumber", words.orgNumber, registrant.orgNumber, false],
-                  ["firstName", words.firstName, registrant.firstName, true],
-                  ["lastName", words.lastName, registrant.lastName, true],
-                  ["email", words.email, registrant.email, true],
-                  ["phone", words.phone, registrant.phone, true],
-                  ["address1", words.address1, registrant.address1, true],
-                  ["address2", words.address2, "", false],
-                  ["postalCode", words.postalCode, registrant.postalCode, true],
-                  ["city", words.city, registrant.city, true],
-                  ["state", words.state, "", false],
-                  ["country", words.country, registrant.country, true],
-                ] as const
-              ).map(([name, label, value, required]) => (
-                <label key={name} className="flex flex-col gap-1 text-sm">
-                  {label}
-                  <input name={name} defaultValue={value} required={required} className={input} autoComplete="off" />
-                </label>
-              ))}
-            </div>
-          </details>
+          <RegistrantFields registrant={registrant} words={words} />
           <p className="text-caption text-muted">{words.payNote}</p>
           <div className="flex flex-wrap gap-2">
             <SubmitButton>{words.buy.replace("{price}", money(chosen.firstYear, currency)!)}</SubmitButton>
@@ -165,5 +129,48 @@ export function DomainBuyer({
         </div>
       )}
     </Card>
+  );
+}
+
+/** Who a domain is registered to (D315 4.5): filled in from the store and the owner, folded away, every field there to change. */
+export function RegistrantFields({ registrant, words }: { registrant: RegistrantPrefill; words: DomainsMessages["get"] }) {
+  return (
+    <details className="rounded-panel border border-line p-4">
+      <summary className="cursor-pointer text-body">
+        {words.registrant}: {registrant.kind === "company" && registrant.companyName ? registrant.companyName : `${registrant.firstName} ${registrant.lastName}`.trim()}
+        {registrant.email ? `, ${registrant.email}` : ""}
+      </summary>
+      <p className="mt-2 text-caption text-muted">{words.registrantNote}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          {words.registrant}
+          <select name="kind" defaultValue={registrant.kind} className={input}>
+            <option value="person">{words.person}</option>
+            <option value="company">{words.company}</option>
+          </select>
+        </label>
+        {(
+          [
+            ["companyName", words.companyName, registrant.companyName, false],
+            ["orgNumber", words.orgNumber, registrant.orgNumber, false],
+            ["firstName", words.firstName, registrant.firstName, true],
+            ["lastName", words.lastName, registrant.lastName, true],
+            ["email", words.email, registrant.email, true],
+            ["phone", words.phone, registrant.phone, true],
+            ["address1", words.address1, registrant.address1, true],
+            ["address2", words.address2, "", false],
+            ["postalCode", words.postalCode, registrant.postalCode, true],
+            ["city", words.city, registrant.city, true],
+            ["state", words.state, "", false],
+            ["country", words.country, registrant.country, true],
+          ] as const
+        ).map(([name, label, value, required]) => (
+          <label key={name} className="flex flex-col gap-1 text-sm">
+            {label}
+            <input name={name} defaultValue={value} required={required} className={input} autoComplete="off" />
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }

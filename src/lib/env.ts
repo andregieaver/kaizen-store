@@ -62,3 +62,15 @@ export function usageDrainEnv(
   if (!(rate > 0 && rate <= 1)) throw new Error("USAGE_DRAIN_SAMPLE_RATE must be a number above 0 and at most 1.");
   return { secret, sampleRate: rate };
 }
+
+/**
+ * Domain Connect's signing key (D315 6): the private key (PEM, PKCS#8 or RSA), with `\n` written as two characters allowed so it fits one
+ * variable. Null without it: *Connect automatically* is then not offered.
+ */
+export function domainConnectKey(source: Record<string, string | undefined> = { DOMAIN_CONNECT_PRIVATE_KEY: process.env.DOMAIN_CONNECT_PRIVATE_KEY }): string | null {
+  const raw = source.DOMAIN_CONNECT_PRIVATE_KEY?.trim();
+  if (!raw) return null;
+  const pem = raw.replace(/\\n/g, "\n");
+  if (!/^-----BEGIN (RSA )?PRIVATE KEY-----/.test(pem)) throw new Error("DOMAIN_CONNECT_PRIVATE_KEY must be a PEM private key.");
+  return pem;
+}

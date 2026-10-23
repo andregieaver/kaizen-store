@@ -6,7 +6,7 @@ import { describeRecord } from "@/lib/dns-records";
 import { recipeChanges } from "@/lib/dns-recipes";
 import { registrantInput } from "@/lib/domain-registrant";
 import { changesOf, emailRecipe } from "@/lib/domain-tools";
-import { findingText, worstSeverity, type Finding } from "@/lib/domain-health";
+import { apexOf, findingText, worstSeverity, type Finding } from "@/lib/domain-health";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
@@ -14,7 +14,9 @@ import type { Account } from "./auth";
 import { storeDomainHealth, type DomainHealth, type HealthDeps } from "./domain-health";
 import { afterAnswer } from "./after-answer";
 import { applyDnsChange, dnsAuto, dnsHistory, previewDnsChange, storeZone, undoDnsChange, zoneRecords } from "./domain-dns";
-import { listStoreDomains } from "./domains";
+import { addStoreDomain, connectOwnedDomain, listStoreDomains, setPrimaryDomain } from "./domains";
+import { lookBeforeMoveIn } from "./domain-move-in";
+import { dnsRecords } from "@/lib/custom-domains";
 import { movePlan, nameserverSwitchCheck, switchNameservers } from "./domain-move";
 import { domainPricingRows, storeDomainCurrency } from "./domain-prices";
 import { buyingOpen, chargeDomainPurchases, quoteDomain, renewalOffer, renewDomainNow, setDomainRenewal, startDomainPurchase } from "./domain-purchases";
@@ -371,5 +373,51 @@ export async function switchNameserversTool(ctx: Ctx, args: OwnerToolInput<"swit
   return {
     done: `Switched ${normal(args.domain)} to ${result.check.nameservers.join(", ")}. It can take a few hours before everyone sees the new provider; Switch back is on the page for 30 days.`,
     page: movePage(ctx.store, normal(args.domain), "dns"),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Moving in (D315 phase 6)
+// ---------------------------------------------------------------------------
+
+/** `start_dns_move_here`: what would move, and the page where the owner moves it. Nothing is changed. */
+export async function startDnsMoveHereTool(ctx: Ctx, { domain, zone_file }: OwnerToolInput<"start_dns_move_here">) {
+  const looked = await lookBeforeMoveIn(ctx.store.id, normal(domain), zone_file ?? null);
+  if (!looked.ok) return fail(looked.problems.join(" "));
+  const { look } = looked;
+  return {
+    domain: look.apex,
+    dns_answered_by: look.nameservers,
+    registrar: look.registrar,
+    records_found: look.found.slice(0, 60).map((f) => ({ record: describeRecord(f.record, look.apex), from: f.from === "file" ? "the zone file" : "asking the current provider", answered_now: f.live })),
+    more_records: Math.max(0, look.found.length - 60),
+    kept_for_the_store: look.kept.map((r) => describeRecord(r, look.apex)),
+    left_out: [...look.problems, ...look.skipped],
+    note: "A name nobody asked about isn't found. The owner copies the records and changes the nameservers on the page.",
+    page: `/admin/${ctx.store.slug}/settings/domains/move-in`,
+  };
+}
+
+/** `connect_domain` after the owner's yes: at once where the domain is the store's here, else with the records the owner creates. */
+export async function connectDomainTool(ctx: Ctx, { domain, primary }: OwnerToolInput<"connect_domain">) {
+  const hostname = normal(domain);
+  const apex = apexOf(hostname);
+  const [registration, zone, domains] = await Promise.all([storeRegistration(ctx.store.id, apex), storeZone(ctx.store.id, apex), listStoreDomains(ctx.store.id)]);
+  let connected = domains.find((d) => d.hostname === hostname) ?? null;
+  const ours = (registration && registration.status !== "transferred_out") || (zone && zone.arrivedAt);
+  if (!connected || (ours && connected.status !== "active")) {
+    const made = ours ? await connectOwnedDomain(ctx.account, ctx.store.id, hostname) : await addStoreDomain(ctx.account, ctx.store.id, { hostname });
+    if (!made.ok) return fail(made.problems.join(" "));
+    connected = made.domain;
+  }
+  if (primary && connected.status === "active" && !connected.isPrimary) {
+    const made = await setPrimaryDomain(ctx.account, ctx.store.id, connected.id);
+    if (!made.ok) return fail(made.problems.join(" "));
+  }
+  if (connected.status === "active") return { done: `${hostname} is connected${primary ? " and is the store's address" : ""}. A certificate for https follows by itself.`, page: page(ctx.store) };
+  return {
+    done: `${hostname} is added. Create these records at its DNS provider; the store checks them each time the Domains page is opened.${primary ? " Make it the address once it works." : ""}`,
+    records: dnsRecords(connected.hostname, connected.token, connected.checks).map((r) => ({ type: r.type, name: r.name, value: r.value })),
+    page: page(ctx.store),
   };
 }
