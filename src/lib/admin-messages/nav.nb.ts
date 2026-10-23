@@ -317,6 +317,13 @@ export const NAV_NB: Record<string, string> = {
     "Kaizena Flows Stripe-webhooks per modus, standardgebyret per salg og utseendet på kassen.",
   "Kaizena Flow's default AI provider and models.": "Kaizena Flows standard KI-leverandør og modeller.",
   "AI usage": "KI-bruk",
+  "Usage and limits": "Bruk og grenser",
+  Limits: "Grenser",
+  "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan.":
+    "Hva hvert abonnement inkluderer av lagring, produkter, ansatte, domener, e-post, KI og trafikk, og standarden for butikker uten abonnement.",
+  "What each store you own has used this month, against what its plan includes.": "Hva hver butikk du eier har brukt denne måneden, mot det abonnementet inkluderer.",
+  "What every store used this month against its limits: storage, products, staff, visits, emails and AI.":
+    "Hva hver butikk har brukt denne måneden mot grensene sine: lagring, produkter, ansatte, besøk, e-poster og KI.",
   "What every store, owner and Kaizena Flow itself used of the AI.": "Hva hver butikk, hver eier og Kaizena Flow selv har brukt av KI-en.",
   "AI prices": "KI-priser",
   "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost.":

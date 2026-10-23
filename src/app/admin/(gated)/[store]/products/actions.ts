@@ -30,6 +30,7 @@ import {
 } from "@/server/media";
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
+import { storageRefusal } from "@/server/limits";
 import {
   getEditorContext,
   getProductForEdit,
@@ -146,6 +147,8 @@ export async function startVideoUploadAction(storeSlug: string, file: unknown): 
   const { account, store } = member;
   const parsed = videoFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
+  const full = await storageRefusal(store.id, parsed.data.size);
+  if (full) return { ok: false, problem: full };
   const started = await startVideoUpload(store.id, parsed.data);
   // Kept in the store's media library as its upload starts (D88).
   if (started.ok) await registerVideo({ storeId: store.id, accountId: account.id }, started, parsed.data);
@@ -158,6 +161,9 @@ export async function startFileUploadAction(storeSlug: string, fileName: string)
   if (!member) return { ok: false, problem: await noAccess() };
   const name = z.string().trim().min(1).max(200).safeParse(fileName);
   if (!name.success) return { ok: false, problem: wordsOf(member).fileName };
+  // A download's size is not known before it is uploaded: a store already at its storage limit adds none.
+  const full = await storageRefusal(member.store.id, 1);
+  if (full) return { ok: false, problem: full };
   return startFileUpload(member.store.id, name.data);
 }
 

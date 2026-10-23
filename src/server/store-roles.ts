@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { limitRefusal } from "@/lib/usage-format";
 import {
   collaboratorDays,
   collaboratorExpiry,
@@ -18,6 +19,7 @@ import {
 import { audit, type Membership } from "./auth";
 import { auditChange } from "./audit";
 import { memberCan, NO_ACCESS } from "./permissions";
+import { checkLimit } from "./limits";
 
 type Row = Record<string, unknown>;
 
@@ -258,6 +260,9 @@ export async function inviteCollaborator(member: Membership, email: string, role
     const [role] = await db().execute<Row>(sql`select 1 from commerce.store_roles where store_id = ${member.store.id}::uuid and id = ${roleId}::uuid`);
     if (!role) return { ok: false, problems: ["That role no longer exists."] };
   }
+  // The store's staff places (D314): a collaborator takes one while their time runs.
+  const seats = await checkLimit(member.store.id, "staff_seats");
+  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit)] };
   const result = await db().transaction(async (tx) => {
     const [invitee] = await tx.execute<Row>(sql`
       insert into commerce.accounts (email) values (${email})

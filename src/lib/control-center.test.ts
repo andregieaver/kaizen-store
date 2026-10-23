@@ -366,3 +366,13 @@ describe("the control center in Norwegian (D312 A3)", () => {
     expect(nbLeaves.filter(([, v]) => v.trim() === "")).toEqual([]);
   });
 });
+
+describe("limits used up (D314)", () => {
+  it("tells the owner, links to Billing, and tells nobody else", () => {
+    const items = attentionFor([store({ limitsReached: 2 })]);
+    expect(items.map((i) => `${i.text} -> ${i.href}`)).toEqual(["Kaffe has used up 2 limits of its plan. -> /admin/kaffe/billing"]);
+    expect(attentionFor([store({ limitsReached: 1 })])[0].text).toBe("Kaffe has used up a limit of its plan.");
+    expect(attentionFor([store({ limitsReached: 2, role: "admin" })])).toEqual([]);
+    expect(attentionFor([store({ limitsReached: 0 })])).toEqual([]);
+  });
+});

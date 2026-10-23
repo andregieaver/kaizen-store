@@ -61,6 +61,8 @@ import { staffEn, type StaffMessages } from "./admin-messages/staff.en";
 import { staffNb } from "./admin-messages/staff.nb";
 import { billingEn, type BillingMessages } from "./admin-messages/billing.en";
 import { billingNb } from "./admin-messages/billing.nb";
+import { capacityEn, type CapacityMessages } from "./admin-messages/capacity.en";
+import { capacityNb } from "./admin-messages/capacity.nb";
 import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
@@ -96,6 +98,7 @@ export type AdminAreaMessages = {
   legal: LegalMessages;
   staff: StaffMessages;
   billing: BillingMessages;
+  capacity: CapacityMessages;
   builder: BuilderMessages;
   blocks: BlocksMessages;
   website: WebsiteMessages;
@@ -138,6 +141,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },
   billing: { en: billingEn, nb: billingNb },
+  capacity: { en: capacityEn, nb: capacityNb },
   builder: { en: builderEn, nb: builderNb },
   blocks: { en: blocksEn, nb: blocksNb },
   website: { en: websiteEn, nb: websiteNb },

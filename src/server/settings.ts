@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { limitRefusal } from "@/lib/usage-format";
 import { diffOf } from "@/lib/audit";
 import { decryptSecret, parseKey } from "@/lib/secret-box";
 import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
@@ -11,6 +12,7 @@ import { audit, type Membership, type Role } from "./auth";
 import { auditChange } from "./audit";
 import { getStripeAccounts, type StripeAccount } from "./connect";
 import { memberCan, NO_ACCESS } from "./permissions";
+import { checkLimit } from "./limits";
 import { platformModes } from "./stripe";
 import type { Store } from "./stores";
 import { checkoutProviderOf } from "./mollie";
@@ -217,6 +219,9 @@ export async function inviteStaff(
     if (!found) return { ok: false, problems: ["That role no longer exists."] };
     roleName = String(found.name);
   }
+  // The store's staff places (D314).
+  const seats = await checkLimit(store.id, "staff_seats");
+  if (!seats.ok) return { ok: false, problems: [limitRefusal("staff_seats", seats.limit)] };
   const result = await db().transaction(async (tx) => {
     const [invitee] = await tx.execute<Row>(sql`
       insert into commerce.accounts (email) values (${email})

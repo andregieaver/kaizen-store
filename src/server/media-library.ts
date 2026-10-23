@@ -17,6 +17,7 @@ import { vectorLiteral } from "@/lib/vectors";
 import { aiFor, AiError, embedTexts, type AiConnection } from "./ai";
 import { audit } from "./auth";
 import { copyStoredFile, removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
+import { storageRefusal } from "./limits";
 import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -93,6 +94,9 @@ export async function uploadToLibrary(
   const image = data.get("image");
   const thumbnail = data.get("thumbnail");
   if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
+  // A person's upload counts against the store's storage (D314); the platform's own copies do not come through here.
+  const full = await storageRefusal(owner.storeId, image.size + thumbnail.size);
+  if (full) return { ok: false, problem: full };
   const given = data.get("name");
   return storePicture(owner, image, thumbnail, {
     fileName: cleanName(typeof given === "string" ? given : "", image.name || "picture"),

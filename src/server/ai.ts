@@ -17,6 +17,7 @@ import { estimateTokens, readTokens, type AiKind, type AiFeature, type UsageAmou
 import { cosineSimilarity } from "@/lib/vectors";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 
+import { limitFor, usageNow } from "./limits";
 import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./settings";
@@ -194,8 +195,12 @@ export async function aiFor(storeId: string | null, tag: { feature: AiFeature; a
   `);
   for (const row of rows) {
     const connection = toConnection(row, row.store_id ? "store" : "platform");
+    if (!connection) continue;
+    // A store's AI on Kaizena Flow's key stops for the month at its plan's limit (D314): no AI, as features already handle. Its own key
+    // is never limited (the store pays its provider), nor is Kaizena Flow's own site.
+    if (storeId && connection.source === "platform" && !(await aiRoomLeft(storeId))) return null;
     // Every call made with it is recorded for the store it was asked for (D106), whichever key pays.
-    if (connection) return { ...connection, usage: { storeId, feature: tag.feature, accountId: tag.accountId ?? null } };
+    return { ...connection, usage: { storeId, feature: tag.feature, accountId: tag.accountId ?? null } };
   }
   return null;
 }
@@ -208,6 +213,13 @@ export async function aiFor(storeId: string | null, tag: { feature: AiFeature; a
 export function seeing(connection: AiConnection | null): AiConnection | null {
   const model = connection ? (connection.visionModel ?? connection.textModel) : null;
   return connection && model ? { ...connection, textModel: model } : null;
+}
+
+/** Whether a store has AI left this month on Kaizena Flow's key; only read when its plan sets a limit. */
+async function aiRoomLeft(storeId: string): Promise<boolean> {
+  const limit = await limitFor(storeId, "ai_cost_month_micros");
+  if (limit === null) return true;
+  return (await usageNow(storeId, "ai_cost_month_micros")) < limit;
 }
 
 /** Cached reads that depend on which AI a site has (the chat widget, D81); saving or removing a provider updates them. */

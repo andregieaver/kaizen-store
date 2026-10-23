@@ -32,6 +32,10 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/design-presets.ts": "template",
   "src/server/cookie-scans.ts": "real",
   "src/server/experiments.ts": "real",
+  // Usage and limits (D314): templates and demo stores are never limited, and only real stores count towards an owner's stores.
+  "src/server/limits.ts": "real",
+  "src/server/usage-alerts.ts": "real",
+  "src/server/usage.ts": "real",
   "src/server/manager-tools.ts": "real",
   "src/server/plan-reminders.ts": "template",
   "src/server/platform-customers.ts": "real",

@@ -850,6 +850,9 @@ export const sv: Messages = {
     fee: (percent: string): string => `${percent} avgift per försäljning`,
     popular: "Mest populär",
     includes: "Det här ingår",
+    /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
+    limitNames: { storage_bytes: "lagring", products: "produkter", staff_seats: "anställda", custom_domains: "egna domäner", marketing_emails_month: "marknadsföringsmejl i månaden", ai_cost_month_micros: "AI i månaden", requests_month: "besök i månaden", egress_bytes_month: "bandbredd i månaden", stores_owned: "butiker" },
+    unlimited: "Obegränsat",
     compare: "Jämför planer",
     feature: "Funktion",
     included: "Ingår",

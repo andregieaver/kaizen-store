@@ -20,6 +20,12 @@ import { getStore } from "@/server/stores";
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { LimitOverridesCard } from "@/components/admin/limit-overrides";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { storeLimits } from "@/server/limits";
+import { storeOverrides } from "@/server/limits-admin";
+import { removeLimitOverrideAction, setLimitOverrideAction } from "./limit-actions";
 
 import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../themes/actions";
 import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
@@ -30,7 +36,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 
 /** One store's plan with Kaizen: start, change or cancel it, and its fee. */
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
   const store = await getStore((await params).store);
   if (!store) notFound();
   const [billing, plans, people, invoices] = await Promise.all([
@@ -39,7 +45,15 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     listStorePeople(store.id),
     listStoreInvoices(store.id, 12),
   ]);
-  const [state, obligations, designs, latestDesign] = await Promise.all([storeState(store.id), storeObligations(store.id), listDesigns(), latestDesignUse(store.id)]);
+  const [state, obligations, designs, latestDesign, limits, overrides] = await Promise.all([
+    storeState(store.id),
+    storeObligations(store.id),
+    listDesigns(),
+    latestDesignUse(store.id),
+    storeLimits(store.id),
+    storeOverrides(store.id),
+  ]);
+  const capacityLang = adminLangOf(admin.adminLocale);
   const blockers = closureBlockers(obligations);
   const owner = people.find((p) => p.role === "owner");
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
@@ -216,6 +230,14 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           <SubmitButton>Save fee</SubmitButton>
         </ActionForm>
       </Card>
+      <LimitOverridesCard
+        limits={limits.limits}
+        overrides={overrides}
+        words={adminText(capacityLang, "capacity")}
+        locale={ADMIN_LANG_FACTS[capacityLang].locale}
+        set={setLimitOverrideAction.bind(null, store.id, owner?.id ?? null)}
+        remove={(id) => removeLimitOverrideAction.bind(null, store.id, id)}
+      />
       <Card title={<>Store status: {STATUS_WORDS[state?.status ?? store.status]}</>} className="flex flex-col gap-3 text-sm" compact>
         {state?.reason && <p className="text-muted">Reason on file: {state.reason}</p>}
         {state && state.status !== "active" ? (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveLimit, fromTyped, GIB, LIMIT_KEYS, LIMITS, limitState, roomLeft, toTyped, wouldPass } from "./limits";
+import { effectiveLimit, fromTyped, GIB, LIMIT_KEYS, LIMITS, limitState, parseLimitsForm, roomLeft, toTyped, wouldPass } from "./limits";
 import { USAGE_METRICS } from "./usage-metrics";
 
 describe("effectiveLimit", () => {
@@ -73,5 +73,19 @@ describe("the catalogue", () => {
   it("never refuses traffic", () => {
     expect(LIMITS.requests_month.enforce).toBe("soft");
     expect(LIMITS.egress_bytes_month.enforce).toBe("soft");
+  });
+});
+
+describe("parseLimitsForm", () => {
+  it("reads a value, an unlimited tick and an empty cell, and names a cell typed wrong", () => {
+    const data = new FormData();
+    data.set("v:default:storage_bytes", "5");
+    data.set("u:p1:products", "on");
+    data.set("v:p1:staff_seats", "three");
+    const { cells, problems } = parseLimitsForm(data, ["p1"]);
+    expect(cells.find((c) => c.planId === null && c.key === "storage_bytes")?.cell).toEqual({ kind: "value", value: 5 * GIB });
+    expect(cells.find((c) => c.planId === "p1" && c.key === "products")?.cell).toEqual({ kind: "unlimited" });
+    expect(cells.find((c) => c.planId === "p1" && c.key === "custom_domains")?.cell).toEqual({ kind: "unset" });
+    expect(problems).toEqual(["staff_seats"]);
   });
 });

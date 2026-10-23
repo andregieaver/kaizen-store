@@ -58,7 +58,9 @@ describe("Kaizena Flow's plans for its pages (D142)", () => {
     ]);
     expect(data.features.find((f) => f.id === featureId)).toMatchObject({ category: `Public ${tag}`, name: `Thing ${tag}` });
     // No Stripe ids or store counts travel with it.
-    expect(Object.keys(mine[0]).sort()).toEqual(["description", "featureIds", "id", "name", "position", "prices", "saleFeeBps"]);
+    // Limits are what the plan includes (D314), as numbers; nothing about stores or Stripe.
+    expect(Object.keys(mine[0]).sort()).toEqual(["description", "featureIds", "id", "limits", "name", "position", "prices", "saleFeeBps"]);
+    expect(mine[0].limits).toEqual([]);
   });
 
   it("makes cards from what the database holds", async () => {

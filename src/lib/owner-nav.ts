@@ -20,6 +20,7 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/kaizen-support", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers." },
   { path: "/account/billing", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
   { path: "/account/usage", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
+  { path: "/account/limits", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
   { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
   { path: "/account/wordpress", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];

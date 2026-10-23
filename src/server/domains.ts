@@ -5,9 +5,11 @@ import { randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { limitRefusal } from "@/lib/usage-format";
 import { domainInput, MAX_DOMAINS, verifyName, verifyValue, type DomainChecks } from "@/lib/custom-domains";
 import { storeHosts } from "@/lib/paths";
 
+import { checkLimit } from "./limits";
 import { audit, type Account } from "./auth";
 import { domainsConfigured, vercelDomains, VercelError, type DomainServices } from "./vercel";
 
@@ -119,6 +121,9 @@ export async function addStoreDomain(
   if (counts.mine) return { ok: false, problems: [`${hostname} is already one of your store's domains.`] };
   if (counts.taken) return { ok: false, problems: [`${hostname} is another store's address on Kaizena Flow.`] };
   if (Number(counts.own) >= MAX_DOMAINS) return { ok: false, problems: [`A store can have at most ${MAX_DOMAINS} domains.`] };
+  // The plan's domains (D314), under the platform's own ceiling above.
+  const room = await checkLimit(storeId, "custom_domains");
+  if (!room.ok) return { ok: false, problems: [limitRefusal("custom_domains", room.limit)] };
 
   // On the project already when another store is claiming it too; it stays until neither needs it.
   let checks: DomainChecks;

@@ -45,7 +45,8 @@ describe("the platform admin's sections (D144)", () => {
   it("names the pages of a sidebar under the platform's address, and marks only exact ones exact", () => {
     const links = withBase(PLAN_ITEMS);
     expect(links[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", exact: true });
-    expect(links[1]).toEqual({ href: "/admin/platform/plans/features", label: "Features" });
+    expect(links[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits" });
+    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Features" });
     expect(sectionPrefixes("/website", WEBSITE_ITEMS)[0]).toBe("/admin/platform/website");
     expect(sectionPrefixes(null, PLAN_ITEMS)[0]).toBe("/admin/platform/plans");
   });

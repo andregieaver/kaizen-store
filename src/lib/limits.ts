@@ -96,3 +96,30 @@ export function toTyped(key: LimitKey, value: number): string {
   if (unit === "money") return String(Math.round(value / 10_000) / 100);
   return String(value);
 }
+
+/** A cell of the limits editor as typed: not set (`unset`), unlimited, or a stored integer. */
+export type LimitCell = { kind: "unset" } | { kind: "unlimited" } | { kind: "value"; value: number };
+
+/**
+ * The limits editor's form (`v:{plan}:{key}` the typed value, `u:{plan}:{key}` the Unlimited tick; `default` is the platform default),
+ * for the plans shown. A cell typed wrong is named by its limit's key in `problems`.
+ */
+export function parseLimitsForm(data: FormData, planIds: readonly string[]): { cells: { planId: string | null; key: LimitKey; cell: LimitCell }[]; problems: LimitKey[] } {
+  const cells: { planId: string | null; key: LimitKey; cell: LimitCell }[] = [];
+  const problems = new Set<LimitKey>();
+  for (const plan of ["default", ...planIds]) {
+    for (const key of LIMIT_KEYS) {
+      const unlimited = data.get(`u:${plan}:${key}`) === "on";
+      const typed = String(data.get(`v:${plan}:${key}`) ?? "").trim();
+      let cell: LimitCell = { kind: "unset" };
+      if (unlimited) cell = { kind: "unlimited" };
+      else if (typed !== "") {
+        const value = fromTyped(key, typed);
+        if (value === null) problems.add(key);
+        else cell = { kind: "value", value };
+      }
+      cells.push({ planId: plan === "default" ? null : plan, key, cell });
+    }
+  }
+  return { cells, problems: [...problems] };
+}

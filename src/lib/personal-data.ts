@@ -413,6 +413,10 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "stock.low": "staff",
   "experiment.guardrail": "staff",
   "store.status": "staff",
+  // Usage and limits (D314): to a store's owners when it nears or reaches a limit; to platform admins before a very busy time.
+  "usage.near": "staff",
+  "usage.reached": "staff",
+  "capacity.upcoming": "staff",
   "referral.store_opened": "staff",
   // To someone who asked to open a store (D312 P6)
   "platform.access_received": "staff",

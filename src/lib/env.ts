@@ -45,3 +45,20 @@ export function serverEnv(
   }
   return parsed.data;
 }
+
+/**
+ * Vercel's log drain for usage (D314, `docs/capacity.md` step 1.4): the secret it signs with and the sampling rate it was made with
+ * (1 unless set, between 0 and 1). Null without a secret: the drain route is then off.
+ */
+export function usageDrainEnv(
+  source: Record<string, string | undefined> = {
+    USAGE_DRAIN_SECRET: process.env.USAGE_DRAIN_SECRET,
+    USAGE_DRAIN_SAMPLE_RATE: process.env.USAGE_DRAIN_SAMPLE_RATE,
+  },
+): { secret: string; sampleRate: number } | null {
+  const secret = source.USAGE_DRAIN_SECRET?.trim();
+  if (!secret) return null;
+  const rate = source.USAGE_DRAIN_SAMPLE_RATE?.trim() ? Number(source.USAGE_DRAIN_SAMPLE_RATE) : 1;
+  if (!(rate > 0 && rate <= 1)) throw new Error("USAGE_DRAIN_SAMPLE_RATE must be a number above 0 and at most 1.");
+  return { secret, sampleRate: rate };
+}

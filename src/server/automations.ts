@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { roomLeft } from "@/lib/limits";
 import { starterContent } from "@/lib/automation-starters";
 import {
   AUTOMATION_BATCH,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/automations";
 import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/lib/broadcasts";
 
+import { limitFor, usageNow } from "./limits";
 import { PAID } from "./analytics-sql";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
@@ -257,6 +259,7 @@ export async function runAutomations(options: { only?: string; deadline?: number
   const late = () => options.deadline !== undefined && Date.now() > options.deadline;
   try {
     const stores = new Map<string, EmailStore | null>();
+    const rooms = new Map<string, number>();
     for (const automation of await enabledLifecycles(options.only)) {
       if (late()) break;
       const content = broadcastContentSchema.safeParse(automation.content);
@@ -276,6 +279,17 @@ export async function runAutomations(options: { only?: string; deadline?: number
           result.skipped++;
           continue;
         }
+        // The marketing emails the store's plan allows this month (D314): one that would pass it is not sent, and never later either.
+        if (!rooms.has(automation.storeId)) {
+          const allowed = await limitFor(automation.storeId, "marketing_emails_month");
+          rooms.set(automation.storeId, allowed === null ? Infinity : roomLeft(await usageNow(automation.storeId, "marketing_emails_month", now), allowed));
+        }
+        if ((rooms.get(automation.storeId) ?? 0) < 1) {
+          await db().execute(sql`update commerce.automation_sends set outcome = 'suppressed' where store_id = ${automation.storeId}::uuid and key = ${due.key}`);
+          result.skipped++;
+          continue;
+        }
+        rooms.set(automation.storeId, (rooms.get(automation.storeId) ?? 0) - 1);
         const email = marketingEmail({ store, content: content.data, locale: due.locale, marketCode: due.marketCode, token: due.token });
         const outcome: SendOutcome = email
           ? await sendEmail({

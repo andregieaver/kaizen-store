@@ -90,6 +90,7 @@ export const homeNb: HomeMessages = {
       many: "{store}: bekreftelsene på {n} angringer ble ikke sendt.",
     },
     supportWaiting: "{store}: Kundestøtte: {n} venter på en person.",
+    limitsReached: { one: "{store} har brukt opp en grense i abonnementet.", many: "{store} har brukt opp {n} grenser i abonnementet." },
     returnRequests: {
       one: "{store}: {n} returforespørsel venter på svar.",
       many: "{store}: {n} returforespørsler venter på svar.",

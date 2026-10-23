@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { limitRefusal } from "@/lib/usage-format";
 import { ACCESS_EMAIL_KINDS, accessEmail, requestLang, requestLocale, type AccessEmailKind } from "@/lib/access-emails";
 import { renderEmail } from "@/lib/email-layout";
 import type { PlatformLang } from "@/lib/platform-lang";
@@ -11,6 +12,7 @@ import { emailSignInLink } from "@/lib/supabase/mailer";
 
 import { starterRefusal } from "@/lib/store-starters";
 
+import { checkOwnerStores } from "./limits";
 import { audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
@@ -412,6 +414,11 @@ export async function createStoreForOwner(
   }
   if (!account.platformAdmin && count >= MAX_STORES_PER_OWNER) {
     return { ok: false, problems: [`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow for more.`] };
+  }
+  // The plan's stores per owner (D314), under the ceiling above; a platform admin is never limited.
+  if (!account.platformAdmin) {
+    const room = await checkOwnerStores(account.id);
+    if (!room.ok) return { ok: false, problems: [limitRefusal("stores_owned", room.limit)] };
   }
   if (await isSlugTaken(slug)) return { ok: false, problems: [`The address ${slug} is taken. Choose another.`] };
 

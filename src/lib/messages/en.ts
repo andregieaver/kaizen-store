@@ -860,6 +860,9 @@ export const en = {
     fee: (percent: string): string => `${percent} fee per sale`,
     popular: "Most popular",
     includes: "What's included",
+    /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
+    limitNames: { storage_bytes: "storage", products: "products", staff_seats: "staff", custom_domains: "own domains", marketing_emails_month: "marketing emails a month", ai_cost_month_micros: "of AI a month", requests_month: "visits a month", egress_bytes_month: "bandwidth a month", stores_owned: "stores" },
+    unlimited: "Unlimited",
     compare: "Compare plans",
     feature: "Feature",
     included: "Included",
