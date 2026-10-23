@@ -1055,6 +1055,24 @@ export const OWNER_TOOLS = [
     "domain",
   ),
   tool(
+    "plan_domain_move",
+    "The checklist for moving one of the store's domains away (D315), for what the owner wants: registrar (move the registration to another registrar, the store keeps working), dns (move its DNS to another provider), elsewhere (the store stops using it) or leave (all of it). Each step with its state, what blocks a transfer now and the page where the owner does it. The transfer code is never given here or by you: the owner gets it on the page, after signing in again. Read-only.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      goal: z.enum(["registrar", "dns", "elsewhere", "leave"]).describe("What the owner wants."),
+    }),
+  ),
+  tool(
+    "switch_nameservers",
+    "Moves a domain's DNS from Kaizena Flow to another provider (D315) by switching its nameservers to the ones the owner gave. The new nameservers are asked for every record first: missing records are refused unless the owner said they may go (accept_missing), and nameservers that don't answer are always refused. Kaizena Flow keeps the old records for 30 days with Switch back. Only for a domain registered through Kaizena Flow; for one registered elsewhere the owner changes them there (plan_domain_move says how). Always needs the owner's yes.",
+    z.object({
+      domain: z.string().trim().min(3).max(253).describe("The domain, as list_domains gives it."),
+      nameservers: z.array(z.string().trim().min(3).max(253)).min(2).max(13).describe("The new provider's nameservers, exactly as the owner gave them."),
+      accept_missing: z.boolean().default(false).describe("The owner said records the new provider doesn't have may go."),
+    }),
+    "domain",
+  ),
+  tool(
     "set_domain_renewal",
     "Turns a registered domain's renewal on or off (D315). Off: it is not renewed, and stops on its expiry date (say the date). On: it renews by itself, invoiced 30 days ahead. Needs the owner's approval.",
     z.object({

@@ -31,6 +31,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   set_up_email: "owner",
   verify_domain_for: "owner",
   undo_dns_change: "owner",
+  plan_domain_move: "owner",
+  switch_nameservers: "owner",
   // Looking (the page's `read`)
   store_overview: "owner",
   sales_summary: "analytics:read",

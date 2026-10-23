@@ -210,6 +210,10 @@ export async function closeStore(
       `${checkouts.failed} order${checkouts.failed === 1 ? "" : "s"} waiting for payment could not be cancelled and will be cancelled by the daily clean-up.`,
     );
 
+  // Domains the store registered here or whose DNS it keeps stay the owner's, email included (D315 9.3): only their connection is released.
+  const kept = await import("./domain-move").then((m) => m.keepDomainsOnClose(actor, storeId)).catch(() => [] as string[]);
+  warnings.push(...kept);
+
   for (const domain of await listStoreDomains(storeId)) {
     const removed = await removeStoreDomain(actor, storeId, domain.id).catch(
       () => ({ ok: false as const, problems: ["failed"] }),

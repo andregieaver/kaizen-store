@@ -479,6 +479,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["steng butikken", "slett butikken", "arkiver butikken", "legg ned", "slutte å selge", "åpne igjen"],
   },
   "store:domains": { title: "Domener", keywords: ["domener", "domene", "eget domene", "nettadresse", "adresse"] },
+  "store:domain.move": { title: "Flytt et domene", keywords: ["flytte domene", "overføre domene", "autorisasjonskode", "navnetjenere", "sonefil", "eksporter dns"] },
   "store:company": {
     title: "Virksomhet",
     keywords: ["virksomhet", "firma", "opplysninger om virksomheten", "adresse", "organisasjonsnummer", "kontaktopplysninger"],

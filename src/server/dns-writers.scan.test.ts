@@ -28,7 +28,8 @@ const READERS = ["src/server/domain-health.ts"];
 
 describe("DNS writers (D315 5)", () => {
   it("reaches Vercel's DNS only from the writer and the listed readers", () => {
-    const users = FILES.filter((f) => /from "(\.\/|@\/server\/)vercel-dns"/.test(f.text)).map((f) => f.path);
+    // A type is no way in: only an import of the module's code counts.
+    const users = FILES.filter((f) => /^import (?!type )[^;]*from "(\.\/|@\/server\/)vercel-dns"/m.test(f.text)).map((f) => f.path);
     expect(users.sort()).toEqual([...READERS, WRITER].sort());
   });
 

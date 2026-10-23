@@ -43,6 +43,11 @@ Stripe refuses, nothing is closed), sets the status, expires the open Stripe ses
 landed meanwhile completes its order, which then appears in the closed store's orders), releases the domains, writes `store.closed` to the audit log
 and emails the owners.
 
+**Domains Kaizena Flow registered or keeps the DNS of (D315, `docs/domains.md` 9.3)** are not given up: only their connection to the store is
+released. The registration and the zone stay, so the owner's email and every other record keep working; renewal is turned off
+(`keepDomainsOnClose()`, its lines in the closing's warnings), and the owner can turn it back on, or move the domain away, from the closed store's
+Domains page and *Move this domain* (the owner's key is allowed on a store that is not open).
+
 ## Reopening
 
 The owner may reopen a store they closed for 30 days (`REOPEN_DAYS`, `ownerMayReopen()`); a suspension and anything later is the platform's. Reopening

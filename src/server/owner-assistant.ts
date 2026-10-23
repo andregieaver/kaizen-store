@@ -22,8 +22,9 @@ import { featureApprovalDetails } from "./feature-tools";
 import { setFeatureInput } from "@/lib/feature-tools";
 import { gateNeeded, OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
+import type { OwnerToolInput } from "@/lib/owner-tools";
 
-import { dnsApprovalDetails, domainApprovalDetails } from "./domain-tools";
+import { dnsApprovalDetails, domainApprovalDetails, moveApprovalDetails } from "./domain-tools";
 import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { setupApprovalWords } from "./setup-tools";
@@ -663,6 +664,10 @@ export async function keepForApproval(
       summary = details.summary;
       args = details.args;
     }
+  }
+  if (store && tool === "switch_nameservers") {
+    const details = await moveApprovalDetails({ account: ctx.account, store }, args as OwnerToolInput<"switch_nameservers">);
+    if (details) summary = details.summary;
   }
   if (store && (tool === "buy_domain" || tool === "renew_domain")) {
     const details = await domainApprovalDetails({ account: ctx.account, store }, tool, args);

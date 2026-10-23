@@ -14,7 +14,7 @@ const CHANGING = new Set([
   "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts",
   "build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer",
   "set_store_details", "set_countries", "set_languages", "set_currencies", "set_flat_shipping", "save_shipping_method", "open_store",
-  "buy_domain", "renew_domain", "set_domain_renewal", "change_dns", "set_up_email", "verify_domain_for", "undo_dns_change",
+  "buy_domain", "renew_domain", "set_domain_renewal", "change_dns", "set_up_email", "verify_domain_for", "undo_dns_change", "switch_nameservers",
 ]);
 
 const owner: PermissionHolder = { role: "owner" };

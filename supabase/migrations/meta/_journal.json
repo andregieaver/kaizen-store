@@ -2962,6 +2962,13 @@
       "when": 1792770634357,
       "tag": "20261023155034_domains_buying",
       "breakpoints": true
+    },
+    {
+      "idx": 423,
+      "version": "7",
+      "when": 1792774813509,
+      "tag": "20261023170013_domains_moving",
+      "breakpoints": true
     }
   ]
 }

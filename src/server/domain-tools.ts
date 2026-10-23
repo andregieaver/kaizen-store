@@ -15,6 +15,7 @@ import { storeDomainHealth, type DomainHealth, type HealthDeps } from "./domain-
 import { afterAnswer } from "./after-answer";
 import { applyDnsChange, dnsAuto, dnsHistory, previewDnsChange, storeZone, undoDnsChange, zoneRecords } from "./domain-dns";
 import { listStoreDomains } from "./domains";
+import { movePlan, nameserverSwitchCheck, switchNameservers } from "./domain-move";
 import { domainPricingRows, storeDomainCurrency } from "./domain-prices";
 import { buyingOpen, chargeDomainPurchases, quoteDomain, renewalOffer, renewDomainNow, setDomainRenewal, startDomainPurchase } from "./domain-purchases";
 import { suggestedRegistrant } from "./domain-registrant";
@@ -313,4 +314,62 @@ export async function undoDnsChangeTool(ctx: Ctx, { change }: OwnerToolInput<"un
   const result = await undoDnsChange(ctx.account, ctx.store.id, change);
   if (!result.ok) return fail(result.problems.join(" "));
   return { done: "Put the change back. It's live at Kaizena Flow's nameservers now.", page: page(ctx.store) };
+}
+
+// ---------------------------------------------------------------------------
+// Moving away (D315 phase 4)
+// ---------------------------------------------------------------------------
+
+const movePage = (store: Store, domain: string, goal?: string) =>
+  `/admin/${store.slug}/settings/domains/move/${encodeURIComponent(domain)}${goal ? `?goal=${goal}` : ""}`;
+
+/** `plan_domain_move`: the checklist, what blocks a transfer and the page. Never the transfer code. */
+export async function planDomainMoveTool(ctx: Ctx, { domain, goal }: OwnerToolInput<"plan_domain_move">) {
+  const plan = await movePlan(ctx.store.id, normal(domain), goal);
+  if (!plan.ok) return fail(plan.problems.join(" "));
+  const w = domainsEn.move;
+  const fill = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all);
+  return {
+    domain: plan.facts.apex,
+    goal: w.goals[goal],
+    steps: plan.steps.map((s) => ({ step: w.steps[s.key], state: w.states[s.state] })),
+    blocks_a_transfer: plan.facts.transfer.blockers.map((b) => fill(w.transfer.blockers[b.code], b.values)),
+    to_know: plan.facts.transfer.advice.map((a) => fill(w.transfer.advice[a.code], a.values)),
+    dns_here: plan.facts.zone?.status ?? "no",
+    registered_here: Boolean(plan.facts.registration),
+    page: movePage(ctx.store, plan.facts.apex, goal),
+    note: "The transfer code is shown only on the page, to the owner, after a fresh sign-in.",
+  };
+}
+
+/** A `switch_nameservers` call checked now: the new provider must answer, and missing records need the owner's word. */
+export async function preflightMoveTool(ctx: Ctx, args: OwnerToolInput<"switch_nameservers">): Promise<void> {
+  const domain = normal(args.domain);
+  const registration = await storeRegistration(ctx.store.id, domain);
+  if (!registration || registration.status === "transferred_out")
+    return fail(`${domain} isn't registered through Kaizena Flow, so its nameservers are changed where it is registered. plan_domain_move gives the steps.`);
+  const check = await nameserverSwitchCheck(ctx.store.id, domain, args.nameservers.join("\n"));
+  if (!check.ok) return fail(check.problems.join(" "));
+  if (check.unanswered.length > 0) return fail(`The new nameservers didn't answer for ${check.unanswered.join(", ")}: the new provider isn't set up for ${domain} yet.`);
+  if (check.missing.length > 0 && !args.accept_missing)
+    return fail(`The new provider doesn't have these records yet: ${check.missing.map((r) => describeRecord(r, domain)).join("; ")}. Ask the owner to add them there, or whether they may go.`);
+}
+
+/** What switching does, in words for the owner's yes: where the DNS goes and anything that stops working. */
+export async function moveApprovalDetails(ctx: Ctx, args: OwnerToolInput<"switch_nameservers">): Promise<{ summary: string } | null> {
+  const domain = normal(String(args.domain ?? ""));
+  const check = await nameserverSwitchCheck(ctx.store.id, domain, (Array.isArray(args.nameservers) ? args.nameservers : []).join("\n"));
+  if (!check.ok) return null;
+  const lost = check.missing.length > 0 ? ` These records stop answering: ${check.missing.map((r) => describeRecord(r, domain)).join("; ")}.` : " The new provider answers every record.";
+  return { summary: `Move the DNS of ${domain} to ${check.nameservers.join(", ")}.${lost} Kaizena Flow keeps the old records for 30 days, with Switch back.`.slice(0, 1800) };
+}
+
+/** `switch_nameservers` after the owner's yes. */
+export async function switchNameserversTool(ctx: Ctx, args: OwnerToolInput<"switch_nameservers">) {
+  const result = await switchNameservers(ctx.account, ctx.store.id, normal(args.domain), args.nameservers.join("\n"), { acceptMissing: args.accept_missing });
+  if (!result.ok) return fail(result.problems.join(" "));
+  return {
+    done: `Switched ${normal(args.domain)} to ${result.check.nameservers.join(", ")}. It can take a few hours before everyone sees the new provider; Switch back is on the page for 30 days.`,
+    page: movePage(ctx.store, normal(args.domain), "dns"),
+  };
 }

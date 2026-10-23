@@ -7113,6 +7113,8 @@ export const domainRegistrations = commerce.table(
     contactVerified: boolean("contact_verified"),
     contactCheckedAt: timestamp("contact_checked_at", { withTimezone: true }),
     transferredOutAt: timestamp("transferred_out_at", { withTimezone: true }),
+    /** When the owner was shown the transfer code (D315 8.1): the move is watched from then until it completes or is given up. */
+    transferStartedAt: timestamp("transfer_started_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -7232,6 +7234,10 @@ export const dnsZones = commerce.table(
     apex: text("apex").notNull(),
     host: text("host").notNull().default("vercel"),
     status: text("status").notNull().default("active"),
+    /** When the nameservers moved away (D315 8.2): the zone is kept read-only, with *Switch back*, for 30 days from then. */
+    leavingAt: timestamp("leaving_at", { withTimezone: true }),
+    /** The nameservers it moved to, as the owner gave them. */
+    movedTo: jsonb("moved_to"),
     leftAt: timestamp("left_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),

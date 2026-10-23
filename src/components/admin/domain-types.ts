@@ -18,3 +18,16 @@ export type DnsCheckShape = { ok: true; effects: string[]; lines: string[]; rev:
 
 export type DnsCheckFn = (apex: string, draft: DnsDraftShape) => Promise<DnsCheckShape>;
 export type DnsApply = (apex: string, draft: DnsDraftShape, rev: string) => Promise<FormState>;
+
+/** Moving a domain away (D315 8): what the new nameservers answer, the transfer code (to the page only), and the plain steps. */
+export type SwitchCheckShape = { ok: true; ready: boolean; missing: string[]; unanswered: string[] } | { ok: false; problems: string[] };
+export type RevealShape = { ok: true; code: string } | { ok: false; problems: string[]; signIn?: boolean };
+export type MoveActions = {
+  check: (nameservers: string) => Promise<SwitchCheckShape>;
+  switch: DomainAction;
+  switchBack: () => Promise<FormState>;
+  reveal: () => Promise<RevealShape>;
+  stay: () => Promise<FormState>;
+  disconnect: () => Promise<FormState>;
+  signInAgain: () => Promise<void>;
+};

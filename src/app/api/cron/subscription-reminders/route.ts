@@ -29,6 +29,7 @@ import { pruneBroadcastRecipients } from "@/server/broadcasts";
 import { pruneStockRequests } from "@/server/stock-requests";
 import { pruneSubscribers } from "@/server/marketing-subscribers";
 import { runDomainRenewals } from "@/server/domain-purchases";
+import { runDomainMoves } from "@/server/domain-move";
 
 /**
  * Daily: reminders before trials end and before renewals (D29). Supabase's
@@ -43,12 +44,14 @@ export async function GET(request: Request) {
   // GDPR (wave 1, 1g): the retention schedule, erasures that began and did not finish, and the reminders about requests due. Each never throws.
   // Domains (D315, never throws): renewals invoiced 30 days ahead, the registrar's auto-renew turned off where renewal is off or unpaid.
   const domainRenewals = await runDomainRenewals().catch((error) => (console.error("[domains] renewals failed", error), { quoted: 0, stopped: 0 }));
+  // Domains moving away (D315 8, never throws): transfers followed until done, zones kept 30 days after their nameservers moved let go.
+  const domainMoves = await runDomainMoves().catch((error) => (console.error("[domains] moves failed", error), { moved: 0, given_up: 0, zonesLeft: 0 }));
   const [retention, erasures, privacyReminders, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned] = await Promise.all([runRetention(), resumeErasures().catch((error) => (console.error("[privacy] resume failed", error), { resumed: 0, failed: 0 })), sendPrivacyReminders().catch((error) => (console.error("[privacy] reminders failed", error), { dueSoon: 0, overdue: 0 })), pruneDataJobs(), pruneNotFound(), pruneThemeDetaches().catch((error) => (console.error("[theme-detach] prune failed", error), 0)), pruneThemeUpdates().catch((error) => (console.error("[theme-updates] prune failed", error), 0)), pruneSubscribers().catch((error) => (console.error("[subscribers] prune failed", error), 0)), pruneBroadcastRecipients().catch((error) => (console.error("[broadcasts] prune failed", error), 0)), pruneAutomations().catch((error) => (console.error("[automations] prune failed", error), 0)), pruneStockRequests().catch((error) => (console.error("[stock-requests] prune failed", error), 0)), expireGiftCards(), prunePageJobs().catch((error) => (console.error("[page-jobs] prune failed", error), 0))]);
   for (const store of rates) {
     revalidateTag(storeTag(store.slug), "max");
     revalidateTag(catalogTag(store.id), "max");
   }
-  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, domainRenewals }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ...run, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, domainRenewals, domainMoves }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export const POST = GET;

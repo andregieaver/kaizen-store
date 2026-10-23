@@ -9,7 +9,7 @@ import { isProtected } from "@/lib/dns-plan";
 import { dnsAuto, dnsHistory, storeZones, zoneRecords } from "@/server/domain-dns";
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
-import { memberCan, requirePermission } from "@/server/permissions";
+import { checkPermission, memberCan, requireOwnerRole } from "@/server/permissions";
 import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } from "@/server/domains";
 import { storeDomainHealth } from "@/server/domain-health";
 import { buyingOpen, renewalOffer, storeDomainPurchases } from "@/server/domain-purchases";
@@ -17,7 +17,9 @@ import { suggestedRegistrant } from "@/server/domain-registrant";
 import { registrationFacts, storeRegistrations } from "@/server/domain-registrations";
 import type { Membership } from "@/server/auth";
 import { domainsConfigured } from "@/server/vercel";
-import { PageHeader } from "@/components/admin/ui";
+import { ButtonLink, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { apexOf } from "@/lib/domain-health";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -43,7 +45,9 @@ export const metadata: Metadata = { title: "Domains" };
 
 /** The store's addresses and its own domains (P7, P8). */
 export default async function DomainsPage({ params }: PageProps<"/admin/[store]/settings/domains">) {
-  const current = await requirePermission((await params).store, "settings:read");
+  // A closed store's owner still reaches its domains (D315 9.3): the owner's key is allowed there, settings are not.
+  const slug = (await params).store;
+  const current = (await checkPermission(slug, "settings:read")) ?? (await requireOwnerRole(slug));
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
   const domain = storeDomain();
@@ -72,6 +76,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
       <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
         <GetADomain member={current} lang={lang} />
       </Suspense>
+      {memberCan(current, "owner") && <MoveLinks storeId={store.id} slug={store.slug} hosts={domains.map((d) => d.hostname)} lang={lang} />}
       <DomainsPanel
         address={storeHref(store.slug, storeBase(store.slug))}
         hostAddress={hostOrigin(`${store.slug}.${domain.split(":")[0]}`)}
@@ -210,5 +215,24 @@ async function KeptDns({ member, lang }: { member: Membership; lang: ReturnType<
         ),
       )}
     </>
+  );
+}
+
+/** *Move this domain* for each of the store's domains (D315 8): owners only, one step from the page and never in Homer's way. */
+async function MoveLinks({ storeId, slug, hosts, lang }: { storeId: string; slug: string; hosts: string[]; lang: ReturnType<typeof adminLangOf> }) {
+  const [registrations, zones] = await Promise.all([storeRegistrations(storeId), storeZones(storeId)]);
+  const apexes = [
+    ...new Set([...registrations.filter((r) => r.status !== "transferred_out").map((r) => r.apex), ...zones.map((z) => z.apex), ...hosts.map(apexOf)]),
+  ].sort();
+  if (apexes.length === 0) return null;
+  const words = adminText(lang, "domains").move;
+  return (
+    <nav className="flex flex-wrap gap-2" aria-label={words.open}>
+      {apexes.map((apex) => (
+        <ButtonLink key={apex} kind="quiet" href={`/admin/${slug}/settings/domains/move/${encodeURIComponent(apex)}`}>
+          {fillWords(words.title, { domain: apex })}
+        </ButtonLink>
+      ))}
+    </nav>
   );
 }

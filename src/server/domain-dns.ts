@@ -221,3 +221,56 @@ export async function setDnsAuto(account: Account, storeId: string, on: boolean)
   await db().execute(sql`update commerce.stores set domain_dns_auto = ${on} where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.domain_dns_auto_set", { on });
 }
+
+/**
+ * The zone's nameservers moved away (D315 8.2): it is kept, read-only (`applyDnsChange()` changes only an active zone), with *Switch back*,
+ * until `leaveZones()` takes it out of Kaizena Flow's team after `MOVE_KEEP_DAYS`.
+ */
+export async function markZoneLeaving(actor: Account | null, storeId: string, apex: string, nameservers: readonly string[]): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.dns_zones set status = 'leaving', leaving_at = now(), moved_to = ${JSON.stringify(nameservers)}::jsonb, updated_at = now()
+     where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status = 'active'
+    returning id
+  `);
+  if (row) await audit(actor?.id ?? null, storeId, "store.domain_dns_moved", { domain: apex, nameservers: [...nameservers] });
+  return Boolean(row);
+}
+
+/** *Switch back* while the zone is kept: it is the store's live zone again. */
+export async function markZoneBack(actor: Account | null, storeId: string, apex: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.dns_zones set status = 'active', leaving_at = null, moved_to = null, updated_at = now()
+     where store_id = ${storeId}::uuid and apex = ${apex.toLowerCase()} and status = 'leaving'
+    returning id
+  `);
+  if (row) await audit(actor?.id ?? null, storeId, "store.domain_dns_back", { domain: apex });
+  return Boolean(row);
+}
+
+/**
+ * Zones whose nameservers moved away more than `days` ago leave Kaizena Flow's team (the daily job); a failure is tried again next day. A
+ * domain still registered here stays in the team (the registration lives there; removing it could give the name up), and its zone is only
+ * marked left: its records answer nobody once the nameservers are elsewhere.
+ */
+export async function leaveZones(days: number, deps: { host?: DnsHostApi } = {}): Promise<{ left: number; failed: number }> {
+  const api = host(deps);
+  if (!api) return { left: 0, failed: 0 };
+  const rows = await db().execute<Row>(sql`
+    select z.id, z.store_id, z.apex,
+           exists (select 1 from commerce.domain_registrations r where r.apex = z.apex and r.status <> 'transferred_out') as registered
+      from commerce.dns_zones z where z.status = 'leaving' and z.leaving_at < now() - make_interval(days => ${days}) limit 50
+  `);
+  let left = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      if (!row.registered) await api.removeZone(String(row.apex));
+      await db().execute(sql`update commerce.dns_zones set status = 'left', left_at = now(), updated_at = now() where id = ${String(row.id)}::uuid and status = 'leaving'`);
+      await audit(null, String(row.store_id), "store.domain_dns_left", { domain: String(row.apex) });
+      left++;
+    } catch {
+      failed++;
+    }
+  }
+  return { left, failed };
+}

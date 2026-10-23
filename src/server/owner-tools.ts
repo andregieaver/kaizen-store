@@ -72,6 +72,9 @@ import {
   listDnsRecordsTool,
   listDomainsTool,
   preflightDnsTool,
+  preflightMoveTool,
+  planDomainMoveTool,
+  switchNameserversTool,
   preflightDomainTool,
   renewDomainTool,
   searchDomainsTool,
@@ -1923,6 +1926,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightDnsTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A nameserver switch the new provider isn't ready for is refused now, never kept for a yes (D315 8.2).
+  if (name === "switch_nameservers") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightMoveTool(ctx, input.input as OwnerToolInput<"switch_nameservers">);
+  }
   // A domain that can't be bought, renewed or changed is refused now, never kept for a yes (D315).
   if (name === "buy_domain" || name === "renew_domain" || name === "set_domain_renewal") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2145,6 +2154,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_up_email: setUpEmailTool,
   verify_domain_for: verifyDomainForTool,
   undo_dns_change: undoDnsChangeTool,
+  plan_domain_move: planDomainMoveTool,
+  switch_nameservers: switchNameserversTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,
