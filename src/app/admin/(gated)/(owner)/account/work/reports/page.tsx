@@ -7,6 +7,8 @@ import { requireAccount } from "@/server/auth";
 import { getOwnerReport, getOwnerSettings, workStoresFor } from "@/server/work-owner";
 
 import { switchActionsFor } from "../owner-page";
+import { workText } from "@/lib/work-text";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -16,11 +18,13 @@ export const metadata: Metadata = { title: "Reports" };
  * are per currency. The settings are in the address, so a view can be linked to and downloaded (`reports/csv`).
  */
 export default async function OwnerReportsPage({ searchParams }: PageProps<"/admin/account/work/reports">) {
+  await workWords();
+  const tw = workText().pageReportsPage;
   const account = await requireAccount();
   const { using, off } = await workStoresFor(account);
   if (using.length === 0) {
     const rows = await getOwnerSettings(off);
-    return <OwnerWorkStart title="Reports" rows={rows} actions={switchActionsFor(rows)} />;
+    return <OwnerWorkStart title={tw.reports} rows={rows} actions={switchActionsFor(rows)} />;
   }
   const query = await searchParams;
   const storeSlug = activeStoreSlug(using, parseStoreParam(query));

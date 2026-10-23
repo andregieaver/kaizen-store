@@ -11,6 +11,8 @@ import { AssignmentForm, type AssignmentFormProps } from "./assignment-form";
 import { ClientForm, type ClientFormProps } from "./client-form";
 import { Problems, dangerLink, primaryButton, secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /** A button that opens a form in a dialog; the form is given a way to close it. */
 export function FormDialogButton({
@@ -44,9 +46,10 @@ type ClientFormShared = Omit<ClientFormProps, "client" | "onDone" | "onCancel">;
 
 /** "New client": the form in a dialog, then the client's own page. */
 export function NewClientButton(props: ClientFormShared) {
+  const tw = useAdminText("work").clientActions;
   const router = useRouter();
   return (
-    <FormDialogButton label="New client" title="New client" primary>
+    <FormDialogButton label={tw.newClient} title={tw.newClient} primary>
       {(close) => (
         <ClientForm
           {...props}
@@ -63,8 +66,9 @@ export function NewClientButton(props: ClientFormShared) {
 
 /** "Edit client": the form in a dialog. Saving refreshes the page behind it. */
 export function EditClientButton({ client, ...props }: ClientFormShared & { client: WorkClient }) {
+  const tw = useAdminText("work").clientActions;
   return (
-    <FormDialogButton label="Edit client" title={`Edit ${client.name}`}>
+    <FormDialogButton label={tw.editClient} title={fillWords(tw.editName, { name: client.name })}>
       {(close) => <ClientForm {...props} client={client} onCancel={close} onDone={close} />}
     </FormDialogButton>
   );
@@ -72,9 +76,10 @@ export function EditClientButton({ client, ...props }: ClientFormShared & { clie
 
 /** "New assignment": the form in a dialog, then the assignment's page. */
 export function NewAssignmentButton(props: Omit<AssignmentFormProps, "assignment" | "onDone" | "onCancel" | "moveTo">) {
+  const tw = useAdminText("work").clientActions;
   const router = useRouter();
   return (
-    <FormDialogButton label="New assignment" title="New assignment" primary>
+    <FormDialogButton label={tw.newAssignment} title={tw.newAssignment} primary>
       {(close) => (
         <AssignmentForm
           {...props}
@@ -95,8 +100,9 @@ export function EditAssignmentButton(
     assignment: NonNullable<AssignmentFormProps["assignment"]>;
   },
 ) {
+  const tw = useAdminText("work").clientActions;
   return (
-    <FormDialogButton label="Edit assignment" title={`Edit ${props.assignment.name}`}>
+    <FormDialogButton label={tw.editAssignment} title={fillWords(tw.editName, { name: props.assignment.name })}>
       {(close) => <AssignmentForm {...props} onCancel={close} onDone={close} />}
     </FormDialogButton>
   );
@@ -112,6 +118,7 @@ export function ArchiveClientButton({
   clientId: string;
   archived: boolean;
 }) {
+  const tw = useAdminText("work").clientActions;
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   return (
@@ -125,14 +132,14 @@ export function ArchiveClientButton({
               const result = await archiveClientAction(storeSlug, clientId, !archived);
               setProblems(result.ok ? [] : result.problems);
             } catch {
-              setProblems(["That did not work. Check your connection and try again."]);
+              setProblems([tw.thatDidNotWork]);
             }
           })
         }
         className={secondaryButton}
       >
-        {pending ? "Working …" : archived ? "Bring back" : "Archive"}
-        <span className="sr-only"> this client</span>
+        {pending ? tw.working : archived ? tw.bringBack : "Archive"}
+        <span className="sr-only"> {tw.thisClient}</span>
       </button>
       <Problems messages={problems} />
     </div>
@@ -152,6 +159,7 @@ export function DeleteClientButton({
   clientId: string;
   name: string;
 }) {
+  const tw = useAdminText("work").clientActions;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -163,7 +171,7 @@ export function DeleteClientButton({
         onClick={() => {
           if (
             !window.confirm(
-              `Delete ${name}? This cannot be undone. A client with assignments or invoices cannot be deleted: archive it instead.`,
+              fillWords(tw.deleteConfirm, { name }),
             )
           )
             return;
@@ -173,13 +181,13 @@ export function DeleteClientButton({
               if (result.ok) router.push(`${workBase(storeSlug)}/clients`);
               else setProblems(result.problems);
             } catch {
-              setProblems(["That did not work. Check your connection and try again."]);
+              setProblems([tw.thatDidNotWork]);
             }
           });
         }}
         className={dangerLink}
       >
-        {pending ? "Deleting …" : "Delete client"}
+        {pending ? tw.deleting : tw.deleteClient}
       </button>
       <Problems messages={problems} />
     </div>

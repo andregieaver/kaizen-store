@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AiManagerPage } from "@/components/admin/ai-manager-page";
+import { adminLangOf } from "@/lib/admin-lang";
 import { requireOwnerRole } from "@/server/permissions";
 import { assistantAbilities, getConversation, listConversations } from "@/server/owner-assistant";
 
@@ -27,6 +28,7 @@ export default async function StoreAssistantPage({ params, searchParams }: PageP
   return (
     <AiManagerPage
       area="store"
+      lang={adminLangOf(member.account.adminLocale ?? null)}
       base={`/admin/${slug}/assistant`}
       siteName={member.store.name}
       settingsHref={`/admin/${slug}/settings/ai`}

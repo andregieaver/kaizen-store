@@ -9,13 +9,14 @@ import {
   type ReportParams,
 } from "@/lib/work-reports";
 
-import { REPORT_NOTES } from "./report-columns";
+import { reportNotes } from "./report-columns";
 import { ReportFilters } from "./report-filters";
 import { ReportTable } from "./report-table";
 import { ReportTotalsView } from "./report-totals";
 import { secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { workText } from "@/lib/work-text";
 
 export type ReportViewProps = {
   storeSlug: string;
@@ -32,6 +33,7 @@ export type ReportViewProps = {
  * figures come from `getPeriodReport()`; the settings are in the address.
  */
 export function ReportView({ storeSlug, locale, today, params, report, clients }: ReportViewProps) {
+  const tw = workText().reportView;
   const base = `${workBase(storeSlug)}/reports`;
   const query = reportQuery(params);
   const empty = isEmptyReport(report);
@@ -39,19 +41,19 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PageHeader
-          title="Reports"
+          title={tw.reports}
           description={<>{formatDay(report.from, locale)} to {formatDay(report.to, locale)}, {GROUP_LABELS[report.by].toLowerCase()}</>}
         />
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`${base}/print${query}`} target="_blank" className={secondaryButton}>
-            Print view
+            {tw.printView}
           </Link>
           <a href={`${base}/csv${query}`} download className={secondaryButton}>
-            Download CSV
+            {tw.downloadCsv}
           </a>
           {params.clientId && (
             <a href={`${base}/csv${reportQuery(params, { format: "time" })}`} download className={secondaryButton}>
-              Time entries CSV
+              {tw.timeEntriesCsv}
             </a>
           )}
         </div>
@@ -59,7 +61,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
 
       {params.problem && (
         <p role="alert" className="rounded-panel border border-line bg-card p-4 text-sm text-danger-text">
-          {params.problem} Showing this month instead.
+          {params.problem} {tw.showingThisMonth}
         </p>
       )}
 
@@ -69,14 +71,14 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
 
       {empty ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
+          {tw.nothingToReportIn}
         </p>
       ) : (
         <ReportTable report={report} locale={locale} />
       )}
 
       <ul className="flex list-disc flex-col gap-1 pl-5 text-xs text-muted">
-        {REPORT_NOTES.map((note) => (
+        {reportNotes().map((note) => (
           <li key={note}>{note}</li>
         ))}
       </ul>

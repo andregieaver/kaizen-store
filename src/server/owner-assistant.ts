@@ -2,6 +2,9 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { assistantLanguageLines } from "@/lib/assistant-lang";
+
 import { db } from "@/db/client";
 import { adminMapText, matchPath, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { skillsText } from "@/lib/assistant-skills";
@@ -286,6 +289,7 @@ export function managerPrompt(
     "- They may answer a waiting change in words instead (\"yes, send it\", \"no\"): then carry out that answer with decide_approval, by its id. Only for a change they answered in this message; if their answer is unclear, ask.",
     "- If a tool refuses or fails, say what it said. If no tool can do what is asked, say so and open or name the admin page that can.",
     "- Answer in the language they write in. Keep answers short and concrete, in plain text: short lines or simple lists, no tables and no HTML.",
+    ...assistantLanguageLines(adminLangOf(account.adminLocale ?? null)),
     ...(options.withLife
       ? [
           "- They have connected Kaizen Life, their personal-life app: ask_kaizen_life asks its assistant about their calendar, tasks and plans. Use it only when they ask about those or ask you to pass something on. Pass its answer on as said, and never send it customers' details unless they ask you to.",

@@ -1,6 +1,8 @@
 import { timeAmountMinor, type BillingType } from "./work-calc";
 import { addCalendarDays, daysBetween, dueState, monthOf, type Day } from "./work-dates";
 import { formatDuration, invoiceableMinutes } from "./work-time";
+import { fillWords } from "./admin-fill";
+import { workEn, type WorkMessages } from "./admin-messages/work.en";
 
 /**
  * The Work overview (docs/work.md 6.5): what is unbilled, what is drafted, what
@@ -107,7 +109,8 @@ export type WorkOverview = {
 export const outstandingMinor = (i: Pick<OverviewInvoice, "totalMinor" | "paidMinor" | "creditedMinor">): number =>
   Math.max(0, i.totalMinor - i.paidMinor - i.creditedMinor);
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const pick = (n: number, words: { one: string; many: string }, values: Record<string, string | number> = {}) =>
+  fillWords(n === 1 ? words.one : words.many, { count: n, ...values });
 
 /**
  * The overview's figures and the things that need attention, from plain
@@ -124,7 +127,10 @@ export function workOverview(args: {
   balances?: readonly OverviewBalance[];
   base: string;
   label?: string;
+  /** The attention items' words (the `work` catalogue's `attention`); English when none are given. */
+  words?: WorkMessages["attention"];
 }): WorkOverview {
+  const w = args.words ?? workEn.attention;
   const { today } = args;
   const perCurrency = new Map<string, CurrencyFigures>();
   const figures = (currency: string): CurrencyFigures => {
@@ -238,50 +244,50 @@ export function workOverview(args: {
     lowBalances: lowBalances.length,
   };
 
-  const prefix = args.label ? `${args.label}: ` : "";
+  const prefix = args.label ? fillWords(w.prefix, { store: args.label }) : "";
   const attention: AttentionItem[] = [];
   if (counts.overdue > 0) {
     const oldest = overdueInvoices[0].daysOverdue;
     attention.push({
-      text: `${prefix}${plural(counts.overdue, "invoice is", "invoices are")} overdue, the oldest by ${plural(oldest, "day", "days")}.`,
+      text: `${prefix}${pick(counts.overdue, w.overdue, { days: pick(oldest, w.days) })}`,
       href: `${args.base}/invoices?show=overdue`,
-      action: "Open invoices",
+      action: w.openInvoices,
       urgent: oldest >= URGENT_OVERDUE_DAYS,
     });
   }
   if (recurringReady > 0) {
     attention.push({
-      text: `${prefix}${plural(recurringReady, "recurring invoice is", "recurring invoices are")} ready to issue.`,
+      text: `${prefix}${pick(recurringReady, w.recurringReady)}`,
       href: `${args.base}/invoices?show=drafts`,
-      action: "Review",
+      action: w.review,
     });
   }
   if (staleUnbilledMinutes > 0) {
     attention.push({
-      text: `${prefix}${formatDuration(staleUnbilledMinutes)} of time has been unbilled for over ${STALE_UNBILLED_DAYS} days.`,
+      text: `${prefix}${fillWords(w.staleUnbilled, { time: formatDuration(staleUnbilledMinutes), days: STALE_UNBILLED_DAYS })}`,
       href: `${args.base}/invoices/new`,
-      action: "Invoice time",
+      action: w.invoiceTime,
     });
   }
   if (staleDrafts > 0) {
     attention.push({
-      text: `${prefix}${plural(staleDrafts, "invoice draft has", "invoice drafts have")} been waiting for over ${STALE_DRAFT_DAYS} days.`,
+      text: `${prefix}${pick(staleDrafts, w.staleDrafts, { days: STALE_DRAFT_DAYS })}`,
       href: `${args.base}/invoices?show=drafts`,
-      action: "Open drafts",
+      action: w.openDrafts,
     });
   }
   if (counts.longTimers > 0) {
     attention.push({
-      text: `${prefix}${plural(counts.longTimers, "timer has", "timers have")} been running for over ${LONG_TIMER_HOURS} hours.`,
+      text: `${prefix}${pick(counts.longTimers, w.longTimers, { hours: LONG_TIMER_HOURS })}`,
       href: args.base,
-      action: "Open Work",
+      action: w.openWork,
     });
   }
   if (counts.lowBalances > 0) {
     attention.push({
-      text: `${prefix}${plural(counts.lowBalances, "client is", "clients are")} low on prepaid hours.`,
+      text: `${prefix}${pick(counts.lowBalances, w.lowBalances)}`,
       href: `${args.base}/hours`,
-      action: "Open hours",
+      action: w.openHours,
     });
   }
 

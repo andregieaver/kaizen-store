@@ -4,6 +4,7 @@ import type { InvoiceReadiness } from "@/server/work-invoices";
 import { problemHref } from "@/lib/work-invoice-ui";
 
 import { Badge } from "./work-parts";
+import { workText } from "@/lib/work-text";
 
 /**
  * What is missing before the draft can be issued, as the owner reads it (docs/work.md 4.5 6): each problem in words,
@@ -21,13 +22,14 @@ export function ReadinessList({
   clientId: string;
   checking?: boolean;
 }) {
+  const tw = workText().invoiceReadiness;
   const errors = readiness.problems.filter((p) => p.severity === "error");
   const warnings = readiness.problems.filter((p) => p.severity !== "error");
   return (
     <div className="flex flex-col gap-3" aria-busy={checking}>
       <p role="status" className="text-sm font-medium">
         {readiness.ready
-          ? "Ready to issue."
+          ? tw.readyToIssue
           : `${errors.length} ${errors.length === 1 ? "thing" : "things"} to fix before you can issue this invoice.`}
       </p>
       {readiness.problems.length > 0 && (

@@ -11,6 +11,8 @@ import type { InvoiceReadiness } from "@/server/work-invoices";
 
 import { ReadinessList } from "./invoice-readiness";
 import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type IssueDialogProps = {
   open: boolean;
@@ -47,14 +49,16 @@ export type IssueDialogProps = {
  * it as `expectedTotalMinor`, so an invoice is never issued at an amount they did not see.
  */
 export function IssueDialog(props: IssueDialogProps) {
+  const tw = useAdminText("work").invoiceIssueDialog;
   return (
-    <Modal open={props.open} onClose={props.onClose} title="Issue invoice">
+    <Modal open={props.open} onClose={props.onClose} title={tw.issueInvoice}>
       <IssueForm {...props} />
     </Modal>
   );
 }
 
 function IssueForm(props: IssueDialogProps) {
+  const tw = useAdminText("work").invoiceIssueDialog;
   const { storeSlug, invoiceId, currency, locale, totalMinor, readiness, nextNumber, today, paymentDays, blocked } =
     props;
   const id = useId();
@@ -70,19 +74,19 @@ function IssueForm(props: IssueDialogProps) {
   const home = readiness?.homeCurrency ?? "";
   const fx = needsFx ? readFxRate(fxRate) : null;
   const dateProblem = !isDay(issuedOn)
-    ? "Give the issue date as a date."
+    ? tw.giveTheIssueDate
     : issuedOn > today
-      ? "The issue date cannot be later than today."
+      ? tw.theIssueDateCannot
       : null;
-  const fxProblem = needsFx && fx === null ? "Enter the exchange rate, such as 11,50." : null;
+  const fxProblem = needsFx && fx === null ? tw.enterTheExchangeRate : null;
   const ready = readiness?.ready === true;
   const reasons = [
     blocked,
-    !ready ? "Fix what the list above says first." : null,
+    !ready ? tw.fixWhatTheList : null,
     dateProblem,
     fxProblem,
-    !confirmedTotal ? "Confirm the total." : null,
-    earlierNeeded && !confirmEarlier ? "Confirm the earlier date." : null,
+    !confirmedTotal ? tw.confirmTheTotal : null,
+    earlierNeeded && !confirmEarlier ? tw.confirmTheEarlierDate : null,
   ].filter((r): r is string => Boolean(r));
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -106,13 +110,13 @@ function IssueForm(props: IssueDialogProps) {
           return;
         }
         if (result.code === "date_before_previous")
-          setEarlierNeeded(result.problems[0] ?? "This date is earlier than the last invoice's.");
+          setEarlierNeeded(result.problems[0] ?? tw.thisDateIsEarlier);
         else {
           if (result.code === "not_ready") props.onNotReady();
           setProblems(result.problems);
         }
       } catch {
-        setProblems(["The invoice could not be issued. Check your connection and try again."]);
+        setProblems([tw.theInvoiceCouldNot]);
       }
     });
   };
@@ -124,18 +128,18 @@ function IssueForm(props: IssueDialogProps) {
       <p className="text-sm">
         {nextNumber ? (
           <>
-            It will be issued as <strong>{nextNumber}</strong>.
+            {tw.itWillBeIssued} <strong>{nextNumber}</strong>.
           </>
         ) : (
-          <>It will get the next number in your invoice series.</>
+          <>{tw.itWillGetThe}</>
         )}{" "}
-        The number is taken when you issue, so deleting a draft never uses one.
+        {tw.numberTakenOnIssue}
       </p>
 
       <Field
-        label="Issue date"
+        label={tw.issueDate}
         error={dateProblem ?? undefined}
-        hint={`Due ${isDay(issuedOn) && paymentDays > 0 ? `${formatDay(dueOn(issuedOn, paymentDays), locale)} (${paymentDays} days to pay)` : "after the days to pay"}. Today is ${formatDay(today, locale)}.`}
+        hint={fillWords(tw.dueToday, { due: isDay(issuedOn) && paymentDays > 0 ? fillWords(tw.dueDays, { day: formatDay(dueOn(issuedOn, paymentDays), locale), days: paymentDays }) : tw.afterDaysToPay, today: formatDay(today, locale) })}
       >
         {(fieldProps) => (
           <input
@@ -166,16 +170,16 @@ function IssueForm(props: IssueDialogProps) {
               onChange={(event) => setConfirmEarlier(event.target.checked)}
               className="mt-0.5 size-4"
             />
-            <span>Issue the invoice with this earlier date anyway.</span>
+            <span>{tw.issueTheInvoiceWith}</span>
           </label>
         </div>
       )}
 
       {needsFx && (
         <Field
-          label={`Exchange rate: 1 ${currency} in ${home}`}
+          label={fillWords(tw.exchangeRate, { currency, home })}
           error={fxProblem ?? undefined}
-          hint={`The VAT is also stated in ${home}. Use the European Central Bank's reference rate for the issue date.`}
+          hint={fillWords(tw.vatAlsoInHome, { home })}
         >
           {(fieldProps) => (
             <div className="flex flex-wrap items-center gap-2">
@@ -199,7 +203,7 @@ function IssueForm(props: IssueDialogProps) {
 
       <div className="flex flex-col gap-2 rounded-md bg-sunken p-3 text-sm">
         <p>
-          The total with VAT is <strong className="tabular-nums">{formatMoney(totalMinor, currency, locale)}</strong>.
+          {tw.theTotalWithVat} <strong className="tabular-nums">{formatMoney(totalMinor, currency, locale)}</strong>.
         </p>
         <label className="flex items-start gap-2" htmlFor={`${id}-total`}>
           <input
@@ -209,14 +213,12 @@ function IssueForm(props: IssueDialogProps) {
             onChange={(event) => setConfirmedTotal(event.target.checked)}
             className="mt-0.5 size-4"
           />
-          <span>I have checked the lines and the total.</span>
+          <span>{tw.iHaveCheckedThe}</span>
         </label>
       </div>
 
       <p className={hintText}>
-        Once issued, the invoice cannot be changed or deleted. Its number, lines, amounts and the seller&apos;s and
-        client&apos;s details are kept as they are. A mistake is corrected with a credit note, which only an owner can
-        issue, and a new invoice.
+        {tw.onceIssuedTheInvoice}
       </p>
 
       {reasons.length > 0 && problems.length === 0 && (
@@ -228,10 +230,10 @@ function IssueForm(props: IssueDialogProps) {
 
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={props.onClose} className={secondaryButton}>
-          Cancel
+          {tw.cancel}
         </button>
         <button type="submit" disabled={pending || reasons.length > 0} className={primaryButton}>
-          {pending ? "Issuing …" : nextNumber ? `Issue as ${nextNumber}` : "Issue invoice"}
+          {pending ? tw.issuing : nextNumber ? `Issue as ${nextNumber}` : tw.issueInvoice}
         </button>
       </div>
     </form>

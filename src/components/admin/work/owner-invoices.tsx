@@ -19,6 +19,8 @@ import { InvoiceStatusChip } from "./invoice-status";
 import { CurrencyNote, StoreFilter } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
 import { control, secondaryButton, smallButton } from "./work-parts";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 
 function tabCount(show: InvoiceShow, counts: OwnerInvoiceList["counts"]): number {
@@ -57,6 +59,7 @@ export function OwnerInvoicesView({
   storeSlug: string;
   defaultStore: string;
 }) {
+  const tw = workText().ownerInvoices;
   const many = stores.length > 1;
   const base = `${WORK_ROOT}/invoices`;
   const pages = Math.max(1, Math.ceil(list.total / list.pageSize));
@@ -65,7 +68,7 @@ export function OwnerInvoicesView({
   return (
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title="Invoices" />
+        <PageHeader title={tw.invoices} />
         <NewInStoreButton
           kind="invoice"
           stores={stores.map(({ slug, name }) => ({ slug, name }))}
@@ -73,7 +76,7 @@ export function OwnerInvoicesView({
         />
       </div>
 
-      <nav aria-label="Invoice status" className="flex flex-wrap gap-2">
+      <nav aria-label={tw.invoiceStatus} className="flex flex-wrap gap-2">
         {INVOICE_SHOWS.map((show) => {
           const current = params.show === show;
           return (
@@ -94,41 +97,41 @@ export function OwnerInvoicesView({
         })}
       </nav>
 
-      <form method="get" action={base} className="flex flex-wrap items-end gap-3" role="search" aria-label="Filter invoices">
+      <form method="get" action={base} className="flex flex-wrap items-end gap-3" role="search" aria-label={tw.filterInvoices}>
         {params.show !== "all" && <input type="hidden" name="show" value={params.show} />}
         <StoreFilter stores={stores} value={storeSlug} />
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Issued from
+          {tw.issuedFrom}
           <input type="date" name="from" defaultValue={params.from} className={`${control} font-normal`} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Issued to
+          {tw.issuedTo}
           <input type="date" name="to" defaultValue={params.to} className={`${control} font-normal`} />
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          Search
+          {tw.search}
           <input
             type="search"
             name="q"
             defaultValue={params.q}
-            placeholder="Number, client or reference"
+            placeholder={tw.numberClientOrReference}
             className={`${control} font-normal`}
           />
         </label>
         <div className="flex gap-2">
           <button type="submit" className={secondaryButton}>
-            Filter
+            {tw.filter}
           </button>
           {(hasListFilters(params) || storeSlug !== "") && (
             <Link href={`${base}${params.show !== "all" ? `?show=${params.show}` : ""}`} className={secondaryButton}>
-              Clear
+              {tw.clear}
             </Link>
           )}
         </div>
       </form>
 
       {list.totals.length > 0 && (
-        <section aria-label="Totals of these invoices" className="flex flex-col gap-2">
+        <section aria-label={tw.totalsOfTheseInvoices} className="flex flex-col gap-2">
           <ul className="flex flex-wrap gap-3">
             {list.totals.map((total) => (
               <li key={total.currency} className="rounded-panel border border-line bg-card px-4 py-3 text-sm">
@@ -140,7 +143,7 @@ export function OwnerInvoicesView({
                 </span>
                 {total.outstandingMinor > 0 && (
                   <span className="block text-xs text-muted">
-                    {formatMoney(total.outstandingMinor, total.currency, WORK_LOCALE)} still owed
+                    {fillWords(tw.stillOwed, { amount: formatMoney(total.outstandingMinor, total.currency, WORK_LOCALE) })}
                   </span>
                 )}
               </li>
@@ -153,12 +156,12 @@ export function OwnerInvoicesView({
       {list.rows.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {empty
-            ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
-            : "No invoice matches. Try another tab or clear the filters."}
+            ? tw.noInvoicesYetStart
+            : tw.noInvoiceMatchesTry}
         </p>
       ) : (
         <Card compact>
-          <List label="Invoices">
+          <List label={tw.invoices}>
             {list.rows.map((row) => (
               <InvoiceRow key={`${row.storeId}:${row.id}`} row={row} many={many} />
             ))}
@@ -167,19 +170,19 @@ export function OwnerInvoicesView({
       )}
 
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <nav aria-label={tw.pages} className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <span className="text-muted">
             Page {list.page} of {pages}, {list.total} invoices
           </span>
           <span className="flex gap-2">
             {list.page > 1 ? (
               <Link href={link({ page: list.page - 1 })} rel="prev" className={smallButton}>
-                Previous
+                {tw.previous}
               </Link>
             ) : null}
             {list.page < pages ? (
               <Link href={link({ page: list.page + 1 })} rel="next" className={smallButton}>
-                Next
+                {tw.next}
               </Link>
             ) : null}
           </span>
@@ -190,6 +193,7 @@ export function OwnerInvoicesView({
 }
 
 function InvoiceRow({ row, many }: { row: OwnerInvoiceRow; many: boolean }) {
+  const tw = workText().ownerInvoices;
   const money = (minor: number) => formatMoney(minor, row.currency, WORK_LOCALE);
   return (
     <ListRow>
@@ -212,7 +216,7 @@ function InvoiceRow({ row, many }: { row: OwnerInvoiceRow; many: boolean }) {
         }
       />
       <RowFact className="hidden sm:block" sub={row.dueOn ? `Due ${formatDay(row.dueOn, WORK_LOCALE)}` : undefined}>
-        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, WORK_LOCALE)}` : "Not issued"}
+        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, WORK_LOCALE)}` : tw.notIssued}
       </RowFact>
       <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={row.today} showNote />
       <RowAmount>

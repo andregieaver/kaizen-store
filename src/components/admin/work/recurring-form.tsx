@@ -12,6 +12,8 @@ import { VAT_LINE_CATEGORIES } from "@/lib/work-vat";
 import type { RecurringInvoice } from "@/server/work-recurring";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type RecurringFormProps = {
   storeSlug: string;
@@ -51,6 +53,7 @@ export function RecurringForm({
   onDone,
   onCancel,
 }: RecurringFormProps) {
+  const tw = useAdminText("work").recurringForm;
   const editing = template !== undefined;
   const [unit, setUnit] = useState<string>(template?.unit ?? "unit");
   const [chosenCurrency, setChosenCurrency] = useState<string>(template?.currency ?? currency);
@@ -101,7 +104,7 @@ export function RecurringForm({
       } catch {
         setProblems({
           fields: {},
-          general: ["The repeating invoice could not be saved. Check your connection and try again."],
+          general: [tw.theRepeatingInvoiceCould],
         });
       }
     });
@@ -110,12 +113,12 @@ export function RecurringForm({
   const err = (name: string) => problems.fields[name];
   const summary = [
     ...problems.general,
-    ...(Object.keys(problems.fields).length > 0 ? ["Some fields need another look. They are marked below."] : []),
+    ...(Object.keys(problems.fields).length > 0 ? [tw.someFieldsNeedAnother] : []),
   ];
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label="Name" error={err("name")} hint="For you: what this repeating invoice is called in the list.">
+      <Field label={tw.name} error={err("name")} hint={tw.forYouWhatThis}>
         {(props) => (
           <input
             {...props}
@@ -129,9 +132,9 @@ export function RecurringForm({
         )}
       </Field>
       <Field
-        label="Line text"
+        label={tw.lineText}
         error={err("description")}
-        hint="What the invoice's line says. Empty uses the name."
+        hint={tw.whatTheInvoiceS}
       >
         {(props) => (
           <input
@@ -145,7 +148,7 @@ export function RecurringForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Unit" error={err("unit")}>
+        <Field label={tw.unit} error={err("unit")}>
           {(props) => (
             <select
               {...props}
@@ -154,8 +157,8 @@ export function RecurringForm({
               onChange={(event) => setUnit(event.target.value)}
               className={control}
             >
-              <option value="unit">Units</option>
-              <option value="hour">Hours</option>
+              <option value="unit">{tw.units}</option>
+              <option value="hour">{tw.hours}</option>
             </select>
           )}
         </Field>
@@ -175,7 +178,7 @@ export function RecurringForm({
             />
           )}
         </Field>
-        <Field label={`Price (${chosenCurrency})`} error={err("price")} hint="Each, without VAT.">
+        <Field label={fillWords(tw.priceIn, { currency: chosenCurrency })} error={err("price")} hint={tw.eachWithoutVat}>
           {(props) => (
             <input
               {...props}
@@ -189,7 +192,7 @@ export function RecurringForm({
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Discount (%)" error={err("discount")}>
+        <Field label={tw.discount} error={err("discount")}>
           {(props) => (
             <input
               {...props}
@@ -201,7 +204,7 @@ export function RecurringForm({
             />
           )}
         </Field>
-        <Field label="VAT" error={err("vatCategory")}>
+        <Field label={tw.vat} error={err("vatCategory")}>
           {(props) => (
             <select {...props} name="vatCategory" defaultValue={template?.vatCategory ?? "standard"} className={control}>
               {VAT_LINE_CATEGORIES.map((category) => (
@@ -212,7 +215,7 @@ export function RecurringForm({
             </select>
           )}
         </Field>
-        <Field label="Currency" error={err("currency")}>
+        <Field label={tw.currency} error={err("currency")}>
           {(props) => (
             <select
               {...props}
@@ -232,9 +235,9 @@ export function RecurringForm({
       </div>
 
       <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
-        <legend className="px-1 text-sm font-medium">Schedule</legend>
+        <legend className="px-1 text-sm font-medium">{tw.schedule}</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Every" error={err("interval")}>
+          <Field label={tw.every} error={err("interval")}>
             {(props) => (
               <select {...props} name="interval" defaultValue={String(template?.recurrenceInterval ?? 1)} className={control}>
                 {RECURRENCE_INTERVALS.map((n) => (
@@ -245,7 +248,7 @@ export function RecurringForm({
               </select>
             )}
           </Field>
-          <Field label="Period" error={err("period")}>
+          <Field label={tw.period} error={err("period")}>
             {(props) => (
               <select {...props} name="period" defaultValue={template?.recurrencePeriod ?? "month"} className={control}>
                 {RECURRENCE_PERIODS.map((period) => (
@@ -257,27 +260,27 @@ export function RecurringForm({
             )}
           </Field>
           <Field
-            label="First period"
+            label={tw.firstPeriod}
             error={err("startDate")}
-            hint="Every later period is counted from this day; a month's end is respected (31 Jan, 28 Feb, 31 Mar)."
+            hint={tw.everyLaterPeriodIs}
           >
             {(props) => (
               <input {...props} name="startDate" type="date" defaultValue={template?.startDate ?? today} className={control} />
             )}
           </Field>
-          <Field label="Last period" error={err("endDate")} hint="Empty for no end.">
+          <Field label={tw.lastPeriod} error={err("endDate")} hint={tw.emptyForNoEnd}>
             {(props) => (
               <input {...props} name="endDate" type="date" defaultValue={template?.endDate ?? ""} className={control} />
             )}
           </Field>
         </div>
         {editing && (
-          <p className={hintText}>Invoices already made are left as they are. A new schedule counts from the first period.</p>
+          <p className={hintText}>{tw.invoicesAlreadyMadeAre}</p>
         )}
         <Field
-          label="Days to pay"
+          label={tw.daysToPay}
           error={err("paymentDays")}
-          hint="1 to 90. Empty follows the client's and the settings'."
+          hint={tw.n1To90Empty}
         >
           {(props) => (
             <input
@@ -293,7 +296,7 @@ export function RecurringForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
-        <legend className="px-1 text-sm font-medium">Sending</legend>
+        <legend className="px-1 text-sm font-medium">{tw.sending}</legend>
         {canAutoIssue ? (
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -303,17 +306,17 @@ export function RecurringForm({
               onChange={(event) => setAuto(event.target.checked)}
               className="mt-0.5 size-4"
             />
-            <span>Issue and email each invoice by itself</span>
+            <span>{tw.issueAndEmailEach}</span>
           </label>
         ) : (
           <p className="text-sm">
-            {template?.autoIssue ? "Each invoice is issued and emailed by itself." : "Each invoice is made as a draft for you to issue."}{" "}
-            <span className="text-muted">Only an owner can change this.</span>
+            {template?.autoIssue ? tw.eachInvoiceIsIssued : tw.eachInvoiceIsMade}{" "}
+            <span className="text-muted">{tw.onlyAnOwnerCan}</span>
           </p>
         )}
         <p className={hintText}>
           {auto || (!canAutoIssue && template?.autoIssue)
-            ? "The invoice is numbered and final the moment it is issued, and the client is emailed without anyone looking at it first. If something is missing (the client's address, a VAT number) it stays a draft."
+            ? tw.theInvoiceIsNumbered
             : "Off: a draft is made on each date and waits for you to check and issue it."}
         </p>
       </fieldset>
@@ -321,11 +324,11 @@ export function RecurringForm({
       <Problems messages={summary} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Saving …" : editing ? "Save" : "Add repeating invoice"}
+          {pending ? tw.saving : editing ? "Save" : tw.addRepeatingInvoice}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className={secondaryButton}>
-            Cancel
+            {tw.cancel}
           </button>
         )}
       </div>

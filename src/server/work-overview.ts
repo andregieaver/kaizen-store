@@ -13,6 +13,7 @@ import {
   type WorkOverview,
 } from "@/lib/work-overview";
 import { workBase } from "@/lib/work-paths";
+import { workText } from "@/lib/work-text";
 
 type Row = Record<string, unknown>;
 
@@ -126,7 +127,7 @@ export async function getWorkOverview(store: {
     startedAt: Number(r.started_ms),
   }));
 
-  const overview = workOverview({ today, now: Date.now(), invoices, entries, timers, base });
+  const overview = workOverview({ today, now: Date.now(), invoices, entries, timers, base, words: workText().attention });
   overview.attention = overview.attention.map((item) => ({ ...item, href: attentionHref(item.href, base) }));
 
   // The names the page needs, only for what it shows.

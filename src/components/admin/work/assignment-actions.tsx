@@ -8,6 +8,8 @@ import { ASSIGNMENT_STATUS_LABELS } from "@/lib/work-ui";
 
 import { Field, Problems, dangerLink, smallControl } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 type Status = keyof typeof ASSIGNMENT_STATUS_LABELS;
 
@@ -25,6 +27,8 @@ export function AssignmentStatusControl({
   assignmentId: string;
   status: Status;
 }) {
+  const tw = useAdminText("work").assignmentActions;
+  const tl = useAdminText("work").labels;
   const [pending, start] = useTransition();
   const [shown, setShown] = useState(status);
   const [seen, setSeen] = useState(status);
@@ -35,7 +39,7 @@ export function AssignmentStatusControl({
   }
   return (
     <div className="flex flex-col gap-1">
-      <Field label="Status">
+      <Field label={tw.status}>
         {(props) => (
           <select
             {...props}
@@ -53,7 +57,7 @@ export function AssignmentStatusControl({
                     setShown(status);
                   }
                 } catch {
-                  setProblems(["The status could not be changed. Check your connection and try again."]);
+                  setProblems([tw.theStatusCouldNot]);
                   setShown(status);
                 }
               });
@@ -62,7 +66,7 @@ export function AssignmentStatusControl({
           >
             {(Object.keys(ASSIGNMENT_STATUS_LABELS) as Status[]).map((value) => (
               <option key={value} value={value}>
-                {ASSIGNMENT_STATUS_LABELS[value]}
+                {tl.assignmentStatus[value]}
               </option>
             ))}
           </select>
@@ -89,6 +93,7 @@ export function DeleteAssignmentButton({
   clientId: string;
   name: string;
 }) {
+  const tw = useAdminText("work").assignmentActions;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -100,7 +105,7 @@ export function DeleteAssignmentButton({
         onClick={() => {
           if (
             !window.confirm(
-              `Delete ${name}? This cannot be undone. An assignment with time or invoices cannot be deleted: mark it done instead.`,
+              fillWords(tw.deleteConfirm, { name }),
             )
           )
             return;
@@ -110,13 +115,13 @@ export function DeleteAssignmentButton({
               if (result.ok) router.push(`${workBase(storeSlug)}/clients/${clientId}`);
               else setProblems(result.problems);
             } catch {
-              setProblems(["That did not work. Check your connection and try again."]);
+              setProblems([tw.thatDidNotWork]);
             }
           });
         }}
         className={dangerLink}
       >
-        {pending ? "Deleting …" : "Delete assignment"}
+        {pending ? tw.deleting : tw.deleteAssignment}
       </button>
       <Problems messages={problems} />
     </div>

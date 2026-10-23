@@ -15,6 +15,7 @@ import {
 
 import { attentionHref } from "./work-overview";
 import { workBase } from "@/lib/work-paths";
+import type { WorkMessages } from "@/lib/admin-messages/work.en";
 
 type Row = Record<string, unknown>;
 
@@ -35,6 +36,8 @@ const idList = (ids: string[]) =>
 export async function workAttention(
   stores: readonly { id: string; slug: string; name: string; timeZone: string }[],
   now = Date.now(),
+  /** The items' words (the `work` catalogue's `attention`, D312 A10); English when none are given. */
+  words?: WorkMessages["attention"],
 ): Promise<Map<string, AttentionItem[]>> {
   const result = new Map<string, AttentionItem[]>(stores.map((s) => [s.id, []]));
   if (stores.length === 0) return result;
@@ -126,6 +129,7 @@ export async function workAttention(
       timers: timers.get(store.id) ?? [],
       base,
       label: store.name,
+      words,
     });
     result.set(
       store.id,

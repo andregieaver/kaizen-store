@@ -19,6 +19,7 @@ import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { workText } from "@/lib/work-text";
 
 
 export type InvoicesListProps = {
@@ -65,6 +66,7 @@ export function InvoicesListView({
   choices,
   openNew = false,
 }: InvoicesListProps) {
+  const tw = workText().invoicesList;
   const base = `${workBase(storeSlug)}/invoices`;
   const pages = Math.max(1, Math.ceil(list.total / list.pageSize));
   const link = (change: Partial<InvoiceListParams>) => `${base}${invoiceListQuery(params, change)}`;
@@ -73,14 +75,14 @@ export function InvoicesListView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title="Invoices" />
+        <PageHeader title={tw.invoices} />
         <div className="flex flex-wrap items-center gap-2">
           <InvoiceExportSlot storeSlug={storeSlug} query={invoiceListQuery(params)} />
           <NewInvoiceButton storeSlug={storeSlug} choices={choices} defaultOpen={openNew} />
         </div>
       </div>
 
-      <nav aria-label="Invoice status" className="flex flex-wrap gap-2">
+      <nav aria-label={tw.invoiceStatus} className="flex flex-wrap gap-2">
         {INVOICE_SHOWS.map((show) => {
           const current = params.show === show;
           return (
@@ -106,13 +108,13 @@ export function InvoicesListView({
         action={base}
         className="flex flex-wrap items-end gap-3"
         role="search"
-        aria-label="Filter invoices"
+        aria-label={tw.filterInvoices}
       >
         {params.show !== "all" && <input type="hidden" name="show" value={params.show} />}
         <label className="flex min-w-40 flex-col gap-1 text-sm font-medium">
-          Client
+          {tw.client}
           <select name="client" defaultValue={params.clientId} className={`${control} font-normal`}>
-            <option value="">All clients</option>
+            <option value="">{tw.allClients}</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.name}
@@ -121,30 +123,30 @@ export function InvoicesListView({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Issued from
+          {tw.issuedFrom}
           <input type="date" name="from" defaultValue={params.from} className={`${control} font-normal`} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Issued to
+          {tw.issuedTo}
           <input type="date" name="to" defaultValue={params.to} className={`${control} font-normal`} />
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          Search
+          {tw.search}
           <input
             type="search"
             name="q"
             defaultValue={params.q}
-            placeholder="Number, client or reference"
+            placeholder={tw.numberClientOrReference}
             className={`${control} font-normal`}
           />
         </label>
         <div className="flex gap-2">
           <button type="submit" className={secondaryButton}>
-            Filter
+            {tw.filter}
           </button>
           {hasListFilters(params) && (
             <Link href={link({ clientId: "", from: "", to: "", q: "" })} className={secondaryButton}>
-              Clear
+              {tw.clear}
             </Link>
           )}
         </div>
@@ -153,12 +155,12 @@ export function InvoicesListView({
       {list.rows.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {empty
-            ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
-            : "No invoice matches. Try another tab or clear the filters."}
+            ? tw.noInvoicesYetStart
+            : tw.noInvoiceMatchesTry}
         </p>
       ) : (
         <Card compact>
-          <List label="Invoices">
+          <List label={tw.invoices}>
             {list.rows.map((row) => (
               <InvoiceRow key={row.id} row={row} base={base} locale={locale} today={list.today} />
             ))}
@@ -167,19 +169,19 @@ export function InvoicesListView({
       )}
 
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <nav aria-label={tw.pages} className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <span className="text-muted">
             Page {list.page} of {pages}, {list.total} invoices
           </span>
           <span className="flex gap-2">
             {list.page > 1 ? (
               <Link href={link({ page: list.page - 1 })} rel="prev" className={smallButton}>
-                Previous
+                {tw.previous}
               </Link>
             ) : null}
             {list.page < pages ? (
               <Link href={link({ page: list.page + 1 })} rel="next" className={smallButton}>
-                Next
+                {tw.next}
               </Link>
             ) : null}
           </span>
@@ -190,6 +192,7 @@ export function InvoicesListView({
 }
 
 function InvoiceRow({ row, base, locale, today }: { row: InvoiceListRow; base: string; locale: string; today: string }) {
+  const tw = workText().invoicesList;
   const money = (minor: number) => formatMoney(minor, row.currency, locale);
   return (
     <ListRow>
@@ -204,7 +207,7 @@ function InvoiceRow({ row, base, locale, today }: { row: InvoiceListRow; base: s
         }
       />
       <RowFact className="hidden sm:block" sub={row.dueOn ? `Due ${formatDay(row.dueOn, locale)}` : undefined}>
-        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, locale)}` : "Not issued"}
+        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, locale)}` : tw.notIssued}
       </RowFact>
       <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={today} showNote />
       <RowAmount>

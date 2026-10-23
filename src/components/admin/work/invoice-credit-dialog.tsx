@@ -18,6 +18,8 @@ import {
 import type { CreditNoteSummary, InvoiceAmounts, InvoiceLine } from "@/server/work-invoices";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type CreditDialogProps = {
   storeSlug: string;
@@ -40,16 +42,17 @@ export type CreditDialogProps = {
  * was received, an optional recording of the refund.
  */
 export function CreditInvoiceButton(props: CreditDialogProps) {
+  const tw = useAdminText("work").invoiceCreditDialog;
   const [open, setOpen] = useState(false);
   const reasonId = useId();
   if (!props.isOwner) {
     return (
       <div className="flex flex-col gap-1">
         <button type="button" disabled aria-describedby={reasonId} className={secondaryButton}>
-          Credit invoice
+          {tw.creditInvoice}
         </button>
         <p id={reasonId} className={hintText}>
-          Only an owner can credit an invoice.
+          {tw.onlyAnOwnerCan}
         </p>
       </div>
     );
@@ -57,7 +60,7 @@ export function CreditInvoiceButton(props: CreditDialogProps) {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={secondaryButton}>
-        Credit invoice
+        {tw.creditInvoice}
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={`Credit invoice ${props.documentNumber}`} wide>
         <CreditForm {...props} onDone={() => setOpen(false)} />
@@ -77,6 +80,7 @@ export function CreditForm({
   today,
   onDone,
 }: CreditDialogProps & { onDone: () => void }) {
+  const tw = useAdminText("work").invoiceCreditDialog;
   const [kind, setKind] = useState<"full" | "partial">("full");
   const [reason, setReason] = useState("");
   const [choices, setChoices] = useState<CreditChoice[]>([]);
@@ -100,11 +104,11 @@ export function CreditForm({
   const canRefund = refundable(amounts, total);
 
   const reasonProblem =
-    reason.trim() === "" ? "Say why the invoice is credited. It is printed on the credit note." : null;
+    reason.trim() === "" ? tw.sayWhyTheInvoice : null;
   const dateProblem = !isDay(issuedOn)
-    ? "Give the date as a date."
+    ? tw.giveTheDateAs
     : issuedOn > today
-      ? "The date cannot be later than today."
+      ? tw.theDateCannotBe
       : null;
   const partialProblem = kind === "partial" && !partial.ok ? partial : null;
 
@@ -130,10 +134,10 @@ export function CreditForm({
         });
         if (result.ok) onDone();
         else if (result.code === "date_before_previous")
-          setEarlierNeeded(result.problems[0] ?? "This date is earlier than the last credit note's.");
+          setEarlierNeeded(result.problems[0] ?? tw.thisDateIsEarlier);
         else setProblems(result.problems);
       } catch {
-        setProblems(["The credit note could not be issued. Check your connection and try again."]);
+        setProblems([tw.theCreditNoteCould]);
       }
     });
   };
@@ -141,13 +145,11 @@ export function CreditForm({
   return (
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-5">
       <p className={hintText}>
-        The invoice is not changed. A credit note is a document of its own with its own number, and takes back the
-        amounts you choose. Crediting all that is left voids the invoice and releases its logged time, so it can be
-        billed again.
+        {tw.theInvoiceIsNot}
       </p>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">What to credit</legend>
+        <legend className="mb-1 text-sm font-medium">{tw.whatToCredit}</legend>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="radio"
@@ -157,7 +159,7 @@ export function CreditForm({
             className="mt-0.5 size-4"
           />
           <span>
-            All that is left: <span className="tabular-nums">{money(fullTotal)}</span> with VAT
+            {tw.allThatIsLeft} <span className="tabular-nums">{money(fullTotal)}</span> {tw.withVat}
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
@@ -168,24 +170,24 @@ export function CreditForm({
             onChange={() => setKind("partial")}
             className="mt-0.5 size-4"
           />
-          <span>Some lines, or part of a line</span>
+          <span>{tw.someLinesOrPart}</span>
         </label>
       </fieldset>
 
       {kind === "partial" && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <caption className="sr-only">Lines to credit</caption>
+            <caption className="sr-only">{tw.linesToCredit}</caption>
             <thead>
               <tr className="text-left text-xs tracking-wide text-muted uppercase">
                 <th scope="col" className="py-2 pr-3 font-medium">
-                  Line
+                  {tw.line}
                 </th>
                 <th scope="col" className="py-2 pr-3 text-right font-medium">
-                  Left to credit
+                  {tw.leftToCredit}
                 </th>
                 <th scope="col" className="py-2 font-medium">
-                  Quantity to credit
+                  {tw.quantityToCredit}
                 </th>
               </tr>
             </thead>
@@ -198,12 +200,12 @@ export function CreditForm({
                   <tr key={line.id} className="border-t border-line align-top">
                     <td className="py-2 pr-3">{line.description}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">
-                      {quantityField(remaining.quantityHundredths)} {line.unit === "hour" ? "h" : "units"}
+                      {quantityField(remaining.quantityHundredths)} {line.unit === "hour" ? tw.hoursShort : tw.units}
                       <span className="block text-xs text-muted">{money(remaining.inclMinor)}</span>
                     </td>
                     <td className="py-2">
                       <label className="sr-only" htmlFor={`credit-${line.id}`}>
-                        Quantity to credit on {line.description}
+                        {fillWords(tw.creditOnLine, { line: line.description })}
                       </label>
                       <input
                         id={`credit-${line.id}`}
@@ -231,7 +233,7 @@ export function CreditForm({
                           className="mt-1 block text-xs underline"
                           onClick={() => setQuantity(line.id, quantityField(remaining.quantityHundredths))}
                         >
-                          All that is left
+                          {tw.allThatIsLeft2}
                         </button>
                       )}
                     </td>
@@ -249,9 +251,9 @@ export function CreditForm({
       )}
 
       <Field
-        label="Reason"
+        label={tw.reason}
         error={attempted ? (reasonProblem ?? undefined) : undefined}
-        hint="Printed on the credit note."
+        hint={tw.printedOnTheCredit}
       >
         {(props) => (
           <textarea
@@ -266,9 +268,9 @@ export function CreditForm({
       </Field>
 
       <Field
-        label="Credit note date"
+        label={tw.creditNoteDate}
         error={attempted ? (dateProblem ?? undefined) : undefined}
-        hint={`Today is ${formatDay(today, locale)}. It cannot be dated before the invoice.`}
+        hint={fillWords(tw.todayIsNotBefore, { day: formatDay(today, locale) })}
       >
         {(props) => (
           <input
@@ -298,14 +300,14 @@ export function CreditForm({
               onChange={(event) => setConfirmEarlier(event.target.checked)}
               className="mt-0.5 size-4"
             />
-            <span>Issue the credit note with this earlier date anyway.</span>
+            <span>{tw.issueTheCreditNote}</span>
           </label>
         </div>
       )}
 
       {canRefund > 0 && (
         <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
-          <legend className="px-1 text-sm font-medium">Money already received</legend>
+          <legend className="px-1 text-sm font-medium">{tw.moneyAlreadyReceived}</legend>
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -314,15 +316,15 @@ export function CreditForm({
               className="mt-0.5 size-4"
             />
             <span>
-              I have paid {money(canRefund)} back to the client: record it
+              {fillWords(tw.iHavePaidBack, { amount: money(canRefund) })}
               <span className={`block ${hintText}`}>
-                Kaizena Flow does not move money. This only writes the refund into the invoice&apos;s payments.
+                {tw.noMoneyMoved}
               </span>
             </span>
           </label>
           {refund && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Paid back by">
+              <Field label={tw.paidBackBy}>
                 {(props) => (
                   <select
                     {...props}
@@ -338,7 +340,7 @@ export function CreditForm({
                   </select>
                 )}
               </Field>
-              <Field label="Reference (optional)">
+              <Field label={tw.referenceOptional}>
                 {(props) => (
                   <input
                     {...props}
@@ -356,15 +358,15 @@ export function CreditForm({
       )}
 
       <p className="text-sm" aria-live="polite">
-        The credit note is for <strong className="tabular-nums">{money(total)}</strong> with VAT.
+        {tw.theCreditNoteIs} <strong className="tabular-nums">{money(total)}</strong> {tw.withVat2}
       </p>
       <Problems messages={problems} />
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onDone} className={secondaryButton}>
-          Cancel
+          {tw.cancel}
         </button>
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Issuing …" : "Issue credit note"}
+          {pending ? tw.issuing : tw.issueCreditNote}
         </button>
       </div>
     </form>

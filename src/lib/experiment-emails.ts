@@ -1,9 +1,15 @@
+import { countWords, fillWords } from "./admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
+import {
+  staffEmailsEn,
+  type StaffEmailsMessages,
+} from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
  * The email an A/B test's guardrail sends the store's owners when it stops a test by itself (D148, phase 6). Pure: the figures
- * are counted in code (`experimentResults()`), the sentences here only put them in words. Kaizen writes to owners in English, as the
- * admin is. It says what happened and what the owner may do, never why: the figures do not say why a version did worse.
+ * are counted in code (`experimentResults()`), the sentences here only put them in words. It is written in each owner's admin language (D312 A10).
+ * It says what happened and what the owner may do, never why: the figures do not say why a version did worse.
  */
 
 export type GuardrailFacts = {
@@ -20,43 +26,60 @@ export type GuardrailFacts = {
   url: string;
 };
 
-const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
+const number = (n: number, locale: string) => n.toLocaleString(locale);
 
-const number = (n: number) => n.toLocaleString("en-GB");
-const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
-
-/** Orders per hundred visitors, as the owner reads it: `2.6 %`. */
-export function orderRate(buyers: number, visitors: number): string {
+/** Orders per hundred visitors, as the owner reads it: `2.6 %` (`2,6 %` in Norwegian). */
+export function orderRate(
+  buyers: number,
+  visitors: number,
+  locale = "en-GB",
+): string {
   if (visitors <= 0) return "0 %";
   const rate = (buyers / visitors) * 100;
-  return `${rate.toLocaleString("en-GB", { maximumFractionDigits: rate < 10 ? 1 : 0 })} %`;
+  return `${rate.toLocaleString(locale, { maximumFractionDigits: rate < 10 ? 1 : 0 })} %`;
 }
 
-export function guardrailEmail(facts: GuardrailFacts): EmailContent {
+/** Written from the `staffEmails` catalogue in the recipient's admin language (D312 A10); English unless other words are given. */
+export function guardrailEmail(
+  facts: GuardrailFacts,
+  words: StaffEmailsMessages = staffEmailsEn,
+  lang: AdminLang = "en",
+): EmailContent {
   const { version, original } = facts;
+  const w = words.guardrail;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const letter = version.key.toUpperCase();
-  const figures = `${number(version.buyers)} of ${number(version.visitors)} visitors who saw version ${letter} ordered (${orderRate(version.buyers, version.visitors)}), against ${number(original.buyers)} of ${number(original.visitors)} who saw the original (${orderRate(original.buyers, original.visitors)}).`;
+  const figures = fillWords(w.figures, {
+    vBuyers: number(version.buyers, locale),
+    vVisitors: number(version.visitors, locale),
+    letter,
+    vRate: orderRate(version.buyers, version.visitors, locale),
+    oBuyers: number(original.buyers, locale),
+    oVisitors: number(original.visitors, locale),
+    oRate: orderRate(original.buyers, original.visitors, locale),
+  });
   return {
-    subject: `Your A/B test "${facts.testName}" was stopped: fewer orders in version ${letter}`,
-    preview: `Version ${letter} clearly got fewer orders than the original, so Kaizena Flow stopped the test. Everyone sees the original again.`,
-    lang: "en",
-    footer: [facts.storeName, ...FOOTER],
+    subject: fillWords(w.subject, { test: facts.testName, letter }),
+    preview: fillWords(w.preview, { letter }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: [facts.storeName, words.footer],
     blocks: [
-      { type: "heading", text: "Kaizena Flow stopped your A/B test" },
+      { type: "heading", text: w.heading },
       {
         type: "paragraph",
-        text: `The test "${facts.testName}" of ${facts.target} in ${facts.storeName} had run for ${days(facts.days)} when version ${letter} (${version.name}) clearly got fewer orders per visitor than the original. It was far enough behind that luck is a very unlikely reason, so Kaizena Flow stopped the test to protect your sales.`,
+        text: fillWords(w.stopped, {
+          test: facts.testName,
+          target: facts.target,
+          store: facts.storeName,
+          days: countWords(facts.days, w.days),
+          letter,
+          version: version.name,
+        }),
       },
       { type: "paragraph", text: figures },
-      {
-        type: "paragraph",
-        text: "Nobody new is given a version any more, and everyone sees the page as it was before the test. Nothing was changed on it and what was counted is kept.",
-      },
-      {
-        type: "paragraph",
-        text: "Open the results to read them. You can discard the test, or, if you still want to use one of the other versions, apply it. Kaizena Flow does not apply anything by itself.",
-      },
-      { type: "button", text: "See the results", url: facts.url },
+      { type: "paragraph", text: w.nobodyNew },
+      { type: "paragraph", text: w.openResults },
+      { type: "button", text: w.button, url: facts.url },
     ],
   };
 }

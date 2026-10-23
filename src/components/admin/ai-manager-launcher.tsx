@@ -8,6 +8,7 @@ import type { ConversationSummary } from "@/server/owner-assistant";
 
 import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
 import { unlockVoiceAudio } from "./voice-mode";
+import { useAdminText } from "./admin-text";
 
 export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
 
@@ -43,6 +44,7 @@ export function AiManagerLauncher({
   actions: AiManagerActions;
 }) {
   const pathname = usePathname();
+  const w = useAdminText("assistant");
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState<Awaited<ReturnType<AiManagerStart>> | null>(null);
   /** Counts the microphone's clicks: each asks the panel to start voice mode. */
@@ -97,7 +99,7 @@ export function AiManagerLauncher({
   const panel =
     open && !onItsPage ? (
       <aside
-        aria-label="AI manager"
+        aria-label={w.name}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             toggle(false);
@@ -108,7 +110,7 @@ export function AiManagerLauncher({
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-3">
           <Spark className="size-5" />
-          <h2 className="text-title text-ink">AI manager</h2>
+          <h2 className="text-title text-ink">{w.name}</h2>
           <span className="truncate text-sm text-muted">{siteName}</span>
           <button
             type="button"
@@ -117,7 +119,7 @@ export function AiManagerLauncher({
               buttonRef.current?.focus();
             }}
             className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken"
-            aria-label="Close the AI manager"
+            aria-label={w.launcher.close}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -141,7 +143,7 @@ export function AiManagerLauncher({
           />
         ) : (
           <p className="p-4 text-sm text-muted" role="status">
-            Loading …
+            {w.launcher.loading}
           </p>
         )}
       </aside>
@@ -155,11 +157,11 @@ export function AiManagerLauncher({
         onClick={() => toggle()}
         aria-expanded={open && !onItsPage}
         aria-keyshortcuts="Meta+K Control+K"
-        title="AI manager (⌘K / Ctrl+K)"
+        title={w.launcher.title}
         className="inline-flex min-h-9 items-center gap-2 rounded-full bg-brand px-3 text-sm font-medium text-brand-ink hover:opacity-90"
       >
         <Spark className="size-4" />
-        <span className="sr-only sm:not-sr-only">AI manager</span>
+        <span className="sr-only sm:not-sr-only">{w.name}</span>
         <kbd className="hidden rounded border border-card/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
       </button>
       {!onItsPage && (
@@ -171,8 +173,8 @@ export function AiManagerLauncher({
             setTalk((n) => n + 1);
             toggle(true);
           }}
-          title="Talk to the AI manager (voice mode)"
-          aria-label="Talk to the AI manager"
+          title={w.launcher.talkTitle}
+          aria-label={w.launcher.talk}
           className="inline-flex size-9 items-center justify-center rounded-full border border-edge hover:bg-sunken"
         >
           <MicIcon className="size-4" />

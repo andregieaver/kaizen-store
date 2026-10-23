@@ -11,6 +11,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { StoreFilter } from "./owner-common";
 import { Badge, control, secondaryButton } from "./work-parts";
+import { workText } from "@/lib/work-text";
 
 type Option = { id: string; label: string };
 
@@ -45,6 +46,7 @@ export function OwnerTimeView({
   pageSize: number;
   showPerson: boolean;
 }) {
+  const tw = workText().ownerTime;
   const many = stores.length > 1 && storeSlug === "";
   const count = activeFilterCount(filters) + (storeSlug ? 1 : 0);
   const query = (change: TimeFilters, extra: Record<string, string> = {}) =>
@@ -56,23 +58,23 @@ export function OwnerTimeView({
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader
-        title="Time"
-        description={<>Time logged{stores.length > 1 ? " in all your stores" : ""}. Change an entry in its store: each row leads there.</>}
+        title={tw.time}
+        description={stores.length > 1 ? tw.timeLoggedAll : tw.timeLoggedOne}
       />
 
       <form
         method="get"
         role="search"
-        aria-label="Filter time"
+        aria-label={tw.filterTime}
         className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StoreFilter stores={stores} value={storeSlug} />
           {clients.length > 0 && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Client
+              {tw.client}
               <select name="client" defaultValue={filters.clientId} className={control}>
-                <option value="">All clients</option>
+                <option value="">{tw.allClients}</option>
                 {clients.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -83,9 +85,9 @@ export function OwnerTimeView({
           )}
           {people && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Person
+              {tw.person}
               <select name="person" defaultValue={filters.accountId} className={control}>
-                <option value="">Everyone</option>
+                <option value="">{tw.everyone}</option>
                 {people.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -95,39 +97,39 @@ export function OwnerTimeView({
             </label>
           )}
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Search
+            {tw.search}
             <input
               type="search"
               name="q"
               defaultValue={filters.query}
               maxLength={100}
-              placeholder="Task or note"
+              placeholder={tw.taskOrNote}
               className={control}
               autoComplete="off"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            From
+            {tw.from}
             <input type="date" name="from" defaultValue={filters.from} className={control} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            To
+            {tw.to}
             <input type="date" name="to" defaultValue={filters.to} className={control} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Billable
+            {tw.billable}
             <select name="billable" defaultValue={filters.billable} className={control}>
-              <option value="all">Billable and not</option>
-              <option value="yes">Billable</option>
-              <option value="no">Not billable</option>
+              <option value="all">{tw.billableAndNot}</option>
+              <option value="yes">{tw.billable}</option>
+              <option value="no">{tw.notBillable}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Invoicing
+            {tw.invoicing}
             <select name="billing" defaultValue={filters.billing} className={control}>
               {TIME_BILLING_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {workText().labels.timeBilling[option.value]}
                 </option>
               ))}
             </select>
@@ -135,17 +137,17 @@ export function OwnerTimeView({
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <button type="submit" className={secondaryButton}>
-            Apply filters
+            {tw.applyFilters}
           </button>
-          <span className="text-muted">Days:</span>
+          <span className="text-muted">{tw.days}</span>
           <Link href={range(today, today)} className="underline">
-            Today
+            {tw.today}
           </Link>
           <Link href={range(addCalendarDays(today, -6), today)} className="underline">
-            Last 7 days
+            {tw.last7Days}
           </Link>
           <Link href={range(startOfMonth(today), today)} className="underline">
-            This month
+            {tw.thisMonth}
           </Link>
           {count > 0 && (
             <Link href={`${WORK_ROOT}/time`} className="underline">
@@ -157,27 +159,27 @@ export function OwnerTimeView({
 
       <section aria-labelledby="entries-heading" className="flex flex-col gap-3">
         <h2 id="entries-heading" className="sr-only">
-          Logged time
+          {tw.loggedTime}
         </h2>
         <StatGrid>
-          <Stat label="Entries" value={totals.count} />
-          <Stat label="Time" value={formatDuration(totals.minutes)} />
-          <Stat label="Billable" value={formatDuration(totals.billableMinutes)} />
+          <Stat label={tw.entries} value={totals.count} />
+          <Stat label={tw.time} value={formatDuration(totals.minutes)} />
+          <Stat label={tw.billable} value={formatDuration(totals.billableMinutes)} />
           <Stat
-            label="Not invoiced"
+            label={tw.notInvoiced}
             value={totals.unbilledMinutes > 0 ? formatDuration(totals.unbilledMinutes) : "Nothing"}
           />
         </StatGrid>
         {list.truncated && (
           <p role="status" className="text-sm text-muted">
-            There is more time than can be counted here. Narrow the days to see all of it.
+            {tw.thereIsMoreTime}
           </p>
         )}
         {list.entries.length === 0 ? (
           <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>
             {totals.count === 0 && page === 1
-              ? "No time matches. Log time in a store's Time page, or change the filters."
-              : "There is no time on this page."}
+              ? tw.noTimeMatchesLog
+              : tw.thereIsNoTime}
           </p>
         ) : (
           <ul className={`divide-y divide-line ${CARD_CLASS}`}>
@@ -186,8 +188,8 @@ export function OwnerTimeView({
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="font-medium tabular-nums">{formatDay(entry.workDate, WORK_LOCALE)}</span>
                   <span className="tabular-nums">{formatDuration(entry.minutes)}</span>
-                  {!entry.billable && <Badge>Not billable</Badge>}
-                  {entry.invoiceStatus === "draft" && <Badge tone="warn">On a draft invoice</Badge>}
+                  {!entry.billable && <Badge>{tw.notBillable}</Badge>}
+                  {entry.invoiceStatus === "draft" && <Badge tone="warn">{tw.onADraftInvoice}</Badge>}
                   {entry.locked && (
                     <Badge tone="good">Invoiced{entry.invoiceNumber ? ` ${entry.invoiceNumber}` : ""}</Badge>
                   )}
@@ -220,10 +222,10 @@ export function OwnerTimeView({
           </ul>
         )}
         {pages > 1 && (
-          <nav aria-label="Pages of time" className="flex items-center justify-between gap-3 text-sm">
+          <nav aria-label={tw.pagesOfTime} className="flex items-center justify-between gap-3 text-sm">
             {page > 1 ? (
               <Link href={link(page - 1)} className="underline">
-                Newer
+                {tw.newer}
               </Link>
             ) : (
               <span />
@@ -233,7 +235,7 @@ export function OwnerTimeView({
             </span>
             {page < pages ? (
               <Link href={link(page + 1)} className="underline">
-                Older
+                {tw.older}
               </Link>
             ) : (
               <span />

@@ -7,6 +7,7 @@ import { listClients } from "@/server/work";
 import { newInvoiceChoices } from "@/server/work-invoice-screens";
 import { listWorkInvoices } from "@/server/work-invoices";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -18,8 +19,10 @@ const PAGE_SIZE = 25;
  * links to).
  */
 export default async function WorkInvoicesPage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/invoices">) {
+  await workWords();
   const { store } = await requirePermission((await params).store, "settings:read");
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Invoices" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.invoices} words={off} />;
   const search = await searchParams;
   const query = parseInvoiceListParams(search);
   const [list, clients, choices] = await Promise.all([

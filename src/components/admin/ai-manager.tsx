@@ -6,7 +6,10 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 
 import { matchPath } from "@/lib/admin-map";
 import { TOOL_WORDS } from "@/lib/manager-tools";
-import { GATE_WORDS } from "@/lib/owner-tools";
+import { fillWords } from "@/lib/admin-fill";
+import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
+
+import { useAdminLang, useAdminText } from "./admin-text";
 
 import { useLiveVoice, type LiveState } from "./live-voice";
 import { useVoice, type VoiceStatus } from "./voice-mode";
@@ -28,11 +31,6 @@ const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4
 const primary = `${button} bg-brand text-brand-ink`;
 const secondary = `${button} border border-edge hover:bg-sunken`;
 const chip = "rounded-full border border-edge px-3 py-1.5 text-left text-sm hover:bg-sunken";
-
-const STARTERS: Record<"store" | "platform", string[]> = {
-  store: ["How is the store doing this week?", "What needs my attention?", "What should I do next to get ready?", "How do I run a sale?"],
-  platform: ["How is Kaizena Flow doing?", "Who is waiting for access?", "Which emails failed?", "Show me the stores without a plan."],
-};
 
 /** Text with the admin's own paths and web addresses as links; the rest stays text, never HTML. */
 function Linked({ text, onOpen }: { text: string; onOpen?: () => void }) {
@@ -101,6 +99,9 @@ export function AiManagerChat({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const lang = useAdminLang();
+  const words = useAdminText("assistant");
+  const w = words.chat;
   const inputId = useId();
   const ownInputRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = givenInputRef ?? ownInputRef;
@@ -123,6 +124,7 @@ export function AiManagerChat({
   const panel = variant === "panel";
   const canTalk = abilities.hear && abilities.speak && actions.hear !== null;
   const voice = useVoice({
+    words: words.voice,
     speakUrl: `${base}/speak`,
     hear: actions.hear,
     onUtterance: (text) => {
@@ -135,6 +137,7 @@ export function AiManagerChat({
   const speaking = voice.active || aloud;
   // A live voice call (D105), where the site has a live voice model: preferred for voice mode.
   const live = useLiveVoice({
+    words: words.voice,
     base,
     onDelegated: ({ navigate, approvals: kept }) => {
       if (kept.length) {
@@ -208,7 +211,7 @@ export function AiManagerChat({
   async function open(id: string, afterCall = false) {
     setShowList(false);
     const found = await actions.load(id);
-    if (!found) return setProblem("That conversation is gone.");
+    if (!found) return setProblem(w.gone);
     if (afterCall) setList((current) => (current.some((c) => c.id === found.id) ? current : [{ id: found.id, title: found.title, updatedAt: new Date().toISOString() }, ...current]));
     setConversationId(found.id);
     setMessages(found.messages);
@@ -228,7 +231,7 @@ export function AiManagerChat({
     if (speaking) voice.expectAnswer();
     setStreaming("");
     setOpened([]);
-    setWorking("Thinking");
+    setWorking(w.thinking);
     setMessages((current) => [...current, { id: `local-${Date.now()}`, role: "user", content: words, tools: [], feedback: null, createdAt: new Date().toISOString() }]);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -239,7 +242,7 @@ export function AiManagerChat({
         body: JSON.stringify({ conversationId, message: words, path: window.location.pathname, voice: voice.active }),
         signal: controller.signal,
       });
-      if (!response.ok || !response.body) throw new Error((await response.json().catch(() => null))?.error ?? "The AI manager could not be reached.");
+      if (!response.ok || !response.body) throw new Error((await response.json().catch(() => null))?.error ?? w.unreachable);
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";
       for (;;) {
@@ -251,7 +254,7 @@ export function AiManagerChat({
         for (const line of lines) if (line.trim()) handle(JSON.parse(line) as AssistantEvent);
       }
     } catch (error) {
-      if (!controller.signal.aborted) setProblem(error instanceof Error ? error.message : "The AI manager could not be reached.");
+      if (!controller.signal.aborted) setProblem(error instanceof Error ? error.message : w.unreachable);
     } finally {
       abortRef.current = null;
       busyRef.current = false;
@@ -278,7 +281,7 @@ export function AiManagerChat({
         return;
       case "round":
         setStreaming("");
-        setWorking(event.tools.map((name) => TOOL_WORDS[name] ?? "Working").filter((v, i, all) => all.indexOf(v) === i).join(" · "));
+        setWorking(event.tools.map((name) => words.tools[name] ?? TOOL_WORDS[name] ?? w.working).filter((v, i, all) => all.indexOf(v) === i).join(" · "));
         return;
       case "navigate":
         setOpened((current) => [...current, { href: event.href, label: event.label }]);
@@ -306,10 +309,10 @@ export function AiManagerChat({
   }
 
   async function decide(approval: Approval, approve: boolean) {
-    setApprovals((current) => current.map((a) => (a.id === approval.id ? { ...a, status: approve ? "done" : "declined", outcome: approve ? "Working …" : null } : a)));
+    setApprovals((current) => current.map((a) => (a.id === approval.id ? { ...a, status: approve ? "done" : "declined", outcome: approve ? w.workingOn : null } : a)));
     const decided = await actions.decide(approval.id, approve);
     if (!decided) {
-      setProblem("That change was already decided.");
+      setProblem(w.decided);
       return;
     }
     setApprovals((current) => current.map((a) => (a.id === decided.id ? decided : a)));
@@ -323,7 +326,7 @@ export function AiManagerChat({
   }
 
   async function removeConversation(id: string) {
-    if (!window.confirm("Delete this conversation?")) return;
+    if (!window.confirm(w.confirmDelete)) return;
     if (!(await actions.remove(id))) return;
     setList((current) => current.filter((c) => c.id !== id));
     if (id === conversationId) startNew();
@@ -332,9 +335,9 @@ export function AiManagerChat({
   if (!abilities.text) {
     return (
       <p className="m-4 rounded-panel border border-line p-4 text-sm">
-        The AI manager uses {area === "store" ? "the store's" : "Kaizena Flow's"} AI and needs a text model.{" "}
+        {area === "store" ? w.noModelStore : w.noModelPlatform}{" "}
         <Link href={settingsHref} className="underline" onClick={onNavigate}>
-          Set one up under AI
+          {w.setUp}
         </Link>
         .
       </p>
@@ -344,7 +347,7 @@ export function AiManagerChat({
   // Suggestions: about the page they are on, then the usual ones.
   const here = matchPath(pathname);
   const onPage = here && here.page.id !== "assistant" && (here.page.area === area || here.page.area === "account") ? here.page : null;
-  const starters = [...(onPage ? [`Help me with ${onPage.title.toLowerCase()}: what can I do here?`] : []), ...STARTERS[area]];
+  const starters = [...(onPage ? [fillWords(w.helpHere, { page: ((lang === "nb" ? PAGES_NB[`${onPage.area}:${onPage.id}`]?.title : undefined) ?? onPage.title).toLowerCase() })] : []), ...w.starters[area]];
 
   // Messages in order, each approval under the answer of the turn that asked for it (saved after it).
   const thread: ReactNode[] = [];
@@ -363,7 +366,7 @@ export function AiManagerChat({
 
   const history = (
     <ul className="flex flex-col gap-1">
-      {list.length === 0 && <li className="px-2 py-2 text-sm text-muted">No conversations yet.</li>}
+      {list.length === 0 && <li className="px-2 py-2 text-sm text-muted">{w.none}</li>}
       {list.map((c) => (
         <li key={c.id} className={`flex items-center gap-1 rounded-md ${c.id === conversationId ? "bg-sunken" : ""}`}>
           <button
@@ -372,9 +375,9 @@ export function AiManagerChat({
             className="min-w-0 flex-1 truncate px-2 py-2 text-left text-sm"
             aria-current={c.id === conversationId ? "true" : undefined}
           >
-            {c.title || "Conversation"}
+            {c.title || w.untitled}
           </button>
-          <button type="button" onClick={() => void removeConversation(c.id)} className="px-2 text-sm text-muted hover:text-ink" aria-label={`Delete "${c.title}"`}>
+          <button type="button" onClick={() => void removeConversation(c.id)} className="px-2 text-sm text-muted hover:text-ink" aria-label={fillWords(w.deleteOne, { title: c.title })}>
             ×
           </button>
         </li>
@@ -383,22 +386,22 @@ export function AiManagerChat({
   );
 
   const conversationView = (
-    <section aria-label="Conversation with the AI manager" className={`flex min-h-0 flex-col ${panel ? "flex-1" : "min-h-[60dvh] gap-4"}`}>
+    <section aria-label={w.region} className={`flex min-h-0 flex-col ${panel ? "flex-1" : "min-h-[60dvh] gap-4"}`}>
       {panel && (
         <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm">
           <button type="button" className="rounded px-2 py-1 hover:bg-sunken" onClick={startNew}>
-            New
+            {w.new}
           </button>
           <button type="button" className="rounded px-2 py-1 hover:bg-sunken" aria-expanded={showList} onClick={() => setShowList((v) => !v)}>
-            Earlier
+            {w.earlier}
           </button>
           <Link href={conversationId ? `${base}?c=${conversationId}` : base} className="ml-auto rounded px-2 py-1 text-muted hover:bg-sunken" onClick={onNavigate}>
-            Full page
+            {w.fullPage}
           </Link>
         </div>
       )}
       {panel && showList ? (
-        <nav aria-label="Earlier conversations" className="flex-1 overflow-y-auto p-2">
+        <nav aria-label={w.earlierLabel} className="flex-1 overflow-y-auto p-2">
           {history}
         </nav>
       ) : (
@@ -487,7 +490,7 @@ export function AiManagerChat({
           value={draft}
           rows={2}
           maxLength={4000}
-          placeholder="Ask or tell the AI manager …"
+          placeholder={w.placeholder}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -500,11 +503,11 @@ export function AiManagerChat({
         <div className="flex flex-wrap items-center gap-2">
           {busy ? (
             <button type="button" className={secondary} onClick={() => abortRef.current?.abort()}>
-              Stop
+              {w.stop}
             </button>
           ) : (
             <button type="submit" className={primary} disabled={!draft.trim()}>
-              Send
+              {w.send}
             </button>
           )}
           {(canCall || canTalk) && !talking && (
@@ -512,10 +515,10 @@ export function AiManagerChat({
               type="button"
               className={secondary}
               onClick={startTalking}
-              title={canCall ? "Talk with it as on a call: it hears you while it speaks" : "Talk hands-free: it listens, answers aloud and listens again"}
+              title={canCall ? w.callTitle : w.talkTitle}
             >
               <MicIcon className="mr-1.5 size-4" />
-              Voice mode
+              {w.voiceMode}
             </button>
           )}
           {abilities.speak && !talking && (
@@ -529,7 +532,7 @@ export function AiManagerChat({
                 }}
                 className="size-4"
               />
-              Read aloud
+              {w.readAloud}
             </label>
           )}
         </div>
@@ -540,9 +543,9 @@ export function AiManagerChat({
   if (panel) return conversationView;
   return (
     <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
-      <nav aria-label="Conversations" className="flex flex-col gap-2">
+      <nav aria-label={words.page.conversations} className="flex flex-col gap-2">
         <button type="button" onClick={startNew} className={secondary}>
-          New conversation
+          {w.newConversation}
         </button>
         <div className="max-h-[60dvh] overflow-y-auto">{history}</div>
       </nav>
@@ -560,15 +563,6 @@ export function MicIcon({ className }: { className?: string }) {
   );
 }
 
-const VOICE_WORDS: Record<VoiceStatus, { label: string; hint: string }> = {
-  off: { label: "", hint: "" },
-  starting: { label: "Starting", hint: "Allow the microphone if the browser asks." },
-  listening: { label: "Listening", hint: "Talk when you are ready; a short pause sends it." },
-  hearing: { label: "Hearing you", hint: "Pause when you are done." },
-  thinking: { label: "Thinking", hint: "Working on it." },
-  speaking: { label: "Speaking", hint: "Talk to cut in, or tap Interrupt." },
-};
-
 /** Voice mode's state (D104): a circle that follows the microphone, what it is doing, and its controls. */
 function VoiceBar({
   status,
@@ -585,10 +579,11 @@ function VoiceBar({
   onInterrupt: () => void;
   onEnd: () => void;
 }) {
-  const words = muted && (status === "listening" || status === "hearing") ? { label: "Muted", hint: "Unmute to talk." } : VOICE_WORDS[status];
+  const v = useAdminText("assistant").voice;
+  const words = muted && (status === "listening" || status === "hearing") ? v.muted : status === "off" ? { label: "", hint: "" } : v[status];
   const busy = status === "thinking" || status === "starting";
   return (
-    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label="Voice mode">
+    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label={v.region}>
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
         <span
           className="absolute inset-0 rounded-full bg-inverse/15 transition-transform duration-75"
@@ -602,14 +597,14 @@ function VoiceBar({
       </div>
       {status === "speaking" && (
         <button type="button" onClick={onInterrupt} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken">
-          Interrupt
+          {v.interrupt}
         </button>
       )}
       <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken">
-        {muted ? "Unmute" : "Mute"}
+        {muted ? v.unmute : v.mute}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End voice mode (Esc)">
-        End
+      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title={v.endTitle}>
+        {v.end}
       </button>
     </div>
   );
@@ -618,21 +613,22 @@ function VoiceBar({
 /** A live call's state (D105): connecting, then a circle that breathes while the call is on. */
 function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; working: boolean; muted: boolean; onMute: () => void; onEnd: () => void }) {
   const on = state === "live";
+  const v = useAdminText("assistant").voice;
   return (
-    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label="Voice call">
+    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label={v.call}>
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
         <span className={`absolute inset-0 rounded-full bg-inverse/15 ${on && !muted ? "animate-ping [animation-duration:2s]" : ""}`} />
         <span className={`size-6 rounded-full bg-brand ${working || !on ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
       </span>
       <div className="min-w-0 flex-1" role="status" aria-live="polite">
-        <p className="text-sm font-medium">{!on ? "Connecting …" : muted ? "Muted" : working ? "Looking into it …" : "On a call: just talk"}</p>
-        <p className="truncate text-xs text-muted">{on ? "It hears you while it speaks; talk over it any time." : "Allow the microphone if the browser asks."}</p>
+        <p className="text-sm font-medium">{!on ? v.connecting : muted ? v.muted.label : working ? v.looking : v.onCall}</p>
+        <p className="truncate text-xs text-muted">{on ? v.callHint : v.allowMic}</p>
       </div>
       <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
-        {muted ? "Unmute" : "Mute"}
+        {muted ? v.unmute : v.mute}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End the call (Esc)">
-        End
+      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title={v.endCall}>
+        {v.end}
       </button>
     </div>
   );
@@ -640,6 +636,7 @@ function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; w
 
 function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate?: (message: AssistantMessage, value: 1 | -1) => void; onOpen?: () => void }) {
   const mine = message.role === "user";
+  const w = useAdminText("assistant").chat;
   const rateable = !mine && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
   return (
     <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
@@ -650,8 +647,8 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
           {message.tools.length > 0 && (
             <span>
-              Used: {[...new Set(message.tools.map((t) => t.name.replaceAll("_", " ")))].join(", ")}
-              {message.tools.some((t) => !t.ok) ? " (some answered with a problem)" : ""}
+              {fillWords(w.used, { tools: [...new Set(message.tools.map((t) => t.name.replaceAll("_", " ")))].join(", ") })}
+              {message.tools.some((t) => !t.ok) ? w.someProblem : ""}
             </span>
           )}
           {rateable && (
@@ -659,8 +656,8 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
               <button
                 type="button"
                 aria-pressed={message.feedback === 1}
-                aria-label="Good answer"
-                title="Good answer"
+                aria-label={w.good}
+                title={w.good}
                 onClick={() => onRate(message, 1)}
                 className={`rounded px-1.5 py-0.5 hover:bg-sunken ${message.feedback === 1 ? "bg-sunken text-ink" : ""}`}
               >
@@ -669,8 +666,8 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
               <button
                 type="button"
                 aria-pressed={message.feedback === -1}
-                aria-label="Not helpful"
-                title="Not helpful"
+                aria-label={w.notHelpful}
+                title={w.notHelpful}
                 onClick={() => onRate(message, -1)}
                 className={`rounded px-1.5 py-0.5 hover:bg-sunken ${message.feedback === -1 ? "bg-sunken text-ink" : ""}`}
               >
@@ -685,22 +682,23 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
 }
 
 function ApprovalCard({ approval, onDecide }: { approval: Approval; onDecide: (approval: Approval, approve: boolean) => void }) {
+  const a = useAdminText("assistant").approval;
   return (
-    <div className="flex max-w-[46rem] flex-col gap-2 rounded-panel border border-line p-3" role="group" aria-label="Waiting for your approval">
-      <p className="text-eyebrow text-muted uppercase">{GATE_WORDS[approval.category]}</p>
+    <div className="flex max-w-[46rem] flex-col gap-2 rounded-panel border border-line p-3" role="group" aria-label={a.region}>
+      <p className="text-eyebrow text-muted uppercase">{a.gates[approval.category]}</p>
       <p className="text-sm whitespace-pre-wrap wrap-anywhere">{approval.summary}</p>
       {approval.status === "pending" ? (
         <div className="flex gap-2">
           <button type="button" className={primary} onClick={() => onDecide(approval, true)}>
-            Approve
+            {a.approve}
           </button>
           <button type="button" className={secondary} onClick={() => onDecide(approval, false)}>
-            Decline
+            {a.decline}
           </button>
         </div>
       ) : (
         <p className="text-sm text-muted">
-          {approval.status === "declined" ? "Declined." : approval.status === "failed" ? `Could not: ${approval.outcome}` : (approval.outcome ?? "Done.")}
+          {approval.status === "declined" ? a.declined : approval.status === "failed" ? fillWords(a.failed, { problem: approval.outcome ?? "" }) : (approval.outcome ?? a.done)}
         </p>
       )}
     </div>

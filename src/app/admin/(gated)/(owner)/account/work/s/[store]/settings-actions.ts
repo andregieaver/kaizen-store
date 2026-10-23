@@ -6,6 +6,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { checkOwnerRole } from "@/server/permissions";
 import { saveWorkSettings, setWorkSeries } from "@/server/work-settings";
 import { seriesFromForm, settingsFromForm } from "@/lib/work-settings";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 const problems = (messages: string[]): FormState => ({ status: "error", messages });
 
@@ -15,6 +17,9 @@ export async function saveWorkSettingsAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return problems(["Only an owner can change Work's settings."]);
   if (!member.store.workOn) return problems(["Work is off. Switch it on in Work settings first."]);
@@ -22,6 +27,9 @@ export async function saveWorkSettingsAction(
   if (!saved.ok) return problems(saved.problems);
   refresh();
   return { status: "ok", messages: ["Settings saved."] };
+})(),
+    lang,
+  );
 }
 
 /** The prefix and next number of invoices or credit notes, until the first is issued. Owners only. */
@@ -31,6 +39,9 @@ export async function saveWorkSeriesAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return problems(["Only an owner can change the numbering."]);
   if (!member.store.workOn) return problems(["Work is off. Switch it on in Work settings first."]);
@@ -38,4 +49,7 @@ export async function saveWorkSeriesAction(
   if (!saved.ok) return problems(saved.problems);
   refresh();
   return { status: "ok", messages: ["Numbering saved."] };
+})(),
+    lang,
+  );
 }

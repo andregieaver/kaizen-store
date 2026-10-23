@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { fillWords } from "@/lib/admin-fill";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
+
+import { useAdminText } from "../admin-text";
 
 /**
  * Work's sub-navigation (D123): the combined view's sections across the
@@ -43,6 +46,7 @@ const linkClass =
 export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
   const pathname = usePathname();
   const router = useRouter();
+  const w = useAdminText("work").nav;
   const inStore = storeOfWorkPath(pathname);
   const base = inStore ? workBase(inStore.slug) : WORK_ROOT;
   const rest = inStore ? inStore.rest : pathname.slice(WORK_ROOT.length);
@@ -55,7 +59,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
       {inStore && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <Link href={WORK_ROOT} className="underline">
-            All stores&apos; Work
+            {w.allStores}
           </Link>
           <span aria-hidden="true" className="text-muted">
             /
@@ -63,7 +67,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
           <span className="font-medium">{store?.name ?? inStore.slug}</span>
           {choices.length > 1 && (
             <label className="ml-auto flex items-center gap-2 text-muted">
-              <span>Store</span>
+              <span>{w.store}</span>
               <select
                 value={inStore.slug}
                 onChange={(event) => router.push(`${workBase(event.target.value)}${current}`)}
@@ -80,7 +84,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
         </div>
       )}
       <nav
-        aria-label={inStore ? `${store?.name ?? inStore.slug} Work sections` : "Work sections"}
+        aria-label={inStore ? fillWords(w.storeSectionsLabel, { store: store?.name ?? inStore.slug }) : w.sectionsLabel}
         className="overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <ul className="-mb-px flex min-w-max gap-1">
@@ -91,7 +95,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
                 aria-current={current === section.path ? "page" : undefined}
                 className={linkClass}
               >
-                {section.label}
+                {w.sections[section.path]}
               </Link>
             </li>
           ))}

@@ -11,6 +11,8 @@ import { isDay } from "@/lib/work-dates";
 import { methodLabel, paymentAmountProblem } from "@/lib/work-invoice-ui";
 
 import { Field, Problems, control, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /**
  * Recording money received and taking a payment back (docs/work.md 4.6): payments are rows, never edits. A partial
@@ -33,13 +35,14 @@ export function RecordPaymentButton({
   outstandingMinor: number;
   today: string;
 }) {
+  const tw = useAdminText("work").invoicePayments;
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={primaryButton}>
-        Record payment
+        {tw.recordPayment}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Record payment">
+      <Modal open={open} onClose={() => setOpen(false)} title={tw.recordPayment}>
         <PaymentForm
           storeSlug={storeSlug}
           invoiceId={invoiceId}
@@ -71,6 +74,7 @@ export function PaymentForm({
   today: string;
   onDone: () => void;
 }) {
+  const tw = useAdminText("work").invoicePayments;
   const [amount, setAmount] = useState(minorToDecimal(outstandingMinor, currency));
   const [receivedOn, setReceivedOn] = useState(today);
   const [method, setMethod] = useState<(typeof MANUAL_PAYMENT_METHODS)[number]>("bank");
@@ -81,9 +85,9 @@ export function PaymentForm({
 
   const read = paymentAmountProblem(amount, currency, outstandingMinor);
   const dateProblem = !isDay(receivedOn)
-    ? "Give the date it was received."
+    ? tw.giveTheDateIt
     : receivedOn > today
-      ? "The payment cannot be dated in the future."
+      ? tw.thePaymentCannotBe
       : null;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -98,7 +102,7 @@ export function PaymentForm({
         if (result.ok) onDone();
         else setProblems(result.problems);
       } catch {
-        setProblems(["The payment could not be recorded. Check your connection and try again."]);
+        setProblems([tw.thePaymentCouldNot]);
       }
     });
   };
@@ -106,10 +110,10 @@ export function PaymentForm({
   return (
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
       <p className="text-sm">
-        Outstanding: <strong className="tabular-nums">{formatMoney(outstandingMinor, currency, locale)}</strong>. A part
+        {tw.outstanding} <strong className="tabular-nums">{formatMoney(outstandingMinor, currency, locale)}</strong>. A part
         payment is fine; the invoice is marked paid when the payments cover it.
       </p>
-      <Field label={`Amount received (${currency})`} error={attempted ? (read.message ?? undefined) : undefined}>
+      <Field label={fillWords(tw.amountReceived, { currency })} error={attempted ? (read.message ?? undefined) : undefined}>
         {(props) => (
           <input
             {...props}
@@ -122,7 +126,7 @@ export function PaymentForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Received on" error={attempted ? (dateProblem ?? undefined) : undefined}>
+        <Field label={tw.receivedOn} error={attempted ? (dateProblem ?? undefined) : undefined}>
           {(props) => (
             <input
               {...props}
@@ -134,7 +138,7 @@ export function PaymentForm({
             />
           )}
         </Field>
-        <Field label="Method">
+        <Field label={tw.method}>
           {(props) => (
             <select
               {...props}
@@ -151,7 +155,7 @@ export function PaymentForm({
           )}
         </Field>
       </div>
-      <Field label="Reference (optional)" hint="Such as the bank's reference or the last digits of the account.">
+      <Field label={tw.referenceOptional} hint={tw.suchAsTheBank}>
         {(props) => (
           <input
             {...props}
@@ -166,10 +170,10 @@ export function PaymentForm({
       <Problems messages={problems} />
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onDone} className={secondaryButton}>
-          Cancel
+          {tw.cancel}
         </button>
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Recording …" : "Record payment"}
+          {pending ? tw.recording : tw.recordPayment}
         </button>
       </div>
     </form>
@@ -186,6 +190,7 @@ export function ReversePaymentButton({
   /** What the payment is, for the button's name: "the 1 250,00 kr payment of 12.09.2026". */
   label: string;
 }) {
+  const tw = useAdminText("work").invoicePayments;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
@@ -200,7 +205,7 @@ export function ReversePaymentButton({
         if (result.ok) setOpen(false);
         else setProblems(result.problems);
       } catch {
-        setProblems(["The payment could not be reversed. Check your connection and try again."]);
+        setProblems([tw.thePaymentCouldNot2]);
       }
     });
   };
@@ -208,15 +213,14 @@ export function ReversePaymentButton({
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-label={`Reverse ${label}`} className={smallButton}>
-        Reverse
+        {tw.reverse}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Reverse this payment?">
+      <Modal open={open} onClose={() => setOpen(false)} title={tw.reverseThisPayment}>
         <form onSubmit={submit} aria-busy={pending} className="flex flex-col gap-4">
           <p className="text-sm">
-            This takes back {label}. The payment stays in the list, with a reversal beside it, and the invoice goes back
-            to issued if it is no longer covered.
+            {fillWords(tw.takesBack, { payment: label })}
           </p>
-          <Field label="Why (optional)">
+          <Field label={tw.whyOptional}>
             {(props) => (
               <input
                 {...props}
@@ -231,10 +235,10 @@ export function ReversePaymentButton({
           <Problems messages={problems} />
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className={secondaryButton}>
-              Keep the payment
+              {tw.keepThePayment}
             </button>
             <button type="submit" disabled={pending} className={primaryButton}>
-              {pending ? "Reversing …" : "Reverse payment"}
+              {pending ? tw.reversing : tw.reversePayment}
             </button>
           </div>
         </form>

@@ -18,6 +18,8 @@ import {
   skipRecurringPeriod,
   updateRecurring,
 } from "@/server/work-recurring";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * Work's actions for repeating invoices (docs/work.md 7.2 WP8), on a client's page. Each is bound to
@@ -43,6 +45,9 @@ async function change<T extends object>(
 }
 
 export async function createRecurringAction(storeSlug: string, input: z.input<typeof recurringInvoiceInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await createRecurring(member, input);
     if (result.ok && input.autoIssue) {
@@ -50,6 +55,9 @@ export async function createRecurringAction(storeSlug: string, input: z.input<ty
     }
     return result;
   });
+})(),
+    lang,
+  );
 }
 
 export async function updateRecurringAction(
@@ -57,6 +65,9 @@ export async function updateRecurringAction(
   templateId: string,
   input: z.input<typeof recurringInvoiceInput>,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await updateRecurring(member, templateId, input);
     if (result.ok) {
@@ -67,31 +78,64 @@ export async function updateRecurringAction(
     }
     return result;
   });
+})(),
+    lang,
+  );
 }
 
 /** Pauses a template (its invoices stay) or starts it again. */
 export async function setRecurringActiveAction(storeSlug: string, templateId: string, active: boolean) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setRecurringActive(member, templateId, active));
+})(),
+    lang,
+  );
 }
 
 /** Deletes a template that never made an invoice. */
 export async function deleteRecurringAction(storeSlug: string, templateId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => deleteRecurring(member, templateId));
+})(),
+    lang,
+  );
 }
 
 /** "Generate now": the draft of the given period, or of the oldest due period that has none. */
 export async function generateRecurringNowAction(storeSlug: string, templateId: string, period: string | null = null) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => generateRecurringNow(member, templateId, period));
+})(),
+    lang,
+  );
 }
 
 /** "Skip this period": never made (its draft is deleted if there is one). */
 export async function skipRecurringPeriodAction(storeSlug: string, templateId: string, period: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => skipRecurringPeriod(member, templateId, period));
+})(),
+    lang,
+  );
 }
 
 /** Takes a period off the skip list. */
 export async function restoreRecurringPeriodAction(storeSlug: string, templateId: string, period: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => restoreRecurringPeriod(member, templateId, period));
+})(),
+    lang,
+  );
 }
 
 /** "Issue now": issues the period's draft (making it first if needed) and emails it unless told not to. */
@@ -101,6 +145,9 @@ export async function issueRecurringNowAction(
   period: string,
   email: boolean = true,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await issueRecurringNow(member, templateId, period, { email });
     if (result.ok) {
@@ -116,4 +163,7 @@ export async function issueRecurringNowAction(
     }
     return result;
   });
+})(),
+    lang,
+  );
 }

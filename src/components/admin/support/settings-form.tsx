@@ -3,17 +3,51 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { ACTION_KIND_WORDS, CUSTOMER_ACTION_KINDS } from "@/lib/support-action-words";
+import {
+  ActionForm,
+  SubmitButton,
+  type FormState,
+} from "@/components/admin/action-form";
+import {
+  ACTION_KIND_WORDS,
+  CUSTOMER_ACTION_KINDS,
+} from "@/lib/support-action-words";
 import { HoursEditor } from "@/components/admin/hours-editor";
-import { END_AFTER_MINUTES, NOTIFY_AFTER_MINUTES, TRANSCRIPT_DAYS, type SupportMode } from "@/lib/support-rules";
+import {
+  END_AFTER_MINUTES,
+  NOTIFY_AFTER_MINUTES,
+  TRANSCRIPT_DAYS,
+  type SupportMode,
+} from "@/lib/support-rules";
 import type { DeskSettingsView } from "@/server/support-settings";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "../admin-text";
 
 /** Who answers, as the settings page offers it (2.10). */
-export const MODE_CHOICES: { mode: SupportMode; title: string; description: string }[] = [
-  { mode: "off", title: "Support off — the chat assistant alone", description: "The chat assistant answers by itself, as before. Nobody takes over, and conversations are kept for a day after they end." },
-  { mode: "ai_first", title: "The AI first, then your team", description: "The assistant answers first; a customer can ask for a person at any time, and the assistant hands over when it cannot help." },
-  { mode: "people", title: "Your team only", description: "Your people answer every conversation. The AI never writes to your customers." },
+export const MODE_CHOICES: {
+  mode: SupportMode;
+  title: string;
+  description: string;
+}[] = [
+  {
+    mode: "off",
+    title: "Support off — the chat assistant alone",
+    description:
+      "The chat assistant answers by itself, as before. Nobody takes over, and conversations are kept for a day after they end.",
+  },
+  {
+    mode: "ai_first",
+    title: "The AI first, then your team",
+    description:
+      "The assistant answers first; a customer can ask for a person at any time, and the assistant hands over when it cannot help.",
+  },
+  {
+    mode: "people",
+    title: "Your team only",
+    description:
+      "Your people answer every conversation. The AI never writes to your customers.",
+  },
 ];
 
 const field = "rounded-md border border-line bg-card px-2 py-1.5 text-sm";
@@ -43,76 +77,106 @@ export function SupportSettingsForm({
   /** Open conversations now, for the note on changing who answers. */
   openCount: number;
 }) {
+  const w = useAdminText("support").settings;
+  const kindWords = w.actionKinds as Record<string, string>;
+  const needsModel = settings.aiReady ? "" : w.noneConnected;
   const [mode, setMode] = useState<SupportMode>(settings.mode);
   const disabled = !canWrite || !save;
   const body = (
     <fieldset disabled={disabled} className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">Who answers your customers</h2>
-        <div role="radiogroup" aria-label="Who answers your customers" className="flex flex-col gap-2">
+        <h2 className="text-title text-ink">{w.whoAnswers}</h2>
+        <div
+          role="radiogroup"
+          aria-label={w.whoAnswers}
+          className="flex flex-col gap-2"
+        >
           {MODE_CHOICES.map((choice) => (
-            <label key={choice.mode} className="flex gap-3 rounded-panel bg-sunken p-3">
-              <input type="radio" name="mode" value={choice.mode} checked={mode === choice.mode} onChange={() => setMode(choice.mode)} className="mt-1 size-4" />
+            <label
+              key={choice.mode}
+              className="flex gap-3 rounded-panel bg-sunken p-3"
+            >
+              <input
+                type="radio"
+                name="mode"
+                value={choice.mode}
+                checked={mode === choice.mode}
+                onChange={() => setMode(choice.mode)}
+                className="mt-1 size-4"
+              />
               <span className="flex flex-col gap-1">
-                <span className="font-medium">{choice.title}</span>
-                <span className="text-sm text-muted">{choice.description}</span>
+                <span className="font-medium">
+                  {w.modes[choice.mode].title}
+                </span>
+                <span className="text-sm text-muted">
+                  {w.modes[choice.mode].description}
+                </span>
               </span>
             </label>
           ))}
         </div>
         {mode === "ai_first" && !settings.aiReady && (
           <p role="note" className="rounded-md border border-line p-3 text-sm">
-            No AI is connected: your customers will reach your team only, until you connect one in the{" "}
+            {w.noAi.before}{" "}
             <Link href={aiSettingsHref} className="underline">
-              AI settings
+              {w.noAi.aiSettings}
             </Link>{" "}
-            and save the{" "}
+            {w.noAi.middle}{" "}
             <Link href={chatHref} className="underline">
-              chat assistant
+              {w.noAi.chat}
             </Link>
-            .
+            {w.noAi.after}
           </p>
         )}
         {mode !== settings.mode && openCount > 0 && (
           <p role="note" className="text-sm text-muted">
             {mode === "ai_first"
-              ? "Open conversations go on as they are."
-              : `Changing this ends the open conversations the new choice cannot answer (${openCount} open now); a customer who writes again within a day opens theirs again.`}
+              ? w.openGoOn
+              : fillWords(w.openEnd, { n: openCount })}
           </p>
         )}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">When nobody is there</h2>
+        <h2 className="text-title text-ink">{w.nobody}</h2>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="emailFollowup" defaultChecked={settings.emailFollowup} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="emailFollowup"
+            defaultChecked={settings.emailFollowup}
+            className="mt-0.5 size-4"
+          />
           <span>
-            <span className="font-medium">Answer by email.</span> A customer waiting while nobody is online may leave their email; your answers in the
-            conversation reach them there, with a link back to it. Signed-in customers get them at their account&apos;s address.
+            <span className="font-medium">{w.email.title}</span> {w.email.text}
           </span>
         </label>
         <label className="flex flex-wrap items-center gap-2 text-sm">
-          Email your people when a customer has waited
-          <input type="number" name="notifyAfterMinutes" min={NOTIFY_AFTER_MINUTES.min} max={NOTIFY_AFTER_MINUTES.max} defaultValue={settings.notifyAfterMinutes} className={`${field} w-20`} />
-          minutes (everyone who may answer and is not online, once each time a conversation waits).
+          {w.notify.before}
+          <input
+            type="number"
+            name="notifyAfterMinutes"
+            min={NOTIFY_AFTER_MINUTES.min}
+            max={NOTIFY_AFTER_MINUTES.max}
+            defaultValue={settings.notifyAfterMinutes}
+            className={`${field} w-20`}
+          />
+          {w.notify.after}
         </label>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">Opening hours</h2>
+        <h2 className="text-title text-ink">{w.hoursTitle}</h2>
         <p className="text-sm text-muted">
-          Outside these hours customers are told nobody can answer now (and may leave their email). Without hours, someone can answer whenever one of your
-          people is online. In {deskName}&apos;s time zone.
+          {fillWords(w.hoursText, { desk: deskName })}
         </p>
         <HoursEditor name="hours" initial={settings.hours} optional />
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">What the AI may do for customers</h2>
+        <h2 className="text-title text-ink">{w.aiActionsTitle}</h2>
         <p className="text-sm text-muted">
-          With the AI first, the assistant may propose these to a signed-in customer. Nothing happens until the customer presses Confirm in the chat, and it runs
-          with the same checks as on their own pages. Anything else (a refund, cancelling a paid order, a new address) it passes to your team as a request.
-          {owner ? "" : " Only the owner changes this."}
+          {w.aiActionsText}
+          {owner ? "" : ` ${w.ownerOnly}`}
         </p>
         {owner && <input type="hidden" name="aiActionsShown" value="1" />}
         <div className="grid gap-1 text-sm sm:grid-cols-2">
@@ -121,93 +185,134 @@ export function SupportSettingsForm({
               <input
                 type="checkbox"
                 name={`aiAction.${kind}`}
-                defaultChecked={settings.aiActions === null || settings.aiActions.includes(kind)}
+                defaultChecked={
+                  settings.aiActions === null ||
+                  settings.aiActions.includes(kind)
+                }
                 disabled={!owner}
                 className="size-4"
               />
-              {ACTION_KIND_WORDS[kind]}
+              {kindWords[kind] ?? ACTION_KIND_WORDS[kind]}
             </label>
           ))}
         </div>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">Silent partner</h2>
+        <h2 className="text-title text-ink">{w.partnerTitle}</h2>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="partner" defaultChecked={settings.partner} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="partner"
+            defaultChecked={settings.partner}
+            className="mt-0.5 size-4"
+          />
           <span>
-            <span className="font-medium">Let the AI help your people as a silent partner.</span> Beside a conversation someone has, it looks up facts
-            with that person&apos;s own permissions, recommends what to do and drafts a reply they may use. It never writes to the customer or acts, and
-            each person can switch it off for themselves. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+            <span className="font-medium">{w.partner.title}</span>{" "}
+            {fillWords(w.partner.text, { none: needsModel })}
           </span>
         </label>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">The customer&apos;s tone</h2>
+        <h2 className="text-title text-ink">{w.toneTitle}</h2>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="toneOn" defaultChecked={settings.toneOn} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="toneOn"
+            defaultChecked={settings.toneOn}
+            className="mt-0.5 size-4"
+          />
           <span>
-            <span className="font-medium">Read the tone of customers&apos; messages.</span> The AI scores each message from very bad to very good, only
-            for your team; the customer never sees it and nothing is decided about them from it. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+            <span className="font-medium">{w.tone.title}</span>{" "}
+            {fillWords(w.tone.text, { none: needsModel })}
           </span>
         </label>
         <label className="flex flex-wrap items-center gap-2 text-sm">
-          Alert the inbox when a conversation&apos;s tone reaches
+          {w.toneAlert.before}
           <ToneLine name="toneAlert" value={settings.toneAlert} />
-          (or falls by 40 within three messages).
+          {w.toneAlert.after}
         </label>
         <label className="flex flex-wrap items-center gap-2 text-sm">
-          With the AI first, hand a conversation from the AI to your team when its tone reaches
+          {w.toneHandoff}
           <ToneLine name="toneHandoff" value={settings.toneHandoff} />
         </label>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">Summaries</h2>
+        <h2 className="text-title text-ink">{w.summariesTitle}</h2>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="summariesOn" defaultChecked={settings.summariesOn} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="summariesOn"
+            defaultChecked={settings.summariesOn}
+            className="mt-0.5 size-4"
+          />
           <span>
-            <span className="font-medium">Summarise ended conversations, and brief whoever takes one over.</span> Written by the AI from the
-            conversation, in English, for your team only; you can correct a summary. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+            <span className="font-medium">{w.summaries.title}</span>{" "}
+            {fillWords(w.summaries.text, { none: needsModel })}
           </span>
         </label>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">Conversations</h2>
+        <h2 className="text-title text-ink">{w.conversationsTitle}</h2>
         <label className="flex flex-wrap items-center gap-2 text-sm">
-          End a conversation with the assistant after
-          <input type="number" name="endAfterMinutes" min={END_AFTER_MINUTES.min} max={END_AFTER_MINUTES.max} defaultValue={settings.endAfterMinutes} className={`${field} w-20`} />
-          quiet minutes. Conversations with a person end after a day without a message; nobody taking one from the queue for 14 days ends it.
+          {w.endAfter.before}
+          <input
+            type="number"
+            name="endAfterMinutes"
+            min={END_AFTER_MINUTES.min}
+            max={END_AFTER_MINUTES.max}
+            defaultValue={settings.endAfterMinutes}
+            className={`${field} w-20`}
+          />
+          {w.endAfter.after}
         </label>
         <fieldset className="flex flex-col gap-1 text-sm">
-          <legend className="mb-1 font-medium">How your people are named to customers</legend>
+          <legend className="mb-1 font-medium">{w.namingTitle}</legend>
           <label className="flex items-center gap-2">
-            <input type="radio" name="agentNaming" value="first_name" defaultChecked={settings.agentNaming === "first_name"} className="size-4" />
-            Their first name (or the name they set for support) and their own picture
+            <input
+              type="radio"
+              name="agentNaming"
+              value="first_name"
+              defaultChecked={settings.agentNaming === "first_name"}
+              className="size-4"
+            />
+            {w.namingFirst}
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" name="agentNaming" value="desk" defaultChecked={settings.agentNaming === "desk"} className="size-4" />
-            {deskName}, for everyone
+            <input
+              type="radio"
+              name="agentNaming"
+              value="desk"
+              defaultChecked={settings.agentNaming === "desk"}
+              className="size-4"
+            />
+            {fillWords(w.namingDesk, { desk: deskName })}
           </label>
         </fieldset>
         <label className="flex flex-wrap items-center gap-2 text-sm">
-          Keep transcripts for
-          <select name="transcriptDays" defaultValue={settings.transcriptDays} disabled={!owner} className={field}>
+          {w.keep.before}
+          <select
+            name="transcriptDays"
+            defaultValue={settings.transcriptDays}
+            disabled={!owner}
+            className={field}
+          >
             {TRANSCRIPT_DAYS.map((days) => (
               <option key={days} value={days}>
-                {days} days
+                {fillWords(w.keep.days, { n: days })}
               </option>
             ))}
           </select>
-          after a conversation ends{owner ? "" : " (only the owner changes this)"}. Then the words are deleted and only counts are kept.
+          {owner ? w.keep.after : w.keep.afterNotOwner}
         </label>
       </section>
 
       {!disabled && (
         <div>
-          <SubmitButton>Save</SubmitButton>
+          <SubmitButton>{w.save}</SubmitButton>
         </div>
       )}
     </fieldset>
@@ -223,14 +328,22 @@ export function SupportSettingsForm({
 
 /** A tone line: off, or a score from the bands' edges (the band is named beside the number). */
 function ToneLine({ name, value }: { name: string; value: number | null }) {
+  const w = useAdminText("support").settings.toneLine;
   const choices = [-20, -40, -60, -80];
-  const options = value !== null && !choices.includes(value) ? [...choices, value].sort((a, b) => b - a) : choices;
+  const options =
+    value !== null && !choices.includes(value)
+      ? [...choices, value].sort((a, b) => b - a)
+      : choices;
   return (
-    <select name={name} defaultValue={value === null ? "off" : String(value)} className={field}>
-      <option value="off">Off</option>
+    <select
+      name={name}
+      defaultValue={value === null ? "off" : String(value)}
+      className={field}
+    >
+      <option value="off">{w.off}</option>
       {options.map((score) => (
         <option key={score} value={score}>
-          {score} ({score <= -60 ? "very bad" : "bad"})
+          {score} ({score <= -60 ? w.veryBad : w.bad})
         </option>
       ))}
     </select>

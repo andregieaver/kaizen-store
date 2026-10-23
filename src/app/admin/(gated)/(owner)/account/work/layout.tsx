@@ -1,6 +1,9 @@
 import { WorkNav } from "@/components/admin/work/work-nav";
 import { WorkShell } from "@/components/admin/work/work-shell";
 import { storesOf } from "@/components/admin/admin-shell-parts";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminTexts } from "@/lib/admin-text";
 import { requireAccount } from "@/server/auth";
 
 /**
@@ -16,9 +19,11 @@ export default async function WorkLayout({ children }: LayoutProps<"/admin/accou
   const account = await requireAccount();
   const stores = (await storesOf(account)).map(({ slug, name, workOn }) => ({ slug, name, workOn }));
   return (
-    <WorkShell account={account}>
-      <WorkNav stores={stores} />
-      {children}
-    </WorkShell>
+    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["work"])}>
+      <WorkShell account={account}>
+        <WorkNav stores={stores} />
+        {children}
+      </WorkShell>
+    </AdminTextScope>
   );
 }

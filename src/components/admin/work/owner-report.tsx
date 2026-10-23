@@ -15,10 +15,12 @@ import {
 } from "@/lib/work-reports";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
-import { REPORT_HEADINGS, REPORT_NOTES, reportCells } from "./report-columns";
+import { reportCells, reportHeadings, reportNotes } from "./report-columns";
 import { ReportTotalsView } from "./report-totals";
 import { CurrencyNote, StoreFilter } from "./owner-common";
 import { control, primaryButton, secondaryButton } from "./work-parts";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 const chip = (current: boolean) =>
   `inline-flex min-h-9 items-center rounded-full border border-edge px-3 text-sm ${
@@ -43,6 +45,7 @@ export function OwnerReportView({
   report: OwnerReport;
   storeSlug: string;
 }) {
+  const tw = workText().ownerReport;
   const many = stores.length > 1 && storeSlug === "";
   const base = `${WORK_ROOT}/reports`;
   const withScope = (query: string) => withStore(query, storeSlug);
@@ -55,27 +58,27 @@ export function OwnerReportView({
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PageHeader
-          title="Reports"
+          title={tw.reports}
           description={<>{formatDay(report.from || params.period.from, WORK_LOCALE)} to{" "}{formatDay(report.to || params.period.to, WORK_LOCALE)}, {GROUP_LABELS[report.by].toLowerCase()}{stores.length > 1 ? (storeSlug ? ", one store" : ", all stores") : ""}</>}
         />
         <a href={`${base}/csv${query}`} download className={secondaryButton}>
-          Download CSV
+          {tw.downloadCsv}
         </a>
       </div>
 
       {params.problem && (
         <p role="alert" className="rounded-panel border border-line bg-card p-4 text-sm text-danger-text">
-          {params.problem} Showing this month instead.
+          {params.problem} {tw.showingThisMonth}
         </p>
       )}
       {report.periodsDiffer && (
         <p role="status" className="text-sm text-muted">
-          The stores are in different time zones, so their &quot;this month&quot; and &quot;today&quot; can differ by a day.
+          {tw.theStoresAreIn}
         </p>
       )}
 
       <div className="flex flex-col gap-4">
-        <nav aria-label="Period" className="flex flex-wrap gap-2">
+        <nav aria-label={tw.period} className="flex flex-wrap gap-2">
           {REPORT_PRESETS.filter((p): p is Exclude<ReportPreset, "custom"> => p !== "custom").map((preset) => (
             <Link
               key={preset}
@@ -94,7 +97,7 @@ export function OwnerReportView({
           </span>
         </nav>
 
-        <nav aria-label="Group by" className="flex flex-wrap gap-2">
+        <nav aria-label={tw.groupBy} className="flex flex-wrap gap-2">
           {REPORT_GROUPS.map((by) => (
             <Link key={by} href={link({ by })} aria-current={params.by === by ? "page" : undefined} className={chip(params.by === by)}>
               {GROUP_LABELS[by]}
@@ -102,20 +105,20 @@ export function OwnerReportView({
           ))}
         </nav>
 
-        <form method="get" action={base} className="flex flex-wrap items-end gap-3" role="search" aria-label="Choose days and store">
+        <form method="get" action={base} className="flex flex-wrap items-end gap-3" role="search" aria-label={tw.chooseDaysAndStore}>
           <input type="hidden" name="period" value="custom" />
           {params.by !== "client" && <input type="hidden" name="by" value={params.by} />}
           <label className="flex flex-col gap-1 text-sm font-medium">
-            From
+            {tw.from}
             <input type="date" name="from" required defaultValue={params.period.from} className={`${control} font-normal`} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            To
+            {tw.to}
             <input type="date" name="to" required defaultValue={params.period.to} className={`${control} font-normal`} />
           </label>
           <StoreFilter stores={stores} value={storeSlug} />
           <button type="submit" className={primaryButton}>
-            Show report
+            {tw.showReport}
           </button>
         </form>
       </div>
@@ -125,25 +128,25 @@ export function OwnerReportView({
 
       {report.rows.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
+          {tw.nothingToReportIn}
         </p>
       ) : (
         <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-sm">
             <caption className="sr-only">
-              Work report from {report.from} to {report.to}, by {report.by}
+              {fillWords(tw.reportCaption, { from: report.from, to: report.to, by: report.by })}
             </caption>
             <thead>
               <tr>
                 <th scope="col" className={`${th} text-left`}>
-                  {report.by === "client" ? "Client" : "Assignment"}
+                  {report.by === "client" ? tw.client : tw.assignment}
                 </th>
                 {stores.length > 1 && (
                   <th scope="col" className={`${th} text-left`}>
-                    Store
+                    {tw.store}
                   </th>
                 )}
-                {Object.values(REPORT_HEADINGS).map((heading) => (
+                {Object.values(reportHeadings()).map((heading) => (
                   <th key={heading} scope="col" className={th}>
                     {heading}
                   </th>
@@ -187,7 +190,7 @@ export function OwnerReportView({
                 return (
                   <tr key={total.currency} className="border-t-2 border-line font-medium">
                     <th scope="row" className="px-3 py-2 text-left" colSpan={stores.length > 1 ? 2 : 1}>
-                      Total{manyCurrencies ? ` (${total.currency})` : ""}
+                      {tw.total}{manyCurrencies ? ` (${total.currency})` : ""}
                     </th>
                     <td className={td}>{cells.hours}</td>
                     <td className={td}>{cells.billable}</td>
@@ -208,7 +211,7 @@ export function OwnerReportView({
       )}
 
       <ul className="flex list-disc flex-col gap-1 pl-5 text-xs text-muted">
-        {REPORT_NOTES.map((note) => (
+        {reportNotes().map((note) => (
           <li key={note}>{note}</li>
         ))}
       </ul>

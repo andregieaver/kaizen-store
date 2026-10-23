@@ -2,26 +2,16 @@
 
 import { useState } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import type { Memory } from "@/server/assistant-memory";
+
+import { useAdminText } from "./admin-text";
 
 export type AiMemoryActions = {
   update: (id: string, content: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   removeAll: () => Promise<number>;
   setLearning: (on: boolean) => Promise<void>;
-};
-
-const KIND_WORDS: Record<Memory["kind"], string> = {
-  preference: "How you like it",
-  fact: "About your business",
-  procedure: "Your routines",
-  goal: "Your goals",
-};
-
-const SOURCE_WORDS: Record<Memory["source"], string> = {
-  told: "you told it",
-  learned: "learned from a conversation",
-  feedback: "learned from your thumbs",
 };
 
 /**
@@ -36,11 +26,12 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
   const [editing, setEditing] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
+  const w = useAdminText("assistant").memory;
 
   async function save(memory: Memory) {
     const content = text.trim();
     if (!content) return;
-    if (!(await actions.update(memory.id, content))) return setProblem("It could not be changed.");
+    if (!(await actions.update(memory.id, content))) return setProblem(w.notChanged);
     setMemories((current) => current.map((m) => (m.id === memory.id ? { ...m, content, source: "told" } : m)));
     setEditing(null);
   }
@@ -51,7 +42,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
   }
 
   async function removeAll() {
-    if (!window.confirm("Forget everything the AI manager knows about you?")) return;
+    if (!window.confirm(w.confirmAll)) return;
     await actions.removeAll();
     setMemories([]);
   }
@@ -61,22 +52,19 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
     await actions.setLearning(on);
   }
 
-  const groups = (Object.keys(KIND_WORDS) as Memory["kind"][]).map((kind) => ({ kind, items: memories.filter((m) => m.kind === kind) })).filter((g) => g.items.length > 0);
+  const groups = (Object.keys(w.kinds) as Memory["kind"][]).map((kind) => ({ kind, items: memories.filter((m) => m.kind === kind) })).filter((g) => g.items.length > 0);
 
   return (
     <section aria-labelledby="memory-heading" className="flex max-w-3xl flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 id="memory-heading" className="text-title text-ink">
-          What it knows about you
+          {w.heading}
         </h2>
-        <p className="text-sm text-muted">
-          The AI manager keeps what you tell it to remember and learns how you work from your conversations and thumbs, so it answers the way you like. Memories are yours: only
-          you and your AI manager see them. It never keeps customers&apos; details or passwords.
-        </p>
+        <p className="text-sm text-muted">{w.intro}</p>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" className="size-4" checked={learning} onChange={(event) => void toggleLearning(event.target.checked)} />
-        Learn from my conversations
+        {w.learn}
       </label>
       {problem && (
         <p role="alert" className="text-sm text-danger-text">
@@ -84,11 +72,11 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         </p>
       )}
       {memories.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">Nothing yet. Tell it about your business, or say &ldquo;remember that …&rdquo;.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">{w.empty}</p>
       ) : (
         groups.map((group) => (
           <div key={group.kind} className="flex flex-col gap-2">
-            <h3 className="text-body-strong text-ink">{KIND_WORDS[group.kind]}</h3>
+            <h3 className="text-body-strong text-ink">{w.kinds[group.kind]}</h3>
             <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">
               {group.items.map((memory) => (
                 <li key={memory.id} className="flex flex-col gap-2 p-3">
@@ -101,7 +89,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                       }}
                     >
                       <label className="sr-only" htmlFor={`memory-${memory.id}`}>
-                        Memory
+                        {w.label}
                       </label>
                       <textarea
                         id={`memory-${memory.id}`}
@@ -113,10 +101,10 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                       />
                       <div className="flex gap-2">
                         <button type="submit" className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink">
-                          Save
+                          {w.save}
                         </button>
                         <button type="button" className="rounded-pill border border-line px-3 py-1.5 text-sm" onClick={() => setEditing(null)}>
-                          Cancel
+                          {w.cancel}
                         </button>
                       </div>
                     </form>
@@ -124,8 +112,8 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                     <>
                       <p className="text-sm">{memory.content}</p>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-                        <span>{memory.storeName ? `About ${memory.storeName}` : "Everywhere"}</span>
-                        <span>{SOURCE_WORDS[memory.source]}</span>
+                        <span>{memory.storeName ? fillWords(w.about, { store: memory.storeName }) : w.everywhere}</span>
+                        <span>{w.sources[memory.source]}</span>
                         <button
                           type="button"
                           className="underline"
@@ -134,10 +122,10 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                             setText(memory.content);
                           }}
                         >
-                          Edit
+                          {w.edit}
                         </button>
-                        <button type="button" className="underline" onClick={() => void remove(memory)} aria-label={`Forget "${memory.content}"`}>
-                          Forget
+                        <button type="button" className="underline" onClick={() => void remove(memory)} aria-label={fillWords(w.forgetOne, { memory: memory.content })}>
+                          {w.forget}
                         </button>
                       </div>
                     </>
@@ -150,7 +138,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
       )}
       {memories.length > 0 && (
         <button type="button" className="self-start text-sm text-danger-text underline" onClick={() => void removeAll()}>
-          Forget everything
+          {w.forgetAll}
         </button>
       )}
     </section>

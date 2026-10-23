@@ -9,6 +9,8 @@ import { requireAccount } from "@/server/auth";
 import { getOwnerSettings, listOwnerClients, listOwnerPeople, listOwnerTime, workStoresFor } from "@/server/work-owner";
 
 import { switchActionsFor } from "../owner-page";
+import { workText } from "@/lib/work-text";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Time" };
 
@@ -20,11 +22,13 @@ const PAGE_SIZE = 50;
  * count everything the filters match, not just the page.
  */
 export default async function OwnerTimePage({ searchParams }: PageProps<"/admin/account/work/time">) {
+  await workWords();
+  const tw = workText().pageTimePage;
   const account = await requireAccount();
   const { using, off } = await workStoresFor(account);
   if (using.length === 0) {
     const rows = await getOwnerSettings(off);
-    return <OwnerWorkStart title="Time" rows={rows} actions={switchActionsFor(rows)} />;
+    return <OwnerWorkStart title={tw.time} rows={rows} actions={switchActionsFor(rows)} />;
   }
   const query = await searchParams;
   const storeSlug = activeStoreSlug(using, parseStoreParam(query));

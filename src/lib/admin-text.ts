@@ -69,6 +69,14 @@ import { taxReportsEn, type TaxReportsMessages } from "./admin-messages/tax-repo
 import { taxReportsNb } from "./admin-messages/tax-reports.nb";
 import { reportsEn, type ReportsMessages } from "./admin-messages/reports.en";
 import { reportsNb } from "./admin-messages/reports.nb";
+import { supportEn, type SupportMessages } from "./admin-messages/support.en";
+import { supportNb } from "./admin-messages/support.nb";
+import { workEn, type WorkMessages } from "./admin-messages/work.en";
+import { workNb } from "./admin-messages/work.nb";
+import { assistantEn, type AssistantMessages } from "./admin-messages/assistant.en";
+import { assistantNb } from "./admin-messages/assistant.nb";
+import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
 import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
 import { loyaltyNb } from "./admin-messages/loyalty.nb";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
@@ -96,6 +104,10 @@ export type AdminAreaMessages = {
   marketing: MarketingMessages;
   discounts: DiscountsMessages;
   loyalty: LoyaltyMessages;
+  support: SupportMessages;
+  work: WorkMessages;
+  assistant: AssistantMessages;
+  staffEmails: StaffEmailsMessages;
   analytics: AnalyticsMessages;
   finance: FinanceMessages;
   taxReports: TaxReportsMessages;
@@ -142,6 +154,10 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   marketing: { en: marketingEn, nb: marketingNb },
   discounts: { en: discountsEn, nb: discountsNb },
   loyalty: { en: loyaltyEn, nb: loyaltyNb },
+  support: { en: supportEn, nb: supportNb },
+  work: { en: workEn, nb: workNb },
+  assistant: { en: assistantEn, nb: assistantNb },
+  staffEmails: { en: staffEmailsEn, nb: staffEmailsNb },
   analytics: { en: analyticsEn, nb: analyticsNb },
   finance: { en: financeEn, nb: financeNb },
   taxReports: { en: taxReportsEn, nb: taxReportsNb },

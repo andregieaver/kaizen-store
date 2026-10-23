@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 import {
@@ -38,7 +40,9 @@ type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 type Executor = Pick<ReturnType<typeof db>, "execute"> | Tx;
 
-export type ClosureResult = { ok: true; warnings: string[] } | { ok: false; problems: string[] };
+export type ClosureResult =
+  | { ok: true; warnings: string[] }
+  | { ok: false; problems: string[] };
 
 export type StoreStateInfo = {
   id: string;
@@ -50,10 +54,16 @@ export type StoreStateInfo = {
   isTemplate: boolean;
 };
 
-const fail = (...problems: string[]): ClosureResult => ({ ok: false, problems });
+const fail = (...problems: string[]): ClosureResult => ({
+  ok: false,
+  problems,
+});
 
 /** A store's status, read now (never the cached store), or null. */
-export async function storeState(storeId: string, executor: Executor = db()): Promise<StoreStateInfo | null> {
+export async function storeState(
+  storeId: string,
+  executor: Executor = db(),
+): Promise<StoreStateInfo | null> {
   const [row] = await executor.execute<Row>(sql`
     select id, slug, name, status, status_reason, closed_at, is_template from commerce.stores where id = ${storeId}::uuid
   `);
@@ -73,7 +83,10 @@ export async function storeState(storeId: string, executor: Executor = db()): Pr
  * What a store still has open, counted now. A paid order is *to send* while it holds goods and its payment is a real one (a test payment is no
  * obligation); a subscription or a weekly list is running while customers expect the next delivery.
  */
-export async function storeObligations(storeId: string, executor: Executor = db()): Promise<Obligations> {
+export async function storeObligations(
+  storeId: string,
+  executor: Executor = db(),
+): Promise<Obligations> {
   const [row] = await executor.execute<Row>(sql`
     select
       (select count(*)::int from commerce.orders o
@@ -118,38 +131,59 @@ export type CloseOptions = {
  * running subscriptions or weekly deliveries; the platform may force it. Safe to repeat: a store already closed is refused, nothing half-done is left
  * that a second try cannot finish.
  */
-export async function closeStore(actor: Account, storeId: string, options: CloseOptions): Promise<ClosureResult> {
+export async function closeStore(
+  actor: Account,
+  storeId: string,
+  options: CloseOptions,
+): Promise<ClosureResult> {
   const state = await storeState(storeId);
   if (!state) return fail("That store is gone.");
   if (state.isTemplate) return fail("The template store cannot be closed.");
   if (state.status === "closed") return fail("The store is already closed.");
-  if (options.by === "platform" && !actor.platformAdmin) return fail("Only the platform can do this.");
-  if (options.by === "owner" && state.status !== "active") return fail("Kaizena Flow has suspended this store: write to Kaizena Flow about it.");
-  if (options.by === "owner" && !confirmationMatches(options.typed ?? "", state.slug)) return fail("Type the store's address to confirm.");
+  if (options.by === "platform" && !actor.platformAdmin)
+    return fail("Only the platform can do this.");
+  if (options.by === "owner" && state.status !== "active")
+    return fail(
+      "Kaizena Flow has suspended this store: write to Kaizena Flow about it.",
+    );
+  if (
+    options.by === "owner" &&
+    !confirmationMatches(options.typed ?? "", state.slug)
+  )
+    return fail("Type the store's address to confirm.");
 
   const obligations = await storeObligations(storeId);
   const blockers = closureBlockers(obligations);
-  if (blockers.length > 0 && !(options.by === "platform" && options.force)) return fail(...blockers);
+  if (blockers.length > 0 && !(options.by === "platform" && options.force))
+    return fail(...blockers);
 
   // The plan first: if Stripe cannot end it, nothing is closed, so a store is never closed and still billed.
   let planEnded = false;
   if (obligations.livePlan) {
     const ended = await cancelPlan(actor, storeId, "period_end");
-    if (!ended.ok) return fail(`Kaizena Flow could not end the plan (${ended.problems.join(" ")}). Nothing was closed. Try again in a moment.`);
+    if (!ended.ok)
+      return fail(
+        `Kaizena Flow could not end the plan (${ended.problems.join(" ")}). Nothing was closed. Try again in a moment.`,
+      );
     planEnded = true;
   }
 
-  const closed = await db().transaction(async (tx): Promise<string[] | null> => {
-    // The store row is locked and what is open is counted again under the lock, so an order paid a second ago cannot slip past the check.
-    await tx.execute(sql`select 1 from commerce.stores where id = ${storeId}::uuid for update`);
-    const again = closureBlockers(await storeObligations(storeId, tx));
-    if (again.length > 0 && !(options.by === "platform" && options.force)) return again;
-    await tx.execute(sql`
+  const closed = await db().transaction(
+    async (tx): Promise<string[] | null> => {
+      // The store row is locked and what is open is counted again under the lock, so an order paid a second ago cannot slip past the check.
+      await tx.execute(
+        sql`select 1 from commerce.stores where id = ${storeId}::uuid for update`,
+      );
+      const again = closureBlockers(await storeObligations(storeId, tx));
+      if (again.length > 0 && !(options.by === "platform" && options.force))
+        return again;
+      await tx.execute(sql`
       update commerce.stores set status = 'closed', status_reason = ${options.reason ?? null}, status_changed_by = ${actor.id}::uuid
       where id = ${storeId}::uuid and status <> 'closed'
     `);
-    return null;
-  });
+      return null;
+    },
+  );
   if (closed) {
     if (planEnded) await cancelPlan(actor, storeId, "undo").catch(() => {});
     return fail(...closed);
@@ -159,26 +193,54 @@ export async function closeStore(actor: Account, storeId: string, options: Close
   // Order changes waiting for the customer's payment (D174) end with the store: their sessions closed, their held units released.
   await cancelEditsForClosure(storeId).catch(() => 0);
   // Open exchanges (D239) end with the store too: their orders cancelled and stock released; the customers are refunded as usual by staff.
-  const exchanges = await import("./exchanges").then((m) => m.cancelExchangesForClosure(storeId, actor.id)).catch(() => ({ cancelled: 0, left: 0 }));
-  if (exchanges.cancelled > 0) warnings.push(`${exchanges.cancelled} open exchange${exchanges.cancelled === 1 ? " was" : "s were"} cancelled: refund ${exchanges.cancelled === 1 ? "its return" : "their returns"} as usual.`);
-  if (exchanges.left > 0) warnings.push(`${exchanges.left} exchange${exchanges.left === 1 ? "" : "s"} could not be cancelled (a payment is being processed): cancel ${exchanges.left === 1 ? "it" : "them"} on the return's page.`);
+  const exchanges = await import("./exchanges")
+    .then((m) => m.cancelExchangesForClosure(storeId, actor.id))
+    .catch(() => ({ cancelled: 0, left: 0 }));
+  if (exchanges.cancelled > 0)
+    warnings.push(
+      `${exchanges.cancelled} open exchange${exchanges.cancelled === 1 ? " was" : "s were"} cancelled: refund ${exchanges.cancelled === 1 ? "its return" : "their returns"} as usual.`,
+    );
+  if (exchanges.left > 0)
+    warnings.push(
+      `${exchanges.left} exchange${exchanges.left === 1 ? "" : "s"} could not be cancelled (a payment is being processed): cancel ${exchanges.left === 1 ? "it" : "them"} on the return's page.`,
+    );
   const checkouts = await cancelOpenCheckouts(storeId);
-  if (checkouts.failed > 0) warnings.push(`${checkouts.failed} order${checkouts.failed === 1 ? "" : "s"} waiting for payment could not be cancelled and will be cancelled by the daily clean-up.`);
+  if (checkouts.failed > 0)
+    warnings.push(
+      `${checkouts.failed} order${checkouts.failed === 1 ? "" : "s"} waiting for payment could not be cancelled and will be cancelled by the daily clean-up.`,
+    );
 
   for (const domain of await listStoreDomains(storeId)) {
-    const removed = await removeStoreDomain(actor, storeId, domain.id).catch(() => ({ ok: false as const, problems: ["failed"] }));
-    if (!removed.ok) warnings.push(`The domain ${domain.hostname} could not be released: remove it under Settings, Domains.`);
+    const removed = await removeStoreDomain(actor, storeId, domain.id).catch(
+      () => ({ ok: false as const, problems: ["failed"] }),
+    );
+    if (!removed.ok)
+      warnings.push(
+        `The domain ${domain.hostname} could not be released: remove it under Settings, Domains.`,
+      );
   }
 
   await audit(
     actor.id,
     storeId,
     "store.closed",
-    { by: options.by, reason: options.reason ?? null, force: Boolean(options.force && blockers.length > 0), planEnded, checkoutsCancelled: checkouts.cancelled },
+    {
+      by: options.by,
+      reason: options.reason ?? null,
+      force: Boolean(options.force && blockers.length > 0),
+      planEnded,
+      checkoutsCancelled: checkouts.cancelled,
+    },
     { target: { type: "store", id: storeId } },
   );
   refreshTag(storeTag(state.slug));
-  await notifyOwners(state, "closed", options.by, options.reason ?? null, actor.id);
+  await notifyOwners(
+    state,
+    "closed",
+    options.by,
+    options.reason ?? null,
+    actor.id,
+  );
   return { ok: true, warnings };
 }
 
@@ -187,7 +249,9 @@ export async function closeStore(actor: Account, storeId: string, options: Close
  * then simply is a paid order of the closed store, and appears in its orders), the rest are cancelled with their stock, and a subscription that never started
  * is expired. Each order on its own: one that fails is counted and left to the next try.
  */
-export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled: number; failed: number }> {
+export async function cancelOpenCheckouts(
+  storeId: string,
+): Promise<{ cancelled: number; failed: number }> {
   const waiting = await db().execute<Row>(sql`
     select o.id, p.provider_reference, p.provider_account,
       -- A Mollie payment waiting for the shopper (D292), closed by Mollie.
@@ -207,7 +271,11 @@ export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled:
     const id = String(row.id);
     try {
       if (stripe && row.provider_reference && row.provider_account) {
-        const outcome = await closeSession(stripe, String(row.provider_account), String(row.provider_reference));
+        const outcome = await closeSession(
+          stripe,
+          String(row.provider_account),
+          String(row.provider_reference),
+        );
         if (outcome === "paid") {
           await completeOrderPayment(id, String(row.provider_reference));
           continue;
@@ -218,7 +286,14 @@ export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled:
         }
       }
       if (row.mollie_reference) {
-        const outcome = await mollieProvider.close(storeId, { id: String(row.mollie_id), orderId: id, provider: "mollie", reference: String(row.mollie_reference), account: null, mode: null });
+        const outcome = await mollieProvider.close(storeId, {
+          id: String(row.mollie_id),
+          orderId: id,
+          provider: "mollie",
+          reference: String(row.mollie_reference),
+          account: null,
+          mode: null,
+        });
         // Paid meanwhile: completed by the close itself. Under way or unanswered: the next try.
         if (outcome === "paid") continue;
         if (outcome === "processing" || outcome === "unknown") {
@@ -227,7 +302,9 @@ export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled:
         }
       }
       await db().transaction(async (tx) => {
-        const [done] = await tx.execute<Row>(sql`select commerce.cancel_unpaid_order(${id}::uuid, 'the store was closed') as cancelled`);
+        const [done] = await tx.execute<Row>(
+          sql`select commerce.cancel_unpaid_order(${id}::uuid, 'the store was closed') as cancelled`,
+        );
         if (done?.cancelled) cancelled++;
         await tx.execute(sql`
           update commerce.payments set status = 'cancelled', updated_at = now()
@@ -240,25 +317,42 @@ export async function cancelOpenCheckouts(storeId: string): Promise<{ cancelled:
       });
     } catch (error) {
       failed++;
-      console.error("[store-closure] an open checkout could not be cancelled", id, error);
+      console.error(
+        "[store-closure] an open checkout could not be cancelled",
+        id,
+        error,
+      );
     }
   }
   return { cancelled, failed };
 }
 
 /** Suspends a store (the platform only): sales stop and the shop cannot be changed, nothing else is touched. The owner is told why. */
-export async function suspendStore(actor: Account, storeId: string, reason: string): Promise<ClosureResult> {
+export async function suspendStore(
+  actor: Account,
+  storeId: string,
+  reason: string,
+): Promise<ClosureResult> {
   if (!actor.platformAdmin) return fail("Only the platform can do this.");
   const state = await storeState(storeId);
   if (!state) return fail("That store is gone.");
   if (state.isTemplate) return fail("The template store cannot be suspended.");
-  if (state.status !== "active") return fail(`The store is already ${state.status === "closed" ? "closed" : "suspended"}.`);
+  if (state.status !== "active")
+    return fail(
+      `The store is already ${state.status === "closed" ? "closed" : "suspended"}.`,
+    );
   const [changed] = await db().execute<Row>(sql`
     update commerce.stores set status = 'suspended', status_reason = ${reason}, status_changed_by = ${actor.id}::uuid
     where id = ${storeId}::uuid and status = 'active' returning id
   `);
   if (!changed) return fail("The store is no longer open.");
-  await audit(actor.id, storeId, "store.suspended", { reason }, { target: { type: "store", id: storeId } });
+  await audit(
+    actor.id,
+    storeId,
+    "store.suspended",
+    { reason },
+    { target: { type: "store", id: storeId } },
+  );
   refreshTag(storeTag(state.slug));
   await notifyOwners(state, "suspended", "platform", reason, actor.id);
   return { ok: true, warnings: [] };
@@ -270,20 +364,30 @@ export type ReopenOptions = { by: "owner" | "platform" };
  * Opens a closed or suspended store again. The owner may reopen a store they closed for thirty days; a suspension and anything later is the platform's.
  * A plan that was set to end at the end of its period is kept (if that period is not over); a domain that was released is not restored.
  */
-export async function reopenStore(actor: Account, storeId: string, options: ReopenOptions, now: Date = new Date()): Promise<ClosureResult> {
+export async function reopenStore(
+  actor: Account,
+  storeId: string,
+  options: ReopenOptions,
+  now: Date = new Date(),
+): Promise<ClosureResult> {
   const state = await storeState(storeId);
   if (!state) return fail("That store is gone.");
   if (state.status === "active") return fail("The store is already open.");
   if (options.by === "platform") {
     if (!actor.platformAdmin) return fail("Only the platform can do this.");
   } else if (!ownerMayReopen(state.status, state.closedAt, now)) {
-    return fail(state.status === "suspended" ? "Kaizena Flow suspended this store: write to Kaizena Flow to have it reopened." : "The thirty days for reopening have passed: ask Kaizena Flow to reopen the store.");
+    return fail(
+      state.status === "suspended"
+        ? "Kaizena Flow suspended this store: write to Kaizena Flow to have it reopened."
+        : "The thirty days for reopening have passed: ask Kaizena Flow to reopen the store.",
+    );
   }
   const [changed] = await db().execute<Row>(sql`
     update commerce.stores set status = 'active', status_changed_by = ${actor.id}::uuid
     where id = ${storeId}::uuid and status = ${state.status}::commerce.store_status returning id
   `);
-  if (!changed) return fail("The store changed while you were reopening it. Look again.");
+  if (!changed)
+    return fail("The store changed while you were reopening it. Look again.");
 
   const warnings: string[] = [];
   if (state.status === "closed") {
@@ -293,43 +397,84 @@ export async function reopenStore(actor: Account, storeId: string, options: Reop
       from commerce.store_billing b where b.store_id = ${storeId}::uuid
     `);
     if (plan?.ending) {
-      const undone = await cancelPlan(actor, storeId, "undo").catch(() => ({ ok: false as const, problems: [] as string[] }));
-      if (!undone.ok) warnings.push("The store's Kaizena Flow plan could not be kept going: check it under Billing.");
-    } else if (plan) warnings.push("The store's Kaizena Flow plan has ended: choose a plan under Billing.");
+      const undone = await cancelPlan(actor, storeId, "undo").catch(() => ({
+        ok: false as const,
+        problems: [] as string[],
+      }));
+      if (!undone.ok)
+        warnings.push(
+          "The store's Kaizena Flow plan could not be kept going: check it under Billing.",
+        );
+    } else if (plan)
+      warnings.push(
+        "The store's Kaizena Flow plan has ended: choose a plan under Billing.",
+      );
   }
-  await audit(actor.id, storeId, "store.reopened", { by: options.by, from: state.status }, { target: { type: "store", id: storeId } });
+  await audit(
+    actor.id,
+    storeId,
+    "store.reopened",
+    { by: options.by, from: state.status },
+    { target: { type: "store", id: storeId } },
+  );
   refreshTag(storeTag(state.slug));
   await notifyOwners(state, "reopened", options.by, null, actor.id);
   return { ok: true, warnings };
 }
 
 /** The date an owner may reopen until, for the page and the email. */
-export const reopenUntil = (closedAt: Date | null): Date | null => (closedAt ? reopenDeadline(closedAt) : null);
+export const reopenUntil = (closedAt: Date | null): Date | null =>
+  closedAt ? reopenDeadline(closedAt) : null;
 
 /** Tells the store's owners, once each, never throwing: a failure to send changes nothing about the status. */
-async function notifyOwners(state: StoreStateInfo, change: "closed" | "suspended" | "reopened", by: "owner" | "platform", reason: string | null, actorId: string): Promise<void> {
+async function notifyOwners(
+  state: StoreStateInfo,
+  change: "closed" | "suspended" | "reopened",
+  by: "owner" | "platform",
+  reason: string | null,
+  actorId: string,
+): Promise<void> {
   try {
     const people = await db().execute<Row>(sql`
-      select distinct on (a.id) a.id, a.email
+      select distinct on (a.id) a.id, a.email, a.admin_locale
       from commerce.store_members m
       join commerce.accounts a on a.id = m.account_id and a.disabled_at is null
       where m.store_id = ${state.id}::uuid and m.role = 'owner' and m.disabled_at is null and a.email <> ''
     `);
-    const closedAt = change === "closed" ? ((await storeState(state.id))?.closedAt ?? null) : null;
-    const email = renderEmail(
-      statusEmail({ storeName: state.name, change, by, reason, url: `${siteUrl()}/admin/${state.slug}`, reopenUntil: reopenUntil(closedAt) }),
-    );
+    const closedAt =
+      change === "closed"
+        ? ((await storeState(state.id))?.closedAt ?? null)
+        : null;
+    const facts = {
+      storeName: state.name,
+      change,
+      by,
+      reason,
+      url: `${siteUrl()}/admin/${state.slug}`,
+      reopenUntil: reopenUntil(closedAt),
+    };
+    // Each owner reads it in their own admin language (D312 A10).
+    const emailIn = (stored: unknown) => {
+      const lang = adminLangOf(typeof stored === "string" ? stored : null);
+      return renderEmail(
+        statusEmail(facts, adminText(lang, "staffEmails"), lang),
+      );
+    };
     for (const person of people) {
       await sendEmail({
         storeId: state.id,
         kind: "store.status",
         to: String(person.email),
-        email,
+        email: emailIn(person.admin_locale),
         fromName: "Kaizena Flow",
         idempotencyKey: `store.status:${state.id}:${change}:${actorId}:${Date.now()}:${String(person.id)}`,
       });
     }
   } catch (error) {
-    console.error("[store-closure] the owners' email could not be sent", state.id, error);
+    console.error(
+      "[store-closure] the owners' email could not be sent",
+      state.id,
+      error,
+    );
   }
 }

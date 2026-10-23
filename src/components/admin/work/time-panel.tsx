@@ -10,6 +10,7 @@ import { FormDialogButton } from "./client-actions";
 import { LogTimeForm } from "./log-time-form";
 import { TimeEntryList } from "./time-entry-list";
 import { control } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * An assignment's logged time: the entries with a search and a task filter (in
@@ -36,6 +37,7 @@ export function TimePanel({
   /** There is more time than was loaded. */
   truncated: boolean;
 }) {
+  const tw = useAdminText("work").timePanel;
   const [query, setQuery] = useState("");
   const [task, setTask] = useState("");
   const shown = useMemo(() => filterTimeEntries(entries, { taskId: task || null, query }), [entries, task, query]);
@@ -45,9 +47,9 @@ export function TimePanel({
     <section aria-labelledby="time-heading" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="time-heading" className="text-title text-ink">
-          Time
+          {tw.time}
         </h2>
-        <FormDialogButton label="Log time" title="Log time" primary wide={false}>
+        <FormDialogButton label={tw.logTime} title={tw.logTime} primary wide={false}>
           {(close) => (
             <LogTimeForm
               storeSlug={storeSlug}
@@ -64,22 +66,22 @@ export function TimePanel({
       {entries.length > 0 && (
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-            Search time
+            {tw.searchTime}
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Task or note"
+              placeholder={tw.taskOrNote}
               className={control}
               autoComplete="off"
             />
           </label>
           {choice.tasks.length > 0 && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Task
+              {tw.task}
               <select value={task} onChange={(event) => setTask(event.target.value)} className={control}>
-                <option value="">All tasks</option>
-                <option value={NO_TASK_FILTER}>No task</option>
+                <option value="">{tw.allTasks}</option>
+                <option value={NO_TASK_FILTER}>{tw.noTask}</option>
                 {choice.tasks.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.title}
@@ -104,7 +106,7 @@ export function TimePanel({
         viewer={viewer}
         showAssignment={false}
         locale={locale}
-        empty={entries.length === 0 ? "No time logged yet. Log time by hand, or start a timer." : "No time matches."}
+        empty={entries.length === 0 ? tw.noTimeLoggedYet : tw.noTimeMatches}
       />
     </section>
   );

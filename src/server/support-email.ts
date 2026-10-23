@@ -3,7 +3,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { renderEmail, type EmailBlock } from "@/lib/email-layout";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { marketUrl } from "@/lib/paths";
 import { can } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
@@ -189,21 +192,30 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
       const where = storeId ? String(row.name) : "Kaizena Flow";
       const inbox = storeId ? `${siteUrl()}/admin/${String(row.slug)}/support` : `${siteUrl()}/admin/platform/support`;
       const minutes = Math.max(1, Number(row.minutes));
-      const email = renderEmail({
-        subject: `Someone is waiting in ${where}'s support`,
-        preview: `A conversation has waited ${minutes} min for a person.`,
-        lang: "en",
-        footer: ["Kaizena Flow"],
-        blocks: [
-          { type: "heading", text: "Someone is waiting for a person" },
-          { type: "paragraph", text: `A conversation in ${where}'s support has waited ${minutes} min, and nobody who can answer is online. Open the inbox to take it.` },
-          { type: "button", text: "Open the inbox", url: inbox },
-          { type: "paragraph", text: "You get this because you may answer this support desk and were not online. You hear about each conversation once for each time it waits." },
-        ],
-      });
+      // Each person reads it in their own admin language (D312 A10); English exactly as before.
+      const made = new Map<AdminLang, RenderedEmail>();
+      const emailIn = (lang: AdminLang): RenderedEmail => {
+        const hit = made.get(lang);
+        if (hit) return hit;
+        const w = adminText(lang, "staffEmails").supportWaiting;
+        const email = renderEmail({
+          subject: fillWords(w.subject, { where }),
+          preview: fillWords(w.preview, { minutes }),
+          lang: ADMIN_LANG_FACTS[lang].tag,
+          footer: ["Kaizena Flow"],
+          blocks: [
+            { type: "heading", text: w.heading },
+            { type: "paragraph", text: fillWords(w.text, { where, minutes }) },
+            { type: "button", text: w.button, url: inbox },
+            { type: "paragraph", text: w.why },
+          ],
+        });
+        made.set(lang, email);
+        return email;
+      };
       const queuedAt = new Date(String(row.queued_at)).toISOString();
       for (const person of people) {
-        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email, fromName: "Kaizena Flow", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
+        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email: emailIn(person.lang), fromName: "Kaizena Flow", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
         if (TOLD.includes(outcome)) out.waiting += 1;
         else out.failed += 1;
       }
@@ -227,17 +239,17 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
  * Who may answer a desk and is not online now: a store's members whose role holds `support:write` (active, not expired, with an
  * address), or Kaizen's platform admins.
  */
-async function deskPeopleAway(storeId: string | null): Promise<{ id: string; email: string }[]> {
+async function deskPeopleAway(storeId: string | null): Promise<{ id: string; email: string; lang: AdminLang }[]> {
   const online = sql`exists (select 1 from commerce.support_agents ag where ag.account_id = a.id and ag.store_id is not distinct from ${storeId}::uuid
     and ag.status = 'online' and ag.last_seen_at > now() - make_interval(secs => ${ONLINE_SECONDS}))`;
   if (!storeId) {
     const rows = await db().execute<Row>(sql`
-      select a.id, a.email from commerce.accounts a where a.platform_admin and a.disabled_at is null and a.email <> '' and not ${online}
+      select a.id, a.email, a.admin_locale from commerce.accounts a where a.platform_admin and a.disabled_at is null and a.email <> '' and not ${online}
     `);
-    return rows.map((r) => ({ id: String(r.id), email: String(r.email) }));
+    return rows.map((r) => ({ id: String(r.id), email: String(r.email), lang: adminLangOf(r.admin_locale ? String(r.admin_locale) : null) }));
   }
   const rows = await db().execute<Row>(sql`
-    select distinct on (a.id) a.id, a.email, m.role, m.kind, m.role_id, r.permissions as role_permissions
+    select distinct on (a.id) a.id, a.email, a.admin_locale, m.role, m.kind, m.role_id, r.permissions as role_permissions
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id and a.disabled_at is null and a.email <> ''
     left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
@@ -254,7 +266,7 @@ async function deskPeopleAway(storeId: string | null): Promise<{ id: string; ema
         "support:write",
       ),
     )
-    .map((r) => ({ id: String(r.id), email: String(r.email) }));
+    .map((r) => ({ id: String(r.id), email: String(r.email), lang: adminLangOf(r.admin_locale ? String(r.admin_locale) : null) }));
 }
 
 /**

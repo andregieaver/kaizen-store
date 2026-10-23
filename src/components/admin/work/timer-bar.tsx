@@ -8,6 +8,9 @@ import { formatTimerClock } from "@/lib/work-time";
 import { workBase } from "@/lib/work-paths";
 import { STAGE_STYLES, remainingLabel, stageOf } from "@/lib/work-ui";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "../admin-text";
 import { useWorkTimerApi } from "./timer-context";
 import { primaryButton, smallButton, errorText } from "./work-parts";
 import { Modal } from "../modal";
@@ -20,6 +23,8 @@ import { Modal } from "../modal";
  */
 export function TimerBar() {
   const api = useWorkTimerApi();
+  const w = useAdminText("work").timer;
+  const tl = useAdminText("work").labels;
   if (!api) return null;
   const { timer, now, status, error } = api;
 
@@ -30,7 +35,7 @@ export function TimerBar() {
     const elapsed = timerElapsedMs(timer, now);
     const left = estimate.estimatedMinutes - (estimate.loggedMinutes + Math.floor(elapsed / 60_000));
     stage = stageOf(left, estimate.settings.minutes);
-    remaining = `${remainingLabel(left)} of the ${estimate.target === "task" ? "task's" : "assignment's"} estimate`;
+    remaining = fillWords(estimate.target === "task" ? w.ofTaskEstimate : w.ofAssignmentEstimate, { left: remainingLabel(left, tl.remaining) });
   }
   const pending = timer?.key === "pending";
 
@@ -41,7 +46,7 @@ export function TimerBar() {
       </div>
       {timer && (
         <section
-          aria-label="Running timer"
+          aria-label={w.runningLabel}
           className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-line bg-card px-4 py-2 text-sm"
         >
           <span className="inline-flex items-center gap-2">
@@ -51,7 +56,7 @@ export function TimerBar() {
             />
             <span
               role="timer"
-              aria-label="Time on the running timer"
+              aria-label={w.clockLabel}
               className="font-mono text-base font-medium tabular-nums"
             >
               {formatTimerClock(timerElapsedMs(timer, now) / 1000)}
@@ -65,24 +70,24 @@ export function TimerBar() {
               {timer.taskTitle ? `${timer.taskTitle}, ${timer.assignmentName}` : timer.assignmentName}
             </Link>{" "}
             <span className="text-muted">
-              for {timer.clientName}
+              {fillWords(w.forClient, { client: timer.clientName })}
               {api.showStore ? `, ${timer.storeName ?? timer.storeSlug}` : ""}
             </span>
           </span>
           {remaining && <span className={`text-xs ${STAGE_STYLES[stage].text}`}>{remaining}</span>}
           <button type="button" onClick={api.stop} disabled={pending} className={smallButton}>
-            {pending ? "Starting …" : "Stop"}
-            <span className="sr-only"> the timer</span>
+            {pending ? w.starting : w.stop}
+            <span className="sr-only">{w.theTimer}</span>
           </button>
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("Discard this timer? The time it has counted is not logged.")) api.discard();
+              if (window.confirm(w.discardConfirm)) api.discard();
             }}
             disabled={pending}
             className="text-sm underline disabled:opacity-40"
           >
-            Discard<span className="sr-only"> the timer</span>
+            {w.discard}<span className="sr-only">{w.theTimer}</span>
           </button>
         </section>
       )}
@@ -93,7 +98,7 @@ export function TimerBar() {
         >
           <span className="min-w-0 flex-1">{error}</span>
           <button type="button" onClick={api.dismissError} className="text-sm underline">
-            Dismiss
+            {w.dismiss}
           </button>
         </div>
       )}
@@ -104,14 +109,16 @@ export function TimerBar() {
 /** The popup half of the estimate warning: what is used up, and Stop or carry on. Sound is played by the timer itself. */
 export function TimerAlertDialog() {
   const api = useWorkTimerApi();
+  const w = useAdminText("work").timer;
+  const tl = useAdminText("work").labels;
   if (!api) return null;
   const { alert } = api;
-  const message = alert ? alertMessage(alert.stage, alert.timer) : null;
+  const message = alert ? alertMessage(alert.stage, alert.timer, tl.alert) : null;
   return (
     <Modal
       open={alert !== null}
       onClose={api.dismissAlert}
-      title={message?.title ?? "Estimate"}
+      title={message?.title ?? w.estimate}
       footer={
         <>
           <button
@@ -122,10 +129,10 @@ export function TimerAlertDialog() {
             }}
             className={smallButton}
           >
-            Stop the timer
+            {w.stopTheTimer}
           </button>
           <button type="button" onClick={api.dismissAlert} className={primaryButton}>
-            Keep going
+            {w.keepGoing}
           </button>
         </>
       }

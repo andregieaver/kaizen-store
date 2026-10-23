@@ -7,6 +7,7 @@ import { billUnbilledAction } from "@/app/admin/(gated)/(owner)/account/work/s/[
 
 import { Problems, secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * "Bill unbilled time" (docs/work.md 6.4): opens the assignment's draft invoice (or starts one; a client without an
@@ -18,7 +19,7 @@ export function BillUnbilledButton({
   storeSlug,
   clientId,
   assignmentId,
-  label = "Bill unbilled time",
+  label,
   className,
 }: {
   storeSlug: string;
@@ -27,6 +28,7 @@ export function BillUnbilledButton({
   label?: string;
   className?: string;
 }) {
+  const tw = useAdminText("work").billUnbilledButton;
   const router = useRouter();
   const [problems, setProblems] = useState<string[]>([]);
   const [pending, start] = useTransition();
@@ -42,7 +44,7 @@ export function BillUnbilledButton({
         if (result.ok) router.push(`${workBase(storeSlug)}/invoices/${result.invoiceId}`);
         else setProblems(result.problems);
       } catch {
-        setProblems(["The invoice could not be made. Check your connection and try again."]);
+        setProblems([tw.theInvoiceCouldNot]);
       }
     });
   };
@@ -56,7 +58,7 @@ export function BillUnbilledButton({
         aria-busy={pending}
         className={className ?? secondaryButton}
       >
-        {pending ? "Making the invoice …" : label}
+        {pending ? tw.makingTheInvoice : (label ?? tw.billUnbilledTime)}
       </button>
       <Problems messages={problems} />
     </span>

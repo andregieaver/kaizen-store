@@ -19,6 +19,8 @@ import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Client" };
 
@@ -29,10 +31,13 @@ export const metadata: Metadata = { title: "Client" };
  * one with no history.
  */
 export default async function WorkClientPage({ params }: PageProps<"/admin/account/work/s/[store]/clients/[clientId]">) {
+  await workWords();
+  const tw = workText().pageStoreClientsClientIdPage;
   const { store: slug, clientId } = await params;
   const viewer = await requirePermission(slug, "settings:read");
   const { store } = viewer;
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Client" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.client} words={off} />;
   const client = await getClient(store.id, clientId);
   if (!client) notFound();
 
@@ -53,7 +58,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
       <PageHeader
         back={{ href: `${base}/clients`, label: "Clients" }}
         title={client.name}
-        status={archived ? <Badge>Archived</Badge> : undefined}
+        status={archived ? <Badge>{tw.archived}</Badge> : undefined}
         meta={[subtitle]}
         actions={
           <>
@@ -76,10 +81,10 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
       <section aria-labelledby="assignments-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="assignments-heading" className="text-title text-ink">
-            Assignments
+            {tw.assignments}
           </h2>
           {archived ? (
-            <p className="text-sm text-muted">Bring the client back to give it a new assignment.</p>
+            <p className="text-sm text-muted">{tw.bringTheClientBack}</p>
           ) : (
             <NewAssignmentButton
               storeSlug={store.slug}
@@ -123,11 +128,10 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
       {memberCan(viewer, "owner") && (
         <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-line pt-4">
           <h2 id="delete-heading" className="text-title text-ink">
-            Delete this client
+            {tw.deleteThisClient}
           </h2>
           <p className="text-sm text-muted">
-            Only a client with no assignments and no invoices can be deleted. Otherwise archive it: nothing is lost, and
-            it leaves the lists.
+            {tw.onlyAClientWith}
           </p>
           <DeleteClientButton storeSlug={store.slug} clientId={client.id} name={client.name} />
         </section>

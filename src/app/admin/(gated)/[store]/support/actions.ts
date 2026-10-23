@@ -1,5 +1,7 @@
 "use server";
 
+import { adminText } from "@/lib/admin-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
@@ -10,16 +12,23 @@ import { memberDesk } from "@/server/support-desk";
  * inbox's heartbeat (`support:read`), which keeps an online agent counted as online. The store's slug is bound first.
  */
 
-export async function supportPresenceAction(slug: string, status: "online" | "away"): Promise<{ ok: boolean }> {
+export async function supportPresenceAction(
+  slug: string,
+  status: "online" | "away",
+): Promise<{ ok: boolean }> {
   const member = await checkPermission(slug, "support:write");
-  if (!member || (status !== "online" && status !== "away")) return { ok: false };
+  if (!member || (status !== "online" && status !== "away"))
+    return { ok: false };
   const staff = memberDesk(member);
   await setPresence([staff.desk], staff.account.id, status);
   return { ok: true };
 }
 
 /** The person's own silent partner on or off on the store's desk (step 8): `support:write`, as answering is. */
-export async function supportPartnerAction(slug: string, on: boolean): Promise<{ ok: boolean }> {
+export async function supportPartnerAction(
+  slug: string,
+  on: boolean,
+): Promise<{ ok: boolean }> {
   const member = await checkPermission(slug, "support:write");
   if (!member || typeof on !== "boolean") return { ok: false };
   const staff = memberDesk(member);
@@ -27,7 +36,9 @@ export async function supportPartnerAction(slug: string, on: boolean): Promise<{
   return { ok: true };
 }
 
-export async function supportHeartbeatAction(slug: string): Promise<{ ok: boolean }> {
+export async function supportHeartbeatAction(
+  slug: string,
+): Promise<{ ok: boolean }> {
   const member = await checkPermission(slug, "support:read");
   if (!member) return { ok: false };
   const staff = memberDesk(member);
@@ -36,10 +47,15 @@ export async function supportHeartbeatAction(slug: string): Promise<{ ok: boolea
 }
 
 /** Take over, answer, note, hand over, give back, end or ask to sign in, in a conversation of the store's desk (step 4): `support:write`. */
-export async function supportActAction(slug: string, conversationId: string, raw: unknown): Promise<AgentActResult> {
+export async function supportActAction(
+  slug: string,
+  conversationId: string,
+  raw: unknown,
+): Promise<AgentActResult> {
+  const w = adminText(await actionAdminLang(), "support").problems;
   const member = await checkPermission(slug, "support:write");
-  if (!member) return { ok: false, problem: "You do not have access to this." };
+  if (!member) return { ok: false, problem: w.noAccess };
   const act = readAct(raw);
-  if (!act) return { ok: false, problem: "That could not be done." };
+  if (!act) return { ok: false, problem: w.cannot };
   return agentAct(memberDesk(member), conversationId, act);
 }

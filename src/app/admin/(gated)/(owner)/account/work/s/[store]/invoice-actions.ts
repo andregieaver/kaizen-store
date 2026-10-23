@@ -26,6 +26,8 @@ import {
   type InvoiceResult,
   type IssueInvoiceRequest,
 } from "@/server/work-invoices";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * Work's actions for invoices (docs/work.md 7.2 WP4): create a draft, save it and its lines, make
@@ -66,7 +68,13 @@ async function change<T extends object>(
 
 /** Starts a draft for a client, for one of its assignments (one draft each) or on its own. */
 export async function createDraftInvoiceAction(storeSlug: string, input: Partial<z.input<typeof invoiceDraftInput>>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => createDraftInvoice(member, input));
+})(),
+    lang,
+  );
 }
 
 /** The editor's save: the header and every line, in order. */
@@ -75,7 +83,13 @@ export async function saveDraftInvoiceAction(
   invoiceId: string,
   input: z.input<typeof invoiceInput>,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => saveDraft(member, invoiceId, input));
+})(),
+    lang,
+  );
 }
 
 /** Saves only the lines of a draft, in the browser's order. */
@@ -84,7 +98,13 @@ export async function saveInvoiceLinesAction(
   invoiceId: string,
   lines: z.input<typeof invoiceInput>["lines"],
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => saveLines(member, invoiceId, lines));
+})(),
+    lang,
+  );
 }
 
 /** Saves only a draft's header: currency, payment terms, period, notes, reference. */
@@ -93,7 +113,13 @@ export async function saveInvoiceHeaderAction(
   invoiceId: string,
   input: Partial<z.input<typeof invoiceDraftInput>>,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => saveDraftHeader(member, invoiceId, input));
+})(),
+    lang,
+  );
 }
 
 /** Makes lines from unbilled time (the assignment's, or the client's chosen ones) and attaches it to them. */
@@ -102,12 +128,24 @@ export async function generateLinesFromTimeAction(
   invoiceId: string,
   options: { assignmentIds?: string[] | null; from?: string | null; to?: string | null } = {},
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => generateLinesFromTime(member, invoiceId, options));
+})(),
+    lang,
+  );
 }
 
 /** Takes logged time off the draft lines it is on (so it can be changed, deleted or billed elsewhere). */
 export async function releaseTimeFromInvoiceAction(storeSlug: string, entryIds: string[]) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => releaseTimeFromDrafts(member, entryIds));
+})(),
+    lang,
+  );
 }
 
 /** The checklist before issuing, for the panel (the exchange rate typed so far changes it). Nothing is written. */
@@ -116,24 +154,39 @@ export async function invoiceReadinessAction(
   invoiceId: string,
   fxRate: string | null = null,
 ): Promise<WorkResult<{ readiness: InvoiceReadiness | null }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workMember(storeSlug);
   if (!member) return problem(OFF);
   return { ok: true, readiness: await invoiceReadiness(member.store.id, invoiceId, { fxRate }) };
+})(),
+    lang,
+  );
 }
 
 /** Deletes a draft: it never used a number, and its assignment, tasks and time stay. */
 export async function deleteDraftInvoiceAction(storeSlug: string, invoiceId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await deleteDraft(member, invoiceId);
     if (result.ok) await audit(member.account.id, member.store.id, "work.invoice.draft_deleted", { invoiceId });
     return result;
   });
+})(),
+    lang,
+  );
 }
 
 // --- Issuing, crediting ---------------------------------------------------------------------------------
 
 /** Issues a draft: the next gap-free number, frozen amounts, seller and buyer snapshots. */
 export async function issueInvoiceAction(storeSlug: string, input: IssueInvoiceRequest) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await issueInvoice(member, input);
     if (result.ok) {
@@ -146,10 +199,16 @@ export async function issueInvoiceAction(storeSlug: string, input: IssueInvoiceR
     }
     return result;
   });
+})(),
+    lang,
+  );
 }
 
 /** Credits an invoice, whole or in part, optionally recording the refund. Owners only (4.9). */
 export async function creditInvoiceAction(storeSlug: string, input: CreditInvoiceRequest) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     if (!memberCan(member, "owner")) return problem("Only an owner can credit an invoice.");
     const result = await creditInvoice(member, input);
@@ -164,17 +223,29 @@ export async function creditInvoiceAction(storeSlug: string, input: CreditInvoic
     }
     return result;
   });
+})(),
+    lang,
+  );
 }
 
 // --- Payments ---------------------------------------------------------------------------------------------
 
 /** Records a payment received by hand, possibly a part of the total. */
 export async function recordPaymentAction(storeSlug: string, input: z.input<typeof recordPaymentInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => recordPayment(member, input));
+})(),
+    lang,
+  );
 }
 
 /** Takes a payment back by adding a reversing row. */
 export async function reversePaymentAction(storeSlug: string, input: z.input<typeof reversePaymentInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, async (member) => {
     const result = await reversePayment(member, input);
     if (result.ok) {
@@ -185,4 +256,7 @@ export async function reversePaymentAction(storeSlug: string, input: z.input<typ
     }
     return result;
   });
+})(),
+    lang,
+  );
 }

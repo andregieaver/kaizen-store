@@ -8,15 +8,15 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { WorkSwitchForm } from "./owner-switch";
 import { Badge, card } from "./work-parts";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /** A store's server action for the switch, already bound to its slug. */
 export type SwitchActions = Record<string, (state: FormState, formData: FormData) => Promise<FormState>>;
 
-const ON_NOTE = "Work is on. It shows in the menu with clients, invoices, time and reports.";
-const OFF_NOTE =
-  "Adds clients, hours and invoices for this store to your Work. Each store is its own seller, with its own invoice numbers, VAT and bank details.";
 
 function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActions[string] | undefined }) {
+  const tw = workText().ownerSettings;
   const { store } = row;
   const owner = store.role === "owner";
   const ready = row.problems;
@@ -25,8 +25,8 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-title text-ink">{store.name}</h2>
         <span className="flex items-center gap-2 text-xs text-muted">
-          <Badge tone={store.workOn ? "good" : "neutral"}>{store.workOn ? "Work on" : "Work off"}</Badge>
-          {!owner && "You are an admin here"}
+          <Badge tone={store.workOn ? "good" : "neutral"}>{store.workOn ? tw.workOn : tw.workOff}</Badge>
+          {!owner && tw.youAreAnAdmin}
         </span>
       </div>
       {action ? (
@@ -37,20 +37,20 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
           canChange={owner}
           note={
             !owner
-              ? "Only an owner of the store can switch Work on or off."
+              ? tw.onlyAnOwnerOf
               : store.workOn
-                ? `${ON_NOTE} ${switchOffNote({ issuedInvoices: row.issuedInvoices, runningTimers: row.runningTimers })}`
-                : OFF_NOTE
+                ? `${tw.onNote} ${switchOffNote({ issuedInvoices: row.issuedInvoices, runningTimers: row.runningTimers })}`
+                : tw.offNote
           }
         />
       ) : null}
       {store.workOn && (
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-sm">
           {ready === null ? null : ready.length === 0 ? (
-            <p className="text-muted">This store can issue invoices: its business details are complete.</p>
+            <p className="text-muted">{tw.thisStoreCanIssue}</p>
           ) : (
             <>
-              <p className="font-medium">Before the first invoice</p>
+              <p className="font-medium">{tw.beforeTheFirstInvoice}</p>
               <ul className="list-disc pl-5">
                 {ready.map((problem) => (
                   <li key={problem.code}>{problem.message}</li>
@@ -60,9 +60,9 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
           )}
           <p>
             <Link href={`${workBase(store.slug)}/settings`} className="underline">
-              Open {store.name}&apos;s Work settings
+              {fillWords(tw.openStoreSettings, { store: store.name })}
             </Link>
-            <span className="text-muted"> for VAT, bank account, defaults and invoice numbering.</span>
+            <span className="text-muted"> {tw.forVatBankAccount}</span>
           </p>
         </div>
       )}
@@ -76,15 +76,16 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
  * account and numbering are kept. What is missing before its first invoice is listed under each store using Work.
  */
 export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[]; actions: SwitchActions }) {
+  const tw = workText().ownerSettings;
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader
-        title="Work settings"
-        description={<>Choose which of your stores use Work. Each store is the seller of its own invoices, so its business details, VAT, bank account, currency and numbering are set in that store&apos;s own Work settings.</>}
+        title={tw.workSettings}
+        description={<>{tw.chooseWhichOfYour}</>}
       />
       {rows.length === 0 ? (
         <p className={`${card} text-sm text-muted`}>
-          You do not work in any store yet. When you are added to a store, it is listed here.
+          {tw.youDoNotWork}
         </p>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -102,22 +103,21 @@ export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[];
  * switches, instead of empty tables. An account that owns no store to switch it on in is told who can.
  */
 export function OwnerWorkStart({ rows, actions, title }: { rows: OwnerSettingsRow[]; actions: SwitchActions; title: string }) {
+  const tw = workText().ownerSettings;
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader title={<>{title}</>} />
       <section aria-labelledby="start-heading" className={`${card} flex flex-col gap-2`}>
         <h2 id="start-heading" className="text-title text-ink">
-          Work is for the time you sell
+          {tw.workIsForThe}
         </h2>
         <p className="text-sm text-muted">
-          Keep your clients, log the hours you work with a timer or by hand, and turn them into numbered invoices with
-          VAT. If you run several stores or income streams, all of their Work is here in one place, and each store stays
-          its own seller with its own invoice numbers and details.
+          {tw.keepYourClientsLog}
         </p>
         <p className="text-sm text-muted">
           {rows.length > 0
-            ? "None of your stores uses Work yet. Switch it on where you sell your time:"
-            : "None of your stores uses Work yet, and only a store's owner can switch it on. Ask an owner of the store to do it."}
+            ? tw.noneOfYourStores
+            : tw.noneOfYourStores2}
         </p>
       </section>
       {rows.length > 0 && (

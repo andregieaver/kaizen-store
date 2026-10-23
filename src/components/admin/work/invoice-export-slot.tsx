@@ -1,5 +1,6 @@
 import { secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { workText } from "@/lib/work-text";
 
 /**
  * The invoices list's CSV downloads (docs/work.md 1.9, 7.2 WP7b): the register of the issued invoices the list is showing
@@ -8,13 +9,14 @@ import { workBase } from "@/lib/work-paths";
  */
 export function InvoiceExportSlot({ storeSlug, query }: { storeSlug: string; query: string }) {
   const base = workBase(storeSlug);
+  const tw = workText().invoiceExportSlot;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <a href={`${base}/invoices/export${query}`} download className={secondaryButton}>
-        Export invoices (CSV)
+        {tw.exportInvoices}
       </a>
       <a href={`${base}/payments/export`} download className={secondaryButton}>
-        Export payments (CSV)
+        {tw.exportPayments}
       </a>
     </div>
   );

@@ -10,6 +10,9 @@ import { hasGiftText } from "@/lib/gift";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { confirmationDeliveryBlocks, outForDeliveryBlocks, pickupReadyBlocks } from "@/lib/delivery-email";
 import { formatWindow } from "@/lib/porterbuddy";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { deliveryEmailText, emailText, orderBonusEarned, orderBonusRows, orderReferralRows, orderVatParagraph, orderVatReliefRows, refundVatNote, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -22,6 +25,7 @@ import { marketUrl, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
 import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { siteUrl } from "@/lib/site";
+import { contactLang } from "@/lib/staff-email-lang";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
 import type { PlaceholderValues } from "@/lib/email-template";
 import { notificationOf } from "@/lib/notifications";
@@ -1245,23 +1249,27 @@ export async function sendBookingStaffNotices(storeId: string, orderId: string):
     where b.store_id = ${storeId}::uuid and b.order_id = ${orderId}::uuid and r.email <> ''
   `);
   const staffEmail = new Map(emails.map((row) => [String(row.id), String(row.email)]));
-  const m = t("en");
+  // The address is a resource's, no account: the store's main language when it is Norwegian, else English (D312 A10).
+  const lang = contactLang(store.markets[0]?.ownLocale ?? null);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const words = adminText(lang, "staffEmails").bookingStaff;
+  const m = t(lang);
   const customer = [order.billingAddress.name, order.email, order.billingAddress.phone].filter(Boolean).join(" · ");
   const outcomes: SendOutcome[] = [];
   for (const line of booked) {
     const to = staffEmail.get(line.booking.id);
     if (!to) continue;
-    const when = formatBookingTime(line.booking.startsAt, "en-GB", line.booking.timeZone);
+    const when = formatBookingTime(line.booking.startsAt, locale, line.booking.timeZone);
     const email = renderEmail({
-      subject: `New booking: ${line.title}, ${when}`,
+      subject: fillWords(words.subject, { title: line.title, when }),
       preview: `${line.title}, ${when}, ${customer}`,
-      lang: "en",
+      lang: ADMIN_LANG_FACTS[lang].tag,
       footer: [store.name],
       blocks: [
-        { type: "heading", text: "New booking" },
-        { type: "paragraph", text: bookingText(line, "en-GB", m) },
-        { type: "paragraph", text: `Customer: ${customer}\nOrder ${order.number}` },
-        { type: "button", text: "See the order", url: `${siteUrl()}/admin/${store.slug}/orders/${order.id}` },
+        { type: "heading", text: words.heading },
+        { type: "paragraph", text: bookingText(line, locale, m) },
+        { type: "paragraph", text: fillWords(words.customer, { customer, order: order.number }) },
+        { type: "button", text: words.button, url: `${siteUrl()}/admin/${store.slug}/orders/${order.id}` },
       ],
     });
     outcomes.push(
@@ -1274,7 +1282,7 @@ export async function sendBookingStaffNotices(storeId: string, orderId: string):
         replyTo: order.email,
         idempotencyKey: `booking.staff:${line.booking.id}`,
         orderId: order.id,
-        attachments: calendarAttachment([{ ...bookingEvent(line, store, m), description: `${customer}\nOrder ${order.number}` }]),
+        attachments: calendarAttachment([{ ...bookingEvent(line, store, m), description: fillWords(words.customer, { customer, order: order.number }) }]),
       }),
     );
   }

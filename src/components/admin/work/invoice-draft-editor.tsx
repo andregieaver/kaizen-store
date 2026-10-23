@@ -55,6 +55,8 @@ import {
   smallControl,
 } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type DraftEditorProps = {
   storeSlug: string;
@@ -74,14 +76,6 @@ export type DraftEditorProps = {
 
 const AUTOSAVE_MS = 600;
 
-const SAVE_TEXT: Record<SaveState, string> = {
-  idle: "Changes are saved as you type.",
-  pending: "Changes not saved yet …",
-  saving: "Saving …",
-  saved: "All changes saved.",
-  invalid: "Not saved: something needs another look.",
-  error: "Not saved.",
-};
 
 /**
  * The draft invoice (docs/work.md 7.2 WP6, from Life's `invoice-detail.tsx` and lines editor): its details, its
@@ -95,6 +89,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
  * touching what the person is typing (`mergeServerRows`).
  */
 export function DraftEditor(props: DraftEditorProps) {
+  const tw = useAdminText("work").invoiceDraftEditor;
   const { storeSlug, locale, detail, vat } = props;
   const { invoice, client, assignment } = detail;
   const router = useRouter();
@@ -310,7 +305,7 @@ export function DraftEditor(props: DraftEditorProps) {
     startBusy(async () => {
       const saved = await queue.flush();
       if (!saved) {
-        setActionProblems(["The invoice has changes that could not be saved yet. Fix what is marked and try again."]);
+        setActionProblems([tw.theInvoiceHasChanges]);
         return;
       }
       void checkReadiness();
@@ -322,14 +317,14 @@ export function DraftEditor(props: DraftEditorProps) {
     setActionProblems([]);
     startBusy(async () => {
       if (!(await queue.flush())) {
-        setActionProblems(["Fix what is marked on the invoice first, so its changes can be saved."]);
+        setActionProblems([tw.fixWhatIsMarked]);
         return;
       }
       try {
         const result = await releaseTimeFromInvoiceAction(storeSlug, entryIds);
         if (!result.ok) setActionProblems(result.problems);
       } catch {
-        setActionProblems(["The time could not be released. Check your connection and try again."]);
+        setActionProblems([tw.theTimeCouldNot]);
       }
     });
   };
@@ -355,18 +350,18 @@ export function DraftEditor(props: DraftEditorProps) {
           router.push(list);
         } else setDeleteProblems(result.problems);
       } catch {
-        setDeleteProblems(["The draft could not be deleted. Check your connection and try again."]);
+        setDeleteProblems([tw.theDraftCouldNot]);
       }
     });
   };
 
   const blocked =
     save.state === "pending" || save.state === "saving"
-      ? "Your changes are still being saved."
+      ? tw.yourChangesAreStill
       : save.state === "invalid"
-        ? "Fix the fields that are marked first."
+        ? tw.fixTheFieldsThat
         : save.state === "error"
-          ? "The last save failed. Try saving again first."
+          ? tw.theLastSaveFailed
           : null;
 
   const inherited = invoice.paymentDays === null ? invoice.effectivePaymentDays : null;
@@ -378,7 +373,7 @@ export function DraftEditor(props: DraftEditorProps) {
   const hoursRows = rows.some((row) => row.unit === "hour");
   const treatment = client.business
     ? VAT_TREATMENT_LABELS[client.vatTreatment].label
-    : "Domestic VAT (a private customer)";
+    : tw.domesticVatAPrivate;
   const headerErrors = problems?.header ?? {};
   const detailsShown = detailsOpen || Object.keys(headerErrors).length > 0;
   const summary =
@@ -394,26 +389,26 @@ export function DraftEditor(props: DraftEditorProps) {
         <div className="flex flex-col gap-1" aria-live="polite">
           <p className="text-sm" role="status" data-testid="save-status">
             {save.state === "error"
-              ? `${SAVE_TEXT.error} ${save.message ?? ""}`
+              ? `${tw.save.error} ${save.message ?? ""}`
               : save.state === "invalid" && summary[0]
-                ? `Not saved. ${summary[0]}`
-                : SAVE_TEXT[save.state]}
+                ? `${tw.save.error} ${summary[0]}`
+                : tw.save[save.state]}
           </p>
           {save.state === "error" && (
             <button type="button" onClick={() => void queue.retry()} className={`${smallButton} self-start`}>
-              Try saving again
+              {tw.trySavingAgain}
             </button>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`${list}/${invoice.id}/print`} className={secondaryButton}>
-            Preview document
+            {tw.previewDocument}
           </Link>
           <button type="button" onClick={() => setDeleteOpen(true)} className={secondaryButton}>
-            Delete draft
+            {tw.deleteDraft}
           </button>
           <button type="button" onClick={openIssue} disabled={busy} className={primaryButton}>
-            Issue invoice …
+            {tw.issueInvoice}
           </button>
         </div>
       </div>
@@ -444,7 +439,7 @@ export function DraftEditor(props: DraftEditorProps) {
         <div id="invoice-details" hidden={!detailsShown} className="mt-4">
           <dl className="mb-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted">Client</dt>
+              <dt className="text-muted">{tw.client}</dt>
               <dd>
                 <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
                   {client.name}
@@ -453,26 +448,26 @@ export function DraftEditor(props: DraftEditorProps) {
             </div>
             {assignment && (
               <div>
-                <dt className="text-muted">Assignment</dt>
+                <dt className="text-muted">{tw.assignment}</dt>
                 <dd>{assignment.name}</dd>
               </div>
             )}
             <div>
-              <dt className="text-muted">Language of the document</dt>
+              <dt className="text-muted">{tw.languageOfTheDocument}</dt>
               <dd>{languageName(invoice.locale)}</dd>
             </div>
             <div>
-              <dt className="text-muted">VAT treatment</dt>
+              <dt className="text-muted">{tw.vatTreatment}</dt>
               <dd>
-                {vat.sellerVatRegistered ? treatment : "No VAT: your business is not registered for VAT"}
+                {vat.sellerVatRegistered ? treatment : tw.noVatYourBusiness}
                 <span className={`block ${hintText}`}>
-                  Set on the{" "}
+                  {tw.setOnThe}{" "}
                   <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
-                    client
+                    {tw.client2}
                   </Link>{" "}
-                  and in{" "}
+                  {tw.andIn}{" "}
                   <Link href={`${workBase(storeSlug)}/settings`} className="underline">
-                    Work settings
+                    {tw.workSettings}
                   </Link>
                   .
                 </span>
@@ -480,7 +475,7 @@ export function DraftEditor(props: DraftEditorProps) {
             </div>
           </dl>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Currency" error={headerErrors.currency}>
+            <Field label={tw.currency} error={headerErrors.currency}>
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -497,9 +492,9 @@ export function DraftEditor(props: DraftEditorProps) {
               )}
             </Field>
             <Field
-              label="Days to pay"
+              label={tw.daysToPay}
               error={headerErrors.paymentDays}
-              hint={`${inherited !== null && header.paymentDays.trim() === "" ? `Follows the client and your settings: ${inherited} days. ` : ""}If issued today it is due ${formatDay(dueOn(detail.today, dueDays), locale)}.`}
+              hint={`${inherited !== null && header.paymentDays.trim() === "" ? `${fillWords(tw.followsDays, { days: inherited })} ` : ""}${fillWords(tw.dueIfToday, { day: formatDay(dueOn(detail.today, dueDays), locale) })}`}
             >
               {(fieldProps) => (
                 <input
@@ -514,9 +509,9 @@ export function DraftEditor(props: DraftEditorProps) {
               )}
             </Field>
             <Field
-              label="Your reference"
+              label={tw.yourReference}
               error={headerErrors.reference}
-              hint="The client's own reference, such as an order number. Printed on the invoice."
+              hint={tw.theClientSOwn}
             >
               {(fieldProps) => (
                 <input
@@ -530,9 +525,9 @@ export function DraftEditor(props: DraftEditorProps) {
               )}
             </Field>
             <Field
-              label="Period from"
+              label={tw.periodFrom}
               error={headerErrors.serviceFrom}
-              hint="When the work was done, if different from the issue date. Empty takes it from the time on the lines."
+              hint={tw.whenTheWorkWas}
             >
               {(fieldProps) => (
                 <input
@@ -544,7 +539,7 @@ export function DraftEditor(props: DraftEditorProps) {
                 />
               )}
             </Field>
-            <Field label="Period to" error={headerErrors.serviceTo}>
+            <Field label={tw.periodTo} error={headerErrors.serviceTo}>
               {(fieldProps) => (
                 <input
                   {...fieldProps}
@@ -558,7 +553,7 @@ export function DraftEditor(props: DraftEditorProps) {
             {readiness?.needsFxRate && (
               <Field
                 label={`Exchange rate: 1 ${currency} in ${readiness.homeCurrency ?? "your currency"}`}
-                hint={`The VAT is also stated in ${readiness.homeCurrency ?? "your currency"}. Used when you issue; not saved before.`}
+                hint={fillWords(tw.vatAlsoStated, { currency: readiness.homeCurrency ?? tw.yourCurrency })}
               >
                 {(fieldProps) => (
                   <div className="flex flex-wrap items-center gap-2">
@@ -585,10 +580,10 @@ export function DraftEditor(props: DraftEditorProps) {
             )}
           </div>
           <Field
-            label="Notes for the client"
+            label={tw.notesForTheClient}
             error={headerErrors.notes}
             className="mt-4"
-            hint="Printed on the invoice."
+            hint={tw.printedOnTheInvoice}
           >
             {(fieldProps) => (
               <textarea
@@ -607,16 +602,16 @@ export function DraftEditor(props: DraftEditorProps) {
       <section id="invoice-lines" aria-labelledby="lines-heading" className={card}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 id="lines-heading" className="text-title text-ink">
-            Lines
+            {tw.lines}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setUnbilledOpen(true)} disabled={busy} className={smallButton}>
-              Add unbilled time
+              {tw.addUnbilledTime}
             </button>
             {hoursRows && (
               <span className="flex items-center gap-1">
                 <label htmlFor="round-step" className="sr-only">
-                  Round hours up to
+                  {tw.roundHoursUpTo}
                 </label>
                 <select
                   id="round-step"
@@ -631,15 +626,14 @@ export function DraftEditor(props: DraftEditorProps) {
                   ))}
                 </select>
                 <button type="button" onClick={roundUp} className={smallButton}>
-                  Round hours up
+                  {tw.roundHoursUp}
                 </button>
               </span>
             )}
           </div>
         </div>
         <p className={`mb-4 ${hintText}`}>
-          Prices are without VAT. Hours from logged time are rounded to two decimals (20 minutes is 0.33 h). An hour you
-          type yourself is kept as you typed it.
+          {tw.pricesWithoutVat}
         </p>
         <InvoiceLinesEditor
           rows={rows}
@@ -666,7 +660,7 @@ export function DraftEditor(props: DraftEditorProps) {
             />
           ) : (
             <p role="alert" className="text-sm text-danger-text">
-              These amounts are too large to add up. Check the quantities and prices.
+              {tw.theseAmountsAreToo}
             </p>
           )}
         </div>
@@ -675,12 +669,12 @@ export function DraftEditor(props: DraftEditorProps) {
 
       <section aria-labelledby="ready-heading" className={card}>
         <h2 id="ready-heading" className="mb-3 text-title text-ink">
-          Before you issue
+          {tw.beforeYouIssue}
         </h2>
         {readiness ? (
           <ReadinessList readiness={readiness} storeSlug={storeSlug} clientId={client.id} checking={checking} />
         ) : (
-          <p className="text-sm text-muted">Checking …</p>
+          <p className="text-sm text-muted">{tw.checking}</p>
         )}
       </section>
 
@@ -700,7 +694,7 @@ export function DraftEditor(props: DraftEditorProps) {
         fxSuggestion={props.fxSuggestions[currency] ?? null}
         fxRate={fxRate}
         onFxRate={setFxRate}
-        blocked={blocked ?? (settled === null ? "The amounts are too large to add up." : null)}
+        blocked={blocked ?? (settled === null ? tw.theAmountsAreToo : null)}
         onNotReady={() => void checkReadiness()}
       />
       <UnbilledTimeDialog
@@ -715,23 +709,22 @@ export function DraftEditor(props: DraftEditorProps) {
         locale={locale}
         beforeAdd={() => queue.flush()}
       />
-      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete this draft?">
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title={tw.deleteThisDraft}>
         <div className="flex flex-col gap-4">
           <p className="text-sm">
-            The draft and its {rows.length} {rows.length === 1 ? "line" : "lines"} are deleted. No invoice number is
-            used.
+            {fillWords(rows.length === 1 ? tw.deleteDraftOne : tw.deleteDraftMany, { count: rows.length })}
             {assignment
-              ? ` The assignment "${assignment.name}", its tasks and your logged time stay.`
-              : " Your assignments, tasks and logged time stay."}{" "}
-            Time that was on its lines can be billed again.
+              ? ` ${fillWords(tw.assignmentStays, { name: assignment.name })}`
+              : ` ${tw.assignmentsStay}`}{" "}
+            {tw.timeBilledAgain}
           </p>
           <Problems messages={deleteProblems} />
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setDeleteOpen(false)} className={secondaryButton}>
-              Keep the draft
+              {tw.keepTheDraft}
             </button>
             <button type="button" onClick={remove} disabled={busy} className={primaryButton}>
-              {busy ? "Deleting …" : "Delete draft"}
+              {busy ? tw.deleting : tw.deleteDraft}
             </button>
           </div>
         </div>

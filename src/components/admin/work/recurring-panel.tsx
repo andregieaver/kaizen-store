@@ -11,6 +11,8 @@ import { listRecurring, type RecurringList, type RecurringSummary } from "@/serv
 import { DeleteRecurringButton, NewRecurringButton, TemplateActions } from "./recurring-controls";
 import { Badge } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type RecurringPanelProps = {
   storeSlug: string;
@@ -31,9 +33,10 @@ export type RecurringPanelProps = {
  * read per request behind a `<Suspense>`.
  */
 export function RecurringPanel(props: RecurringPanelProps) {
+  const tw = workText().recurringPanel;
   return (
     <section aria-labelledby="recurring-heading" className="flex flex-col gap-3" data-slot="client-recurring">
-      <Suspense fallback={<h2 id="recurring-heading" className="text-title text-ink">Repeating invoices</h2>}>
+      <Suspense fallback={<h2 id="recurring-heading" className="text-title text-ink">{tw.repeatingInvoices}</h2>}>
         <RecurringBody {...props} />
       </Suspense>
     </section>
@@ -57,19 +60,19 @@ export function RecurringPanelView({
   list,
   canAutoIssue,
 }: RecurringPanelProps & { list: RecurringList; canAutoIssue: boolean }) {
+  const tw = workText().recurringPanel;
   const form = { storeSlug, clientId, currency, currencies, today: list.today, canAutoIssue };
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="recurring-heading" className="text-title text-ink">
-          Repeating invoices
+          {tw.repeatingInvoices}
         </h2>
         {archived ? null : <NewRecurringButton {...form} />}
       </div>
       {list.templates.length === 0 ? (
         <p className="text-sm text-muted">
-          Nothing repeats for this client. A repeating invoice makes a draft on each date, for a retainer or a
-          subscription, and can issue and email it too.
+          {tw.nothingRepeatsForThis}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -95,6 +98,7 @@ function TemplateCard({
   form: Parameters<typeof TemplateActions>[0]["form"];
   locale: string;
 }) {
+  const tw = workText().recurringPanel;
   // What one invoice bills before VAT, worked out with the same function the invoice is.
   const net = computeLine({
     quantityHundredths: template.quantityHundredths,
@@ -109,11 +113,11 @@ function TemplateCard({
         <div className="min-w-0">
           <h3 className="[overflow-wrap:anywhere] text-body-strong text-ink">
             {template.name}{" "}
-            {!template.isActive && <Badge tone="warn">Paused</Badge>}{" "}
-            {template.autoIssue && <Badge tone="good">Issued by itself</Badge>}
+            {!template.isActive && <Badge tone="warn">{tw.paused}</Badge>}{" "}
+            {template.autoIssue && <Badge tone="good">{tw.issuedByItself}</Badge>}
           </h3>
           <p className="text-sm text-muted">
-            {formatMoney(net, template.currency, locale)} before VAT · {scheduleSummary(template, locale)}
+            {fillWords(tw.beforeVat, { amount: formatMoney(net, template.currency, locale) })} · {scheduleSummary(template, locale)}
           </p>
         </div>
         {template.invoiceCount === 0 && (
@@ -122,11 +126,11 @@ function TemplateCard({
       </div>
       <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
         <div>
-          <dt className="inline text-muted">Next: </dt>
+          <dt className="inline text-muted">{tw.next} </dt>
           <dd className="inline">{template.next.length > 0 ? template.next.map((d) => formatDay(d, locale)).join(", ") : "none"}</dd>
         </div>
         <div>
-          <dt className="inline text-muted">Latest invoice: </dt>
+          <dt className="inline text-muted">{tw.latestInvoice} </dt>
           <dd className="inline">
             {template.last ? (
               <Link href={`${workBase(storeSlug)}/invoices/${template.last.invoiceId}`} className="underline">

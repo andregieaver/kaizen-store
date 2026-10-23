@@ -2,6 +2,9 @@
 
 import type { TimerTarget } from "@/lib/work-timer-ui";
 
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "../admin-text";
 import { useWorkTimerApi } from "./timer-context";
 import { smallButton } from "./work-parts";
 
@@ -24,6 +27,7 @@ export function TimerToggle({
   disabled?: boolean;
 }) {
   const api = useWorkTimerApi();
+  const w = useAdminText("work").timer;
   if (!api) return null;
   const { timer } = api;
   const running = timer !== null && timer.assignmentId === target.assignmentId && timer.taskId === target.taskId;
@@ -35,7 +39,7 @@ export function TimerToggle({
         disabled={timer.key === "pending"}
         className={`${smallButton} ${className}`}
       >
-        Stop<span className="sr-only"> the timer on {subject}</span>
+        {w.stop}<span className="sr-only">{fillWords(w.stopOn, { subject })}</span>
       </button>
     );
   }
@@ -44,10 +48,10 @@ export function TimerToggle({
       type="button"
       onClick={() => api.start(target)}
       disabled={disabled || api.busy}
-      title={timer ? "Stops the running timer and logs its time" : undefined}
+      title={timer ? w.stopsRunning : undefined}
       className={`${smallButton} ${className}`}
     >
-      Start<span className="sr-only"> a timer on {subject}</span>
+      {w.start}<span className="sr-only">{fillWords(w.startOn, { subject })}</span>
     </button>
   );
 }

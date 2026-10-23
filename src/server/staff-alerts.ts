@@ -4,6 +4,10 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import type { StaffEmailsMessages } from "@/lib/admin-messages/staff-emails.en";
+import { adminText } from "@/lib/admin-text";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
@@ -11,6 +15,7 @@ import { dayWords } from "@/lib/payment-terms";
 import { DISPUTE_STATUS_WORDS, disputeDashboardUrl, disputeNeedsResponse, disputeReasonWords, dueWords, type DisputeStatus } from "@/lib/payment-facts";
 import { permissionsOf } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
+import { contactLang } from "@/lib/staff-email-lang";
 import {
   ALERT_KEYS,
   ALERT_LABELS,
@@ -53,7 +58,8 @@ type Row = Record<string, unknown>;
  * - **What an email holds**: order and return numbers, line titles and quantities, the total charged in the order's currency, the delivery method and
  *   country, the buyer's kind, host, gift and hold flags, store figures and links into the admin. **Never** a buyer's name, email, phone, address, company
  *   name, VAT number, gift message, note, reason or token (4.8).
- * - English, as every staff email.
+ * - In the recipient's own admin language (D312 A10: `accounts.admin_locale`; the contact address in the store's main language when it is
+ *   Norwegian, else English), English exactly as before.
  */
 
 const LEASE_MINUTES = 5;
@@ -64,18 +70,21 @@ export const MAX_ATTEMPTS = 10;
 /** Lines a new-order or return email lists at most (then "and {n} more"). */
 const LINES_SHOWN = 20;
 
-const en = () => emailText("en");
+/** The words, the shopper texts' footer and the formats of a staff email in a language (D312 A10). */
+const wordsOf = (lang: AdminLang): StaffEmailsMessages["alerts"] => adminText(lang, "staffEmails").alerts;
+const footerText = (lang: AdminLang) => emailText(lang);
+const formatOf = (lang: AdminLang) => ADMIN_LANG_FACTS[lang].locale;
 
 // ---------------------------------------------------------------------------
 // Members, choices and recipients
 // ---------------------------------------------------------------------------
 
-type Member = AlertMember & { email: string; name: string | null };
+type Member = AlertMember & { email: string; name: string | null; lang: AdminLang };
 
 /** The store's members who could receive staff email: active, not expired, with an address, of an open store (none otherwise). */
 async function alertMembers(storeId: string): Promise<Member[]> {
   const rows = await db().execute<Row>(sql`
-    select distinct on (a.id) a.id, a.email, a.name, m.role = 'owner' as owner, m.kind, m.role_id, r.permissions
+    select distinct on (a.id) a.id, a.email, a.name, a.admin_locale, m.role = 'owner' as owner, m.kind, m.role_id, r.permissions
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id and a.disabled_at is null
     join commerce.stores s on s.id = m.store_id
@@ -90,13 +99,15 @@ async function alertMembers(storeId: string): Promise<Member[]> {
       kind: r.kind === "collaborator" ? ("collaborator" as const) : ("staff" as const),
       permissions: r.role_id ? ((r.permissions ?? []) as string[]).map(String) : null,
     };
-    return { accountId: String(r.id), email: String(r.email), name: r.name ? String(r.name) : null, owner: Boolean(r.owner), permissions: permissionsOf(holder) };
+    return { accountId: String(r.id), email: String(r.email), name: r.name ? String(r.name) : null, owner: Boolean(r.owner), permissions: permissionsOf(holder), lang: adminLangOf(r.admin_locale ? String(r.admin_locale) : null) };
   });
 }
 
 type Settings = {
   choices: AlertChoices;
   contactEmail: string | null;
+  /** The contact address is no account: the store's main language when it is Norwegian, else English. */
+  contactLang: AdminLang;
   summary: SummaryKind;
   summaryWeekday: number;
   summaryHour: number;
@@ -106,7 +117,7 @@ type Settings = {
 async function readSettings(storeId: string): Promise<Settings> {
   const [[row], recipients] = await Promise.all([
     db().execute<Row>(sql`
-      select s.contact_email, a.configured_at, a.summary, a.summary_weekday, a.summary_hour, a.summary_last_period, a.contact_events
+      select s.contact_email, (select m.default_locale from commerce.markets m where m.store_id = s.id and m.code = commerce.home_market(s.id) limit 1) as main_locale, a.configured_at, a.summary, a.summary_weekday, a.summary_hour, a.summary_last_period, a.contact_events
       from commerce.stores s left join commerce.staff_alert_settings a on a.store_id = s.id
       where s.id = ${storeId}::uuid
     `),
@@ -121,6 +132,7 @@ async function readSettings(storeId: string): Promise<Settings> {
       hasContact: contactEmail !== null,
     },
     contactEmail,
+    contactLang: contactLang(row?.main_locale ? String(row.main_locale) : null),
     summary: ((row?.summary as SummaryKind | undefined) ?? "off") as SummaryKind,
     summaryWeekday: Number(row?.summary_weekday ?? 1),
     summaryHour: Number(row?.summary_hour ?? 8),
@@ -128,16 +140,16 @@ async function readSettings(storeId: string): Promise<Settings> {
   };
 }
 
-export type AlertTarget = { recipient: AlertRecipient; to: string };
+export type AlertTarget = { recipient: AlertRecipient; to: string; lang: AdminLang };
 
 /** Who receives an event's email now, with the address each is sent to (4.7). */
 export async function alertRecipients(storeId: string, event: StaffAlertEvent): Promise<AlertTarget[]> {
   const [members, settings] = await Promise.all([alertMembers(storeId), readSettings(storeId)]);
   const byId = new Map(members.map((m) => [m.accountId, m]));
   return recipientsFor(event, members, settings.choices).flatMap((recipient): AlertTarget[] => {
-    if (recipient.kind === "contact") return settings.contactEmail ? [{ recipient, to: settings.contactEmail }] : [];
+    if (recipient.kind === "contact") return settings.contactEmail ? [{ recipient, to: settings.contactEmail, lang: settings.contactLang }] : [];
     const member = byId.get(recipient.accountId);
-    return member ? [{ recipient, to: member.email }] : [];
+    return member ? [{ recipient, to: member.email, lang: member.lang }] : [];
   });
 }
 
@@ -237,22 +249,22 @@ export async function saveStaffAlerts(storeId: string, input: unknown, accountId
 // ---------------------------------------------------------------------------
 
 const adminUrl = (slug: string, path: string) => `${siteUrl()}/admin/${slug}${path}`;
-const countryName = (code: string | null | undefined) => {
+const countryName = (code: string | null | undefined, lang: AdminLang = "en") => {
   if (!code) return null;
   try {
-    return new Intl.DisplayNames(["en"], { type: "region" }).of(code.toUpperCase()) ?? code;
+    return new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].tag], { type: "region" }).of(code.toUpperCase()) ?? code;
   } catch {
     return code;
   }
 };
 
 /** Lines as `{quantity} × {title}`, at most 20, then "and {n} more". */
-function lineRows(lines: readonly { title: string; quantity: number }[]): EmailBlock[] {
+function lineRows(lines: readonly { title: string; quantity: number }[], w: StaffEmailsMessages["alerts"] = wordsOf("en")): EmailBlock[] {
   const shown = lines.slice(0, LINES_SHOWN);
   const more = lines.length - shown.length;
   return [
     { type: "lines", rows: shown.map((l) => ({ label: `${l.quantity} × ${l.title}`, value: "" })) },
-    ...(more > 0 ? [{ type: "paragraph" as const, text: `…and ${more} more.` }] : []),
+    ...(more > 0 ? [{ type: "paragraph" as const, text: fillWords(w.more, { n: more }) }] : []),
   ];
 }
 
@@ -271,43 +283,52 @@ export type NewOrderFacts = {
   gift: boolean;
   heldByRule: boolean;
   renewal: boolean;
+  /** For another language than English (D312 A10): the standard delivery word when the order's delivery is one (`null`: a carrier's own words), and the country's code. */
+  deliveryKind?: "pickup" | "local" | "shipping" | "none" | null;
+  countryCode?: string | null;
 };
 
 /** The new-order email (2.8): number, total, lines, delivery and country, flags and the link. Pure over the facts, which hold no personal field. */
-export function newOrderEmail(store: EmailStore, orderId: string, f: NewOrderFacts): RenderedEmail {
-  const total = formatMoney(f.totalMinor, f.currency, f.locale);
+export function newOrderEmail(store: EmailStore, orderId: string, f: NewOrderFacts, lang: AdminLang = "en"): RenderedEmail {
+  const all = wordsOf(lang);
+  const w = all.newOrder;
+  // English keeps the order's own number format, as before; another language writes in its own (D312 A10).
+  const locale = lang === "en" ? f.locale : formatOf(lang);
+  const total = formatMoney(f.totalMinor, f.currency, locale);
   const balance = Math.min(Math.max(f.balanceMinor ?? 0, 0), f.totalMinor);
-  const charged = formatMoney(f.totalMinor - balance, f.currency, f.locale);
-  const due = formatMoney(balance, f.currency, f.locale);
+  const charged = formatMoney(f.totalMinor - balance, f.currency, locale);
+  const due = formatMoney(balance, f.currency, locale);
   // An appointment paid at the venue, or by a deposit (D66): the order's total is not what was charged, and the email says both.
   const amounts =
     balance > 0
       ? [
-          { label: "Order total", value: total, strong: true },
-          { label: "Charged now", value: charged },
-          { label: "Due at the venue", value: due },
+          { label: w.orderTotal, value: total, strong: true },
+          { label: w.chargedNow, value: charged },
+          { label: w.dueAtVenue, value: due },
         ]
-      : [{ label: "Total charged", value: total, strong: true }];
+      : [{ label: w.totalCharged, value: total, strong: true }];
   const flags = [
-    f.renewal ? "Subscription renewal" : null,
-    f.business ? "Business buyer" : null,
-    f.host ? `Host's listing: ${f.host}` : null,
-    f.gift ? "Gift" : null,
-    f.heldByRule ? "On hold by a rule" : null,
+    f.renewal ? w.renewal : null,
+    f.business ? w.business : null,
+    f.host ? fillWords(w.host, { host: f.host }) : null,
+    f.gift ? w.gift : null,
+    f.heldByRule ? w.held : null,
   ].filter((x): x is string => x !== null);
+  const delivery = lang === "en" ? f.delivery : (f.deliveryKind ? w[f.deliveryKind] : f.delivery);
+  const country = lang === "en" ? f.country : (f.countryCode ? countryName(f.countryCode, lang) : f.country);
   return renderEmail({
-    subject: `New order ${f.number}: ${total}`,
-    preview: `${store.name} has a new paid order, ${f.number}, of ${total}.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
+    subject: fillWords(w.subject, { number: f.number, total }),
+    preview: fillWords(w.preview, { store: store.name, number: f.number, total }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
     blocks: [
-      { type: "heading", text: "New order" },
-      { type: "paragraph", text: balance > 0 ? `Order ${f.number} of ${total} is confirmed: ${charged} charged now, ${due} due at the venue.` : `Order ${f.number} is paid: ${total}.` },
-      ...lineRows(f.lines),
+      { type: "heading", text: w.heading },
+      { type: "paragraph", text: balance > 0 ? fillWords(w.venueText, { number: f.number, total, charged, due }) : fillWords(w.paidText, { number: f.number, total }) },
+      ...lineRows(f.lines, all),
       { type: "lines", rows: amounts },
-      { type: "paragraph", text: [`Delivery: ${f.delivery}`, f.country ? `Country: ${f.country}` : null].filter(Boolean).join("\n") },
+      { type: "paragraph", text: [fillWords(w.delivery, { delivery }), country ? fillWords(w.country, { country }) : null].filter(Boolean).join("\n") },
       ...(flags.length > 0 ? [{ type: "paragraph" as const, text: flags.join("\n") }] : []),
-      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${orderId}`) },
+      { type: "button", text: w.button, url: adminUrl(store.slug, `/orders/${orderId}`) },
     ],
   });
 }
@@ -335,7 +356,10 @@ async function newOrderFacts(storeId: string, orderId: string): Promise<NewOrder
     locale: order.locale,
     lines: order.lines.map((l) => ({ title: l.title, quantity: l.quantity })),
     delivery: order.deliveryKept?.label ?? order.delivery?.label ?? (order.deliveryMethod === "pickup" ? "Pickup" : order.deliveryMethod === "local" ? "Local delivery" : order.ships ? "Shipping" : "No delivery"),
+    deliveryKind:
+      order.deliveryKept?.label ?? order.delivery?.label ? null : order.deliveryMethod === "pickup" ? "pickup" : order.deliveryMethod === "local" ? "local" : order.ships ? "shipping" : "none",
     country: countryName(order.shippingAddress?.country ?? (order.ships ? order.marketCode : null)),
+    countryCode: order.shippingAddress?.country ?? (order.ships ? order.marketCode : null),
     business: order.company !== null,
     host: row.host_name ? String(row.host_name) : null,
     gift: order.gift !== null,
@@ -347,18 +371,20 @@ async function newOrderFacts(storeId: string, orderId: string): Promise<NewOrder
 export type ReturnFacts = { number: string; orderNumber: string; kind: "withdrawal" | "return"; lines: { title: string; quantity: number }[] };
 
 /** The return-requested email (2.8): the return and order numbers, the lines, *Withdrawal* or *Return* and the link; no reason note. */
-export function returnRequestedEmail(store: EmailStore, returnId: string, f: ReturnFacts): RenderedEmail {
-  const what = f.kind === "withdrawal" ? "Withdrawal" : "Return";
+export function returnRequestedEmail(store: EmailStore, returnId: string, f: ReturnFacts, lang: AdminLang = "en"): RenderedEmail {
+  const all = wordsOf(lang);
+  const w = all.returnRequested;
+  const what = f.kind === "withdrawal" ? w.withdrawal : w.return;
   return renderEmail({
-    subject: `${what} requested: ${f.number} (order ${f.orderNumber})`,
-    preview: `A customer asked to send back items of order ${f.orderNumber}.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
+    subject: fillWords(w.subject, { what, number: f.number, order: f.orderNumber }),
+    preview: fillWords(w.preview, { order: f.orderNumber }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
     blocks: [
-      { type: "heading", text: f.kind === "withdrawal" ? "A customer withdrew" : "A return was requested" },
-      { type: "paragraph", text: `${what} ${f.number} for order ${f.orderNumber}.` },
-      ...lineRows(f.lines),
-      { type: "button", text: "Open the return", url: adminUrl(store.slug, `/returns/${returnId}`) },
+      { type: "heading", text: f.kind === "withdrawal" ? w.headingWithdrawal : w.headingReturn },
+      { type: "paragraph", text: fillWords(w.text, { what, number: f.number, order: f.orderNumber }) },
+      ...lineRows(f.lines, all),
+      { type: "button", text: w.button, url: adminUrl(store.slug, `/returns/${returnId}`) },
     ],
   });
 }
@@ -384,37 +410,37 @@ async function returnFacts(storeId: string, returnId: string): Promise<ReturnFac
 }
 
 /** The staff summary email (2.8): the period's figures with a link each; nothing per customer. */
-export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: StaffSummaryFigures): RenderedEmail {
-  const money = (minor: number) => formatMoney(minor, f.currency, "en-GB");
-  const period = kind === "daily" ? `yesterday (${f.to})` : `the week ${f.from} to ${f.to}`;
+export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: StaffSummaryFigures, lang: AdminLang = "en"): RenderedEmail {
+  const w = wordsOf(lang).summary;
+  const money = (minor: number) => formatMoney(minor, f.currency, formatOf(lang));
+  const daily = kind === "daily";
+  const period = daily ? fillWords(w.periodDay, { to: f.to }) : fillWords(w.periodWeek, { from: f.from, to: f.to });
   const rows = [
-    { label: "Paid orders", value: String(f.orders) },
-    { label: "Net sales, excl. VAT", value: money(f.netSalesMinor), strong: true },
-    { label: "Refunds, excl. VAT", value: money(f.refundsMinor) },
-    { label: "Returns requested", value: String(f.returnsRequested) },
+    { label: w.paidOrders, value: String(f.orders) },
+    { label: w.netSales, value: money(f.netSalesMinor), strong: true },
+    { label: w.refunds, value: money(f.refundsMinor) },
+    { label: w.returnsRequested, value: String(f.returnsRequested) },
   ];
   const open = [
-    { label: "Open returns", value: String(f.openReturns) },
-    { label: "Orders to send", value: String(f.toSend) },
-    { label: "Variants at or below their stock level", value: String(f.lowStock) },
-    ...(f.supportWaiting !== null ? [{ label: "Conversations waiting in support", value: String(f.supportWaiting) }] : []),
+    { label: w.openReturns, value: String(f.openReturns) },
+    { label: w.toSend, value: String(f.toSend) },
+    { label: w.lowStock, value: String(f.lowStock) },
+    ...(f.supportWaiting !== null ? [{ label: w.supportWaiting, value: String(f.supportWaiting) }] : []),
   ];
   return renderEmail({
-    subject: `${store.name}: ${kind === "daily" ? "daily" : "weekly"} summary for ${kind === "daily" ? f.to : `${f.from} to ${f.to}`}`,
-    preview: f.orders === 0 ? `No orders ${kind === "daily" ? "yesterday" : "last week"}.` : `${f.orders} paid ${f.orders === 1 ? "order" : "orders"}, ${money(f.netSalesMinor)} net.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
+    subject: fillWords(daily ? w.subjectDay : w.subjectWeek, { store: store.name, from: f.from, to: f.to }),
+    preview: f.orders === 0 ? (daily ? w.noOrdersDay : w.noOrdersWeek) : countWords(f.orders, w.ordersPreview, { net: money(f.netSalesMinor) }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
     blocks: [
-      { type: "heading", text: kind === "daily" ? "Your day" : "Your week" },
-      { type: "paragraph", text: f.orders === 0 ? `No orders ${kind === "daily" ? "yesterday" : "in the week"}. This is ${period}.` : `This is ${period}, in your store's own days.` },
+      { type: "heading", text: daily ? w.headingDay : w.headingWeek },
+      { type: "paragraph", text: f.orders === 0 ? fillWords(daily ? w.noneDay : w.noneWeek, { period }) : fillWords(w.intro, { period }) },
       { type: "lines", rows },
-      ...(f.unconverted > 0
-        ? [{ type: "paragraph" as const, text: `${f.unconverted} ${f.unconverted === 1 ? "order or refund" : "orders or refunds"} in ${f.missingCurrencies.join(", ")} are not included: no exchange rate.` }]
-        : []),
-      { type: "paragraph", text: "Now:" },
+      ...(f.unconverted > 0 ? [{ type: "paragraph" as const, text: countWords(f.unconverted, w.unconverted, { currencies: f.missingCurrencies.join(", ") }) }] : []),
+      { type: "paragraph", text: w.now },
       { type: "lines", rows: open },
-      { type: "button", text: "Open Analytics", url: adminUrl(store.slug, "/analytics") },
-      { type: "button", text: "Open Orders", url: adminUrl(store.slug, "/orders") },
+      { type: "button", text: w.analytics, url: adminUrl(store.slug, "/analytics") },
+      { type: "button", text: w.orders, url: adminUrl(store.slug, "/orders") },
     ],
   });
 }
@@ -425,19 +451,28 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
 
 const DONE: readonly SendOutcome[] = ["sent", "logged", "duplicate", "suppressed"];
 
-/** Sends one email to each target with its key; whether every one is kept (a failure is tried again with the same keys). */
+/** An email for each language, made once each (D312 A10). */
+type EmailIn = RenderedEmail | ((lang: AdminLang) => RenderedEmail);
+
+/** Sends one email to each target with its key, in the target's language; whether every one is kept (a failure is tried again with the same keys). */
 async function sendToAll(
   storeId: string,
   storeName: string,
   kind: string,
   targets: readonly AlertTarget[],
-  email: RenderedEmail,
+  email: EmailIn,
   key: (r: AlertRecipient) => string,
   orderId: string | null,
   send: typeof sendEmail,
 ): Promise<{ ok: boolean; outcomes: SendOutcome[] }> {
+  const made = new Map<AdminLang, RenderedEmail>();
+  const emailFor = (lang: AdminLang): RenderedEmail => {
+    if (typeof email !== "function") return email;
+    if (!made.has(lang)) made.set(lang, email(lang));
+    return made.get(lang)!;
+  };
   const outcomes: SendOutcome[] = [];
-  for (const t of targets) outcomes.push(await send({ storeId, kind, to: t.to, email, fromName: storeName, idempotencyKey: key(t.recipient), orderId }));
+  for (const t of targets) outcomes.push(await send({ storeId, kind, to: t.to, email: emailFor(t.lang), fromName: storeName, idempotencyKey: key(t.recipient), orderId }));
   return { ok: outcomes.every((o) => DONE.includes(o)), outcomes };
 }
 
@@ -447,7 +482,7 @@ export async function sendNewOrderAlert(storeId: string, orderId: string, send: 
   if (!facts || !store) return null;
   if (targets.length === 0) return { ok: true, sent: 0 };
   // The order's own id, never its staff email's: the email log lists staff emails with their order, and the erasure of D162 holds them back with it.
-  const result = await sendToAll(storeId, store.name, "staff.new_order", targets, newOrderEmail(store, orderId, facts), (r) => ALERT_KEYS.newOrder(orderId, r), orderId, send);
+  const result = await sendToAll(storeId, store.name, "staff.new_order", targets, (lang) => newOrderEmail(store, orderId, facts, lang), (r) => ALERT_KEYS.newOrder(orderId, r), orderId, send);
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
@@ -462,7 +497,7 @@ export async function sendReturnRequestedAlert(storeId: string, returnId: string
     store.name,
     "staff.return_requested",
     targets,
-    returnRequestedEmail(store, returnId, facts),
+    (lang) => returnRequestedEmail(store, returnId, facts, lang),
     (r) => ALERT_KEYS.returnRequested(returnId, r),
     order ? String(order.order_id) : null,
     send,
@@ -479,39 +514,40 @@ export type DisputeFacts = {
   status: DisputeStatus;
   /** The evidence deadline in the store's own time zone, in words; null when Stripe gave none. */
   due: string | null;
+  /** The deadline itself and the store's time zone, so another language writes it in its own words (D312 A10). */
+  dueAt?: Date | null;
+  timeZone?: string;
   dashboardUrl: string;
 };
 
 /** A dispute's staff email (D288): opened, or its deadline near. The order's number, the amount, Stripe's reason and the deadline; never who the customer is. */
-export function disputeEmail(store: EmailStore, kind: "opened" | "due", f: DisputeFacts): RenderedEmail {
-  const amount = formatMoney(f.amountMinor, f.currency, "en-GB");
+export function disputeEmail(store: EmailStore, kind: "opened" | "due", f: DisputeFacts, lang: AdminLang = "en"): RenderedEmail {
+  const w = wordsOf(lang).dispute;
+  const amount = formatMoney(f.amountMinor, f.currency, formatOf(lang));
   const needs = disputeNeedsResponse(f.status);
+  const due = lang !== "en" && f.dueAt ? dueWords(f.dueAt, f.timeZone ?? "UTC", formatOf(lang)) : f.due;
+  const status = lang === "en" ? DISPUTE_STATUS_WORDS[f.status] : adminText(lang, "order").payment.statuses[f.status];
   return renderEmail({
-    subject: kind === "opened" ? `Payment disputed: order ${f.orderNumber}, ${amount}` : `Dispute evidence due${f.due ? ` ${f.due}` : ""}: order ${f.orderNumber}`,
-    preview: kind === "opened" ? `The customer's bank disputed ${amount} of order ${f.orderNumber}.` : `Send Stripe your evidence for order ${f.orderNumber} before the deadline.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
+    subject: kind === "opened" ? fillWords(w.subjectOpened, { order: f.orderNumber, amount }) : fillWords(w.subjectDue, { due: due ? ` ${due}` : "", order: f.orderNumber }),
+    preview: kind === "opened" ? fillWords(w.previewOpened, { amount, order: f.orderNumber }) : fillWords(w.previewDue, { order: f.orderNumber }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
     blocks: [
-      { type: "heading", text: kind === "opened" ? "A payment was disputed" : "A dispute's deadline is near" },
-      {
-        type: "paragraph",
-        text:
-          kind === "opened"
-            ? `The customer's bank disputed ${amount} of order ${f.orderNumber}. Stripe holds the amount until the dispute is decided.`
-            : `Stripe needs your evidence for the dispute on order ${f.orderNumber}. Without it the dispute is lost.`,
-      },
+      { type: "heading", text: kind === "opened" ? w.headingOpened : w.headingDue },
+      { type: "paragraph", text: kind === "opened" ? fillWords(w.textOpened, { amount, order: f.orderNumber }) : fillWords(w.textDue, { order: f.orderNumber }) },
       {
         type: "lines",
         rows: [
-          { label: "Amount", value: amount, strong: true },
-          { label: "Reason", value: disputeReasonWords(f.reason) },
-          { label: "Status", value: DISPUTE_STATUS_WORDS[f.status] },
-          ...(f.due ? [{ label: needs ? "Evidence due" : "Deadline", value: f.due }] : []),
+          { label: w.amount, value: amount, strong: true },
+          // Stripe's reason stays in Stripe's words, written out in English (`disputeReasonWords()`).
+          { label: w.reason, value: disputeReasonWords(f.reason) },
+          { label: w.status, value: status },
+          ...(due ? [{ label: needs ? w.evidenceDue : w.deadline, value: due }] : []),
         ],
       },
-      { type: "paragraph", text: "Evidence is sent in your Stripe Dashboard." },
-      { type: "button", text: "Open the dispute in Stripe", url: f.dashboardUrl },
-      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${f.orderId}`) },
+      { type: "paragraph", text: w.evidence },
+      { type: "button", text: w.stripe, url: f.dashboardUrl },
+      { type: "button", text: w.order, url: adminUrl(store.slug, `/orders/${f.orderId}`) },
     ],
   });
 }
@@ -534,6 +570,8 @@ async function disputeFacts(storeId: string, disputeId: string): Promise<Dispute
     reason: row.reason ? String(row.reason) : null,
     status: String(row.status) as DisputeStatus,
     due: row.evidence_due_by ? dueWords(new Date(String(row.evidence_due_by)), String(row.time_zone ?? "UTC")) : null,
+    dueAt: row.evidence_due_by ? new Date(String(row.evidence_due_by)) : null,
+    timeZone: String(row.time_zone ?? "UTC"),
     dashboardUrl: disputeDashboardUrl(String(row.provider_reference), Boolean(row.test_mode)),
   };
 }
@@ -548,7 +586,7 @@ export async function sendDisputeAlert(storeId: string, disputeId: string, kind:
     store.name,
     kind === "opened" ? "staff.dispute" : "staff.dispute_due",
     targets,
-    disputeEmail(store, kind, facts),
+    (lang) => disputeEmail(store, kind, facts, lang),
     (r) => (kind === "opened" ? ALERT_KEYS.disputeOpened(disputeId, r) : ALERT_KEYS.disputeDue(disputeId, r)),
     facts.orderId,
     send,
@@ -569,19 +607,23 @@ export async function sendCaptureDueAlert(storeId: string, orderId: string, send
   ]);
   if (!row || row.copied || !store) return null;
   if (targets.length === 0) return { ok: true, sent: 0 };
-  const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), "en-GB");
-  const due = dueWords(new Date(String(row.capture_before)), String(row.time_zone ?? "UTC"));
-  const email = renderEmail({
-    subject: `Capture the payment of order ${String(row.number)} by ${due}`,
-    preview: `The card is held for ${amount}. After ${due} the hold ends and the order is cancelled.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
-    blocks: [
-      { type: "heading", text: "A held payment is about to end" },
-      { type: "paragraph", text: `The customer's card is held for ${amount} on order ${String(row.number)}. Capture it by ${due}; after that Stripe lets the hold go and the order is cancelled, its stock released.` },
-      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${orderId}`) },
-    ],
-  });
+  const email = (lang: AdminLang): RenderedEmail => {
+    const w = wordsOf(lang).capture;
+    const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), formatOf(lang));
+    const due = dueWords(new Date(String(row.capture_before)), String(row.time_zone ?? "UTC"), formatOf(lang));
+    const order = String(row.number);
+    return renderEmail({
+      subject: fillWords(w.subject, { order, due }),
+      preview: fillWords(w.preview, { amount, due }),
+      lang: ADMIN_LANG_FACTS[lang].tag,
+      footer: emailFooter(store, footerText(lang)),
+      blocks: [
+        { type: "heading", text: w.heading },
+        { type: "paragraph", text: fillWords(w.text, { amount, order, due }) },
+        { type: "button", text: w.button, url: adminUrl(store.slug, `/orders/${orderId}`) },
+      ],
+    });
+  };
   const result = await sendToAll(storeId, store.name, "staff.capture_due", targets, email, (r) => `staff-capture-due:${orderId}:${r.kind === "contact" ? "contact" : r.accountId}`, orderId, send);
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
@@ -602,19 +644,23 @@ export async function sendTermsOverdueAlert(storeId: string, orderId: string, se
   ]);
   if (!row || row.copied || !store) return null;
   if (targets.length === 0) return { ok: true, sent: 0 };
-  const amount = formatMoney(Number(row.balance_minor), String(row.currency).trim(), "en-GB");
-  const due = dayWords(String(row.due_on), "en-GB");
-  const email = renderEmail({
-    subject: `Order ${String(row.number)} is overdue: ${amount} was due on ${due}`,
-    preview: `The invoice for order ${String(row.number)} was not paid by its due day.`,
-    lang: "en",
-    footer: emailFooter(store, en()),
-    blocks: [
-      { type: "heading", text: "A payment on terms is overdue" },
-      { type: "paragraph", text: `${amount} for order ${String(row.number)} was due on ${due} and has not been recorded as paid. The customer has been sent a notice. When the money arrives outside Kaizena Flow, record it on the order.` },
-      { type: "button", text: "Open the order", url: adminUrl(store.slug, `/orders/${orderId}`) },
-    ],
-  });
+  const email = (lang: AdminLang): RenderedEmail => {
+    const w = wordsOf(lang).termsOverdue;
+    const amount = formatMoney(Number(row.balance_minor), String(row.currency).trim(), formatOf(lang));
+    const due = dayWords(String(row.due_on), formatOf(lang));
+    const order = String(row.number);
+    return renderEmail({
+      subject: fillWords(w.subject, { order, amount, due }),
+      preview: fillWords(w.preview, { order }),
+      lang: ADMIN_LANG_FACTS[lang].tag,
+      footer: emailFooter(store, footerText(lang)),
+      blocks: [
+        { type: "heading", text: w.heading },
+        { type: "paragraph", text: fillWords(w.text, { amount, order, due }) },
+        { type: "button", text: w.button, url: adminUrl(store.slug, `/orders/${orderId}`) },
+      ],
+    });
+  };
   const result = await sendToAll(storeId, store.name, ALERT_EMAIL_KINDS.payment_overdue, targets, email, (r) => `staff-terms-overdue:${orderId}:${r.kind === "contact" ? "contact" : r.accountId}`, orderId, send);
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
@@ -799,7 +845,7 @@ export async function sendDueSummaries(options: { now?: Date; send?: typeof send
       let ok = true;
       if (targets.length > 0) {
         const figures = await staffSummaryFigures(store, due);
-        const result = await sendToAll(storeId, emailStore.name, "staff.summary", targets, summaryEmail(emailStore, row.summary as "daily" | "weekly", figures), (r) => ALERT_KEYS.summary(storeId, due.key, r), null, send);
+        const result = await sendToAll(storeId, emailStore.name, "staff.summary", targets, (lang) => summaryEmail(emailStore, row.summary as "daily" | "weekly", figures, lang), (r) => ALERT_KEYS.summary(storeId, due.key, r), null, send);
         ok = result.ok;
         out.emails += result.outcomes.filter((o) => o === "sent" || o === "logged").length;
       }
@@ -825,7 +871,8 @@ export type StaffTestResult = { ok: true; outcome: SendOutcome } | { ok: false; 
  */
 export async function sendStaffTest(storeId: string, event: StaffAlertEvent, account: { id: string; email: string | null }, now = new Date()): Promise<StaffTestResult> {
   const [owner] = await db().execute<Row>(sql`
-    select 1 from commerce.store_members where store_id = ${storeId}::uuid and account_id = ${account.id}::uuid and role = 'owner' and disabled_at is null
+    select a.admin_locale from commerce.store_members m join commerce.accounts a on a.id = m.account_id
+    where m.store_id = ${storeId}::uuid and m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
   `);
   if (!owner) return { ok: false, problem: "not_owner", message: "Only an owner sends staff alert tests." };
   if (!account.email) return { ok: false, problem: "no_address", message: "Your account has no email address to send the test to." };
@@ -839,6 +886,8 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
     { title: "Another sample product", quantity: 1 },
   ];
   const sampleId = "00000000-0000-4000-8000-000000000000";
+  // In the owner's own admin language, as the real email to them would be (D312 A10).
+  const lang = adminLangOf(owner.admin_locale ? String(owner.admin_locale) : null);
   const email: RenderedEmail =
     event === "dispute"
       ? disputeEmail(store, "opened", {
@@ -849,10 +898,12 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
           reason: "product_not_received",
           status: "needs_response",
           due: dueWords(new Date(now.getTime() + 7 * 86_400_000), "UTC"),
+          dueAt: new Date(now.getTime() + 7 * 86_400_000),
+          timeZone: "UTC",
           dashboardUrl: disputeDashboardUrl("dp_test", true),
-        })
+        }, lang)
       : event === "return_requested"
-      ? returnRequestedEmail(store, sampleId, { number: "R-1001-1", orderNumber: "1001", kind: "return", lines: sampleLines })
+      ? returnRequestedEmail(store, sampleId, { number: "R-1001-1", orderNumber: "1001", kind: "return", lines: sampleLines }, lang)
       : event === "summary"
         ? summaryEmail(store, "daily", {
             from: "2026-01-01",
@@ -868,7 +919,7 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
             toSend: 2,
             lowStock: 0,
             supportWaiting: null,
-          })
+          }, lang)
         : newOrderEmail(store, sampleId, {
             number: "1001",
             totalMinor: 59700,
@@ -882,12 +933,14 @@ export async function sendStaffTest(storeId: string, event: StaffAlertEvent, acc
             gift: false,
             heldByRule: false,
             renewal: false,
-          });
+            deliveryKind: "shipping",
+            countryCode: store.details.country,
+          }, lang);
   const outcome = await sendEmail({
     storeId,
     kind: "staff.test",
     to: account.email,
-    email: { ...email, subject: `[Test] ${email.subject}` },
+    email: { ...email, subject: fillWords(wordsOf(lang).testPrefix, { subject: email.subject }) },
     fromName: store.name,
     idempotencyKey: `staff-test:${crypto.randomUUID()}`,
   });

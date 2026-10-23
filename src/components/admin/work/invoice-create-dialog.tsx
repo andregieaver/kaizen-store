@@ -14,6 +14,7 @@ import type { NewInvoiceChoices } from "@/server/work-invoice-screens";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
 
 export type NewInvoiceProps = {
   storeSlug: string;
@@ -35,13 +36,14 @@ export type NewInvoiceProps = {
  * draft and opens it; the lines come from typing them or from unbilled time.
  */
 export function NewInvoiceButton(props: NewInvoiceProps) {
+  const tw = useAdminText("work").invoiceCreateDialog;
   const [open, setOpen] = useState(props.defaultOpen ?? false);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={props.className ?? primaryButton}>
-        {props.label ?? "New invoice"}
+        {props.label ?? tw.newInvoice}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="New invoice">
+      <Modal open={open} onClose={() => setOpen(false)} title={tw.newInvoice}>
         <NewInvoiceLoader {...props} onClose={() => setOpen(false)} />
       </Modal>
     </>
@@ -49,6 +51,7 @@ export function NewInvoiceButton(props: NewInvoiceProps) {
 }
 
 export function NewInvoiceLoader(props: NewInvoiceProps & { onClose: () => void }) {
+  const tw = useAdminText("work").invoiceCreateDialog;
   const [loaded, setLoaded] = useState<NewInvoiceChoices | null>(props.choices ?? null);
   const [problem, setProblem] = useState<string | null>(null);
   const { storeSlug, choices } = props;
@@ -62,15 +65,15 @@ export function NewInvoiceLoader(props: NewInvoiceProps & { onClose: () => void 
         else setProblem(result.problems.join(" "));
       })
       .catch(() => {
-        if (!cancelled) setProblem("The clients could not be read. Check your connection and try again.");
+        if (!cancelled) setProblem(tw.theClientsCouldNot);
       });
     return () => {
       cancelled = true;
     };
-  }, [storeSlug, choices]);
+  }, [storeSlug, choices, tw.theClientsCouldNot]);
   if (loaded) return <NewInvoiceForm {...props} choices={loaded} />;
   if (problem) return <Problems messages={[problem]} />;
-  return <p className="text-sm text-muted">Reading your clients …</p>;
+  return <p className="text-sm text-muted">{tw.readingYourClients}</p>;
 }
 
 function NewInvoiceForm({
@@ -80,6 +83,7 @@ function NewInvoiceForm({
   assignmentId,
   onClose,
 }: NewInvoiceProps & { choices: NewInvoiceChoices; onClose: () => void }) {
+  const tw = useAdminText("work").invoiceCreateDialog;
   const router = useRouter();
   const assignmentStart = choices.assignments.find((a) => a.id === assignmentId);
   const [client, setClient] = useState(assignmentStart?.clientId ?? clientId ?? "");
@@ -119,7 +123,7 @@ function NewInvoiceForm({
           else setProblems(result.problems);
         } else setProblems(result.problems);
       } catch {
-        setProblems(["The invoice could not be started. Check your connection and try again."]);
+        setProblems([tw.theInvoiceCouldNot]);
       }
     });
   };
@@ -127,9 +131,9 @@ function NewInvoiceForm({
   if (choices.clients.length === 0) {
     return (
       <p className="text-sm">
-        There is no client to invoice yet.{" "}
+        {tw.noClientYet}{" "}
         <Link href={`${base}/clients`} className="underline">
-          Add a client first
+          {tw.addAClientFirst}
         </Link>
         .
       </p>
@@ -138,7 +142,7 @@ function NewInvoiceForm({
 
   return (
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label="Client" error={attempted && !chosenClient ? "Choose the client to invoice." : undefined}>
+      <Field label={tw.client} error={attempted && !chosenClient ? tw.chooseTheClientTo : undefined}>
         {(props) => (
           <select
             {...props}
@@ -151,7 +155,7 @@ function NewInvoiceForm({
             }}
             className={control}
           >
-            <option value="">Choose a client</option>
+            <option value="">{tw.chooseAClient}</option>
             {choices.clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -161,8 +165,8 @@ function NewInvoiceForm({
         )}
       </Field>
       <Field
-        label="Assignment (optional)"
-        hint="An invoice for an assignment takes its time and keeps its tasks and lines together. Without one, it is an invoice on its own."
+        label={tw.assignmentOptional}
+        hint={tw.anInvoiceForAn}
       >
         {(props) => (
           <select
@@ -175,7 +179,7 @@ function NewInvoiceForm({
             }}
             className={control}
           >
-            <option value="">None: an invoice on its own</option>
+            <option value="">{tw.noneAnInvoiceOn}</option>
             {options.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -185,7 +189,7 @@ function NewInvoiceForm({
           </select>
         )}
       </Field>
-      <Field label="Currency" hint="Starts as the client's. Prices are typed in this currency.">
+      <Field label={tw.currency} hint={tw.startsAsTheClient}>
         {(props) => (
           <select
             {...props}
@@ -208,20 +212,20 @@ function NewInvoiceForm({
           role="status"
           className="flex flex-col gap-2 rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text"
         >
-          <p>This assignment already has a draft invoice. Finish or delete it before starting another.</p>
+          <p>{tw.thisAssignmentAlreadyHas}</p>
           <Link href={`${base}/invoices/${draftId}`} className="self-start underline">
-            Open the draft
+            {tw.openTheDraft}
           </Link>
         </div>
       )}
       <Problems messages={problems} />
-      <p className={hintText}>The invoice gets its number when you issue it, not now.</p>
+      <p className={hintText}>{tw.theInvoiceGetsIts}</p>
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onClose} className={secondaryButton}>
-          Cancel
+          {tw.cancel}
         </button>
         <button type="submit" disabled={pending || Boolean(draftId)} className={primaryButton}>
-          {pending ? "Starting …" : "Start the draft"}
+          {pending ? tw.starting : tw.startTheDraft}
         </button>
       </div>
     </form>

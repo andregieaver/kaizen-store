@@ -12,6 +12,8 @@ import type { TimeEntryItem } from "@/server/work-time";
 import { Badge, Problems, dangerLink, smallControl } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 function EntryRow({
   storeSlug,
@@ -30,6 +32,7 @@ function EntryRow({
   showPerson: boolean;
   locale: string;
 }) {
+  const tw = useAdminText("work").timeEntryList;
   const access = entryAccess(entry, viewer);
   const [note, setNote] = useState(entry.note ?? "");
   const [seen, setSeen] = useState(entry.note);
@@ -51,20 +54,20 @@ function EntryRow({
           setNote(entry.note ?? "");
         } else setProblems([]);
       } catch {
-        setProblems(["The note could not be saved. Check your connection and try again."]);
+        setProblems([tw.theNoteCouldNot]);
       }
     });
   };
 
   const remove = () => {
-    if (!window.confirm(`Delete ${formatDuration(entry.minutes)} logged on ${formatDay(entry.workDate, locale)}?`))
+    if (!window.confirm(fillWords(tw.deleteEntryConfirm, { time: formatDuration(entry.minutes), day: formatDay(entry.workDate, locale) })))
       return;
     start(async () => {
       try {
         const result = await deleteTimeEntryAction(storeSlug, entry.id);
         setProblems(result.ok ? [] : result.problems);
       } catch {
-        setProblems(["The time could not be deleted. Check your connection and try again."]);
+        setProblems([tw.theTimeCouldNot]);
       }
     });
   };
@@ -74,8 +77,8 @@ function EntryRow({
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
         <span className="font-medium tabular-nums">{formatDay(entry.workDate, locale)}</span>
         <span className="tabular-nums">{formatDuration(entry.minutes)}</span>
-        {!entry.billable && <Badge>Not billable</Badge>}
-        {entry.invoiceStatus === "draft" && <Badge tone="warn">On a draft invoice</Badge>}
+        {!entry.billable && <Badge>{tw.notBillable}</Badge>}
+        {entry.invoiceStatus === "draft" && <Badge tone="warn">{tw.onADraftInvoice}</Badge>}
         {entry.locked && <Badge tone="good">Invoiced{entry.invoiceNumber ? ` ${entry.invoiceNumber}` : ""}</Badge>}
         {entry.taskTitle && <span className="min-w-0 text-muted [overflow-wrap:anywhere]">{entry.taskTitle}</span>}
         {showPerson && <span className="text-muted">{entry.accountName}</span>}
@@ -107,17 +110,17 @@ function EntryRow({
               if (event.key === "Escape") setNote(entry.note ?? "");
             }}
             maxLength={500}
-            placeholder="Add a note"
+            placeholder={tw.addANote}
             aria-label={`Note for ${formatDuration(entry.minutes)} on ${formatDay(entry.workDate, locale)}`}
             disabled={pending}
             className={`${smallControl} min-w-0 flex-1`}
           />
         ) : (
-          <p className="min-w-0 flex-1 text-sm text-muted [overflow-wrap:anywhere]">{entry.note ?? "No note"}</p>
+          <p className="min-w-0 flex-1 text-sm text-muted [overflow-wrap:anywhere]">{entry.note ?? tw.noNote}</p>
         )}
         {access.delete ? (
           <button type="button" onClick={remove} disabled={pending} className={dangerLink}>
-            Delete
+            {tw.delete}
             <span className="sr-only">
               {" "}
               {formatDuration(entry.minutes)} on {formatDay(entry.workDate, locale)}
@@ -145,7 +148,7 @@ export function TimeEntryList({
   showAssignment = true,
   showPerson = true,
   locale,
-  empty = "No time logged.",
+  empty,
 }: {
   storeSlug: string;
   entries: TimeEntryItem[];
@@ -155,9 +158,10 @@ export function TimeEntryList({
   locale: string;
   empty?: string;
 }) {
+  const tw = useAdminText("work").timeEntryList;
   const base = workBase(storeSlug);
   if (entries.length === 0) {
-    return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
+    return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty ?? tw.noTimeLogged}</p>;
   }
   return (
     <ul className={`divide-y divide-line ${CARD_CLASS}`}>

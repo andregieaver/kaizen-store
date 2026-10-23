@@ -155,8 +155,8 @@ export function methodWords(p: PaymentFacts & { cardBrand: string | null }): str
 export const DISPUTE_REMINDER_DAYS = 3;
 
 /** A deadline in the store's time zone, e.g. *Thu 22 Oct 2026, 23:59*. */
-export const dueWords = (at: Date, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
+export const dueWords = (at: Date, timeZone: string, locale = "en-GB"): string =>
+  new Intl.DateTimeFormat(locale, { timeZone, weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
 
 /** Whether a dispute's deadline reminder is due now: it still needs a response and the deadline is within the reminder's days, and not past. */
 export function reminderDue(input: { status: DisputeStatus; evidenceDueBy: Date | null; remindedAt: Date | null; now: Date }): boolean {

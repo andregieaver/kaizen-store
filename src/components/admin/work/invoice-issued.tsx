@@ -16,6 +16,8 @@ import { InvoiceStatusChip } from "./invoice-status";
 import { InvoiceTotalsView } from "./invoice-totals";
 import { Badge, card, hintText, secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type IssuedViewProps = {
   storeSlug: string;
@@ -37,6 +39,7 @@ const th = "px-3 py-2 text-left text-eyebrow text-muted uppercase";
  * record a payment (and reverse one), credit (owners), preview or print the document, and send it (later).
  */
 export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner, homeCurrency }: IssuedViewProps) {
+  const tw = workText().invoiceIssued;
   const { invoice, amounts, seller, buyer, lines, totals } = detail;
   const money = (minor: number) => formatMoney(minor, invoice.currency, locale);
   const when = (iso: string) =>
@@ -52,11 +55,11 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <InvoiceStatusChip status={invoice.status} dueOn={invoice.dueOn} today={detail.today} showNote />
-          {invoice.status === "void" && <span className={hintText}>Fully credited: no payments can be recorded.</span>}
+          {invoice.status === "void" && <span className={hintText}>{tw.fullyCreditedNoPayments}</span>}
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <Link href={`${base}/print`} className={secondaryButton}>
-            Preview or print
+            {tw.previewOrPrint}
           </Link>
           {/* An imported invoice was sent from Kaizen Life: it is never emailed from here. */}
           {!invoice.imported && (
@@ -97,14 +100,14 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
 
       <section aria-labelledby="amounts-heading" className={card}>
         <h2 id="amounts-heading" className="mb-3 text-title text-ink">
-          Amounts
+          {tw.amounts}
         </h2>
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <Amount label="Total with VAT" value={money(amounts.totalMinor)} />
-          <Amount label="Paid" value={money(amounts.paidMinor)} />
-          <Amount label="Credited" value={money(amounts.creditedMinor)} />
+          <Amount label={tw.totalWithVat} value={money(amounts.totalMinor)} />
+          <Amount label={tw.paid} value={money(amounts.paidMinor)} />
+          <Amount label={tw.credited} value={money(amounts.creditedMinor)} />
           <Amount
-            label="Outstanding"
+            label={tw.outstanding}
             value={money(amounts.outstandingMinor)}
             strong={amounts.outstandingMinor > 0}
             note={
@@ -116,36 +119,36 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
 
       <section aria-labelledby="doc-heading" className={card}>
         <h2 id="doc-heading" className="mb-3 text-title text-ink">
-          The document
+          {tw.theDocument}
         </h2>
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Fact
-            label="Number"
+            label={tw.number}
             value={invoice.documentNumber ?? ""}
-            note={invoice.imported ? "Imported from Kaizen Life" : undefined}
+            note={invoice.imported ? tw.importedFromKaizenLife : undefined}
           />
-          <Fact label="Issued" value={invoice.issuedOn ? formatDay(invoice.issuedOn, locale) : "–"} />
+          <Fact label={tw.issued} value={invoice.issuedOn ? formatDay(invoice.issuedOn, locale) : "–"} />
           <Fact
-            label="Due"
+            label={tw.due}
             value={invoice.dueOn ? formatDay(invoice.dueOn, locale) : "–"}
             note={`${invoice.effectivePaymentDays} days to pay`}
           />
-          {paidDay && <Fact label="Paid" value={paidDay} />}
+          {paidDay && <Fact label={tw.paid} value={paidDay} />}
           <Fact
-            label="Client"
+            label={tw.client}
             value={
               <Link href={`${workBase(storeSlug)}/clients/${detail.client.id}`} className="underline">
                 {buyer?.name ?? detail.client.name}
               </Link>
             }
           />
-          {detail.assignment && <Fact label="Assignment" value={detail.assignment.name} />}
-          <Fact label="Currency" value={invoice.currency} />
-          <Fact label="Language" value={languageName(invoice.locale)} />
-          {invoice.reference && <Fact label="Your reference" value={invoice.reference} />}
+          {detail.assignment && <Fact label={tw.assignment} value={detail.assignment.name} />}
+          <Fact label={tw.currency} value={invoice.currency} />
+          <Fact label={tw.language} value={languageName(invoice.locale)} />
+          {invoice.reference && <Fact label={tw.yourReference} value={invoice.reference} />}
           {(invoice.serviceFrom || invoice.serviceTo) && (
             <Fact
-              label="Period"
+              label={tw.period}
               value={[invoice.serviceFrom, invoice.serviceTo]
                 .map((day) => (day ? formatDay(day, locale) : "…"))
                 .join(" to ")}
@@ -158,23 +161,23 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
               note={invoice.fxRate ? `Exchange rate ${invoice.fxRate}` : undefined}
             />
           )}
-          {invoice.sentTo && <Fact label="Emailed to" value={invoice.sentTo} />}
+          {invoice.sentTo && <Fact label={tw.emailedTo} value={invoice.sentTo} />}
         </dl>
         {invoice.notes && <p className="mt-4 text-sm whitespace-pre-wrap">{invoice.notes}</p>}
         <div className="mt-5 grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2">
           <Party
-            title="From"
+            title={tw.from}
             lines={[
               seller?.legalName,
               seller?.address,
               seller?.organisationNumber && `Organisation number ${seller.organisationNumber}`,
-              seller?.vatRegistered ? seller.vatNumber && `VAT number ${seller.vatNumber}` : "Not registered for VAT",
+              seller?.vatRegistered ? seller.vatNumber && `VAT number ${seller.vatNumber}` : tw.notRegisteredForVat,
               seller?.bankAccount && `Account ${seller.bankAccount}${seller.bic ? `, BIC ${seller.bic}` : ""}`,
               seller?.email,
             ]}
           />
           <Party
-            title="Bill to"
+            title={tw.billTo}
             lines={[
               buyer?.name,
               buyer ? addressText(buyer.address, buyer.country) : null,
@@ -185,34 +188,34 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           />
         </div>
         <p className={`mt-3 ${hintText}`}>
-          This is the invoice as it was issued. Changing the client or your settings later does not change it.
+          {tw.thisIsTheInvoice}
         </p>
       </section>
 
       <section aria-labelledby="lines-heading" className={card}>
         <h2 id="lines-heading" className="mb-4 text-title text-ink">
-          Lines
+          {tw.lines}
         </h2>
-        <ol className="flex flex-col gap-3 md:hidden" aria-label="Invoice lines">
+        <ol className="flex flex-col gap-3 md:hidden" aria-label={tw.invoiceLines}>
           {lines.map((line) => (
             <li key={line.id} className="rounded-md border border-line p-3 text-sm">
               <p className="font-medium">{line.description}</p>
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                <dt className="text-muted">Quantity</dt>
+                <dt className="text-muted">{tw.quantity}</dt>
                 <dd className="text-right tabular-nums">{quantityText(line)}</dd>
-                <dt className="text-muted">Price</dt>
+                <dt className="text-muted">{tw.price}</dt>
                 <dd className="text-right tabular-nums">{money(line.unitPriceMinor)}</dd>
                 {line.discountBp > 0 && (
                   <>
-                    <dt className="text-muted">Discount</dt>
+                    <dt className="text-muted">{tw.discount}</dt>
                     <dd className="text-right tabular-nums">{bpToPercent(line.discountBp)} %</dd>
                   </>
                 )}
-                <dt className="text-muted">VAT</dt>
+                <dt className="text-muted">{tw.vat}</dt>
                 <dd className="text-right">{vatText(line)}</dd>
-                <dt className="text-muted">Without VAT</dt>
+                <dt className="text-muted">{tw.withoutVat}</dt>
                 <dd className="text-right tabular-nums">{money(line.exclMinor)}</dd>
-                <dt className="font-medium">With VAT</dt>
+                <dt className="font-medium">{tw.withVat}</dt>
                 <dd className="text-right font-medium tabular-nums">{money(line.inclMinor)}</dd>
               </dl>
               {line.creditedQuantityHundredths > 0 && (
@@ -223,29 +226,29 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
         </ol>
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
-            <caption className="sr-only">Invoice lines</caption>
+            <caption className="sr-only">{tw.invoiceLines}</caption>
             <thead>
               <tr>
                 <th scope="col" className={th}>
-                  Description
+                  {tw.description}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Quantity
+                  {tw.quantity}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Price
+                  {tw.price}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Discount
+                  {tw.discount}
                 </th>
                 <th scope="col" className={th}>
-                  VAT
+                  {tw.vat}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Without VAT
+                  {tw.withoutVat}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  With VAT
+                  {tw.withVat}
                 </th>
               </tr>
             </thead>
@@ -287,15 +290,15 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
 
       <section aria-labelledby="payments-heading" className={card}>
         <h2 id="payments-heading" className="mb-3 text-title text-ink">
-          Payments
+          {tw.payments}
         </h2>
         {detail.payments.length === 0 ? (
-          <p className="text-sm text-muted">No payment has been recorded.</p>
+          <p className="text-sm text-muted">{tw.noPaymentHasBeen}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {detail.payments.map((payment) => {
               const amount = formatMoney(Math.abs(payment.amountMinor), payment.currency, locale);
-              const label = `the ${amount} payment of ${formatDay(payment.receivedOn, locale)}`;
+              const label = fillWords(tw.paymentLabel, { amount, day: formatDay(payment.receivedOn, locale) });
               return (
                 <li key={payment.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <span className="flex flex-col">
@@ -306,13 +309,13 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
                       </span>
                       <span>{formatDay(payment.receivedOn, locale)}</span>
                       <span className="text-muted">{methodLabel(payment.method)}</span>
-                      {payment.reversed && <Badge tone="warn">Reversed</Badge>}
-                      {payment.reverses && <Badge>Reversal</Badge>}
-                      {payment.refund && <Badge>Paid back</Badge>}
+                      {payment.reversed && <Badge tone="warn">{tw.reversed}</Badge>}
+                      {payment.reverses && <Badge>{tw.reversal}</Badge>}
+                      {payment.refund && <Badge>{tw.paidBack}</Badge>}
                     </span>
                     <span className="text-xs text-muted">
                       {payment.reference ? `${payment.reference}. ` : ""}
-                      {payment.recordedByName ? `Recorded by ${payment.recordedByName}.` : ""}
+                      {payment.recordedByName ? fillWords(tw.recordedBy, { name: payment.recordedByName }) : ""}
                     </span>
                   </span>
                   {payment.amountMinor > 0 && !payment.reversed && !payment.reverses && (
@@ -327,10 +330,10 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
 
       <section aria-labelledby="credit-heading" className={card}>
         <h2 id="credit-heading" className="mb-3 text-title text-ink">
-          Credit notes
+          {tw.creditNotes}
         </h2>
         {detail.creditNotes.length === 0 ? (
-          <p className="text-sm text-muted">This invoice has not been credited.</p>
+          <p className="text-sm text-muted">{tw.thisInvoiceHasNot}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {detail.creditNotes.map((note) => (
@@ -344,7 +347,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
                 </span>
                 {note.reason && <span className="text-muted">{note.reason}</span>}
                 <Link href={`${workBase(storeSlug)}/credit-notes/${note.id}/print`} className="self-start underline">
-                  Preview or print {note.documentNumber}
+                  {fillWords(tw.previewOrPrintNumber, { number: note.documentNumber })}
                 </Link>
                 <SendCreditNoteButton
                   storeSlug={storeSlug}
@@ -366,10 +369,10 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
 
       <section aria-labelledby="history-heading" className={card}>
         <h2 id="history-heading" className="mb-3 text-title text-ink">
-          History
+          {tw.history}
         </h2>
         {detail.events.length === 0 ? (
-          <p className="text-sm text-muted">Nothing has happened yet.</p>
+          <p className="text-sm text-muted">{tw.nothingHasHappenedYet}</p>
         ) : (
           <ol className="flex flex-col gap-2 text-sm">
             {detail.events.map((event) => (
@@ -429,12 +432,13 @@ function Fact({ label, value, note }: { label: string; value: ReactNode; note?: 
 }
 
 function Party({ title, lines }: { title: string; lines: (string | null | undefined | false)[] }) {
+  const tw = workText().invoiceIssued;
   const shown = lines.filter((line): line is string => Boolean(line));
   return (
     <div>
       <h3 className="mb-1 text-xs tracking-wide text-muted uppercase text-body-strong text-ink">{title}</h3>
       {shown.length === 0 ? (
-        <p className="text-muted">Not kept.</p>
+        <p className="text-muted">{tw.notKept}</p>
       ) : (
         shown.map((line, index) => <p key={index}>{line}</p>)
       )}

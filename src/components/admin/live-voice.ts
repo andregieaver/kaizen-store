@@ -52,7 +52,16 @@ type AudioSessionNavigator = Navigator & { audioSession?: { type: string } };
 type WakeLock = { release: () => Promise<void> };
 type WakeLockNavigator = Navigator & { wakeLock?: { request: (type: "screen") => Promise<WakeLock> } };
 
+const CALL_WORDS = {
+  micRefused: "The browser did not let the page use the microphone.",
+  filtered: "The call was ended by the provider's safety filter.",
+  dropped: "The voice connection dropped.",
+  failed: "The call could not start.",
+};
+
 export function useLiveVoice(options: {
+  /** The words of its problems in the admin's language (D312 A10); English unless given. */
+  words?: typeof CALL_WORDS;
   /** The AI manager's page; the call's routes are under `{base}/live`. */
   base: string;
   /** What a delegation did beside speaking: pages opened and changes kept. */
@@ -307,8 +316,8 @@ export function useLiveVoice(options: {
           if (event.delegation?.id && event.delegation.target !== "responses") void handleDelegation(event.delegation.id, event.offset_ms ?? 0);
           break;
         case "session.closed":
-          if (event.reason === "content") setError("The call was ended by the provider's safety filter.");
-          else if (event.reason === "connection_lost") setError("The voice connection dropped.");
+          if (event.reason === "content") setError((optionsRef.current.words ?? CALL_WORDS).filtered);
+          else if (event.reason === "connection_lost") setError((optionsRef.current.words ?? CALL_WORDS).dropped);
           endRef.current();
           break;
         case "error":
@@ -346,7 +355,7 @@ export function useLiveVoice(options: {
         };
         pc.onconnectionstatechange = () => {
           if (pc.connectionState === "failed") {
-            setError("The voice connection dropped.");
+            setError((optionsRef.current.words ?? CALL_WORDS).dropped);
             endRef.current();
           }
         };
@@ -364,7 +373,7 @@ export function useLiveVoice(options: {
           body: JSON.stringify({ sdp: offer.sdp, conversationId }),
         });
         const data = (await response.json().catch(() => null)) as { sdp?: string; sessionId?: string; conversationId?: string; opening?: string; error?: string } | null;
-        if (!response.ok || !data?.sdp) throw new Error(data?.error ?? "The call could not start.");
+        if (!response.ok || !data?.sdp) throw new Error(data?.error ?? (optionsRef.current.words ?? CALL_WORDS).failed);
         conversationRef.current = data.conversationId ?? null;
         sessionRef.current = data.sessionId ? { id: data.sessionId, startedAt: Date.now() } : null;
         openingRef.current = data.opening ?? null;
@@ -374,7 +383,7 @@ export function useLiveVoice(options: {
         wakeRef.current = wake ? await wake.request("screen").catch(() => null) : null;
       } catch (problem) {
         cleanup();
-        setError(problem instanceof DOMException && problem.name === "NotAllowedError" ? "The browser did not let the page use the microphone." : problem instanceof Error ? problem.message : "The call could not start.");
+        setError(problem instanceof DOMException && problem.name === "NotAllowedError" ? (optionsRef.current.words ?? CALL_WORDS).micRefused : problem instanceof Error ? problem.message : (optionsRef.current.words ?? CALL_WORDS).failed);
         setState("error");
       }
     },

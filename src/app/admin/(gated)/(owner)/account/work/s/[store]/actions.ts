@@ -36,6 +36,8 @@ import {
   type StoppedEntry,
 } from "@/server/work-time";
 import type { z } from "zod";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * Work's actions for clients, assignments, tasks, time and timers (docs/work.md
@@ -81,27 +83,57 @@ async function change<T extends object>(
 // --- Clients -----------------------------------------------------------------------
 
 export async function createClientAction(storeSlug: string, input: z.input<typeof clientInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => createClient(member, input));
+})(),
+    lang,
+  );
 }
 
 export async function updateClientAction(storeSlug: string, clientId: string, input: z.input<typeof clientInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => updateClient(member, clientId, input));
+})(),
+    lang,
+  );
 }
 
 /** Archives a client (or brings it back). Any member. */
 export async function archiveClientAction(storeSlug: string, clientId: string, archived: boolean) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setClientArchived(member, clientId, archived));
+})(),
+    lang,
+  );
 }
 
 /** Deletes a client that has no history. Owners only, and audited. */
 export async function deleteClientAction(storeSlug: string, clientId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => deleteClient(member, clientId));
+})(),
+    lang,
+  );
 }
 
 // --- Assignments --------------------------------------------------------------------
 
 export async function createAssignmentAction(storeSlug: string, input: z.input<typeof assignmentInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => createAssignment(member, input));
+})(),
+    lang,
+  );
 }
 
 export async function updateAssignmentAction(
@@ -109,7 +141,13 @@ export async function updateAssignmentAction(
   assignmentId: string,
   input: z.input<typeof assignmentInput>,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => updateAssignment(member, assignmentId, input));
+})(),
+    lang,
+  );
 }
 
 export async function setAssignmentStatusAction(
@@ -117,50 +155,110 @@ export async function setAssignmentStatusAction(
   assignmentId: string,
   status: "active" | "paused" | "done",
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setAssignmentStatus(member, assignmentId, status));
+})(),
+    lang,
+  );
 }
 
 export async function deleteAssignmentAction(storeSlug: string, assignmentId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => deleteAssignment(member, assignmentId));
+})(),
+    lang,
+  );
 }
 
 // --- Tasks -----------------------------------------------------------------------------
 
 export async function createTaskAction(storeSlug: string, input: z.input<typeof taskInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => createTask(member, input));
+})(),
+    lang,
+  );
 }
 
 export async function renameTaskAction(storeSlug: string, taskId: string, title: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => renameTask(member, taskId, title));
+})(),
+    lang,
+  );
 }
 
 export async function setTaskStatusAction(storeSlug: string, taskId: string, status: "open" | "done") {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setTaskStatus(member, taskId, status));
+})(),
+    lang,
+  );
 }
 
 /** Sets a task's estimate in minutes; null takes it away. */
 export async function setTaskEstimateAction(storeSlug: string, taskId: string, minutes: number | null) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setTaskEstimate(member, taskId, minutes));
+})(),
+    lang,
+  );
 }
 
 export async function reorderTasksAction(storeSlug: string, assignmentId: string, orderedIds: string[]) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => reorderTasks(member, assignmentId, orderedIds));
+})(),
+    lang,
+  );
 }
 
 export async function deleteTaskAction(storeSlug: string, taskId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => deleteTask(member, taskId));
+})(),
+    lang,
+  );
 }
 
 // --- Time entries -----------------------------------------------------------------------
 
 /** Logs time for the signed-in member. The minutes come from `parseDuration()` in the browser and are checked again. */
 export async function logTimeAction(storeSlug: string, input: z.input<typeof timeEntryInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => logTime(member, input));
+})(),
+    lang,
+  );
 }
 
 /** Changes an entry. Owners any entry, admins their own. */
 export async function updateTimeEntryAction(storeSlug: string, entryId: string, input: z.input<typeof timeEntryInput>) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => updateTimeEntry(member, entryId, input));
+})(),
+    lang,
+  );
 }
 
 export async function setEntryNoteAction(
@@ -168,12 +266,24 @@ export async function setEntryNoteAction(
   entryId: string,
   input: z.input<typeof timeEntryNoteInput>,
 ) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => setEntryNote(member, entryId, input));
+})(),
+    lang,
+  );
 }
 
 /** Deletes an entry that is not on an invoice. Owners any entry, admins their own. */
 export async function deleteTimeEntryAction(storeSlug: string, entryId: string) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => deleteTimeEntry(member, entryId));
+})(),
+    lang,
+  );
 }
 
 // --- Timers ------------------------------------------------------------------------------
@@ -184,7 +294,13 @@ export async function startTimerAction(
   assignmentId: string,
   taskId: string | null = null,
 ): Promise<WorkResult<{ startedAt: string; stopped: StoppedEntry | null }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => startTimer(member, { assignmentId, taskId }));
+})(),
+    lang,
+  );
 }
 
 /** Stops the member's timer (`forAccountId`: someone else's, owners only). Nothing running answers `entry: null`. */
@@ -192,12 +308,24 @@ export async function stopTimerAction(
   storeSlug: string,
   options: { note?: string | null; forAccountId?: string } = {},
 ): Promise<WorkResult<{ entry: StoppedEntry | null; capped: boolean }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => stopTimer(member, options));
+})(),
+    lang,
+  );
 }
 
 /** Throws away the member's own running timer without logging it. Nothing running answers `discarded: false`. */
 export async function discardTimerAction(storeSlug: string): Promise<WorkResult<{ discarded: boolean }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return change(storeSlug, (member) => discardTimer(member));
+})(),
+    lang,
+  );
 }
 
 /**
@@ -205,8 +333,14 @@ export async function discardTimerAction(storeSlug: string): Promise<WorkResult<
  * again (a read: nothing is refreshed). It needs no store: the timer is theirs.
  */
 export async function runningTimerAction(): Promise<RunningTimer | null> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const account = await requireAccount();
   return getRunningTimer(account.id);
+})(),
+    lang,
+  );
 }
 
 /**
@@ -215,12 +349,24 @@ export async function runningTimerAction(): Promise<RunningTimer | null> {
  * only the number goes to the registry.
  */
 export async function lookupCompanyAction(storeSlug: string, input: string): Promise<BrregLookup> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   if (!(await workReader(storeSlug))) return { ok: false, reason: "unavailable" };
   return lookupCompany(String(input).slice(0, 60));
+})(),
+    lang,
+  );
 }
 
 /** The same by name: up to eight companies to choose from. */
 export async function searchCompaniesAction(storeSlug: string, input: string): Promise<BrregSearch> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   if (!(await workReader(storeSlug))) return { ok: false, reason: "unavailable" };
   return searchCompanies(String(input).slice(0, 120));
+})(),
+    lang,
+  );
 }

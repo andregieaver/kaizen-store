@@ -4,6 +4,10 @@ import { revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+
+import { actionAdminLang } from "./admin-request-lang";
 import { AiError, aiFor, speakText } from "./ai";
 import { sameSite } from "./chat-route";
 import { delegateLive, endLiveCall, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
@@ -18,6 +22,11 @@ const turnInput = z.object({
   voice: z.boolean().optional(),
 });
 
+/** The refusals people read, in their admin's language (D312 A10). */
+function refusals(principal: Principal) {
+  return adminText(adminLangOf(principal.account.adminLocale ?? null), "assistant").errors;
+}
+
 /**
  * A message to the AI manager (D94, D103), answered as a stream of events,
  * one JSON object per line: the text as it is written, the tools it uses,
@@ -27,10 +36,11 @@ const turnInput = z.object({
  */
 export async function assistantTurn(request: Request, principal: Principal): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
+  const w = refusals(principal);
   // The assistant works through the owner's tools, which sell and publish: it is off while the store is not open (D171).
-  if (principal.store && principal.store.status !== "active") return Response.json({ error: "The assistant is off while the store is not open." }, { status: 403 });
+  if (principal.store && principal.store.status !== "active") return Response.json({ error: w.storeClosed }, { status: 403 });
   const input = turnInput.safeParse(await request.json().catch(() => null));
-  if (!input.success) return Response.json({ error: "The message could not be read." }, { status: 400 });
+  if (!input.success) return Response.json({ error: w.unreadable }, { status: 400 });
 
   // Learning runs after the answer: registered now, while the request is in scope.
   const tasks: (() => Promise<unknown>)[] = [];
@@ -65,7 +75,7 @@ export async function assistantTurn(request: Request, principal: Principal): Pro
         });
       } catch (error) {
         console.error("[ai-manager] turn", error);
-        emit({ type: "error", message: "Something went wrong. Try again." });
+        emit({ type: "error", message: w.failed });
       } finally {
         finished();
         try {
@@ -89,10 +99,11 @@ const speechInput = z.object({ text: z.string().trim().min(1).max(600) });
  */
 export async function assistantSpeech(request: Request, storeId: string | null, accountId: string): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
+  const w = adminText(await actionAdminLang(), "assistant").errors;
   const input = speechInput.safeParse(await request.json().catch(() => null));
-  if (!input.success) return Response.json({ error: "Nothing to say." }, { status: 400 });
+  if (!input.success) return Response.json({ error: w.nothingToSay }, { status: 400 });
   const connection = await aiFor(storeId, { feature: "ai_manager", accountId });
-  if (!connection?.speechModel || !connection.speechVoice) return Response.json({ error: "No voice is set up." }, { status: 409 });
+  if (!connection?.speechModel || !connection.speechVoice) return Response.json({ error: w.noVoice }, { status: 409 });
   try {
     const audio = await speakText(connection, input.data.text);
     return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
@@ -110,7 +121,7 @@ const liveStart = z.object({ sdp: z.string().min(10).max(20_000).startsWith("v="
 export async function liveSessionResponse(request: Request, principal: Principal): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
   const input = liveStart.safeParse(await request.json().catch(() => null));
-  if (!input.success) return Response.json({ error: "The call could not be read." }, { status: 400 });
+  if (!input.success) return Response.json({ error: refusals(principal).callUnreadable }, { status: 400 });
   try {
     return Response.json(await startLiveSession(principal, { sdp: input.data.sdp, conversationId: input.data.conversationId ?? null }), {
       headers: { "Cache-Control": "no-store" },
@@ -136,7 +147,7 @@ export async function liveDelegateResponse(request: Request, principal: Principa
       (tag) => revalidateTag(tag, "max"),
       (task) => tasks.push(task),
     );
-    if (!result) return Response.json({ error: "Unknown conversation." }, { status: 404 });
+    if (!result) return Response.json({ error: refusals(principal).unknownConversation }, { status: 404 });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[live-voice] delegate", error);

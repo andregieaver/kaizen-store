@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * "Use Work in this store": a checkbox and Save, for one store (D123). Only owners can change it; for anyone else
@@ -20,19 +21,20 @@ export function WorkSwitchForm({
   canChange: boolean;
   note: string;
 }) {
+  const tw = useAdminText("work").ownerSwitch;
   return (
     <ActionForm action={action} className="flex flex-col gap-3">
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name="work" defaultChecked={on} disabled={!canChange} className="mt-0.5 size-4" />
         <span>
-          Use Work in this store
+          {tw.useWorkInThis}
           <span className="sr-only"> ({storeName})</span>
           <span className="block text-muted">{note}</span>
         </span>
       </label>
       {canChange && (
         <div>
-          <SubmitButton>Save</SubmitButton>
+          <SubmitButton>{tw.save}</SubmitButton>
         </div>
       )}
     </ActionForm>

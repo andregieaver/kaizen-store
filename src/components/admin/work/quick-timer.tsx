@@ -9,6 +9,7 @@ import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
 import { Field, control, primaryButton } from "./work-parts";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * Time for the person at the top of the Time page: start a timer on any
@@ -25,6 +26,7 @@ export function QuickTimer({
   choices: AssignmentChoice[];
   today: string;
 }) {
+  const tw = useAdminText("work").quickTimer;
   const api = useWorkTimerApi();
   const [assignmentId, setAssignmentId] = useState(choices[0]?.id ?? "");
   const [taskId, setTaskId] = useState("");
@@ -34,7 +36,7 @@ export function QuickTimer({
   if (choices.length === 0) {
     return (
       <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>
-        There is no active assignment to log time on. Add an assignment to a client to start.
+        {tw.thereIsNoActive}
       </p>
     );
   }
@@ -45,10 +47,10 @@ export function QuickTimer({
       className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
     >
       <h2 id="quick-heading" className="text-title text-ink">
-        Track time
+        {tw.trackTime}
       </h2>
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Assignment" className="min-w-56 flex-1">
+        <Field label={tw.assignment} className="min-w-56 flex-1">
           {(props) => (
             <select
               {...props}
@@ -75,10 +77,10 @@ export function QuickTimer({
           )}
         </Field>
         {assignment && assignment.tasks.length > 0 && (
-          <Field label="Task (optional)" className="min-w-48">
+          <Field label={tw.taskOptional} className="min-w-48">
             {(props) => (
               <select {...props} value={taskId} onChange={(event) => setTaskId(event.target.value)} className={control}>
-                <option value="">No task</option>
+                <option value="">{tw.noTask}</option>
                 {assignment.tasks.map((task) => (
                   <option key={task.id} value={task.id}>
                     {task.title}
@@ -109,10 +111,10 @@ export function QuickTimer({
             }}
             className={primaryButton}
           >
-            Start timer
+            {tw.startTimer}
           </button>
         )}
-        <FormDialogButton label="Log time by hand" title="Log time" wide={false}>
+        <FormDialogButton label={tw.logTimeByHand} title={tw.logTime} wide={false}>
           {(close) => (
             <LogTimeForm
               storeSlug={storeSlug}

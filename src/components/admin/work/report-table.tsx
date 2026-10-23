@@ -1,18 +1,21 @@
 import type { PeriodReport, ReportGroupBy, ReportRow, ReportTotals } from "@/lib/work-reports";
 import { rowLabel } from "@/lib/work-reports";
+import { workText } from "@/lib/work-text";
 
-import { REPORT_HEADINGS, reportCells } from "./report-columns";
+import { reportCells, reportHeadings } from "./report-columns";
+import { fillWords } from "@/lib/admin-fill";
 
 const th = "px-3 py-2 text-right text-eyebrow text-muted uppercase";
 const td = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 
 function Head({ by }: { by: ReportGroupBy }) {
+  const tw = workText().reportTable;
   return (
     <tr>
       <th scope="col" className={`${th} text-left`}>
-        {by === "client" ? "Client" : "Assignment"}
+        {by === "client" ? tw.client : tw.assignment}
       </th>
-      {Object.values(REPORT_HEADINGS).map((h) => (
+      {Object.values(reportHeadings()).map((h) => (
         <th key={h} scope="col" className={th}>
           {h}
         </th>
@@ -52,10 +55,11 @@ function RowView({ row, by, locale, showCurrency }: { row: ReportRow; by: Report
 }
 
 function TotalView({ total, locale, many }: { total: ReportTotals; locale: string; many: boolean }) {
+  const tw = workText().reportTable;
   return (
     <tr className="border-t-2 border-line font-medium">
       <th scope="row" className="px-3 py-2 text-left">
-        Total{many ? ` (${total.currency})` : ""}
+        {tw.total}{many ? ` (${total.currency})` : ""}
       </th>
       <Cells cells={reportCells(total, total.currency, locale)} />
     </tr>
@@ -68,13 +72,14 @@ function TotalView({ total, locale, many }: { total: ReportTotals; locale: strin
  * currency. Every figure is worked out on the server; this only lays them out. Scrolls sideways on a phone.
  */
 export function ReportTable({ report, locale }: { report: PeriodReport; locale: string }) {
+  const tw = workText().reportTable;
   const currencies = new Set(report.rows.map((r) => r.currency));
   const many = report.totals.length > 1 || currencies.size > 1;
   return (
     <div className="overflow-x-auto rounded-panel border border-line bg-card">
       <table className="w-full text-sm">
         <caption className="sr-only">
-          Work report from {report.from} to {report.to}, by {report.by}
+          {fillWords(tw.reportCaption, { from: report.from, to: report.to, by: report.by })}
         </caption>
         <thead>
           <Head by={report.by} />

@@ -17,6 +17,8 @@ import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Assignment" };
 
@@ -30,10 +32,13 @@ const ENTRY_LIMIT = 500;
 export default async function WorkAssignmentPage({
   params,
 }: PageProps<"/admin/account/work/s/[store]/assignments/[assignmentId]">) {
+  await workWords();
+  const tw = workText().pageStoreAssignmentsAssignmentIdPage;
   const { store: slug, assignmentId } = await params;
   const staffer = await requirePermission(slug, "settings:read");
   const { store, account } = staffer;
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Assignment" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.assignment} words={off} />;
   const assignment = await getAssignmentDetail(store.id, assignmentId);
   if (!assignment) notFound();
 
@@ -81,7 +86,7 @@ export default async function WorkAssignmentPage({
         status={
           <>
             <Badge tone={STATUS_TONE[assignment.status]}>{STATUS_TEXT[assignment.status]}</Badge>
-            {s.invoiced && <Badge tone="good">Invoiced</Badge>}
+            {s.invoiced && <Badge tone="good">{tw.invoiced}</Badge>}
           </>
         }
         actions={
@@ -150,11 +155,10 @@ export default async function WorkAssignmentPage({
 
       <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-line pt-4">
         <h2 id="delete-heading" className="text-title text-ink">
-          Delete this assignment
+          {tw.deleteThisAssignment}
         </h2>
         <p className="text-sm text-muted">
-          Only an assignment with no time and no invoices can be deleted. Otherwise mark it done: its time and invoices
-          stay explained.
+          {tw.onlyAnAssignmentWith}
         </p>
         <DeleteAssignmentButton
           storeSlug={store.slug}

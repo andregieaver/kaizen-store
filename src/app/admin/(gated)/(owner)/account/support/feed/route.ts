@@ -10,7 +10,11 @@ import { NO_STORE, inboxFeed, inboxQuery } from "@/server/support-inbox";
  */
 export async function GET(request: NextRequest) {
   const account = await getAccount();
-  if (!account) return new NextResponse("Not found", { status: 404, headers: NO_STORE });
+  if (!account)
+    return new NextResponse("Not found", { status: 404, headers: NO_STORE });
   const desks = await ownerDesks(account);
-  return NextResponse.json(await inboxFeed(desks, inboxQuery(request.nextUrl.searchParams)), { headers: NO_STORE });
+  return NextResponse.json(
+    await inboxFeed(desks, inboxQuery(request.nextUrl.searchParams)),
+    { headers: NO_STORE },
+  );
 }

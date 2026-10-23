@@ -18,6 +18,8 @@ import { getWorkInvoiceDetail, nextInvoiceNumberPreview } from "@/server/work-in
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -27,10 +29,13 @@ export const metadata: Metadata = { title: "Invoice" };
  * its payments, credit notes and history.
  */
 export default async function WorkInvoicePage({ params }: PageProps<"/admin/account/work/s/[store]/invoices/[invoiceId]">) {
+  await workWords();
+  const tw = workText().pageStoreInvoicesInvoiceIdPage;
   const { store: slug, invoiceId } = await params;
   const viewer = await requirePermission(slug, "settings:read");
   const { store } = viewer;
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Invoice" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.invoice} words={off} />;
   // The overview's "Invoice time" leads to `/invoices/new`: the list, with the New invoice dialog open.
   if (invoiceId === "new") redirect(`${workBase(store.slug)}/invoices?new=1`);
   const detail = await getWorkInvoiceDetail(store.id, invoiceId);
@@ -39,13 +44,13 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
   const { invoice, client } = detail;
   const locale = store.markets[0]?.locale ?? "en";
   const list = `${workBase(store.slug)}/invoices`;
-  const title = invoice.documentNumber ? `Invoice ${invoice.documentNumber}` : "Draft invoice";
+  const title = invoice.documentNumber ? `Invoice ${invoice.documentNumber}` : tw.draftInvoice;
 
   const header = (
     <header className="flex flex-col gap-2">
-      <nav aria-label="Breadcrumb" className="text-sm text-muted">
+      <nav aria-label={tw.breadcrumb} className="text-sm text-muted">
         <Link href={list} className="underline">
-          Invoices
+          {tw.invoices}
         </Link>{" "}
         / {invoice.documentNumber ?? "Draft"}
       </nav>

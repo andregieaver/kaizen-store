@@ -14,6 +14,9 @@ import {
   type ReminderStep,
   type ReminderText,
 } from "@/lib/cart-reminders";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { renderEmail } from "@/lib/email-layout";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
@@ -239,7 +242,8 @@ export async function sendDuePlanReminders(): Promise<{ sent: number; failed: nu
     update commerce.abandoned_plan_checkouts a
     set last_delay_minutes = due.delay_minutes, reminders_sent = a.reminders_sent + 1, last_reminder_at = now(), updated_at = now()
     from due where a.id = due.id
-    returning a.id, a.store_id, a.email, a.plan_name, a.amount_minor, a.currency, a.interval, a.token, due.step_id
+    returning a.id, a.store_id, a.email, a.plan_name, a.amount_minor, a.currency, a.interval, a.token, due.step_id,
+      (select acc.admin_locale from commerce.accounts acc where acc.id = a.account_id) as admin_locale
   `);
   let sent = 0;
   let failed = 0;
@@ -251,6 +255,7 @@ export async function sendDuePlanReminders(): Promise<{ sent: number; failed: nu
       to: String(row.email),
       plan: { name: String(row.plan_name), amountMinor: Number(row.amount_minor), currency: String(row.currency), interval: String(row.interval) },
       token: String(row.token),
+      lang: adminLangOf(row.admin_locale ? String(row.admin_locale) : null),
     });
     if (outcome === "sent" || outcome === "logged") sent++;
     else if (outcome === "failed") failed++;
@@ -260,11 +265,12 @@ export async function sendDuePlanReminders(): Promise<{ sent: number; failed: nu
 
 type PlanShown = { name: string; amountMinor: number; currency: string; interval: string };
 
-function planLine(plan: PlanShown): ReminderLine {
+function planLine(plan: PlanShown, lang: AdminLang = "en"): ReminderLine {
+  const w = adminText(lang, "staffEmails").planReminder;
   return {
     variantId: "plan",
     sellingPlanId: null,
-    title: `Kaizena Flow ${plan.name}, paid ${plan.interval === "year" ? "yearly" : "monthly"}`,
+    title: fillWords(w.line, { plan: plan.name, interval: plan.interval === "year" ? w.yearly : w.monthly }),
     quantity: 1,
     unitPriceMinor: plan.amountMinor,
   };
@@ -278,10 +284,15 @@ async function sendPlanReminder(input: {
   plan: PlanShown;
   token: string;
   test?: boolean;
+  /** The owner's admin language (D312 A10). */
+  lang?: AdminLang;
 }): Promise<SendOutcome | null> {
   const [store] = await db().execute<Row>(sql`select slug, name from commerce.stores where id = ${input.storeId}::uuid`);
   const step = await getPlanReminderStep(input.stepId);
-  const text = step?.content[LOCALE] ?? (step ? Object.values(step.content)[0] : undefined);
+  // The step's words in the owner's language when the platform wrote them (`nb`), else English as ever; the line and the money follow (D312 A10).
+  const own = input.lang && input.lang !== "en" ? step?.content[input.lang] : undefined;
+  const lang: AdminLang = own ? (input.lang ?? "en") : "en";
+  const text = own ?? step?.content[LOCALE] ?? (step ? Object.values(step.content)[0] : undefined);
   if (!store || !step || !text) return null;
   const [code] = step.discountCodeId
     ? await db().execute<Row>(sql`select code from commerce.platform_discount_codes where id = ${step.discountCodeId}::uuid and active`)
@@ -290,11 +301,11 @@ async function sendPlanReminder(input: {
   const links = planReminderLinks(String(store.slug), input.token, discount);
   const content = buildReminderEmail({
     text,
-    locale: "en-GB",
+    locale: ADMIN_LANG_FACTS[lang].locale,
     currency: input.plan.currency,
     storeName: String(store.name),
     footer: ["Kaizena Flow · kaizenaflow.com"],
-    lines: [planLine(input.plan)],
+    lines: [planLine(input.plan, lang)],
     code: discount,
     restoreUrl: links.resumeUrl,
     unsubscribeUrl: links.unsubscribeUrl,

@@ -5,6 +5,7 @@ import { requireAccount } from "@/server/auth";
 import { getOwnerSettings, workStoresFor } from "@/server/work-owner";
 
 import { switchActionsFor } from "../owner-page";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Work settings" };
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: "Work settings" };
  * store's own Work settings. Lists every store the account owns, and the ones it is an admin in that use Work.
  */
 export default async function OwnerWorkSettingsPage() {
+  await workWords();
   const account = await requireAccount();
   const { using, off } = await workStoresFor(account);
   const stores = [...using, ...off].sort((a, b) => a.name.localeCompare(b.name) || a.slug.localeCompare(b.slug));

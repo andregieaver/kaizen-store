@@ -19,13 +19,16 @@ import type { RecurringInvoice } from "@/server/work-recurring";
 import { RecurringForm, type RecurringFormProps } from "./recurring-form";
 import { Problems, dangerLink, primaryButton, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 type SharedForm = Omit<RecurringFormProps, "template" | "onDone" | "onCancel">;
 
 /** "Add repeating invoice": the form in a dialog. Saving refreshes the page behind it. */
 export function NewRecurringButton(props: SharedForm) {
+  const tw = useAdminText("work").recurringControls;
   return (
-    <FormDialogButton label="Add repeating invoice" title="New repeating invoice" primary>
+    <FormDialogButton label={tw.addRepeatingInvoice} title={tw.newRepeatingInvoice} primary>
       {(close) => <RecurringForm {...props} onCancel={close} onDone={close} />}
     </FormDialogButton>
   );
@@ -49,6 +52,7 @@ export type TemplateActionsProps = {
  * the page behind is refreshed by the action.
  */
 export function TemplateActions({ storeSlug, template, form, locale, open }: TemplateActionsProps) {
+  const tw = useAdminText("work").recurringControls;
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -62,27 +66,27 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
       setNotice(null);
       try {
         const result = await job();
-        if (!result.ok) setProblems(result.problems ?? ["That did not work. Try again."]);
+        if (!result.ok) setProblems(result.problems ?? [tw.thatDidNotWork]);
         else setNotice(done?.(result) ?? null);
       } catch {
-        setProblems(["That could not be done. Check your connection and try again."]);
+        setProblems([tw.thatCouldNotBe]);
       }
       setConfirming(null);
     });
 
   const issued = (result: Record<string, unknown>): string =>
-    `Issued as ${String(result.documentNumber)}. ${
+    `${fillWords(tw.issuedAs, { number: String(result.documentNumber) })} ${
       result.emailed
-        ? "The client was emailed."
+        ? tw.theClientWasEmailed
         : result.emailReason === "not_requested"
-          ? "It was not emailed."
-          : "It could not be emailed; open the invoice to send it again."
+          ? tw.itWasNotEmailed
+          : tw.itCouldNotBe
     }`;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <FormDialogButton label="Edit" title={`Edit ${template.name}`}>
+        <FormDialogButton label={tw.edit} title={fillWords(tw.editName, { name: template.name })}>
           {(close) => <RecurringForm {...form} template={template} onCancel={close} onDone={close} />}
         </FormDialogButton>
         <button
@@ -91,7 +95,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
           className={secondaryButton}
           onClick={() => run(() => setRecurringActiveAction(storeSlug, template.id, !template.isActive))}
         >
-          {template.isActive ? "Pause" : "Start again"}
+          {template.isActive ? "Pause" : tw.startAgain}
         </button>
         {missing.length > 0 && (
           <button
@@ -101,17 +105,17 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
             onClick={() =>
               run(
                 () => generateRecurringNowAction(storeSlug, template.id),
-                () => "The draft is made. Check it, then issue it.",
+                () => tw.theDraftIsMade,
               )
             }
           >
-            Generate now
+            {tw.generateNow}
           </button>
         )}
       </div>
 
       {open.length > 0 && (
-        <ul className="flex flex-col gap-2" aria-label="Periods to invoice">
+        <ul className="flex flex-col gap-2" aria-label={tw.periodsToInvoice}>
           {open.map((o) => (
             <li key={o.period} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -128,7 +132,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                 <div className="flex flex-wrap items-center gap-2">
                   {o.invoiceId ? (
                     <Link href={`${workBase(storeSlug)}/invoices/${o.invoiceId}`} className={smallButton}>
-                      Open the draft
+                      {tw.openTheDraft}
                     </Link>
                   ) : (
                     <button
@@ -138,11 +142,11 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                       onClick={() =>
                         run(
                           () => generateRecurringNowAction(storeSlug, template.id, o.period),
-                          () => "The draft is made. Check it, then issue it.",
+                          () => tw.theDraftIsMade,
                         )
                       }
                     >
-                      Generate draft
+                      {tw.generateDraft}
                     </button>
                   )}
                   <button
@@ -152,26 +156,26 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                     onClick={() => setConfirming(confirming === o.period ? null : o.period)}
                     aria-expanded={confirming === o.period}
                   >
-                    Issue now
+                    {tw.issueNow}
                   </button>
                   <button
                     type="button"
                     disabled={pending}
                     className={dangerLink}
-                    onClick={() => run(() => skipRecurringPeriodAction(storeSlug, template.id, o.period), () => "That period is skipped.")}
+                    onClick={() => run(() => skipRecurringPeriodAction(storeSlug, template.id, o.period), () => tw.thatPeriodIsSkipped)}
                   >
-                    {o.invoiceId ? "Skip and delete the draft" : "Skip this period"}
+                    {o.invoiceId ? tw.skipAndDeleteThe : tw.skipThisPeriod}
                   </button>
                 </div>
               </div>
               {confirming === o.period && (
                 <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
                   <p className="text-sm">
-                    Issuing gives the invoice its number and makes it final. If something is missing, it stays a draft and you are told what.
+                    {tw.issuingGivesTheInvoice}
                   </p>
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={emailIt} onChange={(event) => setEmailIt(event.target.checked)} className="size-4" />
-                    Email it to the client
+                    {tw.emailItToThe}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -180,10 +184,10 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                       className={primaryButton}
                       onClick={() => run(() => issueRecurringNowAction(storeSlug, template.id, o.period, emailIt), issued)}
                     >
-                      {pending ? "Issuing …" : "Issue invoice"}
+                      {pending ? tw.issuing : tw.issueInvoice}
                     </button>
                     <button type="button" onClick={() => setConfirming(null)} className={secondaryButton}>
-                      Cancel
+                      {tw.cancel}
                     </button>
                   </div>
                 </div>
@@ -195,7 +199,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
 
       {template.skippedPeriods.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer">Skipped periods ({template.skippedPeriods.length})</summary>
+          <summary className="cursor-pointer">{fillWords(tw.skippedPeriods, { count: template.skippedPeriods.length })}</summary>
           <ul className="mt-2 flex flex-col gap-1">
             {template.skippedPeriods.map((period) => (
               <li key={period} className="flex flex-wrap items-center gap-3">
@@ -205,10 +209,10 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                   disabled={pending}
                   className="text-sm underline disabled:opacity-50"
                   onClick={() =>
-                    run(() => restoreRecurringPeriodAction(storeSlug, template.id, period), () => "The period is back on the schedule.")
+                    run(() => restoreRecurringPeriodAction(storeSlug, template.id, period), () => tw.thePeriodIsBack)
                   }
                 >
-                  Restore
+                  {tw.restore}
                 </button>
               </li>
             ))}
@@ -228,6 +232,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
 
 /** Deletes a repeating invoice that has made nothing (one that has can only be paused). */
 export function DeleteRecurringButton({ storeSlug, templateId, name }: { storeSlug: string; templateId: string; name: string }) {
+  const tw = useAdminText("work").recurringControls;
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   return (
@@ -244,12 +249,12 @@ export function DeleteRecurringButton({ storeSlug, templateId, name }: { storeSl
               const result = await deleteRecurringAction(storeSlug, templateId);
               if (!result.ok) setProblems(result.problems);
             } catch {
-              setProblems(["It could not be deleted. Check your connection and try again."]);
+              setProblems([tw.itCouldNotBe2]);
             }
           });
         }}
       >
-        Delete
+        {tw.delete}
       </button>
       <Problems messages={problems} />
     </span>

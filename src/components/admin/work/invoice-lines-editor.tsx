@@ -28,6 +28,8 @@ import { VAT_LINE_CATEGORIES, type VatLineCategory } from "@/lib/work-vat";
 import type { LineTime } from "@/server/work-invoice-screens";
 
 import { errorText, smallButton, smallControl } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type LinesEditorProps = {
   rows: readonly LineRow[];
@@ -55,6 +57,7 @@ export type LinesEditorProps = {
  * (`previewRows`) and saves it. On a phone each line stacks into labelled fields.
  */
 export function InvoiceLinesEditor(props: LinesEditorProps) {
+  const tw = useAdminText("work").invoiceLinesEditor;
   const { rows, onRows, makeRow } = props;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -73,7 +76,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
     <div className="flex flex-col gap-3">
       {rows.length === 0 ? (
         <p className="rounded-panel border border-dashed border-line p-4 text-sm text-muted">
-          No lines yet. Add a line, or add the time you have logged and not yet billed.
+          {tw.noLinesYetAdd}
         </p>
       ) : (
         <div>
@@ -81,18 +84,18 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
             aria-hidden
             className="hidden gap-2 border-b border-line px-2 pb-2 text-eyebrow text-muted uppercase md:grid md:grid-cols-[minmax(11rem,1fr)_9rem_6.5rem_4.5rem_10rem_6rem_6rem_2.25rem]"
           >
-            <span>Description</span>
-            <span>Hours or units</span>
-            <span>Price</span>
-            <span>Discount</span>
-            <span>VAT</span>
-            <span className="text-right">Without VAT</span>
-            <span className="text-right">With VAT</span>
+            <span>{tw.description}</span>
+            <span>{tw.hoursOrUnits}</span>
+            <span>{tw.price}</span>
+            <span>{tw.discount}</span>
+            <span>{tw.vat}</span>
+            <span className="text-right">{tw.withoutVat}</span>
+            <span className="text-right">{tw.withVat}</span>
             <span />
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={rows.map((row) => row.key)} strategy={verticalListSortingStrategy}>
-              <ol className="flex flex-col gap-3 md:gap-0" aria-label="Invoice lines">
+              <ol className="flex flex-col gap-3 md:gap-0" aria-label={tw.invoiceLines}>
                 {rows.map((row, index) => (
                   <LineItem
                     key={row.key}
@@ -119,7 +122,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
       )}
       <div>
         <button type="button" onClick={() => onRows([...rows, makeRow()])} className={smallButton}>
-          Add line
+          {tw.addLine}
         </button>
       </div>
     </div>
@@ -157,6 +160,7 @@ function LineItem({
   onEnter: () => void;
   onRelease: (entryIds: string[]) => void;
 }) {
+  const tw = useAdminText("work").invoiceLinesEditor;
   const id = useId();
   const number = index + 1;
   const descriptionRef = useRef<HTMLInputElement>(null);
@@ -202,7 +206,7 @@ function LineItem({
           <div className="flex items-start gap-2">
             <button
               type="button"
-              aria-label={`Drag line ${number} to reorder`}
+              aria-label={fillWords(tw.dragLine, { number })}
               className="mt-0.5 flex min-h-9 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill border border-edge text-muted active:cursor-grabbing"
               {...attributes}
               {...listeners}
@@ -220,7 +224,7 @@ function LineItem({
                   onEnter();
                 }
               }}
-              placeholder="What was done"
+              placeholder={tw.whatWasDone}
               maxLength={600}
               autoComplete="off"
               className={`${smallControl} w-full min-w-0`}
@@ -245,13 +249,13 @@ function LineItem({
               {...described("quantity")}
             />
             <select
-              aria-label={`Line ${number} unit`}
+              aria-label={fillWords(tw.lineUnit, { number })}
               value={row.unit}
               onChange={(event) => onPatch({ unit: event.target.value as "hour" | "unit" })}
               className={`${smallControl} w-[4.75rem] shrink-0`}
             >
-              <option value="hour">hours</option>
-              <option value="unit">units</option>
+              <option value="hour">{tw.hours}</option>
+              <option value="unit">{tw.units}</option>
             </select>
           </div>
           {fieldError("quantity")}
@@ -259,7 +263,7 @@ function LineItem({
 
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-price`} className={label}>
-            Line {number} price without VAT
+            {fillWords(tw.linePrice, { number })}
           </label>
           <input
             id={`${id}-price`}
@@ -275,7 +279,7 @@ function LineItem({
 
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-discount`} className={label}>
-            Line {number} discount in percent
+            {fillWords(tw.lineDiscount, { number })}
           </label>
           <input
             id={`${id}-discount`}
@@ -307,24 +311,24 @@ function LineItem({
           </select>
           {priced && (
             <p className="text-xs text-muted">
-              {priced.vatBp > 0 ? `${bpToPercent(priced.vatBp)} % VAT` : "No VAT on this line"}
+              {priced.vatBp > 0 ? `${bpToPercent(priced.vatBp)} % VAT` : tw.noVatOnThis}
             </p>
           )}
         </div>
 
         <p className="flex items-baseline justify-between gap-2 text-sm tabular-nums md:block md:pt-2 md:text-right">
-          <span className="text-xs text-muted md:sr-only">Without VAT</span>
+          <span className="text-xs text-muted md:sr-only">{tw.withoutVat}</span>
           <span>{priced && !unreadable ? money(priced.exclMinor) : "–"}</span>
         </p>
         <p className="flex items-baseline justify-between gap-2 text-sm font-medium tabular-nums md:block md:pt-2 md:text-right">
-          <span className="text-xs font-normal text-muted md:sr-only">With VAT</span>
+          <span className="text-xs font-normal text-muted md:sr-only">{tw.withVat}</span>
           <span>{priced && !unreadable ? money(priced.inclMinor) : "–"}</span>
         </p>
         <button
           type="button"
           onClick={onRemove}
           aria-label={`Remove line ${number}`}
-          title="Remove line"
+          title={tw.removeLine}
           className="flex size-9 items-center justify-center justify-self-end rounded-pill border border-line text-muted hover:text-danger-text md:justify-self-auto"
         >
           <Trash2 aria-hidden className="size-4" />
@@ -333,15 +337,15 @@ function LineItem({
 
       {row.timeMinutes > 0 && (
         <p className="text-xs text-muted">
-          {formatDuration(row.timeMinutes)} logged time on this line
-          {row.quantityManual ? ", hours typed by you" : ""}
+          {fillWords(tw.loggedOnLine, { time: formatDuration(row.timeMinutes) })}
+          {row.quantityManual ? tw.hoursTyped : ""}
         </p>
       )}
 
       {time.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer text-muted">
-            Logged time on line {number} ({time.length} {time.length === 1 ? "entry" : "entries"})
+            {fillWords(time.length === 1 ? tw.loggedEntriesOne : tw.loggedEntriesMany, { number, count: time.length })}
           </summary>
           <ul className="mt-2 flex flex-col gap-2">
             {time.map((entry) => (
@@ -357,10 +361,10 @@ function LineItem({
                   type="button"
                   disabled={releasing}
                   onClick={() => onRelease([entry.id])}
-                  aria-label={`Take the ${formatDuration(entry.minutes)} on ${formatDay(entry.workDate, locale)} off line ${number}`}
+                  aria-label={fillWords(tw.takeOff, { time: formatDuration(entry.minutes), day: formatDay(entry.workDate, locale), number })}
                   className={smallButton}
                 >
-                  Release
+                  {tw.release}
                 </button>
               </li>
             ))}
@@ -372,9 +376,9 @@ function LineItem({
               onClick={() => onRelease(time.map((entry) => entry.id))}
               className={smallButton}
             >
-              Release all time from line {number}
+              {fillWords(tw.releaseAll, { number })}
             </button>
-            Released time can be billed again, here or on another invoice.
+            {tw.releasedTimeCanBe}
           </p>
         </details>
       )}

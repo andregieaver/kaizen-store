@@ -1,0 +1,198 @@
+import type { StaffEmailsMessages } from "./staff-emails.en";
+
+/** Norwegian (bokmål), written by hand (D312 A10). */
+export const staffEmailsNb: StaffEmailsMessages = {
+  footer: "Kaizena Flow · kaizenaflow.com",
+  security: {
+    subjects: {
+      recovery_code_used: "En gjenopprettingskode ble brukt på kontoen din",
+      two_step_removed: "Innlogging i to trinn ble slått av på kontoen din",
+      two_step_reset: "Innloggingen din i to trinn ble tilbakestilt",
+    },
+    intros: {
+      recovery_code_used:
+        "En gjenopprettingskode ble brukt for å komme inn på Kaizena Flow-kontoen din {when}. Når en gjenopprettingskode brukes, fjernes innloggingen i to trinn, så du blir bedt om å sette den opp igjen neste gang du logger inn, og de andre gjenopprettingskodene dine virker ikke lenger.",
+      two_step_removed:
+        "Innlogging i to trinn ble slått av for Kaizena Flow-kontoen din {when}.",
+      two_step_reset:
+        "En plattformadministrator{by} tilbakestilte innloggingen i to trinn for Kaizena Flow-kontoen din {when}. Du blir bedt om å sette den opp igjen neste gang du logger inn.",
+    },
+    by: " ({by})",
+    hello: "Hei {person},",
+    wasYou: "Hvis det var deg, trenger du ikke gjøre noe mer.",
+    notYou:
+      "Hvis det ikke var deg, kan noen andre ha tilgang til kontoen din. Logg inn, bytt passord med en gang og sett opp innlogging i to trinn igjen, og si så fra til eieren av butikken din.",
+    signIn: "Logg inn",
+  },
+  guardrail: {
+    days: { one: "{n} dag", many: "{n} dager" },
+    figures:
+      "{vBuyers} av {vVisitors} besøkende som så versjon {letter}, bestilte ({vRate}), mot {oBuyers} av {oVisitors} som så originalen ({oRate}).",
+    subject:
+      "A/B-testen «{test}» ble stoppet: færre bestillinger i versjon {letter}",
+    preview:
+      "Versjon {letter} fikk tydelig færre bestillinger enn originalen, så Kaizena Flow stoppet testen. Alle ser originalen igjen.",
+    heading: "Kaizena Flow stoppet A/B-testen din",
+    stopped:
+      "Testen «{test}» av {target} i {store} hadde gått i {days} da versjon {letter} ({version}) tydelig fikk færre bestillinger per besøkende enn originalen. Den lå så langt bak at tilfeldigheter er en svært usannsynlig grunn, så Kaizena Flow stoppet testen for å beskytte salget ditt.",
+    nobodyNew:
+      "Ingen nye får en versjon lenger, og alle ser siden slik den var før testen. Ingenting ble endret på den, og det som ble talt, er tatt vare på.",
+    openResults:
+      "Åpne resultatene for å lese dem. Du kan forkaste testen, eller ta i bruk en av de andre versjonene hvis du fortsatt vil bruke den. Kaizena Flow tar ikke i bruk noe av seg selv.",
+    button: "Se resultatene",
+    partOn: "{part} på {page}",
+  },
+  alerts: {
+    more: "…og {n} til.",
+    newOrder: {
+      orderTotal: "Ordresum",
+      chargedNow: "Belastet nå",
+      dueAtVenue: "Betales på stedet",
+      totalCharged: "Belastet totalt",
+      renewal: "Fornyelse av abonnement",
+      business: "Bedriftskunde",
+      host: "Vertens oppføring: {host}",
+      gift: "Gave",
+      held: "Holdt tilbake av en regel",
+      subject: "Ny bestilling {number}: {total}",
+      preview: "{store} har en ny betalt bestilling, {number}, på {total}.",
+      heading: "Ny bestilling",
+      venueText: "Bestilling {number} på {total} er bekreftet: {charged} belastet nå, {due} betales på stedet.",
+      paidText: "Bestilling {number} er betalt: {total}.",
+      delivery: "Levering: {delivery}",
+      country: "Land: {country}",
+      button: "Åpne bestillingen",
+      pickup: "Henting",
+      local: "Lokal levering",
+      shipping: "Frakt",
+      none: "Ingen levering",
+    },
+    returnRequested: {
+      withdrawal: "Angrerett",
+      return: "Retur",
+      subject: "{what} meldt: {number} (bestilling {order})",
+      preview: "En kunde har bedt om å sende tilbake varer fra bestilling {order}.",
+      headingWithdrawal: "En kunde har brukt angreretten",
+      headingReturn: "En retur er meldt",
+      text: "{what} {number} for bestilling {order}.",
+      button: "Åpne returen",
+    },
+    summary: {
+      periodDay: "i går ({to})",
+      periodWeek: "uken {from} til {to}",
+      paidOrders: "Betalte bestillinger",
+      netSales: "Nettosalg, ekskl. mva.",
+      refunds: "Refusjoner, ekskl. mva.",
+      returnsRequested: "Meldte returer",
+      openReturns: "Åpne returer",
+      toSend: "Bestillinger som skal sendes",
+      lowStock: "Varianter på eller under lagergrensen",
+      supportWaiting: "Samtaler som venter i kundeservice",
+      subjectDay: "{store}: daglig oppsummering for {to}",
+      subjectWeek: "{store}: ukentlig oppsummering for {from} til {to}",
+      noOrdersDay: "Ingen bestillinger i går.",
+      noOrdersWeek: "Ingen bestillinger forrige uke.",
+      ordersPreview: { one: "{n} betalt bestilling, {net} netto.", many: "{n} betalte bestillinger, {net} netto." },
+      headingDay: "Dagen din",
+      headingWeek: "Uken din",
+      noneDay: "Ingen bestillinger i går. Dette gjelder {period}.",
+      noneWeek: "Ingen bestillinger i uken. Dette gjelder {period}.",
+      intro: "Dette gjelder {period}, etter butikkens egne dager.",
+      unconverted: { one: "{n} bestilling eller refusjon i {currencies} er ikke tatt med: ingen valutakurs.", many: "{n} bestillinger eller refusjoner i {currencies} er ikke tatt med: ingen valutakurs." },
+      now: "Nå:",
+      analytics: "Åpne Analyse",
+      orders: "Åpne Bestillinger",
+    },
+    dispute: {
+      subjectOpened: "Betaling bestridt: bestilling {order}, {amount}",
+      subjectDue: "Frist for dokumentasjon i tvisten{due}: bestilling {order}",
+      previewOpened: "Kundens bank har bestridt {amount} av bestilling {order}.",
+      previewDue: "Send Stripe dokumentasjonen for bestilling {order} før fristen.",
+      headingOpened: "En betaling er bestridt",
+      headingDue: "Fristen i en tvist nærmer seg",
+      textOpened: "Kundens bank har bestridt {amount} av bestilling {order}. Stripe holder beløpet til tvisten er avgjort.",
+      textDue: "Stripe trenger dokumentasjonen din i tvisten om bestilling {order}. Uten den tapes tvisten.",
+      amount: "Beløp",
+      reason: "Grunn",
+      status: "Status",
+      evidenceDue: "Frist for dokumentasjon",
+      deadline: "Frist",
+      evidence: "Dokumentasjonen sendes i Stripe-dashbordet ditt.",
+      stripe: "Åpne tvisten i Stripe",
+      order: "Åpne bestillingen",
+    },
+    capture: {
+      subject: "Trekk betalingen for bestilling {order} innen {due}",
+      preview: "Kortet er reservert for {amount}. Etter {due} slippes reservasjonen, og bestillingen kanselleres.",
+      heading: "En reservert betaling er i ferd med å gå ut",
+      text: "Kundens kort er reservert for {amount} på bestilling {order}. Trekk beløpet innen {due}; etter det slipper Stripe reservasjonen, og bestillingen kanselleres og lageret frigis.",
+      button: "Åpne bestillingen",
+    },
+    termsOverdue: {
+      subject: "Bestilling {order} er forfalt: {amount} forfalt {due}",
+      preview: "Fakturaen for bestilling {order} ble ikke betalt innen forfall.",
+      heading: "En betaling på kreditt er forfalt",
+      text: "{amount} for bestilling {order} forfalt {due} og er ikke registrert som betalt. Kunden har fått et varsel. Når pengene kommer utenom Kaizena Flow, registrerer du betalingen på bestillingen.",
+      button: "Åpne bestillingen",
+    },
+    lowStock: {
+      line: "{stock} igjen, grense {level}",
+      subjectOne: "Lite på lager: {product}",
+      subjectMany: "Lite på lager: {n} produkter på eller under grensen",
+      preview: { one: "{n} variant har nådd lagergrensen du satte.", many: "{n} varianter har nådd lagergrensen du satte." },
+      heading: "Lageret begynner å bli lite",
+      textOne: "Denne varianten har nådd lagergrensen du satte. Du får høre om hver variant én gang, når den passerer grensen.",
+      textMany: "Disse variantene har nådd lagergrensen du satte. Du får høre om hver variant én gang, når den passerer grensen.",
+      button: "Åpne Lager",
+    },
+    testPrefix: "[Test] {subject}",
+  },
+  supportWaiting: {
+    subject: "Noen venter i kundeservicen til {where}",
+    preview: "En samtale har ventet {minutes} min på en person.",
+    heading: "Noen venter på en person",
+    text: "En samtale i kundeservicen til {where} har ventet {minutes} min, og ingen som kan svare, er pålogget. Åpne innboksen for å ta den.",
+    button: "Åpne innboksen",
+    why: "Du får dette fordi du kan svare i denne kundeservicen og ikke var pålogget. Du får høre om hver samtale én gang hver gang den venter.",
+  },
+  bookingStaff: {
+    subject: "Ny booking: {title}, {when}",
+    heading: "Ny booking",
+    customer: "Kunde: {customer}\nBestilling {order}",
+    button: "Se bestillingen",
+  },
+  planReminder: {
+    line: "Kaizena Flow {plan}, betalt {interval}",
+    yearly: "årlig",
+    monthly: "månedlig",
+  },
+  closure: {
+    byOwner: "ble stengt fra innstillingene",
+    byPlatform: "ble stengt av Kaizena Flow",
+    reason: " Oppgitt grunn: {reason}",
+    button: "Åpne butikken i administrasjonen",
+    closedSubject: "{name} er stengt",
+    closedPreview:
+      "{name} tar ikke lenger imot bestillinger. Bestillinger, fakturaer og kundedata er fortsatt tilgjengelige for deg.",
+    closedText:
+      "{name} {who}. Butikken tar ikke lenger imot bestillinger, Kaizena Flow-abonnementet slutter når perioden du har betalt for, er over, og butikkens egne domener frigis.{reason}",
+    nothingDeleted:
+      "Ingenting ble slettet. Du kan fortsatt åpne butikkens bestillinger, fakturaer, returer og kundedata i administrasjonen og laste dem ned: fakturaer og bestillinger oppbevares i bokføringsperioden i selgerens land og anonymiseres deretter.",
+    reopenUntil:
+      "Du kan åpne butikken igjen selv til og med {day} ({days} dager). Etter det må du spørre Kaizena Flow.",
+    askToReopen: "Spør Kaizena Flow for å åpne butikken igjen.",
+    suspendedSubject: "{name} er midlertidig stengt",
+    suspendedPreview:
+      "{name} er satt på pause av Kaizena Flow og tar ikke imot bestillinger før den åpnes igjen.",
+    suspendedText:
+      "Kaizena Flow har midlertidig stengt {name}. Butikken tar ikke imot bestillinger og kan ikke endres før Kaizena Flow åpner den igjen.{reason}",
+    suspendedStill:
+      "Du kan fortsatt se bestillinger, fakturaer, returer og kundedata i administrasjonen og håndtere det som allerede er solgt. Svar på denne e-posten eller skriv til Kaizena Flow for å få butikken åpnet igjen.",
+    reopenedSubject: "{name} er åpen igjen",
+    reopenedPreview: "{name} er åpnet igjen og tar imot bestillinger.",
+    reopenedByOwner: " fra innstillingene",
+    reopenedByPlatform: " av Kaizena Flow",
+    reopenedText:
+      "{name} ble åpnet igjen{by}. Butikken tar imot bestillinger igjen. Hvis du hadde stengt den, legger du til butikkens egne domener igjen under Innstillinger, Domener, og sjekker at Kaizena Flow-abonnementet fortsatt er aktivt.",
+  },
+};

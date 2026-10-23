@@ -18,6 +18,8 @@ import {
   parseDuration,
   type DurationResult,
 } from "./work-time";
+import { fillWords } from "./admin-fill";
+import { workEn, type WorkMessages } from "./admin-messages/work.en";
 
 /**
  * What the Work screens do with what is typed and what is shown (docs/work.md
@@ -365,10 +367,12 @@ export const ASSIGNMENT_STATUS_LABELS = { active: "Active", paused: "Paused", do
 export const BILLING_TYPE_LABELS = { hourly: "Hourly", fixed_fee: "Fixed fee" } as const;
 
 /** What is left of an estimate, in words: "1h 30m left", "15m over", "Used up". */
-export function remainingLabel(remaining: number | null): string {
+export function remainingLabel(remaining: number | null, words: WorkMessages["labels"]["remaining"] = workEn.labels.remaining): string {
   if (remaining === null) return "";
-  if (remaining === 0) return "Used up";
-  return remaining > 0 ? `${formatDuration(remaining)} left` : `${formatDuration(-remaining)} over`;
+  if (remaining === 0) return words.usedUp;
+  return remaining > 0
+    ? fillWords(words.left, { time: formatDuration(remaining) })
+    : fillWords(words.over, { time: formatDuration(-remaining) });
 }
 
 /**
@@ -399,6 +403,7 @@ export function progressView(
   loggedMinutes: number,
   estimatedMinutes: number | null,
   thresholdMinutes: number | null,
+  words: WorkMessages["labels"]["remaining"] = workEn.labels.remaining,
 ): ProgressView {
   const remaining = remainingMinutes(estimatedMinutes, loggedMinutes);
   const stage = stageOf(remaining, thresholdMinutes);
@@ -406,7 +411,7 @@ export function progressView(
     return { stage: "ok", fill: 0, percent: null, remaining: null, label: "" };
   }
   const percent = Math.floor((loggedMinutes * 100 * 2 + estimatedMinutes) / (2 * estimatedMinutes));
-  return { stage, fill: Math.max(0, Math.min(100, percent)), percent, remaining, label: remainingLabel(remaining) };
+  return { stage, fill: Math.max(0, Math.min(100, percent)), percent, remaining, label: remainingLabel(remaining, words) };
 }
 
 /** The bar's colour and the label's, per stage. Colours carry no meaning alone: the label always says it too. */
@@ -522,12 +527,15 @@ export function parseClientListParams(params: Params): { show: ClientShow; query
 }
 
 /** "3 active assignments · 12h 30m unbilled", the line under a client in the list. */
-export function clientFigures(client: { activeAssignments: number; unbilledMinutes: number }): string {
+export function clientFigures(
+  client: { activeAssignments: number; unbilledMinutes: number },
+  words: WorkMessages["labels"]["clientFigures"] = workEn.labels.clientFigures,
+): string {
   const assignments =
     client.activeAssignments === 0
-      ? "No active assignments"
-      : `${client.activeAssignments} active ${client.activeAssignments === 1 ? "assignment" : "assignments"}`;
+      ? words.noActive
+      : fillWords(client.activeAssignments === 1 ? words.activeOne : words.activeMany, { count: client.activeAssignments });
   const unbilled =
-    client.unbilledMinutes > 0 ? `${formatDuration(client.unbilledMinutes)} unbilled` : "nothing unbilled";
+    client.unbilledMinutes > 0 ? fillWords(words.unbilled, { time: formatDuration(client.unbilledMinutes) }) : words.nothingUnbilled;
   return `${assignments} · ${unbilled}`;
 }

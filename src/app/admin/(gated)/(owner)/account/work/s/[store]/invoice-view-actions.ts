@@ -15,6 +15,8 @@ import {
   type InvoiceResult,
   type UnbilledGroup,
 } from "@/server/work-invoices";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * What the invoice screens ask beyond `invoice-actions.ts` (docs/work.md 7.2 WP6): the unbilled time an invoice
@@ -38,9 +40,15 @@ async function workReader(storeSlug: string): Promise<Membership | null> {
 
 /** The clients and assignments the new-invoice dialog offers: read when it is opened from a page that did not load them. */
 export async function newInvoiceChoicesAction(storeSlug: string): Promise<WorkResult<{ choices: NewInvoiceChoices }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   return { ok: true, choices: await newInvoiceChoices(member.store.id) };
+})(),
+    lang,
+  );
 }
 
 /** Billable time no invoice has taken, by assignment and task, for an invoice's client (and assignment). */
@@ -48,9 +56,15 @@ export async function unbilledTimeAction(
   storeSlug: string,
   filter: { clientId?: string; assignmentId?: string; from?: string; to?: string },
 ): Promise<WorkResult<{ groups: UnbilledGroup[] }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   return { ok: true, groups: await unbilledTime(member.store.id, filter) };
+})(),
+    lang,
+  );
 }
 
 /** The draft an assignment already has, so a second one is never started (there is one at a time). */
@@ -58,10 +72,16 @@ export async function findAssignmentDraftAction(
   storeSlug: string,
   assignmentId: string,
 ): Promise<WorkResult<{ invoiceId: string | null }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   const list = await listWorkInvoices(member.store.id, { assignmentId, status: "draft", pageSize: 1 });
   return { ok: true, invoiceId: list.rows[0]?.id ?? null };
+})(),
+    lang,
+  );
 }
 
 export type BilledUnbilled = {
@@ -83,6 +103,9 @@ export async function billUnbilledAction(
   storeSlug: string,
   target: { clientId?: string | null; assignmentId?: string | null },
 ): Promise<InvoiceResult<BilledUnbilled>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workMember(storeSlug);
   if (!member) return problem(OFF);
   const storeId = member.store.id;
@@ -129,4 +152,7 @@ export async function billUnbilledAction(
     attachedEntries: generated.attachedEntries,
     notes: generated.notes,
   };
+})(),
+    lang,
+  );
 }

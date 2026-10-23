@@ -7,6 +7,7 @@ import { parseReportParams } from "@/lib/work-reports";
 import { listClients } from "@/server/work";
 import { getPeriodReport } from "@/server/work-reports";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -17,8 +18,10 @@ export const metadata: Metadata = { title: "Reports" };
  * so a view can be linked to, printed (`reports/print`) and downloaded (`reports/csv`).
  */
 export default async function WorkReportsPage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/reports">) {
+  await workWords();
   const { store } = await requirePermission((await params).store, "settings:read");
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Reports" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.reports} words={off} />;
   const today = todayIn(store.timeZone);
   const settings = parseReportParams(await searchParams, today);
   const [clients, report] = await Promise.all([

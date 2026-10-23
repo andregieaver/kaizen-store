@@ -13,6 +13,8 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { CurrencyNote, StoreTag } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 const table = "w-full text-sm";
 const th = "px-4 py-2 text-left text-eyebrow text-muted uppercase";
@@ -23,6 +25,7 @@ function Empty({ children }: { children: ReactNode }) {
 }
 
 function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
+  const tw = workText().ownerOverview;
   const money = (minor: number) => formatMoney(minor, f.currency, WORK_LOCALE);
   const overdue = f.receivables.overdue;
   return (
@@ -30,29 +33,29 @@ function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
       {many && <h3 className="text-muted text-body-strong text-ink">{f.currency}</h3>}
       <StatGrid>
         <Stat
-          label="Unbilled time"
+          label={tw.unbilledTime}
           value={money(f.unbilled.amountMinor)}
           sub={
             f.unbilled.minutes > 0
               ? `${formatDuration(f.unbilled.minutes)} at your rates, without VAT`
-              : "Nothing waiting to be invoiced"
+              : tw.nothingWaitingToBe
           }
           href={`${WORK_ROOT}/time?billing=unbilled`}
         />
         <Stat
-          label="Invoice drafts"
+          label={tw.invoiceDrafts}
           value={f.drafts.count}
-          sub={f.drafts.count > 0 ? `${money(f.drafts.minor)} with VAT` : "No drafts"}
+          sub={f.drafts.count > 0 ? `${money(f.drafts.minor)} with VAT` : tw.noDrafts}
           href={`${WORK_ROOT}/invoices?show=drafts`}
         />
         <Stat
-          label="Owed to you"
+          label={tw.owedToYou}
           value={money(f.receivables.outstandingMinor)}
-          sub={overdue.count > 0 ? `${money(overdue.minor)} is overdue` : "Nothing overdue"}
+          sub={overdue.count > 0 ? `${money(overdue.minor)} is overdue` : tw.nothingOverdue}
           href={`${WORK_ROOT}/invoices?show=overdue`}
         />
         <Stat
-          label="Paid this month"
+          label={tw.paidThisMonth}
           value={money(f.paidThisMonth.minor)}
           sub={`${f.paidThisMonth.count} ${f.paidThisMonth.count === 1 ? "invoice" : "invoices"}`}
         />
@@ -68,6 +71,7 @@ function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
  * store's own screen.
  */
 export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; stores: WorkStore[] }) {
+  const tw = workText().ownerOverview;
   const { combined } = view;
   const many = stores.length > 1;
   const name = (clientId: string) => view.clientNames[clientId] ?? "A client";
@@ -78,8 +82,8 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
     <div className="flex max-w-5xl flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
-          title="Work"
-          description={<>{many ? "Your clients, hours and invoices across all your stores, in one place." : "Your clients, the hours you log for them and the invoices you send."}</>}
+          title={tw.work}
+          description={<>{many ? tw.yourClientsHoursAnd : tw.yourClientsTheHours}</>}
         />
         <div className="flex flex-wrap gap-2">
           <NewInStoreButton kind="client" stores={choices} defaultSlug="" primary={false} />
@@ -90,7 +94,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       {view.missing.length > 0 && (
         <section aria-labelledby="ready-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
           <h2 id="ready-heading" className="mb-2 text-title text-ink">
-            Before the first invoice
+            {tw.beforeTheFirstInvoice}
           </h2>
           <ul className="flex flex-col gap-3">
             {view.missing.map(({ store, problems }) => (
@@ -102,7 +106,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                   ))}
                 </ul>
                 <Link href={`${workBase(store.slug)}/settings`} className="underline">
-                  Open {store.name}&apos;s Work settings
+                  {fillWords(tw.openStoreSettings, { store: store.name })}
                 </Link>
               </li>
             ))}
@@ -116,11 +120,10 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
           className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
           <h2 id="start-heading" className="text-title text-ink">
-            Add your first client
+            {tw.addYourFirstClient}
           </h2>
           <p className="text-sm text-muted">
-            Clients are the people and companies you bill. Add one, log the hours you work for them, and turn those
-            hours into an invoice.
+            {tw.clientsAreThePeople}
           </p>
           <div>
             <NewInStoreButton kind="client" stores={choices} defaultSlug="" />
@@ -128,12 +131,12 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
         </section>
       ) : (
         <>
-          <Attention items={combined.attention} empty="Nothing needs your attention." />
+          <Attention items={combined.attention} empty={tw.nothingNeedsYourAttention} />
 
           {combined.currencies.length > 0 ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">
               <h2 id="figures-heading" className="text-title text-ink">
-                Where things stand{many ? ", all stores" : ""}
+                {many ? tw.whereAllStores : tw.whereThingsStand}
               </h2>
               {combined.currencies.map((f) => (
                 <Figures key={f.currency} f={f} many={combined.currencies.length > 1} />
@@ -141,33 +144,33 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
               {(combined.currencies.length > 1 || many) && <CurrencyNote />}
             </section>
           ) : (
-            <Empty>Nothing to count yet. Log time or make an invoice draft and the figures show here.</Empty>
+            <Empty>{tw.nothingToCountYet}</Empty>
           )}
 
           {many && (
-            <Section id="stores-heading" title="By store">
+            <Section id="stores-heading" title={tw.byStore}>
               <div className={card}>
                 <table className={table}>
-                  <caption className="sr-only">Work figures for each store</caption>
+                  <caption className="sr-only">{tw.workFiguresForEach}</caption>
                   <thead>
                     <tr>
                       <th scope="col" className={th}>
-                        Store
+                        {tw.store}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Unbilled
+                        {tw.unbilled}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Drafts
+                        {tw.drafts}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Owed
+                        {tw.owed}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Overdue
+                        {tw.overdue}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Timers
+                        {tw.timers}
                       </th>
                     </tr>
                   </thead>
@@ -226,28 +229,28 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
 
           <Section
             id="unbilled-heading"
-            title="Unbilled time by client"
+            title={tw.unbilledTimeByClient}
             action={
               <Link href={`${WORK_ROOT}/time?billing=unbilled`} className="text-sm underline">
-                Time
+                {tw.time}
               </Link>
             }
           >
             {combined.unbilledByClient.length === 0 ? (
-              <Empty>No unbilled time.</Empty>
+              <Empty>{tw.noUnbilledTime}</Empty>
             ) : (
               <div className={card}>
                 <table className={table}>
                   <thead>
                     <tr>
                       <th scope="col" className={th}>
-                        Client
+                        {tw.client}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Time
+                        {tw.time}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Amount
+                        {tw.amount}
                       </th>
                     </tr>
                   </thead>
@@ -276,31 +279,31 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
 
           <Section
             id="overdue-heading"
-            title="Overdue invoices"
+            title={tw.overdueInvoices}
             action={
               <Link href={`${WORK_ROOT}/invoices?show=overdue`} className="text-sm underline">
-                All overdue
+                {tw.allOverdue}
               </Link>
             }
           >
             {combined.overdueInvoices.length === 0 ? (
-              <Empty>No invoice is overdue.</Empty>
+              <Empty>{tw.noInvoiceIsOverdue}</Empty>
             ) : (
               <div className={card}>
                 <table className={table}>
                   <thead>
                     <tr>
                       <th scope="col" className={th}>
-                        Invoice
+                        {tw.invoice}
                       </th>
                       <th scope="col" className={th}>
-                        Client
+                        {tw.client}
                       </th>
                       <th scope="col" className={th}>
-                        Was due
+                        {tw.wasDue}
                       </th>
                       <th scope="col" className={`${th} text-right`}>
-                        Still owed
+                        {tw.stillOwed}
                       </th>
                     </tr>
                   </thead>
@@ -333,9 +336,9 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
             )}
           </Section>
 
-          <Section id="timers-heading" title="Running timers">
+          <Section id="timers-heading" title={tw.runningTimers}>
             {combined.runningTimers.length === 0 ? (
-              <Empty>No timer is running.</Empty>
+              <Empty>{tw.noTimerIsRunning}</Empty>
             ) : (
               <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
                 {combined.runningTimers.map((timer) => {
@@ -346,7 +349,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                       className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
                     >
                       <span>
-                        {view.people[timer.accountId] ?? "Someone"} is working on{" "}
+                        {fillWords(tw.isWorkingOn, { name: view.people[timer.accountId] ?? tw.someone })}{" "}
                         <Link
                           href={`${workBase(timer.storeSlug)}/assignments/${timer.assignmentId}`}
                           className="font-medium underline"
@@ -356,7 +359,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                         {assignment && <span className="text-muted"> for {assignment.clientName}</span>}
                         {many && <span className="text-muted"> ({timer.storeName})</span>}
                       </span>
-                      <span className="tabular-nums text-muted">{formatDuration(timer.elapsedMinutes)} so far</span>
+                      <span className="tabular-nums text-muted">{fillWords(tw.soFar, { time: formatDuration(timer.elapsedMinutes) })}</span>
                     </li>
                   );
                 })}

@@ -3,7 +3,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { renderEmail } from "@/lib/email-layout";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { INVENTORY_RETENTION_MONTHS, LOW_STOCK_EMAIL_LINES } from "@/lib/inventory";
 import { variantLabel } from "@/lib/product-input";
@@ -87,25 +90,34 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
       const targets = await alertRecipients(storeId, "low_stock");
       if (!store || targets.length === 0) continue;
       const { shown, more } = lowStockLines(crossings, LOW_STOCK_EMAIL_LINES);
-      const text = emailText("en");
       const key = lowStockKey(storeId, crossings);
-      const lines = shown.map((c) => ({ label: `${c.label} (${c.sku})`, value: `${c.stock} left, level ${c.threshold}`, muted: false }));
-      const email = renderEmail({
-        subject: crossings.length === 1 ? `Low stock: ${shown[0].label}` : `Low stock: ${crossings.length} products at or below their level`,
-        preview: `${crossings.length} ${crossings.length === 1 ? "variant has" : "variants have"} reached the low-stock level you set.`,
-        lang: "en",
-        footer: emailFooter(store, text),
-        blocks: [
-          { type: "heading", text: "Stock is running low" },
-          { type: "paragraph", text: `${crossings.length === 1 ? "This variant has" : "These variants have"} reached the low-stock level you set. You hear about each one once, when it crosses its level.` },
-          { type: "lines", rows: lines },
-          ...(more > 0 ? [{ type: "paragraph" as const, text: `…and ${more} more.` }] : []),
-          { type: "button", text: "Open the Inventory page", url: `${siteUrl()}/admin/${store.slug}/inventory?status=low` },
-        ],
-      });
+      // One email per language, each recipient's own (D312 A10); English exactly as before.
+      const made = new Map<AdminLang, RenderedEmail>();
+      const emailIn = (lang: AdminLang): RenderedEmail => {
+        const hit = made.get(lang);
+        if (hit) return hit;
+        const w = adminText(lang, "staffEmails").alerts.lowStock;
+        const one = crossings.length === 1;
+        const lines = shown.map((c) => ({ label: `${c.label} (${c.sku})`, value: fillWords(w.line, { stock: c.stock, level: c.threshold }), muted: false }));
+        const email = renderEmail({
+          subject: one ? fillWords(w.subjectOne, { product: shown[0].label }) : fillWords(w.subjectMany, { n: crossings.length }),
+          preview: countWords(crossings.length, w.preview),
+          lang: ADMIN_LANG_FACTS[lang].tag,
+          footer: emailFooter(store, emailText(lang)),
+          blocks: [
+            { type: "heading", text: w.heading },
+            { type: "paragraph", text: one ? w.textOne : w.textMany },
+            { type: "lines", rows: lines },
+            ...(more > 0 ? [{ type: "paragraph" as const, text: fillWords(adminText(lang, "staffEmails").alerts.more, { n: more }) }] : []),
+            { type: "button", text: w.button, url: `${siteUrl()}/admin/${store.slug}/inventory?status=low` },
+          ],
+        });
+        made.set(lang, email);
+        return email;
+      };
       const outcomes: SendOutcome[] = [];
       for (const target of targets) {
-        outcomes.push(await send({ storeId, kind: "stock.low", to: target.to, email, fromName: store.name, idempotencyKey: ALERT_KEYS.lowStock(key, target.recipient) }));
+        outcomes.push(await send({ storeId, kind: "stock.low", to: target.to, email: emailIn(target.lang), fromName: store.name, idempotencyKey: ALERT_KEYS.lowStock(key, target.recipient) }));
       }
       if (!outcomes.some((o) => TOLD.includes(o))) {
         out.failed += 1;

@@ -8,6 +8,8 @@ import { requireAccount } from "@/server/auth";
 import { getOwnerSettings, listOwnerInvoices, workStoresFor } from "@/server/work-owner";
 
 import { switchActionsFor } from "../owner-page";
+import { workText } from "@/lib/work-text";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -19,11 +21,13 @@ const PAGE_SIZE = 25;
  * the address, so the overview's "overdue" and "drafts" lead here.
  */
 export default async function OwnerInvoicesPage({ searchParams }: PageProps<"/admin/account/work/invoices">) {
+  await workWords();
+  const tw = workText().pageInvoicesPage;
   const account = await requireAccount();
   const { using, off } = await workStoresFor(account);
   if (using.length === 0) {
     const rows = await getOwnerSettings(off);
-    return <OwnerWorkStart title="Invoices" rows={rows} actions={switchActionsFor(rows)} />;
+    return <OwnerWorkStart title={tw.invoices} rows={rows} actions={switchActionsFor(rows)} />;
   }
   const query = await searchParams;
   const params = parseInvoiceListParams(query);

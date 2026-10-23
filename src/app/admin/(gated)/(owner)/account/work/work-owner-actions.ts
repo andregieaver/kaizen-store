@@ -6,6 +6,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { requireAccount } from "@/server/auth";
 import { storeTag } from "@/server/stores";
 import { switchWorkModule } from "@/server/work-owner";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * Switches Work on or off in one store from the owner's Work settings (D123, docs/work.md 5.1). Only an owner of
@@ -15,6 +17,9 @@ import { switchWorkModule } from "@/server/work-owner";
  * slug as the first argument, like every store action.
  */
 export async function switchWorkAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const account = await requireAccount();
   const enabled = formData.get("work") === "on";
   const result = await switchWorkModule(account, storeSlug, enabled);
@@ -25,4 +30,7 @@ export async function switchWorkAction(storeSlug: string, _state: FormState, for
     status: "ok",
     messages: [enabled ? "Work is on for this store." : "Work is off for this store. Everything you saved is kept."],
   };
+})(),
+    lang,
+  );
 }

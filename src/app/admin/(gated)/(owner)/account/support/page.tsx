@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminTexts } from "@/lib/admin-text";
 import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
 import { requireAccount } from "@/server/auth";
@@ -8,7 +11,12 @@ import { presence } from "@/server/support";
 import { ownerDesks } from "@/server/support-desk";
 import { inboxFeed } from "@/server/support-inbox";
 
-import { ownerSupportActAction, ownerSupportHeartbeatAction, ownerSupportPartnerAction, ownerSupportPresenceAction } from "./actions";
+import {
+  ownerSupportActAction,
+  ownerSupportHeartbeatAction,
+  ownerSupportPartnerAction,
+  ownerSupportPresenceAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Support" };
 
@@ -23,13 +31,17 @@ export default async function OwnerSupportPage() {
   const writable = desks.filter((d) => d.canWrite);
   const [initial, mine] = await Promise.all([
     inboxFeed(desks, { tab: "waiting" }),
-    writable.length > 0 ? presence(writable[0].desk, account.id) : Promise.resolve(null),
+    writable.length > 0
+      ? presence(writable[0].desk, account.id)
+      : Promise.resolve(null),
   ]);
   const context: SupportDeskContext = {
     level: "owner",
     feedUrl: "/admin/account/support/feed",
     conversationUrl: "/admin/{store}/support/c",
-    stores: desks.flatMap((d) => (d.store ? [{ slug: d.store.slug, name: d.store.name }] : [])),
+    stores: desks.flatMap((d) =>
+      d.store ? [{ slug: d.store.slug, name: d.store.name }] : [],
+    ),
     canWrite: writable.length > 0,
     presence: mine ? mine.status : null,
     partnerOn: mine ? mine.partner : null,
@@ -37,8 +49,17 @@ export default async function OwnerSupportPage() {
       heartbeat: ownerSupportHeartbeatAction,
       presence: writable.length > 0 ? ownerSupportPresenceAction : null,
       partner: writable.length > 0 ? ownerSupportPartnerAction : null,
-      act: writable.length > 0 ? { byStore: true, run: ownerSupportActAction } : null,
+      act:
+        writable.length > 0
+          ? { byStore: true, run: ownerSupportActAction }
+          : null,
     },
   };
-  return <Inbox context={context} initial={initial} initialTab="waiting" />;
+  return (
+    <AdminTextScope
+      texts={adminTexts(adminLangOf(account.adminLocale), ["support"])}
+    >
+      <Inbox context={context} initial={initial} initialTab="waiting" />
+    </AdminTextScope>
+  );
 }

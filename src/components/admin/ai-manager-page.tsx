@@ -4,6 +4,11 @@ import { deleteAllMemoriesAction, deleteMemoryAction, setLearningAction, updateM
 import { learningOn, listMemories } from "@/server/assistant-memory";
 import type { Conversation, ConversationSummary } from "@/server/owner-assistant";
 import { PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import type { AdminLang } from "@/lib/admin-lang";
+import { adminText, adminTexts } from "@/lib/admin-text";
+
+import { AdminTextScope } from "./admin-text";
 
 import { AiManagerChat, type Abilities, type AiManagerActions } from "./ai-manager";
 import { AiMemory } from "./ai-memory";
@@ -23,6 +28,7 @@ export async function AiManagerPage({
   conversations,
   conversation,
   actions,
+  lang = "en",
 }: {
   area: "store" | "platform";
   base: string;
@@ -34,22 +40,26 @@ export async function AiManagerPage({
   conversations: ConversationSummary[];
   conversation: Conversation | null;
   actions: AiManagerActions;
+  /** The account's admin language (D312 A10); English until the route passes it. */
+  lang?: AdminLang;
 }) {
+  const w = adminText(lang, "assistant");
   const memory = tab === "memory";
   const [memories, learning] = memory ? await Promise.all([listMemories(accountId), learningOn(accountId)]) : [[], true];
   const tabClass = (on: boolean) => `rounded-md px-3 py-1.5 text-sm ${on ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`;
   return (
+    <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="AI manager"
-        description={<>Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizena Flow"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).</>}
+        title={w.name}
+        description={fillWords(w.page.description, { site: area === "store" ? siteName : w.page.kaizen })}
       />
-      <nav aria-label="AI manager" className="flex gap-1">
+      <nav aria-label={w.name} className="flex gap-1">
         <Link href={base} className={tabClass(!memory)} aria-current={!memory ? "page" : undefined}>
-          Conversations
+          {w.page.conversations}
         </Link>
         <Link href={`${base}?tab=memory`} className={tabClass(memory)} aria-current={memory ? "page" : undefined}>
-          Memory
+          {w.page.memory}
         </Link>
       </nav>
       {memory ? (
@@ -73,5 +83,6 @@ export async function AiManagerPage({
         />
       )}
     </div>
+    </AdminTextScope>
   );
 }

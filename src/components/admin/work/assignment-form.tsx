@@ -18,6 +18,8 @@ import {
 import type { WorkAssignment } from "@/server/work";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type AssignmentFormProps = {
   storeSlug: string;
@@ -60,6 +62,8 @@ export function AssignmentForm({
   onDone,
   onCancel,
 }: AssignmentFormProps) {
+  const tw = useAdminText("work").assignmentForm;
+  const tl = useAdminText("work").labels;
   const editing = assignment !== undefined;
   const [billingType, setBillingType] = useState<string>(assignment?.billingType ?? "hourly");
   const [problems, setProblems] = useState<FormProblems>(NO_PROBLEMS);
@@ -112,7 +116,7 @@ export function AssignmentForm({
       } catch {
         setProblems({
           fields: {},
-          general: ["The assignment could not be saved. Check your connection and try again."],
+          general: [tw.theAssignmentCouldNot],
         });
       }
     });
@@ -121,13 +125,13 @@ export function AssignmentForm({
   const err = (name: string) => problems.fields[name];
   const summary = [
     ...problems.general,
-    ...(Object.keys(problems.fields).length > 0 ? ["Some fields need another look. They are marked below."] : []),
+    ...(Object.keys(problems.fields).length > 0 ? [tw.someFieldsNeedAnother] : []),
   ];
   const clientRate = clientRateMinor === null ? null : formatMoney(clientRateMinor, currency, locale);
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label="Name" error={err("name")}>
+      <Field label={tw.name} error={err("name")}>
         {(props) => (
           <input
             {...props}
@@ -142,9 +146,9 @@ export function AssignmentForm({
       </Field>
       {moveTo && moveTo.length > 0 && (
         <Field
-          label="Client"
+          label={tw.client}
           error={err("clientId")}
-          hint="An assignment with no time and no invoices can move to another client."
+          hint={tw.anAssignmentWithNo}
         >
           {(props) => (
             <select {...props} name="clientId" defaultValue={clientId} className={control}>
@@ -158,7 +162,7 @@ export function AssignmentForm({
         </Field>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Billing" error={err("billingType")}>
+        <Field label={tw.billing} error={err("billingType")}>
           {(props) => (
             <select
               {...props}
@@ -169,18 +173,18 @@ export function AssignmentForm({
             >
               {(Object.keys(BILLING_TYPE_LABELS) as (keyof typeof BILLING_TYPE_LABELS)[]).map((value) => (
                 <option key={value} value={value}>
-                  {BILLING_TYPE_LABELS[value]}
+                  {tl.billingType[value]}
                 </option>
               ))}
             </select>
           )}
         </Field>
-        <Field label="Status" error={err("status")}>
+        <Field label={tw.status} error={err("status")}>
           {(props) => (
             <select {...props} name="status" defaultValue={assignment?.status ?? "active"} className={control}>
               {(Object.keys(ASSIGNMENT_STATUS_LABELS) as (keyof typeof ASSIGNMENT_STATUS_LABELS)[]).map((value) => (
                 <option key={value} value={value}>
-                  {ASSIGNMENT_STATUS_LABELS[value]}
+                  {tl.assignmentStatus[value]}
                 </option>
               ))}
             </select>
@@ -189,9 +193,9 @@ export function AssignmentForm({
       </div>
       {billingType === "fixed_fee" ? (
         <Field
-          label={`Fixed fee (${currency})`}
+          label={fillWords(tw.fixedFeeIn, { currency })}
           error={err("fixedAmount")}
-          hint="Without VAT. Billed once, however many hours it takes."
+          hint={tw.withoutVatBilledOnce}
         >
           {(props) => (
             <input
@@ -206,12 +210,12 @@ export function AssignmentForm({
         </Field>
       ) : (
         <Field
-          label={`Hourly rate (${currency})`}
+          label={fillWords(tw.hourlyRateIn, { currency })}
           error={err("hourlyRate")}
           hint={
             clientRate
-              ? `Without VAT. Empty bills at the client's rate, ${clientRate}.`
-              : "Without VAT. The client has no rate, so set one here or on the client."
+              ? fillWords(tw.emptyBillsClientRate, { rate: clientRate })
+              : tw.withoutVatTheClient
           }
         >
           {(props) => (
@@ -226,7 +230,7 @@ export function AssignmentForm({
           )}
         </Field>
       )}
-      <Field label="Estimate" error={err("estimate")} hint="Hours, or 1h30, 1:30 or 90m. Empty for none.">
+      <Field label={tw.estimate} error={err("estimate")} hint={tw.hoursOr1h301}>
         {(props) => (
           <input
             {...props}
@@ -238,7 +242,7 @@ export function AssignmentForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Start" error={err("startDate")}>
+        <Field label={tw.start} error={err("startDate")}>
           {(props) => (
             <input
               {...props}
@@ -249,7 +253,7 @@ export function AssignmentForm({
             />
           )}
         </Field>
-        <Field label="End" error={err("endDate")}>
+        <Field label={tw.end} error={err("endDate")}>
           {(props) => (
             <input {...props} name="endDate" type="date" defaultValue={assignment?.endDate ?? ""} className={control} />
           )}
@@ -257,14 +261,14 @@ export function AssignmentForm({
       </div>
 
       <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
-        <legend className="px-1 text-sm font-medium">Estimate warnings</legend>
+        <legend className="px-1 text-sm font-medium">{tw.estimateWarnings}</legend>
         <p className={hintText}>
-          While a timer runs on something with an estimate, you are told as it runs out, if this page is open.
+          {tw.whileATimerRuns}
         </p>
         <Field
-          label="Warn this many minutes before"
+          label={tw.warnThisManyMinutes}
           error={err("alertMinutes")}
-          hint="Empty for no warnings (1 to 480)."
+          hint={tw.emptyForNoWarnings}
         >
           {(props) => (
             <input
@@ -279,22 +283,22 @@ export function AssignmentForm({
         </Field>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="alertPopup" defaultChecked={popup} className="size-4" />
-          Show a message
+          {tw.showAMessage}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="alertSound" defaultChecked={sound} className="size-4" />
-          Play a chime
+          {tw.playAChime}
         </label>
       </fieldset>
 
       <Problems messages={summary} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Saving …" : editing ? "Save assignment" : "Add assignment"}
+          {pending ? tw.saving : editing ? tw.saveAssignment : tw.addAssignment}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className={secondaryButton}>
-            Cancel
+            {tw.cancel}
           </button>
         )}
       </div>

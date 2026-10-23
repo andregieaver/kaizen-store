@@ -1,5 +1,7 @@
-import { OUTCOME_WORDS, agoWords, handlerWords } from "@/lib/support-inbox-text";
+import { agoWords, handlerWords } from "@/lib/support-inbox-text";
 import type { InboxRow } from "@/server/support";
+
+import { useAdminText } from "../admin-text";
 
 import { ToneDot } from "./tone";
 
@@ -20,9 +22,12 @@ export function ConversationList({
   onOpen?: (row: InboxRow) => void;
   empty: string;
 }) {
-  if (rows.length === 0) return <p className="p-4 text-sm text-muted">{empty}</p>;
+  const t = useAdminText("support");
+  const w = t.list;
+  if (rows.length === 0)
+    return <p className="p-4 text-sm text-muted">{empty}</p>;
   return (
-    <ul className="divide-y divide-line" aria-label="Conversations">
+    <ul className="divide-y divide-line" aria-label={t.inbox.conversations}>
       {rows.map((row) => {
         const current = row.id === selected;
         return (
@@ -36,22 +41,51 @@ export function ConversationList({
             >
               <span className="flex items-center gap-2">
                 {row.unread && (
-                  <span className="size-2 shrink-0 rounded-full bg-brand" aria-label="Unread" role="img" />
+                  <span
+                    className="size-2 shrink-0 rounded-full bg-brand"
+                    aria-label={w.unread}
+                    role="img"
+                  />
                 )}
-                <span className={`min-w-0 flex-1 truncate ${row.unread ? "font-medium" : "font-medium"}`}>{row.who}</span>
-                <span className="shrink-0 text-xs text-muted">{agoWords(row.lastMessageAt, now)}</span>
-              </span>
-              {row.store && <span className="truncate text-xs text-muted">{row.store.name}</span>}
-              <span className="line-clamp-1 text-sm text-muted">{row.summaryTitle ?? (row.preview || "No messages yet")}</span>
-              <span className="flex items-center gap-2 text-xs">
-                <span className={`rounded-full border border-line px-2 py-0.5 ${row.handler === "queue" && row.status === "open" ? "font-medium" : "text-muted"}`}>
-                  {handlerWords(row, now)}
+                <span
+                  className={`min-w-0 flex-1 truncate ${row.unread ? "font-medium" : "font-medium"}`}
+                >
+                  {row.who}
                 </span>
-                {row.signedIn && <span className="text-muted">Signed in</span>}
-                {row.source === "admin" && <span className="text-muted">From the admin</span>}
+                <span className="shrink-0 text-xs text-muted">
+                  {agoWords(row.lastMessageAt, now, t.lib)}
+                </span>
+              </span>
+              {row.store && (
+                <span className="truncate text-xs text-muted">
+                  {row.store.name}
+                </span>
+              )}
+              <span className="line-clamp-1 text-sm text-muted">
+                {row.summaryTitle ?? (row.preview || w.noMessages)}
+              </span>
+              <span className="flex items-center gap-2 text-xs">
+                <span
+                  className={`rounded-full border border-line px-2 py-0.5 ${row.handler === "queue" && row.status === "open" ? "font-medium" : "text-muted"}`}
+                >
+                  {handlerWords(row, now, t.lib)}
+                </span>
+                {row.signedIn && (
+                  <span className="text-muted">{w.signedIn}</span>
+                )}
+                {row.source === "admin" && (
+                  <span className="text-muted">{w.fromAdmin}</span>
+                )}
                 <ToneDot score={row.tone} compact />
-                {row.toneAlert && <span className="font-medium">Tone alert</span>}
-                {row.outcome && <span className="text-muted">{OUTCOME_WORDS[row.outcome] ?? row.outcome}</span>}
+                {row.toneAlert && (
+                  <span className="font-medium">{w.toneAlert}</span>
+                )}
+                {row.outcome && (
+                  <span className="text-muted">
+                    {(t.lib.outcomes as Record<string, string>)[row.outcome] ??
+                      row.outcome}
+                  </span>
+                )}
               </span>
             </button>
           </li>

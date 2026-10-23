@@ -12,6 +12,8 @@ import { getWorkSeries, getWorkSettings, sellerDetails } from "@/server/work-set
 import { saveWorkSeriesAction, saveWorkSettingsAction } from "../settings-actions";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Work settings" };
 
@@ -23,9 +25,12 @@ const card = "rounded-lg border border-line bg-card p-5";
  * Owners change them; admins see them.
  */
 export default async function WorkSettingsPage({ params }: PageProps<"/admin/account/work/s/[store]/settings">) {
+  await workWords();
+  const tw = workText().pageStoreSettingsPage;
   const viewer = await requirePermission((await params).store, "settings:read");
   const { store } = viewer;
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Work settings" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.worksettings} words={off} />;
   const owner = memberCan(viewer, "owner");
   const [settings, series, seller] = await Promise.all([
     getWorkSettings(store.id),
@@ -39,20 +44,19 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Work settings"
-        description={<>What your invoices say about you, how clients pay, and how invoices are numbered.{" "}<Link href={workBase(store.slug)} className="underline">Back to Work</Link></>}
+        title={tw.workSettings}
+        description={<>{tw.whatInvoicesSay}{" "}<Link href={workBase(store.slug)} className="underline">{tw.backToWork}</Link></>}
       />
 
       <section aria-labelledby="ready-heading" className={card}>
         <h2 id="ready-heading" className="mb-1 text-title text-ink">
           {readiness.problems.length === 0
-            ? "You can issue invoices"
-            : "What is still missing before you can issue an invoice"}
+            ? tw.youCanIssueInvoices
+            : tw.whatIsStillMissing}
         </h2>
         {readiness.problems.length === 0 ? (
           <p className="text-sm text-muted">
-            Your details are complete. Each invoice is checked again when you issue it: the client&apos;s address and
-            country, and the VAT that fits them.
+            {tw.yourDetailsAreComplete}
           </p>
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
@@ -65,7 +69,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
                 </span>
                 <span>{problem.message}</span>
                 <Link href={where(problem.where)} className="underline">
-                  {problem.where === "company" ? "Open the Company page" : "Fix it below"}
+                  {problem.where === "company" ? tw.openTheCompanyPage : tw.fixItBelow}
                 </Link>
               </li>
             ))}
@@ -75,24 +79,24 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
 
       <section aria-labelledby="seller-heading" className={card}>
         <h2 id="seller-heading" className="mb-1 text-title text-ink">
-          Who is selling
+          {tw.whoIsSelling}
         </h2>
         <p className="mb-3 text-sm text-muted">
-          Your business as it is printed on invoices. It is the same as on the Company page, where it is changed.
+          {tw.yourBusinessAsIt}
         </p>
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
-          <dt className="text-muted">Legal name</dt>
-          <dd>{seller.legalName ?? <span className="text-muted">Not set</span>}</dd>
-          <dt className="text-muted">Organisation number</dt>
-          <dd>{seller.organisationNumber ?? <span className="text-muted">Not set</span>}</dd>
-          <dt className="text-muted">Address</dt>
-          <dd>{seller.postalAddress ?? <span className="text-muted">Not set</span>}</dd>
-          <dt className="text-muted">Country</dt>
-          <dd>{seller.country ?? <span className="text-muted">Not set</span>}</dd>
+          <dt className="text-muted">{tw.legalName}</dt>
+          <dd>{seller.legalName ?? <span className="text-muted">{tw.notSet}</span>}</dd>
+          <dt className="text-muted">{tw.organisationNumber}</dt>
+          <dd>{seller.organisationNumber ?? <span className="text-muted">{tw.notSet}</span>}</dd>
+          <dt className="text-muted">{tw.address}</dt>
+          <dd>{seller.postalAddress ?? <span className="text-muted">{tw.notSet}</span>}</dd>
+          <dt className="text-muted">{tw.country}</dt>
+          <dd>{seller.country ?? <span className="text-muted">{tw.notSet}</span>}</dd>
         </dl>
         <p className="mt-3 text-sm">
           <Link href={`${base}/settings/company`} className="underline">
-            Change on the Company page
+            {tw.changeOnTheCompany}
           </Link>
         </p>
       </section>
@@ -107,12 +111,10 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
 
       <section aria-labelledby="numbering-heading" className={card}>
         <h2 id="numbering-heading" className="mb-1 text-title text-ink">
-          Numbering
+          {tw.numbering}
         </h2>
         <p className="mb-4 text-sm text-muted">
-          Invoices and credit notes are numbered one after the other with no gaps, and the number is taken when you
-          issue, never on a draft. Continuing from another system? Set the number here before you issue your first one.
-          After that, numbers are fixed.
+          {tw.invoicesAndCreditNotes}
         </p>
         <div className="flex flex-col gap-6">
           {(["work_invoice", "work_credit_note"] as const).map((name) => (
@@ -133,24 +135,22 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
 
       <section aria-labelledby="differs-heading" className={card}>
         <h2 id="differs-heading" className="mb-1 text-title text-ink">
-          How this differs from Kaizen Life
+          {tw.howThisDiffersFrom}
         </h2>
         <p className="mb-2 text-sm text-muted">
-          If you used Work in Kaizen Life, a few things work differently here, because invoices are legal documents.
+          {tw.ifYouUsedWork}
         </p>
         <ul className="list-disc pl-5 text-sm">
           <li>
-            An assignment has one invoice draft at a time. Time you log goes on it, and once it is issued the next draft
-            starts.
+            {tw.anAssignmentHasOne}
           </li>
-          <li>An issued invoice never changes. To correct one, you issue a credit note and then a new invoice.</li>
-          <li>The number is taken when you issue, so deleting a draft never leaves a gap.</li>
+          <li>{tw.anIssuedInvoiceNever}</li>
+          <li>{tw.theNumberIsTaken}</li>
           <li>
-            Repeating invoices are made as drafts for you to check and issue, unless you switch auto-issue on for that
-            one.
+            {tw.repeatingInvoicesAreMade}
           </li>
           <li>
-            Invoices carry your business details, VAT and bank account, so they can be issued once these are complete.
+            {tw.invoicesCarryYourBusiness}
           </li>
         </ul>
       </section>

@@ -15,6 +15,8 @@ import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Time" };
 
@@ -27,9 +29,12 @@ const PAGE_SIZE = 50;
  * Totals count everything the filters match, not just the page.
  */
 export default async function WorkTimePage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/time">) {
+  await workWords();
+  const tw = workText().pageStoreTimePage;
   const viewer = await requirePermission((await params).store, "settings:read");
   const { store, account } = viewer;
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Time" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.time} words={off} />;
   const query = await searchParams;
   const owner = memberCan(viewer, "owner");
   // Others see their own time whatever the address says; the form and the links do not show that as a filter.
@@ -67,8 +72,8 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Time"
-        description={<>{owner ? "Time logged by everyone in the store." : "Your time."} Start a timer, log time by hand, and find what you logged.</>}
+        title={tw.time}
+        description={<>{owner ? tw.timeLoggedByEveryone : tw.yourTime} {tw.startATimer}</>}
       />
 
       <QuickTimer storeSlug={store.slug} choices={choices} today={today} />
@@ -84,20 +89,20 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
 
       <section aria-labelledby="entries-heading" className="flex flex-col gap-3">
         <h2 id="entries-heading" className="sr-only">
-          Logged time
+          {tw.loggedTime}
         </h2>
         <StatGrid>
-          <Stat label="Entries" value={totals.count} />
-          <Stat label="Time" value={formatDuration(totals.minutes)} />
-          <Stat label="Billable" value={formatDuration(totals.billableMinutes)} />
+          <Stat label={tw.entries} value={totals.count} />
+          <Stat label={tw.time} value={formatDuration(totals.minutes)} />
+          <Stat label={tw.billable} value={formatDuration(totals.billableMinutes)} />
           <Stat
-            label="Not invoiced"
+            label={tw.notInvoiced}
             value={totals.unbilledMinutes > 0 ? formatDuration(totals.unbilledMinutes) : "Nothing"}
           />
         </StatGrid>
         {list.truncated && (
           <p role="status" className="text-sm text-muted">
-            There is more time than can be counted here. Narrow the days to see all of it.
+            {tw.thereIsMoreTime}
           </p>
         )}
         <TimeEntryList
@@ -108,15 +113,15 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
           locale={locale}
           empty={
             totals.count === 0 && pageNo === 1
-              ? "No time matches. Log time or change the filters."
-              : "There is no time on this page."
+              ? tw.noTimeMatchesLog
+              : tw.thereIsNoTime
           }
         />
         {pages > 1 && (
-          <nav aria-label="Pages of time" className="flex items-center justify-between gap-3 text-sm">
+          <nav aria-label={tw.pagesOfTime} className="flex items-center justify-between gap-3 text-sm">
             {pageNo > 1 ? (
               <Link href={link(pageNo - 1)} className="underline">
-                Newer
+                {tw.newer}
               </Link>
             ) : (
               <span />
@@ -126,7 +131,7 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
             </span>
             {pageNo < pages ? (
               <Link href={link(pageNo + 1)} className="underline">
-                Older
+                {tw.older}
               </Link>
             ) : (
               <span />

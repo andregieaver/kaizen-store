@@ -3,7 +3,8 @@ import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import { GROUP_LABELS, isEmptyReport, rowLabel, type PeriodReport } from "@/lib/work-reports";
 
-import { REPORT_HEADINGS, REPORT_NOTES, reportCells } from "./report-columns";
+import { reportCells, reportHeadings, reportNotes } from "./report-columns";
+import { workText } from "@/lib/work-text";
 
 /**
  * A report on paper: landscape A4, black on white whatever the colour mode, drawn with the invoice
@@ -32,34 +33,35 @@ export function ReportPrintView({
   today: string;
   report: PeriodReport;
 }) {
+  const tw = workText().reportPrint;
   const many = report.totals.length > 1;
   return (
     <>
       <style>{DOCUMENT_CSS}</style>
       <style>{REPORT_PRINT_CSS}</style>
-      <article className="wd wd-report" aria-label="Work report">
+      <article className="wd wd-report" aria-label={tw.workReport}>
         <header className="wd-head">
           <div>
-            <h1>Work report</h1>
+            <h1>{tw.workReport}</h1>
             <p className="wd-muted">{storeName}</p>
           </div>
           <dl className="wd-meta">
             <div>
-              <dt>Period</dt>
+              <dt>{tw.period}</dt>
               <dd>
                 {formatDay(report.from, locale)} to {formatDay(report.to, locale)}
               </dd>
             </div>
             <div>
-              <dt>Grouped</dt>
+              <dt>{tw.grouped}</dt>
               <dd>{GROUP_LABELS[report.by].replace("By ", "by ")}</dd>
             </div>
             <div>
-              <dt>Made</dt>
+              <dt>{tw.made}</dt>
               <dd>{formatDay(today, locale)}</dd>
             </div>
             <div>
-              <dt>Time logged</dt>
+              <dt>{tw.timeLogged}</dt>
               <dd>
                 {formatDuration(report.totalMinutes)} ({formatDuration(report.totalBillableMinutes)} billable)
               </dd>
@@ -68,15 +70,15 @@ export function ReportPrintView({
         </header>
 
         {isEmptyReport(report) ? (
-          <p className="wd-block">Nothing to report in these days.</p>
+          <p className="wd-block">{tw.nothingToReportIn}</p>
         ) : (
           <table>
             <thead>
               <tr>
                 <th scope="col" className="wd-name">
-                  {report.by === "client" ? "Client" : "Assignment"}
+                  {report.by === "client" ? tw.client : tw.assignment}
                 </th>
-                {Object.values(REPORT_HEADINGS).map((h) => (
+                {Object.values(reportHeadings()).map((h) => (
                   <th key={h} scope="col">
                     {h}
                   </th>
@@ -113,7 +115,7 @@ export function ReportPrintView({
                 return (
                   <tr key={t.currency}>
                     <th scope="row" className="wd-name">
-                      Total{many ? ` (${t.currency})` : ""}
+                      {tw.total}{many ? ` (${t.currency})` : ""}
                     </th>
                     <td className="wd-num">{c.hours}</td>
                     <td className="wd-num">{c.billable}</td>
@@ -130,7 +132,7 @@ export function ReportPrintView({
         )}
 
         <ul className="wd-notes">
-          {REPORT_NOTES.map((note) => (
+          {reportNotes().map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>

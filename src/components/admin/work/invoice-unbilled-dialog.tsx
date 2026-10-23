@@ -11,6 +11,8 @@ import { formatDuration } from "@/lib/work-time";
 import type { GeneratedLines, UnbilledGroup } from "@/server/work-invoices";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type UnbilledDialogProps = {
   open: boolean;
@@ -35,8 +37,9 @@ export type UnbilledDialogProps = {
  * fixed fee that is already billed).
  */
 export function UnbilledTimeDialog(props: UnbilledDialogProps) {
+  const tw = useAdminText("work").invoiceUnbilledDialog;
   return (
-    <Modal open={props.open} onClose={props.onClose} title="Add unbilled time" wide>
+    <Modal open={props.open} onClose={props.onClose} title={tw.addUnbilledTime} wide>
       <UnbilledBody {...props} />
     </Modal>
   );
@@ -53,6 +56,7 @@ function UnbilledBody({
   fixedFee = false,
   onClose,
 }: UnbilledDialogProps) {
+  const tw = useAdminText("work").invoiceUnbilledDialog;
   const [groups, setGroups] = useState<UnbilledGroup[] | null>(null);
   const [loadProblem, setLoadProblem] = useState<string | null>(null);
   const [from, setFrom] = useState("");
@@ -66,9 +70,9 @@ function UnbilledBody({
   const toDay = isDay(to) ? to : undefined;
   const rangeProblem =
     (from && !isDay(from)) || (to && !isDay(to))
-      ? "Give the period as dates."
+      ? tw.giveThePeriodAs
       : from && to && to < from
-        ? "The period ends before it starts."
+        ? tw.thePeriodEndsBefore
         : null;
 
   useEffect(() => {
@@ -83,12 +87,12 @@ function UnbilledBody({
         } else setLoadProblem(result.problems.join(" "));
       })
       .catch(() => {
-        if (!cancelled) setLoadProblem("The unbilled time could not be read. Check your connection and try again.");
+        if (!cancelled) setLoadProblem(tw.theUnbilledTimeCould);
       });
     return () => {
       cancelled = true;
     };
-  }, [storeSlug, clientId, assignmentId, fromDay, toDay, rangeProblem]);
+  }, [storeSlug, clientId, assignmentId, fromDay, toDay, rangeProblem, tw.theUnbilledTimeCould]);
 
   const byAssignment = useMemo(() => {
     const map = new Map<string, { name: string; billing: UnbilledGroup["billingType"]; groups: UnbilledGroup[] }>();
@@ -116,7 +120,7 @@ function UnbilledBody({
     start(async () => {
       try {
         if (!(await beforeAdd())) {
-          setProblems(["Fix what is marked on the invoice first, so its changes can be saved."]);
+          setProblems([tw.fixWhatIsMarked]);
           return;
         }
         const result = await generateLinesFromTimeAction(storeSlug, invoiceId, {
@@ -127,7 +131,7 @@ function UnbilledBody({
         if (result.ok) setDone(result);
         else setProblems(result.problems);
       } catch {
-        setProblems(["The time could not be added. Check your connection and try again."]);
+        setProblems([tw.theTimeCouldNot]);
       }
     });
   };
@@ -137,10 +141,10 @@ function UnbilledBody({
       <div className="flex flex-col gap-4">
         <p role="status" className="text-sm">
           {done.added === 0 && done.updated === 0
-            ? "No lines were changed."
+            ? tw.noLinesWereChanged
             : `${done.added > 0 ? `${done.added} ${done.added === 1 ? "line" : "lines"} added` : ""}${done.added > 0 && done.updated > 0 ? " and " : ""}${done.updated > 0 ? `${done.updated} ${done.updated === 1 ? "line" : "lines"} updated` : ""}.`}{" "}
           {done.attachedEntries > 0 &&
-            `${done.attachedEntries} time ${done.attachedEntries === 1 ? "entry" : "entries"} now belong to this invoice.`}
+            fillWords(done.attachedEntries === 1 ? tw.entriesBelongOne : tw.entriesBelongMany, { count: done.attachedEntries })}
         </p>
         {done.notes.length > 0 && (
           <ul className="list-disc pl-5 text-sm">
@@ -151,7 +155,7 @@ function UnbilledBody({
         )}
         <div className="flex justify-end">
           <button type="button" onClick={onClose} className={primaryButton}>
-            Done
+            {tw.done}
           </button>
         </div>
       </div>
@@ -161,12 +165,10 @@ function UnbilledBody({
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
       <p className={hintText}>
-        Billable time that no invoice has taken yet. Adding it makes a line for each task, priced at the
-        assignment&apos;s rate, and attaches the time to it so it cannot be billed twice. Hours are rounded to two
-        decimals (20 minutes is 0.33 h).
+        {tw.billableTimeThatNo}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="From date (optional)" error={from && !isDay(from) ? "Give the date." : undefined}>
+        <Field label={tw.fromDateOptional} error={from && !isDay(from) ? tw.giveTheDate : undefined}>
           {(props) => (
             <input
               {...props}
@@ -177,7 +179,7 @@ function UnbilledBody({
             />
           )}
         </Field>
-        <Field label="To date (optional)" error={rangeProblem ?? undefined}>
+        <Field label={tw.toDateOptional} error={rangeProblem ?? undefined}>
           {(props) => (
             <input
               {...props}
@@ -195,11 +197,11 @@ function UnbilledBody({
           {loadProblem}
         </p>
       )}
-      {groups === null && !loadProblem && <p className="text-sm text-muted">Reading your unbilled time …</p>}
+      {groups === null && !loadProblem && <p className="text-sm text-muted">{tw.readingYourUnbilledTime}</p>}
       {groups !== null && groups.length === 0 && (
         <p className="text-sm text-muted">
           {fixedFee
-            ? "This assignment bills a fixed fee. Adding puts the fee on the invoice as one line, once."
+            ? tw.thisAssignmentBillsA
             : `There is no unbilled time for this ${assignmentId ? "assignment" : "client"}.`}
         </p>
       )}
@@ -226,7 +228,7 @@ function UnbilledBody({
               assignment.name
             )}
             {assignment.billing === "fixed_fee" && (
-              <span className="font-normal text-muted"> (fixed fee: one line at its fee)</span>
+              <span className="font-normal text-muted"> {tw.fixedFeeOneLine}</span>
             )}
           </legend>
           <ul className="flex flex-col gap-1 text-sm">
@@ -236,7 +238,7 @@ function UnbilledBody({
                 className="flex flex-wrap justify-between gap-x-4"
               >
                 <span>
-                  {group.taskTitle ?? "No task"}{" "}
+                  {group.taskTitle ?? tw.noTask}{" "}
                   <span className="text-xs text-muted">
                     {group.entries} {group.entries === 1 ? "entry" : "entries"}, {formatDay(group.oldest, locale)}
                     {group.newest !== group.oldest ? ` to ${formatDay(group.newest, locale)}` : ""}
@@ -255,14 +257,13 @@ function UnbilledBody({
 
       {chosenGroups.length > 0 && (
         <p className="text-sm" aria-live="polite">
-          {entries} {entries === 1 ? "entry" : "entries"}, {formatDuration(minutes)}, about{" "}
-          {formatMoney(amountMinor, currency, locale)} without VAT will be added.
+          {fillWords(entries === 1 ? tw.willBeAddedOne : tw.willBeAddedMany, { count: entries, time: formatDuration(minutes), amount: formatMoney(amountMinor, currency, locale) })}
         </p>
       )}
       <Problems messages={problems} />
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onClose} className={secondaryButton}>
-          Cancel
+          {tw.cancel}
         </button>
         <button
           type="button"
@@ -270,7 +271,7 @@ function UnbilledBody({
           disabled={pending || (chosenGroups.length === 0 && !(fixedFee && groups !== null)) || rangeProblem !== null}
           className={primaryButton}
         >
-          {pending ? "Adding …" : "Add to the invoice"}
+          {pending ? tw.adding : tw.addToTheInvoice}
         </button>
       </div>
     </div>

@@ -11,6 +11,8 @@ import { BillUnbilledButton } from "./bill-unbilled-button";
 import { NewInvoiceButton } from "./invoice-create-dialog";
 import { InvoiceStatusChip } from "./invoice-status";
 import { workBase } from "@/lib/work-paths";
+import { workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export { BillUnbilledButton };
 
@@ -40,25 +42,26 @@ export type ClientInvoicesPanelProps = {
 
 /** A client's invoices, void and credited ones included, with "New invoice". */
 export function ClientInvoicesPanel({ storeSlug, clientId, clientName, locale, archived }: ClientInvoicesPanelProps) {
+  const tw = workText().invoicePanels;
   return (
     <section aria-labelledby="client-invoices-heading" className="flex flex-col gap-3" data-slot="client-invoices">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="client-invoices-heading" className="text-title text-ink">
-          Invoices
+          {tw.invoices}
         </h2>
         {archived ? null : <NewInvoiceButton storeSlug={storeSlug} clientId={clientId} className={button} />}
       </div>
-      <Suspense fallback={<p className="text-sm text-muted">Reading the invoices …</p>}>
+      <Suspense fallback={<p className="text-sm text-muted">{tw.readingTheInvoices}</p>}>
         <InvoiceList
           storeSlug={storeSlug}
           locale={locale}
           filter={{ clientId }}
-          empty={`No invoice has been made for ${clientName} yet.`}
+          empty={fillWords(tw.noInvoiceFor, { client: clientName })}
         />
       </Suspense>
       <p className="text-sm">
         <Link href={`${workBase(storeSlug)}/invoices?client=${clientId}`} className="underline">
-          Open the invoices list for this client
+          {tw.openTheInvoicesList}
         </Link>
       </p>
     </section>
@@ -92,6 +95,7 @@ export function AssignmentInvoicesPanel({
   locale,
   draftInvoiceId,
 }: AssignmentInvoicesPanelProps) {
+  const tw = workText().invoicePanels;
   return (
     <section
       aria-labelledby="assignment-invoices-heading"
@@ -100,11 +104,11 @@ export function AssignmentInvoicesPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="assignment-invoices-heading" className="text-title text-ink">
-          Invoices
+          {tw.invoices}
         </h2>
         {draftInvoiceId ? (
           <Link href={`${workBase(storeSlug)}/invoices/${draftInvoiceId}`} className={button}>
-            Open the draft
+            {tw.openTheDraft}
           </Link>
         ) : (
           <NewInvoiceButton storeSlug={storeSlug} clientId={clientId} assignmentId={assignmentId} className={button} />
@@ -112,10 +116,10 @@ export function AssignmentInvoicesPanel({
       </div>
       {draftInvoiceId && (
         <p className="text-sm text-muted">
-          The time you log goes on this assignment&apos;s draft invoice. There is one draft at a time.
+          {tw.theTimeYouLog}
         </p>
       )}
-      <Suspense fallback={<p className="text-sm text-muted">Reading the invoices …</p>}>
+      <Suspense fallback={<p className="text-sm text-muted">{tw.readingTheInvoices}</p>}>
         <InvoiceList
           storeSlug={storeSlug}
           locale={locale}
@@ -148,17 +152,17 @@ export function BillUnbilledPanel({
   unbilledMinutes,
   unbilledAmountMinor,
 }: BillUnbilledPanelProps) {
+  const tw = workText().invoicePanels;
   if (unbilledMinutes <= 0) return null;
   return (
     <section
-      aria-label="Bill unbilled time"
+      aria-label={tw.billUnbilledTime}
       className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line bg-card p-4"
       data-slot="bill-unbilled"
     >
       <p className="text-sm">
-        <strong className="font-medium">{formatDuration(unbilledMinutes)}</strong> of billable time is not on an invoice
-        yet
-        {unbilledAmountMinor > 0 ? `, about ${formatMoney(unbilledAmountMinor, currency, locale)} without VAT` : ""}.
+        <strong className="font-medium">{formatDuration(unbilledMinutes)}</strong> {tw.notOnInvoice}
+        {unbilledAmountMinor > 0 ? fillWords(tw.aboutWithoutVat, { amount: formatMoney(unbilledAmountMinor, currency, locale) }) : ""}.
       </p>
       <BillUnbilledButton
         storeSlug={storeSlug}
@@ -184,6 +188,7 @@ async function InvoiceList({
   filter: { clientId?: string; assignmentId?: string };
   empty: string;
 }) {
+  const tw = workText().invoicePanels;
   const { store } = await requirePermission(storeSlug, "settings:read");
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
   const base = `${workBase(storeSlug)}/invoices`;
@@ -192,7 +197,7 @@ async function InvoiceList({
   return (
     <ul
       className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card px-4"
-      aria-label="Invoices"
+      aria-label={tw.invoices}
     >
       {list.rows.map((row) => (
         <li key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">

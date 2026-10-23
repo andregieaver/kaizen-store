@@ -72,6 +72,8 @@ export function useVoice(options: {
   /** What the person said, to send as a message. */
   onUtterance: (text: string) => void;
   onProblem: (message: string) => void;
+  /** The words of its problems in the admin's language (D312 A10); English unless given. */
+  words?: { micRefused: string };
 }) {
   const [status, setStatusState] = useState<VoiceStatus>("off");
   const [level, setLevel] = useState(0);
@@ -333,7 +335,7 @@ export function useVoice(options: {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     } catch {
       setStatus("off");
-      optionsRef.current.onProblem("The browser did not let the page use the microphone.");
+      optionsRef.current.onProblem(optionsRef.current.words?.micRefused ?? "The browser did not let the page use the microphone.");
       return;
     }
     // Ended while the browser asked for the microphone.

@@ -2,17 +2,49 @@
 
 import { useRef, useState } from "react";
 
-import { OUTCOME_WORDS, topicWords } from "@/lib/support-inbox-text";
-import { insertReply, matchReplies, slashQuery, type SavedReply } from "@/lib/support-replies";
+import { fillWords } from "@/lib/admin-fill";
+import {
+  supportEn,
+  type SupportMessages,
+} from "@/lib/admin-messages/support.en";
+import { topicWords } from "@/lib/support-inbox-text";
+import {
+  insertReply,
+  matchReplies,
+  slashQuery,
+  type SavedReply,
+} from "@/lib/support-replies";
 import { MESSAGE_MAX } from "@/lib/support-rules";
-import { FOLLOW_UP_MAX, OUTCOMES, SUMMARY_TEXT_MAX, SUMMARY_TITLE_MAX, topicsFor } from "@/lib/support-summary";
+import {
+  FOLLOW_UP_MAX,
+  OUTCOMES,
+  SUMMARY_TEXT_MAX,
+  SUMMARY_TITLE_MAX,
+  topicsFor,
+} from "@/lib/support-summary";
 import { isEnglish, languageName } from "@/lib/support-translate";
 import type { ConversationFeed } from "@/server/support-inbox";
+
+import { useAdminText } from "../admin-text";
 
 import type { ActResult } from "./desk-context";
 
 /** What may be done with a conversation now, for the person looking (D216, 2.4), from its state and the desk's mode. Pure, for the tests. */
-export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "assignee" | "me" | "canWrite" | "mode" | "store" | "signedIn" | "source">): {
+export function availableActs(
+  c: Pick<
+    ConversationFeed,
+    | "status"
+    | "handler"
+    | "assignee"
+    | "me"
+    | "canWrite"
+    | "mode"
+    | "store"
+    | "signedIn"
+    | "source"
+  >,
+  words: SupportMessages["actions"]["why"] = supportEn.actions.why,
+): {
   claim: boolean;
   handBack: boolean;
   transfer: boolean;
@@ -27,10 +59,21 @@ export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "
   /** Why nothing can be done, when nothing can. */
   why: string | null;
 } {
-  const none = { claim: false, handBack: false, transfer: false, end: false, askSignIn: false, reply: false, note: false, brief: false, editSummary: false };
-  if (!c.canWrite) return { ...none, why: "You can read this desk's conversations but not answer them." };
-  if (c.status !== "open") return { ...none, note: true, editSummary: true, why: "This conversation has ended." };
-  if (c.mode === "off") return { ...none, note: true, why: "Support is switched off for this desk: the chat assistant answers alone, and nobody takes over." };
+  const none = {
+    claim: false,
+    handBack: false,
+    transfer: false,
+    end: false,
+    askSignIn: false,
+    reply: false,
+    note: false,
+    brief: false,
+    editSummary: false,
+  };
+  if (!c.canWrite) return { ...none, why: words.readOnly };
+  if (c.status !== "open")
+    return { ...none, note: true, editSummary: true, why: words.ended };
+  if (c.mode === "off") return { ...none, note: true, why: words.off };
   const mine = c.handler === "human" && c.assignee?.id === c.me;
   return {
     brief: true,
@@ -42,7 +85,12 @@ export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "
     askSignIn: mine && c.store !== null && c.source === "site" && !c.signedIn,
     reply: mine,
     note: true,
-    why: c.handler === "human" && !mine ? `${c.assignee?.name ?? "Someone else"} has this conversation.` : null,
+    why:
+      c.handler === "human" && !mine
+        ? fillWords(words.someoneHas, {
+            name: c.assignee?.name ?? words.someoneElse,
+          })
+        : null,
   };
 }
 
@@ -70,7 +118,9 @@ export function ConversationActions({
   /** The customer is typing now (realtime, step 12). */
   customerTyping?: boolean;
 }) {
-  const acts = availableActs(conversation);
+  const t = useAdminText("support");
+  const w = t.actions;
+  const acts = availableActs(conversation, w.why);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [draft, setDraft] = useState(initialDraft ?? "");
@@ -82,15 +132,24 @@ export function ConversationActions({
   /** The composer was filled from the partner's draft (*Use*), and has not been emptied since: counted for the desk (step 14). */
   const [fromDraft, setFromDraft] = useState(Boolean(initialDraft));
   const [replies, setReplies] = useState<SavedReply[] | null>(null);
-  const [slash, setSlash] = useState<{ query: string; start: number } | null>(null);
+  const [slash, setSlash] = useState<{ query: string; start: number } | null>(
+    null,
+  );
   const [active, setActive] = useState(0);
   const loadingReplies = useRef(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const writingNote = asNote || !acts.reply;
   const translated = original !== null && !writingNote;
-  const matches = slash && replies ? matchReplies(replies, slash.query, conversation.locale) : [];
+  const matches =
+    slash && replies
+      ? matchReplies(replies, slash.query, conversation.locale)
+      : [];
   const picking = slash !== null && matches.length > 0;
-  const canTranslate = conversation.translate && acts.reply && !writingNote && !isEnglish(conversation.locale);
+  const canTranslate =
+    conversation.translate &&
+    acts.reply &&
+    !writingNote &&
+    !isEnglish(conversation.locale);
 
   /** The desk's saved replies, filled in for this conversation, asked for the first time `/` is typed. */
   async function loadReplies() {
@@ -142,7 +201,7 @@ export function ConversationActions({
         setDraft(result.text);
       }
     } catch {
-      setProblem("The reply could not be translated just now. Try again.");
+      setProblem(w.translateFailed);
     } finally {
       setBusy(false);
     }
@@ -159,7 +218,7 @@ export function ConversationActions({
         onDone();
       }
     } catch {
-      setProblem("That did not work just now. Try again.");
+      setProblem(w.failed);
     } finally {
       setBusy(false);
     }
@@ -168,61 +227,117 @@ export function ConversationActions({
   function send() {
     const body = draft.trim();
     if (!body || busy) return;
-    void run(writingNote ? { kind: "note", body } : { kind: "reply", body, ...(translated ? { translated: true } : {}), ...(fromDraft ? { partnerDraft: true } : {}) }, () => {
-      setDraft("");
-      setOriginal(null);
-      setFromDraft(false);
-    });
+    void run(
+      writingNote
+        ? { kind: "note", body }
+        : {
+            kind: "reply",
+            body,
+            ...(translated ? { translated: true } : {}),
+            ...(fromDraft ? { partnerDraft: true } : {}),
+          },
+      () => {
+        setDraft("");
+        setOriginal(null);
+        setFromDraft(false);
+      },
+    );
   }
 
-  const button = "rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-sunken disabled:opacity-50";
+  const button =
+    "rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-sunken disabled:opacity-50";
   return (
-    <div className="flex flex-col gap-2 border-t border-line p-3" aria-busy={busy || undefined}>
+    <div
+      className="flex flex-col gap-2 border-t border-line p-3"
+      aria-busy={busy || undefined}
+    >
       <div className="flex flex-wrap items-center gap-2">
         {acts.claim && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "claim" })} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
-            Take over
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run({ kind: "claim" })}
+            className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50"
+          >
+            {w.takeOver}
           </button>
         )}
         {acts.handBack && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "hand_back" })} className={button}>
-            Hand back to the AI
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run({ kind: "hand_back" })}
+            className={button}
+          >
+            {w.handBack}
           </button>
         )}
         {acts.transfer && (
           <span className="flex items-center gap-1">
-            <select value={target} onChange={(event) => setTarget(event.target.value)} aria-label="Transfer to" className="rounded-md border border-line bg-card px-2 py-1.5 text-sm">
-              <option value="">Back to the queue</option>
+            <select
+              value={target}
+              onChange={(event) => setTarget(event.target.value)}
+              aria-label={w.transferTo}
+              className="rounded-md border border-line bg-card px-2 py-1.5 text-sm"
+            >
+              <option value="">{w.backToQueue}</option>
               {conversation.agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name}
-                  {agent.online ? "" : " (away)"}
+                  {agent.online ? "" : w.away}
                 </option>
               ))}
             </select>
-            <button type="button" disabled={busy} onClick={() => void run({ kind: "transfer", target: target || null })} className={button}>
-              Transfer
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void run({ kind: "transfer", target: target || null })
+              }
+              className={button}
+            >
+              {w.transfer}
             </button>
           </span>
         )}
         {acts.askSignIn && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "ask_sign_in" })} className={button}>
-            Ask to sign in
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run({ kind: "ask_sign_in" })}
+            className={button}
+          >
+            {w.askSignIn}
           </button>
         )}
         {acts.end && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "end" })} className={button}>
-            End
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run({ kind: "end" })}
+            className={button}
+          >
+            {w.end}
           </button>
         )}
         {acts.brief && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "brief" })} className={button}>
-            Brief me
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run({ kind: "brief" })}
+            className={button}
+          >
+            {w.brief}
           </button>
         )}
         {acts.editSummary && !editing && (
-          <button type="button" disabled={busy} onClick={() => setEditing(true)} className={button}>
-            {conversation.summary ? "Edit summary" : "Write a summary"}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setEditing(true)}
+            className={button}
+          >
+            {conversation.summary ? w.editSummary : w.writeSummary}
           </button>
         )}
         {acts.why && <p className="text-sm text-muted">{acts.why}</p>}
@@ -237,7 +352,9 @@ export function ConversationActions({
           conversation={conversation}
           busy={busy}
           onCancel={() => setEditing(false)}
-          onSave={(summary) => void run({ kind: "summary", summary }, () => setEditing(false))}
+          onSave={(summary) =>
+            void run({ kind: "summary", summary }, () => setEditing(false))
+          }
         />
       )}
       {(acts.reply || acts.note) && (
@@ -249,25 +366,44 @@ export function ConversationActions({
           className="flex flex-col gap-2"
         >
           {acts.reply && (
-            <div role="radiogroup" aria-label="Write" className="flex gap-1 text-sm">
-              <button type="button" role="radio" aria-checked={!asNote} onClick={() => setAsNote(false)} className={`rounded-pill px-2 py-1 ${!asNote ? "bg-sunken font-medium" : ""}`}>
-                Reply
+            <div
+              role="radiogroup"
+              aria-label={w.write}
+              className="flex gap-1 text-sm"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!asNote}
+                onClick={() => setAsNote(false)}
+                className={`rounded-pill px-2 py-1 ${!asNote ? "bg-sunken font-medium" : ""}`}
+              >
+                {w.reply}
               </button>
-              <button type="button" role="radio" aria-checked={asNote} onClick={() => setAsNote(true)} className={`rounded-pill px-2 py-1 ${asNote ? "bg-sunken font-medium" : ""}`}>
-                Internal note
+              <button
+                type="button"
+                role="radio"
+                aria-checked={asNote}
+                onClick={() => setAsNote(true)}
+                className={`rounded-pill px-2 py-1 ${asNote ? "bg-sunken font-medium" : ""}`}
+              >
+                {w.note}
               </button>
             </div>
           )}
           {customerTyping && (
             <p className="text-sm text-muted" role="status">
-              The customer is typing…
+              {w.typing}
             </p>
           )}
           <textarea
             ref={textarea}
             value={draft}
             onChange={(event) => {
-              typed(event.target.value, event.target.selectionStart ?? event.target.value.length);
+              typed(
+                event.target.value,
+                event.target.selectionStart ?? event.target.value.length,
+              );
               // The customer sees "typing…" (never the words), at most every 2 seconds.
               if (event.target.value && !writingNote) onTyping?.();
             }}
@@ -275,10 +411,18 @@ export function ConversationActions({
               if (picking) {
                 if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                   event.preventDefault();
-                  setActive((n) => (n + (event.key === "ArrowDown" ? 1 : matches.length - 1)) % matches.length);
+                  setActive(
+                    (n) =>
+                      (n +
+                        (event.key === "ArrowDown" ? 1 : matches.length - 1)) %
+                      matches.length,
+                  );
                   return;
                 }
-                if ((event.key === "Enter" && !event.metaKey && !event.ctrlKey) || event.key === "Tab") {
+                if (
+                  (event.key === "Enter" && !event.metaKey && !event.ctrlKey) ||
+                  event.key === "Tab"
+                ) {
                   event.preventDefault();
                   pick(matches[Math.min(active, matches.length - 1)]);
                   return;
@@ -296,15 +440,24 @@ export function ConversationActions({
             }}
             rows={3}
             maxLength={writingNote ? MESSAGE_MAX.note : MESSAGE_MAX.agent}
-            aria-label={writingNote ? "Internal note (only your team sees it)" : "Reply to the customer"}
+            aria-label={writingNote ? w.noteLabel : w.replyLabel}
             aria-autocomplete="list"
             aria-controls={picking ? "saved-replies" : undefined}
-            aria-activedescendant={picking ? `saved-reply-${matches[Math.min(active, matches.length - 1)].id}` : undefined}
-            placeholder={writingNote ? "An internal note: only your team sees it" : "Write to the customer, or / for a saved reply"}
+            aria-activedescendant={
+              picking
+                ? `saved-reply-${matches[Math.min(active, matches.length - 1)].id}`
+                : undefined
+            }
+            placeholder={writingNote ? w.notePlaceholder : w.replyPlaceholder}
             className={`w-full resize-y rounded-md border border-line bg-card px-3 py-2 text-sm ${writingNote ? "border-dashed" : ""}`}
           />
           {picking && (
-            <ul id="saved-replies" role="listbox" aria-label="Saved replies" className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-line bg-card text-sm">
+            <ul
+              id="saved-replies"
+              role="listbox"
+              aria-label={w.savedReplies}
+              className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-line bg-card text-sm"
+            >
               {matches.map((reply, index) => (
                 <li
                   key={reply.id}
@@ -319,34 +472,71 @@ export function ConversationActions({
                   className={`flex cursor-pointer flex-col px-3 py-1.5 ${index === active ? "bg-sunken" : ""}`}
                 >
                   <span>
-                    <span className="font-mono text-xs text-muted">/{reply.shortcut}</span> {reply.title}
-                    {reply.locale ? <span className="text-xs text-muted"> · {languageName(reply.locale)}</span> : null}
+                    <span className="font-mono text-xs text-muted">
+                      /{reply.shortcut}
+                    </span>{" "}
+                    {reply.title}
+                    {reply.locale ? (
+                      <span className="text-xs text-muted">
+                        {" "}
+                        · {languageName(reply.locale)}
+                      </span>
+                    ) : null}
                   </span>
-                  <span className="line-clamp-1 text-xs text-muted">{reply.body}</span>
+                  <span className="line-clamp-1 text-xs text-muted">
+                    {reply.body}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-          {slash && replies && matches.length === 0 && <p className="text-xs text-muted">No saved reply starts with /{slash.query}.</p>}
+          {slash && replies && matches.length === 0 && (
+            <p className="text-xs text-muted">
+              {fillWords(w.noReplyStarts, { query: slash.query })}
+            </p>
+          )}
           {translated && (
-            <p className="flex flex-wrap items-center gap-2 text-xs text-muted" role="status">
-              Translated by AI into {languageName(conversation.locale)}: read it before you send. The customer sees it marked as translated.
-              <button type="button" onClick={() => { setDraft(original ?? ""); setOriginal(null); }} className="underline">
-                Back to my words
+            <p
+              className="flex flex-wrap items-center gap-2 text-xs text-muted"
+              role="status"
+            >
+              {fillWords(w.translatedInto, {
+                language: languageName(conversation.locale),
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(original ?? "");
+                  setOriginal(null);
+                }}
+                className="underline"
+              >
+                {w.backToMine}
               </button>
             </p>
           )}
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-3 text-xs text-muted">
-              Ctrl or ⌘ and Enter sends
+              {w.sendKeys}
               {canTranslate && !translated && (
-                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-pill border border-edge px-2 py-1 text-ink hover:bg-sunken disabled:opacity-50">
-                  Translate to {languageName(conversation.locale)}
+                <button
+                  type="button"
+                  disabled={busy || !draft.trim()}
+                  onClick={() => void translateDraft()}
+                  className="rounded-pill border border-edge px-2 py-1 text-ink hover:bg-sunken disabled:opacity-50"
+                >
+                  {fillWords(w.translateTo, {
+                    language: languageName(conversation.locale),
+                  })}
                 </button>
               )}
             </span>
-            <button type="submit" disabled={busy || !draft.trim()} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
-              {writingNote ? "Add note" : "Send"}
+            <button
+              type="submit"
+              disabled={busy || !draft.trim()}
+              className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50"
+            >
+              {writingNote ? w.addNote : w.send}
             </button>
           </div>
         </form>
@@ -365,11 +555,20 @@ function SummaryEditor({
   conversation: ConversationFeed;
   busy: boolean;
   onCancel: () => void;
-  onSave: (summary: { title: string; text: string; outcome: string; topics: string[]; followUp: string | null }) => void;
+  onSave: (summary: {
+    title: string;
+    text: string;
+    outcome: string;
+    topics: string[];
+    followUp: string | null;
+  }) => void;
 }) {
+  const t = useAdminText("support");
+  const w = t.summaryEditor;
   const current = conversation.summary;
   const topics = topicsFor(conversation.store === null);
-  const field = "w-full rounded-md border border-line bg-card px-2 py-1.5 text-sm";
+  const field =
+    "w-full rounded-md border border-line bg-card px-2 py-1.5 text-sm";
   return (
     <form
       className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm"
@@ -386,42 +585,78 @@ function SummaryEditor({
       }}
     >
       <label className="flex flex-col gap-1">
-        Title
-        <input name="title" required maxLength={SUMMARY_TITLE_MAX} defaultValue={current?.title ?? ""} className={field} />
+        {w.title}
+        <input
+          name="title"
+          required
+          maxLength={SUMMARY_TITLE_MAX}
+          defaultValue={current?.title ?? ""}
+          className={field}
+        />
       </label>
       <label className="flex flex-col gap-1">
-        What happened
-        <textarea name="text" required maxLength={SUMMARY_TEXT_MAX} rows={3} defaultValue={current?.text ?? ""} className={field} />
+        {w.text}
+        <textarea
+          name="text"
+          required
+          maxLength={SUMMARY_TEXT_MAX}
+          rows={3}
+          defaultValue={current?.text ?? ""}
+          className={field}
+        />
       </label>
       <label className="flex flex-col gap-1">
-        Outcome
-        <select name="outcome" defaultValue={current?.outcome ?? "resolved"} className={field}>
+        {w.outcome}
+        <select
+          name="outcome"
+          defaultValue={current?.outcome ?? "resolved"}
+          className={field}
+        >
           {OUTCOMES.map((outcome) => (
             <option key={outcome} value={outcome}>
-              {OUTCOME_WORDS[outcome]}
+              {t.lib.outcomes[outcome]}
             </option>
           ))}
         </select>
       </label>
       <fieldset className="flex flex-wrap gap-x-3 gap-y-1">
-        <legend className="mb-1">Topics (one to three)</legend>
+        <legend className="mb-1">{w.topics}</legend>
         {topics.map((topic) => (
           <label key={topic} className="flex items-center gap-1">
-            <input type="checkbox" name="topics" value={topic} defaultChecked={current?.topics.includes(topic) ?? false} className="size-4" />
-            {topicWords(topic)}
+            <input
+              type="checkbox"
+              name="topics"
+              value={topic}
+              defaultChecked={current?.topics.includes(topic) ?? false}
+              className="size-4"
+            />
+            {topicWords(topic, t.lib)}
           </label>
         ))}
       </fieldset>
       <label className="flex flex-col gap-1">
-        Still to do (optional)
-        <input name="followUp" maxLength={FOLLOW_UP_MAX} defaultValue={current?.followUp ?? ""} className={field} />
+        {w.followUp}
+        <input
+          name="followUp"
+          maxLength={FOLLOW_UP_MAX}
+          defaultValue={current?.followUp ?? ""}
+          className={field}
+        />
       </label>
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
-          Save summary
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50"
+        >
+          {w.save}
         </button>
-        <button type="button" onClick={onCancel} className="rounded-pill border border-edge px-3 py-1.5 text-sm hover:bg-sunken">
-          Cancel
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-pill border border-edge px-3 py-1.5 text-sm hover:bg-sunken"
+        >
+          {w.cancel}
         </button>
       </div>
     </form>

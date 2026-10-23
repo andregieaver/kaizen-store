@@ -5,6 +5,7 @@ import { TIME_BILLING_OPTIONS, activeFilterCount, timeFilterQuery, type TimeFilt
 
 import { control, secondaryButton } from "./work-parts";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { workText } from "@/lib/work-text";
 
 type Option = { id: string; label: string };
 
@@ -31,20 +32,21 @@ export function TimeFiltersForm({
   people: Option[] | null;
   today: string;
 }) {
+  const tw = workText().timeFilters;
   const count = activeFilterCount(filters);
   const range = (from: string, to: string) => `${base}/time${timeFilterQuery({ ...filters, from, to })}`;
   return (
     <form
       method="get"
       role="search"
-      aria-label="Filter time"
+      aria-label={tw.filterTime}
       className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Client
+          {tw.client}
           <select name="client" defaultValue={filters.clientId} className={control}>
-            <option value="">All clients</option>
+            <option value="">{tw.allClients}</option>
             {clients.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
@@ -53,9 +55,9 @@ export function TimeFiltersForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Assignment
+          {tw.assignment}
           <select name="assignment" defaultValue={filters.assignmentId} className={control}>
-            <option value="">All assignments</option>
+            <option value="">{tw.allAssignments}</option>
             {assignments.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
@@ -65,9 +67,9 @@ export function TimeFiltersForm({
         </label>
         {people && (
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Person
+            {tw.person}
             <select name="person" defaultValue={filters.accountId} className={control}>
-              <option value="">Everyone</option>
+              <option value="">{tw.everyone}</option>
               {people.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -77,39 +79,39 @@ export function TimeFiltersForm({
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Search
+          {tw.search}
           <input
             type="search"
             name="q"
             defaultValue={filters.query}
             maxLength={100}
-            placeholder="Task or note"
+            placeholder={tw.taskOrNote}
             className={control}
             autoComplete="off"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          From
+          {tw.from}
           <input type="date" name="from" defaultValue={filters.from} className={control} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          To
+          {tw.to}
           <input type="date" name="to" defaultValue={filters.to} className={control} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Billable
+          {tw.billable}
           <select name="billable" defaultValue={filters.billable} className={control}>
-            <option value="all">Billable and not</option>
-            <option value="yes">Billable</option>
-            <option value="no">Not billable</option>
+            <option value="all">{tw.billableAndNot}</option>
+            <option value="yes">{tw.billable}</option>
+            <option value="no">{tw.notBillable}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Invoicing
+          {tw.invoicing}
           <select name="billing" defaultValue={filters.billing} className={control}>
             {TIME_BILLING_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {workText().labels.timeBilling[option.value]}
               </option>
             ))}
           </select>
@@ -117,17 +119,17 @@ export function TimeFiltersForm({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <button type="submit" className={secondaryButton}>
-          Apply filters
+          {tw.applyFilters}
         </button>
-        <span className="text-muted">Days:</span>
+        <span className="text-muted">{tw.days}</span>
         <Link href={range(today, today)} className="underline">
-          Today
+          {tw.today}
         </Link>
         <Link href={range(addCalendarDays(today, -6), today)} className="underline">
-          Last 7 days
+          {tw.last7Days}
         </Link>
         <Link href={range(startOfMonth(today), today)} className="underline">
-          This month
+          {tw.thisMonth}
         </Link>
         {count > 0 && (
           <Link href={`${base}/time`} className="underline">

@@ -5,6 +5,7 @@ import { STAGE_STYLES, progressView } from "@/lib/work-ui";
 import { formatDuration } from "@/lib/work-time";
 
 import { useWorkTimerApi } from "./timer-context";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * Logged time against an assignment's estimate: a bar that is green while on
@@ -26,10 +27,12 @@ export function EstimateProgress({
   estimatedMinutes: number | null;
   alertMinutes: number | null;
 }) {
+  const tw = useAdminText("work").estimateProgress;
+  const tl = useAdminText("work").labels;
   const api = useWorkTimerApi();
   const live = api ? liveMinutes(api.timer, api.pendingEntry, api.now, { assignmentId }) : 0;
   const logged = loggedMinutes + live;
-  const view = progressView(logged, estimatedMinutes, alertMinutes);
+  const view = progressView(logged, estimatedMinutes, alertMinutes, tl.remaining);
   const style = STAGE_STYLES[view.stage];
   const running = api?.timer?.assignmentId === assignmentId;
 
@@ -41,10 +44,10 @@ export function EstimateProgress({
           {estimatedMinutes != null && (
             <>
               {" "}
-              of <span className="tabular-nums">{formatDuration(estimatedMinutes)}</span> estimated
+              {tw.of} <span className="tabular-nums">{formatDuration(estimatedMinutes)}</span> {tw.estimated}
             </>
           )}
-          {running && <span className="text-muted"> (timer running)</span>}
+          {running && <span className="text-muted"> {tw.timerRunning}</span>}
         </span>
         {view.percent !== null && (
           <span className={`tabular-nums ${style.text}`}>
@@ -55,17 +58,17 @@ export function EstimateProgress({
       {view.percent !== null ? (
         <div
           role="progressbar"
-          aria-label="Time used of the estimate"
+          aria-label={tw.timeUsedOfThe}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.min(100, view.percent)}
-          aria-valuetext={`${view.percent} % used. ${style.name}. ${view.label}`}
+          aria-valuetext={`${view.percent} % used. ${tl.stage[view.stage]}. ${view.label}`}
           className="h-2 w-full overflow-hidden rounded-full bg-sunken"
         >
           <div className={`h-full ${style.bar}`} style={{ width: `${view.fill}%` }} />
         </div>
       ) : (
-        <p className="text-xs text-muted">No estimate. Add one to the assignment to see how much is left.</p>
+        <p className="text-xs text-muted">{tw.noEstimateAddOne}</p>
       )}
     </div>
   );

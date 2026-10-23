@@ -11,13 +11,18 @@ import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
+import { workWords } from "@/server/work-words";
+import { workText } from "@/lib/work-text";
 
 export const metadata: Metadata = { title: "Clients" };
 
 /** Work's clients (D122): who the store bills, with their assignments and what is not yet invoiced. */
 export default async function WorkClientsPage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/clients">) {
+  await workWords();
+  const tw = workText().pageStoreClientsPage;
   const { store } = await requirePermission((await params).store, "settings:read");
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Clients" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.clients} words={off} />;
   const { show, query } = parseClientListParams(await searchParams);
   const [clients, defaults, countries, seller] = await Promise.all([
     listClients(store.id, { archived: show, search: query }),
@@ -29,7 +34,7 @@ export default async function WorkClientsPage({ params, searchParams }: PageProp
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageHeader title="Clients" description={<>The people and companies you bill for your work.</>} />
+        <PageHeader title={tw.clients} description={<>{tw.thePeopleAndCompanies}</>} />
         <NewClientButton
           storeSlug={store.slug}
           countries={countries.map(({ code, name }) => ({ code, name }))}

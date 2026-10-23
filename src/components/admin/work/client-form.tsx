@@ -16,6 +16,8 @@ import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type For
 import type { WorkClient } from "@/server/work";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 const LANGUAGE_NAMES: Record<(typeof DOCUMENT_LANGUAGES)[number], string> = {
   nb: "Norwegian",
@@ -62,6 +64,7 @@ export function ClientForm({
   onDone,
   onCancel,
 }: ClientFormProps) {
+  const tw = useAdminText("work").clientForm;
   const editing = client !== undefined;
   const currency = client?.currency ?? defaults.currency;
   const localeOptions: string[] = [...DOCUMENT_LANGUAGES];
@@ -168,7 +171,7 @@ export function ClientForm({
       } catch {
         setProblems({
           fields: {},
-          general: ["The client could not be saved. Check your connection and try again."],
+          general: [tw.theClientCouldNot],
         });
       }
     });
@@ -178,7 +181,7 @@ export function ClientForm({
   // The messages under fields are read with them; the alert holds only what belongs to none, and says there is more.
   const summary = [
     ...problems.general,
-    ...(Object.keys(problems.fields).length > 0 ? ["Some fields need another look. They are marked below."] : []),
+    ...(Object.keys(problems.fields).length > 0 ? [tw.someFieldsNeedAnother] : []),
   ];
 
   return (
@@ -192,8 +195,8 @@ export function ClientForm({
         {fromRegister && <RegisterNote company={fromRegister} fills="client" />}
       </div>
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 font-medium">Client</legend>
-        <Field label="Name" error={err("name")} hint="What you call them. Shown in lists and on time reports.">
+        <legend className="mb-1 font-medium">{tw.client}</legend>
+        <Field label={tw.name} error={err("name")} hint={tw.whatYouCallThem}>
           {(props) => (
             <input
               {...props}
@@ -208,7 +211,7 @@ export function ClientForm({
           )}
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Contact person" error={err("contactName")}>
+          <Field label={tw.contactPerson} error={err("contactName")}>
             {(props) => (
               <input
                 {...props}
@@ -220,7 +223,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label="Phone" error={err("phone")}>
+          <Field label={tw.phone} error={err("phone")}>
             {(props) => (
               <input
                 {...props}
@@ -234,7 +237,7 @@ export function ClientForm({
             )}
           </Field>
         </div>
-        <Field label="Invoice email" error={err("billingEmail")} hint="Where invoices are sent.">
+        <Field label={tw.invoiceEmail} error={err("billingEmail")} hint={tw.whereInvoicesAreSent}>
           {(props) => (
             <input
               {...props}
@@ -250,12 +253,12 @@ export function ClientForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 font-medium">Billing details</legend>
+        <legend className="mb-1 font-medium">{tw.billingDetails}</legend>
         <p className={hintText}>
-          Printed on invoices under Bill to. An invoice cannot be issued without an address and a country.
+          {tw.printedOnInvoicesUnder}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Legal name" error={err("legalName")} hint="If it differs from the name above.">
+          <Field label={tw.legalName} error={err("legalName")} hint={tw.ifItDiffersFrom}>
             {(props) => (
               <input
                 {...props}
@@ -268,7 +271,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label="Organisation number" error={err("organisationNumber")}>
+          <Field label={tw.organisationNumber} error={err("organisationNumber")}>
             {(props) => (
               <input
                 {...props}
@@ -282,7 +285,7 @@ export function ClientForm({
             )}
           </Field>
         </div>
-        <Field label="Address" error={err("line1")}>
+        <Field label={tw.address} error={err("line1")}>
           {(props) => (
             <input
               {...props}
@@ -295,7 +298,7 @@ export function ClientForm({
             />
           )}
         </Field>
-        <Field label="Address line 2" error={err("line2")}>
+        <Field label={tw.addressLine2} error={err("line2")}>
           {(props) => (
             <input
               {...props}
@@ -309,7 +312,7 @@ export function ClientForm({
           )}
         </Field>
         <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-          <Field label="Postal code" error={err("postalCode")}>
+          <Field label={tw.postalCode} error={err("postalCode")}>
             {(props) => (
               <input
                 {...props}
@@ -322,7 +325,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label="City" error={err("city")}>
+          <Field label={tw.city} error={err("city")}>
             {(props) => (
               <input
                 {...props}
@@ -337,7 +340,7 @@ export function ClientForm({
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Country" error={err("country")}>
+          <Field label={tw.country} error={err("country")}>
             {(props) => (
               <select
                 {...props}
@@ -346,7 +349,7 @@ export function ClientForm({
                 onChange={(event) => setCountry(event.target.value)}
                 className={control}
               >
-                <option value="">Not set</option>
+                <option value="">{tw.notSet}</option>
                 {countries.map((option) => (
                   <option key={option.code} value={option.code}>
                     {option.name}
@@ -355,7 +358,7 @@ export function ClientForm({
               </select>
             )}
           </Field>
-          <Field label="VAT number" error={err("vatNumber")} hint="With the country code, such as SE556677889901.">
+          <Field label={tw.vatNumber} error={err("vatNumber")} hint={tw.withTheCountryCode}>
             {(props) => (
               <input
                 {...props}
@@ -372,9 +375,9 @@ export function ClientForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 font-medium">Rates and terms</legend>
+        <legend className="mb-1 font-medium">{tw.ratesAndTerms}</legend>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Currency" error={err("currency")}>
+          <Field label={tw.currency} error={err("currency")}>
             {(props) => (
               <select {...props} name="currency" defaultValue={currency} className={control}>
                 {(currencies.includes(currency) ? currencies : [currency, ...currencies]).map((code) => (
@@ -386,9 +389,9 @@ export function ClientForm({
             )}
           </Field>
           <Field
-            label="Hourly rate"
+            label={tw.hourlyRate}
             error={err("hourlyRate")}
-            hint="Without VAT. Assignments use it unless they have their own."
+            hint={tw.withoutVatAssignmentsUse}
           >
             {(props) => (
               <input
@@ -402,9 +405,9 @@ export function ClientForm({
             )}
           </Field>
           <Field
-            label="Days to pay"
+            label={tw.daysToPay}
             error={err("paymentDays")}
-            hint={`Empty uses your default, ${defaults.paymentDays}.`}
+            hint={fillWords(tw.emptyUsesDefault, { days: defaults.paymentDays })}
           >
             {(props) => (
               <input
@@ -420,9 +423,9 @@ export function ClientForm({
           </Field>
         </div>
         <Field
-          label="Language of their invoices"
+          label={tw.languageOfTheirInvoices}
           error={err("locale")}
-          hint="Invoices and emails to this client are written in it. Other languages are sent in English."
+          hint={tw.invoicesAndEmailsTo}
         >
           {(props) => (
             <select
@@ -443,7 +446,7 @@ export function ClientForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 font-medium">VAT</legend>
+        <legend className="mb-1 font-medium">{tw.vat}</legend>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -456,13 +459,13 @@ export function ClientForm({
             className="mt-0.5 size-4"
           />
           <span>
-            A business
+            {tw.aBusiness}
             <span className={`block ${hintText}`}>
-              A private customer is always charged VAT at your country&apos;s rate.
+              {tw.aPrivateCustomerIs}
             </span>
           </span>
         </label>
-        <Field label="VAT treatment" error={err("vatTreatment")} hint={VAT_TREATMENT_LABELS[treatment].hint}>
+        <Field label={tw.vatTreatment} error={err("vatTreatment")} hint={VAT_TREATMENT_LABELS[treatment].hint}>
           {(props) => (
             <select
               {...props}
@@ -482,15 +485,15 @@ export function ClientForm({
         </Field>
         {business && suggested !== treatment && (
           <p className="text-sm">
-            For a business in this country, {VAT_TREATMENT_LABELS[suggested].label.toLowerCase()} is usual.{" "}
+            {fillWords(tw.usualForBusiness, { treatment: VAT_TREATMENT_LABELS[suggested].label.toLowerCase() })}{" "}
             <button type="button" onClick={() => setTreatment(suggested)} className="underline">
-              Use {VAT_TREATMENT_LABELS[suggested].label.toLowerCase()}
+              {fillWords(tw.useTreatment, { treatment: VAT_TREATMENT_LABELS[suggested].label.toLowerCase() })}
             </button>
           </p>
         )}
       </fieldset>
 
-      <Field label="Notes" error={err("notes")} hint="For you. Not printed on invoices.">
+      <Field label={tw.notes} error={err("notes")} hint={tw.forYouNotPrinted}>
         {(props) => (
           <textarea
             {...props}
@@ -506,11 +509,11 @@ export function ClientForm({
       <Problems messages={summary} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Saving …" : editing ? "Save client" : "Add client"}
+          {pending ? tw.saving : editing ? tw.saveClient : tw.addClient}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className={secondaryButton}>
-            Cancel
+            {tw.cancel}
           </button>
         )}
       </div>

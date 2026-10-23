@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PrintButton } from "@/components/admin/work/print-button";
+import { workText } from "@/lib/work-text";
 
 /**
  * The frame of a Work document's print page (docs/work.md 4.7): no admin
@@ -23,13 +24,14 @@ export function DocumentPage({
   auto: boolean;
   children: ReactNode;
 }) {
+  const tw = workText().documentPage;
   return (
     <main className="wd-screen bg-[#f3f4f6] text-black">
       <div className="mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href={backHref} className="inline-flex min-h-10 items-center text-sm text-black underline">
           {backLabel}
         </Link>
-        <PrintButton label="Print or save as PDF" documentTitle={documentTitle} auto={auto} />
+        <PrintButton label={tw.printOrSaveAs} documentTitle={documentTitle} auto={auto} />
       </div>
       {children}
     </main>

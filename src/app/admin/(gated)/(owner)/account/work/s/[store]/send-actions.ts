@@ -11,6 +11,8 @@ import { problem, zodProblems, type WorkResult } from "@/server/work-errors";
 import { hostedInvoiceUrl, sendCreditNoteEmail, sendInvoiceEmail, sendPaymentReminderEmail } from "@/server/work-emails";
 
 import { sendReason } from "@/lib/work-send-ui";
+import { inWorkLang } from "@/lib/work-text";
+import { actionAdminLang } from "@/server/admin-request-lang";
 
 /**
  * Work's actions for sending documents (docs/work.md 4.7, WP7b): an invoice, a payment reminder and a credit note
@@ -61,6 +63,9 @@ async function send(
 
 /** Emails the issued invoice to its client, or to the address given; `again` makes a new email of one that went out. */
 export async function sendInvoiceAction(storeSlug: string, input: z.input<typeof sendInput>): Promise<SendResult> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return send(storeSlug, input, (member, data) =>
     sendInvoiceEmail(member.store.id, data.id, {
       by: member.account.id,
@@ -69,17 +74,29 @@ export async function sendInvoiceAction(storeSlug: string, input: z.input<typeof
       resend: data.again === true,
     }),
   );
+})(),
+    lang,
+  );
 }
 
 /** A payment reminder for an invoice that is still open (once a day at most). */
 export async function sendReminderAction(storeSlug: string, input: z.input<typeof sendInput>): Promise<SendResult> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return send(storeSlug, input, (member, data) =>
     sendPaymentReminderEmail(member.store.id, data.id, { by: member.account.id, to: data.to, message: data.message }),
+  );
+})(),
+    lang,
   );
 }
 
 /** Emails a credit note to the invoice's client. */
 export async function sendCreditNoteAction(storeSlug: string, input: z.input<typeof sendInput>): Promise<SendResult> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   return send(storeSlug, input, (member, data) =>
     sendCreditNoteEmail(member.store.id, data.id, {
       by: member.account.id,
@@ -88,13 +105,22 @@ export async function sendCreditNoteAction(storeSlug: string, input: z.input<typ
       resend: data.again === true,
     }),
   );
+})(),
+    lang,
+  );
 }
 
 /** The invoice's hosted link, to copy and send another way (made when the invoice has none yet). */
 export async function hostedLinkAction(storeSlug: string, invoiceId: string): Promise<WorkResult<{ url: string }>> {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
   const member = await workMember(storeSlug);
   if (!member) return problem(OFF);
   if (!z.uuid().safeParse(invoiceId).success) return problem(sendReason("not_found"));
   const url = await hostedInvoiceUrl(member.store.id, invoiceId);
   return url ? { ok: true, url } : problem(sendReason("not_issued"));
+})(),
+    lang,
+  );
 }

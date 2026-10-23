@@ -10,13 +10,9 @@ import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/
 import { StoreFilter } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
 import { Badge, card, control, secondaryButton } from "./work-parts";
+import { workText } from "@/lib/work-text";
 
 
-const SHOW_LABELS: Record<ClientShow, string> = {
-  active: "Active clients",
-  archived: "Archived clients",
-  all: "All clients",
-};
 
 /**
  * The clients of all the account's stores in one list (D123): a search, the active, archived or all choice and a
@@ -42,13 +38,14 @@ export function OwnerClientsList({
   defaultStore: string;
   truncated: boolean;
 }) {
+  const tw = workText().ownerClients;
   const filtered = query !== "" || show !== "active" || storeSlug !== "";
   const many = stores.length > 1;
   const base = `${WORK_ROOT}/clients`;
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageHeader title="Clients" description={<>The people and companies you bill{many ? ", across all your stores" : ""}.</>} />
+        <PageHeader title={tw.clients} description={many ? tw.peopleYouBillAll : tw.peopleYouBill} />
         <NewInStoreButton
           kind="client"
           stores={stores.map(({ slug, name }) => ({ slug, name }))}
@@ -56,55 +53,55 @@ export function OwnerClientsList({
         />
       </div>
 
-      <form method="get" role="search" aria-label="Find a client" className="flex flex-wrap items-end gap-3">
+      <form method="get" role="search" aria-label={tw.findAClient} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          Search
+          {tw.search}
           <input
             type="search"
             name="q"
             defaultValue={query}
             maxLength={100}
-            placeholder="Name, contact or email"
+            placeholder={tw.nameContactOrEmail}
             className={control}
             autoComplete="off"
           />
         </label>
         <StoreFilter stores={stores} value={storeSlug} />
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Show
+          {tw.show}
           <select name="show" defaultValue={show} className={control}>
-            {(Object.keys(SHOW_LABELS) as ClientShow[]).map((value) => (
+            {(Object.keys(tw.showLabels) as ClientShow[]).map((value) => (
               <option key={value} value={value}>
-                {SHOW_LABELS[value]}
+                {tw.showLabels[value]}
               </option>
             ))}
           </select>
         </label>
         <button type="submit" className={secondaryButton}>
-          Search
+          {tw.search}
         </button>
         {filtered && (
           <Link href={base} className="min-h-10 content-center text-sm underline">
-            Clear
+            {tw.clear}
           </Link>
         )}
       </form>
 
       {truncated && (
         <p role="status" className="text-sm text-muted">
-          There are more clients than can be listed here. Search or choose a store to narrow them down.
+          {tw.thereAreMoreClients}
         </p>
       )}
 
       {clients.length === 0 ? (
         <p className={`${card} text-sm text-muted`}>
           {filtered
-            ? "No client matches. Try another search, or show all clients."
-            : "You have no clients yet. Add one, then log the hours you work for them."}
+            ? tw.noClientMatchesTry
+            : tw.youHaveNoClients}
         </p>
       ) : (
         <Card compact>
-          <List label={SHOW_LABELS[show]}>
+          <List label={tw.showLabels[show]}>
             {clients.map((client) => (
               <ListRow key={`${client.storeId}:${client.id}`}>
                 <RowLead
@@ -120,17 +117,17 @@ export function OwnerClientsList({
                         {` (${client.currency}) · `}
                       </>
                     )}
-                      {[client.contactName, client.billingEmail].filter(Boolean).join(" · ") || clientFigures(client)}
+                      {[client.contactName, client.billingEmail].filter(Boolean).join(" · ") || clientFigures(client, workText().labels.clientFigures)}
                     </>
                   }
                 />
-                {client.archivedAt && <Badge>Archived</Badge>}
+                {client.archivedAt && <Badge>{tw.archived}</Badge>}
                 <RowFact className="hidden sm:block">
                   {client.activeAssignments === 1 ? "1 active assignment" : `${client.activeAssignments} active assignments`}
                 </RowFact>
                 <RowFact className="hidden sm:block">{formatDuration(client.loggedMinutes)} logged</RowFact>
                 <RowAmount>
-                  {client.unbilledMinutes > 0 ? `${formatDuration(client.unbilledMinutes)} not invoiced` : <span className="text-muted">All invoiced</span>}
+                  {client.unbilledMinutes > 0 ? `${formatDuration(client.unbilledMinutes)} not invoiced` : <span className="text-muted">{tw.allInvoiced}</span>}
                 </RowAmount>
               </ListRow>
             ))}

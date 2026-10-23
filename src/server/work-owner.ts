@@ -40,6 +40,7 @@ import type { InvoiceStatus } from "./work-invoices";
 import type { TimeEntryItem } from "./work-time";
 import { setWorkModule } from "./work-settings";
 import { can } from "@/lib/permissions";
+import { workText } from "@/lib/work-text";
 
 type Row = Record<string, unknown>;
 
@@ -287,6 +288,7 @@ export async function getOwnerOverview(stores: readonly WorkStore[], now = Date.
       timers: timers.get(store.id) ?? [],
       base,
       label: store.name,
+      words: workText().attention,
     });
     overview.attention = overview.attention.map((item) => ({ ...item, href: attentionHref(item.href, base) }));
     return { store, today, overview, clientCount: clientCounts.get(store.id) ?? 0 };

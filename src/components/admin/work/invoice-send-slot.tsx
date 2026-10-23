@@ -13,6 +13,8 @@ import { MESSAGE_MAX } from "@/lib/work-email";
 import { sendFormProblems, sentText, type SendKind } from "@/lib/work-send-ui";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type SendInvoiceSlotProps = {
   storeSlug: string;
@@ -33,13 +35,14 @@ export type SendInvoiceSlotProps = {
  * sending it another way.
  */
 export function SendInvoiceSlot({ storeSlug, invoiceId, clientEmail, sentTo = null, canRemind = false }: SendInvoiceSlotProps) {
+  const tw = useAdminText("work").invoiceSendSlot;
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={secondaryButton}>
-        {sentTo ? "Send again" : "Send by email"}
+        {sentTo ? tw.sendAgain : tw.sendByEmail}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title={sentTo ? "Send the invoice again" : "Send the invoice"}>
+      <Modal open={open} onClose={() => setOpen(false)} title={sentTo ? tw.sendTheInvoiceAgain : tw.sendTheInvoice}>
         <SendForm
           endpoint="invoice"
           storeSlug={storeSlug}
@@ -64,13 +67,14 @@ export type SendCreditNoteButtonProps = {
 
 /** "Send by email" on one credit note of an issued invoice. */
 export function SendCreditNoteButton({ storeSlug, creditNoteId, documentNumber, clientEmail }: SendCreditNoteButtonProps) {
+  const tw = useAdminText("work").invoiceSendSlot;
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="self-start underline">
-        Send {documentNumber} by email
+        {fillWords(tw.sendNumberByEmail, { number: documentNumber })}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title={`Send credit note ${documentNumber}`}>
+      <Modal open={open} onClose={() => setOpen(false)} title={fillWords(tw.sendCreditNote, { number: documentNumber })}>
         <SendForm
           endpoint="credit"
           storeSlug={storeSlug}
@@ -105,6 +109,7 @@ function SendForm({
   canRemind: boolean;
   onDone: () => void;
 }) {
+  const tw = useAdminText("work").invoiceSendSlot;
   const [to, setTo] = useState(address);
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState<SendKind>("invoice");
@@ -136,7 +141,7 @@ function SendForm({
         if (result.ok) setDone(sentText(endpoint === "invoice" ? kind : "invoice", result.outcome ?? undefined, result.to));
         else setProblems(result.problems);
       } catch {
-        setProblems(["The email could not be sent. Check your connection and try again."]);
+        setProblems([tw.theEmailCouldNot]);
       }
     });
   };
@@ -148,7 +153,7 @@ function SendForm({
         if (result.ok) setLink(result.url);
         else setProblems(result.problems);
       } catch {
-        setProblems(["The link could not be read. Try again."]);
+        setProblems([tw.theLinkCouldNot]);
       }
     });
 
@@ -167,7 +172,7 @@ function SendForm({
       <div className="flex flex-col gap-4">
         <p role="status">{done}</p>
         <button type="button" onClick={onDone} className={primaryButton}>
-          Close
+          {tw.close}
         </button>
       </div>
     );
@@ -177,57 +182,57 @@ function SendForm({
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
       {canRemind && endpoint === "invoice" && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">What to send</legend>
+          <legend className="mb-1 text-sm font-medium">{tw.whatToSend}</legend>
           <label className="flex items-center gap-2 text-sm">
             <input type="radio" name={kindName} checked={kind === "invoice"} onChange={() => setKind("invoice")} />
-            The invoice
+            {tw.theInvoice}
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="radio" name={kindName} checked={kind === "reminder"} onChange={() => setKind("reminder")} />
-            A payment reminder
+            {tw.aPaymentReminder}
           </label>
         </fieldset>
       )}
-      <Field label="To" error={shown.find((p) => p.includes("email address"))}>
+      <Field label={tw.to} error={shown.find((p) => p.includes("email address"))}>
         {(props) => (
           <input {...props} type="email" value={to} onChange={(e) => setTo(e.target.value)} className={control} autoComplete="off" />
         )}
       </Field>
       <Field
-        label="Message (optional)"
-        hint={`Goes on top of the email, in the client's language. ${MESSAGE_MAX - message.length} characters left.`}
-        error={shown.find((p) => p.startsWith("Keep the message"))}
+        label={tw.messageOptional}
+        hint={fillWords(tw.goesOnTop, { left: MESSAGE_MAX - message.length })}
+        error={shown.find((p) => p.startsWith(tw.keepTheMessage))}
       >
         {(props) => (
           <textarea {...props} value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className={`${control} py-2`} />
         )}
       </Field>
       <p className={hintText}>
-        The email links to the invoice on the store&apos;s own page. The client needs no account to open it.
+        {tw.theEmailLinksTo}
       </p>
       <Problems messages={problems} />
       {link && (
         <div className="flex flex-col gap-2 text-sm">
-          <input readOnly value={link} aria-label="Link to the invoice" className={control} onFocus={(e) => e.currentTarget.select()} />
+          <input readOnly value={link} aria-label={tw.linkToTheInvoice} className={control} onFocus={(e) => e.currentTarget.select()} />
           <button type="button" onClick={copy} className={smallButton}>
-            {copied ? "Copied" : "Copy the link"}
+            {copied ? "Copied" : tw.copyTheLink}
           </button>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!link ? (
           <button type="button" onClick={showLink} disabled={pending} className={smallButton}>
-            Show the link
+            {tw.showTheLink}
           </button>
         ) : (
           <span />
         )}
         <div className="flex gap-2">
           <button type="button" onClick={onDone} className={secondaryButton}>
-            Cancel
+            {tw.cancel}
           </button>
           <button type="submit" disabled={pending} className={primaryButton}>
-            {pending ? "Sending …" : endpoint === "invoice" && kind === "reminder" ? "Send reminder" : again ? "Send again" : "Send"}
+            {pending ? tw.sending : endpoint === "invoice" && kind === "reminder" ? tw.sendReminder : again ? tw.sendAgain : "Send"}
           </button>
         </div>
       </div>

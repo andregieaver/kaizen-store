@@ -1,11 +1,24 @@
 import type { ReactNode } from "react";
 
 import { formatCount, formatPercent } from "@/lib/analytics-core";
-import { HANDOFF_WORDS, OUTCOME_WORDS, topicWords } from "@/lib/support-inbox-text";
-import { HANDOFF_WHYS, durationWords, missingWords, type Duration, type HandoffWhy, type Rate, type SupportReport } from "@/lib/support-reports";
+import { fillWords } from "@/lib/admin-fill";
+import {
+  supportEn,
+  type SupportMessages,
+} from "@/lib/admin-messages/support.en";
+import { topicWords } from "@/lib/support-inbox-text";
+import {
+  HANDOFF_WHYS,
+  durationWords,
+  missingWords,
+  type Duration,
+  type HandoffWhy,
+  type Rate,
+  type SupportReport,
+} from "@/lib/support-reports";
 import { MIN_SUPPORT_SAMPLE } from "@/lib/support-rules";
 import { OUTCOMES } from "@/lib/support-summary";
-import { TONE_BANDS, TONE_BAND_WORDS } from "@/lib/support-tone";
+import { TONE_BANDS } from "@/lib/support-tone";
 
 /**
  * The support desk's report (D216, step 14): the figures of `docs/analytics.md` (Support) for a period, each with how many cases it
@@ -13,9 +26,24 @@ import { TONE_BANDS, TONE_BAND_WORDS } from "@/lib/support-tone";
  * always shown. Per desk, never per person. Presentational: the page reads the report and passes it.
  */
 
-const HANDOFF_WHY_WORDS: Record<HandoffWhy, string> = { ...(HANDOFF_WORDS as Record<Exclude<HandoffWhy, "taken_over">, string>), taken_over: "A person took it over" };
+type Words = SupportMessages;
 
-function Figure({ label, value, sub, help }: { label: string; value: ReactNode; sub?: ReactNode; help?: string }) {
+const handoffWhyWords = (t: Words, why: HandoffWhy): string =>
+  why === "taken_over"
+    ? t.reports.takenOver
+    : ((t.lib.handoff as Record<string, string>)[why] ?? why);
+
+function Figure({
+  label,
+  value,
+  sub,
+  help,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  help?: string;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-panel bg-sunken p-4">
       <dt className="text-sm text-muted">{label}</dt>
@@ -27,24 +55,51 @@ function Figure({ label, value, sub, help }: { label: string; value: ReactNode; 
 }
 
 /** A share, or what is missing for it. */
-export function rateValue(r: Rate): ReactNode {
-  return r.share === null ? <span className="text-base font-normal text-muted">{missingWords(r.of)}</span> : formatPercent(r.share);
+export function rateValue(r: Rate, t: Words = supportEn): ReactNode {
+  return r.share === null ? (
+    <span className="text-base font-normal text-muted">
+      {missingWords(r.of, MIN_SUPPORT_SAMPLE, t.units)}
+    </span>
+  ) : (
+    formatPercent(r.share)
+  );
 }
-const rateSub = (r: Rate, what: string) => `${formatCount(r.count)} of ${formatCount(r.of)} ${what}`;
+const rateSub = (r: Rate, what: string, t: Words) =>
+  fillWords(t.reports.countOf, {
+    count: formatCount(r.count),
+    of: formatCount(r.of),
+    what,
+  });
 
-function durationValue(d: Duration): ReactNode {
-  return d.median === null ? <span className="text-base font-normal text-muted">{missingWords(d.n)}</span> : durationWords(d.median);
+function durationValue(d: Duration, t: Words): ReactNode {
+  return d.median === null ? (
+    <span className="text-base font-normal text-muted">
+      {missingWords(d.n, MIN_SUPPORT_SAMPLE, t.units)}
+    </span>
+  ) : (
+    durationWords(d.median, t.units)
+  );
 }
 
-function CountTable({ caption, rows, total }: { caption: string; rows: { label: string; count: number }[]; total?: number }) {
+function CountTable({
+  caption,
+  rows,
+  total,
+  t,
+}: {
+  caption: string;
+  rows: { label: string; count: number }[];
+  total?: number;
+  t: Words;
+}) {
   return (
     <table className="w-full text-sm">
       <caption className="mb-2 text-left font-medium">{caption}</caption>
       <thead className="sr-only">
         <tr>
-          <th scope="col">What</th>
-          <th scope="col">Conversations</th>
-          {total !== undefined && <th scope="col">Share</th>}
+          <th scope="col">{t.reports.what}</th>
+          <th scope="col">{t.reports.conversations}</th>
+          {total !== undefined && <th scope="col">{t.reports.share}</th>}
         </tr>
       </thead>
       <tbody>
@@ -53,9 +108,15 @@ function CountTable({ caption, rows, total }: { caption: string; rows: { label: 
             <th scope="row" className="py-1.5 text-left font-normal">
               {row.label}
             </th>
-            <td className="py-1.5 text-right tabular-nums">{formatCount(row.count)}</td>
+            <td className="py-1.5 text-right tabular-nums">
+              {formatCount(row.count)}
+            </td>
             {total !== undefined && (
-              <td className="w-20 py-1.5 text-right text-muted tabular-nums">{total >= MIN_SUPPORT_SAMPLE ? formatPercent(row.count / total) : ""}</td>
+              <td className="w-20 py-1.5 text-right text-muted tabular-nums">
+                {total >= MIN_SUPPORT_SAMPLE
+                  ? formatPercent(row.count / total)
+                  : ""}
+              </td>
             )}
           </tr>
         ))}
@@ -64,50 +125,86 @@ function CountTable({ caption, rows, total }: { caption: string; rows: { label: 
   );
 }
 
-export function ReportsView({ report, periodLabel, cut = false, picker }: { report: SupportReport; periodLabel: string; cut?: boolean; picker?: ReactNode }) {
-  const toneTotal = TONE_BANDS.reduce((sum, band) => sum + report.tone[band], 0);
+export function ReportsView({
+  report,
+  periodLabel,
+  cut = false,
+  picker,
+  words: t = supportEn,
+}: {
+  report: SupportReport;
+  periodLabel: string;
+  cut?: boolean;
+  picker?: ReactNode;
+  words?: Words;
+}) {
+  const w = t.reports;
+  const u = t.units;
+  const toneTotal = TONE_BANDS.reduce(
+    (sum, band) => sum + report.tone[band],
+    0,
+  );
   const handed = report.handover.count;
   return (
     <div className="flex flex-col gap-6">
       {picker}
       <p className="text-sm text-muted">
-        Conversations that started in the period ({periodLabel}). Rates and medians are shown from {MIN_SUPPORT_SAMPLE} conversations. For the desk, never per person.
+        {fillWords(w.intro, { period: periodLabel, min: MIN_SUPPORT_SAMPLE })}
       </p>
-      {cut && <p className="rounded-panel border border-line p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
+      {cut && (
+        <p className="rounded-panel border border-line p-3 text-sm">{w.cut}</p>
+      )}
 
       <section aria-labelledby="support-volume" className="flex flex-col gap-3">
         <h2 id="support-volume" className="text-title text-ink">
-          Conversations
+          {w.conversations}
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label="Started" value={formatCount(report.conversations)} sub={`${formatCount(report.open)} still open`} />
           <Figure
-            label="Handled by the AI alone"
-            value={rateValue(report.aiAlone)}
-            sub={rateSub(report.aiAlone, "ended with the AI first")}
-            help="Never queued, taken over or answered by a person."
+            label={w.started}
+            value={formatCount(report.conversations)}
+            sub={fillWords(w.stillOpen, { n: formatCount(report.open) })}
           />
           <Figure
-            label="Resolved by the AI"
-            value={rateValue(report.aiResolved)}
-            sub={rateSub(report.aiResolved, "the AI handled alone")}
-            help="The AI's own judgement in its summaries."
+            label={w.aiAlone}
+            value={rateValue(report.aiAlone, t)}
+            sub={rateSub(report.aiAlone, w.endedAiFirst, t)}
+            help={w.aiAloneHelp}
           />
-          <Figure label="Handed to a person" value={rateValue(report.handover)} sub={rateSub(report.handover, "ended with the AI first")} />
+          <Figure
+            label={w.aiResolved}
+            value={rateValue(report.aiResolved, t)}
+            sub={rateSub(report.aiResolved, w.aiHandledAlone, t)}
+            help={w.aiResolvedHelp}
+          />
+          <Figure
+            label={w.handedOver}
+            value={rateValue(report.handover, t)}
+            sub={rateSub(report.handover, w.endedAiFirst, t)}
+          />
         </dl>
         <CountTable
-          caption="By who answered first"
+          caption={w.byMode}
+          t={t}
           rows={[
-            { label: "The AI first", count: report.byMode.ai_first },
-            { label: "People only", count: report.byMode.people },
-            { label: "The chat assistant alone (support off)", count: report.byMode.off },
-            ...(report.byMode.unknown ? [{ label: "Not recorded (before reports began)", count: report.byMode.unknown }] : []),
+            { label: w.modeAiFirst, count: report.byMode.ai_first },
+            { label: w.modePeople, count: report.byMode.people },
+            { label: w.modeOff, count: report.byMode.off },
+            ...(report.byMode.unknown
+              ? [{ label: w.modeUnknown, count: report.byMode.unknown }]
+              : []),
           ]}
         />
         {handed > 0 && (
           <CountTable
-            caption="Why it went to a person"
-            rows={HANDOFF_WHYS.filter((why) => report.handoverWhy[why] > 0).map((why) => ({ label: HANDOFF_WHY_WORDS[why], count: report.handoverWhy[why] }))}
+            caption={w.why}
+            t={t}
+            rows={HANDOFF_WHYS.filter((why) => report.handoverWhy[why] > 0).map(
+              (why) => ({
+                label: handoffWhyWords(t, why),
+                count: report.handoverWhy[why],
+              }),
+            )}
             total={handed}
           />
         )}
@@ -115,63 +212,161 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
 
       <section aria-labelledby="support-speed" className="flex flex-col gap-3">
         <h2 id="support-speed" className="text-title text-ink">
-          Waiting and answering
+          {w.speed}
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Figure
-            label="Time to a person's first answer"
-            value={durationValue(report.firstAnswer)}
-            sub={report.firstAnswer.median === null ? `${formatCount(report.firstAnswer.n)} answered after waiting` : `Median of ${formatCount(report.firstAnswer.n)}`}
+            label={w.firstAnswer}
+            value={durationValue(report.firstAnswer, t)}
+            sub={
+              report.firstAnswer.median === null
+                ? fillWords(w.answeredAfterWaiting, {
+                    n: formatCount(report.firstAnswer.n),
+                  })
+                : fillWords(w.medianOf, {
+                    n: formatCount(report.firstAnswer.n),
+                  })
+            }
           />
           <Figure
-            label="Slowest tenth waited"
-            value={report.firstAnswer.slowestTenth === null ? <span className="text-base font-normal text-muted">{missingWords(report.firstAnswer.n)}</span> : `${durationWords(report.firstAnswer.slowestTenth)} or more`}
-            sub="One in ten waited at least this long."
+            label={w.slowest}
+            value={
+              report.firstAnswer.slowestTenth === null ? (
+                <span className="text-base font-normal text-muted">
+                  {missingWords(report.firstAnswer.n, MIN_SUPPORT_SAMPLE, u)}
+                </span>
+              ) : (
+                fillWords(w.orMore, {
+                  time: durationWords(report.firstAnswer.slowestTenth, u),
+                })
+              )
+            }
+            sub={w.slowestHelp}
           />
-          <Figure label="Missed" value={formatCount(report.missed.count)} sub={report.missed.share === null ? `Of ${formatCount(report.missed.of)} that waited` : `${formatPercent(report.missed.share)} of ${formatCount(report.missed.of)} that waited`} help="Ended while waiting, with no answer from a person." />
-          <Figure label="Time to the end" value={durationValue(report.timeToEnd)} sub={`Median of ${formatCount(report.timeToEnd.n)} ended`} />
+          <Figure
+            label={w.missed}
+            value={formatCount(report.missed.count)}
+            sub={
+              report.missed.share === null
+                ? fillWords(w.ofWaited, { n: formatCount(report.missed.of) })
+                : fillWords(w.shareOfWaited, {
+                    share: formatPercent(report.missed.share),
+                    n: formatCount(report.missed.of),
+                  })
+            }
+            help={w.missedHelp}
+          />
+          <Figure
+            label={w.timeToEnd}
+            value={durationValue(report.timeToEnd, t)}
+            sub={fillWords(w.medianOfEnded, {
+              n: formatCount(report.timeToEnd.n),
+            })}
+          />
         </dl>
       </section>
 
-      <section aria-labelledby="support-quality" className="flex flex-col gap-3">
+      <section
+        aria-labelledby="support-quality"
+        className="flex flex-col gap-3"
+      >
         <h2 id="support-quality" className="text-title text-ink">
-          How it went
+          {w.quality}
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label="Customers who said we helped" value={rateValue(report.rating)} sub={`${formatCount(report.rating.of)} ratings`} />
-          <Figure label="Partner drafts used" value={report.drafts.share === null ? <span className="text-base font-normal text-muted">{missingWords(report.drafts.offered)}</span> : formatPercent(report.drafts.share)} sub={`${formatCount(report.drafts.used)} replies from ${formatCount(report.drafts.offered)} drafts`} />
+          <Figure
+            label={w.helped}
+            value={rateValue(report.rating, t)}
+            sub={fillWords(w.ratings, { n: formatCount(report.rating.of) })}
+          />
+          <Figure
+            label={w.drafts}
+            value={
+              report.drafts.share === null ? (
+                <span className="text-base font-normal text-muted">
+                  {missingWords(report.drafts.offered, MIN_SUPPORT_SAMPLE, u)}
+                </span>
+              ) : (
+                formatPercent(report.drafts.share)
+              )
+            }
+            sub={fillWords(w.draftsSub, {
+              used: formatCount(report.drafts.used),
+              offered: formatCount(report.drafts.offered),
+            })}
+          />
         </dl>
         <div className="grid gap-6 lg:grid-cols-3">
           <CountTable
-            caption="Tone at the end"
-            rows={[...TONE_BANDS].reverse().map((band) => ({ label: TONE_BAND_WORDS[band], count: report.tone[band] })).concat([{ label: "Not measured", count: report.tone.not_measured }])}
+            caption={w.toneAtEnd}
+            t={t}
+            rows={[...TONE_BANDS]
+              .reverse()
+              .map((band) => ({
+                label: t.lib.tones[band],
+                count: report.tone[band],
+              }))
+              .concat([
+                { label: w.notMeasured, count: report.tone.not_measured },
+              ])}
             total={toneTotal}
           />
-          <CountTable caption="Outcome (the AI's summaries)" rows={OUTCOMES.map((outcome) => ({ label: OUTCOME_WORDS[outcome] ?? outcome, count: report.outcomes[outcome] }))} />
+          <CountTable
+            caption={w.outcome}
+            t={t}
+            rows={OUTCOMES.map((outcome) => ({
+              label: t.lib.outcomes[outcome] ?? outcome,
+              count: report.outcomes[outcome],
+            }))}
+          />
           {report.topics.length > 0 ? (
-            <CountTable caption="Topics" rows={report.topics.map((t) => ({ label: topicWords(t.topic), count: t.count }))} />
+            <CountTable
+              caption={w.topics}
+              t={t}
+              rows={report.topics.map((row) => ({
+                label: topicWords(row.topic, t.lib),
+                count: row.count,
+              }))}
+            />
           ) : (
-            <p className="text-sm text-muted">No summaries with topics in this period.</p>
+            <p className="text-sm text-muted">{w.noTopics}</p>
           )}
         </div>
       </section>
 
-      <section aria-labelledby="support-requests" className="flex flex-col gap-3">
+      <section
+        aria-labelledby="support-requests"
+        className="flex flex-col gap-3"
+      >
         <h2 id="support-requests" className="text-title text-ink">
-          Requests to your team
+          {w.requests}
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label="Opened" value={formatCount(report.requests.opened)} sub={`${formatCount(report.requests.open)} still open`} />
-          <Figure label="Done" value={formatCount(report.requests.done)} />
-          <Figure label="Declined" value={formatCount(report.requests.declined)} />
-          <Figure label="Time to decide" value={durationValue(report.requests.timeToDecide)} sub={`Median of ${formatCount(report.requests.timeToDecide.n)} decided`} />
+          <Figure
+            label={w.opened}
+            value={formatCount(report.requests.opened)}
+            sub={fillWords(w.stillOpen, {
+              n: formatCount(report.requests.open),
+            })}
+          />
+          <Figure label={w.done} value={formatCount(report.requests.done)} />
+          <Figure
+            label={w.declined}
+            value={formatCount(report.requests.declined)}
+          />
+          <Figure
+            label={w.timeToDecide}
+            value={durationValue(report.requests.timeToDecide, t)}
+            sub={fillWords(w.medianOfDecided, {
+              n: formatCount(report.requests.timeToDecide.n),
+            })}
+          />
         </dl>
       </section>
 
       {report.anonymised > 0 && (
         <p className="text-sm text-muted">
-          {formatCount(report.anonymised)} of these conversations are past their transcript&apos;s period: they count in every figure above except requests and the
-          partner&apos;s drafts, which went with their transcripts.
+          {fillWords(w.anonymised, { n: formatCount(report.anonymised) })}
         </p>
       )}
     </div>

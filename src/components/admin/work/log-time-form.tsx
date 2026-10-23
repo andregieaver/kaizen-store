@@ -7,6 +7,7 @@ import { NO_PROBLEMS, timePayload, type FormProblems } from "@/lib/work-ui";
 import type { AssignmentChoice } from "@/server/work-choices";
 
 import { Field, Problems, control, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
 
 const text = (data: FormData, name: string): string => {
   const value = data.get(name);
@@ -39,6 +40,7 @@ export function LogTimeForm({
   onDone?: () => void;
   onCancel?: () => void;
 }) {
+  const tw = useAdminText("work").logTimeForm;
   const [chosen, setChosen] = useState(assignmentId ?? choices[0]?.id ?? "");
   const [problems, setProblems] = useState<FormProblems>(NO_PROBLEMS);
   const [attempt, setAttempt] = useState(0);
@@ -74,7 +76,7 @@ export function LogTimeForm({
         if (!result.ok) setProblems({ fields: {}, general: result.problems });
         else onDone?.();
       } catch {
-        setProblems({ fields: {}, general: ["The time could not be saved. Check your connection and try again."] });
+        setProblems({ fields: {}, general: [tw.theTimeCouldNot] });
       }
     });
   };
@@ -82,19 +84,19 @@ export function LogTimeForm({
   const err = (name: string) => problems.fields[name];
   const summary = [
     ...problems.general,
-    ...(Object.keys(problems.fields).length > 0 ? ["Some fields need another look. They are marked below."] : []),
+    ...(Object.keys(problems.fields).length > 0 ? [tw.someFieldsNeedAnother] : []),
   ];
 
   if (choices.length === 0) {
     return (
-      <p className="text-sm text-muted">There is no assignment to log time on. Add an assignment to a client first.</p>
+      <p className="text-sm text-muted">{tw.thereIsNoAssignment}</p>
     );
   }
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
       {choices.length > 1 && (
-        <Field label="Assignment" error={err("assignmentId")}>
+        <Field label={tw.assignment} error={err("assignmentId")}>
           {(props) => (
             <select {...props} value={chosen} onChange={(event) => setChosen(event.target.value)} className={control}>
               {choices.map((choice) => (
@@ -108,7 +110,7 @@ export function LogTimeForm({
       )}
       {tasks.length > 0 && (
         // Keyed on the assignment so a change of assignment starts with no task, and opening from a task row starts on it.
-        <Field key={chosen} label="Task (optional)">
+        <Field key={chosen} label={tw.taskOptional}>
           {(props) => (
             <select
               {...props}
@@ -116,7 +118,7 @@ export function LogTimeForm({
               defaultValue={chosen === assignmentId ? (taskId ?? "") : ""}
               className={control}
             >
-              <option value="">No task</option>
+              <option value="">{tw.noTask}</option>
               {tasks.map((task) => (
                 <option key={task.id} value={task.id}>
                   {task.title}
@@ -128,7 +130,7 @@ export function LogTimeForm({
         </Field>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Day" error={err("workDate")}>
+        <Field label={tw.day} error={err("workDate")}>
           {(props) => (
             <input
               {...props}
@@ -141,7 +143,7 @@ export function LogTimeForm({
             />
           )}
         </Field>
-        <Field label="Time" error={err("duration")} hint="1h30, 1:30, 1.5h or 90m. A plain number is minutes.">
+        <Field label={tw.time} error={err("duration")} hint={tw.n1h301301}>
           {(props) => (
             <input
               {...props}
@@ -155,21 +157,21 @@ export function LogTimeForm({
           )}
         </Field>
       </div>
-      <Field label="Note" error={err("note")} hint="What you did. Optional.">
+      <Field label={tw.note} error={err("note")} hint={tw.whatYouDidOptional}>
         {(props) => <input {...props} name="note" maxLength={500} autoComplete="off" className={control} />}
       </Field>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="billable" defaultChecked className="size-4" />
-        Billable
+        {tw.billable}
       </label>
       <Problems messages={summary} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={pending} className={primaryButton}>
-          {pending ? "Saving …" : "Log time"}
+          {pending ? tw.saving : tw.logTime}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className={secondaryButton}>
-            Cancel
+            {tw.cancel}
           </button>
         )}
       </div>

@@ -1,29 +1,24 @@
 import { formatMoney } from "@/lib/money";
 import { formatDuration } from "@/lib/work-time";
 import type { ReportFigures } from "@/lib/work-reports";
+import { fillWords } from "@/lib/admin-fill";
+import type { workEn } from "@/lib/admin-messages/work.en";
+import { workText } from "@/lib/work-text";
 
 /**
  * The report's figures as the words the table and the print view show, once, so the two agree: hours as
  * "12h 30m", amounts in their own currency and the reader's locale. Amounts of invoices and credit notes
  * are without VAT and payments and what is owed have VAT, as the money does; the headings say which.
  */
-export const REPORT_HEADINGS = {
-  hours: "Hours",
-  billable: "Billable",
-  unbilled: "Unbilled time",
-  drafts: "Not yet invoiced",
-  invoiced: "Invoiced",
-  paid: "Paid",
-  outstanding: "Outstanding",
-} as const;
+/** The columns' headings, in the reader's language (D312 A10, `workText()`). */
+export function reportHeadings(): Record<keyof typeof workEn.reportColumns.headings, string> {
+  return workText().reportColumns.headings;
+}
 
 /** What each column measures, for the note under the table. */
-export const REPORT_NOTES: readonly string[] = [
-  "Hours are the time logged on days in the period. Unbilled time is the billable time in the period that no invoice has taken, at your rates, without VAT.",
-  "Not yet invoiced is invoice drafts made in the period, without VAT.",
-  "Invoiced is invoices issued in the period, without VAT and after credit notes; a fixed fee counts once, in the period it is invoiced. Paid and outstanding are for those invoices, with VAT, as of today.",
-  "Amounts are in each client's own currency and are never added across currencies.",
-];
+export function reportNotes(): readonly string[] {
+  return workText().reportColumns.notes;
+}
 
 export type ReportCells = {
   hours: string;
@@ -45,7 +40,7 @@ export function reportCells(f: ReportFigures, currency: string, locale: string):
     unbilled: money(f.unbilledMinor),
     drafts: money(f.draftMinor),
     invoiced: money(f.netInvoicedMinor),
-    credited: f.creditedMinor > 0 ? `after ${money(f.creditedMinor)} credited` : "",
+    credited: f.creditedMinor > 0 ? fillWords(workText().reportColumns.credited, { amount: money(f.creditedMinor) }) : "",
     paid: money(f.paidMinor),
     outstanding: money(f.outstandingMinor),
   };

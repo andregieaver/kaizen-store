@@ -3,9 +3,10 @@ import { Suspense } from "react";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -73,20 +74,22 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         </Suspense>
       }
       actions={
-        <AiManagerLauncher
-          area="platform"
-          base={`${base}/assistant`}
-          siteName="Kaizena Flow"
-          settingsHref={`${base}/ai`}
-          start={startPlatformAssistantAction}
-          actions={{
-            decide: decidePlatformApprovalAction,
-            remove: deletePlatformConversationAction,
-            load: loadPlatformConversationAction,
-            rate: ratePlatformAnswerAction,
-            hear: platformHearAction,
-          }}
-        />
+        <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+          <AiManagerLauncher
+            area="platform"
+            base={`${base}/assistant`}
+            siteName="Kaizena Flow"
+            settingsHref={`${base}/ai`}
+            start={startPlatformAssistantAction}
+            actions={{
+              decide: decidePlatformApprovalAction,
+              remove: deletePlatformConversationAction,
+              load: loadPlatformConversationAction,
+              rate: ratePlatformAnswerAction,
+              hear: platformHearAction,
+            }}
+          />
+        </AdminTextScope>
       }
       account={<AdminAccountMenu account={account} role={w.levels.platform} />}
       tabs={tabs}

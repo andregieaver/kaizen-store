@@ -7,6 +7,8 @@ import { Modal } from "@/components/admin/modal";
 import { newClientHref, newInvoiceHref } from "@/lib/work-owner";
 
 import { control, primaryButton, secondaryButton } from "./work-parts";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /**
  * Small pieces of the combined Work view (D123) that need the browser: "New client" and "New invoice" on the
@@ -18,8 +20,8 @@ import { control, primaryButton, secondaryButton } from "./work-parts";
 export type StoreChoice = { slug: string; name: string };
 
 const KINDS = {
-  client: { label: "New client", title: "New client", href: newClientHref },
-  invoice: { label: "New invoice", title: "New invoice", href: newInvoiceHref },
+  client: { word: "newClient", href: newClientHref },
+  invoice: { word: "newInvoice", href: newInvoiceHref },
 } as const;
 
 /**
@@ -38,9 +40,12 @@ export function NewInStoreButton({
   defaultSlug: string;
   primary?: boolean;
 }) {
+  const tw = useAdminText("work").ownerParts;
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState(stores.some((s) => s.slug === defaultSlug) ? defaultSlug : (stores[0]?.slug ?? ""));
-  const { label, title, href } = KINDS[kind];
+  const { word, href } = KINDS[kind];
+  const label = tw[word];
+  const title = label;
   const className = primary ? primaryButton : secondaryButton;
   if (stores.length === 0) return null;
   if (stores.length === 1) {
@@ -59,10 +64,10 @@ export function NewInStoreButton({
       <Modal open={open} onClose={() => setOpen(false)} title={title}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted">
-            Each store keeps its own clients and invoices, with its own numbers and details. Which store is this for?
+            {tw.eachStoreKeepsIts}
           </p>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Store
+            {tw.store}
             <select value={chosen.slug} onChange={(event) => setSlug(event.target.value)} className={control}>
               {stores.map((store) => (
                 <option key={store.slug} value={store.slug}>
@@ -73,10 +78,10 @@ export function NewInStoreButton({
           </label>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setOpen(false)} className={secondaryButton}>
-              Cancel
+              {tw.cancel}
             </button>
             <Link href={href(chosen.slug)} className={primaryButton}>
-              Continue in {chosen.name}
+              {fillWords(tw.continueIn, { store: chosen.name })}
             </Link>
           </div>
         </div>

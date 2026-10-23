@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import type { WorkSettingsInput } from "@/lib/work-input";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /** The settings the form edits: `work_settings`, as `getWorkSettings` reads them. */
 export type SettingsFormProps = {
@@ -28,16 +30,17 @@ const hint = "font-normal text-muted";
  * its own form (`SeriesForm`), as the database guards it.
  */
 export function WorkSettingsForm({ action, settings, currencies, mainCurrency, canEdit }: SettingsFormProps) {
+  const tw = useAdminText("work").settingsForm;
   const [registered, setRegistered] = useState(settings.vatRegistered);
   return (
     <ActionForm action={action} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="flex flex-col gap-6">
         <section aria-labelledby="vat-heading" className={card}>
           <h2 id="vat-heading" className="mb-1 text-title text-ink">
-            VAT and payment details
+            {tw.vatAndPaymentDetails}
           </h2>
           <p className="mb-4 text-sm text-muted">
-            Printed on every invoice. The law asks for these, so an invoice cannot be issued without them.
+            {tw.printedOnEveryInvoice}
           </p>
           <div className="flex flex-col gap-4">
             <label className="flex items-start gap-2 text-sm">
@@ -49,42 +52,41 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 className="mt-0.5 size-4"
               />
               <span>
-                My business is registered for VAT
+                {tw.myBusinessIsRegistered}
                 <span className={`block ${hint}`}>
-                  Invoices charge VAT at your country&apos;s rate. Leave it off if you are not registered: invoices then
-                  charge no VAT and say so.
+                  {tw.invoicesChargeVatAt}
                 </span>
               </span>
             </label>
             {registered && (
               <label className={label}>
-                VAT number
+                {tw.vatNumber}
                 <input
                   name="vatNumber"
                   defaultValue={settings.vatNumber ?? ""}
                   autoComplete="off"
                   className={control}
                 />
-                <span className={hint}>For example NO123456789MVA or SE123456789001.</span>
+                <span className={hint}>{tw.forExampleNo123456789mvaOr}</span>
               </label>
             )}
             <label className={label}>
-              Bank account
+              {tw.bankAccount}
               <input
                 name="bankAccount"
                 defaultValue={settings.bankAccount ?? ""}
                 autoComplete="off"
                 className={control}
               />
-              <span className={hint}>An IBAN, or your country&apos;s own account number. Clients pay to this.</span>
+              <span className={hint}>{tw.anIbanOrYour}</span>
             </label>
             <label className={label}>
-              BIC (optional)
+              {tw.bicOptional}
               <input name="bic" defaultValue={settings.bic ?? ""} autoComplete="off" className={control} />
-              <span className={hint}>The bank&apos;s code, 8 or 11 characters. Useful for clients abroad.</span>
+              <span className={hint}>{tw.theBankSCode}</span>
             </label>
             <label className={label}>
-              How to pay
+              {tw.howToPay}
               <textarea
                 name="paymentNote"
                 rows={3}
@@ -93,11 +95,11 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 className={`${control} py-2`}
               />
               <span className={hint}>
-                Printed under the bank details: a payment reference, KID, or anything clients should know.
+                {tw.printedUnderTheBank}
               </span>
             </label>
             <label className={label}>
-              Invoice footer
+              {tw.invoiceFooter}
               <textarea
                 name="invoiceFooter"
                 rows={3}
@@ -105,10 +107,10 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 defaultValue={settings.invoiceFooter ?? ""}
                 className={`${control} py-2`}
               />
-              <span className={hint}>A line at the bottom of every invoice, such as your terms.</span>
+              <span className={hint}>{tw.aLineAtThe}</span>
             </label>
             <label className={label}>
-              Late payment note
+              {tw.latePaymentNote}
               <textarea
                 name="latePaymentNote"
                 rows={3}
@@ -117,7 +119,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 className={`${control} py-2`}
               />
               <span className={hint}>
-                Printed on the invoice. Kaizena Flow adds no interest or fees by itself: write only what you are entitled to.
+                {tw.printedOnTheInvoice}
               </span>
             </label>
           </div>
@@ -125,12 +127,12 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
 
         <section aria-labelledby="defaults-heading" className={card}>
           <h2 id="defaults-heading" className="mb-1 text-title text-ink">
-            Defaults
+            {tw.defaults}
           </h2>
-          <p className="mb-4 text-sm text-muted">Used when a client or an invoice does not say otherwise.</p>
+          <p className="mb-4 text-sm text-muted">{tw.usedWhenAClient}</p>
           <div className="flex flex-col gap-4">
             <label className={label}>
-              Days to pay
+              {tw.daysToPay}
               <input
                 name="defaultPaymentDays"
                 type="number"
@@ -141,10 +143,10 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 required
                 className={`${control} max-w-40`}
               />
-              <span className={hint}>The due date is the day you issue the invoice plus this many days (1 to 90).</span>
+              <span className={hint}>{tw.theDueDateIs}</span>
             </label>
             <label className={label}>
-              Currency
+              {tw.currency}
               <select name="defaultCurrency" defaultValue={settings.defaultCurrency ?? ""} className={control}>
                 <option value="">Your store&apos;s main currency ({mainCurrency})</option>
                 {currencies.map((code) => (
@@ -153,7 +155,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                   </option>
                 ))}
               </select>
-              <span className={hint}>For new clients. Each client can have their own.</span>
+              <span className={hint}>{tw.forNewClientsEach}</span>
             </label>
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -163,8 +165,8 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 className="mt-0.5 size-4"
               />
               <span>
-                Show clients the notes on my time entries
-                <span className={`block ${hint}`}>Off by default. Notes are for you unless you switch this on.</span>
+                {tw.showClientsTheNotes}
+                <span className={`block ${hint}`}>{tw.offByDefaultNotes}</span>
               </span>
             </label>
           </div>
@@ -172,15 +174,14 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
 
         <section aria-labelledby="estimates-heading" className={card}>
           <h2 id="estimates-heading" className="mb-1 text-title text-ink">
-            Estimate warnings
+            {tw.estimateWarnings}
           </h2>
           <p className="mb-4 text-sm text-muted">
-            When a task has an estimate, you are told as it runs out. New assignments start with these; each can change
-            them.
+            {tw.whenATaskHas}
           </p>
           <div className="flex flex-col gap-4">
             <label className={label}>
-              Warn this many minutes before the estimate is used up
+              {tw.warnThisManyMinutes}
               <input
                 name="estimateAlertMinutes"
                 type="number"
@@ -190,7 +191,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 defaultValue={settings.estimateAlertMinutes ?? ""}
                 className={`${control} max-w-40`}
               />
-              <span className={hint}>Leave empty for no warnings (1 to 480).</span>
+              <span className={hint}>{tw.leaveEmptyForNo}</span>
             </label>
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -199,7 +200,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 defaultChecked={settings.estimateAlertPopup}
                 className="mt-0.5 size-4"
               />
-              <span>Show a message on the page</span>
+              <span>{tw.showAMessageOn}</span>
             </label>
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -208,17 +209,17 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
                 defaultChecked={settings.estimateAlertSound}
                 className="mt-0.5 size-4"
               />
-              <span>Play a sound</span>
+              <span>{tw.playASound}</span>
             </label>
           </div>
         </section>
       </fieldset>
       {canEdit ? (
         <div>
-          <SubmitButton>Save settings</SubmitButton>
+          <SubmitButton>{tw.saveSettings}</SubmitButton>
         </div>
       ) : (
-        <p className="text-sm text-muted">Only an owner can change Work&apos;s settings.</p>
+        <p className="text-sm text-muted">{tw.onlyAnOwnerCan}</p>
       )}
     </ActionForm>
   );
@@ -244,23 +245,24 @@ export function SeriesForm({
   nextDocumentNumber: string;
   canEdit: boolean;
 }) {
+  const tw = useAdminText("work").settingsForm;
   const locked = issued > 0;
   return (
     <ActionForm action={action} className="flex flex-col gap-3">
       <h3 className="text-body-strong text-ink">{title}</h3>
       {locked ? (
         <p className="text-sm">
-          {issued} issued, the last is <span className="font-medium">{lastDocumentNumber}</span>. The next will be{" "}
+          {fillWords(tw.issuedLastIs, { count: issued })} <span className="font-medium">{lastDocumentNumber}</span>. {tw.nextWillBe}{" "}
           <span className="font-medium">{nextDocumentNumber}</span>.
           <span className={`block ${hint}`}>
-            Numbers already issued are never reused, so this can no longer be changed.
+            {tw.numbersAlreadyIssuedAre}
           </span>
         </p>
       ) : (
         <>
           <div className="flex flex-wrap gap-4">
             <label className={label}>
-              Prefix
+              {tw.prefix}
               <input
                 name="prefix"
                 defaultValue={prefix}
@@ -271,7 +273,7 @@ export function SeriesForm({
               />
             </label>
             <label className={label}>
-              Next number
+              {tw.nextNumber}
               <input
                 name="nextNumber"
                 type="number"
@@ -285,12 +287,11 @@ export function SeriesForm({
             </label>
           </div>
           <p className={`text-sm ${hint}`}>
-            The next one will be <span className="font-medium text-ink">{nextDocumentNumber}</span>. Set the
-            number here before your first one if you continue numbers from another system.
+            {tw.theNextOneWill} <span className="font-medium text-ink">{nextDocumentNumber}</span>{tw.setTheNumberHere}
           </p>
           {canEdit && (
             <div>
-              <SubmitButton>Save numbering</SubmitButton>
+              <SubmitButton>{tw.saveNumbering}</SubmitButton>
             </div>
           )}
         </>

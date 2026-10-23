@@ -1,3 +1,9 @@
+import { fillWords } from "./admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
+import {
+  staffEmailsEn,
+  type StaffEmailsMessages,
+} from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 import { REOPEN_DAYS } from "./store-closure";
 
@@ -19,56 +25,89 @@ export type StatusEmailFacts = {
   reopenUntil: Date | null;
 };
 
-const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
-
-const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-
-export function statusEmail(facts: StatusEmailFacts): EmailContent {
+/** Written from the `staffEmails` catalogue in the owner's admin language (D312 A10); English unless other words are given. */
+export function statusEmail(
+  facts: StatusEmailFacts,
+  words: StaffEmailsMessages = staffEmailsEn,
+  lang: AdminLang = "en",
+): EmailContent {
   const { storeName: name, by } = facts;
-  const who = by === "owner" ? "was closed from its settings" : "was closed by Kaizena Flow";
+  const w = words.closure;
+  const tag = ADMIN_LANG_FACTS[lang].tag;
+  const footer = [name, words.footer];
+  const reason = facts.reason
+    ? fillWords(w.reason, { reason: facts.reason })
+    : "";
+  const button = { type: "button" as const, text: w.button, url: facts.url };
   if (facts.change === "closed") {
+    const day = (date: Date) =>
+      date.toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
     return {
-      subject: `${name} is closed`,
-      preview: `${name} no longer takes orders. Its orders, invoices and customer data stay available to you.`,
-      lang: "en",
-      footer: [name, ...FOOTER],
+      subject: fillWords(w.closedSubject, { name }),
+      preview: fillWords(w.closedPreview, { name }),
+      lang: tag,
+      footer,
       blocks: [
-        { type: "heading", text: `${name} is closed` },
-        { type: "paragraph", text: `${name} ${who}. The shop no longer takes orders, its Kaizena Flow plan ends when the period you have paid for is over, and its own domains are released.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
-        { type: "paragraph", text: "Nothing was deleted. You can still open the store's orders, invoices, returns and customer data in the admin, and download them: invoices and orders are kept for the bookkeeping period of the seller's country, and then made anonymous." },
+        { type: "heading", text: fillWords(w.closedSubject, { name }) },
+        {
+          type: "paragraph",
+          text: fillWords(w.closedText, {
+            name,
+            who: by === "owner" ? w.byOwner : w.byPlatform,
+            reason,
+          }),
+        },
+        { type: "paragraph", text: w.nothingDeleted },
         {
           type: "paragraph",
           text: facts.reopenUntil
-            ? `You can reopen the store yourself until ${day(facts.reopenUntil)} (${REOPEN_DAYS} days). After that, ask Kaizena Flow.`
-            : "To reopen the store, ask Kaizena Flow.",
+            ? fillWords(w.reopenUntil, {
+                day: day(facts.reopenUntil),
+                days: REOPEN_DAYS,
+              })
+            : w.askToReopen,
         },
-        { type: "button", text: "Open the store in the admin", url: facts.url },
+        button,
       ],
     };
   }
   if (facts.change === "suspended") {
     return {
-      subject: `${name} is suspended`,
-      preview: `${name} is paused by Kaizena Flow and takes no orders until it is reopened.`,
-      lang: "en",
-      footer: [name, ...FOOTER],
+      subject: fillWords(w.suspendedSubject, { name }),
+      preview: fillWords(w.suspendedPreview, { name }),
+      lang: tag,
+      footer,
       blocks: [
-        { type: "heading", text: `${name} is suspended` },
-        { type: "paragraph", text: `Kaizena Flow has suspended ${name}. The shop takes no orders and cannot be changed until Kaizena Flow reopens it.${facts.reason ? ` Reason given: ${facts.reason}` : ""}` },
-        { type: "paragraph", text: "You can still see orders, invoices, returns and customer data in the admin and handle what has already been sold. Reply to this email or write to Kaizena Flow to have the store reopened." },
-        { type: "button", text: "Open the store in the admin", url: facts.url },
+        { type: "heading", text: fillWords(w.suspendedSubject, { name }) },
+        {
+          type: "paragraph",
+          text: fillWords(w.suspendedText, { name, reason }),
+        },
+        { type: "paragraph", text: w.suspendedStill },
+        button,
       ],
     };
   }
   return {
-    subject: `${name} is open again`,
-    preview: `${name} is reopened and takes orders again.`,
-    lang: "en",
-    footer: [name, ...FOOTER],
+    subject: fillWords(w.reopenedSubject, { name }),
+    preview: fillWords(w.reopenedPreview, { name }),
+    lang: tag,
+    footer,
     blocks: [
-      { type: "heading", text: `${name} is open again` },
-      { type: "paragraph", text: `${name} was reopened${by === "owner" ? " from its settings" : " by Kaizena Flow"}. The shop takes orders again. If you had closed it, add its own domains again under Settings, Domains, and check that its Kaizena Flow plan is still on.` },
-      { type: "button", text: "Open the store in the admin", url: facts.url },
+      { type: "heading", text: fillWords(w.reopenedSubject, { name }) },
+      {
+        type: "paragraph",
+        text: fillWords(w.reopenedText, {
+          name,
+          by: by === "owner" ? w.reopenedByOwner : w.reopenedByPlatform,
+        }),
+      },
+      button,
     ],
   };
 }

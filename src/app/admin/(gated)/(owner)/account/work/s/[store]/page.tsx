@@ -6,13 +6,16 @@ import { getWorkOverview } from "@/server/work-overview";
 import { workReadiness } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Work" };
 
 /** Work (D122): what is unbilled, drafted and owed, what needs attention, and what is running. */
 export default async function WorkPage({ params }: PageProps<"/admin/account/work/s/[store]">) {
+  await workWords();
   const { store } = await requirePermission((await params).store, "settings:read");
-  if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Work" />;
+  const off = (await workWords()).w.off;
+  if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.work} words={off} />;
   const base = workBase(store.slug);
   const [view, readiness] = await Promise.all([getWorkOverview(store), workReadiness(store.id)]);
   return (

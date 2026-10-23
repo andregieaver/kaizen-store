@@ -1,13 +1,22 @@
+import { fillWords } from "./admin-fill";
+import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
+import {
+  staffEmailsEn,
+  type StaffEmailsMessages,
+} from "./admin-messages/staff-emails.en";
 import type { EmailContent } from "./email-layout";
 
 /**
  * The emails about a person's own sign-in security (wave 1, 1f, docs/wave-1-trust.md 2.6): a recovery code was used, two-step was
- * removed, a platform admin reset it. Pure, like `experiment-emails.ts`: the server decides who gets one and when. Kaizen writes to
- * its staff in English, as the admin is. Each says what happened and what to do if it was not them, and none carries a code, a link
+ * removed, a platform admin reset it. Pure, like `experiment-emails.ts`: the server decides who gets one and when. Each is written
+ * in the account's own admin language (D312 A10). Each says what happened and what to do if it was not them, and none carries a code, a link
  * that signs anyone in, or a secret.
  */
 
-export type SecurityEvent = "recovery_code_used" | "two_step_removed" | "two_step_reset";
+export type SecurityEvent =
+  | "recovery_code_used"
+  | "two_step_removed"
+  | "two_step_reset";
 
 export type SecurityFacts = {
   event: SecurityEvent;
@@ -23,36 +32,30 @@ export type SecurityFacts = {
   signInUrl: string;
 };
 
-const FOOTER = ["Kaizena Flow · kaizenaflow.com"];
-
-export function securityEmail(facts: SecurityFacts): EmailContent {
-  const intro =
-    facts.event === "recovery_code_used"
-      ? `A recovery code was used to get into your Kaizena Flow account on ${facts.when}. Using a recovery code takes your two-step sign-in away, so you are asked to set it up again the next time you sign in, and your other recovery codes no longer work.`
-      : facts.event === "two_step_removed"
-        ? `Two-step sign-in was switched off for your Kaizena Flow account on ${facts.when}.`
-        : `A platform admin${facts.by ? ` (${facts.by})` : ""} reset the two-step sign-in of your Kaizena Flow account on ${facts.when}. You are asked to set it up again the next time you sign in.`;
-  const subject =
-    facts.event === "recovery_code_used"
-      ? "A recovery code was used on your account"
-      : facts.event === "two_step_removed"
-        ? "Two-step sign-in was switched off on your account"
-        : "Your two-step sign-in was reset";
+/** Written from the `staffEmails` catalogue in the account's admin language (D312 A10); English unless other words are given. */
+export function securityEmail(
+  facts: SecurityFacts,
+  words: StaffEmailsMessages = staffEmailsEn,
+  lang: AdminLang = "en",
+): EmailContent {
+  const w = words.security;
+  const intro = fillWords(w.intros[facts.event], {
+    when: facts.when,
+    by: facts.by ? fillWords(w.by, { by: facts.by }) : "",
+  });
+  const subject = w.subjects[facts.event];
   return {
     subject,
     preview: subject,
-    lang: "en",
-    footer: FOOTER,
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: [words.footer],
     blocks: [
       { type: "heading", text: subject },
-      { type: "paragraph", text: `Hello ${facts.person},` },
+      { type: "paragraph", text: fillWords(w.hello, { person: facts.person }) },
       { type: "paragraph", text: intro },
-      { type: "paragraph", text: "If this was you, there is nothing more to do." },
-      {
-        type: "paragraph",
-        text: "If it was not you, someone else may have access to your account. Sign in, change your password at once and set up two-step sign-in again, then tell the owner of your store.",
-      },
-      { type: "button", text: "Sign in", url: facts.signInUrl },
+      { type: "paragraph", text: w.wasYou },
+      { type: "paragraph", text: w.notYou },
+      { type: "button", text: w.signIn, url: facts.signInUrl },
     ],
   };
 }

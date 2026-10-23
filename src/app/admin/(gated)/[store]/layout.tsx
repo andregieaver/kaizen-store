@@ -6,11 +6,12 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
+import { AdminTextScope } from "@/components/admin/admin-text";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
@@ -98,20 +99,22 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         <>
           {/* The AI manager (D103), from every page of the store's admin, for owners. */}
           {isOwner && open && (
-            <AiManagerLauncher
-              area="store"
-              base={`${base}/assistant`}
-              siteName={store.name}
-              settingsHref={`${base}/settings/ai`}
-              start={startAssistantAction.bind(null, store.slug)}
-              actions={{
-                decide: decideApprovalAction.bind(null, store.slug),
-                remove: deleteConversationAction.bind(null, store.slug),
-                load: loadConversationAction.bind(null, store.slug),
-                rate: rateAnswerAction.bind(null, store.slug),
-                hear: assistantHearAction.bind(null, store.slug),
-              }}
-            />
+            <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+              <AiManagerLauncher
+                area="store"
+                base={`${base}/assistant`}
+                siteName={store.name}
+                settingsHref={`${base}/settings/ai`}
+                start={startAssistantAction.bind(null, store.slug)}
+                actions={{
+                  decide: decideApprovalAction.bind(null, store.slug),
+                  remove: deleteConversationAction.bind(null, store.slug),
+                  load: loadConversationAction.bind(null, store.slug),
+                  rate: rateAnswerAction.bind(null, store.slug),
+                  hear: assistantHearAction.bind(null, store.slug),
+                }}
+              />
+            </AdminTextScope>
           )}
           <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
             <span className="hidden sm:inline">{w.store.viewStore}</span>

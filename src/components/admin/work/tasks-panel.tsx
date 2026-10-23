@@ -48,6 +48,8 @@ import { useWorkTimerApi } from "./timer-context";
 import { TimerToggle } from "./timer-controls";
 import { Problems, errorText, primaryButton, smallButton, smallControl } from "./work-parts";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 type PendingAdd = { key: string; title: string; estimatedMinutes: number | null; serverId?: string };
 
@@ -84,6 +86,7 @@ export function TasksPanel({
   choice: AssignmentChoice;
   today: string;
 }) {
+  const tw = useAdminText("work").tasksPanel;
   const [order, setOrder] = useState<string[] | null>(null);
   const [seen, setSeen] = useState(tasks);
   const [adds, setAdds] = useState<PendingAdd[]>([]);
@@ -128,7 +131,7 @@ export function TasksPanel({
         }
       } catch {
         setOrder(before);
-        setListProblems(["The order could not be saved. Check your connection and try again."]);
+        setListProblems([tw.theOrderCouldNot]);
       }
     });
   };
@@ -174,7 +177,7 @@ export function TasksPanel({
       .catch(() => {
         setAdds((current) => current.filter((entry) => entry.key !== key));
         setTitle((now) => now || typed.title);
-        setAddProblems({ fields: {}, general: ["The task could not be saved. Check your connection and try again."] });
+        setAddProblems({ fields: {}, general: [tw.theTaskCouldNot] });
       });
   };
 
@@ -184,7 +187,7 @@ export function TasksPanel({
   return (
     <section aria-labelledby="tasks-heading" className="flex flex-col gap-3">
       <h2 id="tasks-heading" className="text-title text-ink">
-        Tasks
+        {tw.tasks}
       </h2>
 
       <form
@@ -192,12 +195,12 @@ export function TasksPanel({
           event.preventDefault();
           add();
         }}
-        aria-label="Add a task"
+        aria-label={tw.addATask}
         className="flex flex-wrap items-start gap-2"
       >
         <div className="flex min-w-48 flex-1 flex-col gap-1">
           <label htmlFor={`${dndId}-title`} className="sr-only">
-            New task
+            {tw.newTask}
           </label>
           <input
             ref={titleInput}
@@ -205,20 +208,20 @@ export function TasksPanel({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             maxLength={200}
-            placeholder="New task, then Enter"
+            placeholder={tw.newTaskThenEnter}
             autoComplete="off"
             className="min-h-10 rounded-md border border-line bg-card px-3 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${dndId}-estimate`} className="sr-only">
-            Estimate for the new task
+            {tw.estimateForTheNew}
           </label>
           <input
             id={`${dndId}-estimate`}
             value={estimate}
             onChange={(event) => setEstimate(event.target.value)}
-            placeholder="Estimate"
+            placeholder={tw.estimate}
             autoComplete="off"
             aria-invalid={addProblems.fields.estimate ? true : undefined}
             aria-describedby={addProblems.fields.estimate ? `${dndId}-estimate-error` : undefined}
@@ -226,10 +229,10 @@ export function TasksPanel({
           />
         </div>
         <button type="submit" className={primaryButton}>
-          Add task
+          {tw.addTask}
         </button>
       </form>
-      <p className="text-xs text-muted">The estimate is hours, or 1h30, 1:30 or 90m. Leave it empty for none.</p>
+      <p className="text-xs text-muted">{tw.theEstimateIsHours}</p>
       {addProblems.fields.estimate && (
         <p id={`${dndId}-estimate-error`} className={errorText}>
           {addProblems.fields.estimate}
@@ -240,7 +243,7 @@ export function TasksPanel({
 
       {empty ? (
         <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>
-          No tasks yet. Tasks split the job into parts you can estimate, time and tick off. They are optional.
+          {tw.noTasksYetTasks}
         </p>
       ) : (
         <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -271,7 +274,7 @@ export function TasksPanel({
                   {entry.estimatedMinutes !== null && (
                     <span className="tabular-nums">{formatDuration(entry.estimatedMinutes)}</span>
                   )}
-                  <span>Saving …</span>
+                  <span>{tw.saving}</span>
                 </li>
               ))}
             </ul>
@@ -279,7 +282,7 @@ export function TasksPanel({
         </DndContext>
       )}
 
-      <Modal open={logFor !== undefined} onClose={() => setLogFor(undefined)} title="Log time" wide={false}>
+      <Modal open={logFor !== undefined} onClose={() => setLogFor(undefined)} title={tw.logTime} wide={false}>
         <LogTimeForm
           storeSlug={storeSlug}
           today={today}
@@ -319,6 +322,8 @@ function TaskRow({
   onMove: (delta: number) => void;
   onLogTime: () => void;
 }) {
+  const tw = useAdminText("work").tasksPanel;
+  const tl = useAdminText("work").labels;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const api = useWorkTimerApi();
   const [pending, start] = useTransition();
@@ -354,7 +359,7 @@ function TaskRow({
           undo?.();
         }
       } catch {
-        setProblems(["That did not work. Check your connection and try again."]);
+        setProblems([tw.thatDidNotWork]);
         undo?.();
       }
     });
@@ -402,7 +407,7 @@ function TaskRow({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Drag ${task.title} to reorder`}
+          aria-label={fillWords(tw.dragTask, { task: task.title })}
           className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill text-muted hover:bg-sunken active:cursor-grabbing"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
@@ -447,7 +452,7 @@ function TaskRow({
       </div>
       <div className="flex flex-wrap items-center gap-2 pl-0 sm:pl-11">
         <label className="flex items-center gap-1 text-xs text-muted">
-          Estimate
+          {tw.estimate}
           <input
             value={estimate}
             onChange={(event) => setEstimate(event.target.value)}
@@ -459,7 +464,7 @@ function TaskRow({
                 event.currentTarget.blur();
               }
             }}
-            placeholder="None"
+            placeholder={tw.none}
             autoComplete="off"
             aria-label={`Estimate for ${task.title}`}
             className={`${smallControl} w-24 text-ink`}
@@ -467,7 +472,7 @@ function TaskRow({
         </label>
         <span className="text-xs tabular-nums">
           {formatDuration(logged)} logged
-          {remaining !== null && <span className={`ml-2 ${style.text}`}>{remainingLabel(remaining)}</span>}
+          {remaining !== null && <span className={`ml-2 ${style.text}`}>{remainingLabel(remaining, tl.remaining)}</span>}
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-1">
           <TimerToggle
@@ -475,24 +480,24 @@ function TaskRow({
             subject={task.title}
           />
           <button type="button" onClick={onLogTime} className={smallButton}>
-            Log time<span className="sr-only"> on {task.title}</span>
+            {tw.logTime}<span className="sr-only"> on {task.title}</span>
           </button>
           <button type="button" onClick={() => onMove(-1)} disabled={first || pending} className={smallButton}>
-            Move up<span className="sr-only"> {task.title}</span>
+            {tw.moveUp}<span className="sr-only"> {task.title}</span>
           </button>
           <button type="button" onClick={() => onMove(1)} disabled={last || pending} className={smallButton}>
-            Move down<span className="sr-only"> {task.title}</span>
+            {tw.moveDown}<span className="sr-only"> {task.title}</span>
           </button>
           <button
             type="button"
             disabled={pending}
             onClick={() => {
-              if (!window.confirm(`Delete the task ${task.title}? Time logged on it stays on the assignment.`)) return;
+              if (!window.confirm(fillWords(tw.deleteTaskConfirm, { task: task.title }))) return;
               run(() => deleteTaskAction(storeSlug, task.id));
             }}
             className="min-h-9 px-2 text-sm text-danger-text underline disabled:opacity-50"
           >
-            Delete<span className="sr-only"> {task.title}</span>
+            {tw.delete}<span className="sr-only"> {task.title}</span>
           </button>
         </span>
       </div>
