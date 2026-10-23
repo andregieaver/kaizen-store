@@ -78,6 +78,16 @@ describe("self-hosted Google Fonts (D59)", () => {
     expect(google.calls).toHaveLength(4);
   });
 
+  it("serves no stylesheet kept empty, and installs the family again", async () => {
+    await db().execute(sql`update commerce.fonts set css = E' \\n' where family = 'Lora'`);
+    // The route answers an empty stylesheet for it: only the fallback font shows.
+    expect(await fontCss("lora")).toBeNull();
+    const google = fakeGoogle();
+    expect(await installFont("Lora", google.fetcher)).toEqual({ ok: true });
+    expect(google.calls).toHaveLength(4);
+    expect(await fontCss("lora")).toContain("@font-face");
+  });
+
   it("refuses families outside Google Fonts, and keeps nothing when Google fails", async () => {
     expect(await installFont("Comic Sans MS")).toEqual({ ok: false, problem: "That font is not in Google Fonts." });
     const down = async () => new Response("", { status: 503 });

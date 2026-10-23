@@ -920,6 +920,14 @@ stand-in is the only fake, and only it is told it is one.
   (D179, per kind of text and size), drawn as the family's `kf-{slug}` class
   by `blockBox()` (a family that differs by size as a rule), and listed by
   `partFonts()`/`pageFonts()` for its stylesheet and its install on save.
+  (D316) A stylesheet linked with `precedence` that fails to load makes React give
+  up the streamed `<Suspense>` boundary holding it (drawn again in the
+  browser, the server's copy left hidden: two of everything), so the route
+  never fails one: a slug of `FONT_SLUG`'s shape with no stylesheet (not
+  installed, kept empty, the database not answering) is an empty stylesheet
+  with a short cache, `fontCss()` keeps a miss for seconds only, and
+  `<FontLinks>` links no other name (`e2e/missing-font.spec.ts`). An empty
+  stylesheet counts as not installed, so `installFont()` replaces it.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):
   `commerce.terms` per owner (`store_id`, null for Kaizen) and kind of
   content (`page`, `article`, `product`); categories nest, tags are flat.

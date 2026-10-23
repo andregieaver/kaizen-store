@@ -36,6 +36,9 @@ export const FONT_FAMILY = /^[A-Za-z0-9][A-Za-z0-9 ]{0,99}$/;
 /** `Open Sans` → `open-sans`: in addresses and class names. */
 export const fontSlug = (family: string) => family.trim().toLowerCase().replace(/\s+/g, "-");
 
+/** What `fontSlug()` makes of a family's name (`FONT_FAMILY`): the addresses `/api/fonts/css/{slug}` answers. */
+export const FONT_SLUG = /^[a-z0-9][a-z0-9-]{0,99}$/;
+
 /** The class that sets a family on an element, from its stylesheet. */
 export const fontClass = (family: string) => `kf-${fontSlug(family)}`;
 

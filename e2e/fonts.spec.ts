@@ -83,7 +83,12 @@ test("a store's fonts and a component's own font load from Kaizena Flow, never f
   const file = await request.get(`/api/fonts/files/${FILE}`);
   expect(file.headers()["content-type"]).toBe("font/woff2");
   expect(file.headers()["cache-control"]).toContain("immutable");
-  expect((await request.get("/api/fonts/css/not-installed")).status()).toBe(404);
+  // A family not installed is an empty stylesheet, never a 404, which would make React give up a streamed boundary (missing-font.spec.ts).
+  const none = await request.get("/api/fonts/css/not-installed");
+  expect(none.status()).toBe(200);
+  expect(none.headers()["cache-control"]).not.toContain("immutable");
+  expect(await none.text()).not.toContain("@font-face");
+  expect((await request.get("/api/fonts/css/Not%20a%20font")).status()).toBe(404);
   expect((await request.get("/api/fonts/files/..%2Fsecret.woff2")).status()).toBe(404);
 
   expect(google).toEqual([]);

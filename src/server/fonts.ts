@@ -66,9 +66,9 @@ export function parseGoogleCss(css: string): FontFace[] {
 
 const fileName = (data: Buffer) => `${createHash("sha256").update(data).digest("hex").slice(0, 32)}.woff2`;
 
-/** Whether a family is installed. */
+/** Whether a family is installed: kept with a stylesheet (one found empty is installed again). */
 export async function fontInstalled(family: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`select 1 from commerce.fonts where family = ${family}`);
+  const [row] = await db().execute<Row>(sql`select 1 from commerce.fonts where family = ${family} and css ~ '\\S'`);
   return Boolean(row);
 }
 
@@ -122,7 +122,8 @@ export async function installFont(
       await tx.execute(sql`
         insert into commerce.fonts (family, slug, category, css, bytes)
         values (${family}, ${fontSlug(family)}, ${font.category}, ${css}, ${total})
-        on conflict (family) do nothing
+        on conflict (family) do update set css = excluded.css, bytes = excluded.bytes, installed_at = now()
+        where commerce.fonts.css !~ '\\S'
       `);
     });
     return { ok: true };
@@ -143,13 +144,21 @@ export async function installFonts(families: Iterable<string>): Promise<{ ok: tr
 
 export const fontTag = (slug: string) => `font:${slug}`;
 
-/** An installed family's stylesheet by its slug, or null. */
+/**
+ * An installed family's stylesheet by its slug, or null when Kaizen has none to serve (not installed, or kept empty). A stylesheet
+ * never changes once installed, so it is kept for days; a miss only for seconds, so a family installed after it is served at once.
+ */
 export async function fontCss(slug: string): Promise<string | null> {
   "use cache";
-  cacheLife("days");
   cacheTag(fontTag(slug));
   const [row] = await readDb().execute<Row>(sql`select css from commerce.fonts where slug = ${slug}`);
-  return row ? String(row.css) : null;
+  const css = row ? String(row.css) : "";
+  if (!css.trim()) {
+    cacheLife("seconds");
+    return null;
+  }
+  cacheLife("days");
+  return css;
 }
 
 /** A font file by its name, or null. */
