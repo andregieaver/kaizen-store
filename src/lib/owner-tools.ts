@@ -968,6 +968,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "usage_and_limits",
+    "What the store has used this month against what its plan includes (D314), measured by Kaizena Flow: storage, products, staff, its own domains, visits, bandwidth, marketing emails and AI on Kaizena Flow's key, each with its limit (or no limit), where the limit comes from and whether it is close or used up. Visits and bandwidth only ever warn: the shop is never taken offline. A figure not measured yet says so; never give it as zero. Read-only: limits are changed by choosing another plan on the Billing page, or by Kaizena Flow.",
+    z.object({}),
+  ),
+  tool(
     "list_support_conversations",
     "The store's support conversations, most recent first: each one's title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Never the words of a conversation: to read one, give the link. Read-only.",
     z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),

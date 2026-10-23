@@ -534,6 +534,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "KI-bruk",
     keywords: ["ki-bruk", "tokens", "kostnad", "forbruk", "forespørsler", "modell", "leverandør"],
   },
+  "account:account.limits": {
+    title: "Bruk og grenser",
+    keywords: ["bruk", "grenser", "kvote", "lagring", "båndbredde", "trafikk", "besøk", "kapasitet"],
+  },
   "account:account.referrals": {
     title: "Verving",
     keywords: ["verving", "verv", "vervelenke", "vervekode", "provisjon", "kreditt", "inviter", "anbefal"],
@@ -671,6 +675,11 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:emails": { title: "E-poster", keywords: ["e-poster", "e-post", "sendte e-poster", "e-postoppsett"] },
   "platform:email": { title: "E-post", keywords: ["e-post", "sendt e-post", "melding"] },
   "platform:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør"] },
+  "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
+  "platform:capacity": {
+    title: "Bruk og grenser",
+    keywords: ["bruk", "grenser", "kvote", "lagring", "båndbredde", "trafikk", "kapasitet", "last", "database"],
+  },
   "platform:ai.usage": {
     title: "KI-bruk",
     keywords: ["ki-bruk", "tokens", "kostnad", "forbruk", "forespørsler", "modell", "leverandør"],

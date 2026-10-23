@@ -27,6 +27,7 @@ export const WEBSITE_ITEMS: SectionItem[] = [
 
 export const PLAN_ITEMS: SectionItem[] = [
   item("/plans", "Editor", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", true),
+  item("/plans/limits", "Limits", "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan."),
   item("/plans/features", "Features", "Every feature with a tick for each plan that includes it: the comparison stores see."),
   item("/plan-reminders", "Reminders", "Emails to owners who left a plan checkout."),
   item("/discounts", "Discounts", "Discount codes for stores' plans."),
@@ -55,6 +56,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   item("/ai", "AI", "Kaizena Flow's default AI provider and models.", true),
   item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI."),
+  item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI."),
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost."),
   item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup."),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands."),

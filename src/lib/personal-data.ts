@@ -237,6 +237,10 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  store_usage_daily: "What a store used per day (D314): counts and bytes per metric; no person, address, path or query.",
+  plan_limits: "A plan's limits (D314): numbers per limit; the account id is the platform admin who changed it.",
+  limit_overrides: "A platform admin's limit for a store or an owner account (D314), with a business reason; never a shopper.",
+  capacity_events: "A store's busy times it told Kaizena Flow about (D314): dates, how busy and a short note about the sale.",
   order_discount_codes:
     "The discount codes an order used (D299 E2): a code's text, its ids and what it took off; the order's own row holds who bought, and erasure anonymises that.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",
@@ -409,6 +413,10 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "stock.low": "staff",
   "experiment.guardrail": "staff",
   "store.status": "staff",
+  // Usage and limits (D314): to a store's owners when it nears or reaches a limit; to platform admins before a very busy time.
+  "usage.near": "staff",
+  "usage.reached": "staff",
+  "capacity.upcoming": "staff",
   "referral.store_opened": "staff",
   // To someone who asked to open a store (D312 P6)
   "platform.access_received": "staff",

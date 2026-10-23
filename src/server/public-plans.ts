@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import type { PlanInterval } from "@/lib/plans";
+import { LIMIT_KEYS } from "@/lib/limits";
 import type { PublicPlans } from "@/lib/plan-offer";
 
 type Row = Record<string, unknown>;
@@ -21,7 +22,7 @@ export async function getPublicPlans(): Promise<PublicPlans> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLANS_TAG);
-  const [plans, prices, features, grants] = await Promise.all([
+  const [plans, prices, features, grants, limits] = await Promise.all([
     readDb().execute<Row>(sql`
       select id, name, description, sale_fee_bps, position from commerce.plans where active order by position, lower(name)
     `),
@@ -30,6 +31,8 @@ export async function getPublicPlans(): Promise<PublicPlans> {
     `),
     readDb().execute<Row>(sql`select id, category, name, description, position from commerce.plan_features order by position, lower(name)`),
     readDb().execute<Row>(sql`select feature_id, plan_id from commerce.plan_feature_grants`),
+    // What each plan includes of its limits (D314); a plan without a row of its own shows nothing for that limit.
+    readDb().execute<Row>(sql`select plan_id, key, value from commerce.plan_limits where plan_id is not null`),
   ]);
   return {
     plans: plans.map((plan) => ({
@@ -42,6 +45,10 @@ export async function getPublicPlans(): Promise<PublicPlans> {
         .filter((price) => price.plan_id === plan.id)
         .map((price) => ({ currency: String(price.currency).trim(), interval: String(price.interval) as PlanInterval, amountMinor: Number(price.amount_minor) })),
       featureIds: grants.filter((grant) => grant.plan_id === plan.id).map((grant) => String(grant.feature_id)),
+      limits: LIMIT_KEYS.flatMap((key) => {
+        const row = limits.find((l) => l.plan_id === plan.id && l.key === key);
+        return row ? [{ key, value: row.value == null ? null : Number(row.value) }] : [];
+      }),
     })),
     features: features.map((f) => ({
       id: String(f.id),

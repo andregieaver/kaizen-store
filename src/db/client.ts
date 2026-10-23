@@ -60,9 +60,9 @@ function withRows(database: object): Db {
  * Postgres connection, leaving the query waiting forever and pages stuck on
  * their loading placeholders.)
  */
-function create() {
+function create(url: string = serverEnv().DATABASE_URL) {
   const pool = new Pool({
-    ...connectionConfig(serverEnv().DATABASE_URL),
+    ...connectionConfig(url),
     // Functions are short-lived and many run at once; the pooler does the
     // pooling, so each instance keeps only a few connections.
     max: 5,
@@ -79,11 +79,24 @@ function create() {
 }
 
 let instance: ReturnType<typeof create> | undefined;
+let replica: ReturnType<typeof create> | undefined;
 
 /** The server-side database connection, created on first use. */
 export function db(): Db {
   instance ??= create();
   return instance.database;
+}
+
+/**
+ * A read replica for heavy reads that may lag a moment (D314, `docs/capacity.md` step 3.4): `READ_DATABASE_URL` when set, else the
+ * primary. A replica refuses writes by itself. Only the modules `replica-readers.scan.test.ts` lists may use it: analytics pages' reads,
+ * never anything read after a write in the same request, a cache refilled after `updateTag()`, checkout, stock, payments or tax reports.
+ */
+export function replicaDb(): Db {
+  const url = process.env.READ_DATABASE_URL?.trim();
+  if (!url || !url.startsWith("postgres")) return db();
+  replica ??= create(url);
+  return replica.database;
 }
 
 /**
@@ -137,4 +150,6 @@ export function readDb() {
 export async function closeDb(): Promise<void> {
   await instance?.pool.end();
   instance = undefined;
+  await replica?.pool.end();
+  replica = undefined;
 }

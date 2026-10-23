@@ -809,6 +809,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],
   }),
+  account("account.limits", "/account/limits", "Usage and limits", "What each store you own has used this month (storage, products, staff, domains, visits, marketing emails and AI) against what its plan includes.", {
+    needs: "owner",
+    keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "visits", "plan limits", "capacity"],
+    tasks: ["See what each store has used this month", "See what is close to its limit"],
+  }),
   account("account.referrals", "/account/referrals", "Referrals", "Your referral link and code, how many came by it, the stores that opened through it and the credit you earned on what they pay Kaizena Flow, which comes off your own Kaizena Flow invoices.", {
     needs: "owner",
     keywords: ["referral", "refer", "affiliate", "invite", "recommend", "commission", "credit", "link", "code"],
@@ -904,6 +909,10 @@ const PAGES: readonly AdminPage[] = [
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a theme to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
+  platform("plan-limits", "/plans/limits", "Limits", "Platform", "What each plan includes, in a table with the plans as columns: storage, products, staff, domains, marketing emails, AI and traffic, and the default for stores without a plan. Traffic only warns.", {
+    keywords: ["limits", "quota", "plan limits", "storage", "bandwidth", "traffic", "allowance", "default limits"],
+    tasks: ["Set what each plan includes", "Set the default for stores without a plan"],
+  }),
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
     keywords: ["compare plans", "features", "what is included", "tiers"],
   }),
@@ -954,6 +963,10 @@ const PAGES: readonly AdminPage[] = [
   platform("emails", "/emails", "Emails", "Platform", "Every email Kaizena Flow and the stores sent, and email setup."),
   platform("email", "/emails/[emailId]", "Email", "Platform", "One email."),
   platform("ai", "/ai", "AI", "Platform", "Kaizena Flow's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
+    keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
+    tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],
+  }),
   platform("ai.usage", "/ai/usage", "AI usage", "Platform", "What every store, store owner account and Kaizena Flow itself used of the AI, per provider and model.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
     tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],

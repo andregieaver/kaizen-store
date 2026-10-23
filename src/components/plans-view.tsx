@@ -1,3 +1,4 @@
+import { formatLimit } from "@/lib/usage-format";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import type { PlansBlock } from "@/lib/page-content";
@@ -36,7 +37,7 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
     <div className="flex flex-col gap-10">
       <div className={`grid gap-4 kzb-md-cols-2 ${columns}`}>
         {cards.map((card) => (
-          <PlanCardView key={card.id} card={card} look={buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true)} href={href} label={label} money={money} every={every} m={m} />
+          <PlanCardView key={card.id} card={card} look={buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true)} href={href} label={label} money={money} every={every} m={m} lang={lang} />
         ))}
       </div>
       {table.length > 0 && (
@@ -89,6 +90,7 @@ function PlanCardView({
   money,
   every,
   m,
+  lang = "en",
 }: {
   card: PlanCard;
   look: ReturnType<typeof buttonLook>;
@@ -97,6 +99,7 @@ function PlanCardView({
   money: (price: PlanCardPrice) => string;
   every: (price: PlanCardPrice) => string;
   m: ReturnType<typeof t>["plans"];
+  lang?: string;
 }) {
   return (
     <section
@@ -125,6 +128,18 @@ function PlanCardView({
         {label}
         <span className="sr-only"> – {card.name}</span>
       </a>
+      {card.limits.length > 0 && (
+        <ul className="flex flex-col gap-1.5 text-sm" data-kz-text="meta">
+          {card.limits.map((limit) => (
+            <li key={limit.key} className="flex gap-2">
+              <Check />
+              <span>
+                {limit.value === null ? m.unlimited : formatLimit(limit.key, limit.value, lang)} {m.limitNames[limit.key]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {card.features.length > 0 && (
         <div>
           <p className="mb-2 text-sm font-medium">{m.includes}</p>

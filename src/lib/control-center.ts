@@ -87,6 +87,8 @@ export type StoreFigures = {
   orderChanges?: OrderChangeFigures;
   /** Support conversations waiting for a person (D216, step 14), only when some do and only for a member who may read the desk. A count only. */
   supportWaiting?: number;
+  /** Hard limits of its plan the store has used up this month (D314), only when one is: for its owner. */
+  limitsReached?: number;
   /**
    * Orders the store hands over itself (D237), only when some wait and only for a member who may read orders: paid orders to be collected at a pickup
    * place (the Orders page's *To hand over*) and local deliveries not delivered yet (*Local deliveries*). They are not in `toSend`. Counts only.
@@ -181,6 +183,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
       items.push({ text: count(returns.unacknowledged, w.unacknowledged), href: `${base}/returns`, action: a.sendAgain, urgent: true });
     }
     // Customers waiting in the support chat for a person (D216): urgent, since they are waiting now.
+    // A limit of the plan used up (D314): adding more waits until the owner frees room or chooses more.
+    if (owner && s.limitsReached && s.limitsReached > 0) {
+      items.push({ text: count(s.limitsReached, w.limitsReached), href: `${base}/billing`, action: a.openBilling });
+    }
     if (s.supportWaiting && s.supportWaiting > 0) {
       items.push({ text: say(w.supportWaiting, { n: s.supportWaiting }), href: `${base}/support`, action: a.answer, urgent: true });
     }

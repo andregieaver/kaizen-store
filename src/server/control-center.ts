@@ -8,6 +8,7 @@ import { DRAFT_EXPIRING_DAYS, EDIT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure
 import { totalOf } from "@/lib/ai-usage";
 import { can, type PermissionKey } from "@/lib/permissions";
 
+import { limitsReachedCount } from "./usage";
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
 import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
@@ -232,6 +233,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
   const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
+  // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
+  const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -283,6 +286,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
+      ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),
     };
   });
 

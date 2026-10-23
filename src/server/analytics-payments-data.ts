@@ -7,7 +7,7 @@ import { paymentsByMethod, type PaymentGroupRow, type PaymentsByMethod } from "@
 import type { AnalyticsSettings } from "@/lib/analytics-kpi";
 
 import { inPeriod, num, PAID, toMainOne, type Row } from "./analytics-sql";
-import { setBased } from "./analytics-totals";
+import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
 /**

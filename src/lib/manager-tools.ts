@@ -197,6 +197,15 @@ export const PLATFORM_TOOLS = [
       owner: z.string().trim().max(200).optional().describe("A store owner's email to look at only the stores they own."),
     }),
   ),
+  tool(
+    "store_usage",
+    "What stores used this month (D314), measured by Kaizena Flow: storage, products, staff, domains, visits, server errors, emails, marketing emails and AI on Kaizena Flow's key. Ask for one store by its address for its lines against its limits, or for the stores using most of one thing. Figures are written in code; a figure not measured yet is said so. Read-only: limits are changed on Plans → Limits and a store's page.",
+    z.object({
+      store: z.string().trim().max(60).optional().describe("A store's address (slug) to look at only that store, against its limits."),
+      top: z.enum(["storage_bytes", "products", "requests", "server_errors", "emails", "marketing_emails", "ai_cost_micros"]).default("storage_bytes").describe("Without a store: the stores using most of this."),
+      limit: z.number().int().min(1).max(25).default(10),
+    }),
+  ),
 ] as const satisfies readonly OwnerTool[];
 
 export type ManagerToolName = (typeof MANAGER_TOOLS)[number]["name"];
@@ -212,6 +221,7 @@ export const TOOL_WORDS: Record<string, string> = {
   support_overview: "Looking at support",
   list_support_conversations: "Looking at support conversations",
   gift_card_overview: "Looking at gift cards",
+  usage_and_limits: "Looking at usage and limits",
   store_overview: "Looking at the store",
   sales_summary: "Adding up sales",
   list_orders: "Looking at orders",
@@ -354,6 +364,7 @@ export const TOOL_WORDS: Record<string, string> = {
   list_ab_tests: "Looking at the stores' A/B tests",
   explain_ab_test: "Reading the test's results",
   platform_ai_usage: "Looking at AI usage",
+  store_usage: "Looking at stores' usage",
   get_referral_program: "Looking at referrals",
   set_referral_program: "Preparing the referral change",
   get_my_referrals: "Looking at your referrals",

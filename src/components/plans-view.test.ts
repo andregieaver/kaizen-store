@@ -103,3 +103,14 @@ describe("the plans component (D142)", () => {
     expect(cleaned.highlightId).toBeUndefined();
   });
 });
+
+describe("a plan's limits (D314)", () => {
+  it("lists what the plan includes, unlimited ones as such", async () => {
+    const { planCards } = await import("@/lib/plan-offer");
+    const { cards } = planCards(
+      { plans: [{ id: "p", name: "Grow", description: "", saleFeeBps: 0, position: 0, prices: [{ currency: "NOK", interval: "month", amountMinor: 10000 }], featureIds: [], limits: [{ key: "storage_bytes", value: 10 * 1024 ** 3 }, { key: "products", value: null }] }], features: [] },
+      {},
+    );
+    expect(cards[0].limits).toEqual([{ key: "storage_bytes", value: 10 * 1024 ** 3 }, { key: "products", value: null }]);
+  });
+});

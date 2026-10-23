@@ -2920,6 +2920,27 @@
       "when": 1792681368353,
       "tag": "20261022150248_access_request_locale",
       "breakpoints": true
+    },
+    {
+      "idx": 417,
+      "version": "7",
+      "when": 1792752408649,
+      "tag": "20261023104648_capacity",
+      "breakpoints": true
+    },
+    {
+      "idx": 418,
+      "version": "7",
+      "when": 1792752440381,
+      "tag": "20261023104720_capacity_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 419,
+      "version": "7",
+      "when": 1792758543863,
+      "tag": "20261023122903_capacity_plan_limits",
+      "breakpoints": true
     }
   ]
 }

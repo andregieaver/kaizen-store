@@ -848,6 +848,9 @@ export const da: Messages = {
     fee: (percent: string): string => `${percent} gebyr pr. salg`,
     popular: "Mest populær",
     includes: "Det er inkluderet",
+    /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
+    limitNames: { storage_bytes: "lagerplads", products: "produkter", staff_seats: "medarbejdere", custom_domains: "egne domæner", marketing_emails_month: "markedsføringsmails om måneden", ai_cost_month_micros: "AI om måneden", requests_month: "besøg om måneden", egress_bytes_month: "båndbredde om måneden", stores_owned: "butikker" },
+    unlimited: "Ubegrænset",
     compare: "Sammenlign planer",
     feature: "Funktion",
     included: "Inkluderet",

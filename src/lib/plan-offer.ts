@@ -1,3 +1,4 @@
+import type { LimitKey } from "./limits";
 import { featureGroups, type PlanFeature } from "./plan-features";
 import type { PlanInterval } from "./plans";
 
@@ -19,6 +20,8 @@ export type PublicPlan = {
   prices: PublicPrice[];
   /** The ids of the features it includes. */
   featureIds: string[];
+  /** Its limits that are set (D314), in `LIMIT_KEYS` order; null is unlimited. Absent from older data. */
+  limits?: { key: LimitKey; value: number | null }[];
 };
 
 export type PublicPlans = { plans: PublicPlan[]; features: Omit<PlanFeature, "planIds">[] };
@@ -36,6 +39,8 @@ export type PlanCard = {
   /** Whole percent a year's price saves against twelve months, when both exist and it is at least 1. */
   yearlySavingPercent: number | null;
   features: { id: string; name: string; description: string }[];
+  /** What the plan includes of its limits (D314). */
+  limits: { key: LimitKey; value: number | null }[];
   highlighted: boolean;
 };
 
@@ -93,6 +98,7 @@ export function planCards(
         .filter((f): f is NonNullable<typeof f> => Boolean(f))
         .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
         .map((f) => ({ id: f.id, name: f.name, description: f.description })),
+      limits: plan.limits ?? [],
       highlighted: plan.id === options.highlightId,
     });
   }

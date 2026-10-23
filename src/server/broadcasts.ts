@@ -20,12 +20,15 @@ import {
   type BroadcastStatus,
   type BroadcastSuggestion,
 } from "@/lib/broadcasts";
+import { roomLeft } from "@/lib/limits";
+import { limitRefusal } from "@/lib/usage-format";
 import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
 import { siteUrl } from "@/lib/site";
 
+import { limitFor, usageNow } from "./limits";
 import { AiError, aiFor, completeText } from "./ai";
 import { audit } from "./auth";
 import { listTiers } from "./customer-tiers";
@@ -262,6 +265,8 @@ async function readiness(store: EmailStore, broadcast: Broadcast): Promise<strin
 
 /** Nobody would get it: the start is rolled back. */
 class Nobody extends Error {}
+/** A send larger than the marketing emails left this month (D314). */
+class OverLimit extends Error {}
 
 /**
  * Starts a send: freezes the addresses that are `subscribed` now (the audience's) as its recipients, in one transaction under the broadcast's lock,
@@ -277,6 +282,9 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
   if ("problem" in audience) return { ok: false, problem: audience.problem };
   if (audience.emails && audience.emails.length === 0) return { ok: false, problem: "Nobody in the segment wants your emails, so nobody would get it." };
   const wanted = audience.emails;
+  // The marketing emails the store's plan allows this month (D314): a send that would pass it does not start.
+  const allowed = await limitFor(storeId, "marketing_emails_month");
+  const room = allowed === null ? Infinity : roomLeft(await usageNow(storeId, "marketing_emails_month"), allowed);
   const result = await db().transaction(async (tx) => {
     const [locked] = await tx.execute<Row>(sql`
       select status from commerce.broadcasts where store_id = ${storeId}::uuid and id = ${id}::uuid for update
@@ -295,10 +303,12 @@ export async function startBroadcast(storeId: string, accountId: string | null, 
       returning subscriber_id
     `);
     if (inserted.length === 0) throw new Nobody();
+    if (inserted.length > room) throw new OverLimit();
     await tx.execute(sql`update commerce.broadcasts set recipient_count = ${inserted.length} where id = ${id}::uuid`);
     return { ok: true as const, recipients: inserted.length };
   }).catch((error: unknown) => {
     if (error instanceof Nobody) return { ok: false as const, problem: "Nobody on your list wants your emails yet, so nobody would get it." };
+    if (error instanceof OverLimit && allowed !== null) return { ok: false as const, problem: limitRefusal("marketing_emails_month", allowed) };
     throw error;
   });
   if (result.ok) await audit(accountId, storeId, "broadcast.started", { title: broadcast.title, recipients: result.recipients }, { target: { type: "broadcast", id: id } });

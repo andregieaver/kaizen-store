@@ -17,6 +17,10 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
+import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
+import { storePeaks } from "@/server/capacity-events";
+import { addPeakAction, removePeakAction } from "./peak-actions";
+import { storeUsageLines, usageDays } from "@/server/usage";
 
 /** A share of a sale in the admin's language: `formatBps()`'s English, or the number written the language's way ("2,5 %"). */
 const feeText = (bps: number, locale: string) => (locale.startsWith("en") ? formatBps(bps) : `${(bps / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`);
@@ -40,7 +44,15 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
-  const [billing, plans, matrix, themes] = await Promise.all([getStoreBilling(store.id), listPlans(), getFeatureMatrix(), storeThemePurchases(store.id)]);
+  const [billing, plans, matrix, themes, usage, usageByDay, peaks] = await Promise.all([
+    getStoreBilling(store.id),
+    listPlans(),
+    getFeatureMatrix(),
+    storeThemePurchases(store.id),
+    storeUsageLines(store.id),
+    usageDays(store.id),
+    storePeaks(store.id),
+  ]);
   const isOwner = memberCan(staffer, "owner");
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
   const mode = billingMode();
@@ -51,6 +63,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const words = adminText(lang, "billing");
   const w = words.page;
+  const cw = adminText(lang, "capacity");
   const moneyLocale = lang === "en" ? "nb-NO" : locale;
 
   // Prices in the store's own currency, else in the first one the plans have.
@@ -104,6 +117,17 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <dd>{fillWords(w.feeLine, { fee: feeText(billing?.feeBps ?? 0, locale) })}</dd>
         </dl>
         {mode === "test" && <p className="mt-3 text-muted">{w.testMode}</p>}
+      </Card>
+
+      <Card title={cw.usage.title} description={cw.usage.description} compact>
+        <div className="grid gap-4">
+          <UsageLines lines={usage} words={cw} locale={locale} plansHref="#plans-heading" />
+          <UsageDays days={usageByDay} words={cw} locale={locale} />
+        </div>
+      </Card>
+
+      <Card title={cw.peaks.title} description={cw.peaks.description} compact>
+        <PeaksForm peaks={peaks} words={cw} add={addPeakAction.bind(null, store.slug)} remove={(id) => removePeakAction.bind(null, store.slug, id)} />
       </Card>
 
       {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}

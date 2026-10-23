@@ -24,6 +24,7 @@ import {
 import { saveStoreFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
 import { storeTag } from "@/server/stores";
+import { storageRefusal } from "@/server/limits";
 
 const idSchema = z.uuid();
 /** An action's own refusals in the member's admin language (D312 A5). */
@@ -112,6 +113,8 @@ export async function startFieldFileUploadAction(storeSlug: string, file: unknow
   if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = fieldFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: wordsOf(member).chooseFile };
+  const full = await storageRefusal(member.store.id, parsed.data.size);
+  if (full) return { ok: false, problem: full };
   return startFieldFileUpload(member.store.id, parsed.data);
 }
 

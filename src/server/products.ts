@@ -30,6 +30,7 @@ import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
 import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
 import { unitPriceProblems } from "@/lib/unit-price-rules";
+import { limitRefusal } from "@/lib/usage-format";
 import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
 
 import { profileChoices } from "./shipping-admin";
@@ -37,6 +38,7 @@ import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { auditProductSave, productSnapshot } from "./product-audit";
+import { checkLimit } from "./limits";
 import { listLayoutChoices } from "./product-layouts";
 import { listVatCategories, ratesNow } from "./vat-categories";
 import type { Store } from "./stores";
@@ -683,7 +685,7 @@ export async function saveProduct(
   // already of its kind keeps it and can still be edited), and while Subscriptions is off its purchase options and "only as a
   // subscription" are kept as they are, whatever a stale page sends.
   const [stored] = productId
-    ? await db().execute<Row>(sql`select kind, subscription_only from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid`)
+    ? await db().execute<Row>(sql`select kind, subscription_only, status from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid`)
     : [];
   const neededFeature = kindFeature(given.kind);
   if (neededFeature && !featureOn(store, neededFeature) && stored?.kind !== given.kind) {
@@ -723,6 +725,11 @@ export async function saveProduct(
   }
   // Its own layout (D79) must be one of the store's product layouts; one deleted meanwhile is let go.
   if (input.layoutId && !context.layouts.some((layout) => layout.id === input.layoutId)) input.layoutId = null;
+  // The store's product limit (D314): a new product, or one taken out of the archive, counts; saving one that already counts never does.
+  if (!productId || stored?.status === "archived") {
+    const room = await checkLimit(store.id, "products");
+    if (!room.ok) problems.push(limitRefusal("products", room.limit));
+  }
   if (problems.length > 0) return { ok: false, problems };
   // Only the store's own product categories and tags; one deleted meanwhile is left out.
   const termScope = { storeId: store.id, contentType: "product" } as const;
