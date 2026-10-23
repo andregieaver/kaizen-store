@@ -70,7 +70,7 @@ test("the Payouts page lists the period's payouts, says which adds up and which 
   await expect(row(ids.good)).toContainText("Adds up");
   await expect(row(ids.good)).toContainText("1 payment");
   // What is not tied is the line's net: 200.00 less Stripe's 10.00, written in the admin's language (D312 A9).
-  await expect(row(ids.untied)).toContainText(/Money not tied to an order: (NOK )?190[.,]00/);
+  await expect(row(ids.untied)).toContainText(/Money not tied to an order: (NOK\s)?190[.,]00/);
   await expect(page.getByRole("note").filter({ hasText: /not add up to (its|their) orders/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Download CSV/ }).first()).toBeVisible();
 });
@@ -82,7 +82,7 @@ test("one payout lists what it settles with the order each line is for", async (
 
   await page.goto(`/admin/${STORE}/analytics/payouts/${ids.untied}`);
   await expect(page.getByText("Not tied to an order", { exact: true })).toBeVisible();
-  await expect(page.getByText(/1 line \((NOK )?190[.,]00.*\) could not be tied to an order/)).toBeVisible();
+  await expect(page.getByText(/1 line \((NOK\s)?190[.,]00.*\) could not be tied to an order/)).toBeVisible();
 });
 
 test("Finance takes Stripe's own fee for the order and says the rest is estimated", async ({ page }) => {
