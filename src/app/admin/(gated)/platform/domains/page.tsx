@@ -8,7 +8,7 @@ import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
 import { formatMoney } from "@/lib/money";
 import { requirePlatformAdmin } from "@/server/auth";
-import { allRegistrations, domainsOpenToAll, domainsPublic, purchasesInReview, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
+import { allRegistrations, domainLeads, domainsOpenToAll, domainsPublic, purchasesInReview, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
 import { domainPricingRows, latestEurRates } from "@/server/domain-prices";
 
 import { domainsOpenAction, domainsPublicAction, reviewDomainAction, saveDomainPricingAction, storeDomainBuyingAction } from "./actions";
@@ -27,7 +27,7 @@ export default async function PlatformDomainsPage() {
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "domains").platform;
-  const [pricing, { rates, day }, openToAll, stores, registrations, purchases, sellsPublic, inReview] = await Promise.all([
+  const [pricing, { rates, day }, openToAll, stores, registrations, purchases, sellsPublic, inReview, leads] = await Promise.all([
     domainPricingRows(),
     latestEurRates(),
     domainsOpenToAll(),
@@ -36,6 +36,7 @@ export default async function PlatformDomainsPage() {
     purchasesNeedingALook(),
     domainsPublic(),
     purchasesInReview(),
+    domainLeads(),
   ]);
   const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }).format(new Date(iso));
 
@@ -118,6 +119,25 @@ export default async function PlatformDomainsPage() {
           {!sellsPublic && <input type="hidden" name="on" value="on" />}
           <SubmitButton variant="secondary">{sellsPublic ? w.publicStop : w.publicStart}</SubmitButton>
         </ActionForm>
+      </Card>
+
+      <Card title={w.leadsTitle} description={w.leadsIntro}>
+        <dl className="grid gap-4 sm:grid-cols-3">
+          {(
+            [
+              [w.leadsAccounts, leads.accounts],
+              [w.leadsAlone, leads.domainsAlone],
+              [w.leadsRequested, leads.requested],
+              [w.leadsOpened, leads.opened],
+              [w.leadsIn90, leads.startedBefore90 > 0 ? `${leads.openedIn90} / ${leads.startedBefore90}` : w.leadsTooEarly],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label} className="flex flex-col gap-1">
+              <dt className="text-eyebrow text-muted">{label}</dt>
+              <dd className="text-metric text-ink tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </Card>
 
       {inReview.length > 0 && (

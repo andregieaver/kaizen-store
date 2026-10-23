@@ -7236,6 +7236,7 @@ export const domainPurchases = commerce.table(
     index("domain_purchases_registrant_idx").on(t.registrantId),
     index("domain_purchases_chosen_by_idx").on(t.chosenBy),
     check("domain_purchases_holder", sql`${t.storeId} is not null or ${t.accountId} is not null`),
+    index("domain_purchases_reviewed_by_idx").on(t.reviewedBy),
     index("domain_purchases_account_idx").on(t.accountId),
     check("domain_purchases_buyer", sql`${t.buyer} is null or ${t.buyer} in ('consumer', 'business')`),
     check("domain_purchases_vat_kind", sql`${t.vatKind} is null or ${t.vatKind} in ('mva', 'reverse_charge', 'outside_scope')`),

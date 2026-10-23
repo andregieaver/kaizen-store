@@ -13,7 +13,7 @@ import { emailSignInLink } from "@/lib/supabase/mailer";
 import { starterRefusal } from "@/lib/store-starters";
 
 import { checkOwnerStores } from "./limits";
-import { audit, type Account } from "./auth";
+import { activeAccount, audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
@@ -36,6 +36,8 @@ export type AccessRequestInput = {
   designVariation?: string | null;
   /** The language the form was sent in (D312 P6): its emails are written in it. English when left out. */
   lang?: PlatformLang;
+  /** A domain the requester holds here, to connect to the store on approval (D317 decision 3). */
+  domain?: string | null;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -57,11 +59,12 @@ const publishedVariation = (presetId: unknown, key: string | null | undefined) =
 export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
-    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale)
+    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
-      ${publishedVariation(input.designPresetId, input.designVariation)}, ${requestLocale(input.lang ?? "en")})
+      ${publishedVariation(input.designPresetId, input.designVariation)}, ${requestLocale(input.lang ?? "en")},
+      ${input.domain && /^[a-z0-9.-]{3,253}$/.test(input.domain) ? input.domain : null})
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);
@@ -179,6 +182,8 @@ export type ApproveResult =
       /** The design profile chosen (D176): applied, or why not (the store is made all the same, with its template's look). */
       design: { title: string | null; problem: string | null } | null;
       storeId: string;
+      /** The requester's domain (D317): connected to the new store, or why not (the store is made all the same). */
+      domain: { name: string; connected: boolean; problem: string | null } | null;
       /**
        * What the requester chose that was no longer offered at approval (D177): the store template (the store was made from the Standard
        * store) and the design profile (the store keeps its template's own look), by title.
@@ -290,6 +295,7 @@ export async function approveAccessRequest(
     `)
     .catch(() => null);
   await sendAccessEmail("approved", requestId, `${origin}/admin/sign-in`);
+  const domain = await connectRequestDomain(requestId, storeId);
 
   return {
     ok: true,
@@ -298,6 +304,7 @@ export async function approveAccessRequest(
     invited: await emailSignInLink(email, origin, asked?.locale ? String(asked.locale) : null),
     design,
     storeId,
+    domain,
     fellBack: { starter: starterFellBack, design: designFellBack },
   };
 }
@@ -438,4 +445,27 @@ export async function createStoreForOwner(
   const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id, designVariation) : null;
   await markNewStore(storeId);
   return { ok: true, slug, storeId, design };
+}
+
+/**
+ * The domain a request was made for (D317 decision 3, *Start a store on {domain}*): once the store is made, the requester's domain is linked
+ * to it and connected, as *Your domains* does (`linkDomain()`: only a domain the requester's account holds, within the plan's room). Never
+ * throws: the store stands whatever happens, and the admin is told.
+ */
+async function connectRequestDomain(requestId: string, storeId: string): Promise<{ name: string; connected: boolean; problem: string | null } | null> {
+  try {
+    const [row] = await db().execute<Row>(sql`
+      select r.domain, a.id as account_id from commerce.access_requests r join commerce.accounts a on lower(a.email) = lower(r.email)
+       where r.id = ${requestId}::uuid and r.domain is not null
+    `);
+    if (!row) return null;
+    const account = await activeAccount(String(row.account_id));
+    if (!account) return { name: String(row.domain), connected: false, problem: "The requester's account is not active." };
+    const { linkDomain } = await import("./domain-account");
+    const linked = await linkDomain(account, String(row.domain), storeId);
+    return linked.ok ? { name: String(row.domain), connected: linked.connected, problem: null } : { name: String(row.domain), connected: false, problem: linked.problems.join(" ") };
+  } catch (error) {
+    console.error("[platform] the request's domain could not be connected", error);
+    return null;
+  }
 }

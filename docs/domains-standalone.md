@@ -281,3 +281,14 @@ no cookies) or sends the holder's redirect (308, `cleanHoldingRedirect()`, never
 (`setHolding()`); a registration no store uses, and a domain a store stops using, is put on Kaizena Flow's Vercel project for it
 (`serveHolding()`). **Not built: email forwarding (S4),** which needs an EU provider first.
 
+**Phase 4 (2026-10-23).** *Start a store on {domain}* on *Your domains* sends an access request with the domain on it
+(`access_requests.domain`, `startStoreAction()`); approval is unchanged for everyone (decision 3) and, once the store is made, links the
+requester's domain to it and connects it (`connectRequestDomain()` through `linkDomain()`; a refusal, such as the plan's room, is said to
+the admin and leaves the store as made). Platform → Domains shows the way in, counted (`domainLeads()`): accounts that came for a domain,
+domains no store uses, how many asked for and opened a store, and the owner's bar, the share that opened one within 90 days, once any
+account is 90 days old (decision 10).
+
+**Phase 5: not built in this release.** Decision 9 puts the AI manager for domain-only accounts in the second release. It needs a third
+kind of principal for the assistant (an account with no store and no platform), with the domain tools only; until then a domain-only
+holder does everything on *Your domains*.
+

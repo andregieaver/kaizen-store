@@ -478,3 +478,22 @@ describe("people without a store (D317 phase 2)", () => {
     expect(await setHolding(stranger, domain, "off", "")).toMatchObject({ ok: false });
   });
 });
+
+describe("the way to a store (D317 phase 4)", () => {
+  it("asks for a store with the domain on it, and approving the request gives the domain to the new store", async () => {
+    const { createAccessRequest, approveAccessRequest } = await import("./platform");
+    const { domainLeads } = await import("./domain-admin");
+    const domain = `alone-${run}.shop`;
+    const before = await domainLeads();
+    expect(before.domainsAlone).toBeGreaterThanOrEqual(1);
+    await createAccessRequest({ name: "Kari", email: owner.email, storeName: "Alone", message: "", domain });
+    const [request] = await db().execute<Row>(sql`select id, domain from commerce.access_requests where lower(email) = lower(${owner.email}) and status = 'pending'`);
+    expect(request.domain).toBe(domain);
+    const admin = { ...owner, platformAdmin: true };
+    const result = await approveAccessRequest(admin, String(request.id), `alone-${run}`, "Alone", "https://kaizenaflow.test");
+    if (!result.ok) throw new Error(result.problems.join());
+    expect(result.domain).toMatchObject({ name: domain });
+    const [reg] = await db().execute<Row>(sql`select store_id from commerce.domain_registrations where apex = ${domain}`);
+    expect(reg.store_id).toBe(result.storeId);
+  });
+});

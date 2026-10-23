@@ -1,0 +1,1 @@
+CREATE INDEX "domain_purchases_reviewed_by_idx" ON "commerce"."domain_purchases" USING btree ("reviewed_by");

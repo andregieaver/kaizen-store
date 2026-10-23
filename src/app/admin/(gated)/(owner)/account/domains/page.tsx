@@ -26,6 +26,7 @@ import {
   accountUndoDnsAction,
   holdingAction,
   linkDomainAction,
+  startStoreAction,
   unlinkDomainAction,
 } from "./actions";
 
@@ -92,6 +93,16 @@ export default async function YourDomainsPage() {
                         </select>
                       </label>
                       <SubmitButton variant="secondary">{d.store ? words.account.moveTo : words.account.useWith}</SubmitButton>
+                    </ActionForm>
+                  )}
+                  {!d.store && (
+                    <ActionForm action={startStoreAction} className="flex w-full flex-wrap items-end gap-2" replaceOnSuccess>
+                      <input type="hidden" name="domain" value={d.apex} />
+                      <label className="flex min-w-56 flex-1 flex-col gap-1 text-caption text-muted">
+                        {words.account.storeName}
+                        <input name="storeName" required maxLength={80} className="min-h-10 rounded-lg border border-edge bg-card px-3 text-body text-ink" />
+                      </label>
+                      <SubmitButton>{fillWords(words.account.startStore, { domain: d.apex })}</SubmitButton>
                     </ActionForm>
                   )}
                   {!d.store && d.holding && (

@@ -12,6 +12,8 @@ import { describeRecord } from "@/lib/dns-records";
 import { requireAccount } from "@/server/auth";
 import { linkableStores, linkDomain, unlinkDomain } from "@/server/domain-account";
 import { setHolding } from "@/server/holding";
+import { createAccessRequest } from "@/server/platform";
+import { heldDomains } from "@/server/domain-account";
 import { applyDnsChange, previewDnsChange, setDnsAuto, undoDnsChange } from "@/server/domain-dns";
 import { accountHolder } from "@/server/domain-holder";
 import { chargeDomainPurchases, renewDomainNow, setDomainRenewal } from "@/server/domain-purchases";
@@ -112,4 +114,26 @@ export async function holdingAction(_state: FormState, form: FormData): Promise<
   const result = await setHolding(account, String(form.get("domain") ?? ""), String(form.get("mode") ?? ""), String(form.get("to") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   return done([words.account.holdingSaved]);
+}
+
+/**
+ * *Start a store on {domain}* (D317 decision 3): a request for a store, as sign-up makes, with the domain on it; approving it connects the
+ * domain to the new store at once. Only for a domain the account holds that no store uses.
+ */
+export async function startStoreAction(_state: FormState, form: FormData): Promise<FormState> {
+  const { account, words } = await holderNow();
+  const apex = String(form.get("domain") ?? "").toLowerCase();
+  const storeName = String(form.get("storeName") ?? "").trim().slice(0, 80);
+  if (!storeName) return { status: "error", messages: [words.account.storeName] };
+  const held = (await heldDomains(account.id)).find((d) => d.apex === apex);
+  if (!held || held.store) return { status: "error", messages: [fillWords(words.account.notYours, { domain: apex })] };
+  await createAccessRequest({
+    name: account.name ?? account.email,
+    email: account.email,
+    storeName,
+    message: "",
+    lang: account.adminLocale === "nb-NO" ? "nb" : "en",
+    domain: apex,
+  });
+  return done([fillWords(words.account.startStoreSent, { domain: apex })]);
 }

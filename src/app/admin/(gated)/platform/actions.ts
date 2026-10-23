@@ -112,7 +112,12 @@ export async function decideAction(
         ? `Store created at ${storeHref(result.slug, storeBase(result.slug))}. A sign-in link is on its way to ${result.email}.`
         : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`) +
         design +
-        fellBack,
+        fellBack +
+        (result.domain
+          ? result.domain.problem
+            ? ` ${result.domain.name} could not be connected (${result.domain.problem}): the owner can do it from Your domains.`
+            : ` ${result.domain.name} is the store's${result.domain.connected ? " and connected" : ""}.`
+          : ""),
     ],
   };
 }

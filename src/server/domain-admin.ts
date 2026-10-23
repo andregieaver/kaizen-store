@@ -132,3 +132,36 @@ export async function decideReview(account: Account, purchaseId: string, approve
   await audit(account.id, row.store_id ? String(row.store_id) : null, "platform.domain_review_decided", { domain: String(row.apex), approve });
   return { ok: true };
 }
+
+export type DomainLeads = { accounts: number; domainsAlone: number; requested: number; opened: number; openedIn90: number; startedBefore90: number };
+
+/**
+ * The lead channel in figures (D317 9, decision 10): accounts that came for a domain, the domains held with no store using them, how many of
+ * those accounts asked for a store and opened one, and of the accounts started at least 90 days ago, how many opened a store within 90 days
+ * (the owner's bar). Counted, never estimated.
+ */
+export async function domainLeads(): Promise<DomainLeads> {
+  const [row] = await db().execute<Row>(sql`
+    with domain_accounts as (select id, email, created_at from commerce.accounts where origin = 'domain'),
+    opened as (
+      select a.id, a.created_at, min(m.created_at) as first_store from domain_accounts a
+        join commerce.store_members m on m.account_id = a.id and m.role = 'owner'
+        join commerce.stores s on s.id = m.store_id and not (s.is_template or s.starter)
+       group by a.id, a.created_at
+    )
+    select (select count(*)::int from domain_accounts) as accounts,
+           (select count(*)::int from commerce.domain_registrations r where r.store_id is null and r.status in ('active', 'expired')) as domains_alone,
+           (select count(distinct a.id)::int from domain_accounts a join commerce.access_requests q on lower(q.email) = lower(a.email)) as requested,
+           (select count(*)::int from opened) as opened,
+           (select count(*)::int from opened where first_store <= created_at + interval '90 days' and created_at <= now() - interval '90 days') as opened_in_90,
+           (select count(*)::int from domain_accounts where created_at <= now() - interval '90 days') as started_before_90
+  `);
+  return {
+    accounts: Number(row?.accounts ?? 0),
+    domainsAlone: Number(row?.domains_alone ?? 0),
+    requested: Number(row?.requested ?? 0),
+    opened: Number(row?.opened ?? 0),
+    openedIn90: Number(row?.opened_in_90 ?? 0),
+    startedBefore90: Number(row?.started_before_90 ?? 0),
+  };
+}
