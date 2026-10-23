@@ -65,6 +65,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type };
     case "plans":
       return { id: id(), type, buttonLabel: "", buttonHref: "" };
+    case "domainSearch":
+      return { id: id(), type, buttonLabel: "", ctaLabel: "", ctaHref: "" };
     case "themeStore": {
       const shows = isThemeStorePart(part) ? part : "list";
       const { heading, text } = THEME_STORE_PART_COPY[shows];

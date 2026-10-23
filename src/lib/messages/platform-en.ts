@@ -172,6 +172,21 @@ export const platformEn = {
       phone: "Phone",
     },
   },
+  // The domain search component on Kaizena Flow's own pages (D315, docs/domains.md 16). `{price}`.
+  domainSearch: {
+    placeholder: "your store's name",
+    search: "Search",
+    searching: "Searching…",
+    states: { available: "Free", taken: "Taken", premium: "Premium name", not_sold: "Not sold here yet", yours: "Yours" },
+    firstYear: "{price} the first year",
+    thenYearly: "then {price} a year",
+    cta: "Get started",
+    empty: "Type a name to see which domains are free.",
+    unavailable: "Domain search can't be reached just now. Try again in a moment.",
+    limit: "That's a lot of searches. Try again in a little while.",
+    note: "Prices without VAT, for a store on Kaizena Flow. You buy the domain once your store is set up.",
+    label: "Domain name",
+  },
   blog: {
     title: "Blog",
     description: "News and guides from Kaizena Flow: selling online across the EU, and how the platform works.",

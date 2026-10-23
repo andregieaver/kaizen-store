@@ -22,6 +22,7 @@ export function pageRulesProblem(owner: PageOwner, kind: PageType, content: Page
     siteLayoutProblem(owner, type, content) ??
     searchProblem(owner, type, content) ??
     plansProblem(owner, content) ??
+    domainSearchProblem(owner, content) ??
     themeStoreProblem(owner, type, content) ??
     customFieldProblem(owner, type, content) ??
     storePartProblem(owner, type, content) ??
@@ -41,6 +42,12 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
 /** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
 function plansProblem(owner: PageOwner, content: PageContent): string | null {
   if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizena Flow's plans belong on Kaizena Flow's own pages.";
+  return null;
+}
+
+/** The domain search (D315) sells through Kaizena Flow's own sign-up: only Kaizena Flow's own pages hold it. */
+function domainSearchProblem(owner: PageOwner, content: PageContent): string | null {
+  if (owner !== null && pageBlocks(content).some((block) => block.type === "domainSearch")) return "The domain search belongs on Kaizena Flow's own pages.";
   return null;
 }
 

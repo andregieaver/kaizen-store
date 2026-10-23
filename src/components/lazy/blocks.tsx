@@ -22,3 +22,4 @@ export const HtmlFrame = lazyView(dynamic(() => import("../html-frame").then((m)
 export const PageModal = lazyView(dynamic(() => import("../page-modal").then((m) => m.PageModal)));
 export const RecommendedGrid = lazyView(dynamic(() => import("../recommended-grid").then((m) => m.RecommendedGrid)), showChildren);
 export const SearchBox = lazyView(dynamic(() => import("../search-box").then((m) => m.SearchBox)));
+export const DomainSearchBox = lazyView(dynamic(() => import("../domain-search-box").then((m) => m.DomainSearchBox)));

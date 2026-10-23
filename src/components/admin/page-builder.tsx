@@ -190,6 +190,7 @@ import {
   type ProductPart,
   type MenuBlock,
   type PlansBlock,
+  type DomainSearchBlock,
   type ThemeStoreBlock,
   type SearchBlock,
   type CustomFieldBlock,
@@ -1649,7 +1650,7 @@ function Sidebar({
                 <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.more}</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans", "domainSearch"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -2040,6 +2041,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SearchIcon />;
     case "plans":
       return <PlansIcon />;
+    case "domainSearch":
+      return <DomainSearchIcon />;
     case "themeStore":
       return <ThemeStoreIcon />;
     case "customField":
@@ -3172,6 +3175,8 @@ function BlockItem({
           <SearchStandIn block={block} />
         ) : block.type === "plans" ? (
           <PlansStandIn block={block} />
+        ) : block.type === "domainSearch" ? (
+          <DomainSearchStandIn block={block} />
         ) : block.type === "themeStore" ? (
           <ThemeStoreStandIn block={block} />
         ) : block.type === "customField" ? (
@@ -3832,6 +3837,37 @@ function Dialogs({
           <SettingsTabs
             key={block.id}
             general={<ThemeStoreFields block={block} onChange={(patch) => onRows((current) => patchBlock<ThemeStoreBlock>(current, block.id, patch))} />}
+            style={
+              <>
+                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            motion={motionFields({ kind: "block", id: block.id })}
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </SettingsPanel>
+
+      <SettingsPanel
+        open={block?.type === "domainSearch"}
+        onClose={onClose}
+        title={w.blockNames.domainSearch}
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "domainSearch" && (
+          <SettingsTabs
+            key={block.id}
+            general={<DomainSearchFields block={block} onChange={(patch) => onRows((current) => { return patchBlock<DomainSearchBlock>(current, block.id, patch); })} />}
             style={
               <>
                 {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
@@ -6792,6 +6828,7 @@ function SavedPartDialog({
                     ) : block.type === "menu" ||
                       block.type === "search" ||
                       block.type === "plans" ||
+                      block.type === "domainSearch" ||
                       block.type === "themeStore" ||
                       block.type === "customField" ||
                       block.type === "fieldLoop" ||
@@ -6882,6 +6919,17 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
 // ---------------------------------------------------------------------------
 // Menu components (D85)
 // ---------------------------------------------------------------------------
+
+function DomainSearchIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
+      </svg>
+    </span>
+  );
+}
 
 function PlansIcon() {
   return (
@@ -7094,6 +7142,84 @@ function SearchStandIn({ block }: { block: SearchBlock }) {
     <div className="flex flex-col gap-2">
       <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">{shop.searchStore}</div>
       <p className="text-xs text-muted">{block.results === false ? sw.searchBox : sw.searchResults}</p>
+    </div>
+  );
+}
+
+/** Endings written as the field wants them, the same in every language. */
+const TLD_EXAMPLE = "com, shop, store";
+
+/** The domain search component's settings (D315): its words, the endings it suggests first, the prices' currency and the free names' button. */
+function DomainSearchFields({ block, onChange }: { block: DomainSearchBlock; onChange: (patch: BlockPatch<DomainSearchBlock>) => void }) {
+  const id = useId();
+  const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+  const dw = useAdminText("builder").domainSearch;
+  const field = (key: "heading" | "placeholder" | "buttonLabel" | "ctaLabel" | "ctaHref", label: string, placeholder: string, max: number, hint?: string) => (
+    <label htmlFor={`${id}-${key}`} className="flex flex-col gap-1 text-sm font-medium">
+      {label}
+      <input
+        id={`${id}-${key}`}
+        value={block[key] ?? ""}
+        maxLength={max}
+        placeholder={placeholder}
+        onChange={(event) => onChange(key === "heading" || key === "placeholder" ? { [key]: event.target.value || undefined } : { [key]: event.target.value })}
+        className={input}
+      />
+      {hint && <span className="text-xs font-normal text-muted">{hint}</span>}
+    </label>
+  );
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">{dw.hint}</p>
+      {field("heading", dw.heading, dw.headingPlaceholder, 160)}
+      {field("placeholder", dw.placeholder, dw.placeholderHint, 80)}
+      {field("buttonLabel", dw.button, "", BUTTON_LABEL_MAX)}
+      <label htmlFor={`${id}-tlds`} className="flex flex-col gap-1 text-sm font-medium">
+        {dw.tlds}
+        <input
+          id={`${id}-tlds`}
+          defaultValue={(block.tlds ?? []).join(", ")}
+          placeholder={TLD_EXAMPLE}
+          onBlur={(event) => {
+            const tlds = event.target.value
+              .split(",")
+              .map((t) => t.trim().toLowerCase().replace(/^\./, ""))
+              .filter((t) => /^[a-z][a-z0-9-]{1,62}(\.[a-z][a-z0-9-]{1,62})?$/.test(t))
+              .slice(0, 8);
+            onChange({ tlds: tlds.length > 0 ? tlds : undefined });
+          }}
+          className={input}
+        />
+        <span className="text-xs font-normal text-muted">{dw.tldsHint}</span>
+      </label>
+      <label htmlFor={`${id}-currency`} className="flex flex-col gap-1 text-sm font-medium">
+        {dw.currency}
+        <select id={`${id}-currency`} value={block.currency ?? ""} onChange={(event) => onChange({ currency: event.target.value || undefined })} className={input}>
+          <option value="">{dw.currencyAuto}</option>
+          {["EUR", "NOK", "SEK", "DKK"].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </label>
+      {field("ctaLabel", dw.cta, dw.ctaPlaceholder, BUTTON_LABEL_MAX)}
+      {field("ctaHref", dw.ctaAddress, "/sign-up", 500, dw.ctaAddressHint)}
+    </div>
+  );
+}
+
+/** The domain search on the canvas (D315): what it is set to show, as the canvas asks no registrar. */
+function DomainSearchStandIn({ block }: { block: DomainSearchBlock }) {
+  const dw = useAdminText("builder").domainSearch;
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface p-4 text-sm">
+      {block.heading && <p className="font-medium">{block.heading}</p>}
+      <div className="mt-2 flex gap-2">
+        <span className="flex-1 rounded-md border border-border px-3 py-2 text-muted">{block.placeholder || dw.placeholderHint}</span>
+        <span className="rounded-md bg-foreground/75 px-3 py-2 text-background">{block.buttonLabel || "…"}</span>
+      </div>
+      <p className="mt-2 text-xs text-muted">{fillWords(dw.standIn, { currency: block.currency ? fillWords(dw.inCurrency, { currency: block.currency }) : "" })}</p>
     </div>
   );
 }

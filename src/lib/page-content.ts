@@ -1068,6 +1068,28 @@ export type PlansBlock = PartBase & {
 };
 
 /**
+ * A domain search (D315, `docs/domains.md` 16): a visitor types a name and sees which endings are free and what each costs a year with a
+ * store on Kaizena Flow, from the same search and prices the admin uses, read as they search. Kaizena Flow's own pages only. The words are the
+ * page's own; empty ones take the language's (`DOMAIN_SEARCH_WORDS`).
+ */
+export type DomainSearchBlock = PartBase & {
+  id: string;
+  type: "domainSearch";
+  /** A line above the search box. */
+  heading?: string;
+  placeholder?: string;
+  /** The search button's words. */
+  buttonLabel: string;
+  /** The endings suggested first, without the dot (`com`, `shop`); none: Kaizena Flow's own list. */
+  tlds?: string[];
+  /** The currency prices show in; none: the page's language's (NOK in Norwegian, else EUR). */
+  currency?: string;
+  /** The words and address of each free name's button; the address gets `?domain=` the name (sign-up unless chosen). */
+  ctaLabel: string;
+  ctaHref: string;
+};
+
+/**
  * A part of the theme store (D285, `src/lib/theme-store-parts.ts`): the list of themes, or one part of a theme's page drawn for the
  * theme the address names. The themes are the platform's, read where the page is shown; the heading and the line are the page's own,
  * drawn only when the part has something to show. Kaizena Flow's own pages only.
@@ -1800,6 +1822,7 @@ export type PageBlock =
   | MenuBlock
   | SearchBlock
   | PlansBlock
+  | DomainSearchBlock
   | ThemeStoreBlock
   | CustomFieldBlock
   | FieldLoopBlock
@@ -1995,6 +2018,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "plans":
       // The platform's plans decide: with none on offer it draws nothing (D142).
       return true;
+    case "domainSearch":
+      // The search box always shows (D315).
+      return true;
     case "themeStore":
       // The platform's themes decide: a part with nothing for the theme draws nothing (D285).
       return true;
@@ -2090,6 +2116,7 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "search":
     case "plans":
+    case "domainSearch":
     case "themeStore":
     case "storePart":
     case "customField":
@@ -2921,6 +2948,36 @@ const plansBlock = z.object({
   ...partBase,
 });
 
+/** At most this many endings a domain search suggests first (D315). */
+export const DOMAIN_SEARCH_TLDS_MAX = 8;
+
+const domainSearchBlock = z.object({
+  id: itemId,
+  type: z.literal("domainSearch"),
+  heading: z.string().trim().max(160, "Keep the line under 160 characters.").optional(),
+  placeholder: z.string().trim().max(80, "Keep the placeholder under 80 characters.").optional(),
+  buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
+  tlds: z
+    .array(
+      z
+        .string()
+        .trim()
+        .toLowerCase()
+        .transform((t) => t.replace(/^\./, ""))
+        .refine((t) => /^[a-z][a-z0-9-]{1,62}(\.[a-z][a-z0-9-]{1,62})?$/.test(t), "Write an ending like com or shop."),
+    )
+    .max(DOMAIN_SEARCH_TLDS_MAX, `At most ${DOMAIN_SEARCH_TLDS_MAX} endings.`)
+    .optional(),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
+  ctaLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
+  ctaHref: z
+    .string()
+    .trim()
+    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /sign-up, an anchor like #contact, mailto: or tel:.")
+    .default(""),
+  ...partBase,
+});
+
 const customFieldBlock = z.object({
   id: itemId,
   type: z.literal("customField"),
@@ -3367,6 +3424,7 @@ const BLOCK_KINDS = [
   searchBlock,
   plansBlock,
   themeStoreBlock,
+  domainSearchBlock,
   customFieldBlock,
   fieldLoopBlock,
   storePartBlock,

@@ -41,6 +41,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   menu: "menu",
   search: "search",
   plans: "plans",
+  domainSearch: "domain search",
   themeStore: "theme store part",
   customField: "custom fields",
   fieldLoop: "field loop",
@@ -239,6 +240,8 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
       };
     case "menu":
       return without(block, ["menuId"]) as PageBlock;
+    case "domainSearch":
+      return { ...block, ctaHref: href(block.ctaHref) } as PageBlock;
     case "plans":
       // Kaizen's own plans (D142): the highlighted one is an id of Kaizen's.
       return { ...without(block, ["highlightId"]), buttonHref: href(block.buttonHref) } as PageBlock;

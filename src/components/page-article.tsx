@@ -28,6 +28,7 @@ import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./lazy/blocks";
+import { DomainSearchSection } from "./domain-search-section";
 import { PlansSection } from "./plans-section";
 import { ThemeStoreSection } from "./theme-store-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
@@ -321,6 +322,8 @@ function RowMarkup({
                 <SearchSection place={place} results={block.results !== false} />
               ) : block.type === "plans" ? (
                 <PlansSection block={block} />
+              ) : block.type === "domainSearch" ? (
+                <DomainSearchSection block={block} place={place} />
               ) : block.type === "themeStore" ? (
                 <ThemeStoreSection block={block} place={place} />
               ) : block.type === "customField" ? (

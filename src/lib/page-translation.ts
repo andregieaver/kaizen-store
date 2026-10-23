@@ -85,6 +85,15 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       // Only a heading of the store's own is text to translate; the product's own texts have their languages already,
       // and so have custom fields' (D118).
       return b.heading ? { ...b, heading: str("heading", b.heading, 300, "Heading") } : b;
+    case "domainSearch":
+      // The names and prices are the registrars' and Kaizena Flow's (D315); the line and the buttons' words are the page's.
+      return {
+        ...b,
+        ...(b.heading !== undefined && { heading: str("heading", b.heading, 160, "Heading") }),
+        ...(b.placeholder !== undefined && { placeholder: str("placeholder", b.placeholder, 80, "Placeholder") }),
+        buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text"),
+        ctaLabel: str("ctaLabel", b.ctaLabel, 100, "Free name's button"),
+      };
     case "plans":
       // Plans' names, descriptions and prices are the platform's own; only the button's words are the page's.
       return { ...b, buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text") };

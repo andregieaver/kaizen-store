@@ -6,6 +6,9 @@
 /** The endings a search suggests first when nothing else is said: generic ones Vercel sells today. A store's own country's comes with phase 5. */
 export const SUGGESTED_TLDS = ["com", "shop", "store", "net", "online"] as const;
 
+/** At most this many endings a domain search component suggests first (as `DOMAIN_SEARCH_TLDS_MAX` in the page model, without zod). */
+export const DOMAIN_SEARCH_TLDS_MAX_PLAIN = 8;
+
 /** At most this many names are asked about in one search. */
 export const SEARCH_NAMES_MAX = 12;
 

@@ -87,6 +87,9 @@ export function PageBlockView({
     case "plans":
       // Kaizen's plans are looked up where the page is shown (`PlansSection`, D142); the editor shows a stand-in.
       return null;
+    case "domainSearch":
+      // Names and prices are asked as the visitor searches (`DomainSearchSection`, D315); the editor shows a stand-in.
+      return null;
     case "themeStore":
       // The themes are looked up where the page is shown (`ThemeStoreSection`, D285); the editor shows a stand-in.
       return null;

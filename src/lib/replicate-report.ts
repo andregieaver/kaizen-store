@@ -112,7 +112,7 @@ export type ReplicaReport = {
 // ---------------------------------------------------------------------------
 
 /** Blocks for any page, from the builder's own schema; the shop's and the site's own parts are not for a copied page. */
-const SPECIAL_BLOCKS = new Set(["product", "site", "storePart", "plans", "themeStore", "search", "customField", "fieldLoop"]);
+const SPECIAL_BLOCKS = new Set(["product", "site", "storePart", "plans", "domainSearch", "themeStore", "search", "customField", "fieldLoop"]);
 export const BUILDER_BLOCKS: readonly string[] = pageBlockUnion.options.map((option) => String(option.shape.type.value)).filter((type) => !SPECIAL_BLOCKS.has(type));
 /** What `buildReplica()` makes. A block the builder has and this list lacks is one the converter could use but does not. */
 export const CONVERTER_BLOCKS: readonly string[] = ["heading", "richText", "button", "image", "video", "separator", "contentGrid"];

@@ -380,6 +380,16 @@ export function textRoles(part: TypedPart): RoleDef[] {
     case "themeStore":
       // The theme store's parts (D285): their headings, and the rest (the themes' names, words and buttons) as the part's text.
       return [TEXT, role("title", "Headings", marked("title"))];
+    case "domainSearch":
+      // The domain search (D315): its line, the box, its button, each name and its price.
+      return [
+        TEXT,
+        role("title", "Line above", marked("title")),
+        role("input", "Search box", marked("input")),
+        role("button", "Buttons", marked("button"), { align: false }),
+        role("name", "Names", marked("name")),
+        role("price", "Prices", marked("price")),
+      ];
     case "plans":
       return [
         TEXT,
@@ -469,6 +479,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   },
   newsletter: { placeholder: "input", submitLabel: "button", successMessage: "message", consent: "label" },
   themeStore: { heading: "title", text: "text" },
+  domainSearch: { heading: "title", placeholder: "input", buttonLabel: "button", ctaLabel: "button", "names": "name", "prices": "price" },
   plans: { buttonLabel: "button", "plan names": "name", "prices": "price", "what each includes": "meta", "fees and descriptions": "text" },
   product: { heading: "heading", "the product's words": "text" },
   customField: { heading: "heading", "field labels": "label", "field values": "text" },
