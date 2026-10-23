@@ -1,11 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { change, formatChange, formatCount, formatPercent, NO_FIGURE, safeRatio, verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import { change, formatChange, formatCount, NO_FIGURE, safeRatio, verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import type { FinanceLine, FinanceLineKey, FinanceStatement } from "@/lib/analytics-finance";
 import { COVERAGE_WARN, kpiChange, type Totals } from "@/lib/analytics-kpi";
 import type { Bucket } from "@/lib/analytics-period";
+import { decimalComma, financeNumbers, withDecimals, type FinanceNumbers } from "@/lib/finance-words";
 import type { SeriesPoint } from "@/server/analytics-totals";
 
 import { HorizontalBars, LineChart, type BarRow } from "./charts";
@@ -67,6 +70,8 @@ export type FinanceViewProps = {
   comparisonSeries: readonly (SeriesPoint | null)[] | null;
   /** Null when the count could not be read; the page then does not say how many products lack a cost. */
   setup: FinanceSetup | null;
+  /** The words in the admin's language (D312 A9); English unless given. */
+  words?: FinanceMessages;
 };
 
 // ---------------------------------------------------------------------------
@@ -77,8 +82,6 @@ export type FinanceViewProps = {
 export function moneyWriter(currency: string, locale: string): (minor: number) => string {
   return (minor) => formatAmount(Math.round(minor), currency, locale);
 }
-
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /** Whether a period had no sales at all: nothing paid and nothing refunded. */
 export function hasNoSales(d: Pick<FinancePeriodData, "totals">): boolean {
@@ -97,7 +100,7 @@ export type LineChange = { text: string; abs: number; verdict: Verdict };
  * How a bridge line changed against the comparison. A deduction is compared on its size (costs going from 100 to 150 is +50 %, and
  * bad news), everything else on its amount. Nothing when either side cannot be known; a line the comparison lacks (rounding) was 0.
  */
-export function lineChange(line: FinanceLine, previous: FinanceLine | undefined): LineChange | null {
+export function lineChange(line: FinanceLine, previous: FinanceLine | undefined, numbers?: FinanceNumbers): LineChange | null {
   const before = previous ? previous.amountMinor : line.key === "rounding" ? 0 : null;
   if (line.amountMinor === null || before === null) return null;
   const deduction = DEDUCTIONS.has(line.key);
@@ -106,48 +109,43 @@ export function lineChange(line: FinanceLine, previous: FinanceLine | undefined)
   const good: GoodDirection = line.key === "rounding" ? "neutral" : deduction ? "down" : "up";
   // A change under a twentieth of a percent is rounding, not news.
   const verdict = delta.pct !== null && Math.abs(delta.pct) < 0.0005 ? "neutral" : verdictOf(delta.abs, good);
-  return { text: formatChange(delta), abs: delta.abs, verdict };
+  return { text: numbers ? numbers.change(delta) : formatChange(delta), abs: delta.abs, verdict };
 }
 
 /** The label without a trailing "(estimated)": the line carries the tag instead. */
-export const plainLabel = (label: string) => label.replace(/ \((estimated|estimate)\)$/, "");
+export const plainLabel = (label: string) => label.replace(/ \((estimated|estimate|anslått|anslag)\)$/, "");
 
 /** The bars of "Where net revenue went", in order: a line of the statement and its label (the CSV repeats them). */
 /** Lines a statement has only when they happened (D288's lost disputes): left out of *Where net revenue went* when absent. */
 export const shownWhere = (s: FinanceStatement, key: FinanceLineKey): boolean => key !== "lostDisputes" || lineOf(s, key) !== undefined;
 
-export const WHERE_IT_WENT: readonly (readonly [FinanceLineKey, string])[] = [
-  ["netRevenue", "Net revenue"],
-  ["cogs", "Cost of goods"],
-  ["paymentFees", "Payment fees"],
-  ["platformFees", "Platform fees"],
-  ["shippingCosts", "Shipping costs"],
-  ["marketing", "Marketing"],
-  ["lostDisputes", "Lost disputes"],
-  ["fixedCosts", "Fixed costs"],
-  ["operatingProfit", "Operating profit"],
-];
+const WHERE_KEYS = ["netRevenue", "cogs", "paymentFees", "platformFees", "shippingCosts", "marketing", "lostDisputes", "fixedCosts", "operatingProfit"] as const;
+
+/** The bars with their labels in the admin's language; English unless given. */
+export const whereItWent = (w: FinanceMessages["view"]["where"] = financeEn.view.where): readonly (readonly [FinanceLineKey, string])[] => WHERE_KEYS.map((key) => [key, w[key]] as const);
+
+export const WHERE_IT_WENT = whereItWent();
 
 /**
  * The sentences that open the page: what came in, what is left after the cost of goods, after what follows each sale, and after fixed
  * costs. Written in code from the statement, never flattering: a shortfall is a shortfall, and profit that cannot be known says so.
  */
-export function profitLines(d: FinancePeriodData, money: (minor: number) => string): string[] {
+export function profitLines(d: FinancePeriodData, money: (minor: number) => string, words: FinanceMessages = financeEn, numbers: FinanceNumbers = financeNumbers(words)): string[] {
+  const w = words.view.profit;
+  const pct = numbers.percent;
   const t = d.totals;
   const s = d.statement;
   const net = amountOf(s, "netRevenue");
-  if (hasNoSales(d) || net === null) return ["No orders were paid in this period yet. Once they are, this is where you see how much of each sale is left after what it costs."];
-  if (t.orders === 0) return [`No orders were paid in this period, but refunds of ${money(t.refundsMinor)} were made in it.`];
+  if (hasNoSales(d) || net === null) return [w.noSales];
+  if (t.orders === 0) return [fillWords(w.onlyRefunds, { amount: money(t.refundsMinor) })];
 
-  const lines = [`${formatCount(t.orders)} paid ${plural(t.orders, "order", "orders")} brought in ${money(net)} after refunds.`];
+  const lines = [countWords(t.orders, w.paid, { n: formatCount(t.orders), amount: money(net) })];
   if (!s.hasCosts) {
     const some = s.costCoverage !== null && s.costCoverage > 0;
     lines.push(
-      some
-        ? `Product costs are known for only ${formatPercent(s.costCoverage, 0)} of sales, too few to estimate profit from. Add what the rest of your products cost to see how much of this is yours to keep.`
-        : "None of the products sold has a cost entered, so there is no profit to show. Add what your products cost to see how much of this is yours to keep.",
+      some ? fillWords(w.someCosts, { share: pct(s.costCoverage, 0) }) : w.noCosts,
     );
-    if (s.grossMargin !== null) lines.push(`On the sales whose cost is known, the gross margin is ${formatPercent(s.grossMargin)}.`);
+    if (s.grossMargin !== null) lines.push(fillWords(w.knownMargin, { share: pct(s.grossMargin) }));
     return lines;
   }
   const gross = amountOf(s, "grossProfit");
@@ -156,41 +154,41 @@ export function profitLines(d: FinancePeriodData, money: (minor: number) => stri
   const grossMargin = s.grossMargin;
   const cogs = lineOf(s, "cogs")?.amountMinor ?? null;
   const contributionMargin = lineOf(s, "contributionProfit")?.shareOfNet ?? null;
-  const coverage = s.estimated && s.costCoverage !== null ? `, estimated from the ${formatPercent(s.costCoverage, 0)} of sales whose cost is known` : "";
-  const goods = s.estimated ? "The goods cost an estimated" : "The goods cost";
+  const coverage = s.estimated && s.costCoverage !== null ? fillWords(w.coverage, { share: pct(s.costCoverage, 0) }) : "";
+  const goods = s.estimated ? w.goodsEstimated : w.goods;
+  const cogsText = money(cogs === null ? t.cogsMinor : -cogs);
 
   if (gross !== null) {
     lines.push(
       gross >= 0
-        ? `${goods} ${money(cogs === null ? t.cogsMinor : -cogs)}, which leaves a gross profit of ${money(gross)}${grossMargin === null ? "" : ` (${formatPercent(grossMargin)} of net revenue)`}${coverage}.`
-        : `${goods} ${money(cogs === null ? t.cogsMinor : -cogs)}, which is ${money(-gross)} more than they brought in${coverage}.`,
+        ? fillWords(w.grossLeft, { goods, cogs: cogsText, gross: money(gross), margin: grossMargin === null ? "" : fillWords(w.grossMargin, { share: pct(grossMargin) }), coverage })
+        : fillWords(w.grossShort, { goods, cogs: cogsText, short: money(-gross), coverage }),
     );
   }
   if (contribution !== null) {
     lines.push(
       contribution >= 0
-        ? `After fees, shipping and marketing, contribution profit is about ${money(contribution)}${contributionMargin === null ? "" : ` (${formatPercent(contributionMargin)})`}${s.estimated ? ", an estimate" : ""}.`
-        : `After fees, shipping and marketing, the store is about ${money(-contribution)} short.`,
+        ? fillWords(w.contribution, { amount: money(contribution), margin: contributionMargin === null ? "" : fillWords(w.contributionMargin, { share: pct(contributionMargin) }), estimate: s.estimated ? w.anEstimate : "" })
+        : fillWords(w.contributionShort, { amount: money(-contribution) }),
     );
   }
   if (operating !== null && t.orders > 0 && lineOf(s, "fixedCosts") && (lineOf(s, "fixedCosts")?.amountMinor ?? 0) !== 0) {
-    lines.push(operating >= 0 ? `After fixed costs, operating profit is about ${money(operating)}. That is an estimate.` : `After fixed costs, the store is about ${money(-operating)} short. That is an estimate.`);
+    lines.push(operating >= 0 ? fillWords(w.operating, { amount: money(operating) }) : fillWords(w.operatingShort, { amount: money(-operating) }));
   }
   return lines;
 }
 
 /** Words for orders and refunds left out because their currency has no rate; empty when nothing was left out. */
-export function currencyNotes(current: FinancePeriodData, comparison: FinancePeriodData | null, currency: string): string[] {
+export function currencyNotes(current: FinancePeriodData, comparison: FinancePeriodData | null, currency: string, words: FinanceMessages = financeEn): string[] {
+  const w = words.view.currencies;
   const out: string[] = [];
   const one = (d: FinancePeriodData, which: string) => {
     if (d.unconverted <= 0) return;
     const n = d.unconverted;
-    out.push(
-      `${formatCount(n)} ${plural(n, "order or refund", "orders and refunds")} in ${d.missingCurrencies.join(", ") || "another currency"} ${plural(n, "is", "are")} left out of ${which} because the store has no rate to ${currency}, so those figures are lower than they should be.`,
-    );
+    out.push(countWords(n, w.leftOut, { n: formatCount(n), currencies: d.missingCurrencies.join(", ") || w.another, which, currency }));
   };
-  one(current, "these figures");
-  if (comparison) one(comparison, "the comparison period");
+  one(current, w.these);
+  if (comparison) one(comparison, w.comparison);
   return out;
 }
 
@@ -205,26 +203,7 @@ export function missingCostCount(setup: FinanceSetup | null): number | null {
 // ---------------------------------------------------------------------------
 
 /** docs/analytics.md's definitions, in plain words, for the closing disclosure. */
-export const FINANCE_DEFINITIONS: readonly { term: string; text: string }[] = [
-  { term: "Paid order", text: "An order with a payment taken. Unpaid and cancelled-before-payment orders, copied orders and hosts' orders are not counted. An order paid and later refunded still counts; the refund is taken off as a refund. Dated by the day it was placed." },
-  { term: "Gross sales", text: "The price of the goods sold before any discount, without VAT." },
-  { term: "Discounts", text: "Everything taken off the goods: campaigns, customer groups, codes, referral and bonus credit, without VAT." },
-  { term: "Shipping income", text: "What shoppers paid for shipping, without VAT." },
-  { term: "Revenue", text: "Gross sales less discounts plus shipping income: what paid orders brought in, without VAT. Refunds are not yet taken off." },
-  { term: "Refunds", text: "Money paid back in the period, dated by the day of the refund, without VAT. Refunds made only in the payment provider's dashboard are not seen." },
-  { term: "Net revenue", text: "Revenue less refunds." },
-  { term: "Cost of goods sold", text: "What the units sold cost you, kept on each order line when it was sold, so a later change of cost never rewrites history. A line sold without a cost counts as costing nothing, and the coverage figure says how much of sales that is." },
-  { term: "Gross profit and gross margin", text: "Net revenue less the cost of goods sold. The margin is the gross profit as a share of net revenue." },
-  { term: "Payment fees", text: "What Stripe took for an order's payments, as Stripe reported it, once every Stripe payment of the order has its fee. For the other orders it is estimated from the fee percentage and fixed fee in Analytics settings, on the order's total with VAT, and the line says so." },
-  { term: "Platform fees", text: "What Kaizena Flow took on the period's payments. This is recorded, not estimated." },
-  { term: "Shipping costs (estimated)", text: "The cost of sending one order, from Analytics settings, for every paid order with something physical in it." },
-  { term: "Marketing", text: "The ad spend you entered under Marketing, day by day, for the days of the period." },
-  { term: "Contribution profit and margin", text: "Net revenue less the cost of goods, payment fees, platform fees, shipping costs and marketing: what each sale leaves before fixed costs. The margin is that as a share of net revenue." },
-  { term: "Fixed costs (pro rata)", text: "The monthly amount in Analytics settings (rent, salaries and the like) spread evenly over the days of the period." },
-  { term: "Operating profit (estimate)", text: "Contribution profit less fixed costs. It rests on estimates, so treat it as a guide." },
-  { term: "VAT", text: "Tax charged on orders, including shipping (VAT not charged under reverse charge is not counted, and is not a discount). It is passed on to the tax authorities and is not income; every other figure here is without it." },
-  { term: "Currencies", text: "Amounts in another currency are converted into the store's main currency at today's rates, so history is valued at today's rates. An order in a currency with no rate is left out and counted." },
-];
+export const FINANCE_DEFINITIONS: readonly { term: string; text: string }[] = financeEn.view.definitions;
 
 // ---------------------------------------------------------------------------
 // Pieces
@@ -234,11 +213,10 @@ const linkClass = "font-medium text-(--brand-text) underline-offset-2 hover:unde
 
 const TONE: Record<Verdict, string> = { good: "text-(--chart-good)", bad: "text-(--chart-bad)", neutral: "text-muted" };
 const ARROW = { up: "▲", down: "▼", flat: "▬" } as const;
-const SPOKEN = { up: "Up", down: "Down", flat: "No change" } as const;
-const NEWS: Record<Verdict, string> = { good: ", better", bad: ", worse", neutral: "" };
-
 /** A change in a table cell: an arrow, the signed text, and a hidden word for a screen reader, so colour is never alone. */
-function ChangeCell({ value }: { value: LineChange | null }) {
+function ChangeCell({ value, w }: { value: LineChange | null; w: FinanceMessages["view"]["table"] }) {
+  const SPOKEN = { up: w.up, down: w.down, flat: w.flat };
+  const NEWS: Record<Verdict, string> = { good: w.better, bad: w.worse, neutral: "" };
   if (!value) return <span className="text-muted">{NO_FIGURE}</span>;
   const direction = arrowOf(value.abs);
   return (
@@ -252,28 +230,25 @@ function ChangeCell({ value }: { value: LineChange | null }) {
   );
 }
 
-/** The estimated costs the owner enters in Analytics settings, as a sentence names them. */
-const UNSET_WORDS: Partial<Record<FinanceLineKey, string>> = { paymentFees: "payment fees", shippingCosts: "shipping costs", fixedCosts: "fixed costs" };
-
 /** Lines whose note is always in view: what is estimated, what is missing, and what the cost of goods and refunds rest on. */
 const noteShown = (line: FinanceLine) => line.note !== null && (line.estimated || line.missing || line.key === "cogs" || line.key === "refunds");
 
-function BridgeTable({ current, comparison, money }: { current: FinancePeriodData; comparison: FinanceViewProps["comparison"]; money: (minor: number) => string }) {
+function BridgeTable({ current, comparison, money, w, n }: { current: FinancePeriodData; comparison: FinanceViewProps["comparison"]; money: (minor: number) => string; w: FinanceMessages["view"]["table"]; n: FinanceNumbers }) {
   const prior = comparison && !hasNoSales(comparison.data) ? comparison.data : null;
-  const versus = comparison ? (comparison.mode === "year" ? "Same period last year" : "Previous period") : null;
+  const versus = comparison ? (comparison.mode === "year" ? w.lastYear : w.previous) : null;
   const th = "whitespace-nowrap border-b border-line px-3 py-2 align-bottom";
   return (
     <>
     <div className={`relative overflow-x-auto ${CARD_CLASS}`}>
       <table data-export-id="finance.bridge" className="w-full min-w-[40rem] border-collapse text-sm">
-        <caption className="sr-only">From gross sales to operating profit, one line for each step, in {current.label}</caption>
+        <caption className="sr-only">{fillWords(w.caption, { period: current.label })}</caption>
         <thead>
           <tr>
             <th scope="col" className={`${th} text-left`}>
-              Line
+              {w.line}
             </th>
             <th scope="col" className={`${th} text-right`}>
-              <span>This period</span>
+              <span>{w.thisPeriod}</span>
               <span className="block text-xs font-normal text-muted">{current.label}</span>
             </th>
             {comparison ? (
@@ -283,12 +258,12 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
                   <span className="block text-xs font-normal text-muted">{comparison.data.label}</span>
                 </th>
                 <th scope="col" className={`${th} text-right`}>
-                  Change
+                  {w.change}
                 </th>
               </>
             ) : null}
-            <th scope="col" className={`${th} text-right`} title="Each line as a share of net revenue">
-              Share of net revenue
+            <th scope="col" className={`${th} text-right`} title={w.shareTitle}>
+              {w.share}
             </th>
           </tr>
         </thead>
@@ -301,8 +276,8 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
                 <th scope="row" className="min-w-[10rem] px-3 py-2 text-left align-top font-[inherit]">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span {...(line.note && !noteShown(line) ? { title: line.note } : {})}>{plainLabel(line.label)}</span>
-                    {line.estimated ? <StatusPill tone="info">Estimated</StatusPill> : null}
-                    {line.missing ? <StatusPill tone="warning">Costs missing</StatusPill> : null}
+                    {line.estimated ? <StatusPill tone="info">{w.estimated}</StatusPill> : null}
+                    {line.missing ? <StatusPill tone="warning">{w.costsMissing}</StatusPill> : null}
                   </span>
                   {noteShown(line) ? <span className="mt-0.5 block max-w-md text-xs font-normal text-muted">{line.note}</span> : null}
                 </th>
@@ -311,7 +286,7 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
                   <>
                     <td className="px-3 py-2 text-right align-top tabular-nums">
                       {beforeAmount === null ? (
-                        <span className="text-muted" {...(prior ? {} : { title: "No orders were paid in that period" })}>
+                        <span className="text-muted" {...(prior ? {} : { title: w.noOrders })}>
                           {NO_FIGURE}
                         </span>
                       ) : (
@@ -319,11 +294,11 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right align-top tabular-nums">
-                      <ChangeCell value={prior ? lineChange(line, before) : null} />
+                      <ChangeCell value={prior ? lineChange(line, before, n) : null} w={w} />
                     </td>
                   </>
                 ) : null}
-                <td className="px-3 py-2 text-right align-top tabular-nums">{line.shareOfNet === null ? <span className="text-muted">{NO_FIGURE}</span> : formatPercent(line.shareOfNet)}</td>
+                <td className="px-3 py-2 text-right align-top tabular-nums">{line.shareOfNet === null ? <span className="text-muted">{NO_FIGURE}</span> : n.percent(line.shareOfNet)}</td>
               </tr>
             );
           })}
@@ -341,7 +316,10 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
 // The view
 // ---------------------------------------------------------------------------
 
-export function FinanceView({ base, currency, locale, isOwner, current, comparison, bucket, series, comparisonSeries, setup }: FinanceViewProps) {
+export function FinanceView({ base, currency, locale, isOwner, current, comparison, bucket, series, comparisonSeries, setup, words = financeEn }: FinanceViewProps) {
+  const v = words.view;
+  const n = financeNumbers(words);
+  const pct = n.percent;
   const money = moneyWriter(currency, locale);
   const settingsHref = `${base}/analytics/settings`;
   const productsHref = `${base}/products`;
@@ -349,7 +327,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
   const t = current.totals;
   const sales = !hasNoSales(current);
   const prior = comparison && !hasNoSales(comparison.data) ? comparison.data : null;
-  const compareWords = comparison ? (comparison.mode === "year" ? "the same period last year" : "the previous period") : null;
+  const compareWords = comparison ? (comparison.mode === "year" ? v.notes.lastYear : v.notes.previous) : null;
   const costsMissing = sales && !s.hasCosts;
   const coverage = s.costCoverage;
   const partialCoverage = sales && s.hasCosts && coverage !== null && coverage < 1;
@@ -357,51 +335,47 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
   const missingOptions = missingCostCount(setup);
 
   // ---- notes about what the figures are and are not ----
-  const notes: ReactNode[] = [...currencyNotes(current, comparison?.data ?? null, currency)];
-  if (!s.reconciles) notes.push("The lines of the statement below do not add up exactly. The figures are as recorded; please report this.");
-  if (comparison && !prior && sales) notes.push(`No orders were paid in ${compareWords}, so there is nothing to compare with.`);
-  const unset = sales && s.hasCosts ? s.lines.filter((l) => l.missing && ["paymentFees", "shippingCosts", "fixedCosts"].includes(l.key)).map((l) => UNSET_WORDS[l.key] ?? plainLabel(l.label).toLowerCase()) : [];
+  const notes: ReactNode[] = [...currencyNotes(current, comparison?.data ?? null, currency, words)];
+  if (!s.reconciles) notes.push(v.notes.reconciles);
+  if (comparison && !prior && sales) notes.push(fillWords(v.notes.noComparison, { when: compareWords ?? "" }));
+  const unsetWords: Partial<Record<FinanceLineKey, string>> = v.notes.unset;
+  const unset = sales && s.hasCosts ? s.lines.filter((l) => l.missing && ["paymentFees", "shippingCosts", "fixedCosts"].includes(l.key)).map((l) => unsetWords[l.key] ?? plainLabel(l.label).toLowerCase()) : [];
   if (unset.length > 0) {
-    const list = unset.length > 1 ? `${unset.slice(0, -1).join(", ")} and ${unset[unset.length - 1]}` : unset[0];
+    const list = unset.length > 1 ? `${unset.slice(0, -1).join(", ")} ${v.notes.and} ${unset[unset.length - 1]}` : unset[0];
     notes.push(
       isOwner ? (
         <>
-          {`The ${list} ${plural(unset.length, "is", "are")} not entered, so ${plural(unset.length, "it counts", "they count")} as nothing and profit may look better than it is. `}
+          {countWords(unset.length, v.notes.unsetOwner, { list })}
           <Link href={settingsHref} className={linkClass}>
-            Enter {plural(unset.length, "it", "them")} in Analytics settings
+            {countWords(unset.length, v.notes.enter)}
           </Link>
           .
         </>
       ) : (
-        `The ${list} ${plural(unset.length, "is", "are")} not entered, so ${plural(unset.length, "it counts", "they count")} as nothing and profit may look better than it is. An owner can enter ${plural(unset.length, "it", "them")} in Analytics settings.`
+        countWords(unset.length, v.notes.unsetStaff, { list })
       ),
     );
   }
 
   // ---- the cost coverage warning ----
   const backfill = setup && setup.backfillableLines > 0 ? setup.backfillableLines : 0;
+  const c = v.coverage;
   const coverageNote =
     costsMissing || partialCoverage ? (
-      <Note tone={costsMissing || (coverage !== null && coverage < COVERAGE_WARN) ? "warning" : "info"} title={costsMissing ? "Profit cannot be shown yet" : `Profit is estimated from the ${formatPercent(coverage, 0)} of sales whose cost is known`}>
+      <Note tone={costsMissing || (coverage !== null && coverage < COVERAGE_WARN) ? "warning" : "info"} title={costsMissing ? c.cannotTitle : fillWords(c.estimatedTitle, { share: pct(coverage, 0) })}>
         <p>
-          {costsMissing
-            ? someCosts
-              ? `Product costs are known for only ${formatPercent(coverage, 0)} of sales, too few to estimate from (30 % is the least), so gross profit, contribution profit and operating profit have no figure rather than a misleading one. The gross margin below is for the sales whose cost is known.`
-              : "None of the products sold has a cost entered, so gross profit, contribution profit and operating profit have no figure rather than a misleading one."
-            : "The rest of sales was made without a cost entered, so its cost of goods is estimated from the sales that have one, in the same proportion. Margins are worked out on the sales whose cost is known."}{" "}
-          {missingOptions !== null && missingOptions > 0
-            ? `Add costs to ${formatCount(missingOptions)} product ${plural(missingOptions, "option", "options")} (an option is one size, colour or other choice of a product) to ${costsMissing ? "see profit" : "cover the rest"}.`
-            : "Add what each product costs in the product editor."}
+          {costsMissing ? (someCosts ? fillWords(c.someCosts, { share: pct(coverage, 0) }) : c.noCosts) : c.partial}{" "}
+          {missingOptions !== null && missingOptions > 0 ? countWords(missingOptions, c.addCosts, { n: formatCount(missingOptions), goal: costsMissing ? c.seeProfit : c.coverRest }) : c.addInEditor}
         </p>
         <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           <Link href={productsHref} className={linkClass}>
-            Add costs in the product editor
+            {c.addLink}
           </Link>
           {backfill > 0 && isOwner ? (
             <span>
-              {`${formatCount(backfill)} earlier order ${plural(backfill, "line", "lines")} can be filled in with costs entered since: `}
+              {countWords(backfill, c.backfill, { n: formatCount(backfill) })}
               <Link href={settingsHref} className={linkClass}>
-                apply them in Analytics settings
+                {c.apply}
               </Link>
             </span>
           ) : null}
@@ -410,10 +384,11 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
     ) : null;
 
   // ---- the opening cards ----
+  const k = v.cards;
   const deltaOf = (kind: "money" | "percent", good: GoodDirection, now: number | null, then: number | null) => {
     if (!prior) return null;
-    const c = kpiChange({ kind, good }, now, then);
-    return c.abs === null ? null : { text: c.text, abs: c.abs, verdict: c.verdict };
+    const ch = kpiChange({ kind, good }, now, then);
+    return ch.abs === null ? null : { text: withDecimals(ch.text, decimalComma(words)), abs: ch.abs, verdict: ch.verdict };
   };
   const compared = (kind: "money" | "percent", good: GoodDirection, now: number | null, then: number | null): Partial<KpiCardProps> => {
     if (!comparison) return {};
@@ -427,9 +402,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
     label: "",
     value: null,
     state: "missing",
-    missing: costsMissing
-      ? { text: `Needs product costs. Enter what a unit costs in the product editor to see ${what}.`, action: { label: "Add costs in the product editor", href: productsHref } }
-      : { text: "Needs net revenue above 0 in the period." },
+    missing: costsMissing ? { text: fillWords(k.needsCosts, { what }), action: { label: c.addLink, href: productsHref } } : { text: k.needsRevenue },
   });
   const grossLine = lineOf(s, "grossProfit");
   const contributionLine = lineOf(s, "contributionProfit");
@@ -438,49 +411,53 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
   const cards: (KpiCardProps & { id: string })[] = [
     {
       id: "net",
-      label: "Net revenue",
+      label: k.net,
       value: netAmount === null ? null : money(netAmount),
       good: "up",
       emphasis: true,
-      help: "Revenue less refunds made in the period, without VAT.",
+      help: k.netHelp,
       ...compared("money", "up", netAmount, before("netRevenue")),
     },
     typeof s.grossMargin === "number"
       ? {
           id: "gross",
-          label: "Gross margin",
-          value: formatPercent(s.grossMargin),
+          label: k.gross,
+          value: pct(s.grossMargin),
           good: "up",
           emphasis: true,
-          help: "Gross profit as a share of net revenue, worked out on the sales whose cost is known: what is left of each sale after the cost of the goods.",
-          hint: `Gross profit ${grossLine?.amountMinor == null ? NO_FIGURE : `${money(grossLine.amountMinor)}${s.estimated ? " (estimated)" : ""}`}${coverage === null ? "" : `, based on ${formatPercent(coverage, 0)} of sales`}`,
+          help: k.grossHelp,
+          hint: fillWords(k.grossHint, {
+            amount: grossLine?.amountMinor == null ? NO_FIGURE : `${money(grossLine.amountMinor)}${s.estimated ? k.estimated : ""}`,
+            estimated: "",
+            based: coverage === null ? "" : fillWords(k.based, { share: pct(coverage, 0) }),
+          }),
           ...compared("percent", "up", s.grossMargin, prior ? prior.statement.grossMargin : null),
         }
-      : { ...costMissing("margin"), id: "gross", label: "Gross margin", help: "Gross profit as a share of net revenue: what is left of each sale after the cost of the goods.", emphasis: true },
+      : { ...costMissing(k.margin), id: "gross", label: k.gross, help: k.grossHelpShort, emphasis: true },
     typeof contributionLine?.shareOfNet === "number"
       ? {
           id: "contribution",
-          label: "Contribution margin",
-          value: formatPercent(contributionLine.shareOfNet),
+          label: k.contribution,
+          value: pct(contributionLine.shareOfNet),
           good: "up",
           emphasis: true,
-          help: "Contribution profit as a share of net revenue. Contribution profit is what is left after the goods, payment and platform fees, shipping and marketing, before fixed costs.",
-          hint: `Contribution profit ${contributionLine.amountMinor === null ? NO_FIGURE : money(contributionLine.amountMinor)} (estimated)`,
+          help: k.contributionHelp,
+          hint: fillWords(k.contributionHint, { amount: contributionLine.amountMinor === null ? NO_FIGURE : money(contributionLine.amountMinor) }),
           ...compared("percent", "up", contributionLine.shareOfNet, beforeShare("contributionProfit")),
         }
-      : { ...costMissing("margin"), id: "contribution", label: "Contribution margin", help: "Contribution profit as a share of net revenue.", emphasis: true },
+      : { ...costMissing(k.margin), id: "contribution", label: k.contribution, help: k.contributionHelpShort, emphasis: true },
     typeof operatingLine?.amountMinor === "number"
       ? {
           id: "operating",
-          label: "Operating profit (estimate)",
+          label: k.operating,
           value: money(operatingLine.amountMinor),
           good: "up",
           emphasis: true,
-          help: "Contribution profit less fixed costs spread over the days of the period.",
-          hint: lineOf(s, "fixedCosts")?.missing ? "No fixed costs are entered, so this equals contribution profit." : "After fixed costs. Rests on estimates.",
+          help: k.operatingHelp,
+          hint: lineOf(s, "fixedCosts")?.missing ? k.operatingNoFixed : k.operatingHint,
           ...compared("money", "up", operatingLine.amountMinor, before("operatingProfit")),
         }
-      : { ...costMissing("profit"), id: "operating", label: "Operating profit (estimate)", help: "Contribution profit less fixed costs spread over the days of the period.", emphasis: true },
+      : { ...costMissing(k.profit), id: "operating", label: k.operating, help: k.operatingHelp, emphasis: true },
   ];
 
   // ---- where net revenue went ----
@@ -489,70 +466,72 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
     const line = flow(key);
     const amount = line?.amountMinor ?? null;
     const share = line?.shareOfNet ?? null;
-    const detail = line?.missing && amount !== null ? "not entered" : line?.missing ? "costs missing" : line?.estimated ? "estimated" : undefined;
+    const detail = line?.missing && amount !== null ? v.bars.notEntered : line?.missing ? v.bars.costsMissing : line?.estimated ? v.bars.estimated : undefined;
     return {
       key,
       label,
       value: amount,
       valueText: amount === null ? NO_FIGURE : money(amount),
-      detail: [share === null ? null : formatPercent(share), detail].filter(Boolean).join(" · ") || undefined,
+      detail: [share === null ? null : pct(share), detail].filter(Boolean).join(" · ") || undefined,
       colorIndex,
     };
   };
-  const bars: BarRow[] = WHERE_IT_WENT.filter(([key]) => shownWhere(s, key)).map(([key, label]) => flowRow(key, label, key === "operatingProfit" ? 2 : 0));
+  const bars: BarRow[] = whereItWent(v.where).filter(([key]) => shownWhere(s, key)).map(([key, label]) => flowRow(key, label, key === "operatingProfit" ? 2 : 0));
 
   // ---- over time ----
+  const x = v.sections;
   const labels = series.map((p) => p.label);
-  const per = bucket;
+  const per = x.buckets[bucket];
   const contributionKnown = series.some((p) => p.contributionMinor !== null);
-  const previousLabel = comparison?.mode === "year" ? "Same period last year" : "Previous period";
+  const previousLabel = comparison?.mode === "year" ? v.table.lastYear : v.table.previous;
   const chartSeries = [
     {
       key: "net",
-      label: "Net revenue",
+      label: v.where.netRevenue,
       values: series.map((p) => p.netRevenueMinor),
       ...(comparisonSeries ? { previous: series.map((_, i) => comparisonSeries[i]?.netRevenueMinor ?? null) } : {}),
     },
-    ...(contributionKnown ? [{ key: "contribution", label: "Contribution profit", values: series.map((p) => p.contributionMinor) }] : []),
+    ...(contributionKnown ? [{ key: "contribution", label: words.statement.labels.contributionProfit, values: series.map((p) => p.contributionMinor) }] : []),
   ];
 
   // ---- VAT and refunds ----
   const refundRate = safeRatio(t.refundsMinor, t.revenueMinor > 0 ? t.revenueMinor : null);
   const vatCard: KpiCardProps = {
-    label: "VAT collected",
+    label: k.vat,
     value: t.orders > 0 ? money(t.vatMinor) : null,
     state: t.orders > 0 ? "ok" : "missing",
-    missing: { text: "No orders were paid in this period." },
+    missing: { text: k.vatMissing },
     good: "neutral",
-    help: "Tax charged on paid orders, including shipping. VAT not charged on a sale to a business in another EU country (reverse charge) is not counted here and is not a discount.",
-    hint: "Passed on to the tax authorities. Not income, and left out of every other figure on this page.",
+    help: k.vatHelp,
+    hint: k.vatHint,
     ...compared("money", "neutral", t.vatMinor, prior ? prior.totals.vatMinor : null),
   };
   const refundCard: KpiCardProps = {
-    label: "Refunds",
+    label: k.refunds,
     value: money(t.refundsMinor),
     good: "down",
-    help: "Money paid back in the period, dated by the day of the refund, without VAT.",
-    hint: refundRate === null ? "No revenue to compare with." : `${formatPercent(refundRate)} of revenue`,
+    help: k.refundsHelp,
+    hint: refundRate === null ? k.refundsNoRevenue : fillWords(k.refundsShare, { share: pct(refundRate) }),
     ...compared("money", "down", t.refundsMinor, prior ? prior.totals.refundsMinor : null),
   };
+  const overTime = fillWords(x.overTime, { per });
 
   return (
     <div className="flex flex-col gap-8">
       {notes.length > 0 ? (
         <div className="space-y-2">
-          {notes.map((n, i) => (
+          {notes.map((note, i) => (
             <Note key={i} tone="warning">
-              {n}
+              {note}
             </Note>
           ))}
         </div>
       ) : null}
       {coverageNote}
 
-      <AnalyticsSection id="finance-left" title="How much of what we sell is left?" description={`${current.label}, in ${currency} without VAT.`}>
+      <AnalyticsSection id="finance-left" title={x.leftTitle} description={fillWords(x.leftDescription, { period: current.label, currency })}>
         <div className="space-y-1 rounded-panel bg-sunken p-4 text-sm">
-          {profitLines(current, money).map((line, i) => (
+          {profitLines(current, money, words, n).map((line, i) => (
             <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
               {line}
             </p>
@@ -569,30 +548,23 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
 
       {sales ? (
         <>
-          <AnalyticsSection
-            id="finance-bridge"
-            title="From gross sales to operating profit"
-            description="Each line adds to or takes from the one above; the shaded lines are the totals so far. Tags say what is estimated and what is missing."
-          >
-            <BridgeTable current={current} comparison={comparison} money={money} />
-            <p className="text-xs text-muted">Refunds made only in the payment provider&apos;s dashboard are not seen, so refunds here may be lower than what was paid back.</p>
+          <AnalyticsSection id="finance-bridge" title={x.bridgeTitle} description={x.bridgeDescription}>
+            <BridgeTable current={current} comparison={comparison} money={money} w={v.table} n={n} />
+            <p className="text-xs text-muted">{x.bridgeNote}</p>
           </AnalyticsSection>
 
-          <AnalyticsSection id="finance-where" title="Where net revenue went" description="Each bar is on the same scale as net revenue. Costs are shown as minus amounts, with their share of net revenue.">
+          <AnalyticsSection id="finance-where" title={x.whereTitle} description={x.whereDescription}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <ChartCard title="From net revenue to operating profit" description="Cost of goods and the estimated fees and costs are taken off in turn. A bar marked costs missing has no figure yet.">
-                <HorizontalBars label="Where net revenue went, from net revenue to operating profit" rows={bars} exportId="finance.where_it_went" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
+              <ChartCard title={x.flowTitle} description={x.flowDescription}>
+                <HorizontalBars label={x.flowLabel} rows={bars} exportId="finance.where_it_went" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
               </ChartCard>
-              <ChartCard
-                title={`Net revenue and contribution profit per ${per}`}
-                description={contributionKnown ? "Contribution profit is what each sale leaves after its own costs, before fixed costs. It is partly estimated." : "Contribution profit needs product costs, so only net revenue is drawn."}
-              >
-                <LineChart label={`Net revenue and contribution profit per ${per}`} labels={labels} series={chartSeries} format={money} previousLabel={previousLabel} exportId="finance.revenue_profit" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
+              <ChartCard title={overTime} description={contributionKnown ? x.overTimeWith : x.overTimeWithout}>
+                <LineChart label={overTime} labels={labels} series={chartSeries} format={money} previousLabel={previousLabel} exportId="finance.revenue_profit" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
               </ChartCard>
             </div>
           </AnalyticsSection>
 
-          <AnalyticsSection id="finance-vat-refunds" title="VAT and refunds" description="VAT is not income. Refunds are money given back.">
+          <AnalyticsSection id="finance-vat-refunds" title={x.vatTitle} description={x.vatDescription}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard {...vatCard} />
               <KpiCard {...refundCard} />
@@ -601,11 +573,11 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
         </>
       ) : null}
 
-      <AnalyticsSection id="finance-method" title="How these are worked out">
+      <AnalyticsSection id="finance-method" title={x.methodTitle}>
         <details className="rounded-panel border border-line bg-card p-4 text-sm">
-          <summary className="cursor-pointer font-medium">What each line means</summary>
+          <summary className="cursor-pointer font-medium">{x.methodSummary}</summary>
           <dl className="mt-3 space-y-2">
-            {FINANCE_DEFINITIONS.map((d) => (
+            {v.definitions.map((d) => (
               <div key={d.term}>
                 <dt className="font-medium">{d.term}</dt>
                 <dd className="text-muted">{d.text}</dd>
@@ -615,9 +587,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
         </details>
       </AnalyticsSection>
 
-      <p className="text-xs text-muted">
-        All amounts are in {currency} without VAT unless a label says otherwise. Refunds made only in the payment provider&apos;s dashboard are not seen. History is valued at today&apos;s exchange rates.
-      </p>
+      <p className="text-xs text-muted">{fillWords(x.footer, { currency })}</p>
     </div>
   );
 }

@@ -1,10 +1,13 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { addMonths, startOfMonth } from "@/lib/analytics-period";
 import { formatCount, formatPercent, safeRatio } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
+import { fillWords } from "@/lib/admin-fill";
+import { analyticsDateLocale } from "@/lib/analytics-lang";
+import { analyticsWords, countText } from "@/lib/analytics-words";
 import {
   analyticsSettingsText,
   settingsEntered,
@@ -56,22 +59,20 @@ export type AnalyticsSettingsViewProps = {
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const dayName = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 const asDate = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
 };
 
-/** "October 2026" for a month given as `YYYY-MM` or any day in it. */
-export function monthLabel(month: string): string {
-  return monthName.format(asDate(`${month.slice(0, 7)}-01`));
+/** "October 2026" for a month given as `YYYY-MM` or any day in it, in the admin's language (`locale`, else the page's). */
+export function monthLabel(month: string, locale = analyticsDateLocale()): string {
+  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(asDate(`${month.slice(0, 7)}-01`));
 }
 
 /** "3 September 2026" for a day. */
-export function dayLabel(day: string): string {
-  return dayName.format(asDate(day));
+export function dayLabel(day: string, locale = analyticsDateLocale()): string {
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(asDate(day));
 }
 
 /** The months a target can be set for: this one and the eleven after it, as `YYYY-MM` with their names. */
@@ -113,6 +114,11 @@ export function settingsFromForm(form: Record<string, FormDataEntryValue>, curre
 // Small parts
 // ---------------------------------------------------------------------------
 
+/** A catalogue's text with some placeholders filled by elements (a figure set in bold), the rest of it plain text. */
+function fillNodes(template: string, values: Record<string, ReactNode>): ReactNode[] {
+  return template.split(/\{(\w+)\}/).map((part, i) => (i % 2 === 1 ? <Fragment key={i}>{part in values ? values[part] : `{${part}}`}</Fragment> : part));
+}
+
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
@@ -145,7 +151,6 @@ function ReadOnly({ label, value }: { label: string; value: string }) {
   );
 }
 
-const NOT_ENTERED = "Not entered";
 
 // ---------------------------------------------------------------------------
 // 1. What your products cost
@@ -155,28 +160,30 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
   const { activeVariants, variantsWithCost, backfillableLines } = summary;
   const share = safeRatio(variantsWithCost, activeVariants);
   const lines = formatCount(backfillableLines);
+  const w = analyticsWords().settings.costs;
+  const withCost = formatCount(variantsWithCost);
+  const all = formatCount(activeVariants);
   return (
-    <AnalyticsSection
-      id="costs"
-      title="What your products cost"
-      description={`Profit is what you sell for minus what the goods cost you. Enter the cost of one unit of each variant in the product editor, in ${currency} and without VAT. The cost is kept on each order line when it is sold, so changing a cost later never rewrites earlier sales.`}
-    >
+    <AnalyticsSection id="costs" title={w.title} description={fillWords(w.description, { currency })}>
       <div className={card}>
         {activeVariants === 0 ? (
-          <p className="text-sm text-muted">You have no products on sale yet. Costs are entered on each product&apos;s variants once you do.</p>
+          <p className="text-sm text-muted">{w.noProducts}</p>
         ) : (
           <div className="flex flex-col gap-2">
             <p className="text-sm">
-              <span className="font-medium tabular-nums">{formatCount(variantsWithCost)}</span> of{" "}
-              <span className="font-medium tabular-nums">{formatCount(activeVariants)}</span> variants on sale have a cost ({formatPercent(share, 0)}).
+              {fillNodes(w.haveCost, {
+                with: <span className="font-medium tabular-nums">{withCost}</span>,
+                all: <span className="font-medium tabular-nums">{all}</span>,
+                share: formatPercent(share, 0),
+              })}
             </p>
             <div
               role="meter"
-              aria-label="Variants on sale that have a cost"
+              aria-label={w.meter}
               aria-valuemin={0}
               aria-valuemax={activeVariants}
               aria-valuenow={variantsWithCost}
-              aria-valuetext={`${formatCount(variantsWithCost)} of ${formatCount(activeVariants)}`}
+              aria-valuetext={fillWords(w.meterText, { with: withCost, all })}
               className="h-2 w-full max-w-md overflow-hidden rounded-full border border-line bg-sunken"
             >
               <div className="h-full bg-brand" style={{ width: `${Math.round((share ?? 0) * 100)}%` }} />
@@ -184,53 +191,45 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
           </div>
         )}
         {activeVariants > 0 && variantsWithCost === 0 ? (
-          <Note tone="warning" title="No costs entered yet">
-            Until you add costs, profit is not shown at all: showing sales as profit would be wrong. Add them in the product editor.
+          <Note tone="warning" title={w.noneTitle}>
+            {w.none}
           </Note>
         ) : null}
         {activeVariants > 0 && variantsWithCost > 0 && variantsWithCost < activeVariants ? (
-          <Note title="Some costs are missing">
-            Profit is worked out only for sales of variants whose cost is known, and the page says how much of your sales that covers.
-          </Note>
+          <Note title={w.someTitle}>{w.some}</Note>
         ) : null}
         <p className="text-sm">
           <Link href={`${base}/products`} className="underline">
-            Go to your products
-          </Link>{" "}
-          <span className="text-muted">to enter or change costs.</span>
+            {w.goToProducts}
+          </Link>
+          <span className="text-muted">{w.toEnter}</span>
         </p>
 
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="text-body-strong text-ink">Costs on earlier orders</h3>
+          <h3 className="text-body-strong text-ink">{w.earlier}</h3>
           {variantsWithCost === 0 ? (
-            <p className="text-sm text-muted">Once variants have a cost you can apply it to orders sold before you entered it.</p>
+            <p className="text-sm text-muted">{w.earlierNone}</p>
           ) : backfillableLines === 0 ? (
-            <p className="text-sm text-muted">No earlier order lines are waiting for a cost: every line whose variant has a cost already has it.</p>
+            <p className="text-sm text-muted">{w.earlierDone}</p>
           ) : actions ? (
             <details className="max-w-xl rounded-panel bg-sunken">
-              <summary className="min-h-10 cursor-pointer list-none px-4 py-2.5 text-sm font-medium">Apply costs to earlier orders</summary>
+              <summary className="min-h-10 cursor-pointer list-none px-4 py-2.5 text-sm font-medium">{w.apply}</summary>
               <div className="border-t border-line p-4">
-                <ActionForm action={actions.backfillCosts} className="flex flex-col gap-3" replaceOnSuccess successMessage="Updated 0 order lines.">
-                  <p className="text-sm">
-                    This gives <strong className="tabular-nums">{lines}</strong> earlier order {backfillableLines === 1 ? "line" : "lines"} the cost its variant has
-                    today.
-                  </p>
+                <ActionForm action={actions.backfillCosts} className="flex flex-col gap-3" replaceOnSuccess successMessage={countText(w.updated, 0)}>
+                  <p className="text-sm">{fillNodes(backfillableLines === 1 ? w.gives.one : w.gives.many, { n: <strong className="tabular-nums">{lines}</strong> })}</p>
                   <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-                    <li>It is done once, with today&apos;s costs: they may differ from what the goods cost back then.</li>
-                    <li>A line that already has a cost is never changed, and neither are copied orders.</li>
-                    <li>It cannot be undone in one step.</li>
+                    <li>{w.once}</li>
+                    <li>{w.kept}</li>
+                    <li>{w.noUndo}</li>
                   </ul>
                   <div>
-                    <SubmitButton>Yes, apply costs to {lines} order {backfillableLines === 1 ? "line" : "lines"}</SubmitButton>
+                    <SubmitButton>{countText(w.confirm, backfillableLines, {}, lines)}</SubmitButton>
                   </div>
                 </ActionForm>
               </div>
             </details>
           ) : (
-            <p className="text-sm text-muted">
-              <span className="tabular-nums">{lines}</span> earlier order {backfillableLines === 1 ? "line was" : "lines were"} sold before its variant had a cost.
-              An owner can apply costs to them.
-            </p>
+            <p className="text-sm text-muted">{fillNodes(backfillableLines === 1 ? w.waiting.one : w.waiting.many, { n: <span className="tabular-nums">{lines}</span> })}</p>
           )}
         </div>
       </div>
@@ -244,53 +243,44 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
 
 function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSettingsViewProps, "currency" | "locale" | "settings" | "actions">) {
   const text = analyticsSettingsText(settings, currency);
-  const money = (minor: number) => (minor > 0 ? formatAmount(minor, currency, locale) : NOT_ENTERED);
+  const words = analyticsWords().settings;
+  const w = words.fees;
+  const money = (minor: number) => (minor > 0 ? formatAmount(minor, currency, locale) : words.notEntered);
   return (
-    <AnalyticsSection
-      id="fees"
-      title="Fees and costs we cannot see"
-      description="Your sales are known exactly; some of what they cost you is not. These are your own estimates. They are used only for the profit figures, which say they are estimated, and they never change an order."
-    >
+    <AnalyticsSection id="fees" title={w.title} description={w.description}>
       <div className={card}>
         {!settingsEntered(settings) ? (
-          <Note title="Nothing entered yet">
-            Profit figures leave these costs out and say so. Enter what you know now; you can change it any time, and the figures follow.
-          </Note>
+          <Note title={w.nothingTitle}>{w.nothing}</Note>
         ) : null}
         {actions ? (
-          <ActionForm action={actions.saveSettings} className="flex flex-col gap-4" successMessage="Saved. Profit figures use these estimates from now on.">
+          <ActionForm action={actions.saveSettings} className="flex flex-col gap-4" successMessage={w.saved}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Payment fee, percent of each order"
-                hint="Your payment provider's percentage, taken on the order's total including VAT. Check its price list."
-              >
+              <Field label={w.percent} hint={w.percentHint}>
                 <UnitInput name="paymentFeePercent" unit="%" defaultValue={text.paymentFeePercent} placeholder="2,9" />
               </Field>
-              <Field label="Payment fee, fixed amount per order" hint="The fixed part of the fee, if your provider charges one.">
+              <Field label={w.fixed} hint={w.fixedHint}>
                 <UnitInput name="paymentFeeFixed" unit={currency} defaultValue={text.paymentFeeFixed} placeholder="2,00" />
               </Field>
-              <Field label="Shipping cost per order" hint="What sending one order costs you. Counted for orders with something to ship.">
+              <Field label={w.shipping} hint={w.shippingHint}>
                 <UnitInput name="shippingCost" unit={currency} defaultValue={text.shippingCost} placeholder="60,00" />
               </Field>
-              <Field label="Fixed costs per month" hint="Rent, pay, software and anything else that does not depend on sales. Spread evenly over the days.">
+              <Field label={w.fixedCosts} hint={w.fixedCostsHint}>
                 <UnitInput name="fixedCostsMonthly" unit={currency} defaultValue={text.fixedCostsMonthly} placeholder="25 000" />
               </Field>
             </div>
             <div>
-              <SubmitButton>Save estimates</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
           <dl className="divide-y divide-line">
-            <ReadOnly label="Payment fee, percent of each order" value={settings.paymentFeeBps > 0 ? formatPercent(settings.paymentFeeBps / 10_000, 2) : NOT_ENTERED} />
-            <ReadOnly label="Payment fee, fixed amount per order" value={money(settings.paymentFeeFixedMinor)} />
-            <ReadOnly label="Shipping cost per order" value={money(settings.shippingCostMinor)} />
-            <ReadOnly label="Fixed costs per month" value={money(settings.fixedCostsMonthlyMinor)} />
+            <ReadOnly label={w.percent} value={settings.paymentFeeBps > 0 ? formatPercent(settings.paymentFeeBps / 10_000, 2) : words.notEntered} />
+            <ReadOnly label={w.fixed} value={money(settings.paymentFeeFixedMinor)} />
+            <ReadOnly label={w.shipping} value={money(settings.shippingCostMinor)} />
+            <ReadOnly label={w.fixedCosts} value={money(settings.fixedCostsMonthlyMinor)} />
           </dl>
         )}
-        <p className="text-sm text-muted">
-          What Kaizena Flow takes on each sale is real, not an estimate, and needs no entry. Money here is typed like a price, in {currency}.
-        </p>
+        <p className="text-sm text-muted">{fillWords(w.real, { currency })}</p>
       </div>
     </AnalyticsSection>
   );
@@ -302,37 +292,38 @@ function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSett
 
 function LifetimeSection({ settings, actions }: Pick<AnalyticsSettingsViewProps, "settings" | "actions">) {
   const years = settings.ltvLifespanYears;
+  const w = analyticsWords().settings.lifetime;
   return (
     <AnalyticsSection
       id="lifetime"
-      title="Customer lifetime"
+      title={w.title}
       description={
         <>
-          A customer&apos;s <abbr title="Lifetime value: what an average customer is worth to you over all the years they keep buying">lifetime value</abbr> is
-          predicted from the profit on one order, how many orders a customer places in a year, and how many years you expect them to keep buying. This is that last
-          number.
+          {w.before}
+          <abbr title={w.abbrTitle}>{w.abbr}</abbr>
+          {w.after}
         </>
       }
     >
       <div className={card}>
         {actions ? (
-          <ActionForm action={actions.saveSettings} className="flex flex-col gap-4" successMessage="Saved. Predicted lifetime value uses this from now on.">
-            <Field label="Years a customer keeps buying" hint="Between 1 and 10. Three is a cautious start for most shops; use your own history when you have it.">
+          <ActionForm action={actions.saveSettings} className="flex flex-col gap-4" successMessage={w.saved}>
+            <Field label={w.years} hint={w.yearsHint}>
               <span className="flex items-center gap-2">
                 <input name="ltvLifespanYears" type="number" min={1} max={10} step={1} defaultValue={years} inputMode="numeric" className={`${field} max-w-28 tabular-nums`} />
-                <span className="text-sm font-normal text-muted">{years === 1 ? "year" : "years"}</span>
+                <span className="text-sm font-normal text-muted">{years === 1 ? w.unit.one : w.unit.many}</span>
               </span>
             </Field>
             <div>
-              <SubmitButton>Save lifetime</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         ) : (
           <dl>
-            <ReadOnly label="Years a customer keeps buying" value={`${years} ${years === 1 ? "year" : "years"}`} />
+            <ReadOnly label={w.years} value={countText(w.value, years)} />
           </dl>
         )}
-        {!settings.saved ? <p className="text-sm text-muted">Not set yet, so 3 years is used.</p> : null}
+        {!settings.saved ? <p className="text-sm text-muted">{w.notSet}</p> : null}
       </div>
     </AnalyticsSection>
   );
@@ -344,36 +335,34 @@ function LifetimeSection({ settings, actions }: Pick<AnalyticsSettingsViewProps,
 
 function TargetsSection({ currency, locale, today, targets, actions }: Pick<AnalyticsSettingsViewProps, "currency" | "locale" | "today" | "targets" | "actions">) {
   const listed = upcomingTargets(targets, today);
+  const w = analyticsWords().settings.targets;
   const columns: Column<StoredTarget>[] = [
-    { key: "month", label: "Month", cell: (t) => monthLabel(t.month) },
-    { key: "target", label: `Net revenue target (${currency})`, align: "right", cell: (t) => formatAmount(t.revenueTargetMinor, currency, locale) },
+    { key: "month", label: w.month, cell: (t) => monthLabel(t.month) },
+    { key: "target", label: fillWords(w.target, { currency }), align: "right", cell: (t) => formatAmount(t.revenueTargetMinor, currency, locale) },
   ];
   if (actions) {
     columns.push({
       key: "remove",
-      label: "Remove",
+      label: w.remove,
       align: "right",
       cell: (t) => (
-        <ActionForm action={actions.deleteTarget} replaceOnSuccess successMessage="Removed." className="flex justify-end">
+        <ActionForm action={actions.deleteTarget} replaceOnSuccess successMessage={w.removed} className="flex justify-end">
           <input type="hidden" name="month" value={t.month.slice(0, 7)} />
           <SubmitButton variant="secondary">
-            Remove<span className="sr-only"> the target for {monthLabel(t.month)}</span>
+            {w.remove}
+            <span className="sr-only">{fillWords(w.removeFor, { month: monthLabel(t.month) })}</span>
           </SubmitButton>
         </ActionForm>
       ),
     });
   }
   return (
-    <AnalyticsSection
-      id="targets"
-      title="Revenue targets"
-      description="A target is the net revenue you want for a month: sales after discounts and refunds, without VAT. The overview shows how far you have come and whether you are ahead or behind."
-    >
+    <AnalyticsSection id="targets" title={w.title} description={w.description}>
       <div className={card}>
         {actions ? (
-          <ActionForm action={actions.saveTarget} className="flex flex-col gap-4" successMessage="Saved. The overview follows this target.">
+          <ActionForm action={actions.saveTarget} className="flex flex-col gap-4" successMessage={w.saved}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Month">
+              <Field label={w.month}>
                 <select name="month" defaultValue={monthChoices(today)[0].value} className={field}>
                   {monthChoices(today).map((m) => (
                     <option key={m.value} value={m.value}>
@@ -382,23 +371,23 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
                   ))}
                 </select>
               </Field>
-              <Field label="Net revenue target" hint="A month that already has a target is replaced.">
+              <Field label={w.field} hint={w.fieldHint}>
                 <UnitInput name="revenueTarget" unit={currency} defaultValue="" placeholder="500 000" />
               </Field>
             </div>
             <div>
-              <SubmitButton>Save target</SubmitButton>
+              <SubmitButton>{w.save}</SubmitButton>
             </div>
           </ActionForm>
         ) : null}
         <div className="flex flex-col gap-2">
-          <h3 className="text-body-strong text-ink">Targets for the next 12 months</h3>
+          <h3 className="text-body-strong text-ink">{w.next}</h3>
           <DataTable
-            caption="Revenue targets for the next 12 months"
+            caption={w.caption}
             columns={columns}
             rows={listed}
             rowKey={(t) => t.month}
-            empty="No targets set. The overview shows progress once there is one for the current month."
+            empty={w.empty}
             exportId="settings.targets"
           />
         </div>
@@ -413,67 +402,57 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
 
 function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettingsViewProps, "summary" | "visitCounting" | "actions">) {
   const { firstCountedDay } = summary;
+  const w = analyticsWords().settings.visits;
   const state = visitCounting
     ? firstCountedDay
-      ? `Counting visits. The first counted day is ${dayLabel(firstCountedDay)}.`
-      : "Counting visits, but none has been counted yet."
+      ? fillWords(w.countingFrom, { day: dayLabel(firstCountedDay) })
+      : w.countingNone
     : firstCountedDay
-      ? `Not counting. Visits were counted from ${dayLabel(firstCountedDay)}; what was counted is kept.`
-      : "Not counting. No visits have been counted.";
+      ? fillWords(w.offFrom, { day: dayLabel(firstCountedDay) })
+      : w.offNone;
   return (
-    <AnalyticsSection
-      id="visits"
-      title="Visit counting"
-      description="Visits are what the conversion rate, the funnel and the figures per channel and device are built on. Without them those figures show a dash and say why."
-    >
+    <AnalyticsSection id="visits" title={w.title} description={w.description}>
       <div className={card}>
         <div className="flex flex-wrap items-center gap-3">
-          <StatusPill tone={visitCounting ? "good" : "neutral"}>{visitCounting ? "On" : "Off"}</StatusPill>
+          <StatusPill tone={visitCounting ? "good" : "neutral"}>{visitCounting ? w.on : w.off}</StatusPill>
           <p className="text-sm">{state}</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-body-strong text-ink">What is counted</h3>
+            <h3 className="text-body-strong text-ink">{w.whatTitle}</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-              <li>One line per visitor per day, with no name, contact detail, IP address or browser details on it.</li>
-              <li>The market, the kind of device (phone, tablet or computer) and where the visitor came from: the link, or the campaign tag in it.</li>
-              <li>The first page they landed on (only the kind of page and its address, never an order or a link with a code in it), how many pages and products they looked at, and whether they reached checkout.</li>
-              <li>When something is added to the cart that day, the visit is tied to that cart, and so to the order made from it. That is how a sale gets its channel and device.</li>
+              {w.what.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
             </ul>
           </div>
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-body-strong text-ink">What is not counted or kept</h3>
+            <h3 className="text-body-strong text-ink">{w.notTitle}</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
-              <li>No cookies and nothing stored in the browser, so it shows no cookie banner.</li>
-              <li>No IP address and no browser details are stored.</li>
+              <li>{w.notCookies}</li>
+              <li>{w.notIp}</li>
+              <li>{w.notHash}</li>
               <li>
-                The visitor is a hashed id made with a key that changes every day, so it cannot be followed from one day to the next, and the id cannot be turned back
-                into an address. It is not random: the same visitor gets the same id for the rest of that store day.
-              </li>
-              <li>
-                Bots are not counted, and neither are visitors whose browser sends <abbr title="Global Privacy Control: a browser setting that tells sites not to track the person">Global Privacy Control</abbr>{" "}
-                or Do Not Track.
+                {w.botsBefore}
+                <abbr title={w.gpcTitle}>{w.gpc}</abbr>
+                {w.botsAfter}
               </li>
             </ul>
           </div>
         </div>
 
-        <Note title="Your part">
-          Your cookie page describes this in each of your languages while it is on. Mention it in your privacy policy too, including that a visit is tied to a cart and its order: that
-          text is yours to write and Kaizena Flow does not write it for you. Counting starts when you switch it on and cannot be filled in for earlier days. Counted visits are deleted after
-          25 months. Counts are not tamper-proof: a script can add visits, within limits per address and per day, so look at a sudden jump before you trust it.
-        </Note>
+        <Note title={w.partTitle}>{w.part}</Note>
 
         {actions ? (
           <ActionForm
             action={actions.setVisitCounting}
             className="flex flex-col gap-3"
-            successMessage="Saved."
+            successMessage={w.saved}
           >
             <div>
               <SubmitButton name="enabled" value={visitCounting ? "off" : "on"} variant={visitCounting ? "secondary" : "primary"}>
-                {visitCounting ? "Turn off visit counting" : "Turn on visit counting"}
+                {visitCounting ? w.turnOff : w.turnOn}
               </SubmitButton>
             </div>
           </ActionForm>
@@ -488,33 +467,26 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 // ---------------------------------------------------------------------------
 
 /** What the page answers, as links to the sections that do. */
-const ANSWERS = [
-  { href: "#costs", text: "Does the profit know what your products cost, and what else it costs to sell?" },
-  { href: "#targets", text: "What do you want to reach each month?" },
-  { href: "#visits", text: "Are visits counted, and what exactly is counted?" },
-] as const;
+const ANSWERS = ["costs", "targets", "visits"] as const;
 
 export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
   const { base, currency, locale, today, settings, summary, targets, visitCounting, actions } = props;
+  const w = analyticsWords().settings;
   return (
     <div className="flex flex-col gap-8">
-      <nav aria-label="On this page">
-        <p className="text-sm font-medium">This page answers three things:</p>
+      <nav aria-label={w.onThisPage}>
+        <p className="text-sm font-medium">{w.answersLead}</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
           {ANSWERS.map((a) => (
-            <li key={a.href}>
-              <a href={a.href} className="underline">
-                {a.text}
+            <li key={a}>
+              <a href={`#${a}`} className="underline">
+                {w.answers[a]}
               </a>
             </li>
           ))}
         </ul>
       </nav>
-      {actions ? null : (
-        <Note title="Only owners can change these settings">
-          You can see how the store is set up, but an owner has to change it. Ask an owner of the store if something here should be different.
-        </Note>
-      )}
+      {actions ? null : <Note title={w.ownersOnly.title}>{w.ownersOnly.body}</Note>}
       <CostsSection base={base} currency={currency} summary={summary} actions={actions} />
       <FeesSection currency={currency} locale={locale} settings={settings} actions={actions} />
       <LifetimeSection settings={settings} actions={actions} />

@@ -1,3 +1,5 @@
+import { fillWords } from "./admin-fill";
+import { analyticsWords } from "./analytics-words";
 import { change, changePoints, formatChange, formatCount, formatPercent, formatPoints, NO_FIGURE, safeRatio, verdictOf, type GoodDirection, type Verdict } from "./analytics-core";
 import { formatAmount } from "./analytics-format";
 
@@ -145,7 +147,8 @@ export function fixedCostsFor(settings: Pick<AnalyticsSettings, "fixedCostsMonth
 
 /** Words for how much of sales a profit figure rests on: "based on 83 % of sales". */
 export function coverageText(coverage: number | null): string {
-  return coverage === null ? "no sales yet" : `based on ${formatPercent(coverage, 0)} of sales`;
+  const w = analyticsWords().kpi;
+  return coverage === null ? w.noSalesYet : fillWords(w.basedOn, { share: formatPercent(coverage, 0) });
 }
 
 /** What `derive()` works out. Shares are ratios (0.834 is 83.4 %); amounts are minor units, rounded whole. */
@@ -233,7 +236,7 @@ export function coveredMargin(t: Pick<Totals, "revenueMinor" | "refundsMinor" | 
 
 /** "estimated from the 45 % of sales whose cost is known" while profit is an estimate, else null. */
 export function estimateText(coverage: number | null): string | null {
-  return costModeOf(coverage) === "estimated" && coverage !== null ? `estimated from the ${formatPercent(coverage, 0)} of sales whose cost is known` : null;
+  return costModeOf(coverage) === "estimated" && coverage !== null ? fillWords(analyticsWords().kpi.estimatedFrom, { share: formatPercent(coverage, 0) }) : null;
 }
 
 /** Net revenue less everything it costs the store per order; null while too little of the cost of goods is known (estimated while part of it is). */
@@ -505,16 +508,19 @@ export type KpiMissing = {
 /** Why a card has no figure, or null when it has one. */
 export function kpiMissing(card: KpiCard, derived: Derived): KpiMissing | null {
   if (kpiValue(card, derived) !== null) return null;
-  if (card.needs === "visits" && derived.sessions === null) return { kind: "visits", text: card.missingText ?? "Needs visit counting.", fixPage: card.fixPage };
+  // In the request's language (D312 A9): the card's own words where the catalogue has them, else the English here.
+  const w = analyticsWords().kpi;
+  const missingText = w.cards[card.id]?.missing || card.missingText;
+  if (card.needs === "visits" && derived.sessions === null) return { kind: "visits", text: missingText ?? w.needsVisits, fixPage: card.fixPage };
   // A margin or profit with no figure while something was sold means the costs are not there (none, or too few to estimate from).
   if (card.needs === "costs" && derived.costCoverage !== null && !costsKnown(derived.costCoverage)) {
     const partial = derived.costCoverage > 0;
     const text = partial
-      ? `Product costs are known for only ${formatPercent(derived.costCoverage, 0)} of sales, too few to estimate ${card.id === "grossMargin" ? "margin" : "profit"}. Enter the rest in the product editor.`
-      : (card.missingText ?? "Needs product costs.");
+      ? fillWords(w.costsTooFew, { share: formatPercent(derived.costCoverage, 0), what: card.id === "grossMargin" ? w.margin : w.profit })
+      : (missingText ?? w.needsCosts);
     return { kind: "costs", text, fixPage: card.fixPage };
   }
-  return { kind: "no-data", text: "Nothing to work this out from in the period.", fixPage: null };
+  return { kind: "no-data", text: w.nothingToWorkFrom, fixPage: null };
 }
 
 /** A card's figure as the admin writes it; money in the main currency. */

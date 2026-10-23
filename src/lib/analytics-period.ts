@@ -9,7 +9,9 @@
  * clock: callers pass `now`.
  */
 
-import { MONTH_SHORT } from "./analytics-core";
+import { fillWords } from "./admin-fill";
+import { formatMonth } from "./analytics-core";
+import { analyticsWords } from "./analytics-words";
 
 export type AnalyticsPreset = "today" | "yesterday" | "7d" | "30d" | "month" | "last_month" | "year" | "custom";
 
@@ -69,7 +71,6 @@ export const COMPARE_MODES: readonly { id: CompareMode; label: string }[] = [
   { id: "none", label: "No comparison" },
 ];
 
-const MONTHS = MONTH_SHORT;
 const DAY_MS = 86_400_000;
 
 // ---------- calendar arithmetic on day strings ----------
@@ -146,10 +147,15 @@ export function todayIn(now: Date, timeZone: string): string {
 
 const shortDay = (day: string) => {
   const d = mustParse(day);
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  const n = analyticsWords().numbers;
+  return fillWords(n.shortDay, { day: d.getUTCDate(), month: n.months[d.getUTCMonth()] });
 };
 
-const longDay = (day: string) => `${shortDay(day)} ${day.slice(0, 4)}`;
+const longDay = (day: string) => {
+  const d = mustParse(day);
+  const n = analyticsWords().numbers;
+  return fillWords(n.date, { day: d.getUTCDate(), month: n.months[d.getUTCMonth()], year: day.slice(0, 4) });
+};
 
 /** "3 Mar – 9 Mar 2026", or both years when they differ; one day alone for a one-day span. */
 export function rangeLabel(from: string, to: string): string {
@@ -162,7 +168,8 @@ function make(from: string, to: string, preset: AnalyticsPreset, label?: string)
   return { from, to, days: daysBetween(from, to), preset, label: label ?? rangeLabel(from, to) };
 }
 
-const labelOf = (preset: AnalyticsPreset) => PRESETS.find((p) => p.id === preset)!.label;
+/** A preset's words in the request's language (D312 A9); `PRESETS` keeps the English. */
+const labelOf = (preset: AnalyticsPreset) => analyticsWords().period.presets[preset];
 
 /** A preset's period as of `today` (a day string in the store's zone). */
 export function presetPeriod(preset: Exclude<AnalyticsPreset, "custom">, today: string): AnalyticsPeriod {
@@ -253,15 +260,16 @@ export function parseAnalyticsParams(query: Query, ctx: { now: Date; timeZone: s
   const wantsCustom = rawPeriod === "custom" || (rawPeriod === undefined && (rawFrom !== undefined || rawTo !== undefined));
   if (wantsCustom && isDay(rawFrom) && isDay(rawTo)) {
     let [from, to] = rawFrom <= rawTo ? [rawFrom, rawTo] : [rawTo, rawFrom];
-    if (from !== rawFrom) notice = "The dates were the wrong way round, so they were swapped.";
+    const notices = analyticsWords().period.notices;
+    if (from !== rawFrom) notice = notices.swapped;
     if (to > today) {
       to = today;
-      notice = "The period cannot reach past today, so it ends today.";
+      notice = notices.pastToday;
     }
     if (from > to) from = to;
     if (daysBetween(from, to) + 1 > MAX_PERIOD_DAYS) {
       from = addDays(to, -(MAX_PERIOD_DAYS - 1));
-      notice = `A period is at most ${MAX_PERIOD_DAYS} days, so the latest ${MAX_PERIOD_DAYS} are shown.`;
+      notice = fillWords(notices.tooLong, { max: MAX_PERIOD_DAYS });
     }
     period = customPeriod(from, to);
   } else if (isPreset(rawPeriod) && rawPeriod !== "custom") {
@@ -335,8 +343,8 @@ export function bucketKey(day: string, bucket: Bucket): string {
 
 function bucketLabel(key: string, bucket: Bucket): string {
   if (bucket === "day") return shortDay(key);
-  if (bucket === "week") return `Week of ${shortDay(key)}`;
-  return `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+  if (bucket === "week") return fillWords(analyticsWords().period.weekOf, { day: shortDay(key) });
+  return formatMonth(key);
 }
 
 /** Every bucket the period touches, in order, even those with no sales. */

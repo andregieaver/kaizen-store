@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { NO_FIGURE, verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
+import { analyticsWords } from "@/lib/analytics-words";
 
 import { nextSort, sharePct } from "./chart-math";
 import { ExportButton, type LeftOut } from "./export-scope";
@@ -30,8 +31,6 @@ export function arrowOf(abs: number | null | undefined): "up" | "down" | "flat" 
 }
 
 const ARROW = { up: "▲", down: "▼", flat: "▬" } as const;
-const SPOKEN = { up: "Up", down: "Down", flat: "No change" } as const;
-const NEWS: Record<Verdict, string> = { good: ", better", bad: ", worse", neutral: "" };
 
 /**
  * The change in a figure: an arrow, the signed text and the words for what it is against ("vs previous period"). Colour only adds
@@ -49,13 +48,16 @@ export function Delta({ delta, versus, good = "neutral" }: { delta: DeltaView | 
   }
   const direction = arrowOf(delta.abs);
   const verdict = delta.verdict ?? verdictOf(delta.abs, good);
+  // Said to a screen reader in the request's language (D312 A9): "Up, better: ".
+  const dw = analyticsWords().delta;
+  const news = verdict === "good" ? dw.better : verdict === "bad" ? dw.worse : "";
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-1 text-xs">
       <span className={`inline-flex items-baseline gap-1 whitespace-nowrap font-medium tabular-nums ${TONE_CLASS[verdict]}`}>
         <span aria-hidden="true" className="text-[0.7em]">
           {ARROW[direction]}
         </span>
-        <span className="sr-only">{`${SPOKEN[direction]}${NEWS[verdict]}: `}</span>
+        <span className="sr-only">{`${dw[direction]}${news}: `}</span>
         <span>{delta.text}</span>
       </span>
       <span className="text-muted">{versus}</span>
@@ -134,7 +136,7 @@ export function DataTable<R>({
   sort,
   sortHref,
   sticky = false,
-  empty = "Nothing to show for this period.",
+  empty = analyticsWords().table.empty,
   footer,
   exportId,
   exportLeftOut,

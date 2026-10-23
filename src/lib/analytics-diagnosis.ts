@@ -1,6 +1,12 @@
 import { daysBetween, isDay } from "./analytics-period";
 import { formatCount, formatPercent, formatSigned } from "./analytics-core";
 import { formatAmount } from "./analytics-format";
+import type { AnalyticsMessages } from "./admin-messages/analytics.en";
+import { fillWords } from "./admin-fill";
+import { analyticsWords } from "./analytics-words";
+
+/** The words of an explanation (`diagnosis` of the analytics catalogue); English unless given. */
+type Words = AnalyticsMessages["diagnosis"];
 
 /**
  * Why did revenue change? (D152, docs/analytics.md, "Alerts, targets, forecast,
@@ -142,12 +148,6 @@ export type ChangeExplanation = {
   lowVolume: boolean;
 };
 
-const FACTOR_LABEL: Record<FactorKey, string> = {
-  traffic: "Traffic",
-  conversion: "Conversion",
-  basket: "Average order",
-  orders: "Orders",
-};
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
@@ -182,7 +182,7 @@ type Decomposition = { factors: Factor[]; usesSessions: boolean; ratio: number; 
  * (orders per session) and average order (revenue per order). Without: orders and average order. Null when a log
  * cannot be taken: revenue or orders zero (or less) in either period.
  */
-export function decompose(current: PeriodFigures, previous: PeriodFigures): Decomposition | null {
+export function decompose(current: PeriodFigures, previous: PeriodFigures, words: Words = analyticsWords().diagnosis): Decomposition | null {
   const { revenueMinor: r1, orders: o1 } = current;
   const { revenueMinor: r0, orders: o0 } = previous;
   if (!finite(r1) || !finite(r0) || !finite(o1) || !finite(o0) || r1 <= 0 || r0 <= 0 || o1 <= 0 || o0 <= 0) return null;
@@ -202,7 +202,7 @@ export function decompose(current: PeriodFigures, previous: PeriodFigures): Deco
   const shares = flat ? null : roundShares(logs, total);
   const factors: Factor[] = ratios.map((x, i) => ({
     key: x.key,
-    label: FACTOR_LABEL[x.key],
+    label: words.factors[x.key],
     changePct: x.ratio - 1,
     sharePct: shares ? shares[i] : null,
   }));
@@ -221,11 +221,9 @@ export function decompose(current: PeriodFigures, previous: PeriodFigures): Deco
 
 // ---------- words ----------
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
 /** `2026-09-12` as "12 September". */
-export function dayText(day: string): string {
-  return `${Number(day.slice(8, 10))} ${MONTH_NAMES[Number(day.slice(5, 7)) - 1]}`;
+export function dayText(day: string, words: Words = analyticsWords().diagnosis): string {
+  return fillWords(words.day, { day: Number(day.slice(8, 10)), month: analyticsWords().alertText.monthsLong[Number(day.slice(5, 7)) - 1] });
 }
 
 const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
@@ -237,17 +235,9 @@ function factorSentence(factors: readonly Factor[]): string {
 }
 
 /** Where on the page a segment sits in a sentence: "on mobile", "in the paid search channel", "in Norway", "in a product". */
-function segmentPlace(dimension: SegmentDimension, label: string): string {
-  switch (dimension) {
-    case "device":
-      return `on ${label.toLowerCase()}`;
-    case "channel":
-      return `in the ${label.toLowerCase()} channel`;
-    case "market":
-      return `in ${label}`;
-    case "product":
-      return `for ${label}`;
-  }
+function segmentPlace(dimension: SegmentDimension, label: string, words: Words): string {
+  const lowered = dimension === "device" || dimension === "channel" ? label.toLowerCase() : label;
+  return fillWords(words.place[dimension], { label: lowered });
 }
 
 function money(minor: number, ctx: { currency?: string; locale?: string }): string | null {
@@ -263,32 +253,32 @@ function money(minor: number, ctx: { currency?: string; locale?: string }): stri
  * What happened inside one segment, in words that follow its own biggest factor ("conversion fell from 3.8 % to 2.9 %").
  * A segment that cannot be decomposed (nothing sold in one period) says so in revenue.
  */
-function segmentMetric(row: SegmentRow, ctx: { currency?: string; locale?: string }): string {
-  const d = decompose(row.current, row.previous);
-  const verb = (a: number, b: number) => (b < a ? "fell" : "rose");
+function segmentMetric(row: SegmentRow, ctx: { currency?: string; locale?: string }, words: Words): string {
+  const d = decompose(row.current, row.previous, words);
+  const verb = (a: number, b: number) => (b < a ? words.fell : words.rose);
   if (d && d.mainFactor) {
     const f = d.factors.find((x) => x.key === d.mainFactor) as Factor;
     const c = row.current;
     const p = row.previous;
     if (f.key === "conversion") {
-      return `conversion ${verb(p.orders / (p.sessions as number), c.orders / (c.sessions as number))} from ${formatPercent(p.orders / (p.sessions as number))} to ${formatPercent(c.orders / (c.sessions as number))}`;
+      return fillWords(words.conversion, { verb: verb(p.orders / (p.sessions as number), c.orders / (c.sessions as number)), from: formatPercent(p.orders / (p.sessions as number)), to: formatPercent(c.orders / (c.sessions as number)) });
     }
     if (f.key === "traffic") {
-      return `sessions ${verb(p.sessions as number, c.sessions as number)} from ${formatCount(p.sessions)} to ${formatCount(c.sessions)}`;
+      return fillWords(words.sessions, { verb: verb(p.sessions as number, c.sessions as number), from: formatCount(p.sessions), to: formatCount(c.sessions) });
     }
     if (f.key === "orders") {
-      return `orders ${verb(p.orders, c.orders)} from ${formatCount(p.orders)} to ${formatCount(c.orders)}`;
+      return fillWords(words.orders, { verb: verb(p.orders, c.orders), from: formatCount(p.orders), to: formatCount(c.orders) });
     }
     const a0 = p.revenueMinor / p.orders;
     const a1 = c.revenueMinor / c.orders;
     const m0 = money(a0, ctx);
     const m1 = money(a1, ctx);
-    return m0 && m1 ? `average order ${verb(a0, a1)} from ${m0} to ${m1}` : `average order ${verb(a0, a1)} ${formatPercent(Math.abs(f.changePct), 0)}`;
+    return m0 && m1 ? fillWords(words.basket, { verb: verb(a0, a1), from: m0, to: m1 }) : fillWords(words.basketPct, { verb: verb(a0, a1), pct: formatPercent(Math.abs(f.changePct), 0) });
   }
   const { current: c, previous: p } = row;
-  if (p.revenueMinor <= 0) return "there were no sales in the previous period";
-  if (c.revenueMinor <= 0) return "there were no sales in this period";
-  return `revenue ${verb(p.revenueMinor, c.revenueMinor)} ${formatPercent(Math.abs(c.revenueMinor / p.revenueMinor - 1), 0)}`;
+  if (p.revenueMinor <= 0) return words.noPrevious;
+  if (c.revenueMinor <= 0) return words.noCurrent;
+  return fillWords(words.revenue, { verb: verb(p.revenueMinor, c.revenueMinor), pct: formatPercent(Math.abs(c.revenueMinor / p.revenueMinor - 1), 0) });
 }
 
 // ---------- segments ----------
@@ -367,20 +357,21 @@ export function movedOn(
 // ---------- where to look ----------
 
 /** The page and words for the place to look, from the main factor and the segments found. Refunds are not covered here. */
-export function lookAtFor(main: FactorKey | null, movers: readonly SegmentMover[]): LookAt | null {
+export function lookAtFor(main: FactorKey | null, movers: readonly SegmentMover[], words: Words = analyticsWords().diagnosis): LookAt | null {
+  const w = words.lookAt;
   const has = (dimension: SegmentDimension) => movers.some((m) => m.dimension === dimension);
   switch (main) {
     case "conversion":
-      if (has("device")) return { text: "Conversion by device, in the Traffic page's device table", href: "/analytics/traffic" };
-      if (has("channel")) return { text: "Conversion by channel, in the Marketing page's channel table", href: "/analytics/marketing" };
-      return { text: "The funnel on the Traffic page", href: "/analytics/traffic" };
+      if (has("device")) return { text: w.convDevice, href: "/analytics/traffic" };
+      if (has("channel")) return { text: w.convChannel, href: "/analytics/marketing" };
+      return { text: w.funnel, href: "/analytics/traffic" };
     case "traffic":
-      return { text: "Where visits come from, in the Marketing page's channel table", href: "/analytics/marketing" };
+      return { text: w.traffic, href: "/analytics/marketing" };
     case "basket":
-      return { text: "The product mix on the Products page", href: "/analytics/products" };
+      return { text: w.basket, href: "/analytics/products" };
     case "orders":
-      if (has("channel")) return { text: "Orders by channel, in the Marketing page's channel table", href: "/analytics/marketing" };
-      if (has("product")) return { text: "Orders by product on the Products page", href: "/analytics/products" };
+      if (has("channel")) return { text: w.ordersChannel, href: "/analytics/marketing" };
+      if (has("product")) return { text: w.ordersProduct, href: "/analytics/products" };
       return null;
     default:
       return null;
@@ -407,7 +398,7 @@ const unknown = (base: Omit<ChangeExplanation, "direction" | "sentences" | "reas
  * orders in a period, or revenue of zero or less, nothing is explained (`unknown`, with the reason); the change in
  * revenue is still given.
  */
-export function explainChange(input: ChangeInput): ChangeExplanation {
+export function explainChange(input: ChangeInput, words: Words = analyticsWords().diagnosis): ChangeExplanation {
   const { current, previous } = input;
   const changeMinor = current.revenueMinor - previous.revenueMinor;
   const changePct = previous.revenueMinor === 0 ? null : changeMinor / Math.abs(previous.revenueMinor);
@@ -415,34 +406,33 @@ export function explainChange(input: ChangeInput): ChangeExplanation {
   const base = { changeMinor, changePct, lowVolume };
 
   if (![current.revenueMinor, previous.revenueMinor, current.orders, previous.orders].every(finite)) {
-    return unknown({ ...base, changeMinor: 0, changePct: null, lowVolume: true }, "The figures for a period are missing, so the change cannot be explained.");
+    return unknown({ ...base, changeMinor: 0, changePct: null, lowVolume: true }, words.reasons.missing);
   }
-  if (previous.orders <= 0 && current.orders <= 0) return unknown(base, "There were no orders in either period, so there is nothing to explain.");
-  if (previous.orders <= 0) return unknown(base, "There were no orders in the previous period, so there is nothing to compare with.");
-  if (current.orders <= 0) return unknown(base, "There were no orders in this period, so there is nothing to explain beyond the fall itself.");
+  if (previous.orders <= 0 && current.orders <= 0) return unknown(base, words.reasons.noneEither);
+  if (previous.orders <= 0) return unknown(base, words.reasons.nonePrevious);
+  if (current.orders <= 0) return unknown(base, words.reasons.noneCurrent);
   if (previous.revenueMinor <= 0 || current.revenueMinor <= 0) {
-    return unknown(base, "Net revenue was zero or negative in a period (refunds are larger than sales), so the change cannot be split into factors.");
+    return unknown(base, words.reasons.notPositive);
   }
 
-  const d = decompose(current, previous) as Decomposition;
+  const d = decompose(current, previous, words) as Decomposition;
   const ratio = d.ratio;
   const direction: "up" | "down" | "flat" = Math.abs(ratio - 1) < FLAT_BAND ? "flat" : ratio > 1 ? "up" : "down";
-  const word = direction === "up" ? "up" : "down";
 
   const sentences: string[] = [];
   sentences.push(
     direction === "flat"
-      ? `Revenue is about level with the previous period (${formatSigned(ratio - 1)}).`
-      : `Revenue is ${word} ${formatPercent(Math.abs(ratio - 1), 0)} on the previous period.`,
+      ? fillWords(words.level, { change: formatSigned(ratio - 1) })
+      : fillWords(direction === "up" ? words.up : words.down, { pct: formatPercent(Math.abs(ratio - 1), 0) }),
   );
   sentences.push(factorSentence(d.factors));
 
   let note: string | null = null;
   if (!d.usesSessions) {
-    note = "Visits were not counted in both periods, so traffic and conversion are not separated: only orders and average order are.";
+    note = words.noSessions;
   }
   if (lowVolume) {
-    const few = `Based on few orders (${formatCount(current.orders)} now, ${formatCount(previous.orders)} before), so this may be chance.`;
+    const few = fillWords(words.few, { now: formatCount(current.orders), before: formatCount(previous.orders) });
     note = note ? `${note} ${few}` : few;
   }
 
@@ -455,17 +445,17 @@ export function explainChange(input: ChangeInput): ChangeExplanation {
   }
 
   if (direction !== "flat") {
-    const noun = direction === "down" ? "fall" : "rise";
+    const biggest = direction === "down" ? words.biggestFall : words.biggestRise;
     const ctx = { currency: input.currency, locale: input.locale };
     const [first, second] = movers;
     if (first) {
-      sentences.push(`The biggest ${noun} is ${segmentPlace(first.mover.dimension, first.row.label)}, where ${segmentMetric(first.row, ctx)}.`);
+      sentences.push(fillWords(biggest, { place: segmentPlace(first.mover.dimension, first.row.label, words), metric: segmentMetric(first.row, ctx, words) }));
       const other = movers.find((m) => m.mover.dimension !== first.mover.dimension) ?? (second && second !== first ? second : undefined);
       if (other) {
-        sentences.push(`Another large part is ${segmentPlace(other.mover.dimension, other.row.label)}, where ${segmentMetric(other.row, ctx)}.`);
+        sentences.push(fillWords(words.another, { place: segmentPlace(other.mover.dimension, other.row.label, words), metric: segmentMetric(other.row, ctx, words) }));
       }
     }
-    if (startedOn) sentences.push(`The move began around ${dayText(startedOn)}.`);
+    if (startedOn) sentences.push(fillWords(words.began, { day: dayText(startedOn, words) }));
   }
   if (note) sentences.push(note);
 
@@ -478,7 +468,7 @@ export function explainChange(input: ChangeInput): ChangeExplanation {
     segments: moverList,
     startedOn,
     sentences,
-    lookAt: direction === "flat" ? null : lookAtFor(d.mainFactor, moverList),
+    lookAt: direction === "flat" ? null : lookAtFor(d.mainFactor, moverList, words),
     reason: null,
     note,
   };

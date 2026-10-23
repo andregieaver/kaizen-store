@@ -5,6 +5,8 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { RefundsView } from "@/components/admin/analytics/refunds-view";
 import { ReturnsView } from "@/components/admin/analytics/returns-view";
 import { TrafficView } from "@/components/admin/analytics/traffic-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
@@ -37,21 +39,25 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
     returnsReport(store, period, now),
   ]);
   const currency = mainCurrency(store);
-  const locale = store.markets[0]?.locale ?? "en";
+  const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
+  const w = adminText(ctx.lang, "reports");
+  const finance = adminText(ctx.lang, "finance");
 
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics", "finance"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/traffic"
-          title="Traffic"
-          description="Where visitors drop out on the way to a purchase, which devices and countries sell, what shoppers search for and when the store is busiest. Refunds and returns are at the bottom."
+          title={w.pages.traffic.title}
+          description={w.pages.traffic.description}
         />
-        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} />
-        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} />
-        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} />
+        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} />
+        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} />
+        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

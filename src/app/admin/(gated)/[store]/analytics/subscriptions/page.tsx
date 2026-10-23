@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { SubscriptionsView } from "@/components/admin/analytics/subscriptions-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
@@ -24,17 +26,22 @@ export default async function AnalyticsSubscriptionsPage({ params, searchParams 
 
   const report = await subscriptionsReport(store, ctx.params.period, now);
 
+  const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
+  const w = adminText(ctx.lang, "reports");
+
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/subscriptions"
-          title="Subscriptions"
-          description="How much recurring revenue the store has, whether it is growing, and how much of it is leaving or at risk. The first block is today's; the rest follows the period."
+          title={w.pages.subscriptions.title}
+          description={w.pages.subscriptions.description}
         />
-        <SubscriptionsView base={ctx.base} currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} report={report} />
+        <SubscriptionsView base={ctx.base} currency={mainCurrency(store)} locale={locale} report={report} words={w.subscriptions} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

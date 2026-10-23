@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { COMPARE_MODES, periodHref, PRESETS, type AnalyticsPreset, type CompareMode } from "@/lib/analytics-period";
+import { analyticsWords } from "@/lib/analytics-words";
 
 /**
  * The period and comparison of an analytics page (D152), kept in the address (`?period=&from=&to=&compare=`) so a view can be linked to and
@@ -42,6 +43,8 @@ function Hidden({ values }: { values: Readonly<Record<string, string>> }) {
 
 export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {}, max, showCompare = true, explicitPeriod = false }: PeriodPickerProps) {
   const links = PRESETS.filter((p) => p.id !== "custom");
+  const words = analyticsWords();
+  const w = words.picker;
   // The current view as the compare form sends it back: the period as it is, a custom one with its dates.
   const keep: Record<string, string> = { ...preserve, period: preset };
   if (preset === "custom") {
@@ -50,7 +53,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
   }
   return (
     <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-      <nav aria-label="Period" className="flex flex-wrap gap-1">
+      <nav aria-label={w.period} className="flex flex-wrap gap-1">
         {links.map((p) => {
           const active = p.id === preset;
           return (
@@ -60,42 +63,42 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
               aria-current={active ? "true" : undefined}
               className={`inline-flex h-9 items-center rounded-panel border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
             >
-              {p.label}
+              {words.period.presets[p.id]}
             </Link>
           );
         })}
       </nav>
 
-      <form method="get" action={basePath} className="flex flex-wrap items-end gap-2" aria-label="Custom range">
+      <form method="get" action={basePath} className="flex flex-wrap items-end gap-2" aria-label={w.customRange}>
         <Hidden values={{ ...preserve, period: "custom", compare }} />
         <label className="flex flex-col gap-0.5 text-xs text-muted">
-          From
+          {w.from}
           <input type="date" name="from" defaultValue={from} {...(max ? { max } : {})} required className={inputClass} />
         </label>
         <label className="flex flex-col gap-0.5 text-xs text-muted">
-          To
+          {w.to}
           <input type="date" name="to" defaultValue={to} {...(max ? { max } : {})} required className={inputClass} />
         </label>
         <button type="submit" className={`${buttonClass} ${preset === "custom" ? "border-brand" : ""}`}>
-          Apply range
+          {w.apply}
         </button>
       </form>
 
       {showCompare ? (
-      <form method="get" action={basePath} className="flex flex-wrap items-end gap-2" aria-label="Comparison">
+      <form method="get" action={basePath} className="flex flex-wrap items-end gap-2" aria-label={w.comparison}>
         <Hidden values={keep} />
         <label className="flex flex-col gap-0.5 text-xs text-muted">
-          Compare with
+          {w.compareWith}
           <select name="compare" defaultValue={compare} className={inputClass}>
             {COMPARE_MODES.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.label}
+                {words.compare.modes[m.id]}
               </option>
             ))}
           </select>
         </label>
         <button type="submit" className={buttonClass}>
-          Update
+          {w.update}
         </button>
       </form>
       ) : null}

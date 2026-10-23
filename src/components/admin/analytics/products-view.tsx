@@ -11,6 +11,8 @@ import {
   safeRatio,
   verdictOf,
 } from "@/lib/analytics-core";
+import { fillWords } from "@/lib/admin-fill";
+import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { formatAmount } from "@/lib/analytics-format";
 import { addDays, type CompareMode } from "@/lib/analytics-period";
 import type {
@@ -56,6 +58,8 @@ export type ProductsViewProps = {
   /** The parameters that keep the period and comparison (`?period=&compare=…`), added to every link the table makes. */
   keep?: Readonly<Record<string, string>>;
 };
+
+export type ProductsWords = ReportsMessages["products"];
 
 /** Rows of the table before "show all". */
 export const PRODUCT_LIMIT = 50;
@@ -211,11 +215,6 @@ export function deltaView(
   };
 }
 
-/** "1 product", "3 products". */
-function countOf(n: number, one: string, many = `${one}s`): string {
-  return `${formatCount(n)} ${n === 1 ? one : many}`;
-}
-
 /** The address of the table in a given sort: the period's own parameters, the sort, and "show all" when it is on. */
 export function productsHref(
   path: string,
@@ -246,21 +245,22 @@ export function ProductsView({
   sort,
   showAll,
   keep = {},
-}: ProductsViewProps) {
+  words: w = reportsEn.products,
+}: ProductsViewProps & { words?: ProductsWords }) {
   const money = moneyOf(report.currency, locale);
   const path = `${base}/analytics/products`;
   const productHref = (id: string) => `${base}/products/${id}`;
   const costsHref = `${base}/products`;
   const settingsHref = `${base}/analytics/settings`;
   const products = report.rows.filter((r) => !r.other);
+  const cnt = (n: number, pair: { one: string; many: string }) => `${formatCount(n)} ${n === 1 ? pair.one : pair.many}`;
 
   // ---- notes about what the figures are and are not ----
   const notes: ReactNode[] = [];
   if (report.truncated) {
     notes.push(
-      <Note key="truncated" tone="warning" title="Some products are left out">
-        This store sold more products than one page can add up, so the smallest
-        sellers are missing. Totals may be a little low.
+      <Note key="truncated" tone="warning" title={w.truncatedTitle}>
+        {w.truncated}
       </Note>,
     );
   }
@@ -268,19 +268,16 @@ export function ProductsView({
     const currencies =
       report.missingCurrencies.length > 0
         ? report.missingCurrencies.join(", ")
-        : "another currency";
+        : w.anotherCurrency;
     notes.push(
       <Note
         key="unconverted"
         tone="warning"
-        title="Some orders could not be converted"
+        title={w.unconvertedTitle}
       >
-        {countOf(report.unconverted, "order or refund", "orders and refunds")}{" "}
-        in {currencies} {report.unconverted === 1 ? "has" : "have"} no exchange
-        rate in this store, so they are left out of every figure here. They are
-        not counted as zero.{" "}
+        {fillWords(report.unconverted === 1 ? w.unconvertedOne : w.unconvertedMany, { count: cnt(report.unconverted, w.n.orderOrRefund), currencies })}{" "}
         <Link href={`${base}/settings/localization`} className={linkClass}>
-          Add the rate in Languages and currencies
+          {w.addRate}
         </Link>
       </Note>,
     );
@@ -293,16 +290,13 @@ export function ProductsView({
         {notes.length > 0 ? <div className="space-y-3">{notes}</div> : null}
         <AnalyticsSection
           id="prod-empty"
-          title="No product sales in this period"
-          description="Products show up here once they are sold and paid for."
+          title={w.emptyTitle}
+          description={w.emptyDescription}
         >
           <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">Nothing to show yet.</p>
+            <p className="font-medium text-ink">{w.emptyLead}</p>
             <p className="mx-auto mt-1 max-w-prose">
-              When orders are paid, this page shows what each product brought
-              in, what is left after what it cost, how many are refunded and how
-              much of your sales come from your best sellers. Try a longer
-              period if the store has sold before.
+              {w.emptyBody}
             </p>
           </div>
         </AnalyticsSection>
@@ -328,14 +322,13 @@ export function ProductsView({
     (r) => r.revenueMinor > 0 && r.costCoverage !== null && r.costCoverage < 1,
   );
   const costsAction = {
-    label: "Enter what your products cost",
+    label: w.enterCosts,
     href: costsHref,
   };
   if (noCostAtAll) {
     notes.push(
-      <Note key="nocosts" tone="warning" title="Product costs are not entered">
-        Without what each product costs, profit and margin cannot be worked out,
-        so they show a dash here instead of a number.{" "}
+      <Note key="nocosts" tone="warning" title={w.noCostsTitle}>
+        {w.noCosts}{" "}
         <Link href={costsAction.href} className={linkClass}>
           {costsAction.label}
         </Link>
@@ -347,13 +340,9 @@ export function ProductsView({
       <Note
         key="partcosts"
         tone="info"
-        title={`Profit and margin are based on ${formatPercent(coverage, 0)} of sales`}
+        title={fillWords(w.partCostsTitle, { share: formatPercent(coverage, 0) })}
       >
-        Products with no cost entered show no profit, and a product with a cost
-        for only some of its options counts the rest of its sales as costing
-        nothing (its row says how much it is based on). Unlike the Overview and
-        Finance pages, nothing is estimated here: these are the figures of the
-        costs that are known. Missing costs on:{" "}
+        {w.partCosts}{" "}
         {named.map((r, i) => (
           <span key={r.productId}>
             {i > 0 ? ", " : ""}
@@ -363,7 +352,7 @@ export function ProductsView({
           </span>
         ))}
         {withoutCost.length > named.length
-          ? ` and ${formatCount(withoutCost.length - named.length)} more`
+          ? fillWords(w.andMore, { n: formatCount(withoutCost.length - named.length) })
           : ""}
         .
       </Note>,
@@ -374,11 +363,10 @@ export function ProductsView({
   const viewsKnown = report.viewsFrom !== null;
   if (!viewsKnown) {
     notes.push(
-      <Note key="noviews" title="Views and conversion are not shown">
-        Visits were not counted in this period, so how often each product was
-        looked at is not known. It is not zero.{" "}
+      <Note key="noviews" title={w.noViewsTitle}>
+        {w.noViews}{" "}
         <Link href={settingsHref} className={linkClass}>
-          Switch on visit counting in Analytics settings
+          {w.switchOnVisits}
         </Link>
       </Note>,
     );
@@ -386,10 +374,9 @@ export function ProductsView({
     notes.push(
       <Note
         key="partviews"
-        title={`Views counted since ${dayText(report.viewsFrom!)}`}
+        title={fillWords(w.partViewsTitle, { day: dayText(report.viewsFrom!) })}
       >
-        Conversion only counts the orders from that day on, so it can be
-        compared with the views.
+        {w.partViews}
       </Note>,
     );
   }
@@ -407,12 +394,12 @@ export function ProductsView({
         ? { deltaLastYear: revenueDelta ?? null }
         : { deltaPrevious: revenueDelta ?? null };
   const revenueCard: KpiCardProps = {
-    label: "Product revenue",
+    label: w.revenueLabel,
     value: money(report.totals.revenueMinor),
-    help: "What the order lines brought in: after discounts, without VAT, before refunds. Shipping income is not included.",
+    help: w.revenueHelp,
     hint:
       report.shareOfRevenue !== null
-        ? `${formatPercent(report.shareOfRevenue, 0)} of the period's revenue. The rest is shipping income.`
+        ? fillWords(w.revenueHint, { share: formatPercent(report.shareOfRevenue, 0) })
         : undefined,
     emphasis: true,
     good: "up",
@@ -420,52 +407,50 @@ export function ProductsView({
   };
 
   const profit = report.totals.profitMinor;
-  const profitHelp =
-    "Revenue minus refunds minus what the products cost, for the products whose cost is known. Not estimated: a product with a cost for only some of its options counts the rest as costing nothing.";
+  const profitHelp = w.profitHelp;
   const profitCard: KpiCardProps =
     profit === null || noCostAtAll
       ? {
-          label: "Profit from products",
+          label: w.profitLabel,
           value: null,
           state: "missing",
           help: profitHelp,
           missing: {
-            text: "Product costs are not entered, so profit cannot be worked out.",
+            text: w.profitNone,
             action: costsAction,
           },
         }
       : {
-          label: "Profit from products",
+          label: w.profitLabel,
           value: money(profit),
           help: profitHelp,
           hint:
             coverage !== null && coverage < 1
-              ? `Based on ${formatPercent(coverage, 0)} of sales`
-              : `After ${money(report.totals.refundsMinor)} of refunds and what the products cost.`,
+              ? fillWords(w.basedOn, { share: formatPercent(coverage, 0) })
+              : fillWords(w.afterRefunds, { money: money(report.totals.refundsMinor) }),
           emphasis: true,
         };
 
   const pareto = report.pareto;
-  const paretoHelp =
-    "The 80/20 rule: the fewest best sellers that together make at least 80 % of the revenue.";
+  const paretoHelp = w.paretoHelp;
   const paretoCard: KpiCardProps =
     pareto && pareto.text
       ? {
-          label: "How concentrated your sales are",
+          label: w.paretoLabel,
           value: pareto.text,
           help: paretoHelp,
-          hint: `The best ${formatCount(pareto.topCount)} of ${formatCount(pareto.products)} products with sales make at least ${formatPercent(pareto.threshold, 0)} of revenue.`,
+          hint: fillWords(w.paretoHint, { top: formatCount(pareto.topCount), all: formatCount(pareto.products), share: formatPercent(pareto.threshold, 0) }),
           emphasis: true,
         }
       : {
-          label: "How concentrated your sales are",
+          label: w.paretoLabel,
           value: null,
           state: "missing",
           help: paretoHelp,
           missing: {
             text: pareto
-              ? `Only ${countOf(pareto.products, "product")} sold, which is too few to say.`
-              : "No product has revenue in this period.",
+              ? fillWords(w.paretoFew, { products: cnt(pareto.products, w.n.product) })
+              : w.noRevenue,
           },
         };
 
@@ -478,7 +463,7 @@ export function ProductsView({
       label: r.name,
       value: r.revenueMinor,
       valueText: money(r.revenueMinor),
-      detail: `${formatPercent(r.revenueShare, 1)} · ${countOf(r.units, "unit")}`,
+      detail: `${formatPercent(r.revenueShare, 1)} · ${cnt(r.units, w.n.unit)}`,
       href: productHref(r.productId),
     }));
 
@@ -488,12 +473,12 @@ export function ProductsView({
   const shown = limited ? sorted.slice(0, PRODUCT_LIMIT) : sorted;
   const sortHref = (key: string, dir: "asc" | "desc") =>
     productsHref(path, keep, { key, dir }, showAll);
-  const changeHelp = `Revenue in this period against ${compareMode === "year" ? "the same period a year earlier" : "the previous period"}. "new" means it did not sell then.`;
+  const changeHelp = fillWords(w.changeHelp, { against: compareMode === "year" ? w.againstYear : w.againstPrevious });
 
   const columns: Column<ProductReportRow>[] = [
     {
       key: "product",
-      label: "Product",
+      label: w.cols.product,
       sortable: true,
       firstDir: "asc",
       cell: (r) => {
@@ -502,18 +487,18 @@ export function ProductsView({
             <span>
               <span className="block truncate">{r.name}</span>
               <span className="block text-xs text-muted">
-                {r.productId === "custom" ? "Items staff typed into a draft order: in revenue, in no ranking, cost not known" : "Sign-up fees and other lines that are not products"}
+                {r.productId === "custom" ? w.customLines : w.otherLines}
               </span>
             </span>
           );
         }
         const flag =
           r.revenueMinor > 0 && r.costCoverage !== null && r.costCoverage <= 0
-            ? "No cost entered"
+            ? w.noCostEntered
             : r.revenueMinor > 0 &&
                 r.costCoverage !== null &&
                 r.costCoverage < 1
-              ? `Cost known for ${formatPercent(r.costCoverage, 0)} of sales`
+              ? fillWords(w.costKnownFor, { share: formatPercent(r.costCoverage, 0) })
               : null;
         return (
           <span>
@@ -533,7 +518,7 @@ export function ProductsView({
     },
     {
       key: "revenue",
-      label: "Revenue",
+      label: w.cols.revenue,
       align: "right",
       sortable: true,
       cell: (r) => money(r.revenueMinor),
@@ -542,7 +527,7 @@ export function ProductsView({
       ? [
           {
             key: "change",
-            label: "Change",
+            label: w.cols.change,
             align: "right",
             sortable: true,
             cell: (r: ProductReportRow) => (
@@ -553,21 +538,21 @@ export function ProductsView({
       : []),
     {
       key: "units",
-      label: "Units",
+      label: w.cols.units,
       align: "right",
       sortable: true,
       cell: (r) => (r.other ? NO_FIGURE : formatCount(r.units)),
     },
     {
       key: "orders",
-      label: "Orders",
+      label: w.cols.orders,
       align: "right",
       sortable: true,
       cell: (r) => formatCount(r.orders),
     },
     {
       key: "margin",
-      label: "Margin",
+      label: w.cols.margin,
       align: "right",
       sortable: true,
       cell: (r) =>
@@ -575,8 +560,7 @@ export function ProductsView({
           <span
             title={
               r.other || r.revenueMinor <= 0
-                ? "Not available"
-                : "Cost not entered"
+                ? w.notAvailable : w.costNotEntered
             }
           >
             {NO_FIGURE}
@@ -585,7 +569,7 @@ export function ProductsView({
           <span
             title={
               r.costCoverage !== null && r.costCoverage < 1
-                ? `Based on ${formatPercent(r.costCoverage, 0)} of this product's sales`
+                ? fillWords(w.marginBasedOn, { share: formatPercent(r.costCoverage, 0) })
                 : undefined
             }
           >
@@ -595,37 +579,37 @@ export function ProductsView({
     },
     {
       key: "refunds",
-      label: "Refund rate",
+      label: w.cols.refunds,
       align: "right",
       sortable: true,
       cell: (r) => formatPercent(r.refundRate, 1),
     },
     {
       key: "share",
-      label: "Share of revenue",
+      label: w.cols.share,
       align: "right",
       sortable: true,
       cell: (r) => (
         <ShareBar
           share={r.revenueShare}
           text={formatPercent(r.revenueShare, 1)}
-          label="Share of the products' revenue"
+          label={w.shareOfProductsRevenue}
         />
       ),
     },
     {
       key: "profitShare",
-      label: "Share of profit",
+      label: w.cols.profitShare,
       align: "right",
       sortable: true,
       cell: (r) =>
         r.profitShare === null ? (
-          <span title="Cost not entered or no profit">{NO_FIGURE}</span>
+          <span title={w.noProfit}>{NO_FIGURE}</span>
         ) : (
           <ShareBar
             share={r.profitShare}
             text={formatPercent(r.profitShare, 1)}
-            label="Share of the products' profit"
+            label={w.shareOfProductsProfit}
           />
         ),
     },
@@ -633,7 +617,7 @@ export function ProductsView({
       ? [
           {
             key: "views",
-            label: "Views",
+            label: w.cols.views,
             align: "right",
             sortable: true,
             cell: (r: ProductReportRow) =>
@@ -641,12 +625,12 @@ export function ProductsView({
           } satisfies Column<ProductReportRow>,
           {
             key: "conversion",
-            label: "Conversion",
+            label: w.cols.conversion,
             align: "right",
             sortable: true,
             cell: (r: ProductReportRow) =>
               r.conversion === null ? (
-                <span title="No views to measure against">{NO_FIGURE}</span>
+                <span title={w.noViewsToMeasure}>{NO_FIGURE}</span>
               ) : (
                 formatPercent(r.conversion, 1)
               ),
@@ -660,7 +644,7 @@ export function ProductsView({
       {columns.map((c, i) => {
         let content: ReactNode = null;
         if (c.key === "product")
-          content = `All ${countOf(report.rows.length, "row")}`;
+          content = fillWords(w.allRows, { rows: cnt(report.rows.length, w.n.row) });
         else if (c.key === "revenue")
           content = money(report.totals.revenueMinor);
         else if (c.key === "change")
@@ -706,7 +690,7 @@ export function ProductsView({
       )}
       className={linkClass}
     >
-      {`Show all ${formatCount(sorted.length)} rows`}
+      {fillWords(w.showAll, { n: formatCount(sorted.length) })}
     </Link>
   ) : showAll && sorted.length > PRODUCT_LIMIT ? (
     <Link
@@ -720,7 +704,7 @@ export function ProductsView({
       )}
       className={linkClass}
     >
-      {`Show only the first ${PRODUCT_LIMIT}`}
+      {fillWords(w.showFirst, { n: String(PRODUCT_LIMIT) })}
     </Link>
   ) : null;
 
@@ -729,7 +713,7 @@ export function ProductsView({
       {noteBlock}
 
       <section
-        aria-label="The main figures"
+        aria-label={w.mainFigures}
         className="grid grid-cols-1 gap-3 md:grid-cols-3"
       >
         <KpiCard {...revenueCard} />
@@ -739,14 +723,14 @@ export function ProductsView({
 
       <AnalyticsSection
         id="prod-best"
-        title="Best sellers"
-        description="The ten products that brought in the most revenue in this period, with their share of all product revenue."
+        title={w.bestTitle}
+        description={w.bestDescription}
       >
-        <ChartCard title="Top 10 products by revenue">
+        <ChartCard title={w.top10}>
           <HorizontalBars
-            label="Top 10 products by revenue"
+            label={w.top10}
             rows={best}
-            emptyText="No product has revenue in this period."
+            emptyText={w.noRevenue}
             exportId="products.top_revenue"
             exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
           />
@@ -755,53 +739,51 @@ export function ProductsView({
 
       <AnalyticsSection
         id="products-table"
-        title="All products"
-        description={`Click a heading to sort. Amounts are in ${report.currency}, without VAT.${report.compare ? ` ${changeHelp}` : ""}`}
+        title={w.tableTitle}
+        description={`${fillWords(w.tableDescription, { currency: report.currency })}${report.compare ? ` ${changeHelp}` : ""}`}
         action={toggle}
       >
         <DataTable<ProductReportRow>
-          caption="Products with revenue, change, units, orders, margin, refund rate and shares"
+          caption={w.tableCaption}
           columns={columns}
           rows={shown}
           rowKey={(r) => r.productId}
           sort={sort}
           sortHref={sortHref}
           footer={footer}
-          empty="No products to show."
+          empty={w.tableEmpty}
           exportId="products.table"
           exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
         />
         <dl className="grid gap-x-6 gap-y-1 text-xs text-muted sm:grid-cols-2">
           <div>
-            <dt className="inline font-medium">Margin: </dt>
+            <dt className="inline font-medium">{w.marginTerm}</dt>
             <dd className="inline">
-              profit as a share of revenue after refunds.
+              {w.marginDef}
             </dd>
           </div>
           <div>
-            <dt className="inline font-medium">Refund rate: </dt>
+            <dt className="inline font-medium">{w.refundTerm}</dt>
             <dd className="inline">
-              refunds as a share of the product&apos;s revenue.
+              {w.refundDef}
             </dd>
           </div>
           {viewsKnown ? (
             <div className="sm:col-span-2">
-              <dt className="inline font-medium">Conversion: </dt>
+              <dt className="inline font-medium">{w.conversionTerm}</dt>
               <dd className="inline">
-                orders divided by product page views. A rough measure: a view is
-                a page view, not a visitor.
+                {w.conversionDef}
               </dd>
             </div>
           ) : null}
         </dl>
         <p className="text-xs text-muted">
           {report.shareOfRevenue !== null
-            ? `Products and other lines make ${formatPercent(report.shareOfRevenue, 0)} of the period's revenue; the rest is shipping income. `
+            ? fillWords(w.linesShare, { share: formatPercent(report.shareOfRevenue, 0) })
             : ""}
-          Refunds made only in Stripe&apos;s own dashboard are not seen here, so
-          a refund rate can be lower than it really is.
+          {w.stripeRefunds}
           {report.compare
-            ? ` Change is against ${dayText(report.compare.from)} to ${dayText(addDays(report.compare.to, -1))}.`
+            ? fillWords(w.changeAgainst, { from: dayText(report.compare.from), to: dayText(addDays(report.compare.to, -1)) })
             : ""}
         </p>
       </AnalyticsSection>

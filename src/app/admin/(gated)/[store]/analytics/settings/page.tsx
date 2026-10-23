@@ -5,6 +5,9 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { AnalyticsSettingsView } from "@/components/admin/analytics/settings-forms";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminTexts } from "@/lib/admin-text";
+import { analyticsWords } from "@/lib/analytics-words";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { listTargets } from "@/server/analytics-settings";
@@ -29,14 +32,16 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const { store, settings, base, now } = ctx;
   const [summary, targets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60)]);
   const owner = ctx.owner;
+  const w = analyticsWords().settings;
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
     <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-6">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/settings"
-          title="Analytics settings"
-          description="What your products cost, the fees we cannot see, what you are aiming for, and whether visits are counted. These turn sales figures into profit."
+          title={w.title}
+          description={w.description}
           picker={false}
         />
         <AnalyticsSettingsView
@@ -62,5 +67,6 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
         />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

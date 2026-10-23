@@ -1,5 +1,8 @@
-import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
-import { formatDays, MIN_PRODUCT_UNITS, MIN_TIMING_SAMPLE } from "@/lib/analytics-returns";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
+import { MIN_PRODUCT_UNITS, MIN_TIMING_SAMPLE } from "@/lib/analytics-returns";
+import { financeNumbers } from "@/lib/finance-words";
 import type { ReturnsReport } from "@/server/analytics-returns-data";
 
 import { HorizontalBars, type BarRow } from "./charts";
@@ -22,113 +25,114 @@ export type ReturnsViewProps = {
   report: ReturnsReport;
   /** Where the returns queue is (a path under the store's admin), for the overdue figure. */
   queueHref?: string;
-};
-
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-
-const HELP = {
-  made: "Returns made in this period that ask for goods back: a withdrawal, or a return inside your own longer window. Declined and cancelled ones are not counted.",
-  orderRate: "Of the paid orders with goods placed in this period, the share that has had a return so far (at any time). It keeps rising while returns for these orders arrive.",
-  unitRate: "Units on accepted return lines of the orders placed in this period, divided by the units sold in them.",
-  refunded: "Money refunded through returns in this period, without VAT, dated by the day of the refund.",
-  timing: "The middle value of the days from the shopper's request (a withdrawal's confirmation) to the refund, for returns refunded in this period.",
-  overdue: "Withdrawals past the legal day for the refund, not refunded yet. It is as of now, whatever the period.",
-  exchanged: "Returns made in this period whose credit paid for replacement goods (an exchange order) instead of going back to the shopper's card. The credit is still a refund of the original order.",
+  /** The words in the admin's language (D312 A9); English unless given. */
+  words?: FinanceMessages;
 };
 
 /** The seven cards. A rate that cannot be given is a missing card with its reason; the counts are always numbers. */
-export function returnCards({ currency, locale, report: r, queueHref }: ReturnsViewProps): KpiCardProps[] {
+export function returnCards({ currency, locale, report: r, queueHref, words = financeEn }: ReturnsViewProps): KpiCardProps[] {
+  const w = words.returns;
+  const HELP = w.help;
+  const { percent: pct, days: formatDays } = financeNumbers(words);
   const money = safeMoney(currency, locale);
   const cards: KpiCardProps[] = [];
 
   cards.push({
-    label: "Returns made",
+    label: w.made,
     value: formatCount(r.made.returns),
     emphasis: true,
     help: HELP.made,
     hint:
       r.made.returns === 0
-        ? "No return was made in this period."
-        : `${formatCount(r.made.withdrawals)} ${plural(r.made.withdrawals, "withdrawal", "withdrawals")} and ${formatCount(r.made.voluntary)} voluntary ${plural(r.made.voluntary, "return", "returns")}.`,
+        ? w.noneMade
+        : fillWords(w.madeHint, {
+            withdrawals: countWords(r.made.withdrawals, w.withdrawalsN, { n: formatCount(r.made.withdrawals) }),
+            voluntary: countWords(r.made.voluntary, w.voluntaryN, { n: formatCount(r.made.voluntary) }),
+          }),
   });
 
   cards.push(
     r.orderRate.value === null
-      ? { label: "Return rate, orders", value: null, state: "missing", missing: { text: r.orderRate.missing ?? "Not known." }, help: HELP.orderRate }
+      ? { label: w.orderRate, value: null, state: "missing", missing: { text: r.orderRate.missing ?? w.notKnown }, help: HELP.orderRate }
       : {
-          label: "Return rate, orders",
-          value: formatPercent(r.orderRate.value),
+          label: w.orderRate,
+          value: pct(r.orderRate.value),
           good: "down",
           help: HELP.orderRate,
-          hint: `${formatCount(r.cohort.returnedOrders)} of ${formatCount(r.cohort.orders)} orders with goods, so far.`,
+          hint: fillWords(w.orderRateHint, { returned: formatCount(r.cohort.returnedOrders), orders: formatCount(r.cohort.orders) }),
         },
   );
 
   cards.push(
     r.unitRate.value === null
-      ? { label: "Return rate, units", value: null, state: "missing", missing: { text: r.unitRate.missing ?? "Not known." }, help: HELP.unitRate }
+      ? { label: w.unitRate, value: null, state: "missing", missing: { text: r.unitRate.missing ?? w.notKnown }, help: HELP.unitRate }
       : {
-          label: "Return rate, units",
-          value: formatPercent(r.unitRate.value),
+          label: w.unitRate,
+          value: pct(r.unitRate.value),
           good: "down",
           help: HELP.unitRate,
-          hint: `${formatCount(r.cohort.returnedUnits)} of ${formatCount(r.cohort.unitsSold)} units sold, so far; worth ${money(r.returnedMinor)} without VAT.`,
+          hint: fillWords(w.unitRateHint, { returned: formatCount(r.cohort.returnedUnits), sold: formatCount(r.cohort.unitsSold), amount: money(r.returnedMinor) }),
         },
   );
 
   cards.push({
-    label: "Refunded for returns",
+    label: w.refunded,
     value: money(r.refunded.minor),
     good: "down",
     help: HELP.refunded,
     hint:
       r.refunded.returns === 0
-        ? "No return was refunded in this period."
-        : `${formatCount(r.refunded.returns)} ${plural(r.refunded.returns, "return", "returns")}${r.refunded.outside > 0 ? `, ${formatCount(r.refunded.outside)} outside Kaizena Flow's Stripe` : ""}.`,
+        ? w.noneRefunded
+        : fillWords(w.refundedHint, {
+            returns: countWords(r.refunded.returns, w.returnsN, { n: formatCount(r.refunded.returns) }),
+            outside: r.refunded.outside > 0 ? fillWords(w.outside, { n: formatCount(r.refunded.outside) }) : "",
+          }),
   });
 
   const t = r.timing.requestToRefund;
   cards.push(
     t.medianDays === null
-      ? { label: "Typical time to refund", value: null, state: "missing", missing: { text: t.missing ?? "Not known." }, help: HELP.timing }
+      ? { label: w.timing, value: null, state: "missing", missing: { text: t.missing ?? w.notKnown }, help: HELP.timing }
       : {
-          label: "Typical time to refund",
+          label: w.timing,
           value: formatDays(t.medianDays),
           good: "down",
           help: HELP.timing,
-          hint: `Median of ${formatCount(t.n)} returns; the slowest took ${formatDays(t.slowestDays)}.`,
+          hint: fillWords(w.timingHint, { n: formatCount(t.n), slowest: formatDays(t.slowestDays) }),
         },
   );
 
   cards.push({
-    label: "Overdue now",
+    label: w.overdue,
     value: formatCount(r.overdue),
     good: "down",
     help: HELP.overdue,
     href: queueHref,
-    hint: r.overdue === 0 ? "No withdrawal is past its refund deadline." : `${plural(r.overdue, "Withdrawal is", "Withdrawals are")} past the legal day for the refund.`,
+    hint: r.overdue === 0 ? w.noneOverdue : countWords(r.overdue, w.overdueHint),
   });
 
   const x = r.exchanges;
-  const kept = x.transfers > 0 ? ` ${money(x.keptMinor)} of the credit went to replacement goods.` : "";
+  const kept = x.transfers > 0 ? fillWords(w.kept, { amount: money(x.keptMinor) }) : "";
   cards.push(
     !x.tracked
-      ? { label: "Exchanged", value: null, state: "missing", missing: { text: x.share.missing ?? "No return has been exchanged yet." }, help: HELP.exchanged }
+      ? { label: w.exchanged, value: null, state: "missing", missing: { text: x.share.missing ?? w.noneExchanged }, help: HELP.exchanged }
       : {
-          label: "Exchanged",
+          label: w.exchanged,
           value: formatCount(x.returns),
           help: HELP.exchanged,
           hint:
             x.share.value === null
               ? `${x.share.missing ?? ""}${kept}`.trim()
-              : `${formatPercent(x.share.value)} of ${formatCount(r.made.returns)} returns made.${kept}`,
+              : fillWords(w.exchangedHint, { share: pct(x.share.value), returns: formatCount(r.made.returns), kept }),
         },
   );
   return cards;
 }
 
 export function ReturnsView(props: ReturnsViewProps) {
-  const { currency, locale, report: r } = props;
+  const { currency, locale, report: r, words = financeEn } = props;
+  const w = words.returns;
+  const { percent: pct, days: formatDays } = financeNumbers(words);
   const money = safeMoney(currency, locale);
   const nothing = r.made.returns === 0 && r.made.declined === 0 && r.made.cancelled === 0 && r.refunded.returns === 0 && r.products.length === 0;
 
@@ -137,58 +141,58 @@ export function ReturnsView(props: ReturnsViewProps) {
     label: x.label,
     value: x.returns,
     valueText: formatCount(x.returns),
-    detail: [`${formatCount(x.units)} ${plural(x.units, "unit", "units")}`, x.share === null ? null : formatPercent(x.share)].filter(Boolean).join(", "),
+    detail: [countWords(x.units, w.unitsN, { n: formatCount(x.units) }), x.share === null ? null : pct(x.share)].filter(Boolean).join(", "),
     colorIndex: x.reason === "" ? 99 : undefined,
   }));
 
   const kindColumns: Column<ReturnsReport["kinds"][number]>[] = [
-    { key: "kind", label: "Kind", cell: (k) => k.label },
-    { key: "returns", label: "Made", align: "right", cell: (k) => formatCount(k.returns) },
-    { key: "units", label: "Units", align: "right", cell: (k) => formatCount(k.units) },
+    { key: "kind", label: w.kind, cell: (k) => k.label },
+    { key: "returns", label: w.madeColumn, align: "right", cell: (k) => formatCount(k.returns) },
+    { key: "units", label: w.units, align: "right", cell: (k) => formatCount(k.units) },
     {
       key: "declined",
-      label: "Declined",
+      label: w.declined,
       align: "right",
-      cell: (k) => (k.kind === "withdrawal" ? <span title="A withdrawal is not the store's to refuse">{NO_FIGURE}</span> : formatCount(k.declined)),
+      cell: (k) => (k.kind === "withdrawal" ? <span title={w.notRefusable}>{NO_FIGURE}</span> : formatCount(k.declined)),
     },
-    { key: "cancelled", label: "Cancelled", align: "right", cell: (k) => formatCount(k.cancelled) },
-    { key: "refunded", label: "Refunded", align: "right", cell: (k) => formatCount(k.refunded) },
-    { key: "value", label: "Refunded amount", align: "right", cell: (k) => money(k.refundedMinor) },
-    { key: "exchanged", label: "Exchanged", align: "right", cell: (k) => formatCount(k.exchanged) },
+    { key: "cancelled", label: w.cancelled, align: "right", cell: (k) => formatCount(k.cancelled) },
+    { key: "refunded", label: w.refundedColumn, align: "right", cell: (k) => formatCount(k.refunded) },
+    { key: "value", label: w.refundedAmount, align: "right", cell: (k) => money(k.refundedMinor) },
+    { key: "exchanged", label: w.exchangedColumn, align: "right", cell: (k) => formatCount(k.exchanged) },
   ];
 
   const timingRows = [
-    { key: "request", label: "Request to refund", timing: r.timing.requestToRefund },
-    { key: "received", label: "Goods received to refund", timing: r.timing.receivedToRefund },
+    { key: "request", label: w.requestToRefund, timing: r.timing.requestToRefund },
+    { key: "received", label: w.receivedToRefund, timing: r.timing.receivedToRefund },
   ];
   const timingColumns: Column<(typeof timingRows)[number]>[] = [
-    { key: "what", label: "Time", cell: (x) => x.label },
-    { key: "n", label: "Returns", align: "right", cell: (x) => formatCount(x.timing.n) },
+    { key: "what", label: w.time, cell: (x) => x.label },
+    { key: "n", label: w.returns, align: "right", cell: (x) => formatCount(x.timing.n) },
     {
       key: "median",
-      label: "Typical (median)",
+      label: w.typical,
       align: "right",
       cell: (x) => (x.timing.medianDays === null ? <span title={x.timing.missing ?? ""}>{NO_FIGURE}</span> : formatDays(x.timing.medianDays)),
     },
-    { key: "slowest", label: "Slowest", align: "right", cell: (x) => (x.timing.slowestDays === null ? NO_FIGURE : formatDays(x.timing.slowestDays)) },
+    { key: "slowest", label: w.slowest, align: "right", cell: (x) => (x.timing.slowestDays === null ? NO_FIGURE : formatDays(x.timing.slowestDays)) },
   ];
 
   const productColumns: Column<ReturnsReport["products"][number]>[] = [
-    { key: "product", label: "Product", cell: (p) => <span title={p.name}>{p.name}</span> },
-    { key: "returned", label: "Units returned", align: "right", cell: (p) => formatCount(p.returnedUnits) },
-    { key: "sold", label: "Units sold", align: "right", cell: (p) => formatCount(p.sold) },
+    { key: "product", label: w.product, cell: (p) => <span title={p.name}>{p.name}</span> },
+    { key: "returned", label: w.unitsReturned, align: "right", cell: (p) => formatCount(p.returnedUnits) },
+    { key: "sold", label: w.unitsSold, align: "right", cell: (p) => formatCount(p.sold) },
     {
       key: "rate",
-      label: "Return rate",
+      label: w.returnRate,
       align: "right",
       cell: (p) =>
         p.rate.value === null ? (
           <span title={p.rate.missing ?? ""}>{NO_FIGURE}</span>
         ) : (
-          <ShareBar share={p.rate.value} text={formatPercent(p.rate.value)} label="Share of the units sold that were returned" />
+          <ShareBar share={p.rate.value} text={pct(p.rate.value)} label={w.returnShare} />
         ),
     },
-    { key: "value", label: "Returned value", align: "right", cell: (p) => money(p.returnedMinor) },
+    { key: "value", label: w.returnedValue, align: "right", cell: (p) => money(p.returnedMinor) },
   ];
 
   const deadline = r.timing.afterDeadline;
@@ -196,10 +200,10 @@ export function ReturnsView(props: ReturnsViewProps) {
   return (
     <AnalyticsSection
       id="returns"
-      title="Returns"
-      description="How much comes back, why, which products, and how fast you refund. Without VAT; rates are of the orders placed in the period, whenever they were returned."
+      title={w.title}
+      description={w.description}
     >
-      <Note title="Returns made outside Kaizena Flow are not seen">{r.notSeenNote}</Note>
+      <Note title={w.notSeen}>{r.notSeenNote}</Note>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {returnCards(props).map((c) => (
           <KpiCard key={c.label} {...c} />
@@ -218,51 +222,47 @@ export function ReturnsView(props: ReturnsViewProps) {
 
       {!r.tracked ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          No return has been recorded in Kaizena Flow yet, so there are no rates, reasons or products to show. They appear once a shopper uses the withdrawal function or a return request.
+          {w.untracked}
         </div>
       ) : nothing ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          No return was made or refunded in this period, so there are no reasons, times or products to show.
+          {w.nothing}
         </div>
       ) : (
         <>
           <div className="grid gap-4 2xl:grid-cols-2">
-            <ChartCard title="Why goods came back" description="The reason the shopper chose, by number of returns made in the period. A withdrawal asks for no reason, so many have none.">
-              <HorizontalBars label="Returns made by reason" rows={reasonRows} emptyText="No returns were made in this period." exportId="traffic.return_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+            <ChartCard title={w.whyTitle} description={w.whyDescription}>
+              <HorizontalBars label={w.whyLabel} rows={reasonRows} emptyText={w.noReturns} exportId="traffic.return_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
               {r.reasons.note ? <p className="mt-2 text-xs text-muted">{r.reasons.note}</p> : null}
             </ChartCard>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">Withdrawals and voluntary returns</h3>
-              <p className="text-xs text-muted">A withdrawal is the shopper&apos;s legal right and is not refused. A voluntary return is inside your own longer window and you may decline it.</p>
-              <DataTable caption="Returns made in the period by kind, with those refunded" columns={kindColumns} rows={r.kinds} rowKey={(k) => k.kind} exportId="traffic.return_kinds" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+              <h3 className="text-body-strong text-ink">{w.kindsTitle}</h3>
+              <p className="text-xs text-muted">{w.kindsNote}</p>
+              <DataTable caption={w.kindsCaption} columns={kindColumns} rows={r.kinds} rowKey={(k) => k.kind} exportId="traffic.return_kinds" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">How fast you refund</h3>
-              <p className="text-xs text-muted">For returns refunded in this period. A typical time is shown from {formatCount(MIN_TIMING_SAMPLE)} returns.</p>
-              <DataTable caption="Time from the request and from the goods arriving to the refund" columns={timingColumns} rows={timingRows} rowKey={(x) => x.key} exportId="traffic.return_timing" />
+              <h3 className="text-body-strong text-ink">{w.fastTitle}</h3>
+              <p className="text-xs text-muted">{fillWords(w.fastNote, { n: formatCount(MIN_TIMING_SAMPLE) })}</p>
+              <DataTable caption={w.fastCaption} columns={timingColumns} rows={timingRows} rowKey={(x) => x.key} exportId="traffic.return_timing" />
               <p className="text-xs text-muted">
-                {deadline.of === 0
-                  ? "No withdrawal was refunded in this period."
-                  : `${formatCount(deadline.late)} of ${formatCount(deadline.of)} ${plural(deadline.of, "withdrawal was", "withdrawals were")} refunded after the 14-day deadline.`}
+                {deadline.of === 0 ? w.noWithdrawalRefunded : countWords(deadline.of, w.late, { late: formatCount(deadline.late), n: formatCount(deadline.of) })}
               </p>
             </div>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">Most returned products</h3>
-              <p className="text-xs text-muted">
-                Units returned of what was sold in this period. A product&apos;s rate is shown from {formatCount(MIN_PRODUCT_UNITS)} units sold.
-              </p>
+              <h3 className="text-body-strong text-ink">{w.productsTitle}</h3>
+              <p className="text-xs text-muted">{fillWords(w.productsNote, { n: formatCount(MIN_PRODUCT_UNITS) })}</p>
               <DataTable
-                caption="The most returned products with units returned and sold, their return rate and the value returned"
+                caption={w.productsCaption}
                 columns={productColumns}
                 rows={r.products}
                 rowKey={(p) => p.productId}
-                empty="No goods from this period's orders have been returned."
+                empty={w.productsEmpty}
                 exportId="traffic.return_products"
                 exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }}
               />
-              {r.productCount > r.products.length ? <p className="text-xs text-muted">{`Showing ${formatCount(r.products.length)} of ${formatCount(r.productCount)} products.`}</p> : null}
+              {r.productCount > r.products.length ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
             </div>
           </div>
         </>

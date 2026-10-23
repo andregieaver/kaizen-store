@@ -17,6 +17,7 @@ import { addDays, addMonths, addYears, customPeriod, lastYearOf, previousPeriodO
 import { targetProgress, type DailyActual, type TargetProgress } from "@/lib/analytics-targets";
 import { isNotAChannel, UNKNOWN_CHANNEL } from "@/lib/analytics-traffic";
 import { mainCurrency } from "@/lib/markets";
+import { analyticsWords, countText } from "@/lib/analytics-words";
 
 import { geoReport } from "./analytics-geo-data";
 import { discountsReport } from "./analytics-discounts-data";
@@ -506,6 +507,7 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
     const sessionsBefore = covered(trafficBefore);
     const visitsInBoth = sessions !== null && sessionsBefore !== null;
 
+    const words = analyticsWords().diagnosis;
     const tables: SegmentTable[] = [];
     const notes: string[] = [];
     if (traffic && trafficBefore && visitsInBoth) {
@@ -518,7 +520,7 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
       tables.push(mergeSegments("channel", channel(marketing), channel(marketingBefore), 0));
     }
     if (!visitsInBoth) {
-      notes.push(counting ? "Visits were not counted for the whole of both periods, so devices and channels are left out and traffic is not separated from conversion." : "Visit counting is off, so devices and channels are left out and traffic is not separated from conversion.");
+      notes.push(counting ? words.notes.partVisits : words.notes.visitsOff);
     }
     if (geo && geoBefore) {
       const market = (r: typeof geo): Seg[] => r.countries.map((row) => ({ key: row.code, label: row.name, orders: row.orders, revenueMinor: row.revenueMinor, sessions: null }));
@@ -530,14 +532,12 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
       const moved = [...table.rows].sort((a, b) => Math.abs(b.current.revenueMinor - b.previous.revenueMinor) - Math.abs(a.current.revenueMinor - a.previous.revenueMinor) || (a.key < b.key ? -1 : 1)).slice(0, PRODUCT_MOVERS);
       tables.push({ dimension: "product", rows: moved });
     }
-    if (period.to > addDays(today, 0) && period.from <= today) notes.push("This period includes today so far, so it is not a whole period against a whole one.");
+    if (period.to > addDays(today, 0) && period.from <= today) notes.push(words.notes.today);
     // Staff-made orders (D173) are paid orders for revenue, but were not visits: the conversion in this explanation is every paid order over sessions, which is not the Overview's rate.
     const staffNow = current.totals.orders - (current.totals.checkoutOrders ?? current.totals.orders);
     const staffBefore = previous.totals.orders - (previous.totals.checkoutOrders ?? previous.totals.orders);
     if (staffNow + staffBefore > 0) {
-      notes.push(
-        `Orders here include ${staffNow} staff-made ${staffNow === 1 ? "order" : "orders"} in this period and ${staffBefore} in the one compared with. They were not visits, so conversion in this explanation counts every paid order over sessions: it is not the Overview's conversion rate, which leaves them out.`,
-      );
+      notes.push(countText(words.notes.staff, staffNow, { before: staffBefore }));
     }
 
     const explanation = explainChange({
@@ -549,6 +549,6 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
       currency: mainCurrency(store),
       locale: store.markets[0]?.locale ?? "en",
     });
-    return { currency: mainCurrency(store), explanation, period, comparedWith, compare, basis: "Revenue before refunds, without VAT", notes };
+    return { currency: mainCurrency(store), explanation, period, comparedWith, compare, basis: words.basis, notes };
   });
 }

@@ -7,6 +7,8 @@ import { FinanceView, type FinancePeriodData } from "@/components/admin/analytic
 import { GiftCardsView } from "@/components/admin/analytics/gift-cards-view";
 import { PaymentsView } from "@/components/admin/analytics/payments-view";
 import { TermsOwedView } from "@/components/admin/analytics/terms-owed-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { financeStatement } from "@/lib/analytics-finance";
 import { bucketFor, type AnalyticsPeriod } from "@/lib/analytics-period";
@@ -23,7 +25,8 @@ export const metadata: Metadata = { title: "Finance" };
 /** One period's totals with its statement worked out, as the view takes them. */
 async function periodData(ctx: AnalyticsContext, period: AnalyticsPeriod): Promise<FinancePeriodData> {
   const { totals, unconverted, missingCurrencies } = await periodTotals(ctx.store, period, ctx.settings);
-  return { label: period.label, totals, statement: financeStatement(totals, ctx.settings, period.days), unconverted, missingCurrencies };
+  const words = adminText(ctx.lang, "finance").statement;
+  return { label: period.label, totals, statement: financeStatement(totals, ctx.settings, period.days, words), unconverted, missingCurrencies };
 }
 
 /**
@@ -36,7 +39,8 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   // Sales analytics are part of the online shop (D178 step 5): hidden while it is off; traffic stays.
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
-  const { store, settings } = ctx;
+  const { store, settings, locale } = ctx;
+  const words = adminText(ctx.lang, "finance");
   const { period, compare } = ctx.params;
   const against = compare.previous ?? compare.lastYear;
   const bucket = bucketFor(period);
@@ -57,18 +61,14 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   ]);
 
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
-        <AnalyticsHeader
-          ctx={ctx}
-          path="/analytics/finance"
-          title="Finance"
-          description="How much of what the store sells is left after what it costs, where the rest goes, and how far these figures can be trusted."
-        />
+        <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={words.pages.financeDescription} />
         <FinanceView
           base={ctx.base}
           currency={mainCurrency(store)}
-          locale={store.markets[0]?.locale ?? "en"}
+          locale={locale}
           isOwner={ctx.owner}
           current={current}
           comparison={comparison && compare.mode !== "none" ? { mode: compare.mode, data: comparison } : null}
@@ -76,11 +76,13 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           series={series}
           comparisonSeries={comparisonSeries}
           setup={setup}
+          words={words}
         />
-        <PaymentsView currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} report={payments} />
-        <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={store.markets[0]?.locale ?? "en"} owed={owed} />
-        <GiftCardsView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} lines={giftCards.lines} />
+        <PaymentsView currency={mainCurrency(store)} locale={locale} report={payments} words={words} />
+        <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={locale} owed={owed} words={words} />
+        <GiftCardsView base={ctx.base} locale={locale} lines={giftCards.lines} words={words} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

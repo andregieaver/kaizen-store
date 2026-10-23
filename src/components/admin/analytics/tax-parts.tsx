@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { TAX_VIEWS, TAX_VIEW_LABEL, type ExportFormKind, type TaxViewId } from "@/lib/tax-admin";
+import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
+import { TAX_VIEWS, type ExportFormKind, type TaxViewId } from "@/lib/tax-admin";
 
 import { Note } from "./section";
 
@@ -13,21 +14,21 @@ import { Note } from "./section";
  */
 
 /** The line every view starts with and every file carries: whose figures these are, and what they are not. */
-export const NOT_A_RETURN = "These are your own figures, made from your invoices and credit notes, for you and your accountant. They are not a tax return and Kaizena Flow files nothing.";
+export const NOT_A_RETURN = taxReportsEn.parts.notReturn;
 
-export function TaxStatement({ children }: { children?: ReactNode }) {
+export function TaxStatement({ children, words = taxReportsEn }: { children?: ReactNode; words?: TaxReportsMessages }) {
   return (
-    <Note tone="warning" title="Not a tax return">
-      <p>{NOT_A_RETURN}</p>
+    <Note tone="warning" title={words.parts.notReturnTitle}>
+      <p>{words.parts.notReturn}</p>
       {children}
     </Note>
   );
 }
 
 /** The three views as tabs: links, so each is an address of its own. */
-export function TaxViewTabs({ current, hrefs }: { current: TaxViewId; hrefs: Record<TaxViewId, string> }) {
+export function TaxViewTabs({ current, hrefs, words = taxReportsEn }: { current: TaxViewId; hrefs: Record<TaxViewId, string>; words?: TaxReportsMessages }) {
   return (
-    <nav aria-label="Report" className="flex flex-wrap gap-1">
+    <nav aria-label={words.parts.tabsLabel} className="flex flex-wrap gap-1">
       {TAX_VIEWS.map((id) => (
         <Link
           key={id}
@@ -35,7 +36,7 @@ export function TaxViewTabs({ current, hrefs }: { current: TaxViewId; hrefs: Rec
           aria-current={id === current ? "page" : undefined}
           className={`inline-flex h-9 items-center rounded-panel border px-3 text-sm ${id === current ? "border-brand bg-sunken font-medium" : "border-line"}`}
         >
-          {TAX_VIEW_LABEL[id]}
+          {words.parts.views[id]}
         </Link>
       ))}
     </nav>
@@ -67,6 +68,6 @@ export function ExportButton({ base, kind, fields, children, disabled = false, p
 }
 
 /** What a member who may only read sees in place of the export buttons. */
-export function ExportsNeedWrite() {
-  return <p className="text-sm text-muted">Exports need the analytics role with write access.</p>;
+export function ExportsNeedWrite({ words = taxReportsEn }: { words?: TaxReportsMessages }) {
+  return <p className="text-sm text-muted">{words.parts.needWrite}</p>;
 }

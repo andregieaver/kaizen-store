@@ -1,4 +1,7 @@
-import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
+import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
+import { financeNumbers } from "@/lib/finance-words";
 import type { RefundsReport } from "@/server/analytics-refunds-data";
 
 import { HorizontalBars, type BarRow } from "./charts";
@@ -21,40 +24,39 @@ export type RefundsViewProps = {
   report: RefundsReport;
   /** Market codes to names, for the table by market; a code without a name is shown as it is. */
   marketNames?: Readonly<Record<string, string>>;
-};
-
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-
-const HELP = {
-  refunded: "Money paid back to shoppers in this period, without VAT, dated by the day of the refund (not the day of the order).",
-  rate: "Refund rate: money refunded in the period divided by the revenue of the period, both without VAT.",
-  orders: "Of the paid orders placed in this period, the share that has had a refund so far. It keeps growing while refunds for these orders arrive.",
+  /** The words in the admin's language (D312 A9); English unless given. */
+  words?: FinanceMessages;
 };
 
 /** The four cards: how much, as a share of sales, how many orders, how many refunds. */
-export function refundCards({ currency, locale, report: r }: RefundsViewProps): KpiCardProps[] {
+export function refundCards({ currency, locale, report: r, words = financeEn }: RefundsViewProps): KpiCardProps[] {
+  const w = words.refunds;
+  const HELP = w.help;
+  const pct = financeNumbers(words).percent;
   const money = safeMoney(currency, locale);
-  const refundsWord = plural(r.refunds, "refund", "refunds");
   return [
     {
-      label: "Refunded",
+      label: w.refunded,
       value: money(r.refundsMinor),
       emphasis: true,
       good: "down",
       help: HELP.refunded,
-      hint: r.refunds === 0 ? "No refund was made from Kaizena Flow in this period." : `${formatCount(r.refunds)} ${refundsWord} for ${formatCount(r.refundedOrders)} ${plural(r.refundedOrders, "order", "orders")}.`,
+      hint:
+        r.refunds === 0
+          ? w.noneMade
+          : fillWords(w.made, { refunds: countWords(r.refunds, w.refundsN, { n: formatCount(r.refunds) }), orders: countWords(r.refundedOrders, w.ordersN, { n: formatCount(r.refundedOrders) }) }),
     },
     r.refundRate === null
-      ? { label: "Refund rate", value: null, state: "missing", missing: { text: "There was no revenue in this period, so there is nothing to compare refunds with." }, help: HELP.rate }
-      : { label: "Refund rate", value: formatPercent(r.refundRate), good: "down", help: HELP.rate, hint: `${money(r.refundsMinor)} refunded out of ${money(r.revenueMinor)} of revenue.` },
+      ? { label: w.rate, value: null, state: "missing", missing: { text: w.rateMissing }, help: HELP.rate }
+      : { label: w.rate, value: pct(r.refundRate), good: "down", help: HELP.rate, hint: fillWords(w.rateHint, { refunded: money(r.refundsMinor), revenue: money(r.revenueMinor) }) },
     r.cohort.share === null
-      ? { label: "Orders with a refund", value: null, state: "missing", missing: { text: "No order was paid in this period." }, help: HELP.orders }
+      ? { label: w.withRefund, value: null, state: "missing", missing: { text: w.withRefundMissing }, help: HELP.orders }
       : {
-          label: "Orders with a refund",
-          value: formatPercent(r.cohort.share),
+          label: w.withRefund,
+          value: pct(r.cohort.share),
           good: "down",
           help: HELP.orders,
-          hint: `${formatCount(r.cohort.refundedOrders)} of ${formatCount(r.cohort.orders)} orders placed in this period, so far.`,
+          hint: fillWords(w.withRefundHint, { refunded: formatCount(r.cohort.refundedOrders), orders: formatCount(r.cohort.orders) }),
         },
   ];
 }
@@ -62,7 +64,9 @@ export function refundCards({ currency, locale, report: r }: RefundsViewProps): 
 export const marketName = (names: RefundsViewProps["marketNames"], code: string) => names?.[code] ?? names?.[code.toUpperCase()] ?? code;
 
 export function RefundsView(props: RefundsViewProps) {
-  const { currency, locale, report: r, marketNames } = props;
+  const { currency, locale, report: r, marketNames, words = financeEn } = props;
+  const w = words.refunds;
+  const pct = financeNumbers(words).percent;
   const money = safeMoney(currency, locale);
   const none = r.refunds === 0;
 
@@ -71,51 +75,51 @@ export function RefundsView(props: RefundsViewProps) {
     label: x.label,
     value: x.valueMinor,
     valueText: money(x.valueMinor),
-    detail: `${formatCount(x.refunds)} ${plural(x.refunds, "refund", "refunds")}${x.share === null ? "" : `, ${formatPercent(x.share)}`}`,
+    detail: `${countWords(x.refunds, w.refundsN, { n: formatCount(x.refunds) })}${x.share === null ? "" : `, ${pct(x.share)}`}`,
   }));
   if (r.other.reasons > 0) {
     reasonRows.push({
       key: "other",
-      label: `${formatCount(r.other.reasons)} other ${plural(r.other.reasons, "reason", "reasons")}`,
+      label: countWords(r.other.reasons, w.otherReasons, { n: formatCount(r.other.reasons) }),
       value: r.other.valueMinor,
       valueText: money(r.other.valueMinor),
-      detail: `${formatCount(r.other.refunds)} ${plural(r.other.refunds, "refund", "refunds")}`,
+      detail: countWords(r.other.refunds, w.refundsN, { n: formatCount(r.other.refunds) }),
       colorIndex: 99,
     });
   }
 
   const productColumns: Column<RefundsReport["products"][number]>[] = [
-    { key: "product", label: "Product", cell: (p) => <span title={p.name}>{p.name}</span> },
-    { key: "value", label: "Refunded", align: "right", cell: (p) => money(p.valueMinor) },
-    { key: "share", label: "Share of refunds", align: "right", cell: (p) => <ShareBar share={p.share} text={formatPercent(p.share)} label="Share of the period's refunds" /> },
-    { key: "refunds", label: "Refunds", align: "right", cell: (p) => formatCount(p.refunds) },
+    { key: "product", label: w.product, cell: (p) => <span title={p.name}>{p.name}</span> },
+    { key: "value", label: w.refunded, align: "right", cell: (p) => money(p.valueMinor) },
+    { key: "share", label: w.shareOfRefunds, align: "right", cell: (p) => <ShareBar share={p.share} text={pct(p.share)} label={w.shareLabel} /> },
+    { key: "refunds", label: w.refundsColumn, align: "right", cell: (p) => formatCount(p.refunds) },
     {
       key: "restocked",
-      label: "Back in stock",
+      label: w.restocked,
       align: "right",
-      cell: (p) => (p.productId === null ? <span title="Not a product with stock">{NO_FIGURE}</span> : <span title="Units staff put back into stock when refunding">{formatCount(p.restockedUnits)}</span>),
+      cell: (p) => (p.productId === null ? <span title={w.notStock}>{NO_FIGURE}</span> : <span title={w.restockedTitle}>{formatCount(p.restockedUnits)}</span>),
     },
   ];
 
   const segmentColumns: Column<RefundsReport["segments"][number]>[] = [
-    { key: "segment", label: "Customer", cell: (s) => s.label },
-    { key: "value", label: "Refunded", align: "right", cell: (s) => money(s.valueMinor) },
-    { key: "share", label: "Share of refunds", align: "right", cell: (s) => <ShareBar share={s.share} text={formatPercent(s.share)} /> },
-    { key: "refunds", label: "Refunds", align: "right", cell: (s) => formatCount(s.refunds) },
-    { key: "orders", label: "Orders", align: "right", cell: (s) => formatCount(s.orders) },
+    { key: "segment", label: w.customer, cell: (s) => s.label },
+    { key: "value", label: w.refunded, align: "right", cell: (s) => money(s.valueMinor) },
+    { key: "share", label: w.shareOfRefunds, align: "right", cell: (s) => <ShareBar share={s.share} text={pct(s.share)} /> },
+    { key: "refunds", label: w.refundsColumn, align: "right", cell: (s) => formatCount(s.refunds) },
+    { key: "orders", label: w.orders, align: "right", cell: (s) => formatCount(s.orders) },
   ];
 
   const marketColumns: Column<RefundsReport["markets"][number]>[] = [
-    { key: "market", label: "Market", cell: (m) => marketName(marketNames, m.market) },
-    { key: "value", label: "Refunded", align: "right", cell: (m) => money(m.valueMinor) },
-    { key: "refunds", label: "Refunds", align: "right", cell: (m) => formatCount(m.refunds) },
-    { key: "orders", label: "Orders refunded", align: "right", cell: (m) => formatCount(m.orders) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (m) => money(m.revenueMinor) },
+    { key: "market", label: w.market, cell: (m) => marketName(marketNames, m.market) },
+    { key: "value", label: w.refunded, align: "right", cell: (m) => money(m.valueMinor) },
+    { key: "refunds", label: w.refundsColumn, align: "right", cell: (m) => formatCount(m.refunds) },
+    { key: "orders", label: w.ordersRefunded, align: "right", cell: (m) => formatCount(m.orders) },
+    { key: "revenue", label: w.revenue, align: "right", cell: (m) => money(m.revenueMinor) },
     {
       key: "rate",
-      label: "Refund rate",
+      label: w.rate,
       align: "right",
-      cell: (m) => (m.rate === null ? <span title="No revenue in this market in this period">{NO_FIGURE}</span> : formatPercent(m.rate)),
+      cell: (m) => (m.rate === null ? <span title={w.noRevenueMarket}>{NO_FIGURE}</span> : pct(m.rate)),
     },
   ];
 
@@ -125,10 +129,10 @@ export function RefundsView(props: RefundsViewProps) {
   return (
     <AnalyticsSection
       id="refunds"
-      title="Refunds"
-      description="How much was given back, how it compares with what was sold, and why. Without VAT, dated by the day of the refund."
+      title={w.title}
+      description={w.description}
     >
-      <Note title="Refunds made only at your payment provider are not seen">{r.notSeenNote}</Note>
+      <Note title={w.notSeen}>{r.notSeenNote}</Note>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {refundCards(props).map((c) => (
           <KpiCard key={c.label} {...c} />
@@ -146,31 +150,31 @@ export function RefundsView(props: RefundsViewProps) {
 
       {none ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          No refund was made from Kaizena Flow in this period, so there are no reasons, products or markets to show.
+          {w.none}
         </div>
       ) : (
         <>
           <div className="grid gap-4 2xl:grid-cols-2">
-            <ChartCard title="Why money was refunded" description="The reasons staff wrote, grouped when they read the same. A refund with no reason written is counted as such.">
-              <HorizontalBars label="Refunded amount by reason" rows={reasonRows} emptyText="No reasons to show." exportId="traffic.refund_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+            <ChartCard title={w.whyTitle} description={w.whyDescription}>
+              <HorizontalBars label={w.whyLabel} rows={reasonRows} emptyText={w.noReasons} exportId="traffic.refund_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </ChartCard>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">Most refunded products</h3>
-              <p className="text-xs text-muted">Each refund is shared over the products on its order by what they were sold for, so the products add up to the refunds.</p>
-              <DataTable caption="The most refunded products with the value refunded, its share, the number of refunds and the units put back in stock" columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} exportId="traffic.refund_products" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
-              {r.productCount > r.products.length ? <p className="text-xs text-muted">{`Showing ${formatCount(r.products.length)} of ${formatCount(r.productCount)} products.`}</p> : null}
+              <h3 className="text-body-strong text-ink">{w.productsTitle}</h3>
+              <p className="text-xs text-muted">{w.productsNote}</p>
+              <DataTable caption={w.productsCaption} columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} exportId="traffic.refund_products" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+              {r.productCount > r.products.length ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
             </div>
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">New and returning customers</h3>
-              <p className="text-xs text-muted">A new customer is one whose first paid order is in this period.</p>
-              <DataTable caption="Refunds by new and returning customers" columns={segmentColumns} rows={segments} rowKey={(s) => s.segment} exportId="traffic.refund_segments" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+              <h3 className="text-body-strong text-ink">{w.segmentsTitle}</h3>
+              <p className="text-xs text-muted">{w.segmentsNote}</p>
+              <DataTable caption={w.segmentsCaption} columns={segmentColumns} rows={segments} rowKey={(s) => s.segment} exportId="traffic.refund_segments" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-body-strong text-ink">By market</h3>
-              <p className="text-xs text-muted">The refund rate is the market&apos;s refunds over its own revenue in this period.</p>
-              <DataTable caption="Refunds and refund rate by market" columns={marketColumns} rows={r.markets} rowKey={(m) => m.market} exportId="traffic.refund_markets" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
+              <h3 className="text-body-strong text-ink">{w.marketsTitle}</h3>
+              <p className="text-xs text-muted">{w.marketsNote}</p>
+              <DataTable caption={w.marketsCaption} columns={marketColumns} rows={r.markets} rowKey={(m) => m.market} exportId="traffic.refund_markets" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
           </div>
         </>

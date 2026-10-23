@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
+
 import { AlertsSection } from "./alerts";
 import {
   ChannelsSection,
@@ -12,6 +14,8 @@ import {
   type OverviewFrame,
 } from "./overview-sections";
 import type { OverviewDiagnosis, OverviewForecast, OverviewTarget } from "./overview-text";
+import { analyticsDateLocale } from "@/lib/analytics-lang";
+import { analyticsWords } from "@/lib/analytics-words";
 import type { AnalyticsContext } from "@/server/analytics-context";
 import { alertsForStore, diagnosisFor, forecastForStore, monthTargetMinor, targetFrom, type StoreDiagnosis, type StoreForecast } from "@/server/analytics-insights";
 import type { OverviewReads } from "@/server/analytics-overview-reads";
@@ -42,8 +46,8 @@ export async function Streamed<T>({ id, title, load, children }: { id: string; t
   return <>{children(value)}</>;
 }
 
-const MONTH_NAME = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const monthLabel = (monthStart: string) => MONTH_NAME.format(new Date(`${monthStart}T00:00:00Z`));
+/** "October 2026", in the request's language (D312 A9). */
+const monthLabel = (monthStart: string) => new Intl.DateTimeFormat(analyticsDateLocale(), { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthStart}T00:00:00Z`));
 
 /** The forecast as the view takes it (words for the month; nothing from the server module's own types). */
 export function forecastView(f: StoreForecast | null): OverviewForecast | null {
@@ -55,7 +59,7 @@ export function diagnosisView(d: StoreDiagnosis | null): OverviewDiagnosis | nul
   if (!d) return null;
   return {
     explanation: d.explanation,
-    comparedWith: `${d.compare === "year" ? "the same period last year" : "the previous period"} (${d.comparedWith.label})`,
+    comparedWith: fillWords(analyticsWords().overview.why.against, { what: d.compare === "year" ? analyticsWords().compare.theLastYear : analyticsWords().compare.thePrevious, label: d.comparedWith.label }),
     basis: d.basis,
     notes: d.notes,
   };
@@ -64,7 +68,7 @@ export function diagnosisView(d: StoreDiagnosis | null): OverviewDiagnosis | nul
 /** What needs you today. Never throws on its own; an empty list draws nothing. */
 export function AlertsStream({ ctx, frame, reads }: StreamProps) {
   return (
-    <Streamed id="overview-today" title="Needs you today" load={() => alertsForStore(ctx.store, ctx.now, { history: reads.history() })}>
+    <Streamed id="overview-today" title={analyticsWords().alerts.todayTitle} load={() => alertsForStore(ctx.store, ctx.now, { history: reads.history() })}>
       {(alerts) => <AlertsSection alerts={alerts} base={frame.base} />}
     </Streamed>
   );
@@ -78,7 +82,7 @@ export function TargetStream({ ctx, frame, reads }: StreamProps) {
     return { monthLabel: monthLabel(`${history.today.slice(0, 7)}-01`), progress: targetFrom(history, target) };
   };
   return (
-    <Streamed id="overview-target" title="Target" load={load}>
+    <Streamed id="overview-target" title={analyticsWords().overview.sections.target} load={load}>
       {(target) => <TargetSection frame={frame} target={target} />}
     </Streamed>
   );
@@ -86,7 +90,7 @@ export function TargetStream({ ctx, frame, reads }: StreamProps) {
 
 export function ForecastStream({ ctx, frame, reads }: StreamProps) {
   return (
-    <Streamed id="overview-forecast" title="Forecast" load={async () => forecastView(await forecastForStore(ctx.store, ctx.now, { history: reads.history() }))}>
+    <Streamed id="overview-forecast" title={analyticsWords().overview.sections.forecast} load={async () => forecastView(await forecastForStore(ctx.store, ctx.now, { history: reads.history() }))}>
       {(forecast) => <ForecastSection frame={frame} forecast={forecast} />}
     </Streamed>
   );
@@ -95,7 +99,7 @@ export function ForecastStream({ ctx, frame, reads }: StreamProps) {
 /** Why sales changed; the traffic and marketing reports it reads are the funnel's and the channels', read once. */
 export function DiagnosisStream({ ctx, frame, reads }: StreamProps) {
   return (
-    <Streamed id="overview-why" title="Why did sales change?" load={async () => diagnosisView(await diagnosisFor(ctx.store, ctx.params, ctx.now, reads))}>
+    <Streamed id="overview-why" title={analyticsWords().overview.why.title} load={async () => diagnosisView(await diagnosisFor(ctx.store, ctx.params, ctx.now, reads))}>
       {(diagnosis) => <DiagnosisSection frame={frame} diagnosis={diagnosis} />}
     </Streamed>
   );
@@ -103,7 +107,7 @@ export function DiagnosisStream({ ctx, frame, reads }: StreamProps) {
 
 export function FunnelStream({ ctx, frame, reads }: StreamProps) {
   return (
-    <Streamed id="overview-funnel" title="From visit to purchase" load={() => reads.traffic(ctx.params.period)}>
+    <Streamed id="overview-funnel" title={analyticsWords().overview.funnel.title} load={() => reads.traffic(ctx.params.period)}>
       {(traffic) => <FunnelSection frame={frame} traffic={traffic} />}
     </Streamed>
   );
@@ -111,7 +115,7 @@ export function FunnelStream({ ctx, frame, reads }: StreamProps) {
 
 export function ProductsStream({ ctx, frame }: StreamProps) {
   return (
-    <Streamed id="overview-products" title="Best sellers" load={() => topProducts(ctx.store, ctx.params.period)}>
+    <Streamed id="overview-products" title={analyticsWords().overview.products.title} load={() => topProducts(ctx.store, ctx.params.period)}>
       {(top) => <ProductsSection frame={frame} top={top} />}
     </Streamed>
   );
@@ -119,7 +123,7 @@ export function ProductsStream({ ctx, frame }: StreamProps) {
 
 export function ChannelsStream({ ctx, frame, reads }: StreamProps) {
   return (
-    <Streamed id="overview-channels" title="Where sales come from" load={() => reads.marketing(ctx.params.period)}>
+    <Streamed id="overview-channels" title={analyticsWords().overview.channels.title} load={() => reads.marketing(ctx.params.period)}>
       {(marketing) => <ChannelsSection frame={frame} marketing={marketing} />}
     </Streamed>
   );

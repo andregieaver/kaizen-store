@@ -3,6 +3,9 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 import { ANALYTICS_TABLES, downloadLabel, OWNER_ONLY_TABLES } from "@/lib/analytics-export";
+import { fillWords } from "@/lib/admin-fill";
+
+import { useAdminText } from "../admin-text";
 
 /**
  * The Download CSV button of the analytics tables (D165, `docs/wave-2-data.md` 2.8). A page wraps what it draws in `<ExportScope>` with the
@@ -30,8 +33,9 @@ export type LeftOut = { orders: number; currencies: readonly string[] };
 /** One table's download: the label repeats what the page leaves out (a currency with no rate), so the file never states more than the page does. */
 export function ExportButton({ exportId, leftOut }: { exportId: string; leftOut?: LeftOut | null }) {
   const scope = useContext(ExportContext);
+  const w = useAdminText("analytics").exportButton;
   if (!scope || !scope.canExport || (OWNER_ONLY_TABLES.has(exportId) && !scope.owner)) return null;
-  const label = downloadLabel(leftOut ?? { orders: 0, currencies: [] });
+  const label = downloadLabel(leftOut ?? { orders: 0, currencies: [] }, w);
   const caption = ANALYTICS_TABLES[exportId]?.caption;
   return (
     <form method="post" action={scope.action} className="inline-flex" data-export-form={exportId}>
@@ -39,7 +43,7 @@ export function ExportButton({ exportId, leftOut }: { exportId: string; leftOut?
       <input type="hidden" name="query" value={scope.query} />
       <button type="submit" className="text-xs font-medium text-(--brand-text) underline-offset-2 hover:underline">
         {label}
-        {caption ? <span className="sr-only">{` for: ${caption}`}</span> : null}
+        {caption ? <span className="sr-only">{fillWords(w.forCaption, { caption })}</span> : null}
       </button>
     </form>
   );

@@ -1,4 +1,7 @@
 import Link from "next/link";
+
+import { fillWords } from "@/lib/admin-fill";
+import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import type { ReactNode } from "react";
 
 import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
@@ -213,10 +216,8 @@ export function moneyOf(
   };
 }
 
-/** "1 variant", "3 variants". */
-function countOf(n: number, one: string, many = `${one}s`): string {
-  return `${formatCount(n)} ${n === 1 ? one : many}`;
-}
+export type InventoryWords = ReportsMessages["inventory"];
+const cnt = (n: number, pair: { one: string; many: string }) => `${formatCount(n)} ${n === 1 ? pair.one : pair.many}`;
 
 /** Units per day, up to two decimals ("0.43"); the dash when it cannot be known. */
 export function perDayOf(): (n: number | null | undefined) => string {
@@ -224,17 +225,18 @@ export function perDayOf(): (n: number | null | undefined) => string {
 }
 
 /** How long stock lasts, in words: "6 days", "under a day"; the dash when it cannot be known. */
-export function daysText(days: number | null | undefined): string {
+export function daysText(days: number | null | undefined, w: InventoryWords = reportsEn.inventory): string {
   if (typeof days !== "number" || !Number.isFinite(days)) return NO_FIGURE;
-  if (days < 1) return "under a day";
+  if (days < 1) return w.underADay;
   const whole = Math.round(days);
-  return `${whole} ${whole === 1 ? "day" : "days"}`;
+  return `${whole} ${whole === 1 ? w.n.day.one : w.n.day.many}`;
 }
 
 /** One alert in a sentence: "Ethiopian Coffee 1kg: estimated stockout in 6 days". */
-export function alertText(alert: InventoryReport["alerts"][number]): string {
-  if (alert.kind === "out") return onBackorder(alert.row) ? `${alert.row.name}: on backorder${alert.row.owed > 0 ? `, ${alert.row.owed} owed` : ""}` : `${alert.row.name}: out of stock`;
-  return `${alert.row.name}: estimated stockout in ${alert.days < 1 ? "less than a day" : daysText(alert.days)}`;
+export function alertText(alert: InventoryReport["alerts"][number], w: InventoryWords = reportsEn.inventory): string {
+  const name = alert.row.name;
+  if (alert.kind === "out") return onBackorder(alert.row) ? `${fillWords(w.alertBackorder, { name })}${alert.row.owed > 0 ? fillWords(w.alertOwed, { n: String(alert.row.owed) }) : ""}` : fillWords(w.alertOut, { name });
+  return fillWords(w.alertSoon, { name, days: alert.days < 1 ? w.lessThanADay : daysText(alert.days, w) });
 }
 
 const PILL: Record<
@@ -273,26 +275,11 @@ export const STATUS_LABEL: Record<StockStatus, string> = {
   untracked: PILL.untracked.label,
 };
 
-/** A variant that keeps selling with nothing on hand: still `out` in every count, worded as what it is (D172). */
-const BACKORDER_LABEL = "On backorder";
-const BACKORDER_HELP = "Nothing is on hand, and the variant keeps selling with a stated delivery time. Units paid orders still wait for are shown under On hand.";
-
-/** Words for the filter's choices and for an empty table under each. */
-const FILTER_COPY: Record<StatusFilter, { label: string; empty: string }> = {
-  out: { label: "Out of stock", empty: "No variant is out of stock." },
-  low: { label: "Running low", empty: "No variant is running low." },
-  dead: { label: "Not selling", empty: "No variant counts as dead stock." },
-  ok: {
-    label: "In stock",
-    empty: "No variant is in stock and selling normally.",
-  },
-};
-
-function lastSoldText(r: InventoryReportRow): string {
+function lastSoldText(r: InventoryReportRow, w: InventoryWords): string {
   if (r.lastSoldDaysAgo === null)
-    return r.ageDays < 365 ? "Never" : "Over a year ago";
-  if (r.lastSoldDaysAgo === 0) return "Today";
-  return `${formatCount(r.lastSoldDaysAgo)} ${r.lastSoldDaysAgo === 1 ? "day" : "days"} ago`;
+    return r.ageDays < 365 ? w.never : w.overAYear;
+  if (r.lastSoldDaysAgo === 0) return w.today;
+  return fillWords(w.daysAgo, { days: cnt(r.lastSoldDaysAgo, w.n.day) });
 }
 
 // ---------------------------------------------------------------------------
@@ -306,13 +293,15 @@ export function InventoryView({
   status,
   sort,
   showAll,
-}: InventoryViewProps) {
+  words: w = reportsEn.inventory,
+}: InventoryViewProps & { words?: InventoryWords }) {
+  const pill = (s: StockStatus) => ({ tone: PILL[s].tone, label: w.pill[s].label, help: fillWords(w.pill[s].help, { days: String(s === "low" ? LOW_STOCK_DAYS : DEAD_STOCK_DAYS) }) });
   const money = moneyOf(report.currency, locale);
   const perDay = perDayOf();
   const path = `${base}/analytics/inventory`;
   const productHref = (id: string) => `${base}/products/${id}`;
   const costsAction = {
-    label: "Enter what your products cost",
+    label: w.enterCosts,
     href: `${base}/products`,
   };
   const { totals } = report;
@@ -321,10 +310,8 @@ export function InventoryView({
   const notes: ReactNode[] = [];
   if (report.readTruncated) {
     notes.push(
-      <Note key="read" tone="warning" title="Only part of the stock is counted">
-        This store has more stocked variants than one page can read. The figures
-        below cover the best sellers among them, so the totals may be a little
-        low.
+      <Note key="read" tone="warning" title={w.readTitle}>
+        {w.read}
       </Note>,
     );
   }
@@ -336,18 +323,15 @@ export function InventoryView({
         {notes.length > 0 ? <div className="space-y-3">{notes}</div> : null}
         <AnalyticsSection
           id="inv-empty"
-          title="No stock to follow yet"
-          description="This page follows physical products whose stock the store counts."
+          title={w.emptyTitle}
+          description={w.emptyDescription}
         >
           <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">No stocked products.</p>
+            <p className="font-medium text-ink">{w.emptyLead}</p>
             <p className="mx-auto mt-1 max-w-prose">
-              Once the store has a physical product with its stock set, this
-              page shows what is on hand and what it is worth, how fast each
-              variant sells, how many days it will last, and what is about to
-              run out or is not selling.{" "}
+              {w.emptyBody}{" "}
               <Link href={`${base}/products`} className={linkClass}>
-                Go to Products
+                {w.goToProducts}
               </Link>
             </p>
           </div>
@@ -360,13 +344,12 @@ export function InventoryView({
   const noSales30 = totals.sold30 === 0;
   if (noSales30) {
     notes.push(
-      <Note key="nosales" title="Nothing has sold in the last 30 days">
-        Without sales there is no pace to work days of stock left from, and
-        turnover needs a year of them, so those show a dash, not zero.
+      <Note key="nosales" title={w.noSalesTitle}>
+        {w.noSales}
         {totals.sellThrough30 !== null
-          ? " Sell-through is 0 % because nothing sold."
+          ? w.sellThroughZero
           : ""}{" "}
-        Stock levels and what is tied up in stock are shown as normal.
+        {w.levelsNormal}
       </Note>,
     );
   }
@@ -379,16 +362,11 @@ export function InventoryView({
         }
         title={
           value.coverage !== null && value.coverage > 0
-            ? `Stock value covers ${formatPercent(value.coverage, 0)} of the units on hand`
-            : "Product costs are not entered"
+            ? fillWords(w.valueCovers, { share: formatPercent(value.coverage, 0) })
+            : w.costsNotEntered
         }
       >
-        {countOf(value.unitsWithoutCost, "unit")} on hand{" "}
-        {value.unitsWithoutCost === 1 ? "has" : "have"} no cost, so{" "}
-        {value.unitsWithoutCost === 1 ? "it is" : "they are"} left out of the
-        stock value and of what is tied up in dead stock.{" "}
-        {value.unitsWithoutCost === 1 ? "It is" : "They are"} not valued at
-        zero.{" "}
+        {fillWords(value.unitsWithoutCost === 1 ? w.noCostOne : w.noCostMany, { units: cnt(value.unitsWithoutCost, w.n.unit) })}{" "}
         <Link href={costsAction.href} className={linkClass}>
           {costsAction.label}
         </Link>
@@ -404,76 +382,75 @@ export function InventoryView({
   const alertItem = (a: InventoryReport["alerts"][number]) => (
     <li key={a.row.variantId} className="flex items-start gap-2">
       <StatusPill tone={a.kind === "out" ? "bad" : "warning"}>
-        {a.kind === "out" ? "Out" : "Soon"}
+        {a.kind === "out" ? w.alertOutPill : w.alertSoonPill}
       </StatusPill>
       <span className="min-w-0">
         <Link
           href={productHref(a.row.productId)}
           className={`${linkClass} break-words`}
         >
-          {alertText(a)}
+          {alertText(a, w)}
         </Link>
-        <span className="block text-xs text-muted">{`Sold ${formatCount(a.row.sold30)} in the last 30 days, ${formatCount(a.row.sold7)} in the last 7. ${a.kind === "out" ? (onBackorder(a.row) ? "Nothing on hand, and it keeps selling on backorder." : "Nothing on hand.") : `${formatCount(a.row.onHand)} on hand.`}`}</span>
+        <span className="block text-xs text-muted">{`${fillWords(w.alertSold, { n30: formatCount(a.row.sold30), n7: formatCount(a.row.sold7) })}${a.kind === "out" ? (onBackorder(a.row) ? w.alertBackorderNote : w.alertNothing) : fillWords(w.alertOnHand, { n: formatCount(a.row.onHand) })}`}</span>
       </span>
     </li>
   );
 
   // ---- the three things first ----
-  const valueHelp =
-    "What the stock on hand cost you: units on hand times what one unit costs. Stock with no cost entered is not included.";
+  const valueHelp = w.valueHelp;
   const valueCard: KpiCardProps =
     value.units === 0
       ? {
-          label: "Stock value at cost",
+          label: w.valueLabel,
           value: null,
           state: "missing",
           help: valueHelp,
           missing: {
-            text: "Nothing is on hand, so there is no stock to value.",
+            text: w.valueNothing,
           },
         }
       : value.coverage !== null && value.coverage <= 0
         ? {
-            label: "Stock value at cost",
+            label: w.valueLabel,
             value: null,
             state: "missing",
             help: valueHelp,
             missing: {
-              text: "Product costs are not entered, so the stock cannot be valued.",
+              text: w.valueNoCosts,
               action: costsAction,
             },
           }
         : {
-            label: "Stock value at cost",
+            label: w.valueLabel,
             value: money(value.valueMinor),
             help: valueHelp,
             hint:
               value.coverage !== null && value.coverage < 1
-                ? `Based on ${formatPercent(value.coverage, 0)} of ${countOf(value.units, "unit")} on hand`
-                : `${countOf(value.units, "unit")} on hand in ${countOf(totals.variants, "variant")}`,
+                ? fillWords(w.valueBasedOn, { share: formatPercent(value.coverage, 0), units: cnt(value.units, w.n.unit) })
+                : fillWords(w.valueUnits, { units: cnt(value.units, w.n.unit), variants: cnt(totals.variants, w.n.variant) }),
             emphasis: true,
           };
 
   const outCard: KpiCardProps = {
-    label: "Out of stock",
+    label: w.outLabel,
     value: formatCount(totals.out),
-    help: "Variants with nothing left on hand.",
+    help: w.outHelp,
     hint:
       totals.out === 0
-        ? "Everything is in stock."
+        ? w.outNone
         : totals.out === 1
-          ? "1 variant has nothing on hand."
-          : `${formatCount(totals.out)} variants have nothing on hand.`,
+          ? w.outOne
+          : fillWords(w.outMany, { n: formatCount(totals.out) }),
     href: `${path}?status=out#variants`,
   };
   const lowCard: KpiCardProps = {
-    label: "Running low",
+    label: w.lowLabel,
     value: formatCount(totals.low),
-    help: `Variants at or below the warning level you set for them, or that last ${LOW_STOCK_DAYS} days or less at the current pace of sales (a variant with a level of its own is judged by the level, and not by the pace).`,
+    help: fillWords(w.lowHelp, { days: String(LOW_STOCK_DAYS) }),
     hint:
       totals.belowLevel > 0
-        ? `${countOf(totals.belowLevel, "variant")} at or below the level you set, and the rest last ${LOW_STOCK_DAYS} days or less at today's pace.`
-        : `At or below the level you set, or lasts ${LOW_STOCK_DAYS} days or less at today's pace.`,
+        ? fillWords(w.lowHintLevel, { variants: cnt(totals.belowLevel, w.n.variant), days: String(LOW_STOCK_DAYS) })
+        : fillWords(w.lowHint, { days: String(LOW_STOCK_DAYS) }),
     href: `${path}?status=low#variants`,
   };
 
@@ -482,13 +459,13 @@ export function InventoryView({
   const backorderCard: KpiCardProps | null =
     totals.owedUnits > 0 || totals.onBackorder > 0
       ? {
-          label: "Owed on backorder",
+          label: w.owedLabel,
           value: formatCount(totals.owedUnits),
-          help: "Units that paid orders wait for and the store has not received: the backordered units of orders that are paid and not yet sent. Below-zero stock is this debt.",
+          help: w.owedHelp,
           hint:
             totals.onBackorder > 0
-              ? `${countOf(totals.onBackorder, "variant")} selling with nothing on hand.`
-              : "No variant is selling with nothing on hand now.",
+              ? fillWords(w.owedSelling, { variants: cnt(totals.onBackorder, w.n.variant) })
+              : w.owedNone,
           href: `${base}/inventory?status=backorder`,
         }
       : null;
@@ -501,29 +478,28 @@ export function InventoryView({
         .reduce((s, r) => s + r.onHand, 0);
   const deadHint =
     totals.dead === 0
-      ? "Nothing is sitting unsold."
+      ? w.deadNone
       : deadUnknown !== null && deadUnknown >= totals.deadUnits
-        ? `${countOf(totals.deadUnits, "unit")}. Costs are not entered, so what is tied up is not known.`
-        : `${countOf(totals.deadUnits, "unit")}, ${money(totals.deadValueMinor)} at cost${deadUnknown === null || deadUnknown > 0 ? " where the cost is known" : ""}.`;
+        ? fillWords(w.deadNoCosts, { units: cnt(totals.deadUnits, w.n.unit) })
+        : fillWords(w.deadValue, { units: cnt(totals.deadUnits, w.n.unit), money: money(totals.deadValueMinor), where: deadUnknown === null || deadUnknown > 0 ? w.whereKnown : "" });
   const deadCard: KpiCardProps = {
-    label: "Dead stock",
+    label: w.deadLabel,
     value: formatCount(totals.dead),
-    help: `Variants with stock on hand that have not sold for ${DEAD_STOCK_DAYS} days (or never sold, and have been on offer that long). Money tied up for nothing.`,
+    help: fillWords(w.deadHelp, { days: String(DEAD_STOCK_DAYS) }),
     hint: deadHint,
     href: `${path}?status=dead#variants`,
   };
 
-  const turnoverHelp =
-    "How many times the stock sells through in a year: what the goods sold in the last 365 days cost, divided by what the stock on hand costs now.";
+  const turnoverHelp = w.turnoverHelp;
   const turnoverCard: KpiCardProps = ((): KpiCardProps => {
-    const base0 = { label: "Stock turnover", help: turnoverHelp };
+    const base0 = { label: w.turnoverLabel, help: turnoverHelp };
     if (value.units === 0)
       return {
         ...base0,
         value: null,
         state: "missing",
         missing: {
-          text: "Nothing is on hand, so there is nothing to measure against.",
+          text: w.turnoverNothing,
         },
       };
     if (value.coverage !== null && value.coverage <= 0)
@@ -532,7 +508,7 @@ export function InventoryView({
         value: null,
         state: "missing",
         missing: {
-          text: "Product costs are not entered, so the stock has no value to measure against.",
+          text: w.turnoverNoCosts,
           action: costsAction,
         },
       };
@@ -541,7 +517,7 @@ export function InventoryView({
         ...base0,
         value: null,
         state: "missing",
-        missing: { text: "Nothing has sold in the last 365 days." },
+        missing: { text: w.turnoverNoSales },
       };
     if (totals.cogs365Coverage <= 0 || totals.turnover === null)
       return {
@@ -549,38 +525,37 @@ export function InventoryView({
         value: null,
         state: "missing",
         missing: {
-          text: "The goods sold had no cost entered, so what they cost is not known.",
+          text: w.turnoverNoCogs,
           action: costsAction,
         },
       };
     return {
       ...base0,
-      value: `${formatDecimal(totals.turnover, 1)} times a year`,
+      value: fillWords(w.timesAYear, { n: formatDecimal(totals.turnover, 1) }),
       hint:
         totals.cogs365Coverage < 1
-          ? `Based on the cost of ${formatPercent(totals.cogs365Coverage, 0)} of the units sold`
-          : "Cost of goods sold over the last 365 days against stock at cost.",
+          ? fillWords(w.turnoverBasedOn, { share: formatPercent(totals.cogs365Coverage, 0) })
+          : w.turnoverHint,
     };
   })();
 
-  const sellHelp =
-    "Units sold in the last 30 days as a share of units sold plus units still on hand. Higher means stock is moving.";
+  const sellHelp = w.sellHelp;
   const sellCard: KpiCardProps =
     totals.sellThrough30 === null
       ? {
-          label: "Sell-through, 30 days",
+          label: w.sellLabel,
           value: null,
           state: "missing",
           help: sellHelp,
           missing: {
-            text: "Nothing sold in the last 30 days and nothing is on hand.",
+            text: w.sellNone,
           },
         }
       : {
-          label: "Sell-through, 30 days",
+          label: w.sellLabel,
           value: formatPercent(totals.sellThrough30, 1),
           help: sellHelp,
-          hint: `${countOf(totals.sold30, "unit")} sold in the last 30 days.`,
+          hint: fillWords(w.sellHint, { units: cnt(totals.sold30, w.n.unit) }),
         };
 
   // ---- the table ----
@@ -597,7 +572,7 @@ export function InventoryView({
   const columns: Column<InventoryReportRow>[] = [
     {
       key: "name",
-      label: "Product",
+      label: w.cols.name,
       sortable: true,
       firstDir: "asc",
       cell: (r) => (
@@ -610,35 +585,35 @@ export function InventoryView({
             {r.name}
           </Link>
           {r.sku ? (
-            <span className="block text-xs text-muted">{`SKU ${r.sku}`}</span>
+            <span className="block text-xs text-muted">{fillWords(w.sku, { sku: r.sku })}</span>
           ) : null}
         </span>
       ),
     },
     {
       key: "status",
-      label: "Status",
+      label: w.cols.status,
       sortable: true,
       firstDir: "asc",
       cell: (r) => (
-        <span title={r.onBackorder ? BACKORDER_HELP : PILL[r.status].help}>
+        <span title={r.onBackorder ? w.backorderHelp : pill(r.status).help}>
           <StatusPill tone={r.onBackorder ? "warning" : PILL[r.status].tone}>
-            {r.onBackorder ? BACKORDER_LABEL : PILL[r.status].label}
+            {r.onBackorder ? w.backorderLabel : pill(r.status).label}
           </StatusPill>
         </span>
       ),
     },
     {
       key: "onHand",
-      label: "On hand",
+      label: w.cols.onHand,
       align: "right",
       sortable: true,
       cell: (r) =>
         r.owed > 0 || r.onHand < 0 ? (
-          <span title="Below zero is what the store still has to receive. Units owed are on paid orders that are not sent yet.">
+          <span title={w.belowZero}>
             {formatCount(r.onHand)}
             {r.owed > 0 ? (
-              <span className="block text-xs text-muted">{`${formatCount(r.owed)} owed`}</span>
+              <span className="block text-xs text-muted">{fillWords(w.owed, { n: formatCount(r.owed) })}</span>
             ) : null}
           </span>
         ) : (
@@ -647,29 +622,29 @@ export function InventoryView({
     },
     {
       key: "v7",
-      label: "Per day, 7 days",
+      label: w.cols.v7,
       align: "right",
       sortable: true,
       cell: (r) => (
-        <span title={`${formatCount(r.sold7)} sold in the last 7 days`}>
+        <span title={fillWords(w.sold7, { n: formatCount(r.sold7) })}>
           {perDay(r.velocity.v7)}
         </span>
       ),
     },
     {
       key: "v30",
-      label: "Per day, 30 days",
+      label: w.cols.v30,
       align: "right",
       sortable: true,
       cell: (r) => (
-        <span title={`${formatCount(r.sold30)} sold in the last 30 days`}>
+        <span title={fillWords(w.sold30, { n: formatCount(r.sold30) })}>
           {perDay(r.velocity.v30)}
         </span>
       ),
     },
     {
       key: "days",
-      label: "Days left",
+      label: w.cols.days,
       align: "right",
       sortable: true,
       firstDir: "asc",
@@ -678,19 +653,19 @@ export function InventoryView({
           <span
             title={
               r.sold30 === 0
-                ? "Nothing sold in the last 30 days, so it cannot be worked out"
-                : `Fewer than ${MIN_SOLD_30D} sold in 30 days: too few to say`
+                ? w.daysNoSales
+                : fillWords(w.daysFew, { n: String(MIN_SOLD_30D) })
             }
           >
             {NO_FIGURE}
           </span>
         ) : (
-          <span className="whitespace-nowrap">{daysText(r.daysOfStock)}</span>
+          <span className="whitespace-nowrap">{daysText(r.daysOfStock, w)}</span>
         ),
     },
     {
       key: "value",
-      label: "Tied up at cost",
+      label: w.cols.value,
       align: "right",
       sortable: true,
       cell: (r) =>
@@ -699,21 +674,21 @@ export function InventoryView({
         ) : r.onHand > 0 && r.costMinor === null ? (
           <span
             className="text-muted"
-            title="No cost entered for this variant, so its stock is not valued"
+            title={w.noCostTitle}
           >
-            No cost
+            {w.noCost}
           </span>
         ) : (
-          <span title="Nothing on hand">{NO_FIGURE}</span>
+          <span title={w.nothingOnHand}>{NO_FIGURE}</span>
         ),
     },
     {
       key: "lastSold",
-      label: "Last sold",
+      label: w.cols.lastSold,
       align: "right",
       sortable: true,
       firstDir: "asc",
-      cell: (r) => <span className="whitespace-nowrap">{lastSoldText(r)}</span>,
+      cell: (r) => <span className="whitespace-nowrap">{lastSoldText(r, w)}</span>,
     },
   ];
 
@@ -724,8 +699,8 @@ export function InventoryView({
         className={linkClass}
       >
         {limited
-          ? `Show all ${formatCount(sorted.length)} variants`
-          : `Show only the first ${ROW_LIMIT}`}
+          ? fillWords(w.showAll, { n: formatCount(sorted.length) })
+          : fillWords(w.showFirst, { n: String(ROW_LIMIT) })}
       </Link>
     ) : null;
 
@@ -754,35 +729,35 @@ export function InventoryView({
 
       <AnalyticsSection
         id="inv-alerts"
-        title="Running out"
-        description={`Variants that sell and are gone, or are estimated to run out within ${STOCKOUT_ALERT_DAYS} days at the pace of the last 7 and 30 days. Needs at least ${MIN_SOLD_30D} sold in 30 days, so a single sale raises nothing.`}
+        title={w.alertsTitle}
+        description={fillWords(w.alertsDescription, { days: String(STOCKOUT_ALERT_DAYS), min: String(MIN_SOLD_30D) })}
       >
         {report.alerts.length === 0 ? (
           <div className="rounded-panel border border-dashed border-line px-4 py-5 text-sm text-muted">
             {noSales30
-              ? "Nothing has sold in the last 30 days, so there is nothing to say about what will run out."
-              : `Nothing that sells is out, or estimated to run out within ${STOCKOUT_ALERT_DAYS} days.`}
+              ? w.alertsNoSales
+              : fillWords(w.alertsNone, { days: String(STOCKOUT_ALERT_DAYS) })}
           </div>
         ) : (
           <div className={`p-4 ${CARD_CLASS}`}>
             <ul className="space-y-3 text-sm">{shownAlerts.map(alertItem)}</ul>
             {foldedAlerts.length > 0 ? (
               <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-muted hover:text-ink">{`Show ${formatCount(foldedAlerts.length)} more`}</summary>
+                <summary className="cursor-pointer text-muted hover:text-ink">{fillWords(w.showMore, { n: formatCount(foldedAlerts.length) })}</summary>
                 <ul className="mt-3 space-y-3">
                   {foldedAlerts.map(alertItem)}
                 </ul>
               </details>
             ) : null}
             {report.alertsTotal > report.alerts.length ? (
-              <p className="mt-3 text-xs text-muted">{`Showing the ${formatCount(report.alerts.length)} most urgent of ${formatCount(report.alertsTotal)}.`}</p>
+              <p className="mt-3 text-xs text-muted">{fillWords(w.showingUrgent, { shown: formatCount(report.alerts.length), all: formatCount(report.alertsTotal) })}</p>
             ) : null}
           </div>
         )}
       </AnalyticsSection>
 
       <section
-        aria-label="The main figures"
+        aria-label={w.mainFigures}
         className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
       >
         <KpiCard {...valueCard} />
@@ -796,56 +771,52 @@ export function InventoryView({
 
       <AnalyticsSection
         id="variants"
-        title="Every variant"
-        description={`Amounts are in ${report.currency}, at what the stock cost, without VAT. Click a heading to sort; the default order is the most urgent first.`}
+        title={w.tableTitle}
+        description={fillWords(w.tableDescription, { currency: report.currency })}
         action={toggle}
       >
-        <nav aria-label="Filter by status" className="flex flex-wrap gap-1">
-          {filterLink(null, "All", totals.variants)}
+        <nav aria-label={w.filterLabel} className="flex flex-wrap gap-1">
+          {filterLink(null, w.all, totals.variants)}
           {STATUS_FILTERS.map((s) =>
-            filterLink(s, FILTER_COPY[s].label, countFor(s)),
+            filterLink(s, w.filter[s].label, countFor(s)),
           )}
         </nav>
         <DataTable<InventoryReportRow>
-          caption={`Stocked variants${status ? `: ${FILTER_COPY[status].label.toLowerCase()}` : ""}, with stock, sales per day, days left and what is tied up`}
+          caption={status ? fillWords(w.captionFiltered, { status: w.filter[status].label.toLowerCase() }) : w.caption}
           columns={columns}
           rows={shown}
           rowKey={(r) => r.variantId}
           sort={sort}
           sortHref={sortHref}
-          empty={status ? FILTER_COPY[status].empty : "No variants to show."}
+          empty={status ? w.filter[status].empty : w.tableEmpty}
           exportId="inventory.variants"
         />
         {report.rowsTruncated ? (
-          <p className="text-xs text-muted">{`The table lists the ${formatCount(report.rows.length)} that need attention most, of ${formatCount(report.variants)} variants. The figures above count them all.`}</p>
+          <p className="text-xs text-muted">{fillWords(w.rowsTruncated, { shown: formatCount(report.rows.length), all: formatCount(report.variants) })}</p>
         ) : null}
         <dl className="grid gap-x-6 gap-y-1 text-xs text-muted sm:grid-cols-2">
           <div>
-            <dt className="inline font-medium">Per day: </dt>
+            <dt className="inline font-medium">{w.perDayTerm}</dt>
             <dd className="inline">
-              units sold per day over the last 7 and over the last 30 days.
+              {w.perDayDef}
             </dd>
           </div>
           <div>
-            <dt className="inline font-medium">Days left: </dt>
+            <dt className="inline font-medium">{w.daysTerm}</dt>
             <dd className="inline">
-              units on hand divided by the pace of sales (60 % the last 7 days,
-              40 % the last 30). A dash means too little has sold to say.
+              {w.daysDef}
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="inline font-medium">Tied up at cost: </dt>
+            <dt className="inline font-medium">{w.tiedTerm}</dt>
             <dd className="inline">
-              units on hand times what one unit costs. Stock counts what is on
-              hand; items held for an unpaid order are not taken off. Below zero
-              counts as nothing on hand.
+              {w.tiedDef}
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="inline font-medium">Owed: </dt>
+            <dt className="inline font-medium">{w.owedTerm}</dt>
             <dd className="inline">
-              units on backorder that paid orders still wait for. A sent order
-              owes nothing.
+              {w.owedDef}
             </dd>
           </div>
         </dl>

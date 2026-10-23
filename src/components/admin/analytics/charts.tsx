@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { useId, type ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
+import { analyticsWords } from "@/lib/analytics-words";
 
 import {
   areaPath,
@@ -70,7 +72,7 @@ function DataBehind({ caption, head, rows, exportId, leftOut }: { caption: strin
   return (
     <>
     <details className="mt-2 text-xs">
-      <summary className="inline-block cursor-pointer text-muted hover:text-ink">Data table</summary>
+      <summary className="inline-block cursor-pointer text-muted hover:text-ink">{analyticsWords().chart.dataTable}</summary>
       <div className="relative mt-1 max-h-72 overflow-auto rounded-panel border border-line">
         <table className="w-full border-collapse">
           <caption className="sr-only">{caption}</caption>
@@ -107,7 +109,7 @@ type LegendItem = { label: string; color: string; dashed?: boolean };
 /** Who is who, in words beside a colour key; present whenever a chart has more than one thing to tell apart. */
 function Legend({ items }: { items: readonly LegendItem[] }) {
   return (
-    <ul aria-label="Legend" className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+    <ul aria-label={analyticsWords().chart.legend} className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
       {items.map((item) => (
         <li key={item.label} className="inline-flex items-center gap-1.5">
           <span
@@ -157,7 +159,10 @@ function YAxis({ ticks, y, left, right, format, bottomY }: { ticks: readonly num
 }
 
 /** What the axis writes under a point: a week's "Week of 2 Feb" is "2 Feb" (the cut would leave "Week of 2…", the same on every label); the tooltip and the table keep the whole. */
-const axisLabel = (label: string): string => label.replace(/^Week of /, "");
+const axisLabel = (label: string): string => {
+  const prefix = analyticsWords().period.weekOf.split("{day}")[0];
+  return prefix && label.startsWith(prefix) ? label.slice(prefix.length) : label;
+};
 
 function XLabels({ labels, indices, x, y }: { labels: readonly string[]; indices: readonly number[]; x: (i: number) => number; y: number }) {
   return (
@@ -189,12 +194,12 @@ export function LineChart({
   series,
   format,
   axisFormat,
-  previousLabel = "Previous period",
+  previousLabel: previousLabelGiven,
   height = 220,
   area = false,
   integer = false,
   includeZero = true,
-  emptyText = "No data for this period.",
+  emptyText: emptyGiven,
   exportId,
   exportLeftOut,
 }: ChartExport & {
@@ -213,6 +218,9 @@ export function LineChart({
   includeZero?: boolean;
   emptyText?: string;
 }) {
+  const cw = analyticsWords().chart;
+  const previousLabel = previousLabelGiven ?? analyticsWords().compare.modes.previous;
+  const emptyText = emptyGiven ?? cw.noData;
   const lines = series.slice(0, 3);
   const n = labels.length;
   const reads = (s: LineSeries, i: number) => (finite(s.values[i]) ? s.values[i] : null);
@@ -246,13 +254,13 @@ export function LineChart({
   const description = lines
     .map((s) => {
       const vals = Array.from({ length: n }, (_, i) => reads(s, i)).filter((v): v is number => v !== null);
-      if (vals.length === 0) return `${s.label}: no data`;
-      if (vals.every((v) => v === 0)) return `${s.label}: ${vals.length} points, all zero`;
-      return `${s.label}: ${vals.length} points, latest ${format(vals[vals.length - 1])}, highest ${format(Math.max(...vals))}, lowest ${format(Math.min(...vals))}`;
+      if (vals.length === 0) return fillWords(cw.seriesNoData, { label: s.label });
+      if (vals.every((v) => v === 0)) return fillWords(cw.seriesAllZero, { label: s.label, n: vals.length });
+      return fillWords(cw.seriesLine, { label: s.label, n: vals.length, latest: format(vals[vals.length - 1]), highest: format(Math.max(...vals)), lowest: format(Math.min(...vals)) });
     })
     .join(". ");
 
-  const head = ["", ...lines.map((s) => s.label), ...lines.filter((s) => s.previous).map((s) => (lines.length > 1 ? `${s.label} (${previousLabel})` : previousLabel))];
+  const head = ["", ...lines.map((s) => s.label), ...lines.filter((s) => s.previous).map((s) => (lines.length > 1 ? fillWords(cw.previousOf, { label: s.label, previous: previousLabel }) : previousLabel))];
   const rows = labels.slice(0, 400).map((l, i) => [l, ...lines.map((s) => show(format, reads(s, i))), ...lines.filter((s) => s.previous).map((s) => show(format, reads2(s, i)))]);
 
   return (
@@ -319,7 +327,7 @@ export function BarChart({
   axisFormat,
   height = 220,
   integer = false,
-  emptyText = "No data for this period.",
+  emptyText = analyticsWords().chart.noData,
   exportId,
   exportLeftOut,
 }: ChartExport & {
@@ -371,10 +379,11 @@ export function BarChart({
     .map((s) => {
       const vals = labels.map((_, i) => s.values[i]).filter(finite);
       const total = vals.reduce((a, b) => a + b, 0);
-      return vals.length === 0 ? `${s.label}: no data` : vals.every((v) => v === 0) ? `${s.label}: all zero` : `${s.label}: ${vals.length} columns, total ${format(total)}, highest ${format(Math.max(...vals))}`;
+      const cw = analyticsWords().chart;
+      return vals.length === 0 ? fillWords(cw.seriesNoData, { label: s.label }) : vals.every((v) => v === 0) ? fillWords(cw.barsAllZero, { label: s.label }) : fillWords(cw.barsLine, { label: s.label, n: vals.length, total: format(total), highest: format(Math.max(...vals)) });
     })
     .join(". ");
-  const head = ["", ...bars.map((s) => s.label), ...(stacked && bars.length > 1 ? ["Total"] : [])];
+  const head = ["", ...bars.map((s) => s.label), ...(stacked && bars.length > 1 ? [analyticsWords().chart.total] : [])];
   const rows = labels.slice(0, 400).map((l, i) => [l, ...bars.map((s) => show(format, finite(s.values[i]) ? s.values[i] : null)), ...(stacked && bars.length > 1 ? [format(bars.reduce((a, s) => a + at(s, i), 0))] : [])]);
 
   return (
@@ -462,7 +471,7 @@ export function HorizontalBars({
   label,
   rows,
   limit,
-  emptyText = "Nothing to show for this period.",
+  emptyText = analyticsWords().chart.nothing,
   exportId,
   exportLeftOut,
 }: ChartExport & {
@@ -551,7 +560,7 @@ export type FunnelStage = { label: string; value: number | null; note?: string }
  * count is not known (no visit counting, say) says "Not tracked" and has no bar: it is never drawn as zero, and nothing is worked
  * out across it.
  */
-export function Funnel({ label, stages, format, missingText = "Not tracked", emptyText = "No data for this period.", exportId, exportLeftOut }: ChartExport & { label: string; stages: readonly FunnelStage[]; format: Format; missingText?: string; emptyText?: string }) {
+export function Funnel({ label, stages, format, missingText = analyticsWords().chart.notTracked, emptyText = analyticsWords().chart.noData, exportId, exportLeftOut }: ChartExport & { label: string; stages: readonly FunnelStage[]; format: Format; missingText?: string; emptyText?: string }) {
   if (stages.length === 0 || !stages.some((s) => finite(s.value))) return <EmptyChart label={label} text={emptyText} />;
   const steps = funnelSteps(stages.map((s) => (finite(s.value) ? s.value : null)));
   return (
@@ -564,7 +573,7 @@ export function Funnel({ label, stages, format, missingText = "Not tracked", emp
             {i > 0 ? (
               <p className="mb-1 text-xs text-muted">
                 <span aria-hidden="true">↓ </span>
-                {step.conversion !== null ? `${formatPercent(step.conversion)} went on from the step before` : `Share that went on: ${NO_FIGURE}`}
+                {step.conversion !== null ? fillWords(analyticsWords().chart.funnelOn, { share: formatPercent(step.conversion) }) : fillWords(analyticsWords().chart.funnelOnUnknown, { none: NO_FIGURE })}
               </p>
             ) : null}
             <div className="flex items-baseline justify-between gap-3">
@@ -573,7 +582,7 @@ export function Funnel({ label, stages, format, missingText = "Not tracked", emp
               </span>
               <span className="shrink-0 tabular-nums">
                 {finite(s.value) ? format(s.value) : missingText}
-                {finite(s.value) && step.overall !== null && i > 0 ? <span className="ml-1.5 text-xs text-muted">{`${formatPercent(step.overall)} of the first`}</span> : null}
+                {finite(s.value) && step.overall !== null && i > 0 ? <span className="ml-1.5 text-xs text-muted">{fillWords(analyticsWords().chart.funnelOfFirst, { share: formatPercent(step.overall) })}</span> : null}
               </span>
             </div>
             {step.widthPct !== null ? (
@@ -615,7 +624,7 @@ function RampKey({ low, high }: { low: string; high: string }) {
  * the figure is in the cell's tooltip and in the table behind. A cell with no figure is blank, not zero. With nothing in any
  * cell it says so rather than drawing a flat grid.
  */
-export function Heatmap({ label, columns, rows, format, emptyText = "No data for this period.", exportId, exportLeftOut }: ChartExport & { label: string; columns: readonly string[]; rows: readonly HeatRow[]; format: Format; emptyText?: string }) {
+export function Heatmap({ label, columns, rows, format, emptyText = analyticsWords().chart.noData, exportId, exportLeftOut }: ChartExport & { label: string; columns: readonly string[]; rows: readonly HeatRow[]; format: Format; emptyText?: string }) {
   const max = maxOf(rows.flatMap((r) => r.values));
   if (columns.length === 0 || rows.length === 0 || max <= 0) return <EmptyChart label={label} text={emptyText} />;
   const labelW = Math.min(110, Math.max(36, 10 + Math.max(...rows.map((r) => r.label.length)) * 6.2));
@@ -629,7 +638,8 @@ export function Heatmap({ label, columns, rows, format, emptyText = "No data for
     });
     return best;
   }, null);
-  const description = `${rows.length} rows by ${columns.length} columns; the most is ${peak ? `${format(peak.v)} on ${peak.col}, ${peak.row}` : "none"}.`;
+  const words = analyticsWords().chart;
+  const description = fillWords(words.heatDescription, { rows: rows.length, columns: columns.length, peak: peak ? fillWords(words.heatPeak, { value: format(peak.v), column: peak.col, row: peak.row }) : words.heatNone });
   return (
     <figure className="min-w-0">
       <Svg label={label} description={description} width={W} height={height}>
@@ -650,7 +660,7 @@ export function Heatmap({ label, columns, rows, format, emptyText = "No data for
               const known = finite(v);
               return (
                 <rect key={j} x={labelW + j * cw + 1} y={headerH + i * cellH + 1} width={Math.max(1, cw - 2)} height={cellH - 2} rx={3} fill={known ? `var(--chart-seq-${rampStep(v, max)})` : "var(--chart-grid)"} opacity={known ? 1 : 0.5}>
-                  <title>{`${r.label}, ${c}: ${known ? format(v) : "no data"}`}</title>
+                  <title>{fillWords(words.cell, { row: r.label, column: c, value: known ? format(v) : words.cellNoData })}</title>
                 </rect>
               );
             })}
@@ -676,10 +686,10 @@ export function CohortTable({
   label,
   columns,
   rows,
-  sizeLabel = "Customers",
+  sizeLabel = analyticsWords().chart.customers,
   format = (v: number) => formatPercent(v, 0),
   max = 1,
-  emptyText = "No cohorts yet.",
+  emptyText = analyticsWords().chart.noCohorts,
   exportId,
   exportLeftOut,
 }: ChartExport & {
@@ -725,7 +735,7 @@ export function CohortTable({
                 if (!finite(v)) return <td key={c} className="px-2 py-1" />;
                 const step = rampStep(v, max);
                 return (
-                  <td key={c} title={`${r.label}, ${c}: ${format(v)}`} className="px-2 py-1 text-right tabular-nums" style={{ background: `var(--chart-seq-${step})`, color: `var(--chart-seq-${step}-ink)` }}>
+                  <td key={c} title={fillWords(analyticsWords().chart.cell, { row: r.label, column: c, value: format(v) })} className="px-2 py-1 text-right tabular-nums" style={{ background: `var(--chart-seq-${step})`, color: `var(--chart-seq-${step}-ink)` }}>
                     {format(v)}
                   </td>
                 );
@@ -742,7 +752,6 @@ export function CohortTable({
 
 // ---------- meter ----------
 
-const PACE_WORDS: Record<Pace, string> = { ahead: "Ahead of pace", on: "On pace", behind: "Behind pace", unknown: "" };
 const PACE_COLOR: Record<Pace, string> = { ahead: "var(--chart-good)", on: "var(--chart-good)", behind: "var(--chart-warn)", unknown: "var(--chart-1)" };
 
 /**
@@ -755,8 +764,8 @@ export function Meter({
   target,
   expected,
   format,
-  expectedLabel = "Expected by today",
-  missingText = "No target set.",
+  expectedLabel = analyticsWords().chart.expectedByToday,
+  missingText = analyticsWords().chart.noTarget,
 }: {
   label: string;
   value: number | null;
@@ -772,14 +781,16 @@ export function Meter({
   const fill = sharePct(got, target);
   const tick = finite(expected) ? sharePct(expected, target) : null;
   const share = formatPercent(got / target, 0);
-  const text = [`${format(got)} of ${format(target)} (${share})`, tick !== null && finite(expected) ? `${expectedLabel}: ${format(expected)}` : "", PACE_WORDS[pace]].filter(Boolean).join(", ");
+  const cw = analyticsWords().chart;
+  const paceWord = pace === "unknown" ? "" : cw.pace[pace];
+  const text = [`${fillWords(cw.meterOf, { got: format(got), target: format(target) })} (${share})`, tick !== null && finite(expected) ? `${expectedLabel}: ${format(expected)}` : "", paceWord].filter(Boolean).join(", ");
   return (
     <div>
       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm">
         <span className="font-medium tabular-nums">
-          {format(got)} <span className="font-normal text-muted">{`of ${format(target)} · ${share}`}</span>
+          {format(got)} <span className="font-normal text-muted">{fillWords(cw.meterOfShort, { target: format(target), share })}</span>
         </span>
-        {PACE_WORDS[pace] ? <span className="text-xs font-medium">{PACE_WORDS[pace]}</span> : null}
+        {paceWord ? <span className="text-xs font-medium">{paceWord}</span> : null}
       </div>
       <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(Math.max(got, 0), target)} aria-valuetext={text} className="relative h-2.5 rounded-full bg-(--chart-seq-0)">
         <div className="h-full rounded-full" style={{ width: `${fill}%`, background: PACE_COLOR[pace] }} />

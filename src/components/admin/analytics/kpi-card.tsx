@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
+import { analyticsWords } from "@/lib/analytics-words";
 
 import { Sparkline } from "./charts";
 import { Delta, type DeltaView } from "./data-table";
@@ -71,7 +72,7 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
         <div className="space-y-1">
           <p className="text-lg font-medium text-muted">
             <span aria-hidden="true">–</span>
-            <span className="sr-only">Not available</span>
+            <span className="sr-only">{analyticsWords().kpi.notAvailable}</span>
           </p>
           {missing ? <p className="text-xs text-muted">{missing.text}</p> : null}
           {missing?.action ? (
@@ -105,12 +106,12 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
         <div className="space-y-0.5">
           {deltaPrevious !== undefined ? (
             <p>
-              <Delta delta={deltaPrevious} versus="vs previous period" good={good} />
+              <Delta delta={deltaPrevious} versus={analyticsWords().compare.vsPrevious} good={good} />
             </p>
           ) : null}
           {deltaLastYear !== undefined ? (
             <p>
-              <Delta delta={deltaLastYear} versus="vs same period last year" good={good} />
+              <Delta delta={deltaLastYear} versus={analyticsWords().compare.vsLastYear} good={good} />
             </p>
           ) : null}
           {hint ? <p className="text-xs text-muted">{hint}</p> : null}

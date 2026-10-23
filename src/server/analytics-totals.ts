@@ -1,5 +1,6 @@
 import "server-only";
 
+import { analyticsWords, countText } from "@/lib/analytics-words";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -786,9 +787,7 @@ export async function overviewHead(store: Store, params: Query, now: Date, extra
   const main = mainCurrency(store);
   const notes =
     current.unconverted > 0
-      ? [
-          `${current.unconverted} ${current.unconverted === 1 ? "order or refund" : "orders and refunds"} in ${current.missingCurrencies.join(", ")} ${current.unconverted === 1 ? "is" : "are"} left out of these figures because the store has no rate to ${main}. Set the rate under Languages and currencies.`,
-        ]
+      ? [countText(analyticsWords().overview.unconverted, current.unconverted, { currencies: current.missingCurrencies.join(", "), main })]
       : [];
 
   const strip = (f: Figures): PeriodFigures => ({ period: f.period, totals: f.totals, derived: f.derived, visitsFrom: f.visitsFrom });

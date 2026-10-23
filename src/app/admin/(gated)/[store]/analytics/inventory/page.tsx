@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { InventoryView, parseInventoryParams } from "@/components/admin/analytics/inventory-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { inventoryReport } from "@/server/analytics-inventory-data";
@@ -25,18 +27,23 @@ export default async function AnalyticsInventoryPage({ params, searchParams }: P
   const [report] = await Promise.all([inventoryReport(store, now)]);
   const { status, sort, showAll } = parseInventoryParams(query);
 
+  const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
+  const w = adminText(ctx.lang, "reports");
+
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/inventory"
-          title="Inventory"
+          title={w.pages.inventory.title}
           picker={false}
-          description="What is in stock and what it is worth, which products are about to run out, and which are not selling. These figures are as of now, not for a period."
+          description={w.pages.inventory.description}
         />
-        <InventoryView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} report={report} status={status} sort={sort} showAll={showAll} />
+        <InventoryView base={ctx.base} locale={locale} report={report} status={status} sort={sort} showAll={showAll} words={w.inventory} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

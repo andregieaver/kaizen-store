@@ -8,6 +8,12 @@ import { EXCHANGE_CHANNEL, ltvToCac, STAFF_CHANNEL, UNKNOWN_CHANNEL, type Channe
 import { minorUnitDigits } from "@/lib/money";
 import type { CustomersReport } from "@/server/analytics-customers-data";
 import type { MarketingReport } from "@/server/analytics-traffic-data";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+
+/** The words of this view and a channel's name (D312 A9), English unless given. */
+export type MarketingWords = ReportsMessages["marketing"];
+export type ChannelWords = ReportsMessages["channels"];
 
 import { HorizontalBars, type BarRow } from "./charts";
 import { DataTable, type Column, type DeltaView } from "./data-table";
@@ -51,6 +57,10 @@ export type MarketingViewProps = {
   comparison: { mode: "previous" | "year"; report: MarketingReport } | null;
   /** Null when the customers report could not be read: the LTV:CAC card then says so. */
   ltv: MarketingLtv | null;
+  /** The words, in the account's language (D312 A9); English unless given. */
+  words?: MarketingWords;
+  /** A channel's name, in the account's language; English unless given. */
+  channelWords?: ChannelWords;
 };
 
 /** The lifetime value of the customers report as the card needs it. */
@@ -97,18 +107,17 @@ export function contributionProfit(row: Pick<ChannelRow, "contributionBeforeMark
 
 /** Why a figure that needs visit counting is missing, in a sentence. */
 /** The currency's own word for one unit, for "every ad krone"; the code where the word is not known. */
-export function adUnit(currency: string): string {
-  const words: Record<string, string> = { NOK: "krone", DKK: "krone", SEK: "krona", EUR: "euro", GBP: "pound", USD: "dollar", CHF: "franc", PLN: "zloty", ISK: "krona", CZK: "koruna" };
-  return words[currency.toUpperCase()] ?? currency.toUpperCase();
+export function adUnit(currency: string, w: MarketingWords = reportsEn.marketing): string {
+  return w.adUnits[currency.toUpperCase()] ?? currency.toUpperCase();
 }
 
 /** The words that say what MER is, in the store's currency: "every sale divided by every ad krone". */
-export const merWords = (currency: string): string => `every sale divided by every ad ${adUnit(currency)}`;
+export const merWords = (currency: string, w: MarketingWords = reportsEn.marketing): string => fillWords(w.merWords, { unit: adUnit(currency, w) });
 
-function countingReason(report: MarketingReport): string {
-  if (!report.coverage.counting) return "Visit counting is off, so orders cannot be matched to the channel they came from.";
-  if (report.coverage.firstDay === null) return "No visit has been counted yet, so orders cannot be matched to a channel.";
-  return "No day of this period has counted visits yet.";
+function countingReason(report: MarketingReport, w: MarketingWords = reportsEn.marketing): string {
+  if (!report.coverage.counting) return w.countingOff;
+  if (report.coverage.firstDay === null) return w.countingNone;
+  return w.countingNoDay;
 }
 
 const dash = (why: string): ReactNode => <span title={why}>{NO_FIGURE}</span>;
@@ -117,36 +126,30 @@ const dash = (why: string): ReactNode => <span title={why}>{NO_FIGURE}</span>;
 // The headline strip
 // ---------------------------------------------------------------------------
 
-const HELP = {
-  cac: "Customer acquisition cost: what you spent on marketing for each new customer you won. Lower is better.",
-  roas: "Return on ad spend: the sales from the channels you spent money on, for every 1 you spent on them. Direct and organic sales are not counted. It counts all of those sales, whatever the goods cost.",
-  mer: "Marketing efficiency ratio: every sale, direct and organic included, divided by all the ad spend. It shows how the whole business does against its ad bill, and it flatters the ads, since sales that came without them are in it.",
-  profitRoas: "Profit return on ad spend: what the sales from the channels you spent money on left after the goods, payment fees and shipping, for every 1 you spent. Above 1.0 means the spend was earned back.",
-  ltvToCac: "Predicted lifetime value divided by CAC: how much a customer is expected to bring in for each 1 it costs to win them. A common rule of thumb is that it should be at least 3.",
-};
 
 /**
  * The four cards that answer "what does a customer cost, and does the marketing pay back?": blended CAC, ROAS, profit ROAS and LTV:CAC,
  * each with a reason and a next step when it cannot be known (no visit counting, no spend entered, no costs, no new customers).
  */
-export function headlineCards({ base, currency, locale, report, comparison, ltv }: MarketingViewProps): KpiCardProps[] {
+export function headlineCards({ base, currency, locale, report, comparison, ltv, words: w = reportsEn.marketing }: MarketingViewProps): KpiCardProps[] {
   const money = moneyWriter(currency, locale);
+  const HELP = w.help;
   const table = report.table;
   const blended = table?.blended ?? null;
   const spend = blended?.spendMinor ?? 0;
   const settingsHref = `${base}/analytics/settings`;
-  const enterSpend = { label: "Enter your ad spend", href: "#spend" };
+  const enterSpend = { label: w.enterSpend, href: "#spend" };
 
   /** Words for what is missing when the card has no figure and the table could not say why. */
-  const noTable = { text: countingReason(report), action: { label: "Open analytics settings", href: settingsHref } };
+  const noTable = { text: countingReason(report, w), action: { label: w.openSettings, href: settingsHref } };
   const noSpend = {
     text:
       report.spend.totalMinor > 0
-        ? `No spend is entered for the days with counted visits (${money(report.spend.totalMinor)} is for other days).`
-        : "Enter what you spent on ads to see this. We know your sales, but not your ad bills.",
+        ? fillWords(w.spendOtherDays, { amount: money(report.spend.totalMinor) })
+        : w.spendNone,
     action: enterSpend,
   };
-  const coverageHint = report.coverage.partial && report.coverage.days > 0 ? `Over the ${formatCount(report.coverage.days)} days with counted visits.` : null;
+  const coverageHint = report.coverage.partial && report.coverage.days > 0 ? fillWords(w.coverageHint, { n: formatCount(report.coverage.days) }) : null;
 
   const delta = (current: number | null, previous: number | null | undefined): DeltaView | null => {
     const d = change(current, previous);
@@ -161,24 +164,24 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv 
 
   // ---- CAC ----
   let cac: KpiCardProps;
-  if (!blended) cac = { label: "Cost to win a customer (CAC)", value: null, state: "missing", missing: noTable, help: HELP.cac };
-  else if (spend === 0) cac = { label: "Cost to win a customer (CAC)", value: null, state: "missing", missing: noSpend, help: HELP.cac };
+  if (!blended) cac = { label: w.cacLabel, value: null, state: "missing", missing: noTable, help: HELP.cac };
+  else if (spend === 0) cac = { label: w.cacLabel, value: null, state: "missing", missing: noSpend, help: HELP.cac };
   else if (blended.cac === null) {
     cac = {
-      label: "Cost to win a customer (CAC)",
+      label: w.cacLabel,
       value: null,
       state: "missing",
-      missing: { text: `${money(spend)} was spent, but no new customer was won in the counted days, so there is nothing to divide it by.` },
+      missing: { text: fillWords(w.cacNoCustomer, { amount: money(spend) }) },
       help: HELP.cac,
     };
   } else {
     cac = {
-      label: "Cost to win a customer (CAC)",
+      label: w.cacLabel,
       value: money(blended.cac),
       emphasis: true,
       good: "down",
       help: HELP.cac,
-      hint: `${money(spend)} spent on ${formatCount(blended.newCustomers)} new ${blended.newCustomers === 1 ? "customer" : "customers"}.${coverageHint ? ` ${coverageHint}` : ""}`,
+      hint: `${countWords(blended.newCustomers, w.cacHint, { n: formatCount(blended.newCustomers), amount: money(spend) })}${coverageHint ? ` ${coverageHint}` : ""}`,
       ...compare(blended.cac, "cac"),
     };
   }
@@ -186,22 +189,22 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv 
   // ---- ROAS ----
   const unit = 100 * 10 ** minorUnitDigits(currency);
   let roas: KpiCardProps;
-  if (!blended) roas = { label: "Return on ad spend (ROAS)", value: null, state: "missing", missing: noTable, help: HELP.roas };
-  else if (blended.roas === null) roas = { label: "Return on ad spend (ROAS)", value: null, state: "missing", missing: noSpend, help: HELP.roas };
+  if (!blended) roas = { label: w.roasLabel, value: null, state: "missing", missing: noTable, help: HELP.roas };
+  else if (blended.roas === null) roas = { label: w.roasLabel, value: null, state: "missing", missing: noSpend, help: HELP.roas };
   else {
     roas = {
-      label: "Return on ad spend (ROAS)",
+      label: w.roasLabel,
       value: formatTimes(blended.roas),
       emphasis: true,
       good: "up",
       help: HELP.roas,
-      hint: `Every ${money(unit)} spent came with ${money(blended.roas * unit)} of sales from the channels that have ad spend. Direct and organic sales are not counted, and it counts sales, not what the goods cost.`,
+      hint: fillWords(w.roasHint, { unit: money(unit), sales: money(blended.roas * unit) }),
       ...compare(blended.roas, "roas"),
     };
   }
 
   // ---- MER ----
-  const merLabel = "Sales per ad spend (MER)";
+  const merLabel = w.merLabel;
   let mer: KpiCardProps;
   if (!blended || !table) mer = { label: merLabel, value: null, state: "missing", missing: noTable, help: HELP.mer };
   else if (table.mer === null) mer = { label: merLabel, value: null, state: "missing", missing: noSpend, help: HELP.mer };
@@ -211,57 +214,57 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv 
       value: formatTimes(table.mer),
       good: "up",
       help: HELP.mer,
-      hint: `${money(blended.revenueMinor)} of sales against ${money(spend)} of ad spend: ${merWords(currency)}, direct and organic sales included.`,
+      hint: fillWords(w.merHint, { sales: money(blended.revenueMinor), spend: money(spend), words: merWords(currency, w) }),
       ...compare(table.mer, "mer"),
     };
   }
 
   // ---- profit ROAS ----
   let profitRoas: KpiCardProps;
-  if (!blended) profitRoas = { label: "Profit return on ad spend", value: null, state: "missing", missing: noTable, help: HELP.profitRoas };
-  else if (spend === 0) profitRoas = { label: "Profit return on ad spend", value: null, state: "missing", missing: noSpend, help: HELP.profitRoas };
+  if (!blended) profitRoas = { label: w.profitLabel, value: null, state: "missing", missing: noTable, help: HELP.profitRoas };
+  else if (spend === 0) profitRoas = { label: w.profitLabel, value: null, state: "missing", missing: noSpend, help: HELP.profitRoas };
   else if (blended.profitRoas === null) {
     profitRoas = {
-      label: "Profit return on ad spend",
+      label: w.profitLabel,
       value: null,
       state: "missing",
       missing:
         blended.orders === 0
-          ? { text: "There were no orders in the counted days." }
-          : { text: "Product costs are missing for some of the sales, so what they left cannot be worked out.", action: { label: "Add product costs", href: `${base}/products` } },
+          ? { text: w.noOrdersCounted }
+          : { text: w.costsMissing, action: { label: w.addCosts, href: `${base}/products` } },
       help: HELP.profitRoas,
     };
   } else {
     profitRoas = {
-      label: "Profit return on ad spend",
+      label: w.profitLabel,
       value: formatTimes(blended.profitRoas),
       good: "up",
       help: HELP.profitRoas,
-      hint: blended.profitRoas >= 1 ? "The sales left more than the spend, before fixed costs." : "The sales left less than the spend, before fixed costs.",
+      hint: blended.profitRoas >= 1 ? w.profitAbove : w.profitBelow,
       ...compare(blended.profitRoas, "profitRoas"),
     };
   }
 
   // ---- LTV:CAC ----
-  const label = "Lifetime value to cost (LTV:CAC)";
+  const label = w.ltvLabel;
   let ratio: KpiCardProps;
   if (!blended) ratio = { label, value: null, state: "missing", missing: noTable, help: HELP.ltvToCac };
   else if (blended.cac === null) {
-    ratio = { label, value: null, state: "missing", missing: spend === 0 ? noSpend : { text: "There is no cost per customer yet, so nothing to compare a customer's value with." }, help: HELP.ltvToCac };
+    ratio = { label, value: null, state: "missing", missing: spend === 0 ? noSpend : { text: w.ltvNoCac }, help: HELP.ltvToCac };
   } else if (!ltv || ltv.minor === null) {
     ratio = {
       label,
       value: null,
       state: "missing",
-      missing: { text: "A customer's predicted lifetime value cannot be worked out yet: it needs customers who have ordered more than once." },
+      missing: { text: w.ltvNoValue },
       help: HELP.ltvToCac,
     };
   } else {
     const value = ltvToCac(ltv.minor, blended.cac);
     const how =
       ltv.perOrderMinor !== null && ltv.ordersPerYear !== null
-        ? `Predicted lifetime value ${money(ltv.minor)} = ${money(ltv.perOrderMinor)} per order × ${formatPlain(ltv.ordersPerYear)} orders a year × ${formatPlain(ltv.lifespanYears, 0)} years.`
-        : `Predicted lifetime value ${money(ltv.minor)}.`;
+        ? fillWords(w.ltvHow, { ltv: money(ltv.minor), perOrder: money(ltv.perOrderMinor), perYear: formatPlain(ltv.ordersPerYear), years: formatPlain(ltv.lifespanYears, 0) })
+        : fillWords(w.ltvOnly, { ltv: money(ltv.minor) });
     ratio = {
       label,
       value: formatLtvToCac(value),
@@ -269,7 +272,7 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv 
       help: HELP.ltvToCac,
       hint:
         ltv.basis === "revenue"
-          ? `${how} Product costs are not entered, so it uses revenue instead of profit, which flatters the ratio.`
+          ? fillWords(w.ltvRevenue, { how })
           : how,
     };
   }
@@ -281,73 +284,60 @@ export function headlineCards({ base, currency, locale, report, comparison, ltv 
 // The channel table
 // ---------------------------------------------------------------------------
 
-const UNKNOWN_WHY =
-  "Paid orders that cannot be tied to a counted visit: the shopper was not counted (they opted out or blocked it), bought on another day than the visit, or visits were not counted then. They are real sales, but no channel gets the credit.";
-
-const STAFF_WHY =
-  "Orders staff made from a draft order. They are real sales and are in the revenue, but they were not a visit, so no channel earns them and they are left out of conversion.";
-
-const EXCHANGE_WHY =
-  "Orders of replacement goods for a return, paid by the return's credit (and any difference the shopper paid). They are real sales and are in the revenue, but they were not a visit, so no channel earns them and they are left out of conversion. The credit is a refund of the original order.";
-
 /** The columns of the channel table, written for a row; the blended row's foot uses the same cells. */
-export function channelColumns(money: (minor: number) => string): Column<ChannelRow>[] {
-  const spend = (r: ChannelRow) => (r.spendMinor > 0 ? money(r.spendMinor) : dash("No ad spend entered for this channel"));
+export function channelColumns(
+  money: (minor: number) => string,
+  w: MarketingWords = reportsEn.marketing,
+  names: ChannelWords = reportsEn.channels,
+): Column<ChannelRow>[] {
+  const l = w.columns;
+  const why = w.why;
+  const name = (r: ChannelRow) => names[r.channel] ?? r.label;
+  const spend = (r: ChannelRow) => (r.spendMinor > 0 ? money(r.spendMinor) : dash(why.noSpend));
   return [
     {
       key: "channel",
-      label: "Channel",
+      label: l.channel,
       cell: (r) =>
-        r.channel === UNKNOWN_CHANNEL ? <span title={UNKNOWN_WHY}>Unknown</span> : r.channel === STAFF_CHANNEL ? (
-          <span title={STAFF_WHY}>{r.label}</span>
+        r.channel === UNKNOWN_CHANNEL ? <span title={w.unknownWhy}>{name(r)}</span> : r.channel === STAFF_CHANNEL ? (
+          <span title={w.staffWhy}>{name(r)}</span>
         ) : r.channel === EXCHANGE_CHANNEL ? (
-          <span title={EXCHANGE_WHY}>{r.label}</span>
+          <span title={w.exchangeWhy}>{name(r)}</span>
         ) : (
-          r.label
+          name(r)
         ),
     },
-    { key: "sessions", label: "Sessions", align: "right", cell: (r) => (r.sessions === null ? dash("Visits are only counted for channels, not for unmatched orders") : formatCount(r.sessions)) },
-    { key: "orders", label: "Orders", align: "right", cell: (r) => formatCount(r.orders) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (r) => money(r.revenueMinor) },
-    { key: "conversion", label: "Conversion", align: "right", cell: (r) => (r.conversion === null ? dash("Needs counted sessions") : formatPercent(r.conversion)) },
-    { key: "aov", label: "Avg order", align: "right", cell: (r) => (r.aov === null ? dash("No orders") : money(r.aov)) },
-    { key: "newCustomers", label: "New customers", align: "right", cell: (r) => formatCount(r.newCustomers) },
-    { key: "spend", label: "Ad spend", align: "right", cell: spend },
-    { key: "cac", label: "CAC", align: "right", cell: (r) => (r.cac === null ? dash(r.spendMinor === 0 ? "No ad spend entered" : "No new customers") : money(r.cac)) },
-    { key: "roas", label: "ROAS", align: "right", cell: (r) => (r.roas === null ? dash("No ad spend entered") : formatTimes(r.roas)) },
+    { key: "sessions", label: l.sessions, align: "right", cell: (r) => (r.sessions === null ? dash(why.noSessions) : formatCount(r.sessions)) },
+    { key: "orders", label: l.orders, align: "right", cell: (r) => formatCount(r.orders) },
+    { key: "revenue", label: l.revenue, align: "right", cell: (r) => money(r.revenueMinor) },
+    { key: "conversion", label: l.conversion, align: "right", cell: (r) => (r.conversion === null ? dash(why.needsSessions) : formatPercent(r.conversion)) },
+    { key: "aov", label: l.aov, align: "right", cell: (r) => (r.aov === null ? dash(why.noOrders) : money(r.aov)) },
+    { key: "newCustomers", label: l.newCustomers, align: "right", cell: (r) => formatCount(r.newCustomers) },
+    { key: "spend", label: l.spend, align: "right", cell: spend },
+    { key: "cac", label: l.cac, align: "right", cell: (r) => (r.cac === null ? dash(r.spendMinor === 0 ? why.noSpendEntered : why.noNewCustomers) : money(r.cac)) },
+    { key: "roas", label: l.roas, align: "right", cell: (r) => (r.roas === null ? dash(why.noSpendEntered) : formatTimes(r.roas)) },
     {
       key: "profitRoas",
-      label: "Profit ROAS",
+      label: l.profitRoas,
       align: "right",
-      cell: (r) => (r.profitRoas === null ? dash(r.spendMinor === 0 ? "No ad spend entered" : "Product costs are not known for these sales") : formatTimes(r.profitRoas)),
+      cell: (r) => (r.profitRoas === null ? dash(r.spendMinor === 0 ? why.noSpendEntered : why.costsUnknown) : formatTimes(r.profitRoas)),
     },
     {
       key: "contribution",
-      label: "Contribution profit",
+      label: l.contribution,
       align: "right",
       cell: (r) => {
         const profit = contributionProfit(r);
-        return profit === null ? dash(r.orders === 0 && r.spendMinor === 0 ? "No sales" : "Product costs are not known for these sales") : money(profit);
+        return profit === null ? dash(r.orders === 0 && r.spendMinor === 0 ? why.noSales : why.costsUnknown) : money(profit);
       },
     },
   ];
 }
 
-const GLOSSARY: readonly { term: string; meaning: string }[] = [
-  { term: "Session", meaning: "One visitor on one day. Coming back the same day is not counted twice." },
-  { term: "Conversion", meaning: "Orders divided by sessions: how many visits ended in a purchase." },
-  { term: "New customers", meaning: "People whose first ever paid order came from this channel." },
-  { term: "CAC", meaning: "Customer acquisition cost: the channel's ad spend divided by its new customers." },
-  { term: "ROAS", meaning: "Return on ad spend: the channel's sales divided by its ad spend. 3.0× is 3 of sales for every 1 spent. On the All channels row it is over the channels that have ad spend only." },
-  { term: "Profit ROAS", meaning: "What the sales left after the goods, payment fees and shipping, divided by the ad spend. Above 1.0× the spend was earned back. On the All channels row it is over the channels that have ad spend only." },
-  { term: "MER", meaning: "Marketing efficiency ratio: every sale, direct and organic included, divided by all the ad spend. It is shown beside the headline figures, never as a ROAS." },
-  { term: "Contribution profit", meaning: "What is left of the sales after the goods, payment fees, shipping and the ad spend, before fixed costs." },
-];
-
-function Glossary() {
+function Glossary({ w }: { w: MarketingWords }) {
   return (
     <dl className="grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2">
-      {GLOSSARY.map((g) => (
+      {w.glossary.map((g) => (
         <div key={g.term}>
           <dt className="inline font-medium">{g.term}: </dt>
           <dd className="inline text-muted">{g.meaning}</dd>
@@ -357,23 +347,30 @@ function Glossary() {
   );
 }
 
-function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewProps, "base" | "currency" | "locale" | "report">) {
+function ChannelsSection({
+  base,
+  currency,
+  locale,
+  report,
+  words: w = reportsEn.marketing,
+  channelWords: names = reportsEn.channels,
+}: Pick<MarketingViewProps, "base" | "currency" | "locale" | "report" | "words" | "channelWords">) {
   const money = moneyWriter(currency, locale);
   const table = report.table;
-  const columns = channelColumns(money);
+  const columns = channelColumns(money, w, names);
   const withRevenue: BarRow[] = (table?.rows ?? [])
     .filter((r) => r.revenueMinor > 0)
     .map((r) => ({
       key: r.channel,
-      label: r.label,
+      label: names[r.channel] ?? r.label,
       value: r.revenueMinor,
       valueText: money(r.revenueMinor),
-      detail: `${formatCount(r.orders)} ${r.orders === 1 ? "order" : "orders"}`,
+      detail: countWords(r.orders, w.orders, { n: formatCount(r.orders) }),
       colorIndex: channelColorIndex(r.channel),
     }));
   const withSpend: BarRow[] = report.spend.byChannel
     .filter((s) => s.amountMinor > 0)
-    .map((s) => ({ key: s.channel, label: s.label, value: s.amountMinor, valueText: money(s.amountMinor), colorIndex: channelColorIndex(s.channel) }));
+    .map((s) => ({ key: s.channel, label: names[s.channel] ?? s.label, value: s.amountMinor, valueText: money(s.amountMinor), colorIndex: channelColorIndex(s.channel) }));
   const unknownRow = table?.rows.find((r) => r.channel === UNKNOWN_CHANNEL);
   const unknown = report.unknownOrders;
   const staffRow = table?.rows.find((r) => r.channel === STAFF_CHANNEL);
@@ -382,26 +379,26 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
   return (
     <AnalyticsSection
       id="channels"
-      title="Channels"
-      description="Where visitors came from and what each channel earned. Revenue is sales without VAT, before refunds; fees and shipping are the estimates from your analytics settings."
+      title={w.channelsTitle}
+      description={w.channelsDescription}
     >
       {table === null ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          <p>{`No channel figures for this period. ${countingReason(report)}`}</p>
+          <p>{fillWords(w.noChannels, { reason: countingReason(report, w) })}</p>
           <p className="mt-1">
             <Link href={`${base}/analytics/settings`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
-              Open analytics settings
+              {w.openSettings}
             </Link>
           </p>
         </div>
       ) : (
         <>
           <DataTable
-            caption="Channels with sessions, orders, revenue, conversion, spend, CAC, ROAS and profit"
+            caption={w.tableCaption}
             columns={columns}
             rows={table.rows}
             rowKey={(r) => r.channel}
-            empty="No visits, orders or ad spend on the days with counted visits."
+            empty={w.tableEmpty}
             exportId="marketing.channels"
             exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
             footer={
@@ -409,7 +406,7 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
                 <tr>
                   {columns.map((c, i) => (
                     <td key={c.key} className={`px-3 py-1.5 ${c.align === "right" ? "text-right tabular-nums" : "text-left"}`}>
-                      {i === 0 ? "All channels" : c.cell(table.blended)}
+                      {i === 0 ? w.allChannels : c.cell(table.blended)}
                     </td>
                   ))}
                 </tr>
@@ -417,41 +414,41 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
             }
           />
           <p className="max-w-prose text-sm text-muted">
-            ROAS can flatter a channel: it counts every sale, whatever the goods cost. Profit ROAS counts what the goods cost, so use it to compare channels that sell different products. The All channels row counts only the channels that have ad spend; direct and organic sales are in MER ({table.mer === null ? "needs ad spend" : formatTimes(table.mer)}), which is every sale divided by all the ad spend. Profit is not estimated per channel: it counts what the goods cost where that is known, so a channel that sold products with no cost entered looks better than it is.
+            {fillWords(w.roasNote, { mer: table.mer === null ? w.merNeedsSpend : formatTimes(table.mer) })}
           </p>
           {unknownRow || unknown.orders > 0 ? (
-            <Note title="What “Unknown” is">
-              {`${UNKNOWN_WHY}${unknown.orders > 0 ? ` In this period: ${formatCount(unknown.orders)} ${unknown.orders === 1 ? "order" : "orders"}, ${money(unknown.revenueMinor)}.` : ""}`}
+            <Note title={w.unknownTitle}>
+              {`${w.unknownWhy}${unknown.orders > 0 ? countWords(unknown.orders, w.inPeriod, { n: formatCount(unknown.orders), amount: money(unknown.revenueMinor) }) : ""}`}
             </Note>
           ) : null}
           {staffRow ? (
-            <Note title="What “Staff-made” is">
-              {`${STAFF_WHY} In this period: ${formatCount(staffRow.orders)} ${staffRow.orders === 1 ? "order" : "orders"}, ${money(staffRow.revenueMinor)}.`}
+            <Note title={w.staffTitle}>
+              {`${w.staffWhy}${countWords(staffRow.orders, w.inPeriod, { n: formatCount(staffRow.orders), amount: money(staffRow.revenueMinor) })}`}
             </Note>
           ) : null}
           {exchangeRow ? (
-            <Note title="What “Exchanges” is">
-              {`${EXCHANGE_WHY} In this period: ${formatCount(exchangeRow.orders)} ${exchangeRow.orders === 1 ? "order" : "orders"}, ${money(exchangeRow.revenueMinor)}.`}
+            <Note title={w.exchangeTitle}>
+              {`${w.exchangeWhy}${countWords(exchangeRow.orders, w.inPeriod, { n: formatCount(exchangeRow.orders), amount: money(exchangeRow.revenueMinor) })}`}
             </Note>
           ) : null}
           {withRevenue.length > 0 || withSpend.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
               {withRevenue.length > 0 ? (
-                <ChartCard title="Revenue by channel" description="Sales without VAT.">
-                  <HorizontalBars label="Revenue by channel" rows={withRevenue} exportId="marketing.revenue_by_channel" exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }} />
+                <ChartCard title={w.revenueByChannel} description={w.salesWithoutVat}>
+                  <HorizontalBars label={w.revenueByChannel} rows={withRevenue} exportId="marketing.revenue_by_channel" exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }} />
                 </ChartCard>
               ) : null}
               {withSpend.length > 0 ? (
-                <ChartCard title="Ad spend by channel" description="What you entered for the period, all days included.">
-                  <HorizontalBars label="Ad spend by channel" rows={withSpend} exportId="marketing.spend_by_channel" />
+                <ChartCard title={w.spendByChannel} description={w.spendAllDays}>
+                  <HorizontalBars label={w.spendByChannel} rows={withSpend} exportId="marketing.spend_by_channel" />
                 </ChartCard>
               ) : null}
             </div>
           ) : null}
           <details className="rounded-panel border border-line bg-card px-4 py-3">
-            <summary className="cursor-pointer text-sm font-medium">What the columns mean</summary>
+            <summary className="cursor-pointer text-sm font-medium">{w.columnsMean}</summary>
             <div className="mt-3">
-              <Glossary />
+              <Glossary w={w} />
             </div>
           </details>
         </>
@@ -465,7 +462,7 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
 // ---------------------------------------------------------------------------
 
 /** The notes under the headline: what the report says it leaves out, and the spend that cannot be matched to visits, in words with the amount. */
-export function marketingNotes(report: MarketingReport, money: (minor: number) => string): { tone: "info" | "warning"; text: string }[] {
+export function marketingNotes(report: MarketingReport, money: (minor: number) => string, w: MarketingWords = reportsEn.marketing): { tone: "info" | "warning"; text: string }[] {
   const notes: { tone: "info" | "warning"; text: string }[] = report.notes.filter((n) => n !== OUTSIDE_SPEND_NOTE).map((text) => ({ tone: "info", text }));
   const outside = report.spend.outsideCoverageMinor;
   if (outside > 0) {
@@ -473,8 +470,8 @@ export function marketingNotes(report: MarketingReport, money: (minor: number) =
       tone: "warning",
       text:
         report.table === null
-          ? `${money(outside)} of ad spend is entered for this period, but without counted visits it cannot be matched to sales, so it is not in any figure above.`
-          : `${money(outside)} of the ad spend you entered is for days without counted visits, so it is not in the CAC and ROAS above.`,
+          ? fillWords(w.outsideNoTable, { amount: money(outside) })
+          : fillWords(w.outside, { amount: money(outside) }),
     });
   }
   return notes;
@@ -482,21 +479,26 @@ export function marketingNotes(report: MarketingReport, money: (minor: number) =
 
 export function MarketingView(props: MarketingViewProps) {
   const { base, currency, locale, report } = props;
+  const w = props.words ?? reportsEn.marketing;
   const money = moneyWriter(currency, locale);
   const cards = headlineCards(props);
-  const notes = marketingNotes(report, money);
+  const notes = marketingNotes(report, money, w);
   const hasSpend = report.spend.totalMinor > 0;
 
   return (
     <>
       <AnalyticsSection
         id="headline"
-        title="What a customer costs"
-        description="What you spend on marketing for each new customer, whether the spend pays back, and how that compares with what a customer is worth."
+        title={w.headlineTitle}
+        description={w.headlineDescription}
       >
         {!hasSpend ? (
-          <Note title="Enter your ad spend to see CAC and ROAS">
-            We know your sales, but not what you paid for ads. <a href="#spend" className="font-medium text-(--brand-text) underline-offset-2 hover:underline">Enter it below</a> and these figures appear.
+          <Note title={w.enterSpendTitle}>
+            {w.enterSpendBefore}
+            <a href="#spend" className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
+              {w.enterSpendLink}
+            </a>
+            {w.enterSpendAfter}
           </Note>
         ) : null}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -514,7 +516,7 @@ export function MarketingView(props: MarketingViewProps) {
           </div>
         ) : null}
       </AnalyticsSection>
-      <ChannelsSection base={base} currency={currency} locale={locale} report={report} />
+      <ChannelsSection base={base} currency={currency} locale={locale} report={report} words={w} channelWords={props.channelWords} />
     </>
   );
 }

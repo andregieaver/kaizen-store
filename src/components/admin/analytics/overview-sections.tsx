@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { formatCount, formatPercent, MINUS, NO_FIGURE } from "@/lib/analytics-core";
+import { analyticsWords, countText } from "@/lib/analytics-words";
 import { COVERAGE_WARN, costsKnown, estimateText, formatKpi, KPI_CARDS, kpiChange, kpiMissing, kpiValue, type KpiCard as KpiCardDef } from "@/lib/analytics-kpi";
 import { periodHref, type AnalyticsParams } from "@/lib/analytics-period";
 import type { ChannelRow } from "@/lib/analytics-traffic";
@@ -12,7 +14,7 @@ import { Funnel, HorizontalBars, LineChart, Meter, type BarRow } from "./charts"
 import { DataTable, StatusPill, type Column, type DeltaView } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
-import { dayText, factorRows, forecastLines, formatTimes, moneyLines, moneySignals, moneyWriter, noSales, plural, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
+import { dayText, factorRows, forecastLines, formatTimes, moneyLines, moneySignals, moneyWriter, noSales, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
 import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
@@ -74,7 +76,7 @@ export function OverviewLayout({ currency, slots }: { currency: string; slots: O
       {slots.channels}
       {slots.target}
       {slots.forecast}
-      <p className="text-xs text-muted">All amounts are in {currency} without VAT. Refunds made only in Stripe&apos;s dashboard are not counted. History is valued at today&apos;s exchange rates.</p>
+      <p className="text-xs text-muted">{fillWords(analyticsWords().overview.footer, { currency })}</p>
     </div>
   );
 }
@@ -94,7 +96,7 @@ export type OverviewSkeletonKind = keyof typeof SKELETON_HEIGHT;
 export function SectionSkeleton({ kind, label }: { kind: OverviewSkeletonKind; label: string }) {
   return (
     <div role="status" aria-live="polite" aria-busy="true" data-skeleton={kind} className="space-y-3">
-      <span className="sr-only">Loading {label}…</span>
+      <span className="sr-only">{fillWords(analyticsWords().section.loading, { label })}</span>
       <div aria-hidden="true" className={`${pulse} h-6 w-56`} />
       <div aria-hidden="true" className={`${pulse} ${SKELETON_HEIGHT[kind]}`} />
     </div>
@@ -105,7 +107,7 @@ export function SectionSkeleton({ kind, label }: { kind: OverviewSkeletonKind; l
 export function SectionUnavailable({ id, title }: { id: string; title: string }) {
   return (
     <AnalyticsSection id={id} title={title}>
-      <Note title="This part could not be loaded.">Reload the page to try again. The rest of the page is not affected.</Note>
+      <Note title={analyticsWords().section.unavailableTitle}>{analyticsWords().section.unavailable}</Note>
     </AnalyticsSection>
   );
 }
@@ -116,18 +118,17 @@ export function SectionUnavailable({ id, title }: { id: string; title: string })
 
 /** What a figure or panel that needs visit counting says: what it gives, that it sets no cookie, and (for an owner) where to switch it on. */
 function VisitCountingOff({ base, isOwner, gives }: { base: string; isOwner: boolean; gives: string }) {
+  const w = analyticsWords().overview.visitsOff;
   return (
     <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
-      <p className="font-medium">Turn on visit counting</p>
-      <p className="text-muted">
-        {gives} Visit counting sets no cookies and needs no consent banner. It only counts from the day it is switched on.
-      </p>
+      <p className="font-medium">{w.title}</p>
+      <p className="text-muted">{fillWords(w.body, { gives })}</p>
       {isOwner ? (
         <Link href={`${base}/analytics/settings`} className={linkClass}>
-          Switch it on in Analytics settings
+          {w.switchOn}
         </Link>
       ) : (
-        <p className="text-muted">An owner of the store can switch it on in Analytics settings.</p>
+        <p className="text-muted">{w.ownerCan}</p>
       )}
     </div>
   );
@@ -157,51 +158,51 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
   const { current, params } = data;
   const compare = params.compare.mode;
   const { sales, coverage, costsMissing } = moneySignals(data);
+  const words = analyticsWords();
+  const w = words.overview.answer;
 
   // ---- notes about what the figures are and are not ----
   const notes: ReactNode[] = [...data.notes];
-  if (current.visitsFrom) notes.push(`Visits have been counted since ${dayText(current.visitsFrom)}, so conversion and the per-visit figures cover only the days from then.`);
+  if (current.visitsFrom) notes.push(fillWords(w.visitsSince, { day: dayText(current.visitsFrom) }));
   if (sales && coverage !== null && coverage > 0 && coverage < COVERAGE_WARN) {
-    notes.push(
-      costsKnown(coverage)
-        ? `Profit figures are ${estimateText(coverage)}: the rest sold without a product cost entered, so its cost of goods is taken to be in the same proportion. Add the missing costs in the product editor to make them exact.`
-        : `Product costs are known for only ${formatPercent(coverage, 0)} of sales, too few to estimate profit from, so it is not shown. Add the missing costs in the product editor.`,
-    );
+    notes.push(costsKnown(coverage) ? fillWords(w.estimated, { estimate: estimateText(coverage) ?? "" }) : fillWords(w.tooFew, { share: formatPercent(coverage, 0) }));
   }
   if (sales && !costsMissing && !data.settings.saved) {
     notes.push(
       isOwner ? (
         <>
-          Payment fees, shipping costs and fixed costs are not entered, so they count as nothing and profit may look better than it is.{" "}
+          {w.feesNotEntered}{" "}
           <Link href={settingsHref} className={linkClass}>
-            Enter them in Analytics settings
+            {w.enterThem}
           </Link>
           .
         </>
       ) : (
-        "Payment fees, shipping costs and fixed costs are not entered, so they count as nothing and profit may look better than it is. An owner can enter them in Analytics settings."
+        `${w.feesNotEntered} ${w.ownerCanEnter}`
       ),
     );
   }
 
   // ---- the cards ----
+  const cardWords = (card: KpiCardDef) => words.kpi.cards[card.id] ?? { label: card.label, help: card.help, missing: card.missingText ?? "" };
   const visitsText = (card: KpiCardDef, fallback: string): { text: string; action?: { label: string; href: string } } => {
-    if (visitCounting) return { text: "No visits were counted in this period." };
-    return isOwner ? { text: card.missingText ?? fallback, action: { label: "Switch on visit counting", href: settingsHref } } : { text: "Visit counting is off. An owner can switch it on in Analytics settings." };
+    if (visitCounting) return { text: w.noVisits };
+    return isOwner ? { text: cardWords(card).missing || fallback, action: { label: w.switchOnVisits, href: settingsHref } } : { text: w.visitsOffOwner };
   };
   const cards: (KpiCardProps & { id: string })[] = KPI_CARDS.map((card) => {
     const value = kpiValue(card, current.derived);
-    const base0 = { id: card.id, label: card.label, good: card.good, help: card.help, emphasis: PRIMARY.has(card.id) };
+    const named = cardWords(card);
+    const base0 = { id: card.id, label: named.label, good: card.good, help: named.help, emphasis: PRIMARY.has(card.id) };
     const missing = kpiMissing(card, current.derived);
     const noOrders = !sales && (card.id === "grossProfit" || card.id === "grossMargin");
     if (missing || noOrders) {
-      if (noOrders || missing?.kind === "no-data") return { ...base0, value: null, state: "missing" as const, missing: { text: "No orders in this period yet." } };
+      if (noOrders || missing?.kind === "no-data") return { ...base0, value: null, state: "missing" as const, missing: { text: w.noOrders } };
       if (missing!.kind === "visits") return { ...base0, value: null, state: "missing" as const, missing: visitsText(card, missing!.text) };
       return {
         ...base0,
         value: null,
         state: "missing" as const,
-        missing: { text: isOwner ? missing!.text : "Product costs are not entered. An owner can add them.", ...(isOwner ? { action: { label: "Add what your products cost", href: settingsHref } } : {}) },
+        missing: { text: isOwner ? missing!.text : w.costsNotEntered, ...(isOwner ? { action: { label: w.addCosts, href: settingsHref } } : {}) },
       };
     }
     const delta = (from: PeriodFigures, needSales: boolean): DeltaView | null => {
@@ -211,7 +212,7 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
     };
     const series = data.sparklines[card.id];
     const profitCard = card.id === "grossProfit" || card.id === "grossMargin";
-    const hint = profitCard && coverage !== null && coverage > 0 ? data.costCoverageText : card.id === "conversion" && current.visitsFrom ? `Counted since ${dayText(current.visitsFrom)}` : undefined;
+    const hint = profitCard && coverage !== null && coverage > 0 ? data.costCoverageText : card.id === "conversion" && current.visitsFrom ? fillWords(w.countedSince, { day: dayText(current.visitsFrom) }) : undefined;
     return {
       ...base0,
       value: formatKpi(card, value, currency, locale),
@@ -224,9 +225,9 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
 
   return (
     <>
-      <AnalyticsSection id="overview-making-money" title="Are we making money?" description={`${params.period.label}, in ${currency} without VAT. Each figure links to the page that explains it.`}>
+      <AnalyticsSection id="overview-making-money" title={w.title} description={fillWords(w.description, { period: params.period.label, currency })}>
         <div className="space-y-1 rounded-panel bg-sunken p-4 text-sm">
-          {moneyLines(data, money).map((line, i) => (
+          {moneyLines(data, money, words).map((line, i) => (
             <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
               {line}
             </p>
@@ -234,7 +235,7 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
           {costsMissing && isOwner ? (
             <p>
               <Link href={settingsHref} className={linkClass}>
-                Add what your products cost
+                {w.addCosts}
               </Link>
             </p>
           ) : null}
@@ -272,18 +273,20 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
   const comparison = data.series.comparison;
   const anySales =
     data.series.current.some((p) => p.orders > 0 || p.revenueMinor !== 0 || p.refundsMinor !== 0) || (comparison?.some((p) => p && (p.orders > 0 || p.revenueMinor !== 0 || p.refundsMinor !== 0)) ?? false);
-  const previousLabel = compare === "year" ? "Same period last year" : "Previous period";
-  const per = data.bucket;
+  const words = analyticsWords();
+  const w = words.overview.charts;
+  const previousLabel = compare === "year" ? words.compare.modes.year : words.compare.modes.previous;
+  const per = w.per[data.bucket] ?? data.bucket;
 
   return (
-    <AnalyticsSection id="overview-sales" title="Sales and profit over time" description={`Each point is one ${per}. The dashed line is ${compare === "none" ? "off: no comparison is chosen" : previousLabel.toLowerCase()}.`}>
+    <AnalyticsSection id="overview-sales" title={w.title} description={fillWords(w.description, { per, dashed: compare === "none" ? w.dashedOff : previousLabel.toLowerCase() })}>
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Net revenue" description="Revenue less refunds, without VAT.">
+        <ChartCard title={w.net} description={w.netDescription}>
           {anySales ? (
             <LineChart
-              label={`Net revenue per ${per}`}
+              label={fillWords(w.netPer, { per })}
               labels={labels}
-              series={[{ key: "net", label: "Net revenue", values: data.series.current.map((pt) => pt.netRevenueMinor), ...(comparison ? { previous: comparison.map((pt) => (pt ? pt.netRevenueMinor : null)) } : {}) }]}
+              series={[{ key: "net", label: w.net, values: data.series.current.map((pt) => pt.netRevenueMinor), ...(comparison ? { previous: comparison.map((pt) => (pt ? pt.netRevenueMinor : null)) } : {}) }]}
               format={money}
               previousLabel={previousLabel}
               area
@@ -291,33 +294,33 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
               exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
             />
           ) : (
-            <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet. Net revenue by {per} shows here once orders are paid.</p>
+            <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">{fillWords(w.netNone, { per })}</p>
           )}
         </ChartCard>
         {costsMissing ? (
-          <ChartCard title="Contribution profit" description="What is left of net revenue after what the sales cost.">
+          <ChartCard title={w.profit} description={w.profitWhat}>
             <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
-              <p className="font-medium">Add what your products cost to see profit</p>
-              <p className="text-muted">Until costs are entered for enough of your sales, profit would only be revenue under another name, so none is shown.</p>
+              <p className="font-medium">{w.profitAdd}</p>
+              <p className="text-muted">{w.profitWhy}</p>
               {isOwner ? (
                 <Link href={settingsHref} className={linkClass}>
-                  Open Analytics settings
+                  {w.openSettings}
                 </Link>
               ) : (
-                <p className="text-muted">An owner of the store can add them.</p>
+                <p className="text-muted">{w.ownerCanAdd}</p>
               )}
             </div>
           </ChartCard>
         ) : (
           <ChartCard
-            title="Contribution profit"
-            description={sales ? `Net revenue less cost of goods, payment and platform fees, shipping and ad spend, ${data.costCoverageText}. Fees and shipping are estimates from your settings.` : "Net revenue less what the sales cost."}
+            title={w.profit}
+            description={sales ? fillWords(w.profitDescription, { coverage: data.costCoverageText }) : w.profitPlain}
           >
             {sales ? (
               <LineChart
-                label={`Contribution profit per ${per}`}
+                label={fillWords(w.profitPer, { per })}
                 labels={labels}
-                series={[{ key: "profit", label: "Contribution profit", values: data.series.current.map((pt) => pt.contributionMinor), ...(comparison ? { previous: comparison.map((pt) => (pt ? pt.contributionMinor : null)) } : {}) }]}
+                series={[{ key: "profit", label: w.profit, values: data.series.current.map((pt) => pt.contributionMinor), ...(comparison ? { previous: comparison.map((pt) => (pt ? pt.contributionMinor : null)) } : {}) }]}
                 format={money}
                 previousLabel={previousLabel}
                 area
@@ -325,7 +328,7 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
                 exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
               />
             ) : (
-              <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet, so there is no profit to show.</p>
+              <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">{w.profitNone}</p>
             )}
           </ChartCard>
         )}
@@ -342,11 +345,12 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
 export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; diagnosis: OverviewDiagnosis | null }) {
   if (!diagnosis) return null;
   const money = moneyWriter(frame.currency, frame.locale);
+  const w = analyticsWords().overview.why;
   return (
     <AnalyticsSection
       id="overview-why"
-      title="Why did sales change?"
-      description={`${frame.params.period.label} against ${diagnosis.comparedWith}. ${diagnosis.basis}, worked out from the figures, not guessed.`}
+      title={w.title}
+      description={fillWords(w.description, { period: frame.params.period.label, against: diagnosis.comparedWith, basis: diagnosis.basis })}
       action={
         diagnosis.explanation.lookAt ? (
           <Link href={drillTo(frame, diagnosis.explanation.lookAt.href)} className={linkClass}>
@@ -359,8 +363,8 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
         <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{diagnosis.explanation.reason ?? diagnosis.explanation.sentences[0]}</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="What moved revenue" description="Each factor's own change. Together they make the change in revenue.">
-            <HorizontalBars label="Change in each factor" rows={factorRows(diagnosis.explanation)} exportId="overview.factors" />
+          <ChartCard title={w.moved} description={w.movedDescription}>
+            <HorizontalBars label={w.bars} rows={factorRows(diagnosis.explanation)} exportId="overview.factors" />
           </ChartCard>
           <div className={`min-w-0 space-y-2 p-4 text-sm ${CARD_CLASS}`}>
             {diagnosis.explanation.sentences.map((line, i) => (
@@ -369,7 +373,8 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
               </p>
             ))}
             <p className="text-xs text-muted">
-              Change in revenue: <span className="tabular-nums">{diagnosis.explanation.changeMinor < 0 ? MINUS : "+"}{money(Math.abs(diagnosis.explanation.changeMinor))}</span>
+              {w.change}
+              <span className="tabular-nums">{diagnosis.explanation.changeMinor < 0 ? MINUS : "+"}{money(Math.abs(diagnosis.explanation.changeMinor))}</span>
             </p>
           </div>
         </div>
@@ -392,42 +397,43 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
 export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffic: TrafficReport }) {
   const countingOn = traffic.counting;
   const f = traffic.funnel;
+  const w = analyticsWords().overview.funnel;
   const funnelNotes: string[] = [];
-  if (traffic.sessions !== null && traffic.coverage.partial && traffic.coverage.firstDay) funnelNotes.push(`Visits have been counted since ${dayText(traffic.coverage.firstDay)}, so the funnel covers only the days from then.`);
+  if (traffic.sessions !== null && traffic.coverage.partial && traffic.coverage.firstDay) funnelNotes.push(fillWords(w.since, { day: dayText(traffic.coverage.firstDay) }));
   if (traffic.sessions !== null && traffic.uncoveredOrders.orders > 0) {
-    funnelNotes.push(`${formatCount(traffic.uncoveredOrders.orders)} paid ${plural(traffic.uncoveredOrders.orders, "order falls", "orders fall")} outside the days with counted visits and ${plural(traffic.uncoveredOrders.orders, "is", "are")} left out of the rates.`);
+    funnelNotes.push(countText(w.outside, traffic.uncoveredOrders.orders, {}, formatCount(traffic.uncoveredOrders.orders)));
   }
   funnelNotes.push(...f.notes);
 
   return (
     <AnalyticsSection
       id="overview-funnel"
-      title="From visit to purchase"
-      description="Where visitors drop off on the way to buying."
+      title={w.title}
+      description={w.description}
       action={
         <Link href={drillTo(frame, "/analytics/traffic")} className={linkClass}>
-          Traffic details
+          {w.details}
         </Link>
       }
     >
       {traffic.sessions === null ? (
         countingOn ? (
-          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so there is no funnel to show yet.</p>
+          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.noVisits}</p>
         ) : (
-          <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives="It shows how many people visit, look at a product, add to the cart and check out, and where they leave." />
+          <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives={w.gives} />
         )
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="The way to a purchase" description="Each step counts visitor-days: one visitor on one day.">
-            <Funnel label="Sales funnel" stages={f.stages.map((s) => ({ label: s.label, value: s.count }))} format={formatCount} exportId="overview.funnel" />
+          <ChartCard title={w.way} description={w.wayDescription}>
+            <Funnel label={w.label} stages={f.stages.map((s) => ({ label: s.label, value: s.count }))} format={formatCount} exportId="overview.funnel" />
           </ChartCard>
           <div className="space-y-3">
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Stat label="Product view rate" caption="Visits that looked at a product." value={f.productViewRate === null ? null : formatPercent(f.productViewRate)} reason="No visits yet." />
-              <Stat label="Add-to-cart rate" caption="Visits that put something in the cart." value={f.addToCartRate === null ? null : formatPercent(f.addToCartRate)} reason="No visits yet." />
-              <Stat label="Cart abandonment" caption="Of the carts made, the share that never became a purchase." value={f.cartAbandonment === null ? null : formatPercent(f.cartAbandonment)} reason="No carts were made." />
-              <Stat label="Checkout abandonment" caption="Of those who reached checkout, the share who did not buy." value={f.checkoutAbandonment === null ? null : formatPercent(f.checkoutAbandonment)} reason="Nobody reached checkout." />
-              <Stat label="Purchase conversion" caption="Visits that ended in a paid order." value={f.purchaseConversion === null ? null : formatPercent(f.purchaseConversion)} reason="No visits yet." />
+              <Stat label={w.stats.productView.label} caption={w.stats.productView.caption} value={f.productViewRate === null ? null : formatPercent(f.productViewRate)} reason={w.noVisitsYet} />
+              <Stat label={w.stats.addToCart.label} caption={w.stats.addToCart.caption} value={f.addToCartRate === null ? null : formatPercent(f.addToCartRate)} reason={w.noVisitsYet} />
+              <Stat label={w.stats.cartAbandonment.label} caption={w.stats.cartAbandonment.caption} value={f.cartAbandonment === null ? null : formatPercent(f.cartAbandonment)} reason={w.stats.cartAbandonment.reason} />
+              <Stat label={w.stats.checkoutAbandonment.label} caption={w.stats.checkoutAbandonment.caption} value={f.checkoutAbandonment === null ? null : formatPercent(f.checkoutAbandonment)} reason={w.stats.checkoutAbandonment.reason} />
+              <Stat label={w.stats.purchase.label} caption={w.stats.purchase.caption} value={f.purchaseConversion === null ? null : formatPercent(f.purchaseConversion)} reason={w.noVisitsYet} />
             </dl>
             {funnelNotes.length > 0 ? (
               <ul className="space-y-1 text-xs text-muted">
@@ -450,47 +456,49 @@ export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffi
 export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: TopProducts }) {
   const money = moneyWriter(frame.currency, frame.locale);
   const settingsHref = `${frame.base}/analytics/settings`;
-  const revenueRows: BarRow[] = top.byRevenue.map((p) => ({ key: p.productId, label: p.name, value: p.revenueMinor, valueText: money(p.revenueMinor), ...(p.units > 0 ? { detail: `${formatCount(p.units)} sold` } : {}) }));
+  const w = analyticsWords().overview.products;
+  const ownerCan = analyticsWords().overview.charts;
+  const revenueRows: BarRow[] = top.byRevenue.map((p) => ({ key: p.productId, label: p.name, value: p.revenueMinor, valueText: money(p.revenueMinor), ...(p.units > 0 ? { detail: fillWords(w.sold, { n: formatCount(p.units) }) } : {}) }));
   const profitRows: BarRow[] = top.byProfit.map((p) => ({
     key: p.productId,
     label: p.name,
     value: p.profitMinor,
     valueText: p.profitMinor === null ? NO_FIGURE : money(p.profitMinor),
-    ...(p.costCoverage !== null && p.costCoverage < 1 ? { detail: `${formatPercent(p.costCoverage, 0)} costed` } : {}),
+    ...(p.costCoverage !== null && p.costCoverage < 1 ? { detail: fillWords(w.costed, { share: formatPercent(p.costCoverage, 0) }) } : {}),
   }));
   return (
     <AnalyticsSection
       id="overview-products"
-      title="Best sellers"
-      description="The five products that brought in the most, and the five that left the most after their cost."
+      title={w.title}
+      description={w.description}
       action={
         <Link href={drillTo(frame, "/analytics/products")} className={linkClass}>
-          All products
+          {w.all}
         </Link>
       }
     >
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="By revenue" description="Without VAT, after discounts.">
-          <HorizontalBars label="Top products by revenue" rows={revenueRows} emptyText="No products were sold in this period." exportId="overview.top_revenue" />
+        <ChartCard title={w.byRevenue} description={w.byRevenueDescription}>
+          <HorizontalBars label={w.byRevenueLabel} rows={revenueRows} emptyText={w.none} exportId="overview.top_revenue" />
         </ChartCard>
-        <ChartCard title="By profit" description="Revenue less the cost of what was sold, before refunds.">
+        <ChartCard title={w.byProfit} description={w.byProfitDescription}>
           {revenueRows.length > 0 && profitRows.length === 0 ? (
             <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
-              <p className="font-medium">Add what your products cost to rank them by profit</p>
+              <p className="font-medium">{w.addCosts}</p>
               {frame.isOwner ? (
                 <Link href={settingsHref} className={linkClass}>
-                  Open Analytics settings
+                  {ownerCan.openSettings}
                 </Link>
               ) : (
-                <p className="text-muted">An owner of the store can add them.</p>
+                <p className="text-muted">{ownerCan.ownerCanAdd}</p>
               )}
             </div>
           ) : (
-            <HorizontalBars label="Top products by profit" rows={profitRows} emptyText="No products were sold in this period." exportId="overview.top_profit" />
+            <HorizontalBars label={w.byProfitLabel} rows={profitRows} emptyText={w.none} exportId="overview.top_profit" />
           )}
         </ChartCard>
       </div>
-      {top.truncated ? <p className="text-xs text-muted">The store has many products, so a rank near the bottom of a list may be a little off.</p> : null}
+      {top.truncated ? <p className="text-xs text-muted">{w.truncated}</p> : null}
     </AnalyticsSection>
   );
 }
@@ -498,41 +506,43 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
 export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; marketing: MarketingReport }) {
   const money = moneyWriter(frame.currency, frame.locale);
   const channelRows = (marketing.table?.rows ?? []).filter((r) => r.revenueMinor > 0 || r.orders > 0).slice(0, 5);
+  const w = analyticsWords().overview.channels;
   const channelColumns: Column<ChannelRow>[] = [
-    { key: "channel", label: "Channel", align: "left", cell: (r) => r.label },
-    { key: "revenue", label: "Revenue", align: "right", cell: (r) => money(r.revenueMinor) },
-    { key: "orders", label: "Orders", align: "right", cell: (r) => formatCount(r.orders) },
+    { key: "channel", label: w.channel, align: "left", cell: (r) => r.label },
+    { key: "revenue", label: w.revenue, align: "right", cell: (r) => money(r.revenueMinor) },
+    { key: "orders", label: w.orders, align: "right", cell: (r) => formatCount(r.orders) },
     {
       key: "conversion",
-      label: "Conversion",
+      label: w.conversion,
       align: "right",
-      cell: (r) => (r.conversion === null ? <span title="Visits are not known for these orders">{NO_FIGURE}</span> : formatPercent(r.conversion)),
+      cell: (r) => (r.conversion === null ? <span title={w.visitsUnknown}>{NO_FIGURE}</span> : formatPercent(r.conversion)),
     },
-    { key: "roas", label: "ROAS", align: "right", cell: (r) => (r.roas === null ? <span title="No ad spend entered for this channel">{NO_FIGURE}</span> : formatTimes(r.roas)) },
+    { key: "roas", label: w.roas, align: "right", cell: (r) => (r.roas === null ? <span title={w.noSpend}>{NO_FIGURE}</span> : formatTimes(r.roas)) },
   ];
   return (
     <AnalyticsSection
       id="overview-channels"
-      title="Where sales come from"
-      description="The channels that brought in the most revenue."
+      title={w.title}
+      description={w.description}
       action={
         <Link href={drillTo(frame, "/analytics/marketing")} className={linkClass}>
-          Marketing details
+          {w.details}
         </Link>
       }
     >
       {marketing.table === null ? (
         marketing.counting ? (
-          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so orders cannot be tied to a channel yet.</p>
+          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.noVisits}</p>
         ) : (
-          <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives="It shows which channels (search, social, email and so on) your visits and orders come from." />
+          <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives={w.gives} />
         )
       ) : (
         <div className="space-y-2">
-          <DataTable caption="Top channels by revenue" columns={channelColumns} rows={channelRows} rowKey={(r) => r.channel} empty="No paid order could be tied to a channel in this period." exportId="overview.channels" exportLeftOut={{ orders: marketing.unconverted, currencies: marketing.missingCurrencies }} />
+          <DataTable caption={w.caption} columns={channelColumns} rows={channelRows} rowKey={(r) => r.channel} empty={w.empty} exportId="overview.channels" exportLeftOut={{ orders: marketing.unconverted, currencies: marketing.missingCurrencies }} />
           <p className="text-xs text-muted">
-            <span title="Return on ad spend">ROAS</span> is the revenue a channel brought in for each 1 spent on it; {NO_FIGURE} means no ad spend is entered. Unknown holds the orders no counted visit explains.
-            {marketing.spend.totalMinor === 0 ? " No ad spend is entered for this period." : ""}
+            <span title={w.roasLong}>{w.roas}</span>
+            {fillWords(w.roasNote, { none: NO_FIGURE })}
+            {marketing.spend.totalMinor === 0 ? w.noSpendPeriod : ""}
           </p>
         </div>
       )}
@@ -547,26 +557,26 @@ export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; ma
 export function TargetSection({ frame, target }: { frame: OverviewFrame; target: OverviewTarget }) {
   const money = moneyWriter(frame.currency, frame.locale);
   const p = target.progress;
-  const lines = targetLines(p, money);
+  const words = analyticsWords();
+  const w = words.overview.target;
+  const lines = targetLines(p, money, words);
   return (
-    <AnalyticsSection id="overview-target" title={`Target for ${target.monthLabel}`} description="Net revenue so far this month against the month's target, whatever period is picked above.">
+    <AnalyticsSection id="overview-target" title={fillWords(w.title, { month: target.monthLabel })} description={w.description}>
       {p.status === "no_target" ? (
         <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
-          <p className="font-medium">No target is set for {target.monthLabel}</p>
-          <p className="text-muted">
-            A target shows whether the month is on pace. So far this month the store has {money(p.actualMinor)} in net revenue.
-          </p>
+          <p className="font-medium">{fillWords(w.none, { month: target.monthLabel })}</p>
+          <p className="text-muted">{fillWords(w.noneBody, { amount: money(p.actualMinor) })}</p>
           {frame.isOwner ? (
             <Link href={`${frame.base}/analytics/settings`} className={linkClass}>
-              Set a monthly target
+              {w.set}
             </Link>
           ) : (
-            <p className="text-muted">An owner of the store can set one in Analytics settings.</p>
+            <p className="text-muted">{w.ownerCanSet}</p>
           )}
         </div>
       ) : (
         <div className={`space-y-3 p-4 ${CARD_CLASS}`}>
-          <Meter label={`Net revenue against the target for ${target.monthLabel}`} value={p.actualMinor} target={p.targetMinor} expected={p.tooEarly ? null : p.expectedByTodayMinor} format={money} />
+          <Meter label={fillWords(w.meter, { month: target.monthLabel })} value={p.actualMinor} target={p.targetMinor} expected={p.tooEarly ? null : p.expectedByTodayMinor} format={money} />
           <ul className="space-y-1 text-sm text-muted">
             {lines.map((line, i) => (
               <li key={i}>{line}</li>
@@ -582,15 +592,17 @@ export function TargetSection({ frame, target }: { frame: OverviewFrame; target:
 export function ForecastSection({ frame, forecast }: { frame: OverviewFrame; forecast: OverviewForecast | null }) {
   if (!forecast) return null;
   const money = moneyWriter(frame.currency, frame.locale);
+  const words = analyticsWords();
+  const w = words.overview.forecast;
   return (
     <AnalyticsSection
       id="overview-forecast"
-      title={`Forecast for ${forecast.monthLabel}`}
-      description="Where the month's net revenue is heading if the last weeks' pace holds. An estimate, not a promise."
-      action={<StatusPill tone="neutral">Estimate</StatusPill>}
+      title={fillWords(w.title, { month: forecast.monthLabel })}
+      description={w.description}
+      action={<StatusPill tone="neutral">{w.estimate}</StatusPill>}
     >
       <div className={`space-y-2 p-4 text-sm ${CARD_CLASS}`}>
-        {forecastLines(forecast, money).map((line, i) => (
+        {forecastLines(forecast, money, words).map((line, i) => (
           <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
             {line}
           </p>

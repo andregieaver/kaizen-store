@@ -2,6 +2,8 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { taxReportsNb } from "@/lib/admin-messages/tax-reports.nb";
+
 import { reconcile, reconcileMain, bridgeSentence, refundsLine, type CurrencySums } from "@/lib/tax-reconciliation";
 import { buildVatReport, type DocGroup } from "@/lib/tax-report";
 import type { ReconciliationView } from "@/server/tax-reconciliation";
@@ -258,3 +260,13 @@ describe("the note on an assumed seller", () => {
   });
 });
 
+describe("the VAT view in Norwegian (D312 A9)", () => {
+  it("says the statement, the cards, the table and the reconciliation in the account's words", () => {
+    const out = html(h(TaxView, props({ words: taxReportsNb })));
+    expect(out).toContain("Ikke en melding til myndighetene");
+    expect(out).toContain("Beregnet mva.");
+    expect(out).toContain("Mva. per land og sats");
+    expect(out).toContain("Avstemming");
+    expect(out).not.toContain("VAT charged");
+  });
+});

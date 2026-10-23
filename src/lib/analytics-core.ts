@@ -1,4 +1,6 @@
+import { fillWords } from "./admin-fill";
 import { convertMinor, type Rates } from "./currency";
+import { analyticsWords } from "./analytics-words";
 
 /**
  * The arithmetic every analytics figure shares (D152, docs/analytics.md):
@@ -83,9 +85,15 @@ export function groupThousands(text: string): string {
   return `${negative ? MINUS : ""}${grouped}${fraction === undefined ? "" : `.${fraction}`}`;
 }
 
-/** A number with `digits` decimals and thousands grouped: 12345.678 → "12 345.7" (digits 1); the dash when it cannot be known. */
+/**
+ * A number with `digits` decimals and thousands grouped: 12345.678 → "12 345.7" (digits 1); the dash when it cannot be known. The decimal
+ * mark is the request's language's (D312 A9, `analyticsWords().numbers.decimal`): a point in English, a comma in Norwegian.
+ */
 export function formatNumber(n: number | null | undefined, digits = 0): string {
-  return finite(n) ? groupThousands(roundedText(n, digits)) : NO_FIGURE;
+  if (!finite(n)) return NO_FIGURE;
+  const text = groupThousands(roundedText(n, digits));
+  const mark = analyticsWords().numbers.decimal;
+  return mark === "." ? text : text.replace(".", mark);
 }
 
 /** A ratio as a percentage with a space before the sign, as the admin writes it: 0.834 → "83.4 %". */
@@ -108,14 +116,15 @@ export function formatSigned(ratio: number | null | undefined, digits = 1): stri
 export function formatChange(delta: Delta | null | undefined, digits = 1): string {
   if (!delta) return NO_FIGURE;
   if (delta.pct !== null) return formatSigned(delta.pct, digits);
-  return delta.abs === 0 ? formatSigned(0, digits) : delta.abs > 0 ? "new" : NO_FIGURE;
+  return delta.abs === 0 ? formatSigned(0, digits) : delta.abs > 0 ? analyticsWords().numbers.new : NO_FIGURE;
 }
 
 /** A change in a share as points: "+0.4 pts". */
 export function formatPoints(points: number | null | undefined, digits = 1): string {
   if (!finite(points)) return NO_FIGURE;
   const text = formatNumber(points, digits);
-  return Number(roundedText(points, digits)) > 0 ? `+${text} pts` : `${text} pts`;
+  const unit = analyticsWords().numbers.points;
+  return Number(roundedText(points, digits)) > 0 ? `+${text} ${unit}` : `${text} ${unit}`;
 }
 
 /** A whole number with spaces between thousands: 12345 → "12 345" (a no-break space) so a number is never split over two lines. */
@@ -132,7 +141,7 @@ export const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Au
 export function formatMonth(month: string): string {
   const match = /^(\d{4})-(\d{2})/.exec(month);
   const index = match ? Number(match[2]) - 1 : -1;
-  return match && index >= 0 && index < 12 ? `${MONTH_SHORT[index]} ${match[1]}` : month;
+  return match && index >= 0 && index < 12 ? fillWords(analyticsWords().numbers.month, { month: analyticsWords().numbers.months[index], year: match[1] }) : month;
 }
 
 /** `2026-09-03` as "3 Sep 2026"; anything that is not a real day as it came. */
@@ -142,7 +151,7 @@ export function formatDate(day: string): string {
   const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const date = new Date(Date.UTC(y, m - 1, d));
   const real = date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
-  return real ? `${d} ${MONTH_SHORT[m - 1]} ${y}` : day;
+  return real ? fillWords(analyticsWords().numbers.date, { day: d, month: analyticsWords().numbers.months[m - 1], year: y }) : day;
 }
 
 // ---------- good or bad ----------

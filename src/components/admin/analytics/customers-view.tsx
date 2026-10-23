@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { fillWords } from "@/lib/admin-fill";
+import { reportsEn } from "@/lib/admin-messages/reports.en";
+import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import type { ReactNode } from "react";
 
 import { formatCount, formatDate, formatMonth, formatPercent, NO_FIGURE, safeRatio } from "@/lib/analytics-core";
@@ -72,8 +75,8 @@ export function monthText(month: string): string {
 }
 
 /** A column of the cohort table: month 0 is the month of the first order itself. */
-export function cohortColumn(offset: number): string {
-  return offset === 0 ? "Same month" : `Month ${offset}`;
+export function cohortColumn(offset: number, w: CustomersWords = reportsEn.customers): string {
+  return offset === 0 ? w.sameMonth : fillWords(w.monthN, { n: String(offset) });
 }
 
 /** The day of an order in the store's time zone, as "3 Oct 2026"; the dash when it is not a date. */
@@ -88,10 +91,12 @@ export function lastOrderText(iso: string, timeZone: string): string {
 }
 
 /** The advice for a group: without the bonus program (D178) it never suggests bonus credit. */
-export function segmentAction(segment: RfmSegment, bonusOn: boolean): string {
-  if (segment === "Loyal" && !bonusOn) return "Keep them happy: ask for a review, or thank them with a small gift.";
-  return SEGMENT_COPY[segment].action;
+export function segmentAction(segment: RfmSegment, bonusOn: boolean, w: CustomersWords = reportsEn.customers): string {
+  if (segment === "Loyal" && !bonusOn) return w.loyalWithoutBonus;
+  return w.segments[segment].action;
 }
+
+export type CustomersWords = ReportsMessages["customers"];
 
 /** What each customer group means and what to do about it, in plain words (the groups are defined by `segmentOf()`). */
 export const SEGMENT_COPY: Record<RfmSegment, { meaning: string; action: string }> = {
@@ -145,7 +150,9 @@ function PeriodGroup({
   customerShare,
   revenueShare,
   money,
+  w,
 }: {
+  w: CustomersWords;
   title: string;
   caption: string;
   customers: number;
@@ -160,37 +167,38 @@ function PeriodGroup({
       <h3 className="text-body-strong text-ink">{title}</h3>
       <p className="mb-3 text-xs text-muted">{caption}</p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-        <Figure label="Customers">{formatCount(customers)}</Figure>
-        <Figure label="Orders">{formatCount(orders)}</Figure>
-        <Figure label="Revenue" help="Net revenue: after refunds, without VAT.">
+        <Figure label={w.fig.customers}>{formatCount(customers)}</Figure>
+        <Figure label={w.fig.orders}>{formatCount(orders)}</Figure>
+        <Figure label={w.fig.revenue} help={w.fig.revenueHelp}>
           {money(revenue)}
         </Figure>
-        <Figure label="Average order" help="Revenue divided by orders.">
+        <Figure label={w.fig.averageOrder} help={w.fig.averageOrderHelp}>
           {money(safeRatio(revenue, orders))}
         </Figure>
-        <Figure label="Share of customers">{formatPercent(customerShare, 1)}</Figure>
-        <Figure label="Share of revenue">{formatPercent(revenueShare, 1)}</Figure>
+        <Figure label={w.fig.customerShare}>{formatPercent(customerShare, 1)}</Figure>
+        <Figure label={w.fig.revenueShare}>{formatPercent(revenueShare, 1)}</Figure>
       </dl>
     </div>
   );
 }
 
 /** The ways the predicted lifetime value cannot be worked out, in words. */
-function predictionReason(report: CustomersReport): string {
+function predictionReason(report: CustomersReport, w: CustomersWords): string {
   const { predicted, inputs } = report.ltv;
-  if (predicted.basis === null) return "There are no paid orders to work from yet.";
-  if (inputs.ordersPerYear === null || inputs.ordersPerYear <= 0) return "Nobody has ordered in the last 365 days, so how often customers buy is not known yet.";
-  return "There is not enough to work it out yet.";
+  if (predicted.basis === null) return w.noOrdersYet;
+  if (inputs.ordersPerYear === null || inputs.ordersPerYear <= 0) return w.noRecentOrders;
+  return w.notEnough;
 }
 
 // ---------------------------------------------------------------------------
 // The view
 // ---------------------------------------------------------------------------
 
-export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn = true }: CustomersViewProps) {
+export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn = true, words: w = reportsEn.customers }: CustomersViewProps & { words?: CustomersWords }) {
   const money = moneyOf(report.currency, locale);
   const decimal = decimalOf();
   const settingsHref = `${base}/analytics/settings`;
+  const cnt = (n: number, pair: { one: string; many: string }) => `${formatCount(n)} ${n === 1 ? pair.one : pair.many}`;
   const costsHref = `${base}/products`;
   const { newVsReturning: nvr, ltv, segments, cohorts, cohortTrend: trend, frequency } = report;
 
@@ -198,22 +206,22 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
   const notes: ReactNode[] = [];
   if (report.truncated) {
     notes.push(
-      <Note key="truncated" tone="warning" title="Only the most recent customers are counted">
-        This store has more than {formatCount(report.cap)} customers. The figures below use the {formatCount(report.cap)} with the latest orders, so the oldest customers are missing from them.
+      <Note key="truncated" tone="warning" title={w.truncatedTitle}>
+        {fillWords(w.truncated, { cap: formatCount(report.cap) })}
       </Note>,
     );
   }
   if (report.unconverted > 0) {
-    const currencies = report.missingRates.length > 0 ? report.missingRates.join(", ") : "another currency";
+    const currencies = report.missingRates.length > 0 ? report.missingRates.join(", ") : w.anotherCurrency;
     notes.push(
-      <Note key="unconverted" tone="warning" title="Some amounts could not be converted">
-        {countOf(report.unconverted, "customer")} bought in {currencies}, which has no exchange rate in this store, so they are left out of the lifetime value, the top customers and the amounts that need it. They are not counted as zero.{" "}
+      <Note key="unconverted" tone="warning" title={w.unconvertedTitle}>
+        {fillWords(w.unconverted, { customers: cnt(report.unconverted, w.n.customer), currencies })}{" "}
         {isOwner ? (
           <Link href={`${base}/settings/localization`} className={linkClass}>
-            Add the rate in Languages and currencies
+            {w.addRate}
           </Link>
         ) : (
-          "An owner can add the rate in Languages and currencies."
+          w.ownerAddsRate
         )}
       </Note>,
     );
@@ -225,11 +233,11 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
     return (
       <div className="flex flex-col gap-8">
         {noteBlock}
-        <AnalyticsSection id="cust-empty" title="No customers yet" description="A customer shows up here after their first paid order.">
+        <AnalyticsSection id="cust-empty" title={w.emptyTitle} description={w.emptyDescription}>
           <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-ink">Nothing to show yet.</p>
+            <p className="font-medium text-ink">{w.emptyLead}</p>
             <p className="mx-auto mt-1 max-w-prose">
-              Once people have paid for orders, this page shows how many of them come back, what an average customer is worth, which customers are your best, and how well each month&apos;s new customers stay.
+              {w.emptyBody}
             </p>
           </div>
         </AnalyticsSection>
@@ -244,31 +252,31 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
 
   const returningCard: KpiCardProps = hasPeriodCustomers
     ? {
-        label: "Revenue from returning customers",
+        label: w.returningLabel,
         value: formatPercent(nvr.returningRevenueShare, 1),
-        help: "The share of this period's revenue that came from people who had bought from you before.",
-        hint: `${formatCount(nvr.returningCustomers)} of ${formatCount(periodCustomers)} customers who ordered in this period had bought before.`,
+        help: w.returningHelp,
+        hint: fillWords(w.returningHint, { returning: formatCount(nvr.returningCustomers), all: formatCount(periodCustomers) }),
         href: "#cust-new-returning",
         emphasis: true,
       }
-    : { label: "Revenue from returning customers", value: null, state: "missing", missing: { text: "Nobody ordered in this period." }, help: "The share of this period's revenue that came from people who had bought from you before." };
+    : { label: w.returningLabel, value: null, state: "missing", missing: { text: w.nobodyOrdered }, help: w.returningHelp };
 
   const repeatCard: KpiCardProps =
     rate90 && rate90.rate !== null
       ? {
-          label: "Customers who buy again within 90 days",
+          label: w.repeat90Label,
           value: formatPercent(rate90.rate, 1),
-          help: "Of the customers whose first order is at least 90 days old, the share who ordered again within 90 days of it.",
-          hint: `${formatCount(rate90.repeaters)} of ${formatCount(rate90.base)} customers.${rate90.base < SMALL_BASE ? " A small group, so a rough guide." : ""}`,
+          help: w.repeat90Help,
+          hint: `${fillWords(w.repeat90Hint, { repeaters: formatCount(rate90.repeaters), base: formatCount(rate90.base) })}${rate90.base < SMALL_BASE ? w.roughSmall : ""}`,
           href: "#cust-repeat",
           emphasis: true,
         }
       : {
-          label: "Customers who buy again within 90 days",
+          label: w.repeat90Label,
           value: null,
           state: "missing",
-          missing: { text: "No customer has been with you 90 days yet, so there is nothing to measure." },
-          help: "Of the customers whose first order is at least 90 days old, the share who ordered again within 90 days of it.",
+          missing: { text: w.no90 },
+          help: w.repeat90Help,
         };
 
   const predictedCard: KpiCardProps =
@@ -276,8 +284,8 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
       ? {
           label: ltv.predicted.label,
           value: money(ltv.predicted.minor),
-          help: "What an average customer is expected to bring in over the years they stay with you. An estimate, not a promise.",
-          hint: ltv.predicted.basis === "revenue" ? "Revenue, not profit: product costs are not entered." : `Profit after costs, over ${ltv.inputs.lifespanYears} years.`,
+          help: w.predictedHelp,
+          hint: ltv.predicted.basis === "revenue" ? w.revenueNotProfit : fillWords(w.profitOver, { years: String(ltv.inputs.lifespanYears) }),
           href: "#cust-value",
           emphasis: true,
         }
@@ -285,80 +293,81 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
           label: ltv.predicted.label,
           value: null,
           state: "missing",
-          missing: { text: predictionReason(report) },
-          help: "What an average customer is expected to bring in over the years they stay with you. An estimate, not a promise.",
+          missing: { text: predictionReason(report, w) },
+          help: w.predictedHelp,
         };
 
   // ---- repeat purchase ----
   const repeatCards = report.repeatRates.map((r): KpiCardProps => {
-    const label = `Bought again within ${r.days} days`;
-    const help = `Of the customers whose first order is at least ${r.days} days old, the share who ordered again within ${r.days} days of it.`;
+    const days = String(r.days);
+    const label = fillWords(w.repeatLabel, { days });
+    const help = fillWords(w.repeatHelp, { days });
     if (r.rate === null) {
-      return { label, value: null, state: "missing", help, missing: { text: `No customer has been with you ${r.days} days yet, so there is nothing to measure.` } };
+      return { label, value: null, state: "missing", help, missing: { text: fillWords(w.repeatNone, { days }) } };
     }
     return {
       label,
       value: formatPercent(r.rate, 1),
       help,
-      hint: `${formatCount(r.repeaters)} of ${formatCount(r.base)} customers whose first order is at least ${r.days} days old.${r.base < SMALL_BASE ? " Only a small group, so treat it as a rough guide." : ""}`,
+      hint: `${fillWords(w.repeatHint, { repeaters: formatCount(r.repeaters), base: formatCount(r.base), days })}${r.base < SMALL_BASE ? w.roughGuide : ""}`,
     };
   });
   const frequencyCard: KpiCardProps =
     frequency.perCustomer !== null
       ? {
-          label: "Orders per customer per year",
+          label: w.freqLabel,
           value: decimal(frequency.perCustomer),
-          help: "Paid orders in the last 365 days divided by the customers who placed them.",
-          hint: `${countOf(frequency.orders365, "order")} from ${countOf(frequency.customers365, "customer")} in the last 365 days.`,
+          help: w.freqHelp,
+          hint: fillWords(w.freqHint, { orders: cnt(frequency.orders365, w.n.order), customers: cnt(frequency.customers365, w.n.customer) }),
         }
       : {
-          label: "Orders per customer per year",
+          label: w.freqLabel,
           value: null,
           state: "missing",
-          missing: { text: "No paid orders in the last 365 days." },
-          help: "Paid orders in the last 365 days divided by the customers who placed them.",
+          missing: { text: w.freqNone },
+          help: w.freqHelp,
         };
 
   // ---- lifetime value ----
-  const costsAction = { label: "Enter what your products cost", href: costsHref };
+  const costsAction = { label: w.enterCosts, href: costsHref };
   const historic = ltv.historic;
   const historicRevenueCard: KpiCardProps =
     historic.revenueMinor !== null
       ? {
-          label: "Revenue per customer so far",
+          label: w.histRevenueLabel,
           value: money(historic.revenueMinor),
-          help: "The average of what each customer has paid you to date: after refunds, without VAT.",
-          hint: `Average over ${countOf(historic.customers, "customer")}, all their orders to date.`,
+          help: w.histRevenueHelp,
+          hint: fillWords(w.histRevenueHint, { customers: cnt(historic.customers, w.n.customer) }),
         }
-      : { label: "Revenue per customer so far", value: null, state: "missing", missing: { text: "No customer has all their amounts in a currency with a known rate." } };
+      : { label: w.histRevenueLabel, value: null, state: "missing", missing: { text: w.histRevenueNone } };
   const historicProfitCard: KpiCardProps =
     historic.contributionMinor !== null
       ? {
-          label: "Profit per customer so far",
+          label: w.histProfitLabel,
           value: money(historic.contributionMinor),
-          help: "Contribution: what is left of a customer's revenue after the cost of goods, payment and platform fees and shipping, before marketing spend. The average of all customers whose costs are known.",
+          help: w.histProfitHelp,
           hint:
             historic.contributionCoverage !== null && historic.contributionCoverage < 1
-              ? `Known for ${formatPercent(historic.contributionCoverage, 0)} of customers; the others bought products with no cost entered.`
-              : "Known for all customers.",
+              ? fillWords(w.histProfitPartial, { share: formatPercent(historic.contributionCoverage, 0) })
+              : w.histProfitAll,
         }
       : {
-          label: "Profit per customer so far",
+          label: w.histProfitLabel,
           value: null,
           state: "missing",
-          help: "Contribution: what is left of a customer's revenue after the cost of goods, payment and platform fees and shipping, before marketing spend.",
-          missing: { text: "Product costs are not entered, so profit per customer cannot be worked out.", action: costsAction },
+          help: w.histProfitHelpShort,
+          missing: { text: w.histProfitNone, action: costsAction },
         };
 
   const perOrder = ltv.predicted.basis === "contribution" ? ltv.inputs.contributionPerOrderMinor : ltv.inputs.revenuePerOrderMinor;
-  const lifespan = `${ltv.inputs.lifespanYears}-year lifespan`;
+  const lifespan = fillWords(w.lifespan, { years: String(ltv.inputs.lifespanYears) });
   const partialContribution = ltv.predicted.basis === "contribution" && ltv.inputs.contributionCustomers < historic.customers;
 
   // ---- segments ----
   const segmentCards = segments.summary;
 
   // ---- cohorts ----
-  const columns = cohorts.offsets.map(cohortColumn);
+  const columns = cohorts.offsets.map((o) => cohortColumn(o, w));
   const retentionRows: CohortTableRow[] = cohorts.rows.map((r) => ({ label: monthText(r.cohort), size: r.size, values: r.retention }));
   const revenueRows: CohortTableRow[] = cohorts.rows.map((r) => ({ label: monthText(r.cohort), size: r.size, values: r.revenuePerCustomerMinor }));
   const revenueMax = maxOf(cohorts.rows.flatMap((r) => r.revenuePerCustomerMinor));
@@ -369,25 +378,25 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
   const topColumns: Column<TopCustomer>[] = [
     {
       key: "customer",
-      label: "Customer",
+      label: w.colCustomer,
       cell: (c) => (
         <Link href={`${base}/customers/${encodeURIComponent(c.customerId)}`} className={`${linkClass} block truncate`} title={c.email}>
           {c.name ?? c.email}
-          <span className="block truncate text-xs font-normal text-muted">{`${c.name ? `${c.email} · ` : ""}${c.account ? "Has an account" : "Guest"}`}</span>
+          <span className="block truncate text-xs font-normal text-muted">{`${c.name ? `${c.email} · ` : ""}${c.account ? w.hasAccount : w.guest}`}</span>
         </Link>
       ),
     },
-    { key: "orders", label: "Orders in period", align: "right", cell: (c) => formatCount(c.orders) },
-    { key: "revenue", label: "Revenue in period", align: "right", cell: (c) => money(c.revenueMinor) },
-    { key: "lifetime", label: "Orders to date", align: "right", cell: (c) => formatCount(c.lifetimeOrders) },
-    { key: "last", label: "Last order", align: "right", cell: (c) => lastOrderText(c.lastOrderAt, timeZone) },
+    { key: "orders", label: w.colOrders, align: "right", cell: (c) => formatCount(c.orders) },
+    { key: "revenue", label: w.colRevenue, align: "right", cell: (c) => money(c.revenueMinor) },
+    { key: "lifetime", label: w.colLifetime, align: "right", cell: (c) => formatCount(c.lifetimeOrders) },
+    { key: "last", label: w.colLast, align: "right", cell: (c) => lastOrderText(c.lastOrderAt, timeZone) },
   ];
 
   return (
     <div className="flex flex-col gap-8">
       {noteBlock}
 
-      <AnalyticsSection id="cust-glance" title="At a glance" description="Do they come back, and what is a customer worth? These three figures answer that; the rest of the page is the detail behind them.">
+      <AnalyticsSection id="cust-glance" title={w.glanceTitle} description={w.glanceDescription}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <KpiCard {...returningCard} />
           <KpiCard {...repeatCard} />
@@ -397,20 +406,21 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
 
       <AnalyticsSection
         id="cust-new-returning"
-        title="New and returning customers"
-        description="A new customer placed their first paid order in this period; a returning customer had already bought before it. Revenue is after refunds and without VAT."
+        title={w.nvrTitle}
+        description={w.nvrDescription}
       >
         {hasPeriodCustomers ? (
           <div className="space-y-3">
             <div className="rounded-panel bg-sunken p-4">
-              <p className="text-sm text-muted">Returning customers&apos; share of revenue</p>
+              <p className="text-sm text-muted">{w.returningShare}</p>
               <p className="text-3xl font-medium tabular-nums">{formatPercent(nvr.returningRevenueShare, 1)}</p>
-              <p className="text-sm text-muted">{`${countOf(nvr.returningCustomers, "returning customer")} brought in ${money(nvr.returningRevenueMinor)} of ${money(nvr.newRevenueMinor + nvr.returningRevenueMinor)} in this period.`}</p>
+              <p className="text-sm text-muted">{fillWords(w.returningBrought, { returning: cnt(nvr.returningCustomers, w.n.returning), money: money(nvr.returningRevenueMinor), total: money(nvr.newRevenueMinor + nvr.returningRevenueMinor) })}</p>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <PeriodGroup
-                title="New customers"
-                caption="First paid order in this period"
+                w={w}
+                title={w.newTitle}
+                caption={w.newCaption}
                 customers={nvr.newCustomers}
                 orders={nvr.newOrders}
                 revenue={nvr.newRevenueMinor}
@@ -419,8 +429,9 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
                 money={money}
               />
               <PeriodGroup
-                title="Returning customers"
-                caption="Had bought before this period"
+                w={w}
+                title={w.retTitle}
+                caption={w.retCaption}
                 customers={nvr.returningCustomers}
                 orders={nvr.returningOrders}
                 revenue={nvr.returningRevenueMinor}
@@ -431,14 +442,14 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
             </div>
           </div>
         ) : (
-          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nobody placed a paid order in this period, so there is nothing to split into new and returning. Try a longer period.</div>
+          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.nvrEmpty}</div>
         )}
       </AnalyticsSection>
 
       <AnalyticsSection
         id="cust-repeat"
-        title="Do customers buy again?"
-        description="The repeat purchase rate: of the customers who have been with you long enough, the share who ordered a second time within that many days of their first order. Customers who are newer than the window are left out, so the rate is not pulled down by people who have not had time yet."
+        title={w.repeatTitle}
+        description={w.repeatDescription}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {repeatCards.map((card, i) => (
@@ -450,8 +461,8 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
 
       <AnalyticsSection
         id="cust-value"
-        title="What a customer is worth"
-        description="Lifetime value is what an average customer brings in over the time they stay with you. The first two figures are what customers have already been worth; the third is a prediction."
+        title={w.valueTitle}
+        description={w.valueDescription}
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <KpiCard {...historicRevenueCard} />
@@ -461,48 +472,48 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
         <div className="space-y-1 text-sm text-muted">
           {ltv.predicted.minor !== null ? (
             <p>
-              {`How the prediction is made: ${money(perOrder)} ${ltv.predicted.basis === "contribution" ? "profit (contribution)" : "revenue"} per order × ${decimal(ltv.inputs.ordersPerYear)} orders per customer a year × ${ltv.inputs.lifespanYears} years. `}
-              {`It assumes a ${lifespan}`}
+              {fillWords(w.howPredicted, { money: money(perOrder), basis: ltv.predicted.basis === "contribution" ? w.basisProfit : w.basisRevenue, orders: decimal(ltv.inputs.ordersPerYear), years: String(ltv.inputs.lifespanYears) })}
+              {fillWords(w.assumes, { lifespan })}
               {isOwner ? (
                 <>
-                  , <Link href={settingsHref} className={linkClass}>changed in settings</Link>.
+                  , <Link href={settingsHref} className={linkClass}>{w.changedInSettings}</Link>.
                 </>
               ) : (
-                ", changed in the analytics settings by an owner."
+                w.changedByOwner
               )}
             </p>
           ) : (
-            <p>{predictionReason(report)}</p>
+            <p>{predictionReason(report, w)}</p>
           )}
           {ltv.predicted.basis === "revenue" ? (
             <p>
-              Product costs are not entered, so this is based on revenue and says so. It is not profit.{" "}
+              {w.revenueBasis}{" "}
               <Link href={costsHref} className={linkClass}>
-                Enter what your products cost
+                {w.enterCosts}
               </Link>{" "}
-              to see profit.
+              {w.toSeeProfit}
             </p>
           ) : null}
-          {partialContribution ? <p>{`Profit per order is worked out from ${formatCount(ltv.inputs.contributionCustomers)} of ${formatCount(historic.customers)} customers: those whose products all have a cost entered.`}</p> : null}
+          {partialContribution ? <p>{fillWords(w.partialProfit, { known: formatCount(ltv.inputs.contributionCustomers), all: formatCount(historic.customers) })}</p> : null}
         </div>
       </AnalyticsSection>
 
       <AnalyticsSection
         id="cust-groups"
-        title="Customer groups"
-        description="RFM sorts customers by how Recently they bought, how Frequently and how much Money they have spent. Each customer is scored against all your other customers, so the groups show who stands out in your own store."
+        title={w.groupsTitle}
+        description={w.groupsDescription}
       >
         {segments.enough ? (
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {segmentCards.map((s) => {
-              const copy = SEGMENT_COPY[s.segment];
+              const copy = w.segments[s.segment];
               return (
                 <li key={s.segment} data-segment={s.segment} className="flex min-w-0 flex-col gap-2 rounded-panel border border-line bg-card p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <h3 className="text-body-strong text-ink">{s.segment}</h3>
+                    <h3 className="text-body-strong text-ink">{copy.name}</h3>
                     <p className="text-sm tabular-nums">
                       <span className="text-lg font-medium">{formatCount(s.customers)}</span>
-                      <span className="text-muted">{` ${s.customers === 1 ? "customer" : "customers"}`}</span>
+                      <span className="text-muted">{` ${s.customers === 1 ? w.customerCount.one : w.customerCount.many}`}</span>
                       {s.customers > 0 ? <span className="text-muted">{` · ${formatPercent(s.customerShare, 0)}`}</span> : null}
                     </p>
                   </div>
@@ -510,67 +521,67 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
                   {s.customers > 0 ? (
                     <>
                       <div>
-                        <p className="text-xs text-muted">Share of all revenue</p>
-                        <ShareBar share={s.revenueShare} text={formatPercent(s.revenueShare, 0)} label="Share of all revenue" />
+                        <p className="text-xs text-muted">{w.shareOfRevenue}</p>
+                        <ShareBar share={s.revenueShare} text={formatPercent(s.revenueShare, 0)} label={w.shareOfRevenue} />
                       </div>
-                      <p className="text-xs text-muted">{`Average ${money(s.averageRevenueMinor)} spent in ${s.averageOrders === null ? NO_FIGURE : decimal(s.averageOrders)} orders; last order ${s.averageRecencyDays === null ? NO_FIGURE : formatCount(s.averageRecencyDays)} days ago on average.`}</p>
+                      <p className="text-xs text-muted">{fillWords(w.segmentAverage, { money: money(s.averageRevenueMinor), orders: s.averageOrders === null ? NO_FIGURE : decimal(s.averageOrders), days: s.averageRecencyDays === null ? NO_FIGURE : formatCount(s.averageRecencyDays) })}</p>
                       <p className="text-sm">
-                        <span className="font-medium">What to do: </span>
-                        {segmentAction(s.segment, bonusOn)}
+                        <span className="font-medium">{w.whatToDo}</span>
+                        {segmentAction(s.segment, bonusOn, w)}
                       </p>
                     </>
                   ) : (
-                    <p className="text-sm text-muted">No customers in this group right now.</p>
+                    <p className="text-sm text-muted">{w.emptyGroup}</p>
                   )}
                 </li>
               );
             })}
           </ul>
         ) : (
-          <Note title="Too few customers to sort into groups">
-            Groups only mean something with at least {formatCount(segments.minCustomers)} customers, and you have {formatCount(segments.customers)} so far. They show up here as more people buy.
+          <Note title={w.fewTitle}>
+            {fillWords(w.few, { min: formatCount(segments.minCustomers), have: formatCount(segments.customers) })}
           </Note>
         )}
       </AnalyticsSection>
 
       <AnalyticsSection
         id="cust-cohorts"
-        title="Do new customers stay?"
-        description="A cohort is the group of customers who placed their first order in the same month. Each row follows one group; each column is how many months after that first order, and the figure is the share who had bought again by then."
+        title={w.cohortsTitle}
+        description={w.cohortsDescription}
       >
         <p className={trend.verdict === "unknown" ? "text-sm text-muted" : "text-sm font-medium"}>{trend.sentence}</p>
-        <ChartCard title="Share who had bought again" description="Cumulative: Month 3 counts everyone who ordered again at any time up to the end of the third month after their first order. A month that is not over yet is left blank.">
-          <CohortTable label="Share of each month's new customers who had bought again, by months since their first order" columns={columns} rows={retentionRows} emptyText="No cohorts yet." exportId="customers.retention" exportLeftOut={leftOut} />
+        <ChartCard title={w.retentionTitle} description={w.retentionDescription}>
+          <CohortTable label={w.retentionLabel} columns={columns} rows={retentionRows} emptyText={w.noCohorts} exportId="customers.retention" exportLeftOut={leftOut} />
         </ChartCard>
-        <ChartCard title="Revenue per customer" description="What each customer in the group had spent in total by then, after refunds and without VAT.">
+        <ChartCard title={w.cohortRevenueTitle} description={w.cohortRevenueDescription}>
           <CohortTable
-            label="Revenue per customer of each month's new customers, by months since their first order"
+            label={w.cohortRevenueLabel}
             columns={columns}
             rows={revenueRows}
             format={(v) => money(v)}
             max={revenueMax}
-            emptyText="No cohorts yet."
+            emptyText={w.noCohorts}
             exportId="customers.cohort_revenue"
             exportLeftOut={leftOut}
           />
         </ChartCard>
-        {smallCohorts ? <p className="text-xs text-muted">{`Months with fewer than ${MIN_COHORT_SIZE} new customers swing a lot with a single order. Read them as a guide, not a result.`}</p> : null}
+        {smallCohorts ? <p className="text-xs text-muted">{fillWords(w.smallCohorts, { n: String(MIN_COHORT_SIZE) })}</p> : null}
       </AnalyticsSection>
 
-      <AnalyticsSection id="cust-top" title="Top customers" description="Ranked by what they spent in this period, after refunds and without VAT. Each name opens the customer.">
+      <AnalyticsSection id="cust-top" title={w.topTitle} description={w.topDescription}>
         <DataTable
-          caption="Top customers by revenue in this period"
+          caption={w.topCaption}
           columns={topColumns}
           rows={report.topCustomers}
           rowKey={(c) => c.key}
-          empty="Nobody placed a paid order in this period."
+          empty={w.topEmpty}
           exportId="customers.top"
           exportLeftOut={leftOut}
         />
       </AnalyticsSection>
 
-      <Note title="How customers are counted">
-        A customer is a person by their email: an account&apos;s orders go together, and a guest is told apart by the email they gave. Someone who orders with two different emails counts as two customers. Amounts are in {report.currency} without VAT, after refunds, and orders in other currencies are converted at today&apos;s rates. Refunds made only in Stripe&apos;s own dashboard are not seen.
+      <Note title={w.countedTitle}>
+        {fillWords(w.counted, { currency: report.currency })}
       </Note>
     </div>
   );

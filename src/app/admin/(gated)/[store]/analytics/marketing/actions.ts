@@ -4,7 +4,10 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { dayText } from "@/components/admin/analytics/overview-view";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
 import { channelLabel } from "@/lib/analytics-traffic";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { addSpend, deleteSpend } from "@/server/analytics-settings";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 
@@ -23,16 +26,12 @@ export async function addSpendAction(storeSlug: string, _state: FormState, form:
   const result = await addSpend(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems);
   refresh();
-  const day = typeof form.get("day") === "string" ? dayText(String(form.get("day"))) : "that day";
-  const channel = typeof form.get("channel") === "string" ? channelLabel(String(form.get("channel"))) : "the channel";
-  return {
-    status: "ok",
-    messages: [
-      result.replaced
-        ? `Replaced the earlier amount for ${channel} on ${day}. CAC and ROAS follow it.`
-        : `Saved the spend for ${channel} on ${day}. CAC and ROAS follow it.`,
-    ],
-  };
+  const words = adminText(await actionAdminLang(), "reports");
+  const w = words.spendAnswers;
+  const raw = form.get("channel");
+  const day = typeof form.get("day") === "string" ? dayText(String(form.get("day"))) : w.thatDay;
+  const channel = typeof raw === "string" ? ((words.channels as Record<string, string>)[raw] ?? channelLabel(raw)) : w.theChannel;
+  return { status: "ok", messages: [fillWords(result.replaced ? w.replaced : w.saved, { channel, day })] };
 }
 
 /** Takes one entry of spend away (`id`). */
@@ -43,5 +42,6 @@ export async function deleteSpendAction(storeSlug: string, _state: FormState, fo
   const result = await deleteSpend(member, typeof id === "string" ? id : "");
   if (!result.ok) return failed(result.problems);
   refresh();
-  return { status: "ok", messages: [result.deleted ? "Removed." : "That entry was already gone."] };
+  const w = adminText(await actionAdminLang(), "reports").spendAnswers;
+  return { status: "ok", messages: [result.deleted ? w.removed : w.alreadyGone] };
 }

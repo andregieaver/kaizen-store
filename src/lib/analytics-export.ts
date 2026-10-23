@@ -327,10 +327,19 @@ export function queryRecord(text: unknown): Record<string, string> {
 }
 
 /** What the button says: the left-out currencies are repeated, so the file never states more than the page does. */
-export function downloadLabel(leftOut: { orders: number; currencies: readonly string[] }): string {
-  if (leftOut.orders <= 0) return "Download CSV";
-  const where = leftOut.currencies.length > 0 ? ` in ${leftOut.currencies.join(", ")}` : "";
-  return `Download CSV: ${leftOut.orders} ${leftOut.orders === 1 ? "order" : "orders"}${where} left out, as on this page`;
+/** The words the button is written in (D312 A9, the `analytics` catalogue's `exportButton`); English unless given. */
+export type DownloadWords = { download: string; leftOut: { one: string; many: string }; leftOutIn: string };
+
+const DOWNLOAD_EN: DownloadWords = {
+  download: "Download CSV",
+  leftOut: { one: "Download CSV: {n} order{where} left out, as on this page", many: "Download CSV: {n} orders{where} left out, as on this page" },
+  leftOutIn: " in {currencies}",
+};
+
+export function downloadLabel(leftOut: { orders: number; currencies: readonly string[] }, words: DownloadWords = DOWNLOAD_EN): string {
+  if (leftOut.orders <= 0) return words.download;
+  const where = leftOut.currencies.length > 0 ? words.leftOutIn.replace("{currencies}", leftOut.currencies.join(", ")) : "";
+  return (leftOut.orders === 1 ? words.leftOut.one : words.leftOut.many).replace("{n}", String(leftOut.orders)).replace("{where}", where);
 }
 
 // ---------------------------------------------------------------------------

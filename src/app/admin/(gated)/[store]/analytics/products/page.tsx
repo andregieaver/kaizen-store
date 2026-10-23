@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { parseProductsSort, ProductsView } from "@/components/admin/analytics/products-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { periodQuery } from "@/lib/analytics-period";
 import { analyticsContext } from "@/server/analytics-context";
@@ -33,18 +35,23 @@ export default async function AnalyticsProductsPage({ params, searchParams }: Pa
   const keep = Object.fromEntries(new URLSearchParams(periodQuery({ period, compare })));
   const preserve: Record<string, string> = { ...(explicit ? { sort: sort.key, dir: sort.dir } : {}), ...(showAll ? { limit: "all" } : {}) };
 
+  const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
+  const w = adminText(ctx.lang, "reports");
+
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/products"
-          title="Products"
-          description="What sells, what earns and what is sent back. The best sellers come first, then every product with its revenue, margin, refunds and share of your sales."
+          title={w.pages.products.title}
+          description={w.pages.products.description}
           preserve={preserve}
         />
-        <ProductsView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} report={report} compareMode={compare.mode} sort={sort} showAll={showAll} keep={keep} />
+        <ProductsView base={ctx.base} locale={locale} report={report} compareMode={compare.mode} sort={sort} showAll={showAll} keep={keep} words={w.products} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

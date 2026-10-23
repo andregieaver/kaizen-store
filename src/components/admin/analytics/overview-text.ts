@@ -1,4 +1,7 @@
+import { fillWords } from "@/lib/admin-fill";
+import type { AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
 import { formatCount, formatDate, formatPercent, formatSigned } from "@/lib/analytics-core";
+import { analyticsWords, countText } from "@/lib/analytics-words";
 import type { ChangeExplanation } from "@/lib/analytics-diagnosis";
 import type { MonthForecast } from "@/lib/analytics-forecast";
 import { costsKnown, estimateText, kpiChange } from "@/lib/analytics-kpi";
@@ -77,99 +80,92 @@ export function moneySignals(data: Pick<OverviewHead, "current" | "costCoverage"
  * The sentences under "Are we making money?": what came in, what is left after costs, and what is missing to say. Written in code from
  * the figures, never flattering: a shortfall is a shortfall, and profit that cannot be known says so.
  */
-export function moneyLines(data: OverviewHead, money: (minor: number) => string): string[] {
+export function moneyLines(data: OverviewHead, money: (minor: number) => string, words: AnalyticsMessages = analyticsWords()): string[] {
+  const w = words.overview.money;
   const { current, params } = data;
   const t = current.totals;
   const d = current.derived;
-  if (noSales(current)) return ["No orders were paid in this period yet. Once they are, this is where you see whether the store is making money."];
+  if (noSales(current)) return [w.noSales];
 
   const against = params.compare.mode === "year" ? data.lastYear : params.compare.mode === "previous" ? data.previous : null;
-  const againstWords = params.compare.mode === "year" ? "the same period last year" : "the previous period";
-  let first = `${formatCount(t.orders)} paid ${plural(t.orders, "order", "orders")} brought in ${money(d.netRevenue)} after refunds`;
+  const againstWords = params.compare.mode === "year" ? words.compare.theLastYear : words.compare.thePrevious;
+  let first = countText(w.first, t.orders, { amount: money(d.netRevenue) }, formatCount(t.orders));
   if (against && !noSales(against)) {
     const delta = kpiChange({ kind: "money", good: "up" }, d.netRevenue, against.derived.netRevenue);
     const pct = delta.abs === null ? null : against.derived.netRevenue === 0 ? null : delta.abs / Math.abs(against.derived.netRevenue);
-    if (pct !== null && Math.abs(pct) >= 0.0005) first += `, ${pct > 0 ? "up" : "down"} ${formatPercent(Math.abs(pct))} on ${againstWords}`;
+    if (pct !== null && Math.abs(pct) >= 0.0005) first += fillWords(pct > 0 ? w.up : w.down, { pct: formatPercent(Math.abs(pct)), against: againstWords });
   }
   const lines = [`${first}.`];
 
   const profit = d.contributionProfit;
   if (profit === null) {
-    lines.push(
-      d.costCoverage !== null && d.costCoverage > 0
-        ? `Product costs are known for only ${formatPercent(d.costCoverage, 0)} of sales, too few to estimate profit from. Add what the rest cost to see how much of this is yours to keep.`
-        : "Your products have no cost entered, so profit cannot be shown. Add what they cost to see how much of this is yours to keep.",
-    );
+    lines.push(d.costCoverage !== null && d.costCoverage > 0 ? fillWords(w.tooFew, { share: formatPercent(d.costCoverage, 0) }) : w.noCosts);
   } else {
     // An estimate says so: "estimated from the 45 % of sales whose cost is known"; exact profit is based on all sales.
     const coverage = estimateText(d.costCoverage) ?? data.costCoverageText;
-    lines.push(
-      profit >= 0
-        ? `After the cost of goods, fees, shipping and ad spend, about ${money(profit)} is left (${coverage}).`
-        : `After the cost of goods, fees, shipping and ad spend, the store is about ${money(-profit)} short (${coverage}).`,
-    );
+    lines.push(profit >= 0 ? fillWords(w.left, { amount: money(profit), coverage }) : fillWords(w.short, { amount: money(-profit), coverage }));
   }
   return lines;
 }
 
 /** The words under a month's target meter, from the progress alone. Amounts and the estimate say it; the meter carries the pace word. */
-export function targetLines(p: TargetProgress, money: (minor: number) => string): string[] {
+export function targetLines(p: TargetProgress, money: (minor: number) => string, words: AnalyticsMessages = analyticsWords()): string[] {
+  const w = words.overview.target;
   if (p.targetMinor === null) return [];
   const lines: string[] = [];
-  if (p.actualMinor >= p.targetMinor) lines.push("The target is reached.");
+  if (p.actualMinor >= p.targetMinor) lines.push(w.reached);
   if (p.tooEarly) {
-    lines.push("It is early in the month, so there is no verdict on the pace yet.");
+    lines.push(w.early);
   } else {
     if (p.expectedByTodayMinor !== null && p.aheadByMinor !== null) {
-      lines.push(
-        p.aheadByMinor >= 0
-          ? `${money(p.aheadByMinor)} more than the ${money(p.expectedByTodayMinor)} expected by today.`
-          : `${money(-p.aheadByMinor)} less than the ${money(p.expectedByTodayMinor)} expected by today.`,
-      );
+      const expected = money(p.expectedByTodayMinor);
+      lines.push(p.aheadByMinor >= 0 ? fillWords(w.ahead, { amount: money(p.aheadByMinor), expected }) : fillWords(w.behind, { amount: money(-p.aheadByMinor), expected }));
     }
     if (p.projectedMinor !== null && p.projectedPct !== null) {
-      lines.push(`If the pace holds, the month ends at about ${money(p.projectedMinor)}, ${formatPercent(p.projectedPct, 0)} of the target. That is an estimate.`);
+      lines.push(fillWords(w.projected, { amount: money(p.projectedMinor), share: formatPercent(p.projectedPct, 0) }));
     }
   }
-  if (p.daysLeft > 0) lines.push(`${formatCount(p.daysLeft)} ${plural(p.daysLeft, "day", "days")} left this month.`);
-  lines.push(p.weekdayWeighted ? "Expected by today follows your usual busy and quiet weekdays." : "Expected by today counts every day alike: there is not enough history for a weekday pattern yet.");
+  if (p.daysLeft > 0) lines.push(countText(w.daysLeft, p.daysLeft, {}, formatCount(p.daysLeft)));
+  lines.push(p.weekdayWeighted ? w.weekdays : w.flat);
   return lines;
 }
 
-/** The month's name in a month label: "October 2026" is "October". */
+/** The month's name in a month label: "October 2026" is "October", "oktober 2026" "oktober". */
 const monthName = (label: string) => label.split(" ")[0] || label;
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * The sentences of the forecast card, from the forecast alone: where the month is heading and how likely, against the target when there is
  * one, or that there is too little history to say (never a figure made up). The figures are an estimate and the words say so.
  */
-export function forecastLines(f: OverviewForecast, money: (minor: number) => string): string[] {
+export function forecastLines(f: OverviewForecast, money: (minor: number) => string, words: AnalyticsMessages = analyticsWords()): string[] {
+  const w = words.overview.forecast;
   const { forecast: fc, targetMinor } = f;
   const month = monthName(f.monthLabel);
   if (fc.expectedMinor === null || fc.lowMinor === null || fc.highMinor === null) {
-    const lines = [`There is too little history to forecast ${month} yet.`];
+    const lines = [fillWords(w.tooLittle, { month })];
     if (fc.notes[0]) lines.push(fc.notes[0]);
-    if (fc.soFarMinor > 0) lines.push(`So far this month: ${money(fc.soFarMinor)} in net revenue.`);
+    if (fc.soFarMinor > 0) lines.push(fillWords(w.soFarOnly, { amount: money(fc.soFarMinor) }));
     return lines;
   }
   const target = targetMinor !== null && targetMinor > 0 ? targetMinor : null;
   const onTrack = target !== null && fc.expectedMinor >= target * 0.97;
-  const lines = [`${month} is ${onTrack ? "on track" : "heading"} for about ${money(fc.expectedMinor)}, likely ${money(fc.lowMinor)} to ${money(fc.highMinor)} (an estimate).`];
+  const lines = [fillWords(onTrack ? w.onTrack : w.heading, { month: capital(month), amount: money(fc.expectedMinor), low: money(fc.lowMinor), high: money(fc.highMinor) })];
   if (target !== null) {
-    const range = fc.lowMinor >= target ? "Even the low end of the range reaches the target." : fc.highMinor < target ? "Even the high end of the range falls short of the target." : "The target is inside the range.";
-    lines.push(`That is ${formatPercent(fc.expectedMinor / target, 0)} of the ${money(target)} target. ${range}`);
+    const range = fc.lowMinor >= target ? w.lowReaches : fc.highMinor < target ? w.highShort : w.inside;
+    lines.push(fillWords(w.share, { share: formatPercent(fc.expectedMinor / target, 0), target: money(target), range }));
   }
-  lines.push(`So far: ${money(fc.soFarMinor)} in net revenue, with ${formatCount(fc.daysLeft)} ${plural(fc.daysLeft, "day", "days")} still to come.`);
+  lines.push(countText(w.soFar, fc.daysLeft, { amount: money(fc.soFarMinor) }, formatCount(fc.daysLeft)));
   return lines;
 }
 
 /** The factors of a change as bars: each one's own change, signed, with its share of the revenue change. */
-export function factorRows(explanation: ChangeExplanation): BarRow[] {
+export function factorRows(explanation: ChangeExplanation, words: AnalyticsMessages = analyticsWords()): BarRow[] {
   return explanation.factors.map((f) => ({
     key: f.key,
     label: f.label,
     value: f.changePct,
     valueText: formatSigned(f.changePct, 0),
-    ...(f.sharePct === null ? {} : { detail: `${formatCount(f.sharePct)} % of the change` }),
+    ...(f.sharePct === null ? {} : { detail: fillWords(words.overview.why.shareOfChange, { share: formatCount(f.sharePct) }) }),
   }));
 }

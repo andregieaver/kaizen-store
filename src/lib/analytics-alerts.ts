@@ -6,6 +6,9 @@ import { STOCKOUT_ALERT_DAYS } from "./analytics-inventory";
 import { ESTIMATE_MIN_COVERAGE } from "./analytics-kpi";
 import { addDays, daysBetween, isDay, isoWeekday } from "./analytics-period";
 import type { TargetProgress } from "./analytics-targets";
+import type { AnalyticsMessages } from "./admin-messages/analytics.en";
+import { fillWords } from "./admin-fill";
+import { analyticsWords, countText } from "./analytics-words";
 
 /**
  * What needs a look today (D152, docs/analytics.md, "Alerts"). `alertsFor()`
@@ -179,7 +182,7 @@ export type Alert = {
   /** Stable per rule, for keys and for a link to one alert. */
   id: string;
   severity: AlertSeverity;
-  /** Plain English with the figures in it. */
+  /** Plain words with the figures in it (English unless other words are given). */
   text: string;
   /** A path after the store's admin base, e.g. `/analytics/products?sort=refunds`. */
   href: string;
@@ -269,8 +272,8 @@ export type AlertSnapshot = {
 
 const SEVERITY_RANK: Record<AlertSeverity, number> = { urgent: 0, warning: 1, info: 2, good: 3 };
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** The words of the alerts (`alertText` of the analytics catalogue); English unless given. */
+type Words = AnalyticsMessages["alertText"];
 const EPS = 1e-9;
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -285,25 +288,23 @@ function money(minor: number, snapshot: AlertSnapshot): string {
 }
 
 /** `2026-09` as "September 2026". */
-function monthText(month: string): string {
+function monthText(month: string, w: Words): string {
   const m = Number(month.slice(5, 7));
-  return m >= 1 && m <= 12 ? `${MONTHS[m - 1]} ${month.slice(0, 4)}` : month;
+  return m >= 1 && m <= 12 ? fillWords(w.month, { month: w.monthsLong[m - 1], year: month.slice(0, 4) }) : month;
 }
 
 /** A multiple as "2.5 times", "4 times", "12 times". */
-function times(ratio: number): string {
+function times(ratio: number, w: Words): string {
   const text = ratio >= 10 ? String(Math.round(ratio)) : (Math.round(ratio * 10) / 10).toFixed(1).replace(/\.0$/, "");
-  return `${text} times`;
+  return fillWords(w.times, { n: text.replace(".", analyticsWords().numbers.decimal) });
 }
 
 /** "about 3 days", "about 1 day", "under a day". */
-function daysText(days: number): string {
-  if (days < 1) return "under a day";
+function daysText(days: number, w: Words): string {
+  if (days < 1) return w.underADay;
   const n = Math.round(days);
-  return `about ${n} ${n === 1 ? "day" : "days"}`;
+  return countText(w.aboutDays, n);
 }
-
-const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`;
 
 type DayMap = Map<string, DailyPoint>;
 
@@ -345,7 +346,8 @@ function conversionOver(days: DayMap, from: string, to: string): ConversionWindo
 
 // ---------- rules ----------
 
-function conversionAlert(s: AlertSnapshot, days: DayMap): Alert | null {
+function conversionAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | null {
+  const w = words.conversion;
   const r = ALERT_RULES.conversion;
   const today = s.today;
   const baseTrailing = conversionOver(days, addDays(today, -28), addDays(today, -1));
@@ -361,11 +363,11 @@ function conversionAlert(s: AlertSnapshot, days: DayMap): Alert | null {
   const hits: Hit[] = [];
   if (week && week.days >= r.minKnownDays7d && week.sessions >= r.minSessions7d && baselineOk(baseWeek)) {
     const drop = drops(week, baseWeek);
-    if (drop >= r.minDrop - EPS) hits.push({ w: week, b: baseWeek, drop, label: "the last 7 days", when: "over the last 7 days", against: "the four weeks before" });
+    if (drop >= r.minDrop - EPS) hits.push({ w: week, b: baseWeek, drop, label: w.last7, when: w.over7, against: w.weeksBefore });
   }
   if (todayNow && todayNow.sessions >= r.minSessionsToday && baselineOk(baseTrailing)) {
     const drop = drops(todayNow, baseTrailing);
-    if (drop >= r.minDrop - EPS) hits.push({ w: todayNow, b: baseTrailing, drop, label: "today so far", when: "today", against: "the last four weeks" });
+    if (drop >= r.minDrop - EPS) hits.push({ w: todayNow, b: baseTrailing, drop, label: w.todaySoFar, when: w.today, against: w.lastWeeks });
   }
   // The week is the steadier evidence: it speaks first when both do.
   const hit = hits[0];
@@ -373,13 +375,13 @@ function conversionAlert(s: AlertSnapshot, days: DayMap): Alert | null {
   return {
     id: "conversion-drop",
     severity: hit.drop >= r.urgentDrop - EPS ? "urgent" : "warning",
-    text: `Conversion rate is ${formatPercent(hit.drop, 0)} lower ${hit.when} than ${hit.against} (${formatPercent(hit.w.rate)} against ${formatPercent(hit.b.rate)}).`,
+    text: fillWords(w.text, { drop: formatPercent(hit.drop, 0), when: hit.when, against: hit.against, now: formatPercent(hit.w.rate), before: formatPercent(hit.b.rate) }),
     href: "/analytics/traffic",
-    action: "See where it fell",
+    action: w.action,
     evidence: [
-      { label: `Conversion rate, ${hit.label}`, value: formatPercent(hit.w.rate), baseline: `${formatPercent(hit.b.rate)} over ${hit.against}` },
-      { label: `Sessions, ${hit.label}`, value: formatCount(hit.w.sessions), baseline: `${formatCount(hit.b.sessions)} over ${hit.against}` },
-      { label: `Orders, ${hit.label}`, value: formatCount(hit.w.orders), baseline: `${formatCount(hit.b.orders)} over ${hit.against}` },
+      { label: fillWords(w.rate, { label: hit.label }), value: formatPercent(hit.w.rate), baseline: fillWords(w.over, { value: formatPercent(hit.b.rate), against: hit.against }) },
+      { label: fillWords(w.sessions, { label: hit.label }), value: formatCount(hit.w.sessions), baseline: fillWords(w.over, { value: formatCount(hit.b.sessions), against: hit.against }) },
+      { label: fillWords(w.orders, { label: hit.label }), value: formatCount(hit.w.orders), baseline: fillWords(w.over, { value: formatCount(hit.b.orders), against: hit.against }) },
     ],
     size: hit.drop / r.minDrop,
   };
@@ -393,7 +395,8 @@ export function median(values: readonly number[]): number | null {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function weekdayRevenueAlert(s: AlertSnapshot, days: DayMap): Alert | null {
+function weekdayRevenueAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | null {
+  const w = words.weekday;
   const r = ALERT_RULES.weekdayRevenue;
   if (!finite(s.dayShare) || s.dayShare < r.minDayShare) return null;
   const now = days.get(s.today);
@@ -411,23 +414,25 @@ function weekdayRevenueAlert(s: AlertSnapshot, days: DayMap): Alert | null {
   if (usualOrders * share < r.minExpectedOrders - EPS || !(expectedRevenue > 0)) return null;
   const drop = 1 - now.revenueMinor / expectedRevenue;
   if (drop < r.minDrop - EPS) return null;
-  const weekday = WEEKDAYS[isoWeekday(s.today) - 1];
+  const weekday = words.weekdays[isoWeekday(s.today) - 1];
+  const weekdays = words.weekdaysPlural[isoWeekday(s.today) - 1];
   return {
     id: "revenue-weekday",
     severity: drop >= r.urgentDrop - EPS ? "urgent" : "warning",
-    text: `Revenue so far today is ${money(Math.max(0, now.revenueMinor), s)}, ${formatPercent(Math.min(1, drop), 0)} under a usual ${weekday} by this time (${money(expectedRevenue, s)}).`,
+    text: fillWords(w.text, { now: money(Math.max(0, now.revenueMinor), s), drop: formatPercent(Math.min(1, drop), 0), weekday, expected: money(expectedRevenue, s) }),
     href: "/analytics",
-    action: "See today",
+    action: w.action,
     evidence: [
-      { label: "Revenue so far today", value: money(now.revenueMinor, s), baseline: `${money(expectedRevenue, s)} expected by now` },
-      { label: `A usual ${weekday}, all day`, value: money(usualRevenue, s), baseline: `median of the last ${same.length} ${weekday}s` },
-      { label: "Orders so far today", value: formatCount(now.orders), baseline: `${formatCount(Math.round(usualOrders * share * 10) / 10)} expected by now` },
+      { label: w.soFar, value: money(now.revenueMinor, s), baseline: fillWords(words.expectedByNow, { amount: money(expectedRevenue, s) }) },
+      { label: fillWords(w.usual, { weekday }), value: money(usualRevenue, s), baseline: fillWords(w.median, { n: same.length, weekdays }) },
+      { label: w.orders, value: formatCount(now.orders), baseline: fillWords(words.expectedByNow, { amount: formatCount(Math.round(usualOrders * share * 10) / 10) }) },
     ],
     size: drop / r.minDrop,
   };
 }
 
-function refundAlert(s: AlertSnapshot): Alert | null {
+function refundAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.refunds;
   const r = ALERT_RULES.refunds;
   type Hit = { row: ProductRefundRow; recent: number; usual: number; ratio: number };
   const hits: Hit[] = [];
@@ -445,26 +450,27 @@ function refundAlert(s: AlertSnapshot): Alert | null {
   const top = hits[0];
   const others = hits.length - 1;
   const urgent = top.ratio >= r.urgentRatio - EPS && top.row.refunded14 >= r.urgentRefunded;
-  const sold = `${formatCount(top.row.refunded14)} of ${formatCount(top.row.sold14)} sold in the last ${r.recentDays} days (${formatPercent(top.recent, 0)}) against ${formatPercent(top.usual, 1)} before`;
+  const sold = fillWords(w.sold, { refunded: formatCount(top.row.refunded14), sold: formatCount(top.row.sold14), days: r.recentDays, recent: formatPercent(top.recent, 0), usual: formatPercent(top.usual, 1) });
   // A product that has hardly ever had a refund is compared with the floor, which would make a multiple look bigger than it is: say the figures instead.
-  let text = top.usual < r.baselineFloor ? `Refunds on ${top.row.name} are well above what they usually are: ${sold}.` : `Refunds on ${top.row.name} are running at ${times(top.ratio)} their usual rate: ${sold}.`;
-  if (others > 0) text += others === 1 ? " Another product is also over twice its usual rate." : ` ${formatCount(others)} other products are also over twice their usual rate.`;
+  let text = top.usual < r.baselineFloor ? fillWords(w.wellAbove, { name: top.row.name, sold }) : fillWords(w.running, { name: top.row.name, times: times(top.ratio, words), sold });
+  if (others > 0) text += countText(w.others, others, {}, formatCount(others));
   return {
     id: "refund-rate",
     severity: urgent ? "urgent" : "warning",
     text,
     href: "/analytics/products?sort=refunds",
-    action: "See refunds by product",
+    action: w.action,
     evidence: hits.slice(0, 3).map((h) => ({
-      label: `Refunded units, ${h.row.name}, last ${r.recentDays} days`,
-      value: `${formatCount(h.row.refunded14)} of ${formatCount(h.row.sold14)} (${formatPercent(h.recent, 1)})`,
-      baseline: `${formatPercent(h.usual, 1)} over the ${r.baselineDays} days before`,
+      label: fillWords(w.label, { name: h.row.name, days: r.recentDays }),
+      value: fillWords(w.value, { refunded: formatCount(h.row.refunded14), sold: formatCount(h.row.sold14), rate: formatPercent(h.recent, 1) }),
+      baseline: fillWords(w.baseline, { rate: formatPercent(h.usual, 1), days: r.baselineDays }),
     })),
     size: top.ratio / r.minRatio,
   };
 }
 
-function cacAlert(s: AlertSnapshot): Alert | null {
+function cacAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.cac;
   const r = ALERT_RULES.cac;
   type Hit = { row: ChannelCacRow; now: number; before: number; rise: number };
   const hits: Hit[] = [];
@@ -482,24 +488,25 @@ function cacAlert(s: AlertSnapshot): Alert | null {
   hits.sort((a, b) => b.rise - a.rise || a.row.label.localeCompare(b.row.label, "en") || (a.row.channel < b.row.channel ? -1 : 1));
   const top = hits[0];
   const others = hits.length - 1;
-  let text = `A new customer from ${top.row.label} cost ${money(top.now, s)} over the last 7 days, ${formatPercent(top.rise, 0)} more than the ${money(top.before, s)} of the four weeks before.`;
-  if (others > 0) text += ` ${others === 1 ? "Another channel is" : `${formatCount(others)} other channels are`} also up by a quarter or more.`;
+  let text = fillWords(w.text, { channel: top.row.label, now: money(top.now, s), rise: formatPercent(top.rise, 0), before: money(top.before, s) });
+  if (others > 0) text += countText(w.others, others, {}, formatCount(others));
   return {
     id: "cac-up",
     severity: "warning",
     text,
     href: "/analytics/marketing",
-    action: "See channels",
+    action: w.action,
     evidence: hits.slice(0, 3).map((h) => ({
-      label: `Cost per new customer, ${h.row.label}`,
+      label: fillWords(w.label, { channel: h.row.label }),
       value: money(h.now, s),
-      baseline: `${money(h.before, s)} over the four weeks before`,
+      baseline: fillWords(words.overWeeksBefore, { value: money(h.before, s) }),
     })),
     size: top.rise / r.minRise,
   };
 }
 
-function stockoutAlert(s: AlertSnapshot): Alert | null {
+function stockoutAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.stockout;
   const r = ALERT_RULES.stockout;
   const rows = (s.stockouts ?? [])
     .filter((a) => (a.kind === "out" || (finite(a.days) && a.days <= r.withinDays + EPS)) && a.row)
@@ -511,25 +518,30 @@ function stockoutAlert(s: AlertSnapshot): Alert | null {
   // A variant that keeps selling with nothing on hand (D172) is out, but the store chose that: it is named as on backorder and is not urgent by itself.
   const backordered = (a: StockoutAlert) => a.kind === "out" && onBackorder(a.row);
   const soldOut = rows.filter((a) => a.kind === "out" && !backordered(a)).length;
-  const describe = (a: StockoutAlert) => `${a.row.name} (${backordered(a) ? "on backorder" : a.kind === "out" ? "out" : daysText(a.days)})`;
-  const lead = outCount === 0 ? "Running out within a week" : outCount === rows.length ? (soldOut === 0 ? "On backorder" : "Out of stock") : "Out of stock or running out within a week";
-  const text = `${lead}: ${named.map(describe).join(", ")}${rest > 0 ? ` and ${formatCount(rest)} more` : ""}.`;
+  const describe = (a: StockoutAlert) => fillWords(w.named, { name: a.row.name, state: backordered(a) ? w.backorder : a.kind === "out" ? w.out : daysText(a.days, words) });
+  const lead = outCount === 0 ? w.leadWeek : outCount === rows.length ? (soldOut === 0 ? w.leadBackorder : w.leadOut) : w.leadMixed;
+  const text = fillWords(w.text, { lead, names: named.map(describe).join(", "), more: rest > 0 ? fillWords(w.more, { n: formatCount(rest) }) : "" });
   return {
     id: "stockout",
     severity: soldOut > 0 ? "urgent" : "warning",
     text,
     href: "/analytics/inventory",
-    action: "See stock",
+    action: w.action,
     evidence: named.map((a) => ({
       label: a.row.name,
-      value: backordered(a) ? `On backorder${a.row.owed > 0 ? `, ${formatCount(a.row.owed)} owed` : ""}` : a.kind === "out" ? "Out of stock" : `${daysText(a.days)} of stock`,
-      baseline: `${formatCount(a.row.sold30)} sold in 30 days`,
+      value: backordered(a)
+        ? `${w.onBackorder}${a.row.owed > 0 ? fillWords(w.owed, { n: formatCount(a.row.owed) }) : ""}`
+        : a.kind === "out"
+          ? w.outOfStock
+          : fillWords(w.ofStock, { days: daysText(a.days, words) }),
+      baseline: fillWords(w.sold30, { n: formatCount(a.row.sold30) }),
     })),
     size: rows.length,
   };
 }
 
-function abandonmentAlert(s: AlertSnapshot): Alert | null {
+function abandonmentAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.abandonment;
   const r = ALERT_RULES.abandonment;
   const c = s.checkout;
   if (!c) return null;
@@ -544,28 +556,32 @@ function abandonmentAlert(s: AlertSnapshot): Alert | null {
   return {
     id: "checkout-abandonment",
     severity: rise >= r.urgentRisePoints - EPS ? "urgent" : "warning",
-    text: `${formatPercent(now, 0)} of the checkouts started in the last 7 days were not completed, against ${formatPercent(before, 0)} over the four weeks before.`,
+    text: fillWords(w.text, { now: formatPercent(now, 0), before: formatPercent(before, 0) }),
     href: "/analytics/traffic",
-    action: "See the funnel",
+    action: w.action,
     evidence: [
-      { label: "Checkouts not completed, last 7 days", value: formatPercent(now, 1), baseline: `${formatPercent(before, 1)} over the four weeks before` },
-      { label: "Checkouts started, last 7 days", value: formatCount(recent.started), baseline: `${formatCount(baseline.started)} over the four weeks before` },
+      { label: w.notCompleted, value: formatPercent(now, 1), baseline: fillWords(words.overWeeksBefore, { value: formatPercent(before, 1) }) },
+      { label: w.started, value: formatCount(recent.started), baseline: fillWords(words.overWeeksBefore, { value: formatCount(baseline.started) }) },
     ],
     size: rise / r.minRisePoints,
   };
 }
 
-function creepingAlert(s: AlertSnapshot): Alert | null {
+function creepingAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.creep;
   const c = s.discountCreeping;
   if (!c || !c.creeping || c.rise === null || !c.from || !c.to) return null;
   const points = Math.round(c.rise * 100);
   return {
     id: "discount-creep",
     severity: "info",
-    text: `The share of orders with a discount has risen ${formatCount(c.risingMonths)} months in a row, by ${formatCount(points)} percentage points from ${monthText(c.from)} to ${monthText(c.to)}.`,
+    text: fillWords(w.text, { n: formatCount(c.risingMonths), points: formatCount(points), from: monthText(c.from, words), to: monthText(c.to, words) }),
     href: "/analytics/marketing",
-    action: "See discounts",
-    evidence: [{ label: "Months of rise in a row", value: formatCount(c.risingMonths), baseline: null }, { label: "Rise in the share of discounted orders", value: `${formatCount(points)} points`, baseline: `${monthText(c.from)} to ${monthText(c.to)}` }],
+    action: w.action,
+    evidence: [
+      { label: w.months, value: formatCount(c.risingMonths), baseline: null },
+      { label: w.rise, value: fillWords(w.points, { n: formatCount(points) }), baseline: fillWords(w.range, { from: monthText(c.from, words), to: monthText(c.to, words) }) },
+    ],
     size: c.rise / 0.08,
   };
 }
@@ -582,7 +598,8 @@ function dailyRevenueSpread(days: DayMap, today: string, window: number, min: nu
   return Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / (values.length - 1));
 }
 
-function targetAlert(s: AlertSnapshot, days: DayMap): Alert | null {
+function targetAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | null {
+  const w = words.target;
   const t = s.target;
   if (!t || t.status !== "behind" || t.tooEarly || t.targetMinor === null || t.expectedByTodayMinor === null || t.aheadByMinor === null) return null;
   const r = ALERT_RULES.target;
@@ -597,11 +614,11 @@ function targetAlert(s: AlertSnapshot, days: DayMap): Alert | null {
   if (spread === null || !finite(t.shareElapsed)) return null;
   const daysElapsed = t.shareElapsed * t.daysInMonth;
   if (!(-t.aheadByMinor > r.sigmas * spread * Math.sqrt(Math.max(daysElapsed, 1)))) return null;
-  const monthName = MONTHS[Number(s.today.slice(5, 7)) - 1] ?? "this month";
+  const monthName = words.monthsLong[Number(s.today.slice(5, 7)) - 1] ?? w.thisMonth;
   const behind = Math.abs(t.aheadByMinor);
-  let text = `Net revenue is ${money(behind, s)} behind the pace the ${monthName} target needs: ${money(t.actualMinor, s)} so far against ${money(t.expectedByTodayMinor, s)} expected by now.`;
+  let text = fillWords(w.text, { behind: money(behind, s), month: monthName, actual: money(t.actualMinor, s), expected: money(t.expectedByTodayMinor, s) });
   if (t.projectedMinor !== null && t.projectedPct !== null) {
-    text += ` At this pace the month ends near ${money(t.projectedMinor, s)}, ${formatPercent(t.projectedPct, 0)} of the ${money(t.targetMinor, s)} target (an estimate).`;
+    text += fillWords(w.pace, { projected: money(t.projectedMinor, s), share: formatPercent(t.projectedPct, 0), target: money(t.targetMinor, s) });
   }
   const urgent = t.projectedPct !== null && t.projectedPct <= ALERT_RULES.target.urgentProjectedShare + EPS;
   return {
@@ -609,16 +626,17 @@ function targetAlert(s: AlertSnapshot, days: DayMap): Alert | null {
     severity: urgent ? "urgent" : "warning",
     text,
     href: "/analytics",
-    action: "See the target",
+    action: w.action,
     evidence: [
-      { label: "Net revenue so far this month", value: money(t.actualMinor, s), baseline: `${money(t.expectedByTodayMinor, s)} expected by now` },
-      ...(t.projectedMinor !== null ? [{ label: "Where the month ends at this pace (estimate)", value: money(t.projectedMinor, s), baseline: `${money(t.targetMinor, s)} target` }] : []),
+      { label: w.soFar, value: money(t.actualMinor, s), baseline: fillWords(words.expectedByNow, { amount: money(t.expectedByTodayMinor, s) }) },
+      ...(t.projectedMinor !== null ? [{ label: w.ends, value: money(t.projectedMinor, s), baseline: fillWords(w.targetOf, { amount: money(t.targetMinor, s) }) }] : []),
     ],
     size: t.aheadByPct !== null ? Math.abs(t.aheadByPct) : 0,
   };
 }
 
-function costAlert(s: AlertSnapshot): Alert | null {
+function costAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.costs;
   const r = ALERT_RULES.costs;
   const c = s.costs;
   if (!c || c.coverage === null || !finite(c.coverage) || !finite(c.orders) || c.orders < r.minOrders) return null;
@@ -629,19 +647,16 @@ function costAlert(s: AlertSnapshot): Alert | null {
   return {
     id: "cost-coverage",
     severity: none || tooFew ? "warning" : "info",
-    text: none
-      ? "No product costs are entered, so profit cannot be shown. Enter what each variant costs and gross profit and margin appear."
-      : tooFew
-        ? `Product costs are known for only ${formatPercent(c.coverage, 0)} of sales, too few to estimate profit from, so it is not shown. Enter the costs still missing to see it.`
-        : `Product costs are known for ${formatPercent(c.coverage, 0)} of sales, so profit figures are estimated from that share. Enter the costs still missing to make them exact.`,
+    text: none ? w.none : fillWords(tooFew ? w.tooFew : w.estimated, { share: formatPercent(c.coverage, 0) }),
     href: "/products",
-    action: "Enter costs",
-    evidence: [{ label: "Sales with a known cost", value: none ? "None" : formatPercent(c.coverage, 0), baseline: `${formatPercent(r.minCoverage, 0)} or more is complete enough` }],
+    action: w.action,
+    evidence: [{ label: w.label, value: none ? w.noneValue : formatPercent(c.coverage, 0), baseline: fillWords(w.baseline, { share: formatPercent(r.minCoverage, 0) }) }],
     size: (r.minCoverage - c.coverage) / r.minCoverage,
   };
 }
 
-function returningHighAlert(s: AlertSnapshot): Alert | null {
+function returningHighAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.returning;
   const r = ALERT_RULES.returningHigh;
   const months = (s.returningMonthly ?? []).filter((m) => finite(m.revenueMinor) && finite(m.orders) && /^\d{4}-\d{2}$/.test(m.month));
   if (months.length < r.months) return null;
@@ -656,18 +671,19 @@ function returningHighAlert(s: AlertSnapshot): Alert | null {
   return {
     id: "returning-high",
     severity: "good",
-    text: `Returning customers brought in ${money(latest.revenueMinor, s)} in ${monthText(latest.month)}, the most in any of the last ${r.months} months (the best before was ${money(best.revenueMinor, s)} in ${monthText(best.month)}).`,
+    text: fillWords(w.text, { amount: money(latest.revenueMinor, s), month: monthText(latest.month, words), months: r.months, best: money(best.revenueMinor, s), bestMonth: monthText(best.month, words) }),
     href: "/analytics/customers",
-    action: "See customers",
+    action: w.action,
     evidence: [
-      { label: `Returning customers' revenue, ${monthText(latest.month)}`, value: money(latest.revenueMinor, s), baseline: `${money(best.revenueMinor, s)} best before (${monthText(best.month)})` },
-      { label: "Orders from returning customers", value: formatCount(latest.orders), baseline: null },
+      { label: fillWords(w.label, { month: monthText(latest.month, words) }), value: money(latest.revenueMinor, s), baseline: fillWords(w.baseline, { amount: money(best.revenueMinor, s), month: monthText(best.month, words) }) },
+      { label: w.orders, value: formatCount(latest.orders), baseline: null },
     ],
     size: latest.revenueMinor / best.revenueMinor - 1,
   };
 }
 
-function bestDayAlert(s: AlertSnapshot, days: DayMap): Alert | null {
+function bestDayAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | null {
+  const w = words.bestDay;
   const r = ALERT_RULES.bestDay;
   const yesterday = addDays(s.today, -1);
   const y = days.get(yesterday);
@@ -683,10 +699,10 @@ function bestDayAlert(s: AlertSnapshot, days: DayMap): Alert | null {
   return {
     id: "best-day",
     severity: "good",
-    text: `Yesterday was your best day in ${r.days} days: ${money(y.revenueMinor, s)} from ${plural(y.orders, "order", "orders")}.`,
+    text: fillWords(w.text, { days: r.days, amount: money(y.revenueMinor, s), orders: countText(w.orders, y.orders, {}, formatCount(y.orders)) }),
     href: "/analytics",
-    action: "See the overview",
-    evidence: [{ label: "Revenue yesterday", value: money(y.revenueMinor, s), baseline: `${money(best.revenueMinor, s)} the best day before` }],
+    action: w.action,
+    evidence: [{ label: w.label, value: money(y.revenueMinor, s), baseline: fillWords(w.baseline, { amount: money(best.revenueMinor, s) }) }],
     size: best.revenueMinor > 0 ? y.revenueMinor / best.revenueMinor - 1 : 0,
   };
 }
@@ -709,21 +725,21 @@ export function orderAlerts(alerts: readonly Alert[], max = MAX_ALERTS): Alert[]
  * volume is in `ALERT_RULES`. Never more than `MAX_ALERTS` unless that many are urgent. An empty list is an answer:
  * nothing needs a look.
  */
-export function alertsFor(snapshot: AlertSnapshot): Alert[] {
+export function alertsFor(snapshot: AlertSnapshot, words: Words = analyticsWords().alertText): Alert[] {
   if (!isDay(snapshot.today)) throw new RangeError(`today is not a day: ${snapshot.today}`);
   const days = dayMap(snapshot.daily ?? []);
   const found = [
-    conversionAlert(snapshot, days),
-    weekdayRevenueAlert(snapshot, days),
-    refundAlert(snapshot),
-    cacAlert(snapshot),
-    stockoutAlert(snapshot),
-    abandonmentAlert(snapshot),
-    creepingAlert(snapshot),
-    targetAlert(snapshot, days),
-    costAlert(snapshot),
-    returningHighAlert(snapshot),
-    bestDayAlert(snapshot, days),
+    conversionAlert(snapshot, days, words),
+    weekdayRevenueAlert(snapshot, days, words),
+    refundAlert(snapshot, words),
+    cacAlert(snapshot, words),
+    stockoutAlert(snapshot, words),
+    abandonmentAlert(snapshot, words),
+    creepingAlert(snapshot, words),
+    targetAlert(snapshot, days, words),
+    costAlert(snapshot, words),
+    returningHighAlert(snapshot, words),
+    bestDayAlert(snapshot, days, words),
   ].filter((a): a is Alert => a !== null);
   return orderAlerts(found);
 }

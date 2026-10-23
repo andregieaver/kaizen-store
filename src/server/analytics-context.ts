@@ -1,5 +1,7 @@
 import "server-only";
 
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { setAnalyticsLang } from "@/lib/analytics-lang";
 import { parseAnalyticsParams, type AnalyticsParams } from "@/lib/analytics-period";
 import type { PermissionKey } from "@/lib/permissions";
 
@@ -20,6 +22,10 @@ export type AnalyticsContext = Membership & {
   now: Date;
   params: AnalyticsParams;
   settings: StoredAnalyticsSettings;
+  /** The member's admin language (D312 A9): the page's words, and what the shared parts were told to write in (`setAnalyticsLang()`). */
+  lang: AdminLang;
+  /** Its locale for dates and amounts (`ADMIN_LANG_FACTS`). */
+  locale: string;
 };
 
 /** A guard (wave 1, 1f): the pages of the cockpit need `analytics:read`; the settings page passes `owner`. */
@@ -37,6 +43,10 @@ export async function analyticsContextFor(
   searchParams: Record<string, string | string[] | undefined>,
   now: Date = new Date(),
 ): Promise<AnalyticsContext> {
+  // The words of every shared part (the header, the cards, the tables, the charts) and the figures' convention follow the member's
+  // language for the rest of this render; set before the period is read, so its words are in it too.
+  const lang = adminLangOf(member.account.adminLocale);
+  setAnalyticsLang(lang);
   const [settings] = await Promise.all([getAnalyticsSettings(member.store.id)]);
   return {
     ...member,
@@ -46,5 +56,7 @@ export async function analyticsContextFor(
     now,
     params: parseAnalyticsParams(searchParams, { now, timeZone: member.store.timeZone }),
     settings,
+    lang,
+    locale: ADMIN_LANG_FACTS[lang].locale,
   };
 }

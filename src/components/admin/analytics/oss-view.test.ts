@@ -2,6 +2,8 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { taxReportsNb } from "@/lib/admin-messages/tax-reports.nb";
+
 import type { FormState } from "@/components/admin/action-form";
 import { buildReturn, IOSS_OFF_TEXT, type RateLookup, type ReturnMode, type ReturnScheme } from "@/lib/oss-return";
 import { DEFAULT_TAX_PROFILE } from "@/lib/tax-profile";
@@ -292,5 +294,16 @@ describe("the IOSS view", () => {
     const out = html(h(OssView, props({ view: ioss({ iossNumber: "IM2460000123", groups: [marked()] }), periods: [{ key: "2026-09", label: "September 2026" }] })));
     expect(out).toContain('name="month"');
     expect(out).toContain('aria-label="Month"');
+  });
+});
+
+describe("the OSS view in Norwegian (D312 A9)", () => {
+  it("says the statement, the deadline, the parts and the rates in the account's words", () => {
+    const out = html(h(OssView, props({ words: taxReportsNb })));
+    expect(out).toContain("Kaizena Flow sender ingenting inn.");
+    expect(out).toContain("3. kvartal 2026: send inn og betal innen 31. oktober 2026.");
+    expect(out).toContain("Del 2b: varer sendt fra identifikasjonsstaten din");
+    expect(out).toContain("Eurokurser");
+    expect(out).not.toContain("Part 2b");
   });
 });

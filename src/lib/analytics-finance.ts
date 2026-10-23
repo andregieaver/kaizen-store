@@ -1,4 +1,6 @@
 import { costCoverageOf, costModeOf, coveredMargin, estimatedCogs, fixedCostsFor, type AnalyticsSettings, type CostMode, type Totals } from "./analytics-kpi";
+import { fillWords } from "./admin-fill";
+import { financeEn, type FinanceMessages } from "./admin-messages/finance.en";
 import { formatPercent, safeRatio } from "./analytics-core";
 
 /**
@@ -80,8 +82,6 @@ export type FinanceStatement = {
   reconciles: boolean;
 };
 
-/** Revenue without VAT is summed per order and the parts per line, so a few minor units can differ; the bridge shows them. */
-const ROUNDING_LABEL = "Rounding";
 
 /**
  * The statement for a period: gross sales − discounts + shipping income =
@@ -96,7 +96,13 @@ const ROUNDING_LABEL = "Rounding";
  * comes from, the line counts as 0 and says so; it does not make the rest
  * unknown, as the owner may truly have none.
  */
-export function financeStatement(totals: Totals, settings: AnalyticsSettings, days: number): FinanceStatement {
+/**
+ * `words` are the bridge's labels and notes in the admin's language (D312 A9); without them the statement says what it always said, in
+ * English, as the AI manager and the CSV export read it. No amount depends on them.
+ */
+export function financeStatement(totals: Totals, settings: AnalyticsSettings, days: number, words: FinanceMessages["statement"] = financeEn.statement): FinanceStatement {
+  const L = words.labels;
+  const N = words.notes;
   const orders = totals.orders;
   const coverage = costCoverageOf(totals);
   const mode = costModeOf(coverage);
@@ -124,86 +130,87 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
       note: opts.note ?? null,
     });
 
-  push("grossSales", "Gross sales", totals.grossSalesMinor, { note: "Goods before discounts, without VAT." });
-  push("discounts", "Discounts", -totals.discountsMinor, { note: "Campaigns, customer groups, codes (a free-shipping code takes its discount off shipping income), referral and bonus credit." });
-  push("shippingIncome", "Shipping income", totals.shippingMinor, { note: "What shipping was charged before discounts, without VAT." });
+  push("grossSales", L.grossSales, totals.grossSalesMinor, { note: N.grossSales });
+  push("discounts", L.discounts, -totals.discountsMinor, { note: N.discounts });
+  push("shippingIncome", L.shippingIncome, totals.shippingMinor, { note: N.shippingIncome });
   const rounding = totals.revenueMinor - (totals.grossSalesMinor - totals.discountsMinor + totals.shippingMinor);
-  if (rounding !== 0) push("rounding", ROUNDING_LABEL, rounding, { note: "VAT is taken off each line and each order, which differ by a few minor units." });
-  push("revenue", "Revenue", totals.revenueMinor, { subtotal: true });
-  push("refunds", "Refunds", -totals.refundsMinor, { note: "Made in the period. Refunds made only in Stripe's dashboard are not seen. An order changed after purchase counts at its new amount on the day it was placed, so the refund of a change's lower total is not counted again here (D174)." });
-  push("netRevenue", "Net revenue", netRevenue, { subtotal: true });
+  if (rounding !== 0) push("rounding", L.rounding, rounding, { note: N.rounding });
+  push("revenue", L.revenue, totals.revenueMinor, { subtotal: true });
+  push("refunds", L.refunds, -totals.refundsMinor, { note: N.refunds });
+  push("netRevenue", L.netRevenue, netRevenue, { subtotal: true });
 
   const known = coverage === null ? "" : formatPercent(coverage, 0);
   // "Estimated from the 45 % of sales whose cost is known" on every profit line that rests on the scaling.
-  const basis = estimated ? `Estimated from the ${known} of sales whose cost is known` : null;
+  const basis = estimated ? fillWords(N.basis, { known }) : null;
   const costsNote = estimated
-    ? `${basis}: its cost of goods is scaled up to all sales.`
+    ? fillWords(N.costsScaled, { basis: basis ?? "" })
     : hasCosts
       ? null
       : coverage !== null && coverage > 0
-        ? `Product costs are known for only ${known} of sales, too few to estimate from. Enter the rest in the product editor.`
-        : "No product cost is entered for what was sold. Enter costs in the product editor.";
+        ? fillWords(N.costsTooFew, { known })
+        : N.costsNone;
+  const basisSentence = fillWords(N.basisSentence, { basis: basis ?? "" });
   const cogs = estimatedCogs(totals, coverage);
-  push("cogs", "Cost of goods sold", cogs === null ? null : -cogs, { estimated, missing: !hasCosts, note: costsNote });
+  push("cogs", L.cogs, cogs === null ? null : -cogs, { estimated, missing: !hasCosts, note: costsNote });
   const grossProfit = cogs === null ? null : netRevenue - cogs;
-  push("grossProfit", "Gross profit", grossProfit, {
+  push("grossProfit", L.grossProfit, grossProfit, {
     subtotal: true,
     estimated,
     missing: !hasCosts,
-    note: estimated ? `${basis}.` : hasCosts ? null : costsNote,
+    note: estimated ? basisSentence : hasCosts ? null : costsNote,
   });
 
   // Stripe's real fees where every Stripe payment of an order has one (D290), the estimate for the rest: estimated unless every order's is real.
   const realOrders = Math.min(totals.realFeeOrders ?? 0, orders);
   const allReal = orders > 0 && realOrders === orders;
   const feesUnset = orders > realOrders && settings.paymentFeeBps === 0 && settings.paymentFeeFixedMinor === 0;
-  push("paymentFees", allReal ? "Payment fees" : "Payment fees (estimated)", -totals.paymentFeesMinor, {
+  push("paymentFees", allReal ? L.paymentFees : L.paymentFeesEstimated, -totals.paymentFeesMinor, {
     estimated: !allReal,
     missing: feesUnset,
     note: allReal
-      ? "What Stripe took for every order's payments, as Stripe reported it."
+      ? N.feesReal
       : realOrders > 0
-        ? `Stripe's own fee for ${realOrders} of ${orders} orders; the rest ${feesUnset ? "count as 0, as no payment fee is set in Analytics settings" : "estimated from the fee in Analytics settings"}.`
+        ? fillWords(N.feesPart, { real: String(realOrders), orders: String(orders), rest: feesUnset ? N.feesPartUnset : N.feesPartEstimated })
         : feesUnset
-          ? "No payment fee is set in Analytics settings, so it counts as 0."
-          : "Estimated from the fee in Analytics settings and each order's total with VAT.",
+          ? N.feesUnset
+          : N.feesEstimated,
   });
-  push("platformFees", "Platform fees", -totals.platformFeesMinor, { note: "What Kaizena Flow took on the period's payments." });
+  push("platformFees", L.platformFees, -totals.platformFeesMinor, { note: N.platformFees });
   const shippingUnset = orders > 0 && settings.shippingCostMinor === 0;
-  push("shippingCosts", "Shipping costs (estimated)", -totals.shippingCostsMinor, {
+  push("shippingCosts", L.shippingCosts, -totals.shippingCostsMinor, {
     estimated: true,
     missing: shippingUnset,
-    note: shippingUnset ? "No shipping cost is set in Analytics settings, so it counts as 0." : "Estimated from the cost per order in Analytics settings.",
+    note: shippingUnset ? N.shippingUnset : N.shippingEstimated,
   });
   const noSpend = orders > 0 && totals.marketingMinor === 0;
-  push("marketing", "Marketing", -totals.marketingMinor, { missing: noSpend, note: noSpend ? "No marketing spend is entered for the period." : "Spend entered under Marketing." });
+  push("marketing", L.marketing, -totals.marketingMinor, { missing: noSpend, note: noSpend ? N.marketingNone : N.marketing });
 
   // Lost disputes (D288): money the bank took back, with the provider's fee where known, in the period the dispute closed; shown only when there is one.
   const lostDisputes = totals.lostDisputesMinor ?? 0;
   if (lostDisputes !== 0) {
-    push("lostDisputes", "Lost disputes", -lostDisputes, { note: "Disputes the bank decided against the store in the period, without VAT, with Stripe's dispute fee where it is known. Not a refund: no credit note is issued." });
+    push("lostDisputes", L.lostDisputes, -lostDisputes, { note: N.lostDisputes });
   }
   const contribution = grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - totals.marketingMinor - lostDisputes;
-  push("contributionProfit", "Contribution profit", contribution, {
+  push("contributionProfit", L.contributionProfit, contribution, {
     subtotal: true,
     estimated: true,
     missing: !hasCosts,
-    note: !hasCosts ? costsNote : estimated ? `After the costs that follow each order, before fixed costs. ${basis}.` : "After the costs that follow each order, before fixed costs.",
+    note: !hasCosts ? costsNote : estimated ? fillWords(N.contributionEstimated, { basis: basis ?? "" }) : N.contribution,
   });
 
   const fixed = fixedCostsFor(settings, days);
   const fixedUnset = settings.fixedCostsMonthlyMinor === 0;
-  push("fixedCosts", "Fixed costs (pro rata)", -fixed, {
+  push("fixedCosts", L.fixedCosts, -fixed, {
     estimated: true,
     missing: fixedUnset,
-    note: fixedUnset ? "No fixed costs are set in Analytics settings, so they count as 0." : "The monthly amount spread over the days of the period.",
+    note: fixedUnset ? N.fixedUnset : N.fixed,
   });
   const operating = contribution === null ? null : contribution - fixed;
-  push("operatingProfit", "Operating profit (estimate)", operating, {
+  push("operatingProfit", L.operatingProfit, operating, {
     subtotal: true,
     estimated: true,
     missing: !hasCosts,
-    note: !hasCosts ? costsNote : estimated ? `${basis}.` : null,
+    note: !hasCosts ? costsNote : estimated ? basisSentence : null,
   });
 
   return { lines, costCoverage: coverage, hasCosts, mode, estimated, grossMargin: coveredMargin(totals, coverage), reconciles: reconciled(lines) };

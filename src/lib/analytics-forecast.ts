@@ -1,4 +1,10 @@
 import { addDays, addYears, isDay, isoWeekday } from "./analytics-period";
+import type { AnalyticsMessages } from "./admin-messages/analytics.en";
+import { fillWords } from "./admin-fill";
+import { analyticsWords } from "./analytics-words";
+
+/** The words of a forecast's notes (`forecastNotes` of the analytics catalogue); English unless given. */
+type Words = AnalyticsMessages["forecastNotes"];
 
 /**
  * A month's net revenue forecast (D152, docs/analytics.md, "Alerts, targets,
@@ -159,10 +165,11 @@ function seasonalFactor(
   fillFrom: string,
   fillDays: number,
   wf: number[] | null,
+  words: Words,
 ): SeasonalResult {
   if (lastYear.size === 0 || fillDays === 0) return { factor: null, note: null };
   if (fillDays < SEASONAL_MIN_TARGET_DAYS) {
-    return { factor: null, note: "Last year's pattern is not used: too few days are left in the month for it to say anything." };
+    return { factor: null, note: words.fewDays };
   }
   const anchor = addYears(today, -1);
   const trailing = span(addDays(anchor, -HISTORY_DAYS), HISTORY_DAYS);
@@ -181,15 +188,15 @@ function seasonalFactor(
   const targetSeen = observedIn(target);
   const trailingSeen = observedIn(trailing);
   if (targetSeen.length < fillDays * 0.9 || trailingSeen.length < HISTORY_DAYS * SEASONAL_MIN_COVERAGE) {
-    return { factor: null, note: "Last year's pattern is not used: last year's data is not complete enough." };
+    return { factor: null, note: words.incomplete };
   }
   if (trailingSeen.filter((d) => (lastYear.get(d) as number) > 0).length < SEASONAL_MIN_SELLING_DAYS) {
-    return { factor: null, note: "Last year's pattern is not used: too little was sold in the weeks before to compare against." };
+    return { factor: null, note: words.tooLittle };
   }
   const targetLevel = levelOf(targetSeen);
   const trailingLevel = levelOf(trailingSeen);
   if (targetLevel === null || trailingLevel === null || !(trailingLevel > 0)) {
-    return { factor: null, note: "Last year's pattern is not used: nothing was sold in the weeks before to compare against." };
+    return { factor: null, note: words.nothing };
   }
   return { factor: Math.min(SEASONAL_MAX, Math.max(SEASONAL_MIN, targetLevel / trailingLevel)), note: null };
 }
@@ -198,7 +205,7 @@ function seasonalFactor(
  * The month's expected net revenue and an 80 % range. See the module comment. With fewer than `MIN_HISTORY_DAYS`
  * observed days of history before today the answer is `too-little-data` with nulls for the figures (never zero).
  */
-export function forecastMonth(input: ForecastInput): MonthForecast {
+export function forecastMonth(input: ForecastInput, words: Words = analyticsWords().forecastNotes): MonthForecast {
   if (!isDay(input.monthStart)) throw new RangeError(`monthStart is not a day: ${input.monthStart}`);
   if (!isDay(input.today)) throw new RangeError(`today is not a day: ${input.today}`);
   const first = `${input.monthStart.slice(0, 7)}-01`;
@@ -236,13 +243,13 @@ export function forecastMonth(input: ForecastInput): MonthForecast {
       soFarMinor,
       daysLeft,
       seasonalFactor: null,
-      notes: [`Fewer than ${MIN_HISTORY_DAYS} days of sales before today, too little to forecast the month.`],
+      notes: [fillWords(words.tooLittleHistory, { min: MIN_HISTORY_DAYS })],
     };
   }
 
   const wf = weekdayProfile(observed);
-  if (wf) notes.push(`Based on the last ${observed.length} days of sales and the usual pattern through the week; it assumes sales go on at that level (a steady rise or fall is not extended).`);
-  else notes.push(`Based on the last ${observed.length} days of sales; every weekday counts alike because each has not been seen ${MIN_WEEKDAY_OBSERVATIONS} times yet; it assumes sales go on at that level.`);
+  if (wf) notes.push(fillWords(words.weekly, { n: observed.length }));
+  else notes.push(fillWords(words.flat, { n: observed.length, min: MIN_WEEKDAY_OBSERVATIONS }));
   const factorOf = (day: string) => (wf ? wf[weekdayIndex(day)] : 1);
 
   // Level: observed revenue over the weekday weights it was observed on (a weekday that never sells counts for nothing either way).
@@ -251,14 +258,15 @@ export function forecastMonth(input: ForecastInput): MonthForecast {
   const residuals = observed.map((o) => o.value - level * factorOf(o.day));
   const sigma = sd(residuals);
 
-  const seasonal = seasonalFactor(byDay(input.lastYear), input.today, fillFrom, fillDays, wf);
+  const seasonal = seasonalFactor(byDay(input.lastYear), input.today, fillFrom, fillDays, wf, words);
   if (seasonal.note) notes.push(seasonal.note);
   const s = seasonal.factor ?? 1;
   if (seasonal.factor !== null) {
     notes.push(
-      `Last year's pattern is applied: the rest of the month sold ${seasonal.factor.toFixed(2)} times as much per day as the weeks before it did last year${
-        seasonal.factor === SEASONAL_MIN || seasonal.factor === SEASONAL_MAX ? " (limited to keep the estimate sensible)" : ""
-      }.`,
+      fillWords(words.seasonal, {
+        factor: seasonal.factor.toFixed(2).replace(".", analyticsWords().numbers.decimal),
+        limited: seasonal.factor === SEASONAL_MIN || seasonal.factor === SEASONAL_MAX ? words.limited : "",
+      }),
     );
   }
 

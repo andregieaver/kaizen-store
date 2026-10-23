@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
+import { fillWords } from "@/lib/admin-fill";
 import { addDays } from "@/lib/analytics-period";
+import { analyticsWords } from "@/lib/analytics-words";
 import type { AnalyticsContext } from "@/server/analytics-context";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -44,6 +46,7 @@ export function AnalyticsHeader({
   const { period, compare } = params;
   const lastDay = addDays(period.to, -1);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: store.timeZone }).format(ctx.now);
+  const w = analyticsWords().header;
   return (
     <header className="space-y-4">
       <div>
@@ -55,9 +58,9 @@ export function AnalyticsHeader({
           <PeriodPicker basePath={`${ctx.base}${path}`} preset={period.preset} from={period.from} to={lastDay} compare={compare.mode} preserve={preserve} max={today} showCompare={showCompare} explicitPeriod={explicitPeriod} />
           <p className="text-sm text-muted">
             {period.label}
-            {showCompare && compare.previous ? ` · compared with ${compare.previous.label}` : ""}
-            {showCompare && compare.lastYear ? ` · compared with ${compare.lastYear.label}` : ""}
-            {amountsNote ? ` · ${amountsNote}` : ` · amounts in ${store.markets[0]?.nativeCurrency ?? ""} without VAT`}
+            {showCompare && compare.previous ? fillWords(w.comparedWith, { label: compare.previous.label }) : ""}
+            {showCompare && compare.lastYear ? fillWords(w.comparedWith, { label: compare.lastYear.label }) : ""}
+            {amountsNote ? ` · ${amountsNote}` : fillWords(w.amountsIn, { currency: store.markets[0]?.nativeCurrency ?? "" })}
           </p>
           {params.notice ? <Note tone="info">{params.notice}</Note> : null}
         </>

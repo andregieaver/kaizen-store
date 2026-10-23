@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { adminLangOf } from "@/lib/admin-lang";
 import { queryRecord } from "@/lib/analytics-export";
+import { analyticsWordsIn } from "@/lib/analytics-words";
 import { exportAnalyticsTable, mayExportTable } from "@/server/analytics-export";
 import { sameSite } from "@/server/chat-route";
 import { checkPermission } from "@/server/permissions";
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
     result = await exportAnalyticsTable(member, table, queryRecord(form?.get("query")), form?.get("dialect"));
   } catch (error) {
     console.error("analytics.export_failed", error instanceof Error ? error.message : error);
-    return new NextResponse("The file could not be made. Go back and try again.", { status: 500, headers: { "Cache-Control": "no-store" } });
+    return new NextResponse(analyticsWordsIn(adminLangOf(member.account.adminLocale)).exportButton.failed, { status: 500, headers: { "Cache-Control": "no-store" } });
   }
   if (!result.ok) return new NextResponse(result.message, { status: result.reason === "failed" ? 500 : 404, headers: { "Cache-Control": "no-store" } });
   return new NextResponse(result.csv, {

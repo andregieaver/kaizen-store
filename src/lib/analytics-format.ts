@@ -3,6 +3,7 @@
 // convention: a decimal point and thousands apart by a no-break space, never the store's market. Only an amount of money
 // (`formatMoney`) follows the market's locale.
 
+import { analyticsMoneyLocale } from "./analytics-lang";
 import { formatNumber, NO_FIGURE, roundedText, withMinus } from "./analytics-core";
 import { formatMoney } from "./money";
 
@@ -30,5 +31,6 @@ export function formatTimes(ratio: number | null | undefined): string {
  * `Intl` writes: the one way the analytics write an amount. Whole minor units only, as `formatMoney()`.
  */
 export function formatAmount(amountMinor: number, currency: string, locale: string): string {
-  return withMinus(formatMoney(amountMinor, currency, locale));
+  // In another admin language than English the amount follows the admin's own locale (D312 A9); in English the market's, as before.
+  return withMinus(formatMoney(amountMinor, currency, analyticsMoneyLocale(locale)));
 }

@@ -4,6 +4,8 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { PayoutsView } from "@/components/admin/analytics/payouts-view";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
@@ -21,19 +23,22 @@ export default async function AnalyticsPayoutsPage({ params, searchParams }: Pag
   const shopOff = requireFeature(ctx, "shop");
   if (shopOff) return shopOff;
   const report = await payoutsReport(ctx.store, ctx.params.period);
+  const words = adminText(ctx.lang, "finance");
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/payouts"
-          title="Payouts"
-          description="What Stripe paid to your bank, what each payout settles, and whether it adds up to your orders."
+          title={words.pages.payoutsTitle}
+          description={words.pages.payoutsDescription}
           showCompare={false}
-          amountsNote="Each payout in its own currency, as Stripe paid it; totals in the main currency."
+          amountsNote={words.pages.payoutsAmounts}
         />
-        <PayoutsView base={ctx.base} currency={mainCurrency(ctx.store)} locale={ctx.store.markets[0]?.locale ?? "en"} report={report} />
+        <PayoutsView base={ctx.base} currency={mainCurrency(ctx.store)} locale={ctx.locale} report={report} words={words} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }

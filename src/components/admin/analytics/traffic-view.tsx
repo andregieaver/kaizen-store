@@ -16,6 +16,15 @@ import { dayText } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
 import { safeMoney } from "./subscriptions-view";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+
+/** The words of this view (D312 A9), English unless given. */
+export type TrafficWords = ReportsMessages["traffic"];
+type Money = (minor: number | null | undefined) => string;
+
+/** A sentence's first letter in capitals: a weekday is written small inside a Norwegian sentence. */
+const cap = (text: string) => (text ? text[0].toUpperCase() + text.slice(1) : text);
 
 /**
  * The Traffic page's body (D152, docs/analytics.md): where visitors drop out on the way to a purchase, which devices and countries sell,
@@ -40,13 +49,13 @@ export type TrafficViewProps = {
   geo: GeoReport;
   search: SearchReport;
   time: TimeReport;
+  /** The words, in the account's language (D312 A9); English unless given. */
+  words?: TrafficWords;
 };
 
 // ---------------------------------------------------------------------------
 // Small pure helpers (exported for the tests)
 // ---------------------------------------------------------------------------
-
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 const linkClass = "font-medium text-(--brand-text) underline-offset-2 hover:underline";
 
@@ -62,10 +71,10 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const hourText = (hour: number): string => `${pad(hour)}:00–${pad((hour + 1) % 24)}:00`;
 
 /** What a counted visit is, for a figure that needs visit counting and cannot have one: the reason in a sentence. */
-export function countingReason(traffic: Pick<TrafficReport, "counting" | "coverage">): string {
-  if (!traffic.counting) return "Visit counting is off.";
-  if (traffic.coverage.firstDay === null) return "No visit has been counted yet.";
-  return "No day of this period has counted visits.";
+export function countingReason(traffic: Pick<TrafficReport, "counting" | "coverage">, w: TrafficWords = reportsEn.traffic): string {
+  if (!traffic.counting) return w.countingOff;
+  if (traffic.coverage.firstDay === null) return w.countingNone;
+  return w.countingNoDay;
 }
 
 /** A search's last day, in the store's time zone: "3 Oct 2026". */
@@ -101,7 +110,7 @@ export function deviceShare(rows: readonly SegmentRow[], key: string): number | 
  * A plain-words warning when most visitors come on a phone but buy far less than on a computer. Only with enough visits and orders on
  * both sides to mean something; otherwise nothing is said (no verdict from small numbers).
  */
-export function mobileCallout(rows: readonly SegmentRow[]): string | null {
+export function mobileCallout(rows: readonly SegmentRow[], w: TrafficWords = reportsEn.traffic): string | null {
   const mobile = rows.find((r) => r.key === "mobile");
   const desktop = rows.find((r) => r.key === "desktop");
   if (!mobile || !desktop || mobile.sessions === null || desktop.sessions === null) return null;
@@ -112,9 +121,9 @@ export function mobileCallout(rows: readonly SegmentRow[]): string | null {
   if (mobile.conversion > desktop.conversion * MOBILE_GAP_RATIO) return null;
   const how =
     mobile.conversion === 0
-      ? "and none of them bought"
-      : `and they buy at ${formatPercent(mobile.conversion)} while desktop visitors buy at ${formatPercent(desktop.conversion)}, about ${oneDecimal(desktop.conversion / mobile.conversion)} times as often`;
-  return `${formatPercent(share, 0)} of your visitors use a phone, ${how}. Open your store on a phone and try to buy something: slow pages, small buttons and a hard checkout are the usual causes.`;
+      ? w.mobileNone
+      : fillWords(w.mobileGap, { mobile: formatPercent(mobile.conversion), desktop: formatPercent(desktop.conversion), times: oneDecimal(desktop.conversion / mobile.conversion) });
+  return fillWords(w.mobileCallout, { share: formatPercent(share, 0), how });
 }
 
 // ---- countries ----
@@ -138,7 +147,7 @@ const same = (a: string, b: string) => a.trim().toUpperCase() === b.trim().toUpp
  * The countries' table: what was sold in each from the orders (always known), with the visits and the conversion of the days with counted
  * visits where there are any. A market with visits and no sale is a row of its own, and so is the country chooser, with visits only.
  */
-export function countryRows(geo: GeoReport, traffic: TrafficReport): CountryRow[] {
+export function countryRows(geo: GeoReport, traffic: TrafficReport, w: TrafficWords = reportsEn.traffic): CountryRow[] {
   const visits = traffic.byMarket;
   const seen = new Set<string>();
   const rows: CountryRow[] = geo.countries.map((c) => {
@@ -161,7 +170,7 @@ export function countryRows(geo: GeoReport, traffic: TrafficReport): CountryRow[
     const door = v.key === "front_door";
     rows.push({
       key: v.key,
-      name: v.label,
+      name: w.devices[v.key] ?? v.label,
       orders: door ? null : v.orders,
       revenueMinor: door ? null : v.revenueMinor,
       shareOfRevenue: null,
@@ -189,23 +198,25 @@ export function landingLabel(row: { kind: LandingKind; handle: string | null; pa
 export const MIN_PATTERN_ORDERS = 20;
 
 /** The sentences under the weekday and hour pattern: the best day and hour, in words, and nothing when the orders are too few. */
-export function timeWords(time: TimeReport, money: (minor: number | null | undefined) => string): string[] {
+export function timeWords(time: TimeReport, money: (minor: number | null | undefined) => string, w: TrafficWords = reportsEn.traffic): string[] {
+  const ordersOf = (n: number) => countWords(n, w.orders, { n: formatCount(n) });
   const orders = time.totals.orders;
   if (orders === 0) return [];
   if (orders < MIN_PATTERN_ORDERS) {
-    return [`Only ${formatCount(orders)} paid ${plural(orders, "order", "orders")} in this period: too few to say which day or hour sells best. Pick a longer period.`];
+    return [countWords(orders, w.tooFewOrders, { n: formatCount(orders) })];
   }
   const lines: string[] = [];
   const day = time.bestWeekday;
   if (day) {
-    const name = FULL_WEEKDAYS[day.weekday - 1];
+    const name = w.weekdays[day.weekday - 1];
     const days = time.weekdayDays[day.weekday - 1] ?? 0;
-    lines.push(`${name} is your best day of the week: ${formatCount(day.orders)} ${plural(day.orders, "order", "orders")}, ${money(day.revenueMinor)}${days > 0 ? `, about ${oneDecimal(day.orders / days)} orders each ${name}` : ""}.`);
+    const each = days > 0 ? fillWords(w.bestDayEach, { n: oneDecimal(day.orders / days), day: name }) : "";
+    lines.push(cap(fillWords(w.bestDay, { day: name, orders: ordersOf(day.orders), amount: money(day.revenueMinor), each })));
   }
-  if (time.bestHour) lines.push(`The busiest hour is ${hourText(time.bestHour.hour)}, with ${formatCount(time.bestHour.orders)} ${plural(time.bestHour.orders, "order", "orders")} over the period.`);
+  if (time.bestHour) lines.push(fillWords(w.bestHour, { hour: hourText(time.bestHour.hour), orders: ordersOf(time.bestHour.orders) }));
   const slot = bandHours(time.heatmap, 2).peakByOrders;
-  if (slot) lines.push(`The single busiest slot is ${FULL_WEEKDAYS[slot.weekday - 1]} ${pad(slot.hour)}:00–${pad((slot.hour + 2) % 24)}:00, with ${formatCount(slot.orders)} ${plural(slot.orders, "order", "orders")}.`);
-  if (time.bestDay) lines.push(`Your best single day was ${dayText(time.bestDay.day)}: ${money(time.bestDay.revenueMinor)} from ${formatCount(time.bestDay.orders)} ${plural(time.bestDay.orders, "order", "orders")}.`);
+  if (slot) lines.push(fillWords(w.bestSlot, { day: w.weekdays[slot.weekday - 1], from: pad(slot.hour), to: pad((slot.hour + 2) % 24), orders: ordersOf(slot.orders) }));
+  if (time.bestDay) lines.push(fillWords(w.bestSingleDay, { day: dayText(time.bestDay.day), amount: money(time.bestDay.revenueMinor), orders: ordersOf(time.bestDay.orders) }));
   return lines;
 }
 
@@ -218,38 +229,37 @@ const COUNTING_NOTE = /^(Visit counting is off|No visit has been counted yet)/;
 /** The funnel's own sentence about a step that was cut down: the funnel draws it beside the step, so it is not said twice. */
 const CUT_STEP_NOTE = / is more than .*, so it is shown as /;
 
-function CountingState({ base, traffic }: { base: string; traffic: TrafficReport }) {
+function CountingState({ base, traffic, w }: { base: string; traffic: TrafficReport; w: TrafficWords }) {
   if (traffic.sessions !== null) return null;
   const settings = (
     <Link href={`${base}/analytics/settings#visits`} className={linkClass}>
-      Open analytics settings
+      {w.openSettings}
     </Link>
   );
   if (!traffic.counting) {
     return (
-      <Note tone="warning" title="Turn on visit counting to see where visitors come from">
-        Right now the store does not count visits, so the funnel, devices, landing pages and conversion rate cannot be shown. Counting uses no cookies and stores no one&apos;s address, so it needs no consent banner. It only counts from the day you switch it on. {settings}
+      <Note tone="warning" title={w.turnOnTitle}>
+        {w.turnOnText}
+        {settings}
       </Note>
     );
   }
   return (
-    <Note title={traffic.coverage.firstDay === null ? "No visit has been counted yet" : "No visits were counted in this period"}>
-      {traffic.coverage.firstDay === null
-        ? "Counting is on, but no visit has arrived yet. Visits appear here from the first day they are counted. "
-        : `Visits have been counted since ${dayText(traffic.coverage.firstDay)}, and none fall in this period. `}
+    <Note title={traffic.coverage.firstDay === null ? w.noneYetTitle : w.noneInPeriodTitle}>
+      {traffic.coverage.firstDay === null ? w.noneYetText : fillWords(w.noneInPeriodText, { day: dayText(traffic.coverage.firstDay) })}
       {settings}
     </Note>
   );
 }
 
-function NeedsCounting({ traffic, base, what }: { traffic: TrafficReport; base: string; what: string }) {
+function NeedsCounting({ traffic, base, what, w }: { traffic: TrafficReport; base: string; what: string; w: TrafficWords }) {
   return (
     <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-      <p>{`${what} ${countingReason(traffic)}`}</p>
+      <p>{`${what} ${countingReason(traffic, w)}`}</p>
       {!traffic.counting ? (
         <p className="mt-1">
           <Link href={`${base}/analytics/settings#visits`} className={linkClass}>
-            Turn on visit counting
+            {w.turnOn}
           </Link>
         </p>
       ) : null}
@@ -261,58 +271,57 @@ function NeedsCounting({ traffic, base, what }: { traffic: TrafficReport; base: 
 // Funnel
 // ---------------------------------------------------------------------------
 
-const HELP = {
-  visits: "A visit is one visitor on one day. Coming back the same day is not counted twice, and visitors who opted out are not counted.",
-  conversion: "Conversion rate: paid orders divided by visits. 2 % means 2 of every 100 visits ended in a purchase.",
-  productView: "The share of visits that looked at a product page.",
-  addToCart: "The share of visits that put something in the cart.",
-  cartAbandonment: "Of the visits that made a cart, the share that did not end in a purchase.",
-  checkoutAbandonment: "Of the visits that reached checkout, the share that did not buy.",
-};
 
-export function funnelCards({ base, traffic }: Pick<TrafficViewProps, "base" | "traffic">): KpiCardProps[] {
+export function funnelCards({ base, traffic, words: w = reportsEn.traffic }: Pick<TrafficViewProps, "base" | "traffic" | "words">): KpiCardProps[] {
   const f = traffic.funnel;
-  const why = { text: `This needs visits. ${countingReason(traffic)}`, action: { label: "Open analytics settings", href: `${base}/analytics/settings#visits` } };
+  const HELP = w.help;
+  const why = { text: fillWords(w.needsVisits, { reason: countingReason(traffic, w) }), action: { label: w.openSettings, href: `${base}/analytics/settings#visits` } };
   const rate = (label: string, value: number | null, help: string, hint: string, good: "up" | "down"): KpiCardProps =>
     value === null ? { label, value: null, state: "missing", missing: why, help } : { label, value: formatPercent(value), help, hint, good };
-  const covered = traffic.coverage.partial && traffic.coverage.days > 0 ? ` Over the ${formatCount(traffic.coverage.days)} days with counted visits.` : "";
+  const covered = traffic.coverage.partial && traffic.coverage.days > 0 ? fillWords(w.coveredDays, { n: formatCount(traffic.coverage.days) }) : "";
   return [
     traffic.sessions === null
-      ? { label: "Visits", value: null, state: "missing", missing: why, help: HELP.visits }
-      : { label: "Visits", value: formatCount(traffic.sessions), help: HELP.visits, hint: `Visitors on days they were counted.${covered}` },
-    rate("Conversion rate", traffic.conversion.rate, HELP.conversion, `${formatCount(traffic.conversion.orders)} paid ${plural(traffic.conversion.orders, "order", "orders")} from ${formatCount(traffic.sessions)} visits.`, "up"),
-    rate("Looked at a product", f.productViewRate, HELP.productView, "Of all visits.", "up"),
-    rate("Added to cart", f.addToCartRate, HELP.addToCart, "Of all visits.", "up"),
-    rate("Left with a full cart", f.cartAbandonment, HELP.cartAbandonment, "Of the carts that were made.", "down"),
-    rate("Left at checkout", f.checkoutAbandonment, HELP.checkoutAbandonment, "Of the visits that reached checkout.", "down"),
+      ? { label: w.visits, value: null, state: "missing", missing: why, help: HELP.visits }
+      : { label: w.visits, value: formatCount(traffic.sessions), help: HELP.visits, hint: fillWords(w.visitsHint, { covered }) },
+    rate(
+      w.conversionRate,
+      traffic.conversion.rate,
+      HELP.conversion,
+      countWords(traffic.conversion.orders, w.conversionHint, { n: formatCount(traffic.conversion.orders), visits: formatCount(traffic.sessions) }),
+      "up",
+    ),
+    rate(w.lookedAtProduct, f.productViewRate, HELP.productView, w.ofAllVisits, "up"),
+    rate(w.addedToCart, f.addToCartRate, HELP.addToCart, w.ofAllVisits, "up"),
+    rate(w.leftWithCart, f.cartAbandonment, HELP.cartAbandonment, w.ofCarts, "down"),
+    rate(w.leftAtCheckout, f.checkoutAbandonment, HELP.checkoutAbandonment, w.ofCheckouts, "down"),
   ];
 }
 
-function FunnelSection({ base, traffic, orders }: { base: string; traffic: TrafficReport; orders: number }) {
+function FunnelSection({ base, traffic, orders, w }: { base: string; traffic: TrafficReport; orders: number; w: TrafficWords }) {
   const known = traffic.sessions !== null;
   return (
     <AnalyticsSection
       id="funnel"
-      title="From visit to purchase"
-      description="Where visitors drop out on the way. Each step is a visitor on a day, so a visitor who comes back the same day counts once."
+      title={w.funnelTitle}
+      description={w.funnelDescription}
     >
       {known ? (
         <>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
               <Funnel
-                label="Visits, product views, carts, checkouts and purchases"
+                label={w.funnelLabel}
                 stages={traffic.funnel.stages.map((s) => ({
-                  label: s.label,
+                  label: w.stages[s.key] ?? s.label,
                   value: s.count,
-                  note: s.clamped ? `Counted as ${formatCount(s.raw)}, shown as ${formatCount(s.count)}: a step cannot be bigger than the one before it.` : undefined,
+                  note: s.clamped ? fillWords(w.clamped, { raw: formatCount(s.raw), count: formatCount(s.count) }) : undefined,
                 }))}
                 format={formatCount}
                 exportId="traffic.funnel"
               />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {funnelCards({ base, traffic }).map((c) => (
+              {funnelCards({ base, traffic, words: w }).map((c) => (
                 <KpiCard key={c.label} {...c} />
               ))}
             </div>
@@ -320,8 +329,8 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
         </>
       ) : (
         <>
-          <NeedsCounting traffic={traffic} base={base} what="There is no funnel to show yet." />
-          {orders > 0 ? <p className="text-sm text-muted">{`Your store did make ${formatCount(orders)} paid ${plural(orders, "order", "orders")} in this period. That comes from your orders, not from visits.`}</p> : null}
+          <NeedsCounting traffic={traffic} base={base} what={w.noFunnel} w={w} />
+          {orders > 0 ? <p className="text-sm text-muted">{countWords(orders, w.ordersAnyway, { n: formatCount(orders) })}</p> : null}
         </>
       )}
     </AnalyticsSection>
@@ -332,34 +341,36 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
 // Devices
 // ---------------------------------------------------------------------------
 
-function DevicesSection({ base, traffic, money }: { base: string; traffic: TrafficReport; money: (minor: number | null | undefined) => string }) {
+function DevicesSection({ base, traffic, money, w }: { base: string; traffic: TrafficReport; money: Money; w: TrafficWords }) {
   const rows = traffic.byDevice;
-  const callout = mobileCallout(rows);
+  const callout = mobileCallout(rows, w);
+  const l = w.columns;
+  const why = w.why;
   const columns: Column<SegmentRow>[] = [
-    { key: "device", label: "Device", cell: (r) => (r.key === "unknown" ? <span title="Paid orders that cannot be tied to a counted visit: the shopper was not counted, or bought on another day than the visit.">Unknown</span> : r.label) },
-    { key: "sessions", label: "Visits", align: "right", cell: (r) => (r.sessions === null ? dash("Orders with no visit have no visits to count") : formatCount(r.sessions)) },
+    { key: "device", label: l.device, cell: (r) => (r.key === "unknown" ? <span title={w.deviceUnknownWhy}>{w.devices.unknown}</span> : (w.devices[r.key] ?? r.label)) },
+    { key: "sessions", label: l.visits, align: "right", cell: (r) => (r.sessions === null ? dash(why.noVisitsToCount) : formatCount(r.sessions)) },
     {
       key: "share",
-      label: "Share of visits",
+      label: l.shareOfVisits,
       align: "right",
       cell: (r) => {
         const share = deviceShare(rows, r.key);
-        return r.key === "unknown" || share === null ? dash("Only phones, tablets and computers are compared") : <ShareBar share={share} text={formatPercent(share, 0)} />;
+        return r.key === "unknown" || share === null ? dash(why.onlyDevices) : <ShareBar share={share} text={formatPercent(share, 0)} />;
       },
     },
-    { key: "conversion", label: "Conversion rate", align: "right", cell: (r) => (r.conversion === null ? dash("Needs counted visits") : formatPercent(r.conversion)) },
-    { key: "aov", label: "Average order", align: "right", cell: (r) => (r.aov === null ? dash("No orders") : money(r.aov)) },
-    { key: "orders", label: "Orders", align: "right", cell: (r) => formatCount(r.orders) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (r) => money(r.revenueMinor) },
+    { key: "conversion", label: l.conversion, align: "right", cell: (r) => (r.conversion === null ? dash(why.needsVisits) : formatPercent(r.conversion)) },
+    { key: "aov", label: l.aov, align: "right", cell: (r) => (r.aov === null ? dash(why.noOrders) : money(r.aov)) },
+    { key: "orders", label: l.orders, align: "right", cell: (r) => formatCount(r.orders) },
+    { key: "revenue", label: l.revenue, align: "right", cell: (r) => money(r.revenueMinor) },
   ];
   return (
-    <AnalyticsSection id="devices" title="Phones, tablets and computers" description="What each kind of device brings: visits, how many of them buy and how much they spend. Revenue is without VAT.">
+    <AnalyticsSection id="devices" title={w.devicesTitle} description={w.devicesDescription}>
       {rows.length === 0 ? (
-        <NeedsCounting traffic={traffic} base={base} what="There are no devices to compare yet." />
+        <NeedsCounting traffic={traffic} base={base} what={w.noDevices} w={w} />
       ) : (
         <>
-          {callout ? <Note tone="warning" title="Phones sell much less than computers">{callout}</Note> : null}
-          <DataTable caption="Devices with visits, share of visits, conversion rate, average order, orders and revenue" columns={columns} rows={rows} rowKey={(r) => r.key} exportId="traffic.devices" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
+          {callout ? <Note tone="warning" title={w.mobileTitle}>{callout}</Note> : null}
+          <DataTable caption={w.devicesCaption} columns={columns} rows={rows} rowKey={(r) => r.key} exportId="traffic.devices" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
         </>
       )}
     </AnalyticsSection>
@@ -370,27 +381,29 @@ function DevicesSection({ base, traffic, money }: { base: string; traffic: Traff
 // Countries and cities
 // ---------------------------------------------------------------------------
 
-function GeographySection({ base, geo, traffic, money }: { base: string; geo: GeoReport; traffic: TrafficReport; money: (minor: number | null | undefined) => string }) {
-  const rows = countryRows(geo, traffic);
+function GeographySection({ base, geo, traffic, money, w }: { base: string; geo: GeoReport; traffic: TrafficReport; money: Money; w: TrafficWords }) {
+  const rows = countryRows(geo, traffic, w);
   const visitsKnown = traffic.sessions !== null;
-  const noVisits = `Needs counted visits. ${countingReason(traffic)}`;
+  const l = w.columns;
+  const why = w.why;
+  const noVisits = fillWords(w.needsVisitsReason, { reason: countingReason(traffic, w) });
   const countryColumns: Column<CountryRow>[] = [
-    { key: "country", label: "Country", cell: (r) => r.name },
-    { key: "orders", label: "Orders", align: "right", cell: (r) => (r.orders === null ? dash("Visitors on the country chooser have not picked a country yet") : formatCount(r.orders)) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (r) => (r.revenueMinor === null ? dash("No orders") : money(r.revenueMinor)) },
-    { key: "share", label: "Share of revenue", align: "right", cell: (r) => (r.shareOfRevenue === null ? dash("No revenue to share") : <ShareBar share={r.shareOfRevenue} text={formatPercent(r.shareOfRevenue)} />) },
-    { key: "aov", label: "Average order", align: "right", cell: (r) => (r.aovMinor === null ? dash("No orders") : money(r.aovMinor)) },
-    { key: "new", label: "New customers", align: "right", cell: (r) => (r.newCustomers === null ? dash("Not counted for this row") : formatCount(r.newCustomers)) },
-    { key: "sessions", label: "Visits", align: "right", cell: (r) => (r.sessions === null ? dash(noVisits) : formatCount(r.sessions)) },
-    { key: "conversion", label: "Conversion rate", align: "right", cell: (r) => (r.conversion === null ? dash(visitsKnown ? "No visits from this country on the counted days" : noVisits) : formatPercent(r.conversion)) },
+    { key: "country", label: l.country, cell: (r) => r.name },
+    { key: "orders", label: l.orders, align: "right", cell: (r) => (r.orders === null ? dash(why.chooser) : formatCount(r.orders)) },
+    { key: "revenue", label: l.revenue, align: "right", cell: (r) => (r.revenueMinor === null ? dash(why.noOrders) : money(r.revenueMinor)) },
+    { key: "share", label: l.shareOfRevenue, align: "right", cell: (r) => (r.shareOfRevenue === null ? dash(why.noRevenue) : <ShareBar share={r.shareOfRevenue} text={formatPercent(r.shareOfRevenue)} />) },
+    { key: "aov", label: l.aov, align: "right", cell: (r) => (r.aovMinor === null ? dash(why.noOrders) : money(r.aovMinor)) },
+    { key: "new", label: l.newCustomers, align: "right", cell: (r) => (r.newCustomers === null ? dash(why.notCounted) : formatCount(r.newCustomers)) },
+    { key: "sessions", label: l.visits, align: "right", cell: (r) => (r.sessions === null ? dash(noVisits) : formatCount(r.sessions)) },
+    { key: "conversion", label: l.conversion, align: "right", cell: (r) => (r.conversion === null ? dash(visitsKnown ? why.noCountryVisits : noVisits) : formatPercent(r.conversion)) },
   ];
   const cityColumns: Column<GeoReport["cities"][number]>[] = [
-    { key: "city", label: "City", cell: (c) => <span title={c.city}>{c.city}</span> },
-    { key: "country", label: "Country", cell: (c) => c.countryName },
-    { key: "orders", label: "Orders", align: "right", cell: (c) => formatCount(c.orders) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (c) => money(c.revenueMinor) },
-    { key: "share", label: "Share of revenue", align: "right", cell: (c) => <ShareBar share={c.shareOfRevenue} text={formatPercent(c.shareOfRevenue)} /> },
-    { key: "aov", label: "Average order", align: "right", cell: (c) => (c.aovMinor === null ? dash("No orders") : money(c.aovMinor)) },
+    { key: "city", label: l.city, cell: (c) => <span title={c.city}>{c.city}</span> },
+    { key: "country", label: l.country, cell: (c) => c.countryName },
+    { key: "orders", label: l.orders, align: "right", cell: (c) => formatCount(c.orders) },
+    { key: "revenue", label: l.revenue, align: "right", cell: (c) => money(c.revenueMinor) },
+    { key: "share", label: l.shareOfRevenue, align: "right", cell: (c) => <ShareBar share={c.shareOfRevenue} text={formatPercent(c.shareOfRevenue)} /> },
+    { key: "aov", label: l.aov, align: "right", cell: (c) => (c.aovMinor === null ? dash(why.noOrders) : money(c.aovMinor)) },
   ];
   const cell = "px-3 py-1.5 text-right tabular-nums";
   const other = geo.otherCities;
@@ -400,7 +413,7 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
       <>
         {other.orders > 0 ? (
           <tr>
-            <td className="px-3 py-1.5 text-left">{`Other cities (${formatCount(other.cities)}${geo.truncated ? "+" : ""})`}</td>
+            <td className="px-3 py-1.5 text-left">{fillWords(w.otherCities, { n: formatCount(other.cities), more: geo.truncated ? "+" : "" })}</td>
             <td />
             <td className={cell}>{formatCount(other.orders)}</td>
             <td className={cell}>{money(other.revenueMinor)}</td>
@@ -410,7 +423,7 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
         ) : null}
         {none.orders > 0 ? (
           <tr>
-            <td className="px-3 py-1.5 text-left" title="Orders with no delivery address, such as digital products">
+            <td className="px-3 py-1.5 text-left" title={why.noAddress}>
               {none.label}
             </td>
             <td />
@@ -425,21 +438,21 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
   return (
     <AnalyticsSection
       id="geography"
-      title="Where your customers are"
-      description="Countries are where the order was placed, cities where it was delivered. Both come from your orders, so they are shown whether or not visits are counted."
+      title={w.geoTitle}
+      description={w.geoDescription}
     >
       <DataTable
-        caption="Countries with orders, revenue, share of revenue, average order, new customers, visits and conversion rate"
+        caption={w.countriesCaption}
         columns={countryColumns}
         rows={rows}
         rowKey={(r) => r.key}
-        empty="No paid orders in this period yet."
+        empty={w.noOrdersYet}
         exportId="traffic.countries"
         exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }}
         footer={
           rows.length > 1 && geo.totals.orders > 0 ? (
             <tr>
-              <td className="px-3 py-1.5 text-left">All countries</td>
+              <td className="px-3 py-1.5 text-left">{w.allCountries}</td>
               <td className={cell}>{formatCount(geo.totals.orders)}</td>
               <td className={cell}>{money(geo.totals.revenueMinor)}</td>
               <td />
@@ -453,23 +466,29 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
       />
       {!visitsKnown ? (
         <p className="text-xs text-muted">
-          Visits and conversion rate per country need visit counting.{" "}
+          {w.countryVisitsNeedCounting}{" "}
           {!traffic.counting ? (
             <Link href={`${base}/analytics/settings#visits`} className={linkClass}>
-              Turn it on
+              {w.turnItOn}
             </Link>
           ) : null}
         </p>
       ) : null}
       {geo.cities.length > 0 || none.orders > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-body-strong text-ink">Top cities</h3>
-          <DataTable caption="The cities with most revenue, with orders, share of revenue and average order" columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty="No order has a delivery city." exportId="traffic.cities" exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }} />
-          {geo.truncated ? <p className="text-xs text-muted">There are very many cities, so the smallest were not read and &quot;Other cities&quot; is a little low.</p> : null}
+          <h3 className="text-body-strong text-ink">{w.topCities}</h3>
+          <DataTable caption={w.citiesCaption} columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty={w.noCity} exportId="traffic.cities" exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }} />
+          {geo.truncated ? <p className="text-xs text-muted">{w.citiesTruncated}</p> : null}
         </div>
       ) : null}
       {geo.unconverted > 0 ? (
-        <Note tone="warning">{`${formatCount(geo.unconverted)} paid ${plural(geo.unconverted, "order", "orders")} in ${geo.missingCurrencies.join(", ") || "another currency"} ${plural(geo.unconverted, "is", "are")} left out because the store has no exchange rate for ${plural(geo.missingCurrencies.length, "it", "them")}, so these figures are lower than they should be.`}</Note>
+        <Note tone="warning">
+          {countWords(geo.unconverted, w.leftOut, {
+            n: formatCount(geo.unconverted),
+            currencies: geo.missingCurrencies.join(", ") || w.anotherCurrency,
+            them: geo.missingCurrencies.length === 1 ? w.it : w.them,
+          })}
+        </Note>
       ) : null}
     </AnalyticsSection>
   );
@@ -479,21 +498,22 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
 // Landing pages
 // ---------------------------------------------------------------------------
 
-function LandingSection({ base, traffic, money }: { base: string; traffic: TrafficReport; money: (minor: number | null | undefined) => string }) {
+function LandingSection({ base, traffic, money, w }: { base: string; traffic: TrafficReport; money: Money; w: TrafficWords }) {
+  const l = w.columns;
   const columns: Column<TrafficReport["landingPages"][number]>[] = [
-    { key: "page", label: "Page", cell: (r) => <span title={r.path}>{landingLabel(r)}</span> },
-    { key: "kind", label: "Kind", cell: (r) => KIND_LABEL[r.kind] },
-    { key: "sessions", label: "Visits", align: "right", cell: (r) => (r.sessions === null ? dash("Needs counted visits") : formatCount(r.sessions)) },
-    { key: "orders", label: "Orders", align: "right", cell: (r) => formatCount(r.orders) },
-    { key: "conversion", label: "Conversion rate", align: "right", cell: (r) => (r.conversion === null ? dash("Needs counted visits") : formatPercent(r.conversion)) },
-    { key: "revenue", label: "Revenue", align: "right", cell: (r) => money(r.revenueMinor) },
+    { key: "page", label: l.page, cell: (r) => <span title={r.path}>{landingLabel(r)}</span> },
+    { key: "kind", label: l.kind, cell: (r) => w.kinds[r.kind] ?? KIND_LABEL[r.kind] },
+    { key: "sessions", label: l.visits, align: "right", cell: (r) => (r.sessions === null ? dash(w.why.needsVisits) : formatCount(r.sessions)) },
+    { key: "orders", label: l.orders, align: "right", cell: (r) => formatCount(r.orders) },
+    { key: "conversion", label: l.conversion, align: "right", cell: (r) => (r.conversion === null ? dash(w.why.needsVisits) : formatPercent(r.conversion)) },
+    { key: "revenue", label: l.revenue, align: "right", cell: (r) => money(r.revenueMinor) },
   ];
   return (
-    <AnalyticsSection id="landing" title="Where visitors arrive" description="The pages visits began on, and the orders those visits led to. A product page that gets visits and no orders is worth a look.">
+    <AnalyticsSection id="landing" title={w.landingTitle} description={w.landingDescription}>
       {traffic.landingPages.length === 0 ? (
-        <NeedsCounting traffic={traffic} base={base} what="There are no landing pages to show yet." />
+        <NeedsCounting traffic={traffic} base={base} what={w.noLanding} w={w} />
       ) : (
-        <DataTable caption="The pages most visits began on, with visits, orders, conversion rate and revenue" columns={columns} rows={traffic.landingPages} rowKey={(r) => r.path} exportId="traffic.landing" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
+        <DataTable caption={w.landingCaption} columns={columns} rows={traffic.landingPages} rowKey={(r) => r.path} exportId="traffic.landing" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
       )}
     </AnalyticsSection>
   );
@@ -503,68 +523,70 @@ function LandingSection({ base, traffic, money }: { base: string; traffic: Traff
 // Search
 // ---------------------------------------------------------------------------
 
-function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: string }) {
+function SearchSection({ search, timeZone, w }: { search: SearchReport; timeZone: string; w: TrafficWords }) {
   const t = search.totals;
   const none = t.searches === 0;
+  const l = w.columns;
+  const term = (value: string) => <span title={value}>{value === "" ? w.emptySearch : value}</span>;
   const zeroColumns: Column<SearchReport["zeroTerms"][number]>[] = [
-    { key: "term", label: "What they searched for", cell: (r) => <span title={r.term}>{r.term === "" ? "(empty search)" : r.term}</span> },
-    { key: "searches", label: "Times it found nothing", align: "right", cell: (r) => formatCount(r.searches) },
-    { key: "last", label: "Last time", align: "right", cell: (r) => lastSeenText(r.lastSearchedAt, timeZone) },
+    { key: "term", label: l.searched, cell: (r) => term(r.term) },
+    { key: "searches", label: l.timesNothing, align: "right", cell: (r) => formatCount(r.searches) },
+    { key: "last", label: l.lastTime, align: "right", cell: (r) => lastSeenText(r.lastSearchedAt, timeZone) },
   ];
   const topColumns: Column<SearchReport["topTerms"][number]>[] = [
-    { key: "term", label: "Search", cell: (r) => <span title={r.term}>{r.term === "" ? "(empty search)" : r.term}</span> },
-    { key: "searches", label: "Searches", align: "right", cell: (r) => formatCount(r.searches) },
-    { key: "results", label: "Results shown", align: "right", cell: (r) => <span title="The usual number of products the search found">{formatCount(r.avgResults)}</span> },
-    { key: "zero", label: "Found nothing", align: "right", cell: (r) => formatCount(r.zeroResults) },
-    { key: "clicked", label: "Opened a result", align: "right", cell: (r) => formatCount(r.clicked) },
-    { key: "ctr", label: "Click-through", align: "right", cell: (r) => (r.clickThrough === null ? dash("No searches") : formatPercent(r.clickThrough)) },
+    { key: "term", label: l.search, cell: (r) => term(r.term) },
+    { key: "searches", label: l.searches, align: "right", cell: (r) => formatCount(r.searches) },
+    { key: "results", label: l.resultsShown, align: "right", cell: (r) => <span title={w.why.usualResults}>{formatCount(r.avgResults)}</span> },
+    { key: "zero", label: l.foundNothing, align: "right", cell: (r) => formatCount(r.zeroResults) },
+    { key: "clicked", label: l.openedResult, align: "right", cell: (r) => formatCount(r.clicked) },
+    { key: "ctr", label: l.clickThrough, align: "right", cell: (r) => (r.clickThrough === null ? dash(w.why.noSearches) : formatPercent(r.clickThrough)) },
   ];
   const cards: KpiCardProps[] = [
-    { label: "Searches", value: formatCount(t.searches), help: "Searches made in your store's own search, on the search page.", hint: `${formatCount(t.distinctTerms)} different ${plural(t.distinctTerms, "search", "searches")}.` },
+    { label: w.searchesLabel, value: formatCount(t.searches), help: w.searchesHelp, hint: countWords(t.distinctTerms, w.searchesHint, { n: formatCount(t.distinctTerms) }) },
     t.zeroRate === null
-      ? { label: "Found nothing", value: null, state: "missing", missing: { text: "No one searched in this period." }, help: "The share of searches that found no product, by keyword or by meaning." }
-      : { label: "Found nothing", value: formatPercent(t.zeroRate), good: "down", help: "The share of searches that found no product, by keyword or by meaning.", hint: `${formatCount(t.zeroResultSearches)} of ${formatCount(t.searches)} searches.` },
-    t.clickThrough === null
-      ? { label: "Click-through", value: null, state: "missing", missing: { text: "No one searched in this period." }, help: "The share of searches where the shopper opened a result." }
+      ? { label: w.foundNothing, value: null, state: "missing", missing: { text: w.noOneSearched }, help: w.foundNothingHelp }
       : {
-          label: "Click-through",
+          label: w.foundNothing,
+          value: formatPercent(t.zeroRate),
+          good: "down",
+          help: w.foundNothingHelp,
+          hint: fillWords(w.foundNothingHint, { zero: formatCount(t.zeroResultSearches), n: formatCount(t.searches) }),
+        },
+    t.clickThrough === null
+      ? { label: w.clickThrough, value: null, state: "missing", missing: { text: w.noOneSearched }, help: w.clickThroughHelp }
+      : {
+          label: w.clickThrough,
           value: formatPercent(t.clickThrough),
           good: "up",
-          help: "The share of searches where the shopper opened a result.",
-          hint: t.clickThroughOfFound === null ? undefined : `${formatPercent(t.clickThroughOfFound)} of the searches that found something.`,
+          help: w.clickThroughHelp,
+          hint: t.clickThroughOfFound === null ? undefined : fillWords(w.clickThroughFound, { pct: formatPercent(t.clickThroughOfFound) }),
         },
   ];
   return (
-    <AnalyticsSection
-      id="search"
-      title="What shoppers search for"
-      description="What people typed into your store's search. It does not need visit counting, and only the last 90 days are kept."
-    >
+    <AnalyticsSection id="search" title={w.searchTitle} description={w.searchDescription}>
       {search.clamped ? (
-        <Note tone="info" title="Older searches are no longer kept">
+        <Note tone="info" title={w.olderTitle}>
           {search.period.days > 0
-            ? `Searches are kept for ${formatCount(search.retentionDays)} days, so this shows ${dayText(search.availableFrom)} onwards, not ${dayText(search.requested.from)}.`
-            : `Searches are kept for ${formatCount(search.retentionDays)} days and all of this period is older, so there is nothing to show.`}
+            ? fillWords(w.olderSome, { days: formatCount(search.retentionDays), from: dayText(search.availableFrom), requested: dayText(search.requested.from) })
+            : fillWords(w.olderAll, { days: formatCount(search.retentionDays) })}
         </Note>
       ) : null}
       {none ? (
         <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-          {search.period.days === 0 ? "There are no searches to show for this period." : "No one used the store's search in this period."}
+          {search.period.days === 0 ? w.noSearchesPeriod : w.noSearchUsed}
         </div>
       ) : (
         <>
           <div className="space-y-2">
-            <h3 className="text-body-strong text-ink">Searches that found nothing: products your customers want</h3>
-            <p className="max-w-prose text-sm text-muted">
-              Each of these is a shopper telling you what they could not find. If you sell it, add the words they used to the product. If you do not, it may be a product worth adding.
-            </p>
+            <h3 className="text-body-strong text-ink">{w.zeroTitle}</h3>
+            <p className="max-w-prose text-sm text-muted">{w.zeroText}</p>
             {search.zeroTerms.length === 0 ? (
-              <div className="rounded-panel border border-dashed border-line px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
+              <div className="rounded-panel border border-dashed border-line px-4 py-4 text-sm text-muted">{w.nothingMissed}</div>
             ) : (
               <>
-                <DataTable caption="Searches that found nothing, with how many times and when last" columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />
+                <DataTable caption={w.zeroCaption} columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />
                 {search.zeroTermCount > search.zeroTerms.length ? (
-                  <p className="text-xs text-muted">{`Showing ${formatCount(search.zeroTerms.length)} of ${formatCount(search.zeroTermCount)} different searches that found nothing.`}</p>
+                  <p className="text-xs text-muted">{fillWords(w.zeroShowing, { shown: formatCount(search.zeroTerms.length), total: formatCount(search.zeroTermCount) })}</p>
                 ) : null}
               </>
             )}
@@ -575,12 +597,12 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
             ))}
           </div>
           <div className="space-y-2">
-            <h3 className="text-body-strong text-ink">Most searched</h3>
-            <DataTable caption="The most searched terms with searches, results shown, searches that found nothing and click-through" columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
+            <h3 className="text-body-strong text-ink">{w.mostSearched}</h3>
+            <DataTable caption={w.topCaption} columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
           </div>
         </>
       )}
-      <Note title="Sales after a search are not tracked">{search.revenueNote}</Note>
+      <Note title={w.noSalesTracked}>{search.revenueNote}</Note>
     </AnalyticsSection>
   );
 }
@@ -589,49 +611,55 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
 // When the store sells
 // ---------------------------------------------------------------------------
 
-function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: string; money: (minor: number | null | undefined) => string }) {
+function WhenSection({ time, timeZone, money, w }: { time: TimeReport; timeZone: string; money: Money; w: TrafficWords }) {
   const bands = bandHours(time.heatmap, 2);
   const orders = time.totals.orders;
   const rows = bands.bands.map((band, b) => ({ label: band.label, values: bands.cells.map((day) => day[b].orders) }));
-  const words = timeWords(time, money);
+  const words = timeWords(time, money, w);
   const weekdays: BarRow[] = WEEKDAY_LABELS.map((label, i) => {
     const total = time.heatmap.rowTotals[i];
     const days = time.weekdayDays[i] ?? 0;
     return {
       key: label,
-      label: FULL_WEEKDAYS[i],
+      label: cap(w.weekdays[i]),
       value: total.orders,
-      valueText: `${formatCount(total.orders)} ${plural(total.orders, "order", "orders")}`,
-      detail: days > 0 ? `${oneDecimal(total.orders / days)} a day` : undefined,
+      valueText: countWords(total.orders, w.orders, { n: formatCount(total.orders) }),
+      detail: days > 0 ? fillWords(w.aDay, { n: oneDecimal(total.orders / days) }) : undefined,
     };
   });
   return (
     <AnalyticsSection
       id="when"
-      title="When customers buy"
-      description={`Paid orders by weekday and time of day, in the store's time zone (${timeZone}). It comes from your orders, so it does not need visit counting.`}
+      title={w.whenTitle}
+      description={fillWords(w.whenDescription, { zone: timeZone })}
     >
       {words.length > 0 ? (
         <ul className="max-w-prose list-disc space-y-1 pl-5 text-sm">
-          {words.map((w) => (
-            <li key={w}>{w}</li>
+          {words.map((line) => (
+            <li key={line}>{line}</li>
           ))}
         </ul>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
-          <h3 className="mb-3 text-body-strong text-ink">Orders by weekday and time of day</h3>
-          <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
+          <h3 className="mb-3 text-body-strong text-ink">{w.heatmapTitle}</h3>
+          <Heatmap label={w.heatmapLabel} columns={w.weekdaysShort.length === 7 ? [...w.weekdaysShort] : [...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText={w.noOrdersYet} exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
           <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
-            <h3 className="mb-3 text-body-strong text-ink">Orders by weekday</h3>
-            <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
+            <h3 className="mb-3 text-body-strong text-ink">{w.weekdayTitle}</h3>
+            <HorizontalBars label={w.weekdayLabel} rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>
         ) : null}
       </div>
       {time.unconverted > 0 ? (
-        <Note tone="warning">{`${formatCount(time.unconverted)} paid ${plural(time.unconverted, "order", "orders")} in ${time.missingCurrencies.join(", ") || "another currency"} ${plural(time.unconverted, "is", "are")} left out because the store has no exchange rate for ${plural(time.missingCurrencies.length, "it", "them")}.`}</Note>
+        <Note tone="warning">
+          {countWords(time.unconverted, w.leftOutShort, {
+            n: formatCount(time.unconverted),
+            currencies: time.missingCurrencies.join(", ") || w.anotherCurrency,
+            them: time.missingCurrencies.length === 1 ? w.it : w.them,
+          })}
+        </Note>
       ) : null}
     </AnalyticsSection>
   );
@@ -641,33 +669,30 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
 // The view
 // ---------------------------------------------------------------------------
 
-const QUESTIONS: readonly { id: string; question: string }[] = [
-  { id: "funnel", question: "Where do visitors drop out before they buy?" },
-  { id: "search", question: "What do shoppers look for that they cannot find?" },
-  { id: "when", question: "When and where do customers buy?" },
-];
+const QUESTION_IDS = ["funnel", "search", "when"] as const;
 
 export function TrafficView(props: TrafficViewProps) {
   const { base, currency, locale, timeZone, traffic, geo, search, time } = props;
+  const w = props.words ?? reportsEn.traffic;
   const money = safeMoney(currency, locale);
   const notes = traffic.notes.filter((n) => n.length > 0 && !CUT_STEP_NOTE.test(n) && !(traffic.sessions === null && COUNTING_NOTE.test(n)));
   const unknown = traffic.byDevice.find((r) => r.key === "unknown");
 
   return (
     <>
-      <nav aria-label="Questions this page answers" className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm">
-        <p className="font-medium">This page answers three things</p>
-        <ol aria-label="The three questions" className="mt-1 list-decimal space-y-0.5 pl-5">
-          {QUESTIONS.map((q) => (
-            <li key={q.id}>
-              <a href={`#${q.id}`} className={linkClass}>
-                {q.question}
+      <nav aria-label={w.questionsLabel} className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm">
+        <p className="font-medium">{w.questionsTitle}</p>
+        <ol aria-label={w.questionsList} className="mt-1 list-decimal space-y-0.5 pl-5">
+          {QUESTION_IDS.map((id) => (
+            <li key={id}>
+              <a href={`#${id}`} className={linkClass}>
+                {w.questions[id]}
               </a>
             </li>
           ))}
         </ol>
       </nav>
-      <CountingState base={base} traffic={traffic} />
+      <CountingState base={base} traffic={traffic} w={w} />
       {notes.length > 0 ? (
         <div className="space-y-2">
           {notes.map((n) => (
@@ -675,15 +700,15 @@ export function TrafficView(props: TrafficViewProps) {
           ))}
         </div>
       ) : null}
-      <FunnelSection base={base} traffic={traffic} orders={time.totals.orders} />
-      <DevicesSection base={base} traffic={traffic} money={money} />
+      <FunnelSection base={base} traffic={traffic} orders={time.totals.orders} w={w} />
+      <DevicesSection base={base} traffic={traffic} money={money} w={w} />
       {unknown && unknown.orders > 0 ? (
-        <p className="-mt-4 max-w-prose text-xs text-muted">{`${formatCount(unknown.orders)} paid ${plural(unknown.orders, "order", "orders")} (${money(unknown.revenueMinor)}) cannot be tied to a counted visit, so they are in the Unknown row.`}</p>
+        <p className="-mt-4 max-w-prose text-xs text-muted">{countWords(unknown.orders, w.unknownOrders, { n: formatCount(unknown.orders), amount: money(unknown.revenueMinor) })}</p>
       ) : null}
-      <GeographySection base={base} geo={geo} traffic={traffic} money={money} />
-      <LandingSection base={base} traffic={traffic} money={money} />
-      <SearchSection search={search} timeZone={timeZone} />
-      <WhenSection time={time} timeZone={timeZone} money={money} />
+      <GeographySection base={base} geo={geo} traffic={traffic} money={money} w={w} />
+      <LandingSection base={base} traffic={traffic} money={money} w={w} />
+      <SearchSection search={search} timeZone={timeZone} w={w} />
+      <WhenSection time={time} timeZone={timeZone} money={money} w={w} />
     </>
   );
 }

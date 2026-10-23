@@ -109,7 +109,7 @@ export default async function AdminOverview({ params }: Props) {
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
       {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
-          <HomeAnalyticsAlerts store={store} base={base} now={now} />
+          <HomeAnalyticsAlerts store={store} base={base} now={now} lang={lang} />
         </Suspense>
       )}
       {store.setupCompletedAt && selling && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (

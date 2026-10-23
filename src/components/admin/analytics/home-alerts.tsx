@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import { Section } from "@/components/admin/overview-parts";
+import type { AdminLang } from "@/lib/admin-lang";
+import { setAnalyticsLang } from "@/lib/analytics-lang";
+import { analyticsWords } from "@/lib/analytics-words";
 import { alertsForStore } from "@/server/analytics-insights";
 import type { Store } from "@/server/stores";
 
@@ -14,7 +17,9 @@ export const HOME_ALERTS = 3;
  * `<Suspense>`, so the page does not wait for the reports behind it, and it never throws: with nothing to say (or a report that could
  * not be read) it draws nothing at all.
  */
-export async function HomeAnalyticsAlerts({ store, base, now }: { store: Store; base: string; now: Date }) {
+export async function HomeAnalyticsAlerts({ store, base, now, lang = "en" }: { store: Store; base: string; now: Date; lang?: AdminLang }) {
+  // The alerts' words and figures in the member's language (D312 A9), as on the Analytics overview.
+  setAnalyticsLang(lang);
   let alerts;
   try {
     alerts = (await alertsForStore(store, now)).slice(0, HOME_ALERTS);
@@ -22,13 +27,14 @@ export async function HomeAnalyticsAlerts({ store, base, now }: { store: Store; 
     return null;
   }
   if (alerts.length === 0) return null;
+  const w = analyticsWords().alerts;
   return (
     <Section
       id="analytics-alerts-heading"
-      title="Worth a look in Analytics"
+      title={w.homeTitle}
       action={
         <Link href={`${base}/analytics`} className="text-sm underline">
-          See all
+          {w.seeAll}
         </Link>
       }
     >

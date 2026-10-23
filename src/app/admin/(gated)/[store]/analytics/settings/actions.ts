@@ -4,7 +4,10 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { monthLabel, settingsFromForm } from "@/components/admin/analytics/settings-forms";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { formatCount } from "@/lib/analytics-core";
+import { analyticsWordsIn, countText } from "@/lib/analytics-words";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import {
@@ -15,6 +18,7 @@ import {
   saveTarget,
   setVisitCounting,
 } from "@/server/analytics-settings";
+import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**
@@ -23,61 +27,67 @@ import { checkOwnerRole } from "@/server/permissions";
  * calls `refresh()` so the page follows; the cache tags are the server functions' own.
  */
 
-const OWNER_ONLY = "Only an owner can change this.";
 const failed = (messages: string[]): FormState => ({ status: "error", messages });
+
+/** The settings' words in the admin's language: the member's own, or the request's before a member is known. */
+const wordsOf = (member: { account: { adminLocale?: string | null } } | null) =>
+  member ? Promise.resolve(analyticsWordsIn(adminLangOf(member.account.adminLocale)).settings) : actionAdminLang().then((lang) => analyticsWordsIn(lang).settings);
 
 /** The cost estimates or the customer lifetime: the form sends its own fields and the others stay as they are. */
 export async function saveAnalyticsSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return failed([OWNER_ONLY]);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
   const current = await getAnalyticsSettings(member.store.id);
   const result = await saveAnalyticsSettings(member, settingsFromForm(Object.fromEntries(form), current, mainCurrency(member.store)));
   if (!result.ok) return failed(result.problems);
   refresh();
   return {
     status: "ok",
-    messages: [form.has("ltvLifespanYears") ? "Saved. Predicted lifetime value uses this from now on." : "Saved. Profit figures use these estimates from now on."],
+    messages: [form.has("ltvLifespanYears") ? w.lifetime.saved : w.fees.saved],
   };
 }
 
 /** Sets a month's net revenue target. */
 export async function saveTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return failed([OWNER_ONLY]);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
   const result = await saveTarget(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems);
   refresh();
   const { month, revenueTargetMinor } = result.target;
   const amount = formatMoney(revenueTargetMinor, mainCurrency(member.store), member.store.markets[0]?.locale ?? "en");
-  return { status: "ok", messages: [`Saved: ${amount} for ${monthLabel(month)}. The overview follows this target.`] };
+  const locale = ADMIN_LANG_FACTS[adminLangOf(member.account.adminLocale)].locale;
+  return { status: "ok", messages: [fillWords(w.targets.savedFor, { amount, month: monthLabel(month, locale) })] };
 }
 
 /** Takes a month's target away. */
 export async function deleteTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return failed([OWNER_ONLY]);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
   const month = form.get("month");
   const result = await deleteTarget(member, typeof month === "string" ? month : "");
   if (!result.ok) return failed(result.problems);
   refresh();
-  return { status: "ok", messages: [result.deleted ? "Removed." : "That target was already gone."] };
+  return { status: "ok", messages: [result.deleted ? w.targets.removed : w.targets.alreadyGone] };
 }
 
 /** Switches visit counting on or off, from the button pressed (`enabled` is `on` or `off`). */
 export async function setVisitCountingAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return failed([OWNER_ONLY]);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
   const choice = form.get("enabled");
-  if (choice !== "on" && choice !== "off") return failed(["Choose whether to turn visit counting on or off."]);
+  if (choice !== "on" && choice !== "off") return failed([w.visits.choose]);
   const result = await setVisitCounting(member, choice === "on");
   if (!result.ok) return failed(result.problems);
   refresh();
   return {
     status: "ok",
     messages: [
-      result.enabled
-        ? "Visit counting is on from now on. Mention it in your privacy policy."
-        : "Visit counting is off. What was counted is kept for 25 months.",
+      result.enabled ? w.visits.nowOn : w.visits.nowOff,
     ],
   };
 }
@@ -88,8 +98,9 @@ export async function setVisitCountingAction(storeSlug: string, _state: FormStat
  */
 export async function backfillCostsAction(storeSlug: string): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
-  if (!member) return failed([OWNER_ONLY]);
+  const w = await wordsOf(member);
+  if (!member) return failed([w.ownerOnly]);
   const result = await backfillCosts(member);
   if (!result.ok) return failed(result.problems);
-  return { status: "ok", messages: [`Updated ${formatCount(result.lines)} order ${result.lines === 1 ? "line" : "lines"}.`] };
+  return { status: "ok", messages: [countText(w.costs.updated, result.lines, {}, formatCount(result.lines))] };
 }

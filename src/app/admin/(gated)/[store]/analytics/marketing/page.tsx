@@ -6,6 +6,8 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { DiscountsView } from "@/components/admin/analytics/discounts-view";
 import { MarketingView, marketingLtv } from "@/components/admin/analytics/marketing-view";
 import { SpendSection } from "@/components/admin/analytics/spend-form";
+import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
@@ -46,16 +48,18 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
     customersReport(store, period, settings, now).catch(() => null),
   ]);
   const currency = mainCurrency(store);
-  const locale = store.markets[0]?.locale ?? "en";
+  const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
+  const w = adminText(ctx.lang, "reports");
 
   return (
+    <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
           path="/analytics/marketing"
-          title="Marketing"
-          description="What it costs to win a customer, which channels pay back, and how much of your business depends on discounts."
+          title={w.pages.marketing.title}
+          description={w.pages.marketing.description}
         />
         <MarketingView
           base={ctx.base}
@@ -64,6 +68,8 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           report={report}
           comparison={previous && compare.mode !== "none" ? { mode: compare.mode, report: previous } : null}
           ltv={customers ? marketingLtv(customers.ltv) : null}
+          words={w.marketing}
+          channelWords={w.channels}
         />
         <SpendSection
           currency={currency}
@@ -73,8 +79,9 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           limit={SPEND_LISTED}
           actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
         />
-        <DiscountsView currency={currency} locale={locale} report={discounts} />
+        <DiscountsView currency={currency} locale={locale} report={discounts} words={w.discounts} />
       </div>
     </ExportScope>
+    </AdminTextScope>
   );
 }
