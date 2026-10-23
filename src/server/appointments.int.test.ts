@@ -160,7 +160,10 @@ describe("booking an appointment (D65)", () => {
     expect((await getOrder(storeId, second.order.orderId))?.lines[0].booking?.staff).toBe("Ola");
 
     newShopper();
-    const later = new Date(Date.parse(first) + 24 * 60 * 60_000).toISOString();
+    // Another day's first time Kari is free (not "24 hours later", which a change of clocks moves outside the hours).
+    const kariDays = await appointmentSlots(storeId, productId, { resourceId: kari });
+    const later = kariDays?.days.flatMap((d) => d.slots).find((slot) => slot.startsAt.slice(0, 10) !== first.slice(0, 10))?.startsAt;
+    if (!later) throw new Error("no later time");
     await changeLine(shop, variantId, 1, "add", null, undefined, { startsAt: later, resourceId: kari });
     expect((await changeLine(shop, variantId, 1, "add", null, undefined, { startsAt: first, resourceId: null })).outcome).toBe("slot_taken");
     await db().execute(sql`
