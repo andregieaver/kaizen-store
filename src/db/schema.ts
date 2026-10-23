@@ -42,6 +42,8 @@ import {
   type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
+import { LIMIT_KEYS } from "../lib/limits";
+import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
 import {
@@ -7692,6 +7694,106 @@ export const knowledgeDocuments = commerce.table(
     index("knowledge_documents_created_by_idx").on(t.createdBy),
     check("knowledge_documents_title", sql`length(${t.title}) between 1 and 200`),
     check("knowledge_documents_content", sql`length(${t.content}) between 1 and 200000`),
+  ],
+);
+
+/**
+ * What a store used, per UTC day and metric (D314, `docs/capacity.md` 3): gauges as measured that day, counters summed over it
+ * (`USAGE_METRICS` in `src/lib/usage-metrics.ts`). `store_id` null is Kaizena Flow's own site. Written only by
+ * `src/server/usage-meter.ts` and the traffic drain (`src/server/usage-traffic.ts`); kept 25 months. Counts and bytes only: no person,
+ * address, path or query.
+ */
+export const storeUsageDaily = commerce.table(
+  "store_usage_daily",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    metric: text("metric").notNull(),
+    value: bigint("value", { mode: "number" }).notNull().default(0),
+    /** Scaled up from a sample (traffic with a drain sampling rate below 1). */
+    estimated: boolean("estimated").notNull().default(false),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("store_usage_daily_key").on(t.storeId, t.day, t.metric).nullsNotDistinct(),
+    index("store_usage_daily_day_idx").on(t.day),
+    check("store_usage_daily_value", sql`${t.value} >= 0`),
+    check("store_usage_daily_metric", sql`${t.metric} in (${sqlList(USAGE_METRIC_IDS)})`),
+  ],
+);
+
+/**
+ * A plan's limits (D314, `docs/capacity.md` 4): one row per plan and `LIMITS` key; `plan_id` null is the platform default. A row whose
+ * value is null means unlimited; no row means the next source decides (`effectiveLimit()`). Edited on the platform's Plans page.
+ */
+export const planLimits = commerce.table(
+  "plan_limits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: bigint("value", { mode: "number" }),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("plan_limits_key").on(t.planId, t.key).nullsNotDistinct(),
+    index("plan_limits_updated_by_idx").on(t.updatedBy),
+    check("plan_limits_value", sql`${t.value} is null or ${t.value} >= 0`),
+    check("plan_limits_known", sql`${t.key} in (${sqlList(LIMIT_KEYS)})`),
+  ],
+);
+
+/** A platform admin's limit for one store or one owner (D314), above or below the plan's, with the reason and an optional end. */
+export const limitOverrides = commerce.table(
+  "limit_overrides",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: bigint("value", { mode: "number" }),
+    reason: text("reason").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("limit_overrides_key").on(t.storeId, t.accountId, t.key).nullsNotDistinct(),
+    index("limit_overrides_account_idx").on(t.accountId),
+    index("limit_overrides_created_by_idx").on(t.createdBy),
+    check("limit_overrides_target", sql`(${t.storeId} is null) <> (${t.accountId} is null)`),
+    check("limit_overrides_reason", sql`length(trim(${t.reason})) between 1 and 300`),
+    check("limit_overrides_value", sql`${t.value} is null or ${t.value} >= 0`),
+    check("limit_overrides_known", sql`${t.key} in (${sqlList(LIMIT_KEYS)})`),
+  ],
+);
+
+/**
+ * A busy time an owner told Kaizena Flow about (D314, `docs/capacity.md` 6, step 4.1): a sale or a launch, so the platform can make
+ * room before it and traffic warnings wait. At most 14 days long; kept 12 months.
+ */
+export const capacityEvents = commerce.table(
+  "capacity_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    /** `busy` or `very_busy`. */
+    expected: text("expected").notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("capacity_events_store_idx").on(t.storeId, t.startsAt),
+    index("capacity_events_starts_idx").on(t.startsAt),
+    index("capacity_events_created_by_idx").on(t.createdBy),
+    check("capacity_events_expected", sql`${t.expected} in ('busy', 'very_busy')`),
+    check("capacity_events_span", sql`${t.endsAt} > ${t.startsAt} and ${t.endsAt} <= ${t.startsAt} + interval '14 days'`),
+    check("capacity_events_note", sql`length(${t.note}) <= 300`),
   ],
 );
 

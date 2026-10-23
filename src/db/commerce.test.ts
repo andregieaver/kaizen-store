@@ -6272,3 +6272,45 @@ describe("Kaizena Flow's installed themes (docs/theme-phase-4.md)", () => {
     expect((await db.query("select 1 from commerce.platform_theme_install_updates where id = $1", [update])).rows).toHaveLength(0);
   });
 });
+
+describe("usage and limits (D314)", () => {
+  it("adds up a store's files where there is no Storage, and Kaizena Flow's under no store", async () => {
+    const own = await createStore("usage-store", ["NO"]);
+    for (const [storeId, size, n] of [[own, 1000, 1], [own, 2500, 2], [null, 700, 3]] as const) {
+      await db.query(
+        `insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes)
+         values ($1, 'image', $2, 'product-media', $3, 'a.webp', 'image/webp', $4)`,
+        [storeId, `https://example.test/usage-${n}.webp`, `${storeId ?? "platform"}/usage-${n}.webp`, size],
+      );
+    }
+    const { rows } = await db.query<{ store_id: string | null; bytes: string }>("select * from commerce.storage_bytes_by_store()");
+    expect(Number(rows.find((r) => r.store_id === own)?.bytes)).toBe(3500);
+    expect(Number(rows.find((r) => r.store_id === null)?.bytes)).toBeGreaterThanOrEqual(700);
+  });
+
+  it("keeps one row per store, day and metric, and only known metrics", async () => {
+    await db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-01', 'requests', 5)", [store]);
+    await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-01', 'requests', 6)", [store])).rejects.toThrow();
+    await db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values (null, '2026-10-01', 'requests', 1)");
+    await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values (null, '2026-10-01', 'requests', 1)")).rejects.toThrow();
+    await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-01', 'visits', 1)", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-02', 'requests', -1)", [store])).rejects.toThrow();
+  });
+
+  it("keeps one limit per plan and key, a platform default once, and an override for exactly one store or owner", async () => {
+    await db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 500)");
+    await expect(db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 600)")).rejects.toThrow();
+    await expect(db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'visits', 1)")).rejects.toThrow();
+    await db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'staff_seats', null)");
+    await db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'products', 1000, 'Launch')", [store]);
+    await expect(db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'products', 2000, 'Again')", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.limit_overrides (key, value, reason) values ('products', 1, 'Nobody')")).rejects.toThrow();
+    await expect(db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'staff_seats', 1, ' ')", [store])).rejects.toThrow();
+  });
+
+  it("keeps a busy time to at most 14 days", async () => {
+    await db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-27', '2026-11-30', 'very_busy')", [store]);
+    await expect(db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-01', '2026-11-20', 'busy')", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-02', '2026-11-01', 'busy')", [store])).rejects.toThrow();
+  });
+});
