@@ -29,6 +29,6 @@ describe("the domain search component (D315 16)", () => {
     const seen: string[] = [];
     mapBlockTexts({ id: "d", type: "domainSearch", heading: "Find it", buttonLabel: "Search", ctaLabel: "Get it", ctaHref: "" }, (key, value) => (seen.push(key), value));
     expect(seen).toEqual(["block.d.heading", "block.d.buttonLabel", "block.d.ctaLabel"]);
-    expect(textRoles({ id: "d", type: "domainSearch", buttonLabel: "", ctaLabel: "", ctaHref: "" }).map((r) => r.role)).toEqual(["text", "title", "input", "button", "name", "price"]);
+    expect(textRoles({ type: "domainSearch" }).map((r) => r.role)).toEqual(["text", "title", "input", "button", "name", "price"]);
   });
 });
