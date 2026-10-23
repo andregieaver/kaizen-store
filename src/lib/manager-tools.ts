@@ -222,6 +222,8 @@ export const TOOL_WORDS: Record<string, string> = {
   list_support_conversations: "Looking at support conversations",
   gift_card_overview: "Looking at gift cards",
   usage_and_limits: "Looking at usage and limits",
+  list_domains: "Looking at your domains",
+  check_domain: "Checking the domain",
   store_overview: "Looking at the store",
   sales_summary: "Adding up sales",
   list_orders: "Looking at orders",

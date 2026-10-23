@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { DomainHealthCard } from "@/components/admin/domain-health-card";
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } from "@/server/domains";
+import { storeDomainHealth } from "@/server/domain-health";
+import { registrationFacts } from "@/server/domain-registrations";
 import { domainsConfigured } from "@/server/vercel";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -37,6 +41,9 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
+      <Suspense fallback={<div className="h-24 animate-pulse rounded-card bg-sunken" />}>
+        <DomainHealth storeId={store.id} lang={lang} />
+      </Suspense>
       <DomainsPanel
         address={storeHref(store.slug, storeBase(store.slug))}
         hostAddress={hostOrigin(`${store.slug}.${domain.split(":")[0]}`)}
@@ -56,5 +63,24 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
         }}
       />
     </div>
+  );
+}
+
+/** Each domain's health (D315 5.3), read as the owner opens the page: DNS and RDAP lookups stream in after the rest. */
+async function DomainHealth({ storeId, lang }: { storeId: string; lang: ReturnType<typeof adminLangOf> }) {
+  const rows = await storeDomainHealth(storeId, { registrations: registrationFacts });
+  return (
+    <DomainHealthCard
+      rows={rows.map((r) => ({
+        hostname: r.facts.hostname,
+        registrar: r.facts.registration.registrar,
+        withUs: r.facts.registration.withUs,
+        expiresAt: r.facts.registration.expiresAt,
+        dnsHost: r.facts.dnsHost,
+        findings: r.findings,
+      }))}
+      words={adminText(lang, "domains")}
+      locale={ADMIN_LANG_FACTS[lang].locale}
+    />
   );
 }

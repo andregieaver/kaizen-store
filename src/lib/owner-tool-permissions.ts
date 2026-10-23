@@ -19,6 +19,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Gift cards (D300 F4): the Gift cards page is the Products section's.
   gift_card_overview: "products:read",
   usage_and_limits: "billing:read",
+  // Domains (D315) are a Settings page: read with `settings:read`; buying, renewing, DNS changes and moves are the owner's.
+  list_domains: "settings:read",
+  check_domain: "settings:read",
   // Looking (the page's `read`)
   store_overview: "owner",
   sales_summary: "analytics:read",

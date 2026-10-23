@@ -973,6 +973,16 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "list_domains",
+    "The store's domains (D315): each one's address, whether it is the store's address or still waiting for its DNS, which language it is for, who it is registered with and when it expires, whether Kaizena Flow keeps its DNS, and its health in one line with how many findings need the owner. Every fact is read by code (the store's checks, public DNS, the registry's RDAP record); repeat them, never guess one. Read-only. For the findings of one domain call check_domain.",
+    z.object({}),
+  ),
+  tool(
+    "check_domain",
+    "Checks one of the store's domains now (D315) and gives each finding with how serious it is and what fixes it: the DNS not pointing at the store, the proof record missing, an expiry close with no renewal, an unconfirmed registrant email, a CAA record that stops the certificate, two SPF records, email without SPF or DMARC. The findings are made in code: repeat them in their own words, never add one. A fix names a tool (once it exists for this store) or the place on the Domains page; where the DNS is kept elsewhere, the owner changes it there, and the page shows the records.",
+    z.object({ domain: z.string().trim().min(3).max(253).describe("The domain, such as example.no, as list_domains gives it.") }),
+  ),
+  tool(
     "list_support_conversations",
     "The store's support conversations, most recent first: each one's title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Never the words of a conversation: to read one, give the link. Read-only.",
     z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),

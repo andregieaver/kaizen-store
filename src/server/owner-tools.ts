@@ -64,6 +64,7 @@ import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
 import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
+import { checkDomainTool, listDomainsTool } from "./domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
@@ -2103,6 +2104,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_support_conversations: listSupportConversationsTool,
   gift_card_overview: giftCardOverviewTool,
   usage_and_limits: usageAndLimitsTool,
+  list_domains: listDomainsTool,
+  check_domain: checkDomainTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,

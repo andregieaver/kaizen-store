@@ -49,6 +49,11 @@ function settings() {
 /** Whether Kaizen can add stores' domains here: its Vercel settings are there. */
 export const domainsConfigured = () => settings() !== null;
 
+/** A call to Vercel's API with Kaizena Flow's token and team: the projects, DNS and Registrar APIs alike (D315). Swapped for a fake in tests. */
+export type VercelCall = <T>(path: string, init?: RequestInit) => Promise<T>;
+
+export const vercelCall: VercelCall = (path, init) => call(path, init);
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const s = settings();
   if (!s) throw new VercelError("Custom domains are not set up on Kaizena Flow yet.", 503, null);
@@ -60,9 +65,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     signal: AbortSignal.timeout(15_000),
     cache: "no-store",
   });
-  const body = (await response.json().catch(() => ({}))) as { error?: { code?: string; message?: string } } & T;
+  const body = (await response.json().catch(() => ({}))) as { error?: { code?: string; message?: string }; code?: string; message?: string } & T;
   if (!response.ok) {
-    throw new VercelError(body.error?.message ?? `Vercel answered ${response.status}.`, response.status, body.error?.code ?? null);
+    // The projects and DNS APIs answer `{ error: { code, message } }`, the Registrar API `{ code, message }`.
+    throw new VercelError(body.error?.message ?? body.message ?? `Vercel answered ${response.status}.`, response.status, body.error?.code ?? body.code ?? null);
   }
   return body;
 }

@@ -42,6 +42,30 @@ export const domainsEn = {
   checkNow: "Check now",
   makeAddress: "Make this the address",
   remove: "Remove",
+  // D315: each domain's health (`domainHealth()`), in words. `{domain}`, `{date}`, `{days}`, `{registrar}`, `{count}`, `{problem}`.
+  working: "Working",
+  healthTitle: "Health",
+  healthChecking: "Checked as you open this page.",
+  health: {
+    not_pointed: "{domain} doesn't reach your store yet: its DNS doesn't point here.",
+    proof_missing: "The record that shows {domain} is yours isn't there yet.",
+    check_problem: "The last check couldn't finish: {problem}",
+    expired: "{domain} expired on {date}. Renew it or it stops working for good.",
+    expires_soon: "{domain} expires on {date}, in {days} days, and doesn't renew by itself.",
+    contact_unverified: "Confirm the registrant's email for {domain}, or the registry stops the domain.",
+    caa_blocks: "A CAA record on {domain} stops your store's https certificate.",
+    spf_duplicate: "{domain} has {count} SPF records. Email checks fail unless there is one.",
+    spf_missing: "Email from {domain} has no SPF record, so it may land in spam.",
+    dmarc_missing: "Email from {domain} has no DMARC policy. Adding one helps it reach inboxes.",
+    no_email: "No email is set up on {domain}.",
+    lookup_failed: "Some of {domain}'s records couldn't be read just now.",
+    healthy: "{domain} is working.",
+  },
+  severity: { error: "Needs you", warning: "Check", advice: "Tip", info: "Note" },
+  registeredWith: "Registered with {registrar}",
+  expiresOn: "Expires {date}",
+  dnsHere: "DNS kept by Kaizena Flow",
+  dnsElsewhere: "DNS kept elsewhere",
 };
 
 export type DomainsMessages = Widen<typeof domainsEn>;

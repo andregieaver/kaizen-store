@@ -5,8 +5,7 @@ How could we offer such a service?" and then: "One big headache i want to releas
 related actions. The store's ai assistant needs to be able to handle this on behalf of the owner. Also, should the store owner choose to
 move their domain elsewhere, let's make this easy too. Make the plan, touch no code."
 
-This is a plan. Nothing here is built. The owner settled most of section 12 on 23 October 2026 (D315 in `docs/decisions.md`); the rest is
-marked open there, with a recommendation.
+The owner settled section 12 on 23 October 2026 (D315 in `docs/decisions.md`), and asked for it to be built. Section 17 says what is built.
 
 ## 1. What is there today, and what we found
 
@@ -113,10 +112,12 @@ already holds says so.
 
 ### 4.3 Prices
 
-`commerce.domain_prices` holds one price per TLD and currency (the plans' currencies), without VAT, for registering, renewing and
-transferring in. A new amount is a new row, as in `plan_prices`. Platform admins set prices at `/admin/platform/domains`. The page shows
-each registrar's cost today, converted at the ECB reference rate (`ecb_reference_rates`), and warns when our price is below cost plus the
-floor the admin sets. There is never a price in code.
+A price is worked out from the registrar's own price for that name, never typed per TLD: `commerce.domain_pricing` holds, per currency (the
+plans' currencies), the margin, the floor a year and what a price is rounded up to, set by platform admins at `/admin/platform/domains`
+(seeded on 23 October 2026 with 25 %, NOK 150, SEK 150, DKK 100, EUR 15 a year, rounded to 10 kr or €1). `domainPrice()`
+(`src/lib/domain-prices.ts`, pure, integer minor units) converts the registrar's US dollars at the latest ECB reference rate
+(`ecb_reference_rates`), adds the margin, rounds up and keeps the floor; the first year and each renewal are priced from their own registrar
+prices, so an introductory price shows as such. A currency with no row, or no ECB rate, sells nothing. There is never a price in code.
 
 A store pays in its plan's currency, else its own country's, as for themes (D286). Norwegian stores pay 25 % MVA on top
 (`billingTaxRates()`).
@@ -470,7 +471,7 @@ All are `never` in `COPY_RULES`. Domains are never copied.
   * As a Norid registrar of its own (decision 2a), Kaizena Flow would be an **independent data controller** for `.no` holders' data, as
     Norid requires of every registrar. It would not be a processor. The privacy notice says so, and the registrar test and the agreement's
     duties to holders become Kaizena Flow's.
-* **Plans and parity.** `plan_features` gets *Buy and manage domains* (decision 3). The parity tracker gets one new row,
+* **Plans and parity.** Buying domains is on every plan (decision 3); the parity tracker's row names it. The parity tracker gets one new row,
   `platform.buy-domains` (Shopify sells domains natively), rated as the phases land, with `pnpm parity:write`.
 
 ## 11. Build order
@@ -496,24 +497,26 @@ if 2a is "our own", apply early.
 ## 12. Decisions for the owner
 
 The owner answered on 23 October 2026: "For Cells, let's go with your recommendation. 1. Correct 2. Yes. And i think we need norid for .no.
-4. Correct 5. Yes, but can be set to auto. 8. Correct 9. Correct".
+4. Correct 5. Yes, but can be set to auto. 8. Correct 9. Correct". On 23 October 2026 the owner asked for the plan to be built "based
+on your recommendations", which settles the rest as recommended, and added: "We also need a domains component for the page builder so i can
+add it to a domains page" (section 16).
 
 | # | Question | Status | The answer, or the recommendation |
 |---|---|---|---|
 | (cells) | Where registrations and DNS live when a store has a cell of its own | **Decided** | In the control plane's Vercel team; only the connection follows the store (section 2) |
 | 1 | Who is the registrant? | **Decided** | The store's owner or their company, never Kaizena Flow |
 | 2 | Country TLDs, which Vercel does not sell | **Decided** | A second registrar, in the EU, behind the same adapter; `.no` through Norid (4.1) |
-| 2a | `.no`: become a Norid registrar, or use one? | Open | Recommendation: through the EU registrar first (one integration for every country TLD, no accreditation before the first sale). Then apply to Norid when `.no` sales near 100 a year, the point where Norid's minimum fee stops costing anything extra (S2). At that point new `.no` names go direct, and existing ones move over by a change of registrar, which Norid allows at any time (policy 10.1). If you'd rather own the `.no` route from the start, apply now: the money is small, the work is an EPP client and the registrar test |
-| 3 | Pricing and plans | Open | Platform admins set prices per TLD (cost plus a margin, rounded). On every plan. No free first year for now |
+| 2a | `.no`: become a Norid registrar, or use one? | **Decided** (recommendation) | Recommendation: through the EU registrar first (one integration for every country TLD, no accreditation before the first sale). Then apply to Norid when `.no` sales near 100 a year, the point where Norid's minimum fee stops costing anything extra (S2). At that point new `.no` names go direct, and existing ones move over by a change of registrar, which Norid allows at any time (policy 10.1). If you'd rather own the `.no` route from the start, apply now: the money is small, the work is an EPP client and the registrar test |
+| 3 | Pricing and plans | **Decided** (recommendation) | Platform admins set prices per TLD (cost plus a margin, rounded). On every plan. No free first year for now |
 | 4 | A renewal not paid | **Decided** | Don't renew unpaid. Remind at 30, 14, 7 and 1 days, then turn the registrar's auto-renew off three days before expiry. A `.no` is deleted at expiry, and its reminders say so (9.1) |
 | 5 | The AI and DNS | **Decided** | After the owner's yes by default; the owner can set DNS changes to automatic (7.1) |
-| 5a | With DNS changes automatic, does a change that stops email still ask? | Open | Recommendation: yes, that one case still asks (7.1) |
-| 6 | Staff | Open | Only owners buy, renew, change DNS and move. Staff with `settings:read` see |
-| 7 | Referral credit on domains | Open | None: a domain is a registrar's cost passed on, not Kaizena Flow's fee |
+| 5a | With DNS changes automatic, does a change that stops email still ask? | **Decided** (recommendation) | Recommendation: yes, that one case still asks (7.1) |
+| 6 | Staff | **Decided** (recommendation) | Only owners buy, renew, change DNS and move. Staff with `settings:read` see |
+| 7 | Referral credit on domains | **Decided** (recommendation) | None: a domain is a registrar's cost passed on, not Kaizena Flow's fee |
 | 8 | Closing a store | **Decided** | It keeps its domains with its owners (registration and DNS), renewal off unless kept: a change to D171 (9.3) |
 | 9 | Opening buying | **Decided** | Only once moving away (phase 4) exists |
-| 10 | Premium names (registry-priced) | Open | Not offered in phase 2 |
-| 11 | Does a bought domain take one of the plan's domains (D314: Basic 1, Grow 5, Advanced 20, Plus 50)? | Open | Yes, once it is connected to the store, as any domain does. The limit is checked before charging (4.4) |
+| 10 | Premium names (registry-priced) | **Decided** (recommendation) | Not offered in phase 2 |
+| 11 | Does a bought domain take one of the plan's domains (D314: Basic 1, Grow 5, Advanced 20, Plus 50)? | **Decided** (recommendation) | Yes, once it is connected to the store, as any domain does. The limit is checked before charging (4.4) |
 
 ## 13. Spikes before code
 
@@ -620,3 +623,20 @@ The owner answered on 23 October 2026: "For Cells, let's go with your recommenda
 * **Kaizena Flow's own domains.** They stay as they are, outside this.
 * **Store emails from the owner's domain.** Sending them through Resend from the store's own domain becomes a recipe once DNS is hosted
   here, but it is a feature of its own.
+
+## 16. A domain search on Kaizena Flow's own pages
+
+The owner (23 October 2026): "We also need a domains component for the page builder so i can add it to a domains page."
+
+The *Domain search* component (block `domainSearch`) is for Kaizena Flow's own pages only, as the plans block is (D142: a store's page
+refuses it). A visitor types a name and sees which endings are free and what each costs a year with a store on Kaizena Flow, in the
+page's currency, from the same search and prices the admin uses (`searchDomains()`, `domainPrice()`): never a price of its own, a premium
+name is not offered, and the search is rate-limited per visitor's hashed address and in all (`chat_usage` buckets `domains:public:*`), with
+no cookie or storage. Each free name links to sign-up with the name kept (`/sign-up?domain=`), so it can be bought once the store exists.
+The block's settings are its heading, its button's words, the endings it suggests first and whether prices show.
+
+## 17. What is built
+
+| Phase | State |
+|---|---|
+| 1. Foundation | Built 23 October 2026: the registrar adapter (`src/server/registrars/`), Vercel DNS (`src/server/vercel-dns.ts`), the record model (`src/lib/dns-records.ts`), `domainHealth()` and its gathering (public DNS, RDAP, Vercel), the health card on Settings → Domains, `list_domains` and `check_domain`, and the tables of every phase (migrations `domains`, `domains_rules`) |

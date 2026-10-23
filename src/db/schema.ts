@@ -578,6 +578,8 @@ export const stores = commerce.table(
     businessPopup: boolean("business_popup").notNull().default(false),
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
+    /** The AI manager may change DNS records of the store's kept zones without asking (D315 decision 5, `docs/domains.md` 7.1). */
+    domainDnsAuto: boolean("domain_dns_auto").notNull().default(false),
     /**
      * What checkout says about the store's terms (wave 1, 1e): `link` (a sentence with links, the default), `checkbox`
      * (the same with a required tick) or `off` (nothing drawn, nothing recorded). A copy of a store starts with `link`.
@@ -7032,6 +7034,245 @@ export const storeDomains = commerce.table(
       "store_domains_hostname",
       sql`${t.hostname} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$' and length(${t.hostname}) <= 253`,
     ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Domains bought and DNS kept by Kaizena Flow (D315, docs/domains.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * Who a domain is registered to (D315 decision 1): the store's owner or their company, never Kaizena Flow. Filled in from the store's
+ * business details and confirmed by the owner; `extra` holds the fields a TLD asks for. Personal data (`PERSONAL_DATA`): kept while a
+ * registration uses it.
+ */
+export const domainRegistrants = commerce.table(
+  "domain_registrants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    kind: text("kind").notNull(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    companyName: text("company_name"),
+    orgNumber: text("org_number"),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    address1: text("address1").notNull(),
+    address2: text("address2"),
+    city: text("city").notNull(),
+    state: text("state").notNull().default(""),
+    postalCode: text("postal_code").notNull(),
+    country: char("country", { length: 2 }).notNull(),
+    extra: jsonb("extra").notNull().default({}),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("domain_registrants_kind", sql`${t.kind} in ('person', 'company')`),
+    check("domain_registrants_company", sql`${t.kind} = 'person' or ${t.companyName} is not null`),
+    check("domain_registrants_country", sql`${t.country} ~ '^[A-Z]{2}$'`),
+    check(
+      "domain_registrants_lengths",
+      sql`length(${t.firstName}) between 1 and 100 and length(${t.lastName}) between 1 and 100 and length(${t.email}) between 3 and 254
+        and length(${t.phone}) between 4 and 20 and length(${t.address1}) between 1 and 200 and length(${t.city}) between 1 and 100
+        and length(${t.postalCode}) between 1 and 20`,
+    ),
+    index("domain_registrants_store_idx").on(t.storeId),
+    index("domain_registrants_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * A domain Kaizena Flow registered for a store (D315 4.4): one live row per name. `renew` is the owner's choice; the registrar's own
+ * auto-renew follows it (`docs/domains.md` 9.1). A registration moved to another registrar ends as `transferred_out`; nothing is deleted.
+ */
+export const domainRegistrations = commerce.table(
+  "domain_registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    apex: text("apex").notNull(),
+    registrar: text("registrar").notNull(),
+    status: text("status").notNull().default("active"),
+    registrantId: uuid("registrant_id").references(() => domainRegistrants.id),
+    registeredAt: timestamp("registered_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    renew: boolean("renew").notNull().default(true),
+    /** What the registrar's own auto-renew is set to, as Kaizena Flow last set it. */
+    registrarRenews: boolean("registrar_renews").notNull().default(true),
+    contactVerified: boolean("contact_verified"),
+    contactCheckedAt: timestamp("contact_checked_at", { withTimezone: true }),
+    transferredOutAt: timestamp("transferred_out_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("domain_registrations_registrar", sql`${t.registrar} in ('vercel')`),
+    check("domain_registrations_status", sql`${t.status} in ('active', 'expired', 'transferring_out', 'transferred_out')`),
+    check("domain_registrations_apex", sql`${t.apex} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$'`),
+    uniqueIndex("domain_registrations_live_idx").on(t.apex).where(sql`${t.status} <> 'transferred_out'`),
+    index("domain_registrations_store_idx").on(t.storeId),
+    index("domain_registrations_expiry_idx").on(t.expiresAt).where(sql`${t.status} = 'active'`),
+    index("domain_registrations_registrant_idx").on(t.registrantId),
+    index("domain_registrations_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * Money for a domain (D315 4.4): paid first, registered after. `quoted` once the owner pressed the button that named the price, `invoiced`
+ * on Kaizena Flow's Stripe account, `paid` when Stripe says so, `registering` while the registrar works, `done`; or `failed` and `refunded`
+ * (the registration could not be made, so the money goes back), `void` (an invoice never paid). Only forward, never deleted
+ * (`commerce.domain_purchases_rules()`). The price is ours, without VAT, in the store's billing currency; `cost` is the registrar's.
+ */
+export const domainPurchases = commerce.table(
+  "domain_purchases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    registrationId: uuid("registration_id").references(() => domainRegistrations.id),
+    registrantId: uuid("registrant_id").references(() => domainRegistrants.id),
+    apex: text("apex").notNull(),
+    kind: text("kind").notNull(),
+    years: integer("years").notNull().default(1),
+    status: text("status").notNull().default("quoted"),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    registrar: text("registrar").notNull(),
+    cost: numeric("cost", { precision: 12, scale: 2 }).notNull(),
+    costCurrency: char("cost_currency", { length: 3 }).notNull(),
+    /** Whether the store is connected to the name once registered (the owner may buy one only to keep). */
+    connect: boolean("connect").notNull().default(true),
+    mode: text("mode"),
+    stripeInvoiceId: text("stripe_invoice_id").unique(),
+    invoiceNumber: text("invoice_number"),
+    invoiceUrl: text("invoice_url"),
+    collection: text("collection"),
+    registrarOrderId: text("registrar_order_id"),
+    problem: text("problem"),
+    tries: integer("tries").notNull().default(0),
+    nextTryAt: timestamp("next_try_at", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    chosenBy: uuid("chosen_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    invoicedAt: timestamp("invoiced_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("domain_purchases_kind", sql`${t.kind} in ('register', 'renew')`),
+    check("domain_purchases_status", sql`${t.status} in ('quoted', 'invoiced', 'paid', 'registering', 'done', 'failed', 'refunded', 'void')`),
+    check("domain_purchases_years", sql`${t.years} between 1 and 10`),
+    check("domain_purchases_amount", sql`${t.amountMinor} > 0`),
+    check("domain_purchases_currency", sql`${t.currency} ~ '^[A-Z]{3}$' and ${t.costCurrency} ~ '^[A-Z]{3}$'`),
+    check("domain_purchases_registrar", sql`${t.registrar} in ('vercel')`),
+    check("domain_purchases_mode", sql`${t.mode} is null or ${t.mode} in ('test', 'live')`),
+    check("domain_purchases_collection", sql`${t.collection} is null or ${t.collection} in ('card', 'invoice')`),
+    check("domain_purchases_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+    uniqueIndex("domain_purchases_open_idx")
+      .on(t.apex, t.kind)
+      .where(sql`${t.status} in ('quoted', 'invoiced', 'paid', 'registering')`),
+    index("domain_purchases_store_idx").on(t.storeId, t.createdAt),
+    index("domain_purchases_work_idx").on(t.status, t.nextTryAt).where(sql`${t.status} in ('quoted', 'paid', 'registering', 'failed')`),
+    index("domain_purchases_registration_idx").on(t.registrationId),
+    index("domain_purchases_registrant_idx").on(t.registrantId),
+    index("domain_purchases_chosen_by_idx").on(t.chosenBy),
+  ],
+);
+
+/**
+ * How Kaizena Flow prices domains in a currency (D315 decision 3): the registrar's price converted at the ECB reference rate, plus the margin,
+ * rounded up to `round_minor`, never below `minimum_minor` a year. Set by platform admins at `/admin/platform/domains`; a currency with no
+ * row is not sold in. Never a price in code.
+ */
+export const domainPricing = commerce.table(
+  "domain_pricing",
+  {
+    currency: char("currency", { length: 3 }).primaryKey(),
+    marginBps: integer("margin_bps").notNull().default(2500),
+    minimumMinor: bigint("minimum_minor", { mode: "number" }).notNull(),
+    roundMinor: bigint("round_minor", { mode: "number" }).notNull().default(100),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("domain_pricing_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("domain_pricing_margin", sql`${t.marginBps} between 0 and 50000`),
+    check("domain_pricing_minimum", sql`${t.minimumMinor} >= 0`),
+    check("domain_pricing_round", sql`${t.roundMinor} between 1 and 100000`),
+    index("domain_pricing_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * A domain whose DNS Kaizena Flow keeps for a store on Vercel DNS (D315 5): its records are Vercel's, read live; this row says it is the
+ * store's. `leaving` while the owner moves DNS away (`docs/domains.md` 8.2), `left` after. With cells (D314) zones stay in the control
+ * plane's team.
+ */
+export const dnsZones = commerce.table(
+  "dns_zones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    apex: text("apex").notNull(),
+    host: text("host").notNull().default("vercel"),
+    status: text("status").notNull().default("active"),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("dns_zones_host", sql`${t.host} in ('vercel')`),
+    check("dns_zones_status", sql`${t.status} in ('active', 'leaving', 'left')`),
+    uniqueIndex("dns_zones_live_idx").on(t.apex).where(sql`${t.status} <> 'left'`),
+    index("dns_zones_store_idx").on(t.storeId),
+    index("dns_zones_created_by_idx").on(t.createdBy),
+  ],
+);
+
+/**
+ * Every change to a kept zone's records (D315 5.1), whoever made it: the records before and after (`DnsRecord` lists, ids included), where
+ * it came from and who. Append-only by trigger; only `undone_at` is set, once, by `undoDnsChange()`.
+ */
+export const dnsChanges = commerce.table(
+  "dns_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    zoneId: uuid("zone_id")
+      .notNull()
+      .references(() => dnsZones.id),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    source: text("source").notNull(),
+    summary: text("summary").notNull(),
+    before: jsonb("before").notNull(),
+    after: jsonb("after").notNull(),
+    undoOf: uuid("undo_of"),
+    actorId: uuid("actor_id").references(() => accounts.id, { onDelete: "set null" }),
+    automatic: boolean("automatic").notNull().default(false),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("dns_changes_source", sql`${t.source} in ('editor', 'ai_manager', 'recipe', 'kaizena', 'undo', 'import')`),
+    check("dns_changes_summary", sql`length(${t.summary}) between 1 and 2000`),
+    index("dns_changes_zone_idx").on(t.zoneId, t.createdAt),
+    index("dns_changes_store_idx").on(t.storeId, t.createdAt),
+    index("dns_changes_undo_of_idx").on(t.undoOf),
+    index("dns_changes_actor_idx").on(t.actorId),
   ],
 );
 
